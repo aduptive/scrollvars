@@ -26,6 +26,11 @@ interface Entry {
 
 const DIST_SNAP = 0.35
 const KF_SNAP = 0.4
+// Active band: enter when the top reaches 75% down the viewport, stay while
+// the bottom is past 25% — the standard reveal-on-scroll feel (a strict
+// center line keeps tall sections dark for too long).
+const ACTIVE_ENTER = 0.75
+const ACTIVE_EXIT = 0.25
 
 const entries = new Map<HTMLElement, Entry>()
 let raf = 0
@@ -123,9 +128,9 @@ function setVar(entry: Entry, name: string, value: number) {
 function apply(entry: Entry, rect: DOMRect) {
   const { opts } = entry
 
-  // Active: element crosses the viewport's center line
   const isActive =
-    (rect.top < vh / 2 && rect.bottom > vh / 2) || (entry.active && !!opts.once)
+    (rect.top < vh * ACTIVE_ENTER && rect.bottom > vh * ACTIVE_EXIT) ||
+    (entry.active && !!opts.once)
   if (isActive !== entry.active) {
     entry.active = isActive
     entry.el.classList.toggle('sv-active', isActive)
