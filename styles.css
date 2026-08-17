@@ -1,0 +1,135 @@
+/* scrollvars — preset styles.
+ *
+ * Two tiers:
+ *   1. Pure CSS (`sv-view-*`): scroll-driven animation with zero JS,
+ *      only where `animation-timeline: view()` is supported.
+ *   2. Driver-backed (`sv-*`): reads the CSS variables written by the
+ *      JS driver (--d, --p, --kf) and the `sv-active` class.
+ *
+ * Variables you can override per element or globally:
+ *   --sv-y        travel distance for rise presets (default 30vh)
+ *   --sv-x        travel distance for slide presets (default 40vw)
+ *   --sv-ease     easing for active-trigger transitions
+ *   --sv-duration transition duration for active triggers
+ *   --sv-stagger  per-index delay step (used with --sv-i)
+ */
+
+.sv {
+  --d: -1;
+  --p: -1;
+  --kf: 0;
+  --sv-y: 30vh;
+  --sv-x: 40vw;
+  --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1);
+  --sv-duration: 700ms;
+  --sv-stagger: 80ms;
+}
+
+@media (min-width: 768px) {
+  .sv {
+    --sv-y: 50vh;
+  }
+}
+
+/* ---- Active trigger (binary state → transition) ---- */
+
+.sv .sv-fade,
+.sv .sv-rise,
+.sv .sv-slide-l,
+.sv .sv-slide-r {
+  opacity: 0;
+  transition:
+    opacity var(--sv-duration) var(--sv-ease),
+    translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-i, 0) * var(--sv-stagger));
+}
+
+.sv .sv-rise {
+  translate: 0 var(--sv-y);
+}
+.sv .sv-slide-l {
+  translate: calc(var(--sv-x) * -1) 0;
+}
+.sv .sv-slide-r {
+  translate: var(--sv-x) 0;
+}
+
+.sv.sv-active .sv-fade,
+.sv.sv-active .sv-rise,
+.sv.sv-active .sv-slide-l,
+.sv.sv-active .sv-slide-r {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.sv:not(.sv-active) {
+  pointer-events: none;
+}
+.sv.sv-active {
+  pointer-events: auto;
+}
+
+/* ---- Distance trigger (continuous → NO transition, follows the finger) ---- */
+
+.sv .sv-fade-d,
+.sv .sv-rise-d {
+  /* |--d|: 0 in view, →1 at either edge */
+  --sv-abs-d: max(var(--d), calc(var(--d) * -1));
+  opacity: calc(1 - var(--sv-abs-d));
+}
+
+.sv .sv-rise-d {
+  translate: 0 clamp(-100vh, calc(var(--d) * var(--sv-y) * -1), 100vh);
+}
+
+/* ---- Pure CSS tier: zero JS where supported ---- */
+
+@keyframes sv-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sv-in-rise {
+  from {
+    opacity: 0;
+    translate: 0 4rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .sv-view-fade,
+  .sv-view-rise {
+    animation: sv-in-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 70%;
+  }
+  .sv-view-rise {
+    animation-name: sv-in-rise;
+  }
+}
+
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-fade,
+  .sv .sv-rise,
+  .sv .sv-slide-l,
+  .sv .sv-slide-r,
+  .sv .sv-fade-d,
+  .sv .sv-rise-d,
+  .sv-view-fade,
+  .sv-view-rise {
+    transition: none;
+    animation: none;
+    opacity: 1;
+    translate: none;
+  }
+}
