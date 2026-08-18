@@ -1,39 +1,39 @@
 import { clamp, easeOutCubic, snapProgress } from './math'
 
-export interface ScrollVarsOptions {
-  /** Write `--d` (-1 entering → 0 in view → 1 leaving). Default true. */
-  distance?: boolean
-  /** Write `--p` (-1 → 1 across the element's full scroll travel). */
-  progress?: boolean
-  /** Write `--kf` (0..count) and fire onKeyframe on integer changes. */
-  keyframes?: number
-  /** Dead zone for snapping distance/keyframes to integers. false disables. */
+export interface TrackOptions {
+  /** Write `--sv-view` (-1 below viewport → 0 in scene → 1 gone above). Default true. */
+  view?: boolean
+  /** Write `--sv-t` (0..1 across the element's full travel through the viewport,
+   * same semantics as the native `animation-timeline: view()` cover range). */
+  travel?: boolean
+  /** Sticky storytelling: split the element's pinned travel into N scenes.
+   * Writes `--sv-scene` (0..N-1, eased + snapped) and fires onScene on integer changes. */
+  scenes?: number
+  /** Scene snap dead-zone (0..1), false to disable. */
   snap?: number | false
-  /** Latch the active state once reached (entrance animations). */
+  /** Latch the live state once reached (entrance animations). */
   once?: boolean
-  onActive?: (active: boolean) => void
-  onKeyframe?: (index: number) => void
-  /** Fires every frame with the raw progress (-1..1) — for video scrubbing,
+  onLive?: (live: boolean) => void
+  onScene?: (scene: number) => void
+  /** Fires every frame with the raw travel t (0..1) — for video scrubbing,
    * WebGL cameras, or anything JS-driven. Keep the callback cheap. */
-  onProgress?: (progress: number) => void
+  onTravel?: (t: number) => void
 }
 
 interface Entry {
   el: HTMLElement
-  opts: ScrollVarsOptions
+  opts: TrackOptions
   height: number
-  active: boolean
-  kfIndex: number
+  live: boolean
+  scene: number
   written: Record<string, string>
 }
 
-const DIST_SNAP = 0.35
-const KF_SNAP = 0.4
-// Active band: enter when the top reaches 75% down the viewport, stay while
-// the bottom is past 25% — the standard reveal-on-scroll feel (a strict
-// center line keeps tall sections dark for too long).
-const ACTIVE_ENTER = 0.75
-const ACTIVE_EXIT = 0.25
+const SCENE_SNAP = 0.4
+// Live band: enter when the top reaches 75% down the viewport, stay while the
+// bottom is past 25% — the standard reveal-on-scroll feel.
+const LIVE_ENTER = 0.75
+const LIVE_EXIT = 0.25
 
 const entries = new Map<HTMLElement, Entry>()
 let raf = 0
@@ -46,6 +46,10 @@ function init() {
   if (initialized || typeof window === 'undefined') return
   initialized = true
   vh = window.innerHeight
+
+  // No-JS guard: preset styles only hide content under `html.sv-on`, so a
+  // failed bundle degrades to a static, fully visible page.
+  document.documentElement.classList.add('sv-on')
 
   window.addEventListener('scroll', schedule, { passive: true })
   window.addEventListener('resize', () => {
@@ -67,6 +71,9 @@ function init() {
     }
     schedule()
   })
+  // Layout shifts above an element (images loading, fonts) move it without
+  // resizing it — watching the document catches those too.
+  resizeObserver.observe(document.documentElement)
 }
 
 function schedule() {
@@ -86,32 +93,30 @@ function update() {
   }
 }
 
-function computeDistance(rect: DOMRect, height: number): number {
+/** -1 fully below the scene zone, 0 in scene, +1 fully above. */
+function computeView(rect: DOMRect, height: number): number {
   const zone = vh * (2 / 3)
   const enterTop = rect.top - (vh - zone)
-  if (enterTop > 0) {
-    return clamp(-enterTop / zone, -1, 0)
-  }
+  if (enterTop > 0) return clamp(-enterTop / zone, -1, 0)
   const traveled = -enterTop
   const span = Math.max(height - zone, zone)
-  if (traveled > span) {
-    return clamp((traveled - span) / zone, 0, 1)
-  }
+  if (traveled > span) return clamp((traveled - span) / zone, 0, 1)
   return 0
 }
 
-function computeProgress(rect: DOMRect, height: number): number {
-  const topHeight = Math.max(vh / 2, vh - height)
-  const span = Math.max(height - vh, vh / 2) + topHeight
-  return clamp(-(rect.top - topHeight) / span, -1, 1)
+/** 0 when the top touches the viewport bottom, 1 when the bottom leaves the top. */
+function computeTravel(rect: DOMRect, height: number): number {
+  return clamp((vh - rect.top) / (vh + height), 0, 1)
 }
 
-function computeKeyframe(
-  progress: number,
-  count: number,
-  snap: number | false
-): number {
-  const raw = clamp(progress, 0, 1) * count
+/** 0..1 across a sticky container's pinned stretch. */
+function computePin(rect: DOMRect, height: number): number {
+  const span = Math.max(height - vh, 1)
+  return clamp(-rect.top / span, 0, 1)
+}
+
+function computeScene(pin: number, count: number, snap: number | false): number {
+  const raw = pin * (count - 1)
   const base = Math.floor(raw)
   if (raw === base) return raw
   let fraction = raw - base
@@ -131,53 +136,48 @@ function setVar(entry: Entry, name: string, value: number) {
 function apply(entry: Entry, rect: DOMRect) {
   const { opts } = entry
 
-  const isActive =
-    (rect.top < vh * ACTIVE_ENTER && rect.bottom > vh * ACTIVE_EXIT) ||
-    (entry.active && !!opts.once)
-  if (isActive !== entry.active) {
-    entry.active = isActive
-    entry.el.classList.toggle('sv-active', isActive)
-    opts.onActive?.(isActive)
+  const isLive =
+    (rect.top < vh * LIVE_ENTER && rect.bottom > vh * LIVE_EXIT) ||
+    (entry.live && !!opts.once)
+  if (isLive !== entry.live) {
+    entry.live = isLive
+    entry.el.classList.toggle('sv-live', isLive)
+    opts.onLive?.(isLive)
   }
 
-  if (opts.distance !== false) {
-    const raw = reducedMotion ? 0 : computeDistance(rect, entry.height)
-    const snap = opts.snap === false ? 0 : (opts.snap ?? DIST_SNAP)
-    setVar(entry, '--d', snapProgress(raw, snap))
+  if (opts.view !== false) {
+    setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(rect, entry.height))
   }
 
-  const needsProgress = opts.progress || opts.keyframes || opts.onProgress
-  if (needsProgress) {
-    const progress = computeProgress(rect, entry.height)
-    if (opts.progress) setVar(entry, '--p', progress)
-    opts.onProgress?.(progress)
+  if (opts.travel || opts.onTravel) {
+    const t = computeTravel(rect, entry.height)
+    if (opts.travel) setVar(entry, '--sv-t', t)
+    opts.onTravel?.(t)
+  }
 
-    if (opts.keyframes) {
-      const snap = opts.snap === false ? false : (opts.snap ?? KF_SNAP)
-      const kf = computeKeyframe(progress, opts.keyframes, snap)
-      setVar(entry, '--kf', kf)
+  if (opts.scenes && opts.scenes > 1) {
+    const pin = computePin(rect, entry.height)
+    const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
+    const scene = computeScene(pin, opts.scenes, snap)
+    setVar(entry, '--sv-scene', scene)
 
-      const index = clamp(Math.round(kf), 0, opts.keyframes - 1)
-      if (index !== entry.kfIndex) {
-        entry.kfIndex = index
-        opts.onKeyframe?.(index)
-      }
+    const index = clamp(Math.round(scene), 0, opts.scenes - 1)
+    if (index !== entry.scene) {
+      entry.scene = index
+      opts.onScene?.(index)
     }
   }
 }
 
-/** Register an element. Returns an unregister function. */
-export function register(
-  el: HTMLElement,
-  opts: ScrollVarsOptions = {}
-): () => void {
+/** Track an element. Returns an untrack function. */
+export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   init()
   const entry: Entry = {
     el,
     opts,
     height: el.scrollHeight,
-    active: false,
-    kfIndex: -1,
+    live: false,
+    scene: -1,
     written: {},
   }
   entries.set(el, entry)
@@ -196,22 +196,15 @@ export function refresh() {
   schedule()
 }
 
-/** Scroll the window so `el` lands on the given keyframe. */
-export function scrollToKeyframe(
-  el: HTMLElement,
-  index: number,
-  count: number,
-  smooth = true
-) {
-  if (typeof window === 'undefined') return
+/** Scroll the window so a Scenes container lands on the given scene. */
+export function scrollToScene(el: HTMLElement, index: number, count: number, smooth = true) {
+  if (typeof window === 'undefined' || count < 2) return
   const height = el.scrollHeight
-  const viewport = window.innerHeight
-  const topHeight = Math.max(viewport / 2, viewport - height)
-  const span = Math.max(height - viewport, viewport / 2) + topHeight
-  const targetProgress = clamp((index + 0.02) / count, 0, 1)
+  const span = Math.max(height - window.innerHeight, 1)
   const top =
-    window.scrollY + el.getBoundingClientRect().top - topHeight +
-    targetProgress * span
+    window.scrollY +
+    el.getBoundingClientRect().top +
+    (clamp(index, 0, count - 1) / (count - 1)) * span
 
   window.scrollTo({
     top: Math.max(0, top),

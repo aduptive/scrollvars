@@ -1,8 +1,8 @@
 export {
-  register,
+  track,
   refresh,
-  scrollToKeyframe,
+  scrollToScene,
   prefersReducedMotion,
 } from './core/driver'
-export type { ScrollVarsOptions } from './core/driver'
+export type { TrackOptions } from './core/driver'
 export { clamp, snapProgress, easeOutCubic } from './core/math'

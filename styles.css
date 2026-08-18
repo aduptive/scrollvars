@@ -1,107 +1,87 @@
 /* scrollvars — preset styles.
  *
- * Two tiers:
- *   1. Pure CSS (`sv-view-*`): scroll-driven animation with zero JS,
- *      only where `animation-timeline: view()` is supported.
- *   2. Driver-backed (`sv-*`): reads the CSS variables written by the
- *      JS driver (--d, --p, --kf) and the `sv-active` class.
+ * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
+ * variables the driver writes; any CSS of your own that reads them is an
+ * equally valid preset.
  *
- * Variables you can override per element or globally:
- *   --sv-y        travel distance for rise presets (default 30vh)
- *   --sv-x        travel distance for slide presets (default 40vw)
- *   --sv-ease     easing for active-trigger transitions
- *   --sv-duration transition duration for active triggers
- *   --sv-stagger  per-index delay step (used with --sv-i)
+ * Driver output:            Knobs you set:
+ *   --sv-view  -1..1          --sv-distance  travel length (default 6rem)
+ *   --sv-t      0..1          --sv-order     stagger position (0, 1, 2…)
+ *   --sv-scene  0..N-1        --sv-stagger   delay step (default 90ms)
+ *   .sv-live   (class)        --sv-duration / --sv-ease
+ *
+ * All hiding rules are gated on `html.sv-on` (added by the driver), so if
+ * JavaScript never runs the page stays fully visible.
  */
 
 .sv {
-  --d: -1;
-  --p: -1;
-  --kf: 0;
-  --sv-y: 30vh;
-  --sv-x: 40vw;
+  --sv-view: 0;
+  --sv-t: 0;
+  --sv-scene: 0;
+  --sv-distance: 6rem;
   --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1);
-  --sv-duration: 700ms;
-  --sv-stagger: 80ms;
+  --sv-duration: 800ms;
+  --sv-stagger: 90ms;
 }
 
-@media (min-width: 768px) {
-  .sv {
-    --sv-y: 50vh;
-  }
-}
+/* ---- Entrance presets (binary: driven by .sv-live, with transition) ---- */
 
-/* ---- Active trigger (binary state → transition) ---- */
-
-.sv .sv-fade,
-.sv .sv-rise,
-.sv .sv-slide-l,
-.sv .sv-slide-r {
+.sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on .sv.sv-auto > :not(.sv-skip) {
   opacity: 0;
   transition:
     opacity var(--sv-duration) var(--sv-ease),
     translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-i, 0) * var(--sv-stagger));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
 
-.sv .sv-rise {
-  translate: 0 var(--sv-y);
+.sv-on .sv :is(.sv-rise),
+.sv-on .sv.sv-auto > :not(.sv-skip) {
+  translate: 0 var(--sv-distance);
 }
-.sv .sv-slide-l {
-  translate: calc(var(--sv-x) * -1) 0;
+.sv-on .sv .sv-slide-l {
+  translate: calc(var(--sv-distance) * -2) 0;
 }
-.sv .sv-slide-r {
-  translate: var(--sv-x) 0;
+.sv-on .sv .sv-slide-r {
+  translate: calc(var(--sv-distance) * 2) 0;
 }
 
-.sv.sv-active .sv-fade,
-.sv.sv-active .sv-rise,
-.sv.sv-active .sv-slide-l,
-.sv.sv-active .sv-slide-r {
+.sv-on .sv.sv-live :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on .sv.sv-live.sv-auto > :not(.sv-skip) {
   opacity: 1;
   translate: 0 0;
 }
 
-.sv:not(.sv-active) {
-  pointer-events: none;
-}
-.sv.sv-active {
-  pointer-events: auto;
+/* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
+.sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
+.sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
+.sv-auto > :nth-child(4),  .sv-stagger > :nth-child(4)  { --sv-order: 3; }
+.sv-auto > :nth-child(5),  .sv-stagger > :nth-child(5)  { --sv-order: 4; }
+.sv-auto > :nth-child(6),  .sv-stagger > :nth-child(6)  { --sv-order: 5; }
+.sv-auto > :nth-child(7),  .sv-stagger > :nth-child(7)  { --sv-order: 6; }
+.sv-auto > :nth-child(8),  .sv-stagger > :nth-child(8)  { --sv-order: 7; }
+.sv-auto > :nth-child(9),  .sv-stagger > :nth-child(9)  { --sv-order: 8; }
+.sv-auto > :nth-child(10), .sv-stagger > :nth-child(10) { --sv-order: 9; }
+.sv-auto > :nth-child(n + 11), .sv-stagger > :nth-child(n + 11) { --sv-order: 10; }
+
+/* ---- Drift preset (continuous: follows the scroll, NO transition) ---- */
+
+.sv .sv-drift {
+  --sv-abs-view: max(var(--sv-view), calc(var(--sv-view) * -1));
+  opacity: calc(1 - var(--sv-abs-view));
+  translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
 }
 
-/* ---- Distance trigger (continuous → NO transition, follows the finger) ---- */
-
-.sv .sv-fade-d,
-.sv .sv-rise-d {
-  /* |--d|: 0 in view, →1 at either edge */
-  --sv-abs-d: max(var(--d), calc(var(--d) * -1));
-  opacity: calc(1 - var(--sv-abs-d));
-}
-
-.sv .sv-rise-d {
-  translate: 0 clamp(-100vh, calc(var(--d) * var(--sv-y) * -1), 100vh);
-}
-
-/* ---- Pure CSS tier: zero JS where supported ---- */
+/* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 
 @keyframes sv-in-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes sv-in-rise {
-  from {
-    opacity: 0;
-    translate: 0 4rem;
-  }
-  to {
-    opacity: 1;
-    translate: 0 0;
-  }
+  from { opacity: 0; translate: 0 4rem; }
+  to   { opacity: 1; translate: 0 0; }
 }
 
 @supports (animation-timeline: view()) {
@@ -119,12 +99,8 @@
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
-  .sv .sv-fade,
-  .sv .sv-rise,
-  .sv .sv-slide-l,
-  .sv .sv-slide-r,
-  .sv .sv-fade-d,
-  .sv .sv-rise-d,
+  .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+  .sv-on .sv.sv-auto > *,
   .sv-view-fade,
   .sv-view-rise {
     transition: none;
