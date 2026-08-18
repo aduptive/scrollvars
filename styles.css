@@ -72,6 +72,24 @@
   translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
 }
 
+/* ---- Pin presets (continuous: track with { pin: true }) ---- */
+
+/* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
+   .sv-curtain-l / .sv-curtain-r panels over the revealed content. */
+.sv .sv-curtain-l {
+  translate: calc(var(--sv-pin, 0) * -101%) 0;
+}
+.sv .sv-curtain-r {
+  translate: calc(var(--sv-pin, 0) * 101%) 0;
+}
+
+/* Rail: horizontal travel on vertical scroll. Put on a max-content flex row
+   inside a sticky stage; 100vw - 100% is exactly the track's overflow. */
+.sv .sv-rail {
+  width: max-content;
+  translate: calc(var(--sv-pin, 0) * (100vw - 100%)) 0;
+}
+
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 
 @keyframes sv-in-fade {
@@ -99,6 +117,13 @@
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r {
+    display: none;
+  }
+  .sv .sv-rail {
+    translate: none;
+  }
   .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
   .sv-on .sv.sv-auto > *,
   .sv-view-fade,
