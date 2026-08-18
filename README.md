@@ -31,6 +31,7 @@ The driver **tracks** elements and writes three variables + one class:
 | --- | --- | --- |
 | `--sv-view` | −1 → 0 → 1 | Below the scene → in scene → gone above |
 | `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
+| `--sv-pin` | 0 → 1 | Raw progress across a pinned (sticky) stretch — curtains, horizontal carousels |
 | `--sv-scene` | 0 → N−1 | Scene index across a pinned section (eased + snapped) |
 | `.sv-live` | class | On while the element is in the live band (75%/25%) |
 

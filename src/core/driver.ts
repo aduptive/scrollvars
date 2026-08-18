@@ -6,6 +6,9 @@ export interface TrackOptions {
   /** Write `--sv-t` (0..1 across the element's full travel through the viewport,
    * same semantics as the native `animation-timeline: view()` cover range). */
   travel?: boolean
+  /** Write `--sv-pin` (0..1 across the element's pinned stretch) — the raw
+   * fuel for curtains, horizontal carousels and any sticky choreography. */
+  pin?: boolean
   /** Sticky storytelling: split the element's pinned travel into N scenes.
    * Writes `--sv-scene` (0..N-1, eased + snapped) and fires onScene on integer changes. */
   scenes?: number
@@ -153,6 +156,10 @@ function apply(entry: Entry, rect: DOMRect) {
     const t = computeTravel(rect, entry.height)
     if (opts.travel) setVar(entry, '--sv-t', t)
     opts.onTravel?.(t)
+  }
+
+  if (opts.pin) {
+    setVar(entry, '--sv-pin', computePin(rect, entry.height))
   }
 
   if (opts.scenes && opts.scenes > 1) {
