@@ -77,6 +77,17 @@ import { Reveal, Parallax, Scenes } from 'scrollvars/react'
 
 Lower level: `<Track>` (the base component) and `useTrack(options)` / `useScenes(count)`.
 
+## Pointer tilt
+
+Same philosophy, different input — the pointer becomes `--mx`/`--my` (−1..1 from each card's center):
+
+```tsx
+const ref = usePointer()          // or trackPointer(container) in vanilla
+<div ref={ref} className="grid">
+  <div className="sv-tilt">…</div>   {/* tilt + glare from styles.css */}
+</div>
+```
+
 ## Video scrub & WebGL
 
 `onTravel` fires every frame with the raw 0..1 value — feed it to whatever JS needs to follow the scroll:

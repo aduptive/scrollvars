@@ -1,0 +1,59 @@
+/**
+ * Pointer → CSS vars, same philosophy as the scroll driver: one delegated
+ * listener per container, writes batched in a rAF, CSS does the rest.
+ *
+ * Writes on the hovered target (any descendant matching `selector`):
+ *   --mx  -1..1  pointer x relative to the target's center
+ *   --my  -1..1  pointer y relative to the target's center
+ * and toggles `sv-pointer-leave` on exit so CSS can relax the return.
+ */
+
+export interface PointerOptions {
+  /** Which descendants react (default '.sv-tilt'). */
+  selector?: string
+}
+
+export function trackPointer(
+  container: HTMLElement,
+  { selector = '.sv-tilt' }: PointerOptions = {}
+): () => void {
+  if (typeof window === 'undefined') return () => {}
+
+  let pending: { el: HTMLElement; x: number; y: number } | null = null
+  let raf = 0
+
+  const flush = () => {
+    raf = 0
+    if (!pending) return
+    const { el, x, y } = pending
+    pending = null
+    const rect = el.getBoundingClientRect()
+    el.style.setProperty('--mx', (((x - rect.left) / rect.width) * 2 - 1).toFixed(3))
+    el.style.setProperty('--my', (((y - rect.top) / rect.height) * 2 - 1).toFixed(3))
+  }
+
+  const onMove = (event: PointerEvent) => {
+    const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
+    if (!el) return
+    el.classList.remove('sv-pointer-leave')
+    pending = { el, x: event.clientX, y: event.clientY }
+    if (!raf) raf = requestAnimationFrame(flush)
+  }
+
+  const onOut = (event: PointerEvent) => {
+    const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
+    if (!el || el.contains(event.relatedTarget as Node)) return
+    el.classList.add('sv-pointer-leave')
+    el.style.setProperty('--mx', '0')
+    el.style.setProperty('--my', '0')
+  }
+
+  container.addEventListener('pointermove', onMove)
+  container.addEventListener('pointerout', onOut)
+
+  return () => {
+    container.removeEventListener('pointermove', onMove)
+    container.removeEventListener('pointerout', onOut)
+    if (raf) cancelAnimationFrame(raf)
+  }
+}

@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { TrackOptions } from '../core/driver'
 import { scrollToScene, track } from '../core/driver'
+import type { PointerOptions } from '../core/pointer'
+import { trackPointer } from '../core/pointer'
 
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel'>
 
@@ -181,4 +183,19 @@ export const Scenes: React.FC<ScenesProps> = ({
       </div>
     </div>
   )
+}
+
+/** Pointer tilt for every `.sv-tilt` descendant — one delegated listener. */
+export function usePointer<T extends HTMLElement = HTMLDivElement>(
+  options: PointerOptions = {}
+) {
+  const ref = useRef<T>(null)
+  const selector = options.selector
+
+  useEffect(() => {
+    if (!ref.current) return
+    return trackPointer(ref.current, { selector })
+  }, [selector])
+
+  return ref
 }
