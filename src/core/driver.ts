@@ -13,6 +13,9 @@ export interface ScrollVarsOptions {
   once?: boolean
   onActive?: (active: boolean) => void
   onKeyframe?: (index: number) => void
+  /** Fires every frame with the raw progress (-1..1) — for video scrubbing,
+   * WebGL cameras, or anything JS-driven. Keep the callback cheap. */
+  onProgress?: (progress: number) => void
 }
 
 interface Entry {
@@ -143,10 +146,11 @@ function apply(entry: Entry, rect: DOMRect) {
     setVar(entry, '--d', snapProgress(raw, snap))
   }
 
-  const needsProgress = opts.progress || opts.keyframes
+  const needsProgress = opts.progress || opts.keyframes || opts.onProgress
   if (needsProgress) {
     const progress = computeProgress(rect, entry.height)
     if (opts.progress) setVar(entry, '--p', progress)
+    opts.onProgress?.(progress)
 
     if (opts.keyframes) {
       const snap = opts.snap === false ? false : (opts.snap ?? KF_SNAP)

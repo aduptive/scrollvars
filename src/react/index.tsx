@@ -10,7 +10,7 @@ import React, {
 import type { ScrollVarsOptions } from '../core/driver'
 import { register, scrollToKeyframe } from '../core/driver'
 
-type Callbacks = Pick<ScrollVarsOptions, 'onActive' | 'onKeyframe'>
+type Callbacks = Pick<ScrollVarsOptions, 'onActive' | 'onKeyframe' | 'onProgress'>
 
 /**
  * Register an element with the scroll driver.
@@ -26,6 +26,7 @@ export function useScrollVars<T extends HTMLElement = HTMLDivElement>(
   callbacksRef.current = {
     onActive: options.onActive,
     onKeyframe: options.onKeyframe,
+    onProgress: options.onProgress,
   }
 
   const { distance, progress, keyframes, snap, once } = options
@@ -40,6 +41,9 @@ export function useScrollVars<T extends HTMLElement = HTMLDivElement>(
       once,
       onActive: (active) => callbacksRef.current.onActive?.(active),
       onKeyframe: (index) => callbacksRef.current.onKeyframe?.(index),
+      onProgress: options.onProgress
+        ? (p) => callbacksRef.current.onProgress?.(p)
+        : undefined,
     })
   }, [distance, progress, keyframes, snap, once])
 
@@ -47,7 +51,7 @@ export function useScrollVars<T extends HTMLElement = HTMLDivElement>(
 }
 
 export interface AnimatedProps
-  extends React.HTMLAttributes<HTMLElement>,
+  extends Omit<React.HTMLAttributes<HTMLElement>, 'onProgress'>,
     ScrollVarsOptions {
   as?: React.ElementType
 }
@@ -62,6 +66,7 @@ export const Animated: React.FC<AnimatedProps> = ({
   once,
   onActive,
   onKeyframe,
+  onProgress,
   className,
   children,
   ...rest
@@ -74,6 +79,7 @@ export const Animated: React.FC<AnimatedProps> = ({
     once,
     onActive,
     onKeyframe,
+    onProgress,
   })
 
   return (
