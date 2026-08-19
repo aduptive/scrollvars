@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 17 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 19 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -303,7 +303,7 @@
     gap: 18px;
     padding: 0 10vw;
     width: max-content;
-    translate: calc(var(--sv-pin, 0) * (100vw - 100%)) 0;
+    translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0;
   }
   .hcar-card {
     width: min(320px, 72vw);
@@ -768,6 +768,65 @@
   letter-spacing: 0.04em;
 }
 .amb-hud b { color: var(--accent); font-weight: 600; }
+
+/* ── case 8 · warp: pinned starfield, scroll becomes depth ── */
+.warp-outer { height: 300vh; position: relative; }
+.warp-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #0d0c13;
+  /* the whole stage fades near the end of the pin: the journey ends,
+     the page continues */
+  opacity: clamp(0, 5.5 - var(--sv-pin) * 6.2, 1);
+}
+.warp-sticky canvas { display: block; width: 100%; height: 100%; }
+.warp-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+  /* the title flies past the camera first */
+  scale: calc(1 + var(--sv-pin) * 2.4);
+  opacity: clamp(0, 1.1 - var(--sv-pin) * 2.2, 1);
+}
+.warp-label .big {
+  font-size: clamp(28px, 5vw, 64px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.warp-label p { color: var(--muted); font-size: 14px; margin-top: 10px; }
+.warp-arrival {
+  text-align: center;
+  padding: 12vh 0 4vh;
+}
+.warp-arrival .big { font-size: clamp(22px, 3.4vw, 40px); font-weight: 700; }
+.warp-arrival p { color: var(--muted); max-width: 560px; margin: 12px auto 0; }
+
+/* ── case 9 · organic blobs that avoid the pointer ── */
+.blob-stage {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  height: 82vh;
+  overflow: hidden;
+  background: #131118;
+  cursor: crosshair;
+}
+.blob-stage canvas { display: block; width: 100%; height: 100%; }
+.blob-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  translate: -50% 0;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -1003,7 +1062,9 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     <pre><code><span class="c">/* the track overflows the screen; the pin pays the difference */</span>
 .track {
   width: max-content;
-  translate: <span class="k">calc(var(--sv-pin) * (100vw - 100%)) 0</span>;
+  translate: <span class="k">calc((1 - var(--sv-pin)) * 100vw
+           + var(--sv-pin) * min(100vw - 100%, 0px))</span> 0;
+  <span class="c">/* enters from offscreen right; min() keeps it moving on wide windows */</span>
 }</code></pre>
   </div>
 </section>
@@ -1416,6 +1477,78 @@ mountEffect(canvas, {
 <span class="c">// resize + DPR cap · pauses offscreen &amp; on hidden tab · fx.reducedMotion live</span>
 <span class="c">// scroll input crosses over by closure, the modules stay decoupled:</span>
 <span class="k">track</span>(section, { onTravel: (t) =&gt; { amplitude = t } })</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 8 · WARP ══════════════ -->
+<section class="demo">
+  <div class="wrap sv" data-sv data-once>
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 8 · warp</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Scroll becomes depth</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        A pinned canvas where <span class="inline-code">--sv-pin</span> stops meaning
+        "down" and starts meaning <strong>"forward"</strong>: the scroll flies the camera
+        through a starfield (velocity stretches the stars into streaks), then the whole
+        stage fades and the page simply… continues. You traveled somewhere to keep reading.
+      </p>
+    </div>
+  </div>
+  <div class="warp-outer sv" id="warp-demo" data-hud="warp">
+    <div class="warp-sticky">
+      <canvas id="warp-canvas"></canvas>
+      <div class="warp-label">
+        <div>
+          <div class="big">hold on</div>
+          <p>scroll = thrust</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap sv" data-sv data-once>
+    <div class="warp-arrival">
+      <div class="big sv-rise">…and you've arrived.</div>
+      <p class="sv-rise" style="--sv-order: 1">
+        No route change, no transition library — one pinned track, one canvas,
+        and a fade driven by the same variable that drove the stars.
+      </p>
+    </div>
+    <pre><code><span class="c">// the pin drives the camera; the harness only renders while visible</span>
+<span class="k">track</span>(section, { pin: <span class="k">true</span>, onPin: (p) =&gt; { thrust = p } })
+
+<span class="c">/* the exit is pure CSS — same variable, no JS choreography */</span>
+.stage { opacity: <span class="k">clamp(0, 5.5 - var(--sv-pin) * 6.2, 1)</span>; }</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 9 · ORGANIC BLOBS ══════════════ -->
+<section class="demo sv" data-sv data-hud="blobs">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 9 · organic blobs</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Soft bodies that dodge the pointer</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Six radial-gradient blobs drifting on slow sine paths, composited with
+        <span class="inline-code">screen</span> blending — the organic-hero look.
+        Move the mouse: each blob is pushed away with a spring
+        (<span class="inline-code">offset += (target − offset) × 0.06</span>) and eases
+        back when you leave. Same harness as the others, so it also sleeps offscreen.
+      </p>
+    </div>
+  </div>
+  <div class="blob-stage" id="blob-stage">
+    <canvas id="blob-canvas"></canvas>
+    <div class="blob-hint">move the pointer — the blobs give way</div>
+  </div>
+  <div class="wrap">
+    <pre style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
+mountEffect(canvas, {
+  frame: (fx, dt) =&gt; {
+    blob.ox += ((push.x - blob.ox)) * <span class="n">0.06</span>   <span class="c">// spring toward (or back from) the pointer</span>
+    fx.ctx.globalCompositeOperation = <span class="s">'screen'</span>
+    <span class="c">// radial gradient per blob — soft edges do the "organic" work</span>
+  },
+})</code></pre>
   </div>
 </section>
 
@@ -1955,6 +2088,141 @@ mountEffect(canvas, {
   // the crossover: scroll driver feeds the simulation through a closure
   register(document.getElementById('amb-section'), {
     onTravel: function (t) { ambAmp = t; },
+  });
+
+  /* warp: pinned starfield — the pin value is the camera's travel, its
+     per-frame delta is the velocity (stretches stars into streaks). */
+  var WARP_N = 420;
+  var warpStars = [];
+  for (var wi = 0; wi < WARP_N; wi++) {
+    warpStars.push({
+      x: Math.random() * 2 - 1,
+      y: Math.random() * 2 - 1,
+      z: Math.random(),
+    });
+  }
+  var warpP = 0;
+  var warpShown = 0; // smoothed camera position
+  mountEffect(document.getElementById('warp-canvas'), {
+    frame: function (fx, dt) {
+      var ctx = fx.ctx;
+      var w = fx.width;
+      var h = fx.height;
+      var prev = warpShown;
+      warpShown += (warpP - warpShown) * 0.12; // inertia: thrust feels physical
+      var vel = Math.min(Math.abs(warpShown - prev) * 60, 1.4);
+      var cam = warpShown * 3; // three full traversals across the pin
+      ctx.clearRect(0, 0, w, h);
+      var persp = 0.5 * Math.min(w, h);
+      for (var i = 0; i < WARP_N; i++) {
+        var s = warpStars[i];
+        var z = s.z - cam;
+        z = z - Math.floor(z); // wrap into (0,1]
+        if (z < 0.02) continue;
+        var k = persp / z;
+        var sx = w / 2 + s.x * k;
+        var sy = h / 2 + s.y * k;
+        if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) continue;
+        var a = Math.min(1, (1 - z) * 1.4) * (fx.reducedMotion ? 0.6 : 1);
+        // streak: project the same star slightly deeper and connect
+        var z2 = Math.min(1, z + 0.05 * vel);
+        var k2 = persp / z2;
+        ctx.strokeStyle = 'rgba(230,228,240,' + (a * 0.9).toFixed(3) + ')';
+        ctx.lineWidth = Math.max(0.6, (1 - z) * 2.4);
+        ctx.beginPath();
+        ctx.moveTo(w / 2 + s.x * k2, h / 2 + s.y * k2);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+      }
+      // a violet glow grows as you approach the destination
+      var arrive = Math.max(0, warpShown - 0.75) * 4;
+      if (arrive > 0) {
+        var g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.6);
+        g.addColorStop(0, 'rgba(167,139,250,' + (arrive * 0.5).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(167,139,250,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+    },
+  });
+  register(document.getElementById('warp-demo'), {
+    pin: true,
+    hud: 'warp',
+    onPin: function (p) { warpP = p; },
+  });
+
+  /* organic blobs: soft radial gradients on sine paths, screen-composited;
+     the pointer pushes each blob away through a spring. */
+  var BLOB_COLORS = [
+    [167, 139, 250], [255, 180, 84], [124, 200, 255],
+    [167, 139, 250], [255, 140, 120], [140, 240, 200],
+  ];
+  var blobs = BLOB_COLORS.map(function (c, i) {
+    return {
+      c: c,
+      bx: 0.14 + (i / (BLOB_COLORS.length - 1)) * 0.72,
+      by: 0.3 + ((i * 37) % 45) / 100,
+      r: 0.16 + ((i * 29) % 12) / 100, // radius as a fraction of min(w,h)
+      spd: 0.25 + ((i * 13) % 10) / 28,
+      ph: i * 2.4,
+      ox: 0,
+      oy: 0,
+    };
+  });
+  var blobPtr = { x: -1e4, y: -1e4 };
+  var blobStage = document.getElementById('blob-stage');
+  blobStage.addEventListener('pointermove', function (e) {
+    var r = blobStage.getBoundingClientRect();
+    blobPtr.x = e.clientX - r.left;
+    blobPtr.y = e.clientY - r.top;
+  });
+  blobStage.addEventListener('pointerleave', function () {
+    blobPtr.x = -1e4;
+    blobPtr.y = -1e4;
+  });
+  var blobTime = 0;
+  mountEffect(document.getElementById('blob-canvas'), {
+    frame: function (fx, dt) {
+      blobTime += dt * (fx.reducedMotion ? 0.15 : 1);
+      var ctx = fx.ctx;
+      var w = fx.width;
+      var h = fx.height;
+      var unit = Math.min(w, h);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'screen';
+      for (var i = 0; i < blobs.length; i++) {
+        var b = blobs[i];
+        var x = b.bx * w + Math.sin(blobTime * b.spd + b.ph) * unit * 0.09;
+        var y = b.by * h + Math.cos(blobTime * b.spd * 0.8 + b.ph * 1.7) * unit * 0.11;
+        var radius = b.r * unit;
+        // pointer repulsion → spring-smoothed offset
+        var dx = x - blobPtr.x;
+        var dy = y - blobPtr.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var reach = radius * 1.6;
+        var tx = 0;
+        var ty = 0;
+        if (dist < reach && dist > 0.001) {
+          var push = ((reach - dist) / reach) * radius * 0.9;
+          tx = (dx / dist) * push;
+          ty = (dy / dist) * push;
+        }
+        b.ox += (tx - b.ox) * 0.06;
+        b.oy += (ty - b.oy) * 0.06;
+        var g = ctx.createRadialGradient(
+          x + b.ox, y + b.oy, 0,
+          x + b.ox, y + b.oy, radius
+        );
+        g.addColorStop(0, 'rgba(' + b.c.join(',') + ',0.55)');
+        g.addColorStop(0.55, 'rgba(' + b.c.join(',') + ',0.22)');
+        g.addColorStop(1, 'rgba(' + b.c.join(',') + ',0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x + b.ox, y + b.oy, radius, 0, 6.2832);
+        ctx.fill();
+      }
+    },
   });
 })();
 </script>

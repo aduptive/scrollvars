@@ -84,10 +84,11 @@
 }
 
 /* Rail: horizontal travel on vertical scroll. Put on a max-content flex row
-   inside a sticky stage; 100vw - 100% is exactly the track's overflow. */
+   inside a sticky stage. Starts one viewport offscreen to the right, ends
+   right-edge aligned (min() keeps it moving even when the track fits). */
 .sv .sv-rail {
   width: max-content;
-  translate: calc(var(--sv-pin, 0) * (100vw - 100%)) 0;
+  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0;
 }
 
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */

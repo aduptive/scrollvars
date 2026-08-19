@@ -58,7 +58,9 @@ tied to `--sv-t`, no transition (transitions on continuous values rubber-band).
 ```
 The container is N viewports tall, content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
-`sv-rail` (horizontal carousel: `translate: calc(var(--sv-pin) * (100vw - 100%)) 0`).
+`sv-rail` (horizontal carousel — enters from offscreen right and still moves
+when the track fits the viewport:
+`translate: calc((1 - var(--sv-pin)) * 100vw + var(--sv-pin) * min(100vw - 100%, 0px)) 0`).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
@@ -105,7 +107,7 @@ animations where supported.
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`
 (harness), `src/react/`, `styles.css` (presets), `demo/index.html`
-(17 live patterns, self-contained — its driver copy is the **built dist**,
+(19 live patterns, self-contained — its driver copy is the **built dist**,
 inlined verbatim; never hand-edit that copy), `test/` (node:test, no DOM —
 stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc). Node version:
 respect `.nvmrc`.
