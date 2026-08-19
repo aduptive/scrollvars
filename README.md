@@ -49,7 +49,7 @@ Knobs (set anywhere in CSS or inline): `--sv-distance` (travel length), `--sv-or
 ## React
 
 ```tsx
-import { Reveal, Parallax, Scenes } from 'scrollvars/react'
+import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
 
 // Entrance — children stagger automatically
 <Reveal as="section" auto>
