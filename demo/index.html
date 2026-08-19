@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 16 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 17 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -749,6 +749,23 @@
 
   footer { padding: 80px 24px 120px; text-align: center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
   footer code { color: var(--accent); }
+.amb-stage {
+  position: relative;
+  height: 320px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #17151f, var(--surface) 75%);
+}
+.amb-stage canvas { display: block; width: 100%; height: 100%; }
+.amb-hud {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.amb-hud b { color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1366,6 +1383,40 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
   </div>
 </section>
 
+<!-- ══════════════ 7 · AMBIENT CANVAS ══════════════ -->
+<section class="demo sv" id="amb-section" data-sv data-hud="canvas">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 7 · ambient canvas</p>
+      <h2 class="sv-rise" style="--sv-order: 1">A canvas that sleeps when you leave</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Ambient effects (particle spheres, generative heroes) are <strong>time-driven</strong>,
+        not scroll-driven — a different paradigm, so they live in their own module:
+        <span class="inline-code">scrollvars/canvas</span>. The simulation stays yours;
+        the harness owns the lifecycle everyone rewrites badly: resize, DPR cap,
+        delta-time loop, <strong>auto-pause when offscreen or the tab hides</strong>,
+        reduced-motion, cleanup. Watch the frame counter — scroll away and come back:
+        it didn't move. Most ambient canvases burn CPU forever; this one sleeps.
+        And the scroll still feeds it: <span class="inline-code">onTravel</span> drives
+        the wave height below.
+      </p>
+    </div>
+    <div class="amb-stage sv-rise" style="--sv-order: 3">
+      <canvas id="amb-canvas"></canvas>
+      <div class="amb-hud"><b id="amb-frames">0</b> frames rendered — only while you watch</div>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
+
+mountEffect(canvas, {
+  setup:  (fx) =&gt; { <span class="c">/* build your particles */</span> },
+  frame:  (fx, dt) =&gt; { <span class="c">/* one step; dt in seconds, ctx pre-scaled to CSS px */</span> },
+})
+<span class="c">// resize + DPR cap · pauses offscreen &amp; on hidden tab · fx.reducedMotion live</span>
+<span class="c">// scroll input crosses over by closure, the modules stay decoupled:</span>
+<span class="k">track</span>(section, { onTravel: (t) =&gt; { amplitude = t } })</code></pre>
+  </div>
+</section>
+
 <!-- ══════════════ API ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="api">
   <div class="wrap">
@@ -1762,6 +1813,146 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       kfValue.textContent = KF_STEPS[i][0];
       kfLabel.textContent = KF_STEPS[i][1];
     },
+  });
+
+  /* ═══════ scrollvars/canvas harness — inlined from the built dist, verbatim ═══════ */
+  const svcNoop = { pause: () => { }, resume: () => { }, destroy: () => { } };
+  function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true }) {
+      if (typeof window === 'undefined')
+          return svcNoop;
+      const ctx = canvas.getContext('2d');
+      if (!ctx)
+          return svcNoop;
+      const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const fx = {
+          ctx,
+          width: 0,
+          height: 0,
+          dpr: 1,
+          reducedMotion: motionQuery.matches,
+      };
+      let raf = 0;
+      let last = 0;
+      let ready = false;
+      let destroyed = false;
+      // the loop runs only when every gate is open
+      let userPaused = false;
+      let onscreen = true;
+      let visible = document.visibilityState !== 'hidden';
+      const running = () => raf !== 0;
+      const tick = (now) => {
+          raf = requestAnimationFrame(tick);
+          const dt = Math.min((now - last) / 1000, 0.05);
+          last = now;
+          frame(fx, dt);
+      };
+      const sync = () => {
+          const shouldRun = !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible));
+          if (shouldRun && !running()) {
+              last = performance.now();
+              raf = requestAnimationFrame(tick);
+          }
+          else if (!shouldRun && running()) {
+              cancelAnimationFrame(raf);
+              raf = 0;
+          }
+      };
+      const applySize = () => {
+          const rect = canvas.getBoundingClientRect();
+          if (!rect.width || !rect.height)
+              return;
+          fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+          fx.width = rect.width;
+          fx.height = rect.height;
+          canvas.width = Math.round(rect.width * fx.dpr);
+          canvas.height = Math.round(rect.height * fx.dpr);
+          ctx.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
+          if (!ready) {
+              ready = true;
+              setup?.(fx);
+          }
+          else {
+              resize?.(fx);
+          }
+          sync();
+      };
+      const ro = new ResizeObserver(applySize);
+      ro.observe(canvas);
+      const io = new IntersectionObserver((entries) => {
+          onscreen = entries[0].isIntersecting;
+          sync();
+      });
+      io.observe(canvas);
+      const onVisibility = () => {
+          visible = document.visibilityState !== 'hidden';
+          sync();
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+      const onMotion = () => {
+          fx.reducedMotion = motionQuery.matches;
+      };
+      motionQuery.addEventListener('change', onMotion);
+      return {
+          pause: () => {
+              userPaused = true;
+              sync();
+          },
+          resume: () => {
+              userPaused = false;
+              sync();
+          },
+          destroy: () => {
+              destroyed = true;
+              sync();
+              ro.disconnect();
+              io.disconnect();
+              document.removeEventListener('visibilitychange', onVisibility);
+              motionQuery.removeEventListener('change', onMotion);
+          },
+      };
+  }
+
+  /* ambient canvas demo: a dot-wave field. The simulation is userland; the
+     harness only gives it the loop — and the frame counter proves the
+     auto-pause (it freezes whenever the canvas leaves the viewport). */
+  var ambTime = 0;
+  var ambAmp = 0.5; // fed by the scroll driver below
+  var ambFrames = 0;
+  var ambFramesEl = document.getElementById('amb-frames');
+  mountEffect(document.getElementById('amb-canvas'), {
+    frame: function (fx, dt) {
+      ambTime += dt * (fx.reducedMotion ? 0.12 : 1);
+      ambFrames++;
+      if (ambFrames % 10 === 0) ambFramesEl.textContent = ambFrames;
+      var ctx = fx.ctx;
+      var w = fx.width;
+      var h = fx.height;
+      ctx.clearRect(0, 0, w, h);
+      var cols = Math.max(24, Math.round(w / 22));
+      var rows = 14;
+      for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
+          var wave =
+            Math.sin(i * 0.34 + ambTime * 1.5 + j * 0.6) *
+            Math.cos(j * 0.28 - ambTime * 0.8);
+          var x = ((i + 0.5) / cols) * w;
+          var y = ((j + 0.5) / rows) * h + wave * (8 + ambAmp * 30);
+          var depth = j / (rows - 1);
+          ctx.beginPath();
+          ctx.arc(x, y, 0.8 + depth * 1.9 + (wave + 1) * 0.4, 0, 6.2832);
+          ctx.fillStyle =
+            'rgba(167,139,250,' +
+            Math.max(0.05, 0.12 + depth * 0.45 + wave * 0.14).toFixed(3) +
+            ')';
+          ctx.fill();
+        }
+      }
+    },
+  });
+
+  // the crossover: scroll driver feeds the simulation through a closure
+  register(document.getElementById('amb-section'), {
+    onTravel: function (t) { ambAmp = t; },
   });
 })();
 </script>

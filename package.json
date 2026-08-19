@@ -25,7 +25,8 @@
   },
   "files": [
     "dist",
-    "styles.css"
+    "styles.css",
+    "AGENTS.md"
   ],
   "scripts": {
     "build": "tsc",
