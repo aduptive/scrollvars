@@ -751,8 +751,10 @@
   footer code { color: var(--accent); }
 .amb-stage {
   position: relative;
-  height: 320px;
-  border-radius: 18px;
+  /* full-bleed: break out of .wrap to cover the whole viewport */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  height: 100vh;
   overflow: hidden;
   background: linear-gradient(160deg, #17151f, var(--surface) 75%);
 }
@@ -1422,7 +1424,7 @@ mountEffect(canvas, {
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">reference</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The API is four variables</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The API is a handful of variables</h2>
       <p class="sv-rise" style="--sv-order: 2">
         Any CSS that reads these variables is a valid preset. That is what keeps the
         library small and flexible at once: the presets are just examples.
@@ -1929,7 +1931,7 @@ mountEffect(canvas, {
       var h = fx.height;
       ctx.clearRect(0, 0, w, h);
       var cols = Math.max(24, Math.round(w / 22));
-      var rows = 14;
+      var rows = Math.max(14, Math.round(h / 34));
       for (var i = 0; i < cols; i++) {
         for (var j = 0; j < rows; j++) {
           var wave =
