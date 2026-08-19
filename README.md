@@ -97,6 +97,29 @@ useTrack({ onTravel: (t) => { video.currentTime = t * video.duration } })
 useScenes(4, {})            // or drive an R3F camera from onScene / onTravel
 ```
 
+## Canvas effects (`scrollvars/canvas`)
+
+For ambient canvas work (particle spheres, generative heroes) the simulation is
+yours — the harness handles the lifecycle everyone rewrites badly: resize, DPR
+cap, delta-time loop, **pause when offscreen or the tab is hidden**,
+`prefers-reduced-motion`, cleanup. Drawing space is CSS pixels.
+
+```tsx
+const ref = useCanvasEffect({
+  setup: (fx) => { points = makeSphere(1000) },
+  frame: (fx, dt) => {
+    fx.ctx.clearRect(0, 0, fx.width, fx.height)
+    angle += (fx.reducedMotion ? 0.05 : 1) * dt
+    drawSphere(fx.ctx, points, angle)
+  },
+})
+<canvas ref={ref} className="h-full w-full" />
+```
+
+Vanilla: `mountEffect(canvas, { setup, frame })` returns
+`{ pause, resume, destroy }`. Feed it scroll/pointer inputs from the driver
+(`onTravel`, `--mx`) through your own closure — the modules stay decoupled.
+
 ## Vanilla
 
 ```ts

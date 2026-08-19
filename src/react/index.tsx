@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
+import type { EffectOptions } from '../canvas'
+import { mountEffect } from '../canvas'
 import type { TrackOptions } from '../core/driver'
 import { scrollToScene, track } from '../core/driver'
 import type { PointerOptions } from '../core/pointer'
@@ -183,6 +185,33 @@ export const Scenes: React.FC<ScenesProps> = ({
       </div>
     </div>
   )
+}
+
+/**
+ * Mount a canvas effect (see `scrollvars/canvas`). Callbacks follow the
+ * latest-ref pattern — changing them never remounts the effect.
+ */
+export function useCanvasEffect(options: EffectOptions) {
+  const ref = useRef<HTMLCanvasElement>(null)
+
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
+  const { dprCap, autoPause } = options
+
+  useEffect(() => {
+    if (!ref.current) return
+    const handle = mountEffect(ref.current, {
+      dprCap,
+      autoPause,
+      setup: (fx) => optionsRef.current.setup?.(fx),
+      frame: (fx, dt) => optionsRef.current.frame(fx, dt),
+      resize: (fx) => optionsRef.current.resize?.(fx),
+    })
+    return handle.destroy
+  }, [dprCap, autoPause])
+
+  return ref
 }
 
 /** Pointer tilt for every `.sv-tilt` descendant — one delegated listener. */
