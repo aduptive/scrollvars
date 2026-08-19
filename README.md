@@ -63,6 +63,12 @@ import { Reveal, Parallax, Scenes } from 'scrollvars/react'
   <img src="…" alt="" />
 </Parallax>
 
+// Knobs are attributes — sugar for the CSS variables (no style ceremony)
+<Reveal stagger={140} duration={900}>
+  <Item order={0}>first</Item>
+  <Item order={1} effect="slide-l" distance="4rem">second</Item>
+</Reveal>
+
 // Pinned storytelling (the sticky/keyframes pattern)
 <Scenes count={4}>
   {({ scene, goTo }) => (

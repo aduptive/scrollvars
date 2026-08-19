@@ -33,7 +33,7 @@ custom presets.
 
 ```ts
 import { track, trackPointer, scrollToScene } from 'scrollvars'          // vanilla core
-import { Track, Reveal, Parallax, Scenes, useTrack, useScenes,
+import { Track, Reveal, Parallax, Scenes, Item, useTrack, useScenes,
          usePointer, useCanvasEffect } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
 import 'scrollvars/styles.css'                                           // presets
@@ -46,7 +46,13 @@ import 'scrollvars/styles.css'                                           // pres
 <Reveal auto>            {/* every direct child rises with a stagger */}
   <h2>Title</h2><p>Body</p>
 </Reveal>
-// or manual: <Track once> + className="sv-rise" style={{'--sv-order': 2}}
+// or per-child control, all knobs as attributes (they compile to the vars):
+<Reveal stagger={140}>
+  <Item order={0}>first</Item>
+  <Item order={1} effect="slide-l" distance="4rem">second</Item>
+</Reveal>
+// VarProps (order, distance, stagger, duration, ease) work on Track/Reveal/
+// Parallax/Item — prefer them over style={{'--sv-…'}} in React code.
 ```
 
 **Parallax drift:** `<Parallax distance="8rem">…</Parallax>` — continuous,

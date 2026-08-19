@@ -51,9 +51,50 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
   return ref
 }
 
+/**
+ * Animation knobs as component attributes — sugar that compiles to the
+ * corresponding CSS variables. The variables stay the real API; these
+ * props just save the `style={{'--sv-…'}}` ceremony.
+ */
+export interface VarProps {
+  /** Stagger position (`--sv-order`). */
+  order?: number
+  /** Travel distance, any CSS length (`--sv-distance`). */
+  distance?: string
+  /** Per-order delay in ms (`--sv-stagger`). */
+  stagger?: number
+  /** Transition duration in ms (`--sv-duration`). */
+  duration?: number
+  /** Timing function (`--sv-ease`). */
+  ease?: string
+}
+
+function varStyle(
+  { order, distance, stagger, duration, ease }: VarProps,
+  style?: React.CSSProperties
+): React.CSSProperties | undefined {
+  if (
+    order === undefined &&
+    distance === undefined &&
+    stagger === undefined &&
+    duration === undefined &&
+    ease === undefined
+  ) {
+    return style
+  }
+  const s: Record<string, string | number> = { ...style }
+  if (order !== undefined) s['--sv-order'] = order
+  if (distance !== undefined) s['--sv-distance'] = distance
+  if (stagger !== undefined) s['--sv-stagger'] = `${stagger}ms`
+  if (duration !== undefined) s['--sv-duration'] = `${duration}ms`
+  if (ease !== undefined) s['--sv-ease'] = ease
+  return s as React.CSSProperties
+}
+
 export interface TrackProps
   extends React.HTMLAttributes<HTMLElement>,
-    TrackOptions {
+    TrackOptions,
+    VarProps {
   as?: React.ElementType
 }
 
@@ -69,18 +110,61 @@ export const Track: React.FC<TrackProps> = ({
   onLive,
   onScene,
   onTravel,
+  order,
+  distance,
+  stagger,
+  duration,
+  ease,
   className,
+  style,
   children,
   ...rest
 }) => {
   const ref = useTrack({ view, travel, scenes, snap, once, pin, onLive, onScene, onTravel })
 
   return (
-    <Tag ref={ref} className={className ? `sv ${className}` : 'sv'} {...rest}>
+    <Tag
+      ref={ref}
+      className={className ? `sv ${className}` : 'sv'}
+      style={varStyle({ order, distance, stagger, duration, ease }, style)}
+      {...rest}
+    >
       {children}
     </Tag>
   )
 }
+
+export type ItemEffect = 'rise' | 'fade' | 'slide-l' | 'slide-r' | 'drift' | 'tilt'
+
+export interface ItemProps extends React.HTMLAttributes<HTMLElement>, VarProps {
+  as?: React.ElementType
+  /** Which preset animates this element (default 'rise'). */
+  effect?: ItemEffect
+}
+
+/**
+ * A child of a tracked section, fully configured by attributes:
+ * `<Item effect="rise" order={2} distance="4rem">` — no classes, no
+ * style-variable ceremony. Renders `sv-<effect>` + the vars.
+ */
+export const Item: React.FC<ItemProps> = ({
+  as: Tag = 'div',
+  effect = 'rise',
+  order,
+  distance,
+  stagger,
+  duration,
+  ease,
+  className,
+  style,
+  ...rest
+}) => (
+  <Tag
+    className={className ? `sv-${effect} ${className}` : `sv-${effect}`}
+    style={varStyle({ order, distance, stagger, duration, ease }, style)}
+    {...rest}
+  />
+)
 
 export interface RevealProps extends Omit<TrackProps, 'scenes' | 'travel'> {
   /** Animate every direct child with an automatic stagger — no classes needed. */
@@ -101,24 +185,11 @@ export const Reveal: React.FC<RevealProps> = ({ auto, className, ...rest }) => (
   />
 )
 
-export interface ParallaxProps extends Omit<TrackProps, 'scenes'> {
-  /** How far the content drifts (CSS length, default 6rem). */
-  distance?: string
-}
+export interface ParallaxProps extends Omit<TrackProps, 'scenes'> {}
 
 /** Continuous drift tied to the scroll position — no transition lag. */
-export const Parallax: React.FC<ParallaxProps> = ({
-  distance,
-  className,
-  children,
-  style,
-  ...rest
-}) => (
-  <Track
-    className={className}
-    style={distance ? ({ ...style, '--sv-distance': distance } as React.CSSProperties) : style}
-    {...rest}
-  >
+export const Parallax: React.FC<ParallaxProps> = ({ children, ...rest }) => (
+  <Track {...rest}>
     <div className="sv-drift">{children}</div>
   </Track>
 )
