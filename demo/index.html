@@ -913,20 +913,13 @@ html.snap-region { scroll-snap-type: y proximity; }
   height: 1800px;
   transform-origin: 0 0;
   will-change: transform;
-  /* subtle chart grid */
-  background-image:
-    linear-gradient(rgba(167,139,250,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(167,139,250,0.04) 1px, transparent 1px);
-  background-size: 240px 240px;
+  /* deliberately paints nothing itself: the promoted layer holds only the
+     5 station cards (sparse tiles). Grid + route are drawn on the
+     viewport-sized canvas below — Sofia's old-GPU lesson: the ceiling is
+     the PAINTED layer size, not the transform. */
 }
-.map-world svg { position: absolute; inset: 0; }
-.map-route {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 5;
-  stroke-dasharray: 18 16;
-  opacity: 0.55;
-}
+.map-world svg { position: absolute; visibility: hidden; }
+#map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map-station {
   position: absolute;
   width: 320px;
@@ -957,6 +950,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   .map-sticky { position: static; height: auto; overflow: visible; background: none; }
   .map-world { position: static; width: auto; height: auto; transform: none !important; background: none; }
   .map-world svg { display: none; }
+  #map-canvas { display: none; }
   .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
   .map-compass { display: none; }
 }
@@ -1904,6 +1898,7 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
   </div>
   <div class="map-outer sv" id="map-demo" data-hud="map">
     <div class="map-sticky">
+      <canvas id="map-canvas"></canvas>
       <div class="map-world" id="map-world">
         <svg viewBox="0 0 2400 1800" width="2400" height="1800">
           <path id="map-route" class="map-route"
@@ -2794,6 +2789,41 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   var mapAng = 0;
   var mapRaf = 0;
   var mapCompassAt = 0;
+  var mapCanvas = document.getElementById('map-canvas');
+  var mapCtx = mapCanvas.getContext('2d');
+  var mapDpr = 1;
+  var mapRouteD = new Path2D(mapRoute.getAttribute('d'));
+  function mapCanvasSize() {
+    mapDpr = Math.min(window.devicePixelRatio || 1, 2);
+    mapCanvas.width = Math.round(mapSticky.clientWidth * mapDpr);
+    mapCanvas.height = Math.round(mapSticky.clientHeight * mapDpr);
+  }
+  mapCanvasSize();
+  window.addEventListener('resize', function () {
+    mapCanvasSize();
+    if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
+  });
+  function mapDraw(ang, a, cx, cy) {
+    var ctx = mapCtx;
+    ctx.setTransform(mapDpr, 0, 0, mapDpr, 0, 0);
+    ctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+    ctx.translate(cx, cy);
+    ctx.rotate(-ang);
+    ctx.translate(-a.x, -a.y);
+    // chart grid: ~25 strokes across the whole world, trivial per frame
+    ctx.beginPath();
+    for (var gx = 0; gx <= 2400; gx += 240) { ctx.moveTo(gx, 0); ctx.lineTo(gx, 1800); }
+    for (var gy = 0; gy <= 1800; gy += 240) { ctx.moveTo(0, gy); ctx.lineTo(2400, gy); }
+    ctx.strokeStyle = 'rgba(167,139,250,0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // the dashed treasure route
+    ctx.setLineDash([18, 16]);
+    ctx.strokeStyle = 'rgba(167,139,250,0.55)';
+    ctx.lineWidth = 5;
+    ctx.stroke(mapRouteD);
+    ctx.setLineDash([]);
+  }
   function angleLerp(a, b, k) {
     var d = b - a;
     while (d > Math.PI) d -= Math.PI * 2;
@@ -2813,6 +2843,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     mapWorld.style.transform =
       'translate(' + cx + 'px,' + cy + 'px) rotate(' + (-mapAng) + 'rad) translate(' + (-a.x) + 'px,' + (-a.y) + 'px)';
     mapWorld.style.setProperty('--map-ang', mapAng + 'rad');
+    mapDraw(mapAng, a, cx, cy);
     if (now - mapCompassAt > 120) {
       mapCompassAt = now;
       mapCompass.textContent = 'heading ' + Math.round(((mapAng * 180) / Math.PI + 360) % 360) + '\u00b0';
