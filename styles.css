@@ -152,6 +152,13 @@
 .sv-slider.sv-draggable {
   cursor: grab;
 }
+.sv-slider-y {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y var(--sv-snap, mandatory);
+  overscroll-behavior-y: contain;
+}
 .sv-slider > * {
   flex: 0 0 auto;
   scroll-snap-align: center;

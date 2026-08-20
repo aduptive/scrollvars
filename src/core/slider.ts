@@ -5,53 +5,109 @@
  *
  *   - mouse drag-to-scroll on desktop (touch is already native)
  *   - the active-slide observer, exposed the scrollvars way:
- *       container:  --sv-slide  (active index)
- *       each slide: --sd        (signed distance from center, in slide widths)
+ *       container:  --sv-slide (active index) · --sv-progress (0..1)
+ *       each slide: --sd        (signed distance from center, in slide sizes)
  *                   .sv-active  (nearest to center)
- *   - next / prev / goTo
+ *   - next / prev / goTo, glide with a soft exponential settle
+ *   - full state (`state()` / `onScroll`) and `seek()` — enough to chain
+ *     sliders: `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`
+ *   - `axis: 'y'` for vertical sliders
  *
  * Any CSS reading `--sd` animates the slides: scale, fade, coverflow —
  * no per-frame JS, same philosophy as the scroll driver.
  */
 
+export interface SliderState {
+  active: number
+  count: number
+  /** Continuous position in slide units (0 .. count−1). */
+  position: number
+  /** 0..1 across the scrollable range. */
+  progress: number
+  dragging: boolean
+  gliding: boolean
+}
+
 export interface SliderOptions {
+  /** Scroll axis (default 'x'). */
+  axis?: 'x' | 'y'
   /** Snap strictness (default 'mandatory'). */
   snap?: 'mandatory' | 'proximity'
   /** Mouse drag-to-scroll (default true; touch is native regardless). */
   drag?: boolean
-  /** Glide duration for next/prev/goTo in ms (default 600; 0 = instant).
-   * Longer = softer — the browser's own smooth scroll is not configurable. */
+  /** Glide settle time in ms (default 600; 0 = instant). Exponential lerp:
+   * velocity ∝ remaining distance, so any travel feels equally soft. */
   duration?: number
   /** Fires when the active slide changes. */
   onSlide?: (index: number) => void
+  /** Fires on every measured scroll frame with the full state — drive a
+   * progress bar, or chain another slider through `seek`. Keep it cheap. */
+  onScroll?: (state: SliderState) => void
 }
 
 export interface SliderHandle {
   next: (smooth?: boolean) => void
   prev: (smooth?: boolean) => void
   goTo: (index: number, smooth?: boolean) => void
+  /** Jump to a fraction (0..1) of the scrollable range — no glide. Made for
+   * followers: suspends this instance's snap so the driver stays the single
+   * writer of its position. */
+  seek: (progress: number) => void
   /** Current active index. */
   active: () => number
+  state: () => SliderState
   destroy: () => void
+}
+
+const noopState: SliderState = {
+  active: 0,
+  count: 0,
+  position: 0,
+  progress: 0,
+  dragging: false,
+  gliding: false,
 }
 
 const noop: SliderHandle = {
   next: () => {},
   prev: () => {},
   goTo: () => {},
+  seek: () => {},
   active: () => 0,
+  state: () => noopState,
   destroy: () => {},
 }
 
 export function slider(
   container: HTMLElement,
-  { snap = 'mandatory', drag = true, duration = 600, onSlide }: SliderOptions = {}
+  {
+    axis = 'x',
+    snap = 'mandatory',
+    drag = true,
+    duration = 600,
+    onSlide,
+    onScroll,
+  }: SliderOptions = {}
 ): SliderHandle {
   if (typeof window === 'undefined') return noop
 
+  const horizontal = axis === 'x'
   container.classList.add('sv-slider')
+  if (!horizontal) container.classList.add('sv-slider-y')
   if (drag) container.classList.add('sv-draggable') // grab cursor only where dragging works
   container.style.setProperty('--sv-snap', snap)
+
+  // axis accessors — the only place the orientation matters
+  const pos = () => (horizontal ? container.scrollLeft : container.scrollTop)
+  const setPos = (v: number) => {
+    if (horizontal) container.scrollLeft = v
+    else container.scrollTop = v
+  }
+  const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
+  const range = () =>
+    Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
+  const slideStart = (el: HTMLElement) => (horizontal ? el.offsetLeft : el.offsetTop)
+  const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
 
   // Snap suspension via inline style — one source of truth. The authored
   // inline value (e.g. 'none' on scroll-driven instances) is preserved.
@@ -64,31 +120,46 @@ export function slider(
   }
 
   let active = -1
+  let position = 0
   let raf = 0
+  let dragging = false
+  let anim = 0
 
   const slides = () => Array.from(container.children) as HTMLElement[]
 
+  const state = (): SliderState => ({
+    active: Math.max(active, 0),
+    count: slides().length,
+    position,
+    progress: range() > 0 ? pos() / range() : 0,
+    dragging,
+    gliding: anim !== 0,
+  })
+
   const measure = () => {
     raf = 0
-    const center = container.scrollLeft + container.clientWidth / 2
+    const center = pos() + viewport() / 2
     let best = 0
-    let bestDist = Infinity
+    let bestSd = Infinity
     slides().forEach((slide, i) => {
-      const mid = slide.offsetLeft + slide.offsetWidth / 2
-      const sd = (mid - center) / Math.max(slide.offsetWidth, 1)
+      const mid = slideStart(slide) + slideSize(slide) / 2
+      const sd = (mid - center) / Math.max(slideSize(slide), 1)
       slide.style.setProperty('--sd', sd.toFixed(4))
-      const dist = Math.abs(sd)
-      if (dist < bestDist) {
-        bestDist = dist
+      if (Math.abs(sd) < Math.abs(bestSd)) {
+        bestSd = sd
         best = i
       }
     })
+    position = Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0)
+    const progress = range() > 0 ? pos() / range() : 0
+    container.style.setProperty('--sv-progress', progress.toFixed(4))
     if (best !== active) {
       active = best
       slides().forEach((slide, i) => slide.classList.toggle('sv-active', i === best))
       container.style.setProperty('--sv-slide', String(best))
       onSlide?.(best)
     }
+    onScroll?.(state())
   }
 
   const schedule = () => {
@@ -100,10 +171,6 @@ export function slider(
   ro.observe(container)
   measure()
 
-  // own glide: eased scrollLeft animation with configurable duration —
-  // native smooth scrolling is fast and not configurable. Snap is suspended
-  // while gliding (sv-gliding) so it can't tug mid-animation.
-  let anim = 0
   // pending glide destination — rapid next/prev clicks accumulate from here,
   // not from `active` (which lags mid-glide and would swallow the clicks)
   let target = -1
@@ -114,10 +181,11 @@ export function slider(
   }
   const glide = (to: number) => {
     stopGlide()
-    let current = container.scrollLeft
+    let current = pos()
     if (duration <= 0 || Math.abs(to - current) < 1) {
       resumeSnap()
-      container.scrollTo({ left: to, behavior: 'instant' })
+      target = -1
+      setPos(to)
       return
     }
     suspendSnap() // native snap must not tug while we animate
@@ -133,12 +201,12 @@ export function slider(
       const factor = 1 - Math.pow(0.002, dt / duration)
       current += (to - current) * factor
       if (Math.abs(to - current) < 0.5) {
-        container.scrollLeft = to
+        setPos(to)
         stopGlide()
         target = -1
         resumeSnap() // position is centered — safe to re-engage
       } else {
-        container.scrollLeft = current
+        setPos(current)
         anim = requestAnimationFrame(step)
       }
     }
@@ -146,50 +214,57 @@ export function slider(
   }
 
   const goTo = (index: number, smooth = true) => {
-    const clamped = Math.max(0, Math.min(index, slides().length - 1))
-    const slide = slides()[clamped]
+    const all = slides()
+    const clamped = Math.max(0, Math.min(index, all.length - 1))
+    const slide = all[clamped]
     if (!slide) return
-    const left = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2
+    const to = slideStart(slide) - (viewport() - slideSize(slide)) / 2
     if (smooth) {
       target = clamped
-      glide(left)
+      glide(to)
     } else {
       stopGlide()
       target = -1
-      container.scrollTo({ left, behavior: 'instant' })
+      setPos(to)
     }
+  }
+
+  const seek = (progress: number) => {
+    stopGlide()
+    target = -1
+    suspendSnap() // the driver owns this instance's position
+    setPos(Math.max(0, Math.min(progress, 1)) * range())
   }
 
   /** Where the next relative step counts from: the in-flight destination if
    * a glide is running, the measured active slide otherwise. */
   const stepBase = () => (anim && target >= 0 ? target : active)
 
-  // mouse drag: snap is suspended while dragging (sv-dragging kills it in
-  // CSS) and re-engages on release, which settles onto the nearest slide.
-  // ponytail: no momentum fling of our own — the snap settle covers it.
-  let dragging = false
-  let lastX = 0
+  // mouse drag: snap is suspended from grab until the release glide finishes.
+  // ponytail: no momentum fling of our own — the release glide covers it.
+  let lastPointer = 0
   const onDown = (event: PointerEvent) => {
     stopGlide() // the user takes over
     target = -1
     if (!drag || event.pointerType !== 'mouse') return
-    suspendSnap() // stays off until the release glide finishes
+    suspendSnap()
     dragging = true
-    lastX = event.clientX
+    lastPointer = horizontal ? event.clientX : event.clientY
     container.classList.add('sv-dragging')
     container.setPointerCapture(event.pointerId)
   }
   const onMove = (event: PointerEvent) => {
     if (!dragging) return
-    container.scrollLeft -= event.clientX - lastX
-    lastX = event.clientX
+    const point = horizontal ? event.clientX : event.clientY
+    setPos(pos() - (point - lastPointer))
+    lastPointer = point
   }
   const onUp = (event: PointerEvent) => {
     if (!dragging) return
     dragging = false
     container.classList.remove('sv-dragging')
     container.releasePointerCapture(event.pointerId)
-    goTo(active) // snap-assist: glide to the nearest slide
+    goTo(active) // release: glide softly onto the nearest slide
   }
   container.addEventListener('pointerdown', onDown)
   container.addEventListener('pointermove', onMove)
@@ -215,7 +290,9 @@ export function slider(
     next: (smooth = true) => goTo(stepBase() + 1, smooth),
     prev: (smooth = true) => goTo(stepBase() - 1, smooth),
     goTo,
-    active: () => active,
+    seek,
+    active: () => Math.max(active, 0),
+    state,
     destroy: () => {
       stopGlide()
       resumeSnap()

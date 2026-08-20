@@ -70,13 +70,20 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.ok(!slides[0].classes.has('sv-active'))
 
   // next(): centers slide 3 → left = 200 - (300-100)/2 = 100
-  // (duration: 0 → the glide short-circuits to an instant scrollTo)
+  // (duration: 0 → the glide short-circuits to a direct position write)
   handle.next()
-  assert.deepEqual(scrolls.at(-1), { left: 100, behavior: 'instant' })
+  assert.equal(container.scrollLeft, 100)
 
   // goTo clamps
+  container.scrollLeft = 0
   handle.goTo(99, false)
-  assert.deepEqual(scrolls.at(-1), { left: 100, behavior: 'instant' })
+  assert.equal(container.scrollLeft, 100)
+
+  // state(): full snapshot
+  const st = handle.state()
+  assert.equal(st.count, 3)
+  assert.equal(st.dragging, false)
+  assert.equal(st.gliding, false)
 
   handle.destroy()
 })

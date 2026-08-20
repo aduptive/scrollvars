@@ -119,8 +119,20 @@ const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
 ```
 
 Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
-ms for next/prev/goTo and drag release; default 600 — raise it for a softer
-feel). Handle: `next/prev/goTo/active/destroy`.
+settle ms; default 600 — raise for softer), `axis: 'y'` (vertical),
+`onScroll(state)` (full state per frame: active/count/position/progress/
+dragging/gliding — also on the container as `--sv-progress`). Handle:
+`next/prev/goTo/seek/active/state/destroy`.
+
+Chain two sliders (Swiper's controller/thumbs, one line, unidirectional):
+
+```ts
+const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with scroll-snap-type: none
+slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
+```
+
+Size, measured: this module 3.1 KB min / 1.4 KB gzip; Swiper 11 bundle
+151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Pointer tilt
 

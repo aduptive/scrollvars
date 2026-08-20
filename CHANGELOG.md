@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 — 2026-08-20
+
+- **Slider state & chaining**: `state()` and `onScroll(state)` expose
+  active/count/position (continuous)/progress/dragging/gliding; container
+  gets `--sv-progress`; new `seek(progress)` for followers — two sliders
+  chain in one line (Swiper controller/thumbs, unidirectional).
+- **`axis: 'y'`**: vertical sliders (`.sv-slider-y`), same API.
+- Size reference measured: this module 3.1 KB min / 1.4 KB gzip vs Swiper 11
+  bundle 151 KB min / 42 KB gzip (+18 KB CSS).
+
 ## 0.10.3 — 2026-08-20
 
 - Glide is now an exponential lerp (velocity ∝ remaining distance) instead of
