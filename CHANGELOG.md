@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.4 — 2026-08-20
+
+- Keyboard navigation glides: arrow keys (axis-aware), Home and End go
+  through the same soft glide instead of native 40px key-scroll steps +
+  hard snap settle. Containers are made focusable (`tabindex=0`) so this
+  works in Safari too.
+
 ## 0.11.3 — 2026-08-20
 
 - Mouse drag: `preventDefault()` on pointerdown — native text selection was

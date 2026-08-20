@@ -301,9 +301,28 @@ export function slider(
   }
   container.addEventListener('wheel', onWheel, { passive: true })
 
+  const next = (smooth = true) => goTo(stepBase() + 1, smooth)
+  const prev = (smooth = true) => goTo(stepBase() - 1, smooth)
+
+  // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
+  // hard after each — replace it with the same soft glide as everything else.
+  // The container is made focusable (Safari never focuses scrollers on its own).
+  if (container.tabIndex === -1) container.tabIndex = 0
+  const onKey = (event: KeyboardEvent) => {
+    const nextKey = horizontal ? 'ArrowRight' : 'ArrowDown'
+    const prevKey = horizontal ? 'ArrowLeft' : 'ArrowUp'
+    if (event.key === nextKey) next()
+    else if (event.key === prevKey) prev()
+    else if (event.key === 'Home') goTo(0)
+    else if (event.key === 'End') goTo(slides().length - 1)
+    else return
+    event.preventDefault()
+  }
+  container.addEventListener('keydown', onKey)
+
   return {
-    next: (smooth = true) => goTo(stepBase() + 1, smooth),
-    prev: (smooth = true) => goTo(stepBase() - 1, smooth),
+    next,
+    prev,
     goTo,
     seek,
     active: () => Math.max(active, 0),
@@ -313,6 +332,7 @@ export function slider(
       resumeSnap()
       clearTimeout(wheelTimer)
       container.removeEventListener('wheel', onWheel)
+      container.removeEventListener('keydown', onKey)
       container.removeEventListener('scroll', schedule)
       container.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)
