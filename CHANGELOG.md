@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.3 — 2026-08-20
+
+- Mouse drag: `preventDefault()` on pointerdown — native text selection was
+  starting under the drag, and selection auto-scroll inside the scrollable
+  container fought the gesture (the opposite-direction tug). Note: mousedown
+  no longer focuses elements inside slides; irrelevant for carousels.
+
 ## 0.11.2 — 2026-08-20
 
 - Wheel-assist only reacts when the gesture's dominant axis matches the

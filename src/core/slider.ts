@@ -265,6 +265,11 @@ export function slider(
     stopGlide() // the user takes over
     target = -1
     if (!drag || event.pointerType !== 'mouse') return
+    // kill native text-selection at the root: with a live selection inside a
+    // scrollable container the browser auto-scrolls toward the pointer,
+    // fighting the drag frame by frame (user-select:none alone doesn't stop
+    // the selection from STARTING in every browser)
+    event.preventDefault()
     suspendSnap()
     dragging = true
     lastPointer = horizontal ? event.clientX : event.clientY
