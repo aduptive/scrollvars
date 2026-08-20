@@ -139,7 +139,7 @@ animations where supported.
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`
 (harness), `src/react/`, `styles.css` (presets), `demo/index.html`
-(22 live patterns, self-contained — its driver copy is the **built dist**,
+(23 live patterns, self-contained — its driver copy is the **built dist**,
 inlined verbatim; never hand-edit that copy), `test/` (node:test, no DOM —
 stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc). Node version:
 respect `.nvmrc`.

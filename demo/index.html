@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 22 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 23 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -959,6 +959,64 @@ html.snap-region { scroll-snap-type: y proximity; }
   .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
   .map-compass { display: none; }
 }
+
+/* ── case 13 · the slider module ── */
+.sv-slider {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  overflow-x: auto;
+  scroll-snap-type: x var(--sv-snap, mandatory);
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+.sv-slider > * { flex: 0 0 auto; scroll-snap-align: center; }
+.sv-slider.sv-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+
+.demo-slider {
+  padding: 40px calc(50% - 150px);
+  background: #17151f;
+  border-radius: 16px;
+  scrollbar-width: none;
+}
+.demo-slider::-webkit-scrollbar { display: none; }
+.demo-slider > div {
+  width: 300px;
+  height: 210px;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #221f31, var(--surface) 65%);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font: 500 14px/1.6 var(--mono);
+  color: var(--muted);
+  /* coverflow — all of it reads --sd, zero per-frame JS */
+  scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.13, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.75));
+  transform: perspective(900px) rotateY(clamp(-28deg, calc(var(--sd, 0) * -18deg), 28deg));
+}
+.demo-slider > div.sv-active { border-color: rgba(167, 139, 250, 0.5); color: var(--text); }
+.slider-controls { display: flex; align-items: center; gap: 16px; margin-top: 18px; justify-content: center; }
+.slider-controls button {
+  font: 600 16px/1 var(--mono);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.slider-controls button:hover { border-color: var(--accent); color: var(--accent); }
+.slider-dots { display: flex; gap: 8px; }
+.slider-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 300ms, scale 300ms;
+}
+.slider-dots i.on { background: var(--accent); scale: 1.3; }
 </style>
 </head>
 <body>
@@ -1839,6 +1897,46 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   </div>
 </section>
 
+<!-- ══════════════ 13 · SLIDER ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="slider">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 13 · the slider module</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Swiper, minus the 40&nbsp;KB</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        <span class="inline-code">slider(el)</span> — the browser does the carousel
+        (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
+        adds mouse drag, <span class="inline-code">next/prev</span>, and the observer:
+        each slide gets <span class="inline-code">--sd</span> (signed distance from
+        center) and <span class="inline-code">.sv-active</span>. The coverflow below —
+        scale, fade, rotateY — is <strong>pure CSS reading --sd</strong>. Drag it with
+        the mouse, fling it on touch, or use the arrows.
+      </p>
+    </div>
+    <div class="sv-slider demo-slider sv-rise" style="--sv-order: 3" id="slider-demo">
+      <div>01<br>native scroll rails</div>
+      <div>02<br>snap is the magnet</div>
+      <div>03<br>--sd drives the CSS</div>
+      <div>04<br>drag me (mouse too)</div>
+      <div>05<br>.sv-active for state</div>
+      <div>06<br>~130 lines, not 40KB</div>
+    </div>
+    <div class="slider-controls sv-rise" style="--sv-order: 4">
+      <button id="slider-prev" aria-label="previous">&#8592;</button>
+      <div class="slider-dots" id="slider-dots"></div>
+      <button id="slider-next" aria-label="next">&#8594;</button>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 5"><code><span class="k">const</span> s = <span class="k">slider</span>(el, { onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
+s.next(); s.prev(); s.goTo(<span class="n">3</span>)
+
+<span class="c">/* the coverflow — every slide reads its own --sd */</span>
+.slide {
+  scale: <span class="k">calc(1 - abs(var(--sd)) * 0.13)</span>;
+  transform: perspective(900px) <span class="k">rotateY(calc(var(--sd) * -18deg))</span>;
+}</code></pre>
+  </div>
+</section>
+
 <!-- ══════════════ API ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="api">
   <div class="wrap">
@@ -2585,6 +2683,147 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
       },
     });
   }
+  /* ═══════ scrollvars slider — inlined from the built dist, verbatim ═══════ */
+  var slider = (function () {
+/**
+ * A featherweight carousel on native rails: the browser does the scrolling
+ * (momentum, touch, accessibility) and scroll-snap does the magnetism; this
+ * module only adds what the platform lacks —
+ *
+ *   - mouse drag-to-scroll on desktop (touch is already native)
+ *   - the active-slide observer, exposed the scrollvars way:
+ *       container:  --sv-slide  (active index)
+ *       each slide: --sd        (signed distance from center, in slide widths)
+ *                   .sv-active  (nearest to center)
+ *   - next / prev / goTo
+ *
+ * Any CSS reading `--sd` animates the slides: scale, fade, coverflow —
+ * no per-frame JS, same philosophy as the scroll driver.
+ */
+const noop = {
+    next: () => { },
+    prev: () => { },
+    goTo: () => { },
+    active: () => 0,
+    destroy: () => { },
+};
+function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
+    if (typeof window === 'undefined')
+        return noop;
+    container.classList.add('sv-slider');
+    container.style.setProperty('--sv-snap', snap);
+    let active = -1;
+    let raf = 0;
+    const slides = () => Array.from(container.children);
+    const measure = () => {
+        raf = 0;
+        const center = container.scrollLeft + container.clientWidth / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        slides().forEach((slide, i) => {
+            const mid = slide.offsetLeft + slide.offsetWidth / 2;
+            const sd = (mid - center) / Math.max(slide.offsetWidth, 1);
+            slide.style.setProperty('--sd', sd.toFixed(4));
+            const dist = Math.abs(sd);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = i;
+            }
+        });
+        if (best !== active) {
+            active = best;
+            slides().forEach((slide, i) => slide.classList.toggle('sv-active', i === best));
+            container.style.setProperty('--sv-slide', String(best));
+            onSlide?.(best);
+        }
+    };
+    const schedule = () => {
+        if (!raf)
+            raf = requestAnimationFrame(measure);
+    };
+    container.addEventListener('scroll', schedule, { passive: true });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(container);
+    measure();
+    const goTo = (index, smooth = true) => {
+        const slide = slides()[Math.max(0, Math.min(index, slides().length - 1))];
+        if (!slide)
+            return;
+        container.scrollTo({
+            left: slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2,
+            behavior: smooth ? 'smooth' : 'instant',
+        });
+    };
+    // mouse drag: snap is suspended while dragging (sv-dragging kills it in
+    // CSS) and re-engages on release, which settles onto the nearest slide.
+    // ponytail: no momentum fling of our own — the snap settle covers it.
+    let dragging = false;
+    let lastX = 0;
+    const onDown = (event) => {
+        if (!drag || event.pointerType !== 'mouse')
+            return;
+        dragging = true;
+        lastX = event.clientX;
+        container.classList.add('sv-dragging');
+        container.setPointerCapture(event.pointerId);
+    };
+    const onMove = (event) => {
+        if (!dragging)
+            return;
+        container.scrollLeft -= event.clientX - lastX;
+        lastX = event.clientX;
+    };
+    const onUp = (event) => {
+        if (!dragging)
+            return;
+        dragging = false;
+        container.classList.remove('sv-dragging');
+        container.releasePointerCapture(event.pointerId);
+        goTo(active); // snap-assist: glide to the nearest slide
+    };
+    container.addEventListener('pointerdown', onDown);
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+    return {
+        next: (smooth = true) => goTo(active + 1, smooth),
+        prev: (smooth = true) => goTo(active - 1, smooth),
+        goTo,
+        active: () => active,
+        destroy: () => {
+            container.removeEventListener('scroll', schedule);
+            container.removeEventListener('pointerdown', onDown);
+            container.removeEventListener('pointermove', onMove);
+            container.removeEventListener('pointerup', onUp);
+            container.removeEventListener('pointercancel', onUp);
+            ro.disconnect();
+            if (raf)
+                cancelAnimationFrame(raf);
+        },
+    };
+}
+
+  return slider;
+  })();
+
+  var sliderDots = document.getElementById('slider-dots');
+  var sliderEl = document.getElementById('slider-demo');
+  Array.prototype.forEach.call(sliderEl.children, function () {
+    sliderDots.appendChild(document.createElement('i'));
+  });
+  var sliderHandle = slider(sliderEl, {
+    onSlide: function (i) {
+      Array.prototype.forEach.call(sliderDots.children, function (dot, j) {
+        dot.classList.toggle('on', j === i);
+      });
+    },
+  });
+  document.getElementById('slider-prev').addEventListener('click', function () { sliderHandle.prev(); });
+  document.getElementById('slider-next').addEventListener('click', function () { sliderHandle.next(); });
+  sliderDots.addEventListener('click', function (e) {
+    var i = Array.prototype.indexOf.call(sliderDots.children, e.target);
+    if (i >= 0) sliderHandle.goTo(i);
+  });
 })();
 </script>
 <script>
