@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.2 — 2026-08-20
+
+- Wheel-assist only reacts when the gesture's dominant axis matches the
+  slider's axis: vertical page scrolling over the carousel (trackpad
+  gestures are always slightly diagonal) was triggering mid-gesture
+  `goTo(nearest)` and made multi-slide travel feel impossible. Quiet
+  window 160 → 200ms.
+
 ## 0.11.1 — 2026-08-20
 
 - Mouse drag survives leaving the container: move/up listeners live on

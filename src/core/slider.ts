@@ -280,13 +280,19 @@ export function slider(
   // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
   // instances authored with snap none (scroll-driven ones own their position).
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
-  const onWheel = () => {
+  const onWheel = (event: WheelEvent) => {
     if (authoredSnap === 'none') return
+    // only react when the gesture's dominant axis is OUR axis — otherwise
+    // this is the page scrolling past the carousel (trackpad gestures are
+    // always slightly diagonal) and assisting would yank the slider around
+    const along = horizontal ? event.deltaX : event.deltaY
+    const cross = horizontal ? event.deltaY : event.deltaX
+    if (Math.abs(along) <= Math.abs(cross)) return
     stopGlide()
     target = -1
     suspendSnap()
     clearTimeout(wheelTimer)
-    wheelTimer = setTimeout(() => goTo(active), 160)
+    wheelTimer = setTimeout(() => goTo(active), 200)
   }
   container.addEventListener('wheel', onWheel, { passive: true })
 
