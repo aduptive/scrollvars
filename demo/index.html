@@ -1148,7 +1148,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 /* ── case 15 · the flavor wheel: a rotating slider whose hub sits below
       the fold — you see only the top half. Scroll rotates it (scenes),
       the buttons scroll the page to the matching scene: one writer. ── */
-.pz-outer { height: 420vh; position: relative; }
+.pz-outer { height: 300vh; position: relative; }
 .pz-sticky {
   position: sticky;
   top: 0;
@@ -2323,13 +2323,17 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 420vh. In the sticky stage:
+    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
    &lt;div class="hub"&gt; &lt;div class="slice" style="--i:0"&gt;&lt;img&gt;… ×5 &lt;/div&gt;
    hub sits at left:50%; top:calc(100% + 8vh) — the center below the fold */</span>
 
 <span class="c">// scroll owns the wheel; buttons just drive the scroll — one writer</span>
 <span class="k">track</span>(section, { scenes: <span class="n">5</span>, onScene: (i) =&gt; setFlavor(FLAVORS[i]) })
 nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current + 1, <span class="n">5</span>)
+
+<span class="c">// the magnet: a quiet scroll mid-pin settles onto the nearest flavor —</span>
+<span class="c">// no resting position between two pizzas (quiet-debounce + smooth scroll)</span>
+onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * <span class="n">4</span>), <span class="n">5</span>))
 
 .hub   { rotate: <span class="k">calc(var(--sv-scene) * -72deg)</span>; }
 .slice { rotate: <span class="k">calc(var(--i) * 72deg)</span>; translate: 0 -470px; }</code></pre>
@@ -2572,7 +2576,7 @@ nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current
       }
       var kf = 0;
       if (o.scenes) {
-        kf = computeScene(computePin(rect, e.height), o.scenes, 0.4);
+        kf = computeScene(computePin(rect, e.height), o.scenes, o.snap === false ? false : (o.snap || 0.4));
         setVar(e, '--sv-scene', kf);
         var idx = clamp(Math.round(kf), 0, o.scenes - 1);
         if (idx !== e.kfIndex) { e.kfIndex = idx; if (o.onScene) o.onScene(idx); }
@@ -3586,11 +3590,27 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     });
   }
   pzPaint(0);
+  var pzPin = 0;
   register(pzOuter, {
     scenes: PZ_FLAVORS.length,
+    snap: 0.2, // smaller dead-zone: the flavor commits with less scroll
+    pin: true,
     hud: 'pizzeria',
     onScene: pzPaint,
+    onPin: function (p) { pzPin = p; },
   });
+
+  /* the magnet: while pinned, a quiet scroll settles onto the nearest
+     flavor — there is no resting position between two pizzas. Same
+     quiet-debounce idea as the slider's wheel assist, applied to the page. */
+  var pzQuiet;
+  window.addEventListener('scroll', function () {
+    if (pzPin <= 0.001 || pzPin >= 0.999) return;
+    clearTimeout(pzQuiet);
+    pzQuiet = setTimeout(function () {
+      pzGo(Math.round(pzPin * (PZ_FLAVORS.length - 1)));
+    }, 150);
+  }, { passive: true });
   function pzGo(i) {
     var count = PZ_FLAVORS.length;
     var clamped = Math.max(0, Math.min(i, count - 1));
