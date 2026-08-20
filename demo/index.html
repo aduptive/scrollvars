@@ -1189,16 +1189,20 @@ html.snap-region { scroll-snap-type: y proximity; }
   display: grid;
   place-items: end start;
 }
-.wingal .bg {
+/* two scenery layers at different speeds — the differential IS the depth */
+.wingal .layer {
   position: absolute;
-  inset: -12% -34%;
-  /* the window parallax: the scenery travels slower than the frame */
-  translate: calc(var(--sd, 0) * 16%) 0;
+  inset: -8% -35%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: 50% 100%;
 }
-.wingal .g1 { background: linear-gradient(115deg, #2b1d4d, #7c5cd4 55%, #ffb454); }
-.wingal .g2 { background: linear-gradient(115deg, #0f2b28, #1f8a70 55%, #a7f3d0); }
-.wingal .g3 { background: linear-gradient(115deg, #33121f, #c2455c 55%, #ffd9a0); }
-.wingal .g4 { background: linear-gradient(115deg, #101f38, #2563b0 55%, #93c5fd); }
+.wingal .far { translate: calc(var(--sd, 0) * 8%) 0; }
+.wingal .near { translate: calc(var(--sd, 0) * 26%) 0; }
+.wingal .g1 { background: linear-gradient(180deg, #2b1d4d, #7c5cd4 70%, #ffb454); }
+.wingal .g2 { background: linear-gradient(180deg, #0f2b28, #1f8a70 70%, #a7f3d0); }
+.wingal .g3 { background: linear-gradient(180deg, #33121f, #c2455c 70%, #ffd9a0); }
+.wingal .g4 { background: linear-gradient(180deg, #101f38, #2563b0 70%, #93c5fd); }
 .wingal h3 {
   position: relative;
   margin: 0 0 22px 26px;
@@ -2222,17 +2226,19 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
       <p class="eyebrow sv-rise">case 16 · window parallax</p>
       <h2 class="sv-rise" style="--sv-order: 1">Every card is a window</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        The award-site gallery: each slide's scenery is oversized and travels slower
-        than its frame (<span class="inline-code">translate: calc(var(--sd) * 16%)</span>)
-        — parallax through a window as the train passes. Two CSS declarations
-        per slide, driven by the same <span class="inline-code">--sd</span>.
+        The award-site gallery: each slide holds two oversized scenery layers moving at
+        different speeds — mountains at <span class="inline-code">calc(var(--sd) * 8%)</span>,
+        foreground at <span class="inline-code">26%</span> — and the differential is what
+        your eye reads as depth, like scenery through a train window. Still just CSS
+        reading <span class="inline-code">--sd</span>; the scenes are inline SVGs, ~600
+        bytes each.
       </p>
     </div>
     <div class="sv-slider wingal sv-rise" style="--sv-order: 3" id="wingal-slider">
-      <div><div class="bg g1"></div><h3>dusk</h3></div>
-      <div><div class="bg g2"></div><h3>lagoon</h3></div>
-      <div><div class="bg g3"></div><h3>ember</h3></div>
-      <div><div class="bg g4"></div><h3>north</h3></div>
+      <div class="g1"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23ffb454'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%23241a3d'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%23140e24'/></svg>");'></div><h3>dusk</h3></div>
+      <div class="g2"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23a7f3d0'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%230d3a33'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%2307251f'/></svg>");'></div><h3>lagoon</h3></div>
+      <div class="g3"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23ffd9a0'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%234a1c28'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%232a0f18'/></svg>");'></div><h3>ember</h3></div>
+      <div class="g4"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23cfe3ff'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%2316294a'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%230b1830'/></svg>");'></div><h3>north</h3></div>
     </div>
   </div>
 </section>
