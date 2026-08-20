@@ -23,7 +23,7 @@ function makeSlide(offsetLeft) {
 
 test('slider: --sd per slide, active detection, goTo centering math', async () => {
   const rafQueue = []
-  global.window = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
   global.ResizeObserver = class {
@@ -91,7 +91,7 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
 test('slider: rapid next() clicks accumulate through the pending target', async () => {
   const rafQueue = []
   let now = 0
-  global.window = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.performance = { now: () => now }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)

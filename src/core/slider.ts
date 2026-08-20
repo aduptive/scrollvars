@@ -241,8 +241,26 @@ export function slider(
   const stepBase = () => (anim && target >= 0 ? target : active)
 
   // mouse drag: snap is suspended from grab until the release glide finishes.
+  // move/up listeners live on window WHILE dragging — pointer capture on a
+  // scrollable container is unreliable, and this way the gesture survives
+  // leaving the element (release happens on the real pointerup, anywhere).
   // ponytail: no momentum fling of our own — the release glide covers it.
   let lastPointer = 0
+  const onMove = (event: PointerEvent) => {
+    if (!dragging) return
+    const point = horizontal ? event.clientX : event.clientY
+    setPos(pos() - (point - lastPointer))
+    lastPointer = point
+  }
+  const endDrag = () => {
+    if (!dragging) return
+    dragging = false
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', endDrag)
+    window.removeEventListener('pointercancel', endDrag)
+    container.classList.remove('sv-dragging')
+    goTo(active) // release: glide softly onto the nearest slide
+  }
   const onDown = (event: PointerEvent) => {
     stopGlide() // the user takes over
     target = -1
@@ -251,25 +269,11 @@ export function slider(
     dragging = true
     lastPointer = horizontal ? event.clientX : event.clientY
     container.classList.add('sv-dragging')
-    container.setPointerCapture(event.pointerId)
-  }
-  const onMove = (event: PointerEvent) => {
-    if (!dragging) return
-    const point = horizontal ? event.clientX : event.clientY
-    setPos(pos() - (point - lastPointer))
-    lastPointer = point
-  }
-  const onUp = (event: PointerEvent) => {
-    if (!dragging) return
-    dragging = false
-    container.classList.remove('sv-dragging')
-    container.releasePointerCapture(event.pointerId)
-    goTo(active) // release: glide softly onto the nearest slide
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', endDrag)
+    window.addEventListener('pointercancel', endDrag)
   }
   container.addEventListener('pointerdown', onDown)
-  container.addEventListener('pointermove', onMove)
-  container.addEventListener('pointerup', onUp)
-  container.addEventListener('pointercancel', onUp)
 
   // trackpad/wheel pan: native mandatory snap settles fast and can't be
   // slowed, so replace it — suspend snap while wheeling, then glide to the
@@ -300,9 +304,9 @@ export function slider(
       container.removeEventListener('wheel', onWheel)
       container.removeEventListener('scroll', schedule)
       container.removeEventListener('pointerdown', onDown)
-      container.removeEventListener('pointermove', onMove)
-      container.removeEventListener('pointerup', onUp)
-      container.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', endDrag)
+      window.removeEventListener('pointercancel', endDrag)
       ro.disconnect()
       if (raf) cancelAnimationFrame(raf)
     },

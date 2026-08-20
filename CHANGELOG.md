@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.1 — 2026-08-20
+
+- Mouse drag survives leaving the container: move/up listeners live on
+  `window` while dragging (pointer capture on scrollable containers is
+  unreliable) — release happens on the real pointerup, anywhere on the page.
+
 ## 0.11.0 — 2026-08-20
 
 - **Slider state & chaining**: `state()` and `onScroll(state)` expose
