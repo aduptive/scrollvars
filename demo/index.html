@@ -1325,7 +1325,7 @@ html.snap-region { scroll-snap-type: y proximity; }
       <div class="layer l2 sv-drift">--sv-distance: 7rem · middle ground</div>
       <div class="layer l3 sv-drift">--sv-distance: 13rem · flies</div>
     </div>
-    <pre><code><span class="c">/* preset pronto */</span>
+    <pre><code><span class="c">/* ready-made preset */</span>
 &lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-distance'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
 
 <span class="c">/* or custom CSS — the public API is the variables */</span>
@@ -1370,7 +1370,10 @@ html.snap-region { scroll-snap-type: y proximity; }
         <div class="pgal-card h2"><span class="big">13</span><span class="lbl">foreground</span></div>
       </div>
     </div>
-    <pre><code><span class="c">/* different speed = perceived depth */</span>
+    <pre><code><span class="c">/* markup: a normal section; register feeds the lerp target:
+   track(section, { onTravel: (t) =&gt; { target = t } }) */</span>
+
+<span class="c">/* different speed = perceived depth */</span>
 .column { translate: <span class="k">0 calc((0.5 - var(--sv-t)) * var(--speed))</span>; }
 .column:nth-child(1) { --speed: <span class="n">24vh</span>;  }
 .column:nth-child(2) { --speed: <span class="n">-34vh</span>;  }  <span class="c">/* against the flow */</span>
@@ -1404,7 +1407,13 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">// React — scene as state, fraction as a CSS var</span>
+    <pre><code><span class="c">/* THE PINNED SKELETON — every pinned case on this page reuses it:
+   &lt;div class="outer"&gt;          height: 300vh  (the scroll length)
+     &lt;div class="sticky"&gt;…&lt;/div&gt;  position: sticky; top: 0; height: 100vh; overflow: hidden
+   &lt;/div&gt;
+   track(outer, { pin: true })    or  { scenes: N } — writes --sv-pin / --sv-scene */</span>
+
+<span class="c">// React — scene as state, fraction as a CSS var</span>
 &lt;<span class="k">Scenes</span> count={<span class="n">4</span>}&gt;
   {({ scene, goTo }) =&gt; (
     &lt;div&gt;
@@ -1441,7 +1450,10 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* curtain: two panels, opposite directions */</span>
+    <pre><code><span class="c">/* markup: the pinned skeleton (see case 3) at 250vh;
+   the two panels fill the sticky stage side by side */</span>
+
+<span class="c">/* curtain: two panels, opposite directions */</span>
 .panel-left { translate: <span class="k">calc(var(--sv-pin) * -101%) 0</span>; }
 .panel-right { translate: <span class="k">calc(var(--sv-pin) *  101%) 0</span>; }
 
@@ -1475,7 +1487,10 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* the track overflows the screen; the pin pays the difference */</span>
+    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; inside the sticky stage:
+   &lt;div class="track"&gt; …cards… &lt;/div&gt;   +   track(outer, { pin: true }) */</span>
+
+<span class="c">/* the track overflows the screen; the pin pays the difference */</span>
 .track {
   width: max-content;
   translate: <span class="k">calc((1 - var(--sv-pin)) * 100vw
@@ -1507,7 +1522,10 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* official preset since v0.7 — children stack via grid, auto-indexed */</span>
+    <pre><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
+   track(outer, { pin: true }) */</span>
+
+<span class="c">/* official preset since v0.7 — children stack via grid, auto-indexed */</span>
 &lt;div class=<span class="s">"sv-deck"</span> style=<span class="s">"--sv-count: 4"</span>&gt; …4 cards… &lt;/div&gt;
 
 <span class="c">/* under the hood: each card clips its own slice of the pin */</span>
@@ -1536,7 +1554,11 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* official preset since v0.7: sv-reading + --sv-count on the container,
+    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; split the text into &lt;span&gt;s with
+   --sv-order 0..n and set --sv-count on the container
+   track(outer, { pin: true }) */</span>
+
+<span class="c">/* official preset since v0.7: sv-reading + --sv-count on the container,
    --sv-order per word span. One rule for every word: */</span>
 .sv-reading &gt; * {
   opacity: <span class="k">clamp(0.13, calc(var(--sv-pin) * (var(--sv-count) + 3) - var(--sv-order)), 1)</span>;
@@ -1564,7 +1586,10 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* official preset since v0.7 */</span>
+    <pre><code><span class="c">/* markup: pinned skeleton at 220vh
+   track(outer, { pin: true }) */</span>
+
+<span class="c">/* official preset since v0.7 */</span>
 &lt;div class=<span class="s">"sv-counter"</span> style=<span class="s">"--sv-max: 421"</span>&gt;&lt;/div&gt;
 
 <span class="c">/* under the hood — a typed custom property makes the value countable */</span>
@@ -1602,7 +1627,10 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">// the callback gets the raw pin; the frame index is one line</span>
+    <pre><code><span class="c">/* markup: pinned skeleton at 300vh with a &lt;canvas&gt; in the sticky stage;
+   frames extracted once:  ffmpeg -i clip.mp4 -vf 'fps=6,scale=640:-2' f%02d.jpg */</span>
+
+<span class="c">// the callback gets the raw pin; the frame index is one line</span>
 <span class="k">track</span>(section, { pin: <span class="k">true</span>, onPin: (p) =&gt; {
   ctx.drawImage(frames[<span class="k">Math.round(p * (frames.length - 1))</span>], 0, 0)
 }})
@@ -1684,7 +1712,10 @@ color: <span class="k">color-mix(in oklab, var(--accent) calc(var(--lit) * 100%)
       <div class="collage-item co-dot" style="top:18%;left:44%;--ex:0px;--ey:-45vh;--dur:800ms;--wait:420ms"></div>
       <div class="collage-item co-dot" style="bottom:24%;right:38%;--ex:12vw;--ey:38vh;--dur:850ms;--wait:500ms;--es:2"></div>
     </div>
-    <pre><code><span class="c">/* each item declares its own entrance */</span>
+    <pre><code><span class="c">/* markup: a normal section tracked with { once: true } —
+   sv-live latches and every item plays its own entrance */</span>
+
+<span class="c">/* each item declares its own entrance */</span>
 &lt;div class=<span class="s">"collage-item"</span> style=<span class="s">"--ex:-60vw; --er:-180deg;
      --curve:cubic-bezier(0.34,1.56,0.64,1)"</span>&gt;  <span class="c">/* bounces */</span>
 
@@ -1717,7 +1748,10 @@ color: <span class="k">color-mix(in oklab, var(--accent) calc(var(--lit) * 100%)
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* the stroke draws itself */</span>
+    <pre><code><span class="c">/* markup: pinned skeleton; the SVG (path + circle) fills the sticky
+   stage;  pathLength=1 on the path makes the dash math unitless */</span>
+
+<span class="c">/* the stroke draws itself */</span>
 path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span class="k">calc(1 - var(--sv-pin))</span>; }
 
 <span class="c">// and the dot rides the SAME path, in SVG units</span>
@@ -1933,7 +1967,10 @@ mountEffect(canvas, {
         and a fade driven by the same variable that drove the stars.
       </p>
     </div>
-    <pre><code><span class="c">// the pin drives the camera; the harness only renders while visible</span>
+    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; &lt;canvas&gt; fills the sticky stage,
+   mounted with mountEffect (the harness renders only while visible) */</span>
+
+<span class="c">// the pin drives the camera; the harness only renders while visible</span>
 <span class="k">track</span>(section, { pin: <span class="k">true</span>, onPin: (p) =&gt; { thrust = p } })
 
 <span class="c">/* the exit is pure CSS — same variable, no JS choreography */</span>
@@ -2111,7 +2148,12 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">// the camera: position from the path, heading from a point just ahead</span>
+    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 500vh. Inside the sticky stage:
+   &lt;canvas&gt;                       grid + dashed route, redrawn per frame
+   &lt;div class="world"&gt;…stations…  transform-only layer, paints ONLY cards
+   &lt;svg hidden&gt;path&lt;/svg&gt;         geometry source for getPointAtLength */</span>
+
+<span class="c">// the camera: position from the path, heading from a point just ahead</span>
 <span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; { target = p } })
 
 <span class="c">// per frame (inertia lerp): put P at screen center, face the travel direction</span>
@@ -2165,7 +2207,11 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
       <div class="slider-dots" id="slider-dots"></div>
       <button id="slider-next" aria-label="next">&#8594;</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code><span class="k">const</span> s = <span class="k">slider</span>(el, { duration: <span class="n">1400</span>, onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
+    <pre class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup — the whole carousel:
+   &lt;div class="sv-slider" id="el"&gt; &lt;div&gt;…slide…&lt;/div&gt; ×N &lt;/div&gt;
+   import { slider } from 'scrollvars'   (styles.css ships the base CSS) */</span>
+
+<span class="k">const</span> s = <span class="k">slider</span>(el, { duration: <span class="n">1400</span>, onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
 s.next(); s.prev(); s.goTo(<span class="n">3</span>)
 
 <span class="c">/* the coverflow — every slide reads its own --sd */</span>
@@ -2220,7 +2266,10 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
         <div class="wheel-pointer"></div>
       </div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">slider</span>(el, { axis: <span class="s">'y'</span>, onSlide: (i) =&gt; pick(OPTIONS[i]) })
+    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* markup: same .sv-slider container, tall padding creates the
+   pick-line; a fixed overlay draws the detent lines */</span>
+
+<span class="k">slider</span>(el, { axis: <span class="s">'y'</span>, onSlide: (i) =&gt; pick(OPTIONS[i]) })
 
 .wheel &gt; * {
   transform: <span class="k">rotateX(calc(var(--sd) * -34deg)) translateZ(10px)</span>;
@@ -2266,7 +2315,11 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">// scroll owns the wheel; buttons just drive the scroll — one writer</span>
+    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 420vh. In the sticky stage:
+   &lt;div class="hub"&gt; &lt;div class="slice" style="--i:0"&gt;&lt;img&gt;… ×5 &lt;/div&gt;
+   hub sits at left:50%; top:calc(100% + 8vh) — the center below the fold */</span>
+
+<span class="c">// scroll owns the wheel; buttons just drive the scroll — one writer</span>
 <span class="k">track</span>(section, { scenes: <span class="n">5</span>, onScene: (i) =&gt; setFlavor(FLAVORS[i]) })
 nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current + 1, <span class="n">5</span>)
 
@@ -2308,6 +2361,10 @@ nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current
       <p class="sv-rise" style="--sv-order: 2">
         Any CSS that reads these variables is a valid preset. That is what keeps the
         library small and flexible at once: the presets are just examples.
+        And to replicate any demo above: each case's snippet carries its markup
+        skeleton and registration — and <strong>this page ships unminified</strong>,
+        so View&nbsp;Source is the complete, commented implementation of all 26
+        patterns. Copy freely.
       </p>
     </div>
     <table class="sv-rise" style="--sv-order: 3">
