@@ -80,3 +80,50 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
 
   handle.destroy()
 })
+
+test('slider: rapid next() clicks accumulate through the pending target', async () => {
+  const rafQueue = []
+  let now = 0
+  global.window = {}
+  global.performance = { now: () => now }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class {
+    observe() {}
+    disconnect() {}
+  }
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => {
+    s.style._owner = s
+    s.classList._owner = s
+  })
+  const container = {
+    children: slides,
+    scrollLeft: 0,
+    clientWidth: 300,
+    classList: { add: () => {}, remove: () => {} },
+    style: { scrollSnapType: '', setProperty: () => {} },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    scrollTo: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js')
+  const handle = slider(container, { duration: 100 })
+
+  // active starts at 1 (center). Two rapid clicks: 1 → 2 → clamped 2,
+  // but the second must count from the PENDING target, not stale active.
+  handle.next()
+  handle.next() // mid-glide: steps from target (2), clamps at last slide
+  // pump the glide to completion
+  for (let i = 0; i < 30 && rafQueue.length; i++) {
+    now += 16
+    rafQueue.shift()(now)
+  }
+  // slide 3 centered: left = 200 - (300-100)/2 = 100
+  assert.equal(Math.round(container.scrollLeft), 100)
+  handle.destroy()
+})

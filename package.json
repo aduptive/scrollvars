@@ -1,6 +1,6 @@
 {
   "name": "scrollvars",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",

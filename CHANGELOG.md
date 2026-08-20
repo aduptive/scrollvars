@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.2 — 2026-08-20
+
+- Rapid `next()`/`prev()` clicks accumulate: relative steps count from the
+  in-flight glide destination (pending target), not from the lagging active
+  index — five fast clicks land five slides ahead.
+
 ## 0.10.1 — 2026-08-20
 
 - Drag release and trackpad pan now glide too: snap is suspended via inline

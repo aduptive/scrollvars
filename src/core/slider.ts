@@ -104,6 +104,9 @@ export function slider(
   // native smooth scrolling is fast and not configurable. Snap is suspended
   // while gliding (sv-gliding) so it can't tug mid-animation.
   let anim = 0
+  // pending glide destination — rapid next/prev clicks accumulate from here,
+  // not from `active` (which lags mid-glide and would swallow the clicks)
+  let target = -1
   const stopGlide = () => {
     if (anim) cancelAnimationFrame(anim)
     anim = 0
@@ -130,6 +133,7 @@ export function slider(
         anim = requestAnimationFrame(step)
       } else {
         stopGlide()
+        target = -1
         resumeSnap() // position is centered — safe to re-engage
       }
     }
@@ -137,15 +141,23 @@ export function slider(
   }
 
   const goTo = (index: number, smooth = true) => {
-    const slide = slides()[Math.max(0, Math.min(index, slides().length - 1))]
+    const clamped = Math.max(0, Math.min(index, slides().length - 1))
+    const slide = slides()[clamped]
     if (!slide) return
     const left = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2
-    if (smooth) glide(left)
-    else {
+    if (smooth) {
+      target = clamped
+      glide(left)
+    } else {
       stopGlide()
+      target = -1
       container.scrollTo({ left, behavior: 'instant' })
     }
   }
+
+  /** Where the next relative step counts from: the in-flight destination if
+   * a glide is running, the measured active slide otherwise. */
+  const stepBase = () => (anim && target >= 0 ? target : active)
 
   // mouse drag: snap is suspended while dragging (sv-dragging kills it in
   // CSS) and re-engages on release, which settles onto the nearest slide.
@@ -154,6 +166,7 @@ export function slider(
   let lastX = 0
   const onDown = (event: PointerEvent) => {
     stopGlide() // the user takes over
+    target = -1
     if (!drag || event.pointerType !== 'mouse') return
     suspendSnap() // stays off until the release glide finishes
     dragging = true
@@ -186,6 +199,7 @@ export function slider(
   const onWheel = () => {
     if (authoredSnap === 'none') return
     stopGlide()
+    target = -1
     suspendSnap()
     clearTimeout(wheelTimer)
     wheelTimer = setTimeout(() => goTo(active), 160)
@@ -193,8 +207,8 @@ export function slider(
   container.addEventListener('wheel', onWheel, { passive: true })
 
   return {
-    next: (smooth = true) => goTo(active + 1, smooth),
-    prev: (smooth = true) => goTo(active - 1, smooth),
+    next: (smooth = true) => goTo(stepBase() + 1, smooth),
+    prev: (smooth = true) => goTo(stepBase() - 1, smooth),
     goTo,
     active: () => active,
     destroy: () => {
