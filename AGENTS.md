@@ -81,9 +81,11 @@ the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
 
-**Scroll-scrubbed media / WebGL:** `onTravel` fires every frame with raw 0..1:
+**Scroll-scrubbed media / WebGL:** `onTravel` (viewport travel) and `onPin`
+(progress across a pinned stretch) fire every frame with raw 0..1:
 ```tsx
 useTrack({ onTravel: (t) => { /* drive a camera, a canvas, a timeline */ } })
+useTrack({ onPin: (p) => { /* scrub frames across a pinned section */ } })
 ```
 ⚠️ Do **not** scrub `video.currentTime` on scroll — Safari's decoder wedges
 permanently. Use a frame sequence (ffmpeg `-vf fps=6` → images → canvas

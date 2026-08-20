@@ -914,7 +914,7 @@
       <div class="layer l3 sv-drift">--sv-distance: 13rem · flies</div>
     </div>
     <pre><code><span class="c">/* preset pronto */</span>
-&lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-y'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
+&lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-distance'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
 
 <span class="c">/* or custom CSS — the public API is the variables */</span>
 .my-parallax {
@@ -1095,13 +1095,13 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* each card clips its own slice of the pin */</span>
-.card {
-  --pi: <span class="k">clamp(0, calc(var(--sv-pin) * 4 - var(--ci)), 1)</span>;
-  translate: <span class="k">0 calc(var(--pi) * -130vh)</span>;
-  rotate: <span class="k">calc(var(--pi) * -7deg)</span>;
-}
-.card:nth-child(2) { --ci: <span class="n">1</span>; } <span class="c">/* … */</span></code></pre>
+    <pre><code><span class="c">/* official preset since v0.7 — children stack via grid, auto-indexed */</span>
+&lt;div class=<span class="s">"sv-deck"</span> style=<span class="s">"--sv-count: 4"</span>&gt; …4 cards… &lt;/div&gt;
+
+<span class="c">/* under the hood: each card clips its own slice of the pin */</span>
+--sv-slice: <span class="k">clamp(0, calc(var(--sv-pin) * var(--sv-count) - var(--sv-order)), 1)</span>;
+translate: <span class="k">0 calc(var(--sv-slice) * -130vh)</span>;
+rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
   </div>
 </section>
 
@@ -1124,9 +1124,10 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* one rule for every word */</span>
-.text span {
-  opacity: <span class="k">clamp(0.13, calc(var(--sv-pin) * var(--wn) - var(--wi)), 1)</span>;
+    <pre><code><span class="c">/* official preset since v0.7: sv-reading + --sv-count on the container,
+   --sv-order per word span. One rule for every word: */</span>
+.sv-reading &gt; * {
+  opacity: <span class="k">clamp(0.13, calc(var(--sv-pin) * (var(--sv-count) + 3) - var(--sv-order)), 1)</span>;
 }</code></pre>
   </div>
 </section>
@@ -1151,13 +1152,16 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code>@property <span class="k">--cnum</span> { syntax: <span class="s">'&lt;integer&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
+    <pre><code><span class="c">/* official preset since v0.7 */</span>
+&lt;div class=<span class="s">"sv-counter"</span> style=<span class="s">"--sv-max: 421"</span>&gt;&lt;/div&gt;
 
-.number {
-  --cnum: <span class="k">calc(var(--sv-pin) * 421)</span>;
-  counter-reset: <span class="k">cv var(--cnum)</span>;
+<span class="c">/* under the hood — a typed custom property makes the value countable */</span>
+@property <span class="k">--sv-int</span> { syntax: <span class="s">'&lt;integer&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
+.sv-counter {
+  --sv-int: <span class="k">calc(var(--sv-pin) * var(--sv-max))</span>;
+  counter-reset: <span class="k">sv-counter var(--sv-int)</span>;
 }
-.number::after { content: <span class="k">counter(cv)</span>; }</code></pre>
+.sv-counter::after { content: <span class="k">counter(sv-counter)</span>; }</code></pre>
   </div>
 </section>
 
@@ -1405,7 +1409,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
 
 <span class="c">// 3 · Real-time WebGL (React Three Fiber) — when the client</span>
 <span class="c">//     needs INTERACTION: rotate, recolor, day/night</span>
-<span class="k">useScenes</span>(<span class="n">4</span>, { onScene: (i) =&gt; camera.lookAt(pontos[i]) })</code></pre>
+<span class="k">useTrack</span>({ scenes: <span class="n">4</span>, onScene: (i) =&gt; camera.lookAt(points[i]) })</code></pre>
   </div>
 </section>
 

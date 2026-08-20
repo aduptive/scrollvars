@@ -29,7 +29,7 @@ export const ScrollVarsBoot: React.FC = () => {
   return null
 }
 
-type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel'>
+type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
 
 /**
  * Track an element with the scroll driver.
@@ -46,10 +46,12 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
     onLive: options.onLive,
     onScene: options.onScene,
     onTravel: options.onTravel,
+    onPin: options.onPin,
   }
 
   const { view, travel, scenes, snap, once, pin } = options
   const hasTravelCb = !!options.onTravel
+  const hasPinCb = !!options.onPin
 
   useEffect(() => {
     if (!ref.current) return
@@ -65,8 +67,11 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
       onTravel: hasTravelCb
         ? (t) => callbacksRef.current.onTravel?.(t)
         : undefined,
+      onPin: hasPinCb
+        ? (p) => callbacksRef.current.onPin?.(p)
+        : undefined,
     })
-  }, [view, travel, scenes, snap, once, pin, hasTravelCb])
+  }, [view, travel, scenes, snap, once, pin, hasTravelCb, hasPinCb])
 
   return ref
 }
@@ -130,6 +135,7 @@ export const Track: React.FC<TrackProps> = ({
   onLive,
   onScene,
   onTravel,
+  onPin,
   order,
   distance,
   stagger,
@@ -140,7 +146,7 @@ export const Track: React.FC<TrackProps> = ({
   children,
   ...rest
 }) => {
-  const ref = useTrack({ view, travel, scenes, snap, once, pin, onLive, onScene, onTravel })
+  const ref = useTrack({ view, travel, scenes, snap, once, pin, onLive, onScene, onTravel, onPin })
 
   return (
     <Tag

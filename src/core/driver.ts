@@ -21,6 +21,9 @@ export interface TrackOptions {
   /** Fires every frame with the raw travel t (0..1) — for video scrubbing,
    * WebGL cameras, or anything JS-driven. Keep the callback cheap. */
   onTravel?: (t: number) => void
+  /** Fires every frame with the raw pin progress (0..1 across the pinned
+   * stretch) — frame scrubbing, camera tours. Implies pin tracking. */
+  onPin?: (p: number) => void
 }
 
 interface Entry {
@@ -166,8 +169,10 @@ function apply(entry: Entry, rect: DOMRect) {
     opts.onTravel?.(t)
   }
 
-  if (opts.pin) {
-    setVar(entry, '--sv-pin', computePin(rect, entry.height))
+  if (opts.pin || opts.onPin) {
+    const p = computePin(rect, entry.height)
+    if (opts.pin) setVar(entry, '--sv-pin', p)
+    opts.onPin?.(p)
   }
 
   if (opts.scenes && opts.scenes > 1) {

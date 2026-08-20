@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — 2026-08-20
+
+- **`onPin` callback** on TrackOptions and the React layer — raw 0..1 across
+  the pinned stretch, for frame scrubbing and camera tours. The demo already
+  taught it; now the package has it.
+- Demo code samples audited against the current API: `--sv-y` leftover fixed,
+  deck/reading/counter samples now show the official presets, `useScenes`
+  misuse replaced by `useTrack({ scenes })`.
+
 ## 0.7.0 — 2026-08-19
 
 - **Zero-wrapper mode**: `scan()` tracks every `[data-sv]` element (options
