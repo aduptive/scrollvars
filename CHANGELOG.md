@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0 — 2026-08-19
+
+- **Zero-wrapper mode**: `scan()` tracks every `[data-sv]` element (options
+  via `data-sv-once/pin/travel/scenes`) and follows DOM mutations;
+  `<ScrollVarsBoot />` wraps it for Next.js layouts — pages stay 100% RSC.
+- **Presets promoted from the demo**: `sv-deck` (pinned card pile),
+  `sv-reading` (guided reading), `sv-counter` (`@property` + `counter()`).
+- ESM-correct relative imports (`.js` extensions) — dist now runs in plain
+  Node too, not only through bundlers.
+
 ## 0.6.0 — 2026-08-19
 
 - **`--sv-view` reformulated**: now the signed position relative to the live

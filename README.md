@@ -43,6 +43,9 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-auto` (on the container) | Every direct child rises in DOM order — no classes on children (`sv-skip` opts out) |
 | `sv-drift` | Continuous drift tied to `--sv-view` — follows the finger, no transition |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
+| `sv-deck` | Pinned card pile — each child flies away across its slice of the pin (`--sv-count`) |
+| `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`) |
+| `sv-counter` | Integer counted up by the scroll via `@property` + `counter()` — set `--sv-max` |
 
 Knobs (set anywhere in CSS or inline): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
 
@@ -82,6 +85,23 @@ import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
 ```
 
 Lower level: `<Track>` (the base component) and `useTrack(options)` / `useScenes(count)`.
+
+**Zero-wrapper mode:** drop one `<ScrollVarsBoot />` in the root layout and write
+plain server components with `data-sv` attributes — no client wrappers anywhere:
+
+```tsx
+// app/layout.tsx
+<body><ScrollVarsBoot />{children}</body>
+
+// any RSC — stays on the server
+<section data-sv data-sv-once>
+  <h2 className="sv-rise">Title</h2>
+</section>
+```
+
+Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
+`data-sv-scenes="4"`. New nodes from route changes are picked up automatically
+(vanilla: `scan()`).
 
 ## Pointer tilt
 

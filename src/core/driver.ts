@@ -1,4 +1,4 @@
-import { clamp, easeOutCubic, snapProgress } from './math'
+import { clamp, easeOutCubic, snapProgress } from './math.js'
 
 export interface TrackOptions {
   /** Write `--sv-view` (-1 below viewport → 0 in scene → 1 gone above). Default true. */

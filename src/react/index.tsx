@@ -2,12 +2,32 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { EffectOptions } from '../canvas'
-import { mountEffect } from '../canvas'
-import type { TrackOptions } from '../core/driver'
-import { scrollToScene, track } from '../core/driver'
-import type { PointerOptions } from '../core/pointer'
-import { trackPointer } from '../core/pointer'
+import type { EffectOptions } from '../canvas/index.js'
+import { mountEffect } from '../canvas/index.js'
+import type { TrackOptions } from '../core/driver.js'
+import { scrollToScene, track } from '../core/driver.js'
+import type { PointerOptions } from '../core/pointer.js'
+import { trackPointer } from '../core/pointer.js'
+import { scan } from '../core/scan.js'
+
+/**
+ * Zero-wrapper mode: drop one `<ScrollVarsBoot />` in the root layout and
+ * write plain server components with `data-sv` attributes — no client
+ * wrappers anywhere else. New nodes (route changes, streamed content) are
+ * picked up automatically.
+ *
+ *   // app/layout.tsx
+ *   <body><ScrollVarsBoot />{children}</body>
+ *
+ *   // any RSC — stays on the server
+ *   <section data-sv data-sv-once className="…">
+ *     <h2 className="sv-rise">Title</h2>
+ *   </section>
+ */
+export const ScrollVarsBoot: React.FC = () => {
+  useEffect(() => scan(), [])
+  return null
+}
 
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel'>
 

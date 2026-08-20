@@ -32,9 +32,9 @@ custom presets.
 ## Imports
 
 ```ts
-import { track, trackPointer, scrollToScene } from 'scrollvars'          // vanilla core
-import { Track, Reveal, Parallax, Scenes, Item, useTrack, useScenes,
-         usePointer, useCanvasEffect } from 'scrollvars/react'           // React ('use client')
+import { track, trackPointer, scrollToScene, scan } from 'scrollvars'    // vanilla core
+import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
+         useScenes, usePointer, useCanvasEffect } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
 import 'scrollvars/styles.css'                                           // presets
 ```
@@ -67,6 +67,16 @@ pinned effects use the presets: `sv-curtain-l/r` (two halves open),
 `sv-rail` (horizontal carousel — enters from offscreen right and still moves
 when the track fits the viewport:
 `translate: calc((1 - var(--sv-pin)) * 100vw + var(--sv-pin) * min(100vw - 100%, 0px)) 0`).
+
+**Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
+root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`) — no client components
+in pages at all. Route-change nodes are auto-tracked via MutationObserver.
+
+**Pinned presets:** `sv-deck` (card pile, children stack via grid, set
+`--sv-count`), `sv-reading` (word spans lit across the pin: `--sv-count` on
+the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
+`@property` + `counter()`, set `--sv-max`; number renders as `::after`).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
