@@ -98,9 +98,15 @@ with pinned sections) and toggle it regionally via `onLive` toggling a class on
 `<html>`; never globally.
 
 **Camera-path pages (map worlds):** pin a tall rail, `onPin` drives a camera
-along an SVG path (`getPointAtLength` for position, a sample ~40px ahead +
-`atan2` for heading, world gets ONE composited transform; children counter-rotate
-with a `--map-ang` var to stay upright).
+along an SVG path (`getPointAtLength` for position, a sample ahead + `atan2`
+for heading, world gets ONE composited transform; children counter-rotate
+with a `--map-ang` var to stay upright). ⚠️ The performance ceiling is the
+PAINTED size of the promoted layer, not the transform: a world div that
+paints backgrounds/routes across thousands of px allocates a huge GPU
+texture and old integrated GPUs churn re-rasterizing it (fluid at first,
+janks as the camera enters unrasterized territory). Keep the transformed
+div paint-sparse (cards only) and draw grids/routes on a viewport-sized
+canvas with the same camera transform (`Path2D` from the SVG `d`).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
