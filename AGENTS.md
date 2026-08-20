@@ -32,9 +32,9 @@ custom presets.
 ## Imports
 
 ```ts
-import { track, trackPointer, scrollToScene, scan } from 'scrollvars'    // vanilla core
+import { track, trackPointer, scrollToScene, scan, slider } from 'scrollvars' // vanilla core
 import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
-         useScenes, usePointer, useCanvasEffect } from 'scrollvars/react'           // React ('use client')
+         useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
 import 'scrollvars/styles.css'                                           // presets
 ```
@@ -77,6 +77,20 @@ in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 `--sv-count`), `sv-reading` (word spans lit across the pin: `--sv-count` on
 the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 `@property` + `counter()`, set `--sv-max`; number renders as `::after`).
+
+**Carousel / slider (do NOT add Swiper):** `useSlider()` / `slider(el)` —
+native scroll + snap; slides get `--sd` (signed distance from center) and
+`.sv-active`, so slide animations are pure CSS (`scale: calc(1 - abs(var(--sd)) * .1)`).
+Handle: `next/prev/goTo/active`. Options: `snap: 'proximity'|'mandatory'`, `drag`.
+
+**Scroll-snap on the page:** scope it — `proximity` (never `mandatory` on pages
+with pinned sections) and toggle it regionally via `onLive` toggling a class on
+`<html>`; never globally.
+
+**Camera-path pages (map worlds):** pin a tall rail, `onPin` drives a camera
+along an SVG path (`getPointAtLength` for position, a sample ~40px ahead +
+`atan2` for heading, world gets ONE composited transform; children counter-rotate
+with a `--map-ang` var to stay upright).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
@@ -125,7 +139,7 @@ animations where supported.
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`
 (harness), `src/react/`, `styles.css` (presets), `demo/index.html`
-(21 live patterns, self-contained — its driver copy is the **built dist**,
+(22 live patterns, self-contained — its driver copy is the **built dist**,
 inlined verbatim; never hand-edit that copy), `test/` (node:test, no DOM —
 stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc). Node version:
 respect `.nvmrc`.

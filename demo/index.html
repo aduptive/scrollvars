@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 21 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 22 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -894,6 +894,71 @@ html.snap-region { scroll-snap-type: y proximity; }
   color: var(--accent);
   background: var(--accent-dim);
 }
+
+/* ── case 12 · the treasure map: scroll drives a camera along a path ── */
+.map-outer { height: 500vh; position: relative; }
+.map-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #12101a;
+}
+.map-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4000px;
+  height: 3000px;
+  transform-origin: 0 0;
+  will-change: transform;
+  /* subtle chart grid */
+  background-image:
+    linear-gradient(rgba(167,139,250,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167,139,250,0.05) 1px, transparent 1px);
+  background-size: 200px 200px;
+}
+.map-world svg { position: absolute; inset: 0; }
+.map-route {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-dasharray: 18 16;
+  opacity: 0.55;
+}
+.map-station {
+  position: absolute;
+  width: 340px;
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(27, 26, 36, 0.92);
+  translate: -50% -50%;
+  rotate: var(--map-ang, 0rad); /* counter-rotation: cards stay upright */
+}
+.map-station .n0 { font: 600 13px var(--mono); color: var(--num); }
+.map-station h3 { font-size: 18px; margin: 6px 0; }
+.map-station p { color: var(--muted); font-size: 13px; line-height: 1.55; }
+.map-compass {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  background: rgba(18, 16, 26, 0.8);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-outer { height: auto; }
+  .map-sticky { position: static; height: auto; overflow: visible; background: none; }
+  .map-world { position: static; width: auto; height: auto; transform: none !important; background: none; }
+  .map-world svg { display: none; }
+  .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
+  .map-compass { display: none; }
+}
 </style>
 </head>
 <body>
@@ -1708,6 +1773,72 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
   </div>
 </section>
 
+<!-- ══════════════ 12 · TREASURE MAP ══════════════ -->
+<section class="demo">
+  <div class="wrap sv" data-sv data-once>
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 12 · the treasure map</p>
+      <h2 class="sv-rise" style="--sv-order: 1">The page doesn't scroll — the camera travels</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        A 4000×3000 world, a dashed route, and one inversion: the scroll is fuel for a
+        <strong>camera following an SVG path</strong>. <span class="inline-code">getPointAtLength</span>
+        gives the position, a point sampled just ahead gives the heading, and the whole
+        world counter-rotates so you always travel "forward" — right, down, around the bend.
+        One composited transform; the browser never lays out the 4000px. The cards
+        counter-rotate to stay readable.
+      </p>
+    </div>
+  </div>
+  <div class="map-outer sv" id="map-demo" data-hud="map">
+    <div class="map-sticky">
+      <div class="map-world" id="map-world">
+        <svg viewBox="0 0 4000 3000" width="4000" height="3000">
+          <path id="map-route" class="map-route"
+            d="M 400 300 C 1400 120, 2600 120, 3300 500 C 3900 830, 3500 1180, 2600 1280 C 1800 1370, 1240 1160, 820 1400 C 320 1690, 520 2020, 1400 2110 C 2220 2190, 2900 1780, 3180 2000 C 3560 2300, 3260 2620, 2000 2700" />
+        </svg>
+        <div class="map-station" style="left: 400px; top: 300px;">
+          <div class="n0">station 01</div>
+          <h3>You start here</h3>
+          <p>Scroll: the camera casts off along the dashed route.</p>
+        </div>
+        <div class="map-station" style="left: 3300px; top: 500px;">
+          <div class="n0">station 02</div>
+          <h3>First bend</h3>
+          <p>The heading comes from a point sampled just ahead on the path — atan2, nothing more.</p>
+        </div>
+        <div class="map-station" style="left: 820px; top: 1400px;">
+          <div class="n0">station 03</div>
+          <h3>Crossing back</h3>
+          <p>One transform on one composited layer. The 4000px world never re-lays-out.</p>
+        </div>
+        <div class="map-station" style="left: 3180px; top: 2000px;">
+          <div class="n0">station 04</div>
+          <h3>The long way round</h3>
+          <p>Inertia is the same exponential lerp as everywhere else in this page.</p>
+        </div>
+        <div class="map-station" style="left: 2000px; top: 2700px;">
+          <div class="n0">station 05</div>
+          <h3>X marks the spot</h3>
+          <p>The treasure was a performant scroll story all along.</p>
+        </div>
+      </div>
+      <div class="map-compass" id="map-compass">heading 0°</div>
+    </div>
+  </div>
+  <div class="wrap sv" data-sv data-once>
+    <pre style="margin-top: 28px;"><code><span class="c">// the camera: position from the path, heading from a point just ahead</span>
+<span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; { target = p } })
+
+<span class="c">// per frame (inertia lerp): put P at screen center, face the travel direction</span>
+const a = route.<span class="k">getPointAtLength</span>(t * len)
+const b = route.<span class="k">getPointAtLength</span>(Math.min(t * len + 40, len))
+const ang = Math.<span class="k">atan2</span>(b.y - a.y, b.x - a.x)
+world.style.transform =
+  `translate(${cx}px,${cy}px) <span class="k">rotate(${-ang}rad)</span> translate(${-a.x}px,${-a.y}px)`
+world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s">'rad'</span>)  <span class="c">// cards counter-rotate</span></code></pre>
+  </div>
+</section>
+
 <!-- ══════════════ API ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="api">
   <div class="wrap">
@@ -2403,6 +2534,57 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
       }
     },
   });
+  /* treasure map: the scroll fuels a camera along an SVG path. Position from
+     getPointAtLength, heading from a point sampled ahead, inertia from the
+     same exponential lerp as the parallax columns. */
+  var mapWorld = document.getElementById('map-world');
+  var mapRoute = document.getElementById('map-route');
+  var mapSticky = mapWorld.parentElement;
+  var mapCompass = document.getElementById('map-compass');
+  var mapLen = mapRoute.getTotalLength();
+  var mapTarget = 0;
+  var mapShown = 0;
+  var mapAng = 0;
+  var mapRaf = 0;
+  var mapCompassAt = 0;
+  function angleLerp(a, b, k) {
+    var d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return a + d * k;
+  }
+  function mapTick(now) {
+    mapRaf = 0;
+    mapShown += (mapTarget - mapShown) * 0.1;
+    var t = mapShown * mapLen;
+    var a = mapRoute.getPointAtLength(t);
+    var b = mapRoute.getPointAtLength(Math.min(t + 40, mapLen));
+    var target = Math.atan2(b.y - a.y, b.x - a.x);
+    mapAng = angleLerp(mapAng, target, 0.08);
+    var cx = mapSticky.clientWidth / 2;
+    var cy = mapSticky.clientHeight / 2;
+    mapWorld.style.transform =
+      'translate(' + cx + 'px,' + cy + 'px) rotate(' + (-mapAng) + 'rad) translate(' + (-a.x) + 'px,' + (-a.y) + 'px)';
+    mapWorld.style.setProperty('--map-ang', mapAng + 'rad');
+    if (now - mapCompassAt > 120) {
+      mapCompassAt = now;
+      mapCompass.textContent = 'heading ' + Math.round(((mapAng * 180) / Math.PI + 360) % 360) + '\u00b0';
+    }
+    if (Math.abs(mapTarget - mapShown) > 0.0004) {
+      mapRaf = requestAnimationFrame(mapTick);
+    }
+  }
+  if (!reduced) {
+    mapTick(0);
+    register(document.getElementById('map-demo'), {
+      pin: true,
+      hud: 'map',
+      onPin: function (p) {
+        mapTarget = p;
+        if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
+      },
+    });
+  }
 })();
 </script>
 <script>

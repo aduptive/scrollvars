@@ -103,6 +103,24 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 `data-sv-scenes="4"`. New nodes from route changes are picked up automatically
 (vanilla: `scan()`).
 
+## Slider (Swiper, featherweight)
+
+Native scroll + scroll-snap do the carousel; the module adds mouse drag,
+the active-slide observer and controls. Slides get `--sd` (signed distance
+from center, in slide widths) and `.sv-active` — any CSS reading them
+animates the carousel with zero per-frame JS:
+
+```tsx
+const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
+<div ref={ref}>{slides.map(…)}</div>
+
+/* coverflow in two lines */
+.slide { scale: calc(1 - min(abs(var(--sd)) * 0.12, 0.3)); opacity: calc(1 - abs(var(--sd)) * 0.35); }
+```
+
+Options: `snap: 'mandatory' | 'proximity'`, `drag: false`. Handle:
+`next/prev/goTo/active/destroy`.
+
 ## Pointer tilt
 
 Same philosophy, different input — the pointer becomes `--mx`/`--my` (−1..1 from each card's center):

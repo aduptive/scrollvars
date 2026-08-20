@@ -9,6 +9,8 @@ import { scrollToScene, track } from '../core/driver.js'
 import type { PointerOptions } from '../core/pointer.js'
 import { trackPointer } from '../core/pointer.js'
 import { scan } from '../core/scan.js'
+import type { SliderHandle, SliderOptions } from '../core/slider.js'
+import { slider } from '../core/slider.js'
 
 /**
  * Zero-wrapper mode: drop one `<ScrollVarsBoot />` in the root layout and
@@ -309,6 +311,35 @@ export function useCanvasEffect(options: EffectOptions) {
   }, [dprCap, autoPause])
 
   return ref
+}
+
+/**
+ * Featherweight carousel on native scroll + snap (see `scrollvars/slider`
+ * docs in the core module). Returns the container ref, the active index
+ * (re-renders only when it changes) and next/prev/goTo controls. Slides get
+ * `--sd` / `.sv-active` for pure-CSS animation.
+ */
+export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const handleRef = useRef<SliderHandle | null>(null)
+  const [active, setActive] = useState(0)
+  const { snap, drag } = options
+
+  useEffect(() => {
+    if (!ref.current) return
+    const handle = slider(ref.current, { snap, drag, onSlide: setActive })
+    handleRef.current = handle
+    return handle.destroy
+  }, [snap, drag])
+
+  const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
+  const prev = useCallback((smooth?: boolean) => handleRef.current?.prev(smooth), [])
+  const goTo = useCallback(
+    (index: number, smooth?: boolean) => handleRef.current?.goTo(index, smooth),
+    []
+  )
+
+  return { ref, active, next, prev, goTo }
 }
 
 /** Pointer tilt for every `.sv-tilt` descendant — one delegated listener. */

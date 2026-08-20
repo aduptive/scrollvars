@@ -139,6 +139,27 @@
   content: counter(sv-counter);
 }
 
+/* Slider: native rails + snap magnetism; the class is added by slider().
+   Slides get --sd (signed distance from center, in slide widths) and
+   .sv-active — any CSS reading them animates the carousel. */
+.sv-slider {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  overflow-x: auto;
+  scroll-snap-type: x var(--sv-snap, mandatory);
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+.sv-slider > * {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+.sv-slider.sv-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 
 @keyframes sv-in-fade {

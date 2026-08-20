@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0 — 2026-08-20
+
+- **`slider()` / `useSlider`** — featherweight Swiper: native scroll +
+  scroll-snap, mouse drag, active-slide observer as `--sd` per slide (signed
+  distance from center) + `.sv-active`, `next/prev/goTo`. `.sv-slider` CSS
+  in styles.css.
+- Demo case 10/11: regional scroll-snap (onLive toggles the magnet) and the
+  four snap flavors. Case 12: the treasure map — scroll drives a camera along
+  an SVG path with heading + counter-rotating stations.
+
 ## 0.8.0 — 2026-08-20
 
 - **`onPin` callback** on TrackOptions and the React layer — raw 0..1 across
