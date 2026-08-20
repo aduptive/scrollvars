@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 19 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 21 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -831,6 +831,69 @@
   letter-spacing: 0.06em;
   pointer-events: none;
 }
+
+/* ── case 10 · regional scroll-snap: the magnet exists only while the
+      group is on screen (sv-live toggles a class on <html>) ── */
+html.snap-region { scroll-snap-type: y proximity; }
+.snap-panel {
+  height: 100vh;
+  scroll-snap-align: start;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.snap-panel:nth-child(1) { background: linear-gradient(170deg, #1d1930, var(--ink) 80%); }
+.snap-panel:nth-child(2) { background: linear-gradient(170deg, #241d18, var(--ink) 80%); }
+.snap-panel:nth-child(3) { background: linear-gradient(170deg, #16211d, var(--ink) 80%); }
+.snap-panel .big {
+  font-size: clamp(26px, 4.5vw, 52px);
+  font-weight: 700;
+}
+.snap-panel p { color: var(--muted); font-size: 14px; margin-top: 10px; }
+
+/* ── case 11 · snap configs on an inner carousel ── */
+.snapcar {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 18px 24px;
+  background: #17151f;
+  border-radius: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+.snapcar[data-mode="proximity"] { scroll-snap-type: x proximity; }
+.snapcar[data-mode="mandatory"],
+.snapcar[data-mode="stop"] { scroll-snap-type: x mandatory; }
+.snapcar > div {
+  flex: 0 0 min(340px, 78vw);
+  height: 200px;
+  border-radius: 12px;
+  background: linear-gradient(150deg, #221f31, var(--surface) 65%);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font: 500 14px/1.5 var(--mono);
+  color: var(--muted);
+  scroll-snap-align: center;
+  text-align: center;
+}
+.snapcar[data-mode="stop"] > div { scroll-snap-stop: always; }
+.snap-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+.snap-buttons button {
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.05em;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.snap-buttons button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
 </style>
 </head>
 <body>
@@ -1560,6 +1623,91 @@ mountEffect(canvas, {
   </div>
 </section>
 
+<!-- ══════════════ 10 · REGIONAL SCROLL-SNAP ══════════════ -->
+<section class="demo">
+  <div class="wrap sv" data-sv data-once>
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 10 · scroll-snap, regional</p>
+      <h2 class="sv-rise" style="--sv-order: 1">A magnet only where you want it</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Scroll-snap is the browser's native magnet — but declared on
+        <span class="inline-code">&lt;html&gt;</span> it would magnetize the whole page and
+        fight every pinned section. The trick: <span class="inline-code">onLive</span>
+        toggles a class on the root, so <strong>the snap exists only while these three
+        panels are on screen</strong>. Proximity, not mandatory — free in between, magnetic
+        near the seams. The variables keep flowing during the settle: watch the entrances.
+      </p>
+    </div>
+  </div>
+  <div id="snap-group" data-hud="snap">
+    <div class="snap-panel sv" data-sv>
+      <div>
+        <div class="big sv-rise">panel one</div>
+        <p class="sv-rise" style="--sv-order: 1">release the scroll near an edge — it settles</p>
+      </div>
+    </div>
+    <div class="snap-panel sv" data-sv>
+      <div>
+        <div class="big sv-rise">panel two</div>
+        <p class="sv-rise" style="--sv-order: 1">proximity: the middle of a long scroll stays free</p>
+      </div>
+    </div>
+    <div class="snap-panel sv" data-sv>
+      <div>
+        <div class="big sv-rise">panel three</div>
+        <p class="sv-rise" style="--sv-order: 1">leave the region and the magnet is gone</p>
+      </div>
+    </div>
+  </div>
+  <div class="wrap sv" data-sv data-once>
+    <pre style="margin-top: 28px;"><code><span class="c">/* the magnet, scoped: active only while the group is live */</span>
+html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
+.panel { scroll-snap-align: <span class="k">start</span>; height: 100vh; }
+
+<span class="k">track</span>(group, { onLive: (live) =&gt;
+  document.documentElement.classList.toggle(<span class="s">'snap-region'</span>, live)
+})
+<span class="c">// proximity, never mandatory, on a page with pinned sections —</span>
+<span class="c">// mandatory would forbid resting mid-pin</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 11 · SNAP CONFIGS ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="snap configs">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 11 · snap flavors</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Four magnets, one carousel</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Same inner scroller, four <span class="inline-code">scroll-snap</span> configs —
+        drag it after each switch. <strong>free</strong>: no snap, momentum decides.
+        <strong>proximity</strong>: settles when you stop near a card.
+        <strong>mandatory</strong>: always lands centered on a card.
+        <strong>stop</strong>: mandatory + <span class="inline-code">scroll-snap-stop:
+        always</span> — one card per gesture, the slideshow feel. All of it is CSS;
+        no library required, and none of it fights the driver.
+      </p>
+    </div>
+    <div class="snap-buttons sv-rise" style="--sv-order: 3" id="snap-modes">
+      <button data-mode="free" class="on">free</button>
+      <button data-mode="proximity">proximity</button>
+      <button data-mode="mandatory">mandatory</button>
+      <button data-mode="stop">mandatory + stop</button>
+    </div>
+    <div class="snapcar sv-rise" style="--sv-order: 4" id="snapcar" data-mode="free">
+      <div>01<br>drag me sideways</div>
+      <div>02<br>then switch the mode</div>
+      <div>03<br>feel the difference</div>
+      <div>04<br>stop = one per gesture</div>
+      <div>05<br>all native CSS</div>
+      <div>06<br>zero JS in the magnet</div>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 5"><code>.carousel { overflow-x: auto; scroll-snap-type: <span class="k">x proximity</span>; }  <span class="c">/* or x mandatory */</span>
+.carousel &gt; * { scroll-snap-align: <span class="k">center</span>; }
+.carousel.slideshow &gt; * { scroll-snap-stop: <span class="k">always</span>; }  <span class="c">/* one card per gesture */</span></code></pre>
+  </div>
+</section>
+
 <!-- ══════════════ API ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="api">
   <div class="wrap">
@@ -1724,6 +1872,7 @@ mountEffect(canvas, {
       if (isActive !== e.active) {
         e.active = isActive;
         e.el.classList.toggle('sv-live', isActive);
+        if (o.onLive) o.onLive(isActive);
       }
       var d = reduced ? 0 : computeView(rect);
       setVar(e, '--sv-view', d);
@@ -2099,6 +2248,25 @@ mountEffect(canvas, {
   // the crossover: scroll driver feeds the simulation through a closure
   register(document.getElementById('amb-section'), {
     onTravel: function (t) { ambAmp = t; },
+  });
+
+  // regional scroll-snap: the magnet exists only while the group is live
+  register(document.getElementById('snap-group'), {
+    hud: 'snap',
+    onLive: function (live) {
+      document.documentElement.classList.toggle('snap-region', live);
+    },
+  });
+
+  // snap flavors: buttons swap the carousel's data-mode
+  var snapcar = document.getElementById('snapcar');
+  document.getElementById('snap-modes').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    snapcar.setAttribute('data-mode', btn.getAttribute('data-mode'));
+    this.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b === btn);
+    });
   });
 
   /* warp: pinned starfield — the pin value is the camera's travel, its
