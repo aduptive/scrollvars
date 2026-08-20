@@ -82,6 +82,10 @@ the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 native scroll + snap; slides get `--sd` (signed distance from center) and
 `.sv-active`, so slide animations are pure CSS (`scale: calc(1 - abs(var(--sd)) * .1)`).
 Handle: `next/prev/goTo/active`. Options: `snap: 'proximity'|'mandatory'`, `drag`.
+Page-scroll-driven variant (pin the rail, map the axes; set
+`scroll-snap-type: none` on this instance — the pin dictates position):
+`track(rail, { pin: true, onPin: (p) => { el.scrollLeft = p * (el.scrollWidth - el.clientWidth) } })`.
+Discrete flavor: `track(rail, { scenes: n, onScene: (i) => s.goTo(i) })`.
 
 **Scroll-snap on the page:** scope it — `proximity` (never `mandatory` on pages
 with pinned sections) and toggle it regionally via `onLive` toggling a class on

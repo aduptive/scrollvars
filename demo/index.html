@@ -1017,6 +1017,23 @@ html.snap-region { scroll-snap-type: y proximity; }
   transition: background 300ms, scale 300ms;
 }
 .slider-dots i.on { background: var(--accent); scale: 1.3; }
+
+/* case 13b · the same slider, driven by the page's vertical scroll */
+.sliderail-outer { height: 260vh; position: relative; }
+.sliderail-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+.sliderail-hint {
+  text-align: center;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
 </style>
 </head>
 <body>
@@ -1934,6 +1951,28 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   scale: <span class="k">calc(1 - abs(var(--sd)) * 0.13)</span>;
   transform: perspective(900px) <span class="k">rotateY(calc(var(--sd) * -18deg))</span>;
 }</code></pre>
+  </div>
+  <div class="sliderail-outer sv" id="slider-rail-outer" data-hud="slider · scroll">
+    <div class="sliderail-sticky">
+      <div class="sliderail-hint">13b · same module, no buttons — the PAGE scroll drives it</div>
+      <div class="sv-slider demo-slider" id="slider-rail" style="scroll-snap-type: none;">
+        <div>01<br>vertical in</div>
+        <div>02<br>horizontal out</div>
+        <div>03<br>onPin maps the axes</div>
+        <div>04<br>--sd still animates</div>
+        <div>05<br>one line of glue</div>
+        <div>06<br>keep scrolling to exit</div>
+      </div>
+      <div class="sliderail-hint">scrollLeft = pin × (scrollWidth − clientWidth)</div>
+    </div>
+  </div>
+  <div class="wrap sv" data-sv data-once>
+    <pre style="margin-top: 28px;"><code><span class="c">// the page's vertical scroll becomes the carousel's fuel</span>
+<span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; {
+  carousel.scrollLeft = p * (carousel.scrollWidth - carousel.clientWidth)
+}})
+<span class="c">// drag, buttons, touch and scroll all speak the same language:</span>
+<span class="c">// the container's scroll position — so they never fight</span></code></pre>
   </div>
 </section>
 
@@ -2884,6 +2923,19 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
   sliderDots.addEventListener('click', function (e) {
     var i = Array.prototype.indexOf.call(sliderDots.children, e.target);
     if (i >= 0) sliderHandle.goTo(i);
+  });
+
+  /* 13b: page scroll drives the slider — one line of glue. Snap is off on
+     this instance (the pin dictates the position); --sd/.sv-active still
+     flow because the observer just reads the container's scroll. */
+  var railCar = document.getElementById('slider-rail');
+  slider(railCar, { drag: false });
+  register(document.getElementById('slider-rail-outer'), {
+    pin: true,
+    hud: 'slider · scroll',
+    onPin: function (p) {
+      railCar.scrollLeft = p * (railCar.scrollWidth - railCar.clientWidth);
+    },
   });
 })();
 </script>
