@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 23 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 26 live patterns.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1066,6 +1066,145 @@ html.snap-region { scroll-snap-type: y proximity; }
   color: var(--muted);
   letter-spacing: 0.08em;
 }
+
+/* ── case 14 · the wheel (vertical slider as an iOS-style picker) ── */
+.wheel-stage {
+  display: flex;
+  justify-content: center;
+  perspective: 900px;
+}
+.wheel {
+  width: min(360px, 80vw);
+  height: 300px;
+  padding: 118px 0;
+  background: #17151f;
+  border-radius: 16px;
+  scrollbar-width: none;
+  gap: 8px;
+}
+.wheel::-webkit-scrollbar { display: none; }
+.wheel > div {
+  height: 56px;
+  margin: 0 18px;
+  display: grid;
+  place-items: center;
+  font: 500 17px var(--mono);
+  color: var(--text);
+  border-radius: 10px;
+  transform: rotateX(calc(var(--sd, 0) * -34deg)) translateZ(10px);
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.38, 0.82));
+}
+.wheel > div.sv-active { color: var(--accent); }
+.wheel-pointer {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 50%;
+  height: 56px;
+  translate: 0 -50%;
+  border-top: 1px solid var(--accent-dim);
+  border-bottom: 1px solid var(--accent-dim);
+  pointer-events: none;
+}
+
+/* ── case 15 · swipe verdict (Tinder-style) ── */
+.verdict {
+  padding: 34px calc(50% - 160px);
+  background: #17151f;
+  border-radius: 16px;
+  scrollbar-width: none;
+}
+.verdict::-webkit-scrollbar { display: none; }
+.verdict > div {
+  position: relative;
+  width: 320px;
+  height: 380px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #262137, var(--surface) 70%);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 22px;
+  overflow: hidden;
+  /* the tinder tilt: hangs from the bottom, leans with the drag */
+  transform-origin: 50% 120%;
+  rotate: calc(var(--sd, 0) * -9deg);
+}
+.verdict .face {
+  font-size: 110px;
+  text-align: center;
+  margin-bottom: auto;
+  padding-top: 40px;
+}
+.verdict h3 { font-size: 20px; }
+.verdict p { color: var(--muted); font-size: 13px; }
+.verdict .stamp {
+  position: absolute;
+  top: 26px;
+  font: 800 30px/1 var(--sans);
+  letter-spacing: 0.06em;
+  padding: 6px 14px;
+  border: 4px solid;
+  border-radius: 10px;
+  rotate: -14deg;
+  pointer-events: none;
+}
+/* the sign of --sd IS the verdict: dragged right → LIKE, left → NOPE */
+.verdict .like {
+  left: 22px;
+  color: #6ee7a0;
+  border-color: #6ee7a0;
+  opacity: clamp(0, var(--sd, 0) * 1.6 - 0.1, 1);
+}
+.verdict .nope {
+  right: 22px;
+  color: #ff7d90;
+  border-color: #ff7d90;
+  rotate: 14deg;
+  opacity: clamp(0, var(--sd, 0) * -1.6 - 0.1, 1);
+}
+.verdict-hint {
+  text-align: center;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: 14px;
+}
+
+/* ── case 16 · window parallax gallery ── */
+.wingal {
+  padding: 30px calc(50% - min(34vw, 300px));
+  background: #17151f;
+  border-radius: 16px;
+  scrollbar-width: none;
+}
+.wingal::-webkit-scrollbar { display: none; }
+.wingal > div {
+  position: relative;
+  width: min(68vw, 600px);
+  height: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  place-items: end start;
+}
+.wingal .bg {
+  position: absolute;
+  inset: -12% -34%;
+  /* the window parallax: the scenery travels slower than the frame */
+  translate: calc(var(--sd, 0) * 16%) 0;
+}
+.wingal .g1 { background: linear-gradient(115deg, #2b1d4d, #7c5cd4 55%, #ffb454); }
+.wingal .g2 { background: linear-gradient(115deg, #0f2b28, #1f8a70 55%, #a7f3d0); }
+.wingal .g3 { background: linear-gradient(115deg, #33121f, #c2455c 55%, #ffd9a0); }
+.wingal .g4 { background: linear-gradient(115deg, #101f38, #2563b0 55%, #93c5fd); }
+.wingal h3 {
+  position: relative;
+  margin: 0 0 22px 26px;
+  font-size: clamp(26px, 4vw, 44px);
+  text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+}
 </style>
 </head>
 <body>
@@ -1952,7 +2091,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">Swiper, minus the 40&nbsp;KB</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 1.4&nbsp;KB carousel — 30× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span> — the browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -1963,9 +2102,10 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
         the mouse, fling it on touch, or use the arrows — and the vertical rail beside it
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
-        For reference, measured on jsDelivr: Swiper 11 bundle is 151&nbsp;KB min /
-        42&nbsp;KB gzip (+18&nbsp;KB CSS); this module is <strong>3.1&nbsp;KB min /
-        1.4&nbsp;KB gzip</strong>.
+        The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 3.1&nbsp;KB minified —
+        <strong>1.4&nbsp;KB gzipped, ~30× lighter</strong> — because the browser
+        already ships the hard parts.
       </p>
     </div>
     <div class="slider-duo sv-rise" style="--sv-order: 3">
@@ -2017,6 +2157,83 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
 }})
 <span class="c">// one writer only: overflow-x hidden turns off direct swiping here,</span>
 <span class="c">// or the two scrolls desync — JS can still write scrollLeft freely</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 14 · THE WHEEL ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="wheel">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 14 · the wheel</p>
+      <h2 class="sv-rise" style="--sv-order: 1">A vertical slider wearing 3D</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        The same module with <span class="inline-code">axis: 'y'</span>, styled like an
+        iOS picker: each option rotates on X by its own <span class="inline-code">--sd</span>
+        and fades with distance — a drum you spin with wheel, drag or touch. Snap is the
+        detent; <span class="inline-code">onSlide</span> is the value.
+      </p>
+    </div>
+    <div class="wheel-stage sv-rise" style="--sv-order: 3">
+      <div style="position: relative;">
+        <div class="sv-slider wheel" id="wheel-slider">
+          <div>none</div><div>rise</div><div>fade</div><div>slide</div>
+          <div>drift</div><div>curtain</div><div>rail</div><div>tilt</div>
+        </div>
+        <div class="wheel-pointer"></div>
+      </div>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">slider</span>(el, { axis: <span class="s">'y'</span>, onSlide: (i) =&gt; pick(OPTIONS[i]) })
+
+.wheel &gt; * {
+  transform: <span class="k">rotateX(calc(var(--sd) * -34deg)) translateZ(10px)</span>;
+  opacity: <span class="k">calc(1 - abs(var(--sd)) * 0.38)</span>;
+}</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 15 · SWIPE VERDICT ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="verdict">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 15 · swipe verdict</p>
+      <h2 class="sv-rise" style="--sv-order: 1">The Tinder mechanic is one variable</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Drag the card: it hangs from the bottom and leans with the gesture
+        (<span class="inline-code">rotate: calc(var(--sd) * -9deg)</span>), and the
+        <strong>sign of --sd is the verdict</strong> — pull right and LIKE stamps in,
+        pull left and NOPE does. Let go halfway and the glide springs it back;
+        commit and the next candidate slides up. Zero JS in the choreography.
+      </p>
+    </div>
+    <div class="sv-slider verdict sv-rise" style="--sv-order: 3" id="verdict-slider">
+      <div><span class="stamp like">LIKE</span><span class="stamp nope">NOPE</span><div class="face">🦆</div><h3>The Duck, 3</h3><p>renders on demand · very low poly · loves scrubbing</p></div>
+      <div><span class="stamp like">LIKE</span><span class="stamp nope">NOPE</span><div class="face">🧲</div><h3>Snap, 7</h3><p>magnetic personality · settles down fast · a bit mandatory</p></div>
+      <div><span class="stamp like">LIKE</span><span class="stamp nope">NOPE</span><div class="face">📜</div><h3>Scrolly, 12</h3><p>goes both ways · never re-renders · one rAF only</p></div>
+      <div><span class="stamp like">LIKE</span><span class="stamp nope">NOPE</span><div class="face">🌀</div><h3>Lerp, ∞</h3><p>approaches asymptotically · never quite arrives · so smooth</p></div>
+    </div>
+    <div class="verdict-hint sv-rise" style="--sv-order: 4">← nope · drag · like →</div>
+  </div>
+</section>
+
+<!-- ══════════════ 16 · WINDOW PARALLAX ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="window">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 16 · window parallax</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Every card is a window</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        The award-site gallery: each slide's scenery is oversized and travels slower
+        than its frame (<span class="inline-code">translate: calc(var(--sd) * 16%)</span>)
+        — parallax through a window as the train passes. Two CSS declarations
+        per slide, driven by the same <span class="inline-code">--sd</span>.
+      </p>
+    </div>
+    <div class="sv-slider wingal sv-rise" style="--sv-order: 3" id="wingal-slider">
+      <div><div class="bg g1"></div><h3>dusk</h3></div>
+      <div><div class="bg g2"></div><h3>lagoon</h3></div>
+      <div><div class="bg g3"></div><h3>ember</h3></div>
+      <div><div class="bg g4"></div><h3>north</h3></div>
+    </div>
   </div>
 </section>
 
@@ -3160,6 +3377,11 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     var i = Array.prototype.indexOf.call(thumbsEl.children, e.target);
     if (i >= 0) sliderHandle.goTo(i);
   });
+
+  // case 14/15/16: three more slider instances, all animated by CSS on --sd
+  slider(document.getElementById('wheel-slider'), { axis: 'y', duration: 900 });
+  slider(document.getElementById('verdict-slider'), { duration: 900 });
+  slider(document.getElementById('wingal-slider'), { duration: 1100 });
   document.getElementById('slider-prev').addEventListener('click', function () { sliderHandle.prev(); });
   document.getElementById('slider-next').addEventListener('click', function () { sliderHandle.next(); });
   sliderDots.addEventListener('click', function (e) {
