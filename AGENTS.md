@@ -157,8 +157,11 @@ Fully animated: Chrome/Edge 104+, Firefox 74+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
 static but 100% visible (`html.sv-on` guard) — animation is enhancement,
-never a dependency. Do not add polyfills or transpile below ES2020 for this
-lib; degrade instead.
+never a dependency. If a client contractually requires legacy browsers:
+`import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
+modern browsers — feature-checks and exits) + let the consumer bundler
+downlevel ES2020 per browserslist. That extends the animated floor to
+~Chrome 61 / Firefox 60 / Safari 11. Do NOT hand-roll other polyfills.
 
 ## Repo layout
 

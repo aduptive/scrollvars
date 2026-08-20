@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0 — 2026-08-20
+
+- **`scrollvars/compat`** — opt-in legacy module: ResizeObserver stub
+  (viewport-resize backed), always-visible IntersectionObserver stub, and a
+  `transform:`-based preset fallback stylesheet (no `:is()`/`clamp()`/
+  `min()`). Free on modern browsers (feature-checks and exits). With the
+  consumer bundler downleveling ES2020, the animated floor extends to
+  ~Chrome 61 / Firefox 60 / Safari 11.
+
 ## 0.11.4 — 2026-08-20
 
 - Keyboard navigation glides: arrow keys (axis-aware), Home and End go

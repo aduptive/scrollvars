@@ -197,6 +197,21 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
 | Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
 
+**Extended floor** — `scrollvars/compat`, an opt-in module for legacy
+targets. On modern browsers it runs two feature checks and exits (free);
+on old ones it installs a ResizeObserver stub (viewport-resize backed), an
+always-visible IntersectionObserver stub, and a `transform:`-based fallback
+stylesheet for the presets (written without `:is()`/`clamp()`/`min()`).
+Combined with your bundler downleveling the ES2020 dist (Next.js already
+does per browserslist), the core reveal/pin presets animate on roughly
+Chrome 61+ / Firefox 60+ / Safari 11+; sv-counter and sv-view-* stay
+progressive. Call it once, before anything else:
+
+```ts
+import { compat } from 'scrollvars/compat'
+compat()
+```
+
 Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
 (Safari 13.1); presets = individual transform properties (Chrome 104 /
 Firefox 72 / Safari 14.1); canvas harness adds IntersectionObserver
