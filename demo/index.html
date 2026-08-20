@@ -903,20 +903,21 @@ html.snap-region { scroll-snap-type: y proximity; }
   height: 100vh;
   overflow: hidden;
   background: #12101a;
+  contain: strict;
 }
 .map-world {
   position: absolute;
   left: 0;
   top: 0;
-  width: 4000px;
-  height: 3000px;
+  width: 2400px;
+  height: 1800px;
   transform-origin: 0 0;
   will-change: transform;
   /* subtle chart grid */
   background-image:
-    linear-gradient(rgba(167,139,250,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(167,139,250,0.05) 1px, transparent 1px);
-  background-size: 200px 200px;
+    linear-gradient(rgba(167,139,250,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167,139,250,0.04) 1px, transparent 1px);
+  background-size: 240px 240px;
 }
 .map-world svg { position: absolute; inset: 0; }
 .map-route {
@@ -928,8 +929,8 @@ html.snap-region { scroll-snap-type: y proximity; }
 }
 .map-station {
   position: absolute;
-  width: 340px;
-  padding: 22px 26px;
+  width: 320px;
+  padding: 20px 24px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(27, 26, 36, 0.92);
@@ -1892,11 +1893,11 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
       <p class="eyebrow sv-rise">case 12 · the treasure map</p>
       <h2 class="sv-rise" style="--sv-order: 1">The page doesn't scroll — the camera travels</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        A 4000×3000 world, a dashed route, and one inversion: the scroll is fuel for a
+        A 2400×1800 world, a dashed route, and one inversion: the scroll is fuel for a
         <strong>camera following an SVG path</strong>. <span class="inline-code">getPointAtLength</span>
         gives the position, a point sampled just ahead gives the heading, and the whole
         world counter-rotates so you always travel "forward" — right, down, around the bend.
-        One composited transform; the browser never lays out the 4000px. The cards
+        One composited transform; the browser never lays out the world. The cards
         counter-rotate to stay readable.
       </p>
     </div>
@@ -1904,31 +1905,31 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
   <div class="map-outer sv" id="map-demo" data-hud="map">
     <div class="map-sticky">
       <div class="map-world" id="map-world">
-        <svg viewBox="0 0 4000 3000" width="4000" height="3000">
+        <svg viewBox="0 0 2400 1800" width="2400" height="1800">
           <path id="map-route" class="map-route"
-            d="M 400 300 C 1400 120, 2600 120, 3300 500 C 3900 830, 3500 1180, 2600 1280 C 1800 1370, 1240 1160, 820 1400 C 320 1690, 520 2020, 1400 2110 C 2220 2190, 2900 1780, 3180 2000 C 3560 2300, 3260 2620, 2000 2700" />
+            d="M 240 180 C 840 72, 1560 72, 1980 300 C 2340 498, 2100 708, 1560 768 C 1080 822, 744 696, 492 840 C 192 1014, 312 1212, 840 1266 C 1332 1314, 1740 1068, 1908 1200 C 2136 1380, 1956 1572, 1200 1620" />
         </svg>
-        <div class="map-station" style="left: 400px; top: 300px;">
+        <div class="map-station" style="left: 240px; top: 180px;">
           <div class="n0">station 01</div>
           <h3>You start here</h3>
           <p>Scroll: the camera casts off along the dashed route.</p>
         </div>
-        <div class="map-station" style="left: 3300px; top: 500px;">
+        <div class="map-station" style="left: 1980px; top: 300px;">
           <div class="n0">station 02</div>
           <h3>First bend</h3>
           <p>The heading comes from a point sampled just ahead on the path — atan2, nothing more.</p>
         </div>
-        <div class="map-station" style="left: 820px; top: 1400px;">
+        <div class="map-station" style="left: 492px; top: 840px;">
           <div class="n0">station 03</div>
           <h3>Crossing back</h3>
-          <p>One transform on one composited layer. The 4000px world never re-lays-out.</p>
+          <p>One transform on one composited layer. The whole world never re-lays-out.</p>
         </div>
-        <div class="map-station" style="left: 3180px; top: 2000px;">
+        <div class="map-station" style="left: 1908px; top: 1200px;">
           <div class="n0">station 04</div>
           <h3>The long way round</h3>
           <p>Inertia is the same exponential lerp as everywhere else in this page.</p>
         </div>
-        <div class="map-station" style="left: 2000px; top: 2700px;">
+        <div class="map-station" style="left: 1200px; top: 1620px;">
           <div class="n0">station 05</div>
           <h3>X marks the spot</h3>
           <p>The treasure was a performant scroll story all along.</p>
@@ -2804,7 +2805,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     mapShown += (mapTarget - mapShown) * 0.1;
     var t = mapShown * mapLen;
     var a = mapRoute.getPointAtLength(t);
-    var b = mapRoute.getPointAtLength(Math.min(t + 40, mapLen));
+    var b = mapRoute.getPointAtLength(Math.min(t + 26, mapLen));
     var target = Math.atan2(b.y - a.y, b.x - a.x);
     mapAng = angleLerp(mapAng, target, 0.08);
     var cx = mapSticky.clientWidth / 2;
