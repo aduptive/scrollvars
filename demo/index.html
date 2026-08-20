@@ -600,7 +600,7 @@
 
   /* ── demo 5: 3D product tour — one panel per scene ── */
   .tour-panel {
-    --pd: calc(var(--sv-scene, 0) - var(--i));
+    --pd: calc(var(--pz-scene, 0) - var(--i));
     --pabs: max(var(--pd), calc(var(--pd) * -1));
     position: absolute;
     max-width: min(300px, 72vw);
@@ -1186,11 +1186,11 @@ html.snap-region { scroll-snap-type: y proximity; }
   top: calc(100% + 8vh);
   width: 0;
   height: 0;
-  rotate: calc(var(--sv-scene, 0) * -72deg);
+  rotate: calc(var(--pz-scene, 0) * -72deg);
   will-change: rotate;
 }
 .pz-slice {
-  --pd: calc(var(--sv-scene, 0) - var(--i));
+  --pd: calc(var(--pz-scene, 0) - var(--i));
   --pabs: min(max(var(--pd), -1 * var(--pd)), 2);
   position: absolute;
   left: 0;
@@ -3591,13 +3591,31 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
   }
   pzPaint(0);
   var pzPin = 0;
+  var pzShown = 0;
+  var pzHub = document.querySelector('.pz-hub');
+  var pzRafId = 0;
+  /* the wheel has its own inertia: a lerp chases the eased scene, so the
+     rotation speed is decoupled from how hard the user scrolls — the spin
+     is always soft, and the settle decelerates asymptotically. */
+  function pzTick() {
+    pzRafId = 0;
+    var target = computeScene(pzPin, PZ_FLAVORS.length, 0.2);
+    pzShown += (target - pzShown) * 0.065;
+    if (Math.abs(target - pzShown) < 0.0008) pzShown = target;
+    pzHub.style.setProperty('--pz-scene', pzShown.toFixed(4));
+    if (pzShown !== target) pzRafId = requestAnimationFrame(pzTick);
+  }
+  pzTick();
   register(pzOuter, {
     scenes: PZ_FLAVORS.length,
     snap: 0.2, // smaller dead-zone: the flavor commits with less scroll
     pin: true,
     hud: 'pizzeria',
     onScene: pzPaint,
-    onPin: function (p) { pzPin = p; },
+    onPin: function (p) {
+      pzPin = p;
+      if (!pzRafId) pzRafId = requestAnimationFrame(pzTick);
+    },
   });
 
   /* the magnet: while pinned, a quiet scroll settles onto the nearest
