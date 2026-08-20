@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.3 — 2026-08-20
+
+- Glide is now an exponential lerp (velocity ∝ remaining distance) instead of
+  a fixed-duration tween: short drag-release settles feel as soft as long
+  button glides — the tween front-loaded short distances and read as a dry
+  snap. Retargets stay continuous. `duration` calibrates the settle time.
+
 ## 0.10.2 — 2026-08-20
 
 - Rapid `next()`/`prev()` clicks accumulate: relative steps count from the

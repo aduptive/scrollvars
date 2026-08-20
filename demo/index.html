@@ -2874,28 +2874,33 @@ function slider(container, { snap = 'mandatory', drag = true, duration = 600, on
     };
     const glide = (to) => {
         stopGlide();
-        const from = container.scrollLeft;
-        if (duration <= 0 || Math.abs(to - from) < 1) {
+        let current = container.scrollLeft;
+        if (duration <= 0 || Math.abs(to - current) < 1) {
             resumeSnap();
             container.scrollTo({ left: to, behavior: 'instant' });
             return;
         }
         suspendSnap(); // native snap must not tug while we animate
         container.classList.add('sv-gliding');
-        const start = performance.now();
-        // ease-out: leaves with the gesture's energy, decelerates into the stop —
-        // the natural feel for a drag release (ease-in-out hitches there)
-        const ease = (t) => 1 - Math.pow(1 - t, 3);
+        // exponential lerp, not a fixed tween: velocity is proportional to the
+        // remaining distance, so short release settles feel as soft as long
+        // button glides, and retargets (rapid clicks) stay continuous.
+        // `duration` calibrates the settle time (~99.8% covered by then).
+        let last = performance.now();
         const step = (now) => {
-            const k = Math.min((now - start) / duration, 1);
-            container.scrollLeft = from + (to - from) * ease(k);
-            if (k < 1) {
-                anim = requestAnimationFrame(step);
-            }
-            else {
+            const dt = Math.min(now - last, 50);
+            last = now;
+            const factor = 1 - Math.pow(0.002, dt / duration);
+            current += (to - current) * factor;
+            if (Math.abs(to - current) < 0.5) {
+                container.scrollLeft = to;
                 stopGlide();
                 target = -1;
                 resumeSnap(); // position is centered — safe to re-engage
+            }
+            else {
+                container.scrollLeft = current;
+                anim = requestAnimationFrame(step);
             }
         };
         anim = requestAnimationFrame(step);
