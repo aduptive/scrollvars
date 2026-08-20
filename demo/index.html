@@ -1667,13 +1667,16 @@ mountEffect(canvas, {
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
   function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
 
-  function computeDistance(rect, height) {
-    var zone = vh * (2 / 3);
-    var enterTop = rect.top - (vh - zone);
-    if (enterTop > 0) return clamp(-enterTop / zone, -1, 0);
-    var traveled = -enterTop;
-    var span = Math.max(height - zone, zone);
-    if (traveled > span) return clamp((traveled - span) / zone, 0, 1);
+  // signed position relative to the live band (same 75%/25% lines as sv-live)
+  function computeView(rect) {
+    var enterLine = vh * 0.75;
+    var exitLine = vh * 0.25;
+    if (rect.top > enterLine) {
+      return -clamp((rect.top - enterLine) / (vh - enterLine), 0, 1);
+    }
+    if (rect.bottom < exitLine) {
+      return clamp((exitLine - rect.bottom) / exitLine, 0, 1);
+    }
     return 0;
   }
   function computeTravel(rect, height) {
@@ -1718,7 +1721,7 @@ mountEffect(canvas, {
         e.active = isActive;
         e.el.classList.toggle('sv-live', isActive);
       }
-      var d = reduced ? 0 : computeDistance(rect, e.height);
+      var d = reduced ? 0 : computeView(rect);
       setVar(e, '--sv-view', d);
       var p = computeTravel(rect, e.height);
       setVar(e, '--sv-t', p);

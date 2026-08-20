@@ -96,14 +96,22 @@ function update() {
   }
 }
 
-/** -1 fully below the scene zone, 0 in scene, +1 fully above. */
-function computeView(rect: DOMRect, height: number): number {
-  const zone = vh * (2 / 3)
-  const enterTop = rect.top - (vh - zone)
-  if (enterTop > 0) return clamp(-enterTop / zone, -1, 0)
-  const traveled = -enterTop
-  const span = Math.max(height - zone, zone)
-  if (traveled > span) return clamp((traveled - span) / zone, 0, 1)
+/**
+ * Signed position relative to the live band — the same 75%/25% lines the
+ * `sv-live` class uses, so the variable and the class always agree.
+ * −1: the top is still at the viewport's bottom edge; ramps to 0 as it
+ * crosses the enter line; 0 across the whole band; then 0 → +1 as the
+ * bottom travels from the exit line out of the viewport.
+ */
+function computeView(rect: DOMRect): number {
+  const enterLine = vh * LIVE_ENTER
+  const exitLine = vh * LIVE_EXIT
+  if (rect.top > enterLine) {
+    return -clamp((rect.top - enterLine) / (vh - enterLine), 0, 1)
+  }
+  if (rect.bottom < exitLine) {
+    return clamp((exitLine - rect.bottom) / exitLine, 0, 1)
+  }
   return 0
 }
 
@@ -149,7 +157,7 @@ function apply(entry: Entry, rect: DOMRect) {
   }
 
   if (opts.view !== false) {
-    setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(rect, entry.height))
+    setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(rect))
   }
 
   if (opts.travel || opts.onTravel) {

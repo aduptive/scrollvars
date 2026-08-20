@@ -1,6 +1,6 @@
 {
   "name": "scrollvars",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
@@ -25,6 +25,7 @@
   },
   "files": [
     "dist",
+    "CHANGELOG.md",
     "styles.css",
     "AGENTS.md"
   ],
