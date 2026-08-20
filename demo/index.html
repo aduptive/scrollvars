@@ -1195,15 +1195,23 @@ html.snap-region { scroll-snap-type: y proximity; }
   position: absolute;
   left: 0;
   top: 0;
-  rotate: calc(var(--i) * 72deg);
-  translate: 0 calc(min(50vh, 46vw, 470px) * -1);
-  opacity: calc(1 - min(var(--pabs) * 0.5, 0.68));
-  scale: calc(1.04 - min(var(--pabs) * 0.12, 0.24));
+  width: 0;
+  height: 0;
+  /* transform shorthand, NOT the individual props: their fixed order is
+     translate→rotate, which would break the radial math. Here the order is
+     explicit: rotate the spoke, then push outward along it. */
+  transform: rotate(calc(var(--i) * 72deg)) translateY(calc(min(50vh, 46vw, 470px) * -1));
 }
 .pz-slice img {
+  position: absolute;
+  left: 0;
+  top: 0;
   height: min(42vh, 40vw, 390px);
   width: auto;
+  max-width: none;
   translate: -50% -50%;
+  scale: calc(1.04 - min(var(--pabs) * 0.12, 0.24));
+  opacity: calc(1 - min(var(--pabs) * 0.5, 0.68));
   filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
 }
 .pz-btn {
