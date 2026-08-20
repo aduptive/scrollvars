@@ -159,6 +159,9 @@
   cursor: grabbing;
   user-select: none;
 }
+.sv-slider.sv-gliding {
+  scroll-snap-type: none;
+}
 
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 

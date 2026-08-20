@@ -971,6 +971,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 }
 .sv-slider > * { flex: 0 0 auto; scroll-snap-align: center; }
 .sv-slider.sv-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+.sv-slider.sv-gliding { scroll-snap-type: none; }
 
 .demo-slider {
   padding: 40px calc(50% - 150px);
@@ -1943,7 +1944,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
       <div class="slider-dots" id="slider-dots"></div>
       <button id="slider-next" aria-label="next">&#8594;</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code><span class="k">const</span> s = <span class="k">slider</span>(el, { onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
+    <pre class="sv-rise" style="--sv-order: 5"><code><span class="k">const</span> s = <span class="k">slider</span>(el, { duration: <span class="n">1400</span>, onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
 s.next(); s.prev(); s.goTo(<span class="n">3</span>)
 
 <span class="c">/* the coverflow — every slide reads its own --sd */</span>
@@ -2807,7 +2808,7 @@ const noop = {
     active: () => 0,
     destroy: () => { },
 };
-function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
+function slider(container, { snap = 'mandatory', drag = true, duration = 600, onSlide } = {}) {
     if (typeof window === 'undefined')
         return noop;
     container.classList.add('sv-slider');
@@ -2845,14 +2846,51 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
     const ro = new ResizeObserver(schedule);
     ro.observe(container);
     measure();
+    // own glide: eased scrollLeft animation with configurable duration —
+    // native smooth scrolling is fast and not configurable. Snap is suspended
+    // while gliding (sv-gliding) so it can't tug mid-animation.
+    let anim = 0;
+    const stopGlide = () => {
+        if (anim)
+            cancelAnimationFrame(anim);
+        anim = 0;
+        container.classList.remove('sv-gliding');
+    };
+    const glide = (to) => {
+        stopGlide();
+        const from = container.scrollLeft;
+        if (duration <= 0 || Math.abs(to - from) < 1) {
+            container.scrollTo({ left: to, behavior: 'instant' });
+            return;
+        }
+        container.classList.add('sv-gliding');
+        const start = performance.now();
+        // ease-out: leaves with the gesture's energy, decelerates into the stop —
+        // the natural feel for a drag release (ease-in-out hitches there)
+        const ease = (t) => 1 - Math.pow(1 - t, 3);
+        const step = (now) => {
+            const k = Math.min((now - start) / duration, 1);
+            container.scrollLeft = from + (to - from) * ease(k);
+            if (k < 1) {
+                anim = requestAnimationFrame(step);
+            }
+            else {
+                stopGlide();
+            }
+        };
+        anim = requestAnimationFrame(step);
+    };
     const goTo = (index, smooth = true) => {
         const slide = slides()[Math.max(0, Math.min(index, slides().length - 1))];
         if (!slide)
             return;
-        container.scrollTo({
-            left: slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2,
-            behavior: smooth ? 'smooth' : 'instant',
-        });
+        const left = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2;
+        if (smooth)
+            glide(left);
+        else {
+            stopGlide();
+            container.scrollTo({ left, behavior: 'instant' });
+        }
     };
     // mouse drag: snap is suspended while dragging (sv-dragging kills it in
     // CSS) and re-engages on release, which settles onto the nearest slide.
@@ -2860,6 +2898,7 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
     let dragging = false;
     let lastX = 0;
     const onDown = (event) => {
+        stopGlide(); // the user takes over
         if (!drag || event.pointerType !== 'mouse')
             return;
         dragging = true;
@@ -2891,6 +2930,7 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
         goTo,
         active: () => active,
         destroy: () => {
+            stopGlide();
             container.removeEventListener('scroll', schedule);
             container.removeEventListener('pointerdown', onDown);
             container.removeEventListener('pointermove', onMove);
@@ -2912,6 +2952,7 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
     sliderDots.appendChild(document.createElement('i'));
   });
   var sliderHandle = slider(sliderEl, {
+    duration: 1400, // relax: arrows, dots and drag release all glide slowly
     onSlide: function (i) {
       Array.prototype.forEach.call(sliderDots.children, function (dot, j) {
         dot.classList.toggle('on', j === i);

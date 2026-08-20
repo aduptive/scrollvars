@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0 — 2026-08-20
+
+- **Slider glide**: own eased scrollLeft animation (ease-out) with a
+  configurable `duration` for next/prev/goTo AND the drag release — native
+  smooth scrolling is fast and not configurable. Snap suspends while gliding
+  (`sv-gliding`); pointerdown cancels the glide (the user takes over).
+
 ## 0.9.0 — 2026-08-20
 
 - **`slider()` / `useSlider`** — featherweight Swiper: native scroll +

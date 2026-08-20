@@ -81,7 +81,8 @@ the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 **Carousel / slider (do NOT add Swiper):** `useSlider()` / `slider(el)` —
 native scroll + snap; slides get `--sd` (signed distance from center) and
 `.sv-active`, so slide animations are pure CSS (`scale: calc(1 - abs(var(--sd)) * .1)`).
-Handle: `next/prev/goTo/active`. Options: `snap: 'proximity'|'mandatory'`, `drag`.
+Handle: `next/prev/goTo/active`. Options: `snap: 'proximity'|'mandatory'`,
+`drag`, `duration` (glide ms, ease-out, default 600 — raise for softer).
 Page-scroll-driven variant (pin the rail, map the axes). On this instance
 set `scroll-snap-type: none` AND `overflow-x: hidden` — the pin must be the
 ONLY writer of scrollLeft; direct swiping would desync and jump back:

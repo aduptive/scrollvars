@@ -118,8 +118,9 @@ const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
 .slide { scale: calc(1 - min(abs(var(--sd)) * 0.12, 0.3)); opacity: calc(1 - abs(var(--sd)) * 0.35); }
 ```
 
-Options: `snap: 'mandatory' | 'proximity'`, `drag: false`. Handle:
-`next/prev/goTo/active/destroy`.
+Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
+ms for next/prev/goTo and drag release; default 600 — raise it for a softer
+feel). Handle: `next/prev/goTo/active/destroy`.
 
 ## Pointer tilt
 

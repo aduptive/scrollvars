@@ -58,7 +58,7 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
 
   const { slider } = await import('../dist/core/slider.js')
   const onSlideCalls = []
-  const handle = slider(container, { onSlide: (i) => onSlideCalls.push(i) })
+  const handle = slider(container, { duration: 0, onSlide: (i) => onSlideCalls.push(i) })
 
   // initial measure runs synchronously: center=150 → slide 2 (mid=150) active
   assert.equal(handle.active(), 1)
@@ -70,8 +70,9 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.ok(!slides[0].classes.has('sv-active'))
 
   // next(): centers slide 3 → left = 200 - (300-100)/2 = 100
+  // (duration: 0 → the glide short-circuits to an instant scrollTo)
   handle.next()
-  assert.deepEqual(scrolls.at(-1), { left: 100, behavior: 'smooth' })
+  assert.deepEqual(scrolls.at(-1), { left: 100, behavior: 'instant' })
 
   // goTo clamps
   handle.goTo(99, false)

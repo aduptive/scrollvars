@@ -19,6 +19,9 @@ export interface SliderOptions {
   snap?: 'mandatory' | 'proximity'
   /** Mouse drag-to-scroll (default true; touch is native regardless). */
   drag?: boolean
+  /** Glide duration for next/prev/goTo in ms (default 600; 0 = instant).
+   * Longer = softer — the browser's own smooth scroll is not configurable. */
+  duration?: number
   /** Fires when the active slide changes. */
   onSlide?: (index: number) => void
 }
@@ -42,7 +45,7 @@ const noop: SliderHandle = {
 
 export function slider(
   container: HTMLElement,
-  { snap = 'mandatory', drag = true, onSlide }: SliderOptions = {}
+  { snap = 'mandatory', drag = true, duration = 600, onSlide }: SliderOptions = {}
 ): SliderHandle {
   if (typeof window === 'undefined') return noop
 
@@ -86,13 +89,48 @@ export function slider(
   ro.observe(container)
   measure()
 
+  // own glide: eased scrollLeft animation with configurable duration —
+  // native smooth scrolling is fast and not configurable. Snap is suspended
+  // while gliding (sv-gliding) so it can't tug mid-animation.
+  let anim = 0
+  const stopGlide = () => {
+    if (anim) cancelAnimationFrame(anim)
+    anim = 0
+    container.classList.remove('sv-gliding')
+  }
+  const glide = (to: number) => {
+    stopGlide()
+    const from = container.scrollLeft
+    if (duration <= 0 || Math.abs(to - from) < 1) {
+      container.scrollTo({ left: to, behavior: 'instant' })
+      return
+    }
+    container.classList.add('sv-gliding')
+    const start = performance.now()
+    // ease-out: leaves with the gesture's energy, decelerates into the stop —
+    // the natural feel for a drag release (ease-in-out hitches there)
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3)
+    const step = (now: number) => {
+      const k = Math.min((now - start) / duration, 1)
+      container.scrollLeft = from + (to - from) * ease(k)
+      if (k < 1) {
+        anim = requestAnimationFrame(step)
+      } else {
+        stopGlide()
+      }
+    }
+    anim = requestAnimationFrame(step)
+  }
+
   const goTo = (index: number, smooth = true) => {
     const slide = slides()[Math.max(0, Math.min(index, slides().length - 1))]
     if (!slide) return
-    container.scrollTo({
-      left: slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2,
-      behavior: smooth ? 'smooth' : 'instant',
-    })
+    const left = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2
+    if (smooth) glide(left)
+    else {
+      stopGlide()
+      container.scrollTo({ left, behavior: 'instant' })
+    }
   }
 
   // mouse drag: snap is suspended while dragging (sv-dragging kills it in
@@ -101,6 +139,7 @@ export function slider(
   let dragging = false
   let lastX = 0
   const onDown = (event: PointerEvent) => {
+    stopGlide() // the user takes over
     if (!drag || event.pointerType !== 'mouse') return
     dragging = true
     lastX = event.clientX
@@ -130,6 +169,7 @@ export function slider(
     goTo,
     active: () => active,
     destroy: () => {
+      stopGlide()
       container.removeEventListener('scroll', schedule)
       container.removeEventListener('pointerdown', onDown)
       container.removeEventListener('pointermove', onMove)
