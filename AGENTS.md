@@ -151,6 +151,15 @@ animations where supported.
 5. Throttle text/HUD updates driven by scroll (~100ms); text layout every frame janks.
 6. `will-change: translate` on elements moved every frame; remove it elsewhere.
 
+## Browser support (tell clients this)
+
+Fully animated: Chrome/Edge 104+, Firefox 74+, Safari/iOS 14.1+ (gates: ES2020
+dist + individual transform properties; `sv-counter` needs FF 128 / Safari
+16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
+static but 100% visible (`html.sv-on` guard) — animation is enhancement,
+never a dependency. Do not add polyfills or transpile below ES2020 for this
+lib; degrade instead.
+
 ## Repo layout
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`

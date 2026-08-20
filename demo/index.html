@@ -2277,6 +2277,34 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   </div>
 </section>
 
+<section class="demo sv" data-sv data-once data-hud="support">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">reference</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Browser support</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        The floor is set by ES2020 in the dist and individual transform properties
+        in the presets. The rule that matters for production:
+        <strong>below the floor nothing breaks</strong> — the <span class="inline-code">html.sv-on</span>
+        guard means hiding styles only exist after the driver boots, so older browsers
+        (and no-JS) get the complete page, static. Animation is progressive
+        enhancement, never a dependency.
+      </p>
+    </div>
+    <table class="sv-rise" style="--sv-order: 3">
+      <thead>
+        <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Chrome / Edge</td><td class="range">104+ · Aug 2022</td><td>sv-view-* native zero-JS tier: 115+</td></tr>
+        <tr><td>Firefox</td><td class="range">74+ · Mar 2020</td><td>sv-counter preset: 128+</td></tr>
+        <tr><td>Safari / iOS</td><td class="range">14.1+ · Apr 2021</td><td>sv-counter preset: 16.4+</td></tr>
+        <tr><td>older / no JS</td><td class="range">static</td><td>content 100% visible — nothing breaks</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="refs">
   <div class="wrap">
     <div class="demo-head">

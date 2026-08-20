@@ -185,6 +185,26 @@ import { track } from 'scrollvars'
 const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) })
 ```
 
+## Browser support
+
+The floor is set by two things: the dist ships ES2020 (optional chaining) and
+the presets use individual transform properties (`translate:`/`rotate:`/`scale:`).
+
+| Browser | Fully animated | Notes |
+| --- | --- | --- |
+| Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
+| Firefox | **74+** (Mar 2020) | `sv-counter` preset needs 128+ (Jul 2024) |
+| Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
+
+Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
+(Safari 13.1); presets = individual transform properties (Chrome 104 /
+Firefox 72 / Safari 14.1); canvas harness adds IntersectionObserver
+(Safari 12.1); slider/pointer = Pointer Events (Safari 13). The design rule
+that makes the table safe for companies: **below the floor nothing breaks —
+the page renders complete and static.** Animation is progressive enhancement,
+never a dependency.
+
 ## License
 
 MIT
