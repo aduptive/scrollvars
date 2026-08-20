@@ -1954,8 +1954,8 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   </div>
   <div class="sliderail-outer sv" id="slider-rail-outer" data-hud="slider · scroll">
     <div class="sliderail-sticky">
-      <div class="sliderail-hint">13b · same module, no buttons — the PAGE scroll drives it</div>
-      <div class="sv-slider demo-slider" id="slider-rail" style="scroll-snap-type: none;">
+      <div class="sliderail-hint">13b · same module, one writer — only the PAGE scroll drives it</div>
+      <div class="sv-slider demo-slider" id="slider-rail" style="scroll-snap-type: none; overflow-x: hidden;">
         <div>01<br>vertical in</div>
         <div>02<br>horizontal out</div>
         <div>03<br>onPin maps the axes</div>
@@ -1971,8 +1971,8 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
 <span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; {
   carousel.scrollLeft = p * (carousel.scrollWidth - carousel.clientWidth)
 }})
-<span class="c">// drag, buttons, touch and scroll all speak the same language:</span>
-<span class="c">// the container's scroll position — so they never fight</span></code></pre>
+<span class="c">// one writer only: overflow-x hidden turns off direct swiping here,</span>
+<span class="c">// or the two scrolls desync — JS can still write scrollLeft freely</span></code></pre>
   </div>
 </section>
 
@@ -2925,9 +2925,10 @@ function slider(container, { snap = 'mandatory', drag = true, onSlide } = {}) {
     if (i >= 0) sliderHandle.goTo(i);
   });
 
-  /* 13b: page scroll drives the slider — one line of glue. Snap is off on
-     this instance (the pin dictates the position); --sd/.sv-active still
-     flow because the observer just reads the container's scroll. */
+  /* 13b: page scroll drives the slider — one line of glue. This instance
+     has snap off AND overflow-x hidden: the pin is the single writer of
+     scrollLeft (direct swipes would desync and snap back). --sd/.sv-active
+     still flow because the observer just reads the scroll position. */
   var railCar = document.getElementById('slider-rail');
   slider(railCar, { drag: false });
   register(document.getElementById('slider-rail-outer'), {
