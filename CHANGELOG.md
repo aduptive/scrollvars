@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 — 2026-08-20
+
+- Drag release and trackpad pan now glide too: snap is suspended via inline
+  style for the whole interaction (authored inline value preserved), and a
+  wheel-quiet debounce replaces the native fast settle with the slow glide.
+  Skipped on instances authored with `scroll-snap-type: none`.
+- Grab cursor only on draggable instances (`sv-draggable`) — `drag: false`
+  sliders no longer advertise a hand they can't honor.
+
 ## 0.10.0 — 2026-08-20
 
 - **Slider glide**: own eased scrollLeft animation (ease-out) with a

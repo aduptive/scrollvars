@@ -148,6 +148,8 @@
   overflow-x: auto;
   scroll-snap-type: x var(--sv-snap, mandatory);
   overscroll-behavior-x: contain;
+}
+.sv-slider.sv-draggable {
   cursor: grab;
 }
 .sv-slider > * {

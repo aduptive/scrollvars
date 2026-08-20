@@ -50,7 +50,18 @@ export function slider(
   if (typeof window === 'undefined') return noop
 
   container.classList.add('sv-slider')
+  if (drag) container.classList.add('sv-draggable') // grab cursor only where dragging works
   container.style.setProperty('--sv-snap', snap)
+
+  // Snap suspension via inline style — one source of truth. The authored
+  // inline value (e.g. 'none' on scroll-driven instances) is preserved.
+  const authoredSnap = container.style.scrollSnapType
+  const suspendSnap = () => {
+    container.style.scrollSnapType = 'none'
+  }
+  const resumeSnap = () => {
+    container.style.scrollSnapType = authoredSnap
+  }
 
   let active = -1
   let raf = 0
@@ -102,9 +113,11 @@ export function slider(
     stopGlide()
     const from = container.scrollLeft
     if (duration <= 0 || Math.abs(to - from) < 1) {
+      resumeSnap()
       container.scrollTo({ left: to, behavior: 'instant' })
       return
     }
+    suspendSnap() // native snap must not tug while we animate
     container.classList.add('sv-gliding')
     const start = performance.now()
     // ease-out: leaves with the gesture's energy, decelerates into the stop —
@@ -117,6 +130,7 @@ export function slider(
         anim = requestAnimationFrame(step)
       } else {
         stopGlide()
+        resumeSnap() // position is centered — safe to re-engage
       }
     }
     anim = requestAnimationFrame(step)
@@ -141,6 +155,7 @@ export function slider(
   const onDown = (event: PointerEvent) => {
     stopGlide() // the user takes over
     if (!drag || event.pointerType !== 'mouse') return
+    suspendSnap() // stays off until the release glide finishes
     dragging = true
     lastX = event.clientX
     container.classList.add('sv-dragging')
@@ -163,6 +178,20 @@ export function slider(
   container.addEventListener('pointerup', onUp)
   container.addEventListener('pointercancel', onUp)
 
+  // trackpad/wheel pan: native mandatory snap settles fast and can't be
+  // slowed, so replace it — suspend snap while wheeling, then glide to the
+  // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
+  // instances authored with snap none (scroll-driven ones own their position).
+  let wheelTimer: ReturnType<typeof setTimeout> | undefined
+  const onWheel = () => {
+    if (authoredSnap === 'none') return
+    stopGlide()
+    suspendSnap()
+    clearTimeout(wheelTimer)
+    wheelTimer = setTimeout(() => goTo(active), 160)
+  }
+  container.addEventListener('wheel', onWheel, { passive: true })
+
   return {
     next: (smooth = true) => goTo(active + 1, smooth),
     prev: (smooth = true) => goTo(active - 1, smooth),
@@ -170,6 +199,9 @@ export function slider(
     active: () => active,
     destroy: () => {
       stopGlide()
+      resumeSnap()
+      clearTimeout(wheelTimer)
+      container.removeEventListener('wheel', onWheel)
       container.removeEventListener('scroll', schedule)
       container.removeEventListener('pointerdown', onDown)
       container.removeEventListener('pointermove', onMove)
