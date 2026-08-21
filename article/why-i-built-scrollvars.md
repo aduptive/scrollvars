@@ -104,12 +104,15 @@ For scale, measured from the same CDN (min / gzip):
 | **scrollvars, everything** (core + slider + presets CSS) | 15.8 KB | **5.9 KB** |
 | **scrollvars driver alone** | 2.3 KB | **1.2 KB** |
 
-Bytes are the small half of it. The structural difference is *where the
-per-frame cost lives*: spring-based engines compute and write styles per
-animated element per frame, so cost grows with every component you stack.
-Here, per-frame JS is constant — one batched read, a handful of variable
-writes — and the animating elements are the compositor's job, no matter
-whether the page runs three effects or forty.
+And because a size table invites the obvious question, there is a
+[public benchmark](https://scrollvars.vercel.app/bench/) — identical DOM,
+identical scroll driver, 150 and 900 scrubbed elements, only the engine
+varies. The honest finding: **on capable hardware all three deliver the
+same 60 fps.** That *is* the point — the 46 KB engines buy API surface,
+not frames. What doesn't tie: the bundle column, a page that renders
+complete without JavaScript, server components staying on the server, and
+the cost on weak devices, where per-element JS work is the first thing to
+fold. Run it on your own machine; that's what it's for.
 
 ## Five lessons that cost real hours
 

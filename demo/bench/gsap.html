@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bench · gsap</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #121118; color: #e6e4f0; font: 14px/1.5 -apple-system, sans-serif; }
+  .hud { position: fixed; top: 12px; left: 12px; z-index: 9; background: rgba(0,0,0,.75);
+         padding: 14px 18px; border-radius: 10px; font-family: ui-monospace, monospace;
+         font-size: 13px; white-space: pre; }
+  section { position: relative; height: 120vh; overflow: hidden;
+            border-top: 1px solid rgba(255,255,255,.06); }
+  .box { position: absolute; width: 90px; height: 90px; border-radius: 12px;
+         will-change: transform, opacity; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+</head><body>
+<script>
+  gsap.registerPlugin(ScrollTrigger);
+
+  var Q = new URLSearchParams(location.search);
+  var SECTIONS = +Q.get('s') || 30, PER = +Q.get('p') || 5;
+  var COLORS = ['#a78bfa', '#ffb454', '#6ee7a0', '#7dd3fc', '#ff7d90'];
+  function seeded(i) { return (Math.sin(i * 999) + 1) / 2; }
+  var boxes = [];
+  for (var s = 0; s < SECTIONS; s++) {
+    var sec = document.createElement('section');
+    for (var b = 0; b < PER; b++) {
+      var i = s * PER + b;
+      var el = document.createElement('div');
+      el.className = 'box';
+      el.style.left = (5 + seeded(i) * 85) + '%';
+      el.style.top = (10 + seeded(i + 0.5) * 70) + '%';
+      el.style.background = COLORS[b];
+      var speed = 120 + seeded(i + 0.25) * 480; // px of total travel
+      sec.appendChild(el);
+      boxes.push({ el: el, sec: sec, speed: speed });
+    }
+    document.body.appendChild(sec);
+  }
+
+  boxes.forEach(function (b) {
+    gsap.fromTo(b.el,
+      { y: b.speed / 2, opacity: 0.3 },
+      { y: -b.speed / 2, opacity: 1, ease: 'none',
+        scrollTrigger: { trigger: b.sec, scrub: true, start: 'top bottom', end: 'bottom top' } });
+  });
+
+  function runBench(label) {
+    var hud = document.createElement('div');
+    hud.className = 'hud';
+    hud.textContent = label + '\nscroll to start, or wait — auto-run in 2s';
+    document.body.appendChild(hud);
+    function whenVisible(fn) {
+      if (document.visibilityState === 'visible') return fn();
+      document.addEventListener('visibilitychange', function h() {
+        if (document.visibilityState !== 'visible') return;
+        document.removeEventListener('visibilitychange', h);
+        setTimeout(fn, 300);
+      });
+    }
+    whenVisible(function () { setTimeout(start, 2000); });
+    function start() {
+      var H = document.documentElement.scrollHeight - innerHeight;
+      var DUR = 12000;
+      var frames = [];
+      var t0 = performance.now();
+      var last = t0;
+      var BURN = +(new URLSearchParams(location.search).get('burn')) || 0;
+      function step(now) {
+        frames.push(now - last);
+        last = now;
+        if (BURN) { var bt = performance.now(); while (performance.now() - bt < BURN); }
+        var t = (now - t0) / DUR;
+        if (t >= 1) return finish();
+        var p = t < 0.5 ? t * 2 : (1 - t) * 2; // there and back
+        scrollTo(0, p * H);
+        requestAnimationFrame(step);
+      }
+      function finish() {
+        frames.shift();
+        frames = frames.filter(function (f) { return f < 500; });
+        var sorted = frames.slice().sort(function (a, b) { return a - b; });
+        var avg = frames.reduce(function (a, b) { return a + b; }, 0) / frames.length;
+        var p95 = sorted[Math.floor(sorted.length * 0.95)];
+        var worst = sorted[sorted.length - 1];
+        var long = frames.filter(function (f) { return f > 25; }).length;
+        var out = {
+          engine: label,
+          frames: frames.length,
+          avgMs: +avg.toFixed(2),
+          fps: +(1000 / avg).toFixed(1),
+          p95Ms: +p95.toFixed(2),
+          worstMs: +worst.toFixed(1),
+          framesOver25ms: long,
+        };
+        hud.textContent = label + '  ·  ' + (SECTIONS * PER) + ' scrubbed elements\n' +
+          'avg ' + out.avgMs + ' ms (' + out.fps + ' fps)\n' +
+          'p95 ' + out.p95Ms + ' ms · worst ' + out.worstMs + ' ms\n' +
+          'frames >25ms: ' + long + ' / ' + out.frames;
+        document.title = 'DONE ' + JSON.stringify(out);
+        if (window.parent !== window) window.parent.postMessage({ bench: out }, '*');
+        console.log('BENCH', out);
+      }
+      requestAnimationFrame(step);
+    }
+  }
+
+  runBench('gsap + ScrollTrigger');
+</script>
+</body></html>

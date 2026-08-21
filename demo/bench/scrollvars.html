@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bench · scrollvars</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #121118; color: #e6e4f0; font: 14px/1.5 -apple-system, sans-serif; }
+  .hud { position: fixed; top: 12px; left: 12px; z-index: 9; background: rgba(0,0,0,.75);
+         padding: 14px 18px; border-radius: 10px; font-family: ui-monospace, monospace;
+         font-size: 13px; white-space: pre; }
+  section { position: relative; height: 120vh; overflow: hidden;
+            border-top: 1px solid rgba(255,255,255,.06); }
+  .box { position: absolute; width: 90px; height: 90px; border-radius: 12px;
+         will-change: transform, opacity; }
+
+  .box {
+    translate: 0 calc((var(--sv-t, 0.5) - 0.5) * var(--speed));
+    opacity: calc(0.3 + var(--sv-t, 0.5) * 0.7);
+  }
+</style></head><body>
+<script>
+"use strict";var SV=(()=>{var W=Object.defineProperty;var we=Object.getOwnPropertyDescriptor;var Le=Object.getOwnPropertyNames;var xe=Object.prototype.hasOwnProperty;var Ee=(e,t)=>{for(var s in t)W(e,s,{get:t[s],enumerable:!0})},ye=(e,t,s,o)=>{if(t&&typeof t=="object"||typeof t=="function")for(let i of Le(t))!xe.call(e,i)&&i!==s&&W(e,i,{get:()=>t[i],enumerable:!(o=we(t,i))||o.enumerable});return e};var be=e=>ye(W({},"__esModule",{value:!0}),e);var Oe={};Ee(Oe,{clamp:()=>v,easeOutCubic:()=>z,prefersReducedMotion:()=>ue,refresh:()=>de,scan:()=>me,scrollToScene:()=>fe,slider:()=>ve,snapProgress:()=>re,track:()=>C,trackPointer:()=>pe});function v(e,t,s){return Math.min(s,Math.max(t,e))}function re(e,t){if(t<=0)return e;let s=Math.floor(e),o=e-s;return o<=t?s:o>=1-t?s+1:s+(o-t)/(1-2*t)}function z(e){return 1-Math.pow(1-e,3)}var Me=.4,ae=.75,le=.25,F=new Map,K=0,p=0,O=null,ie=!1,q=!1;function Te(){if(ie||typeof window>"u")return;ie=!0,p=window.innerHeight,document.documentElement.classList.add("sv-on"),window.addEventListener("scroll",T,{passive:!0}),window.addEventListener("resize",()=>{p=window.innerHeight,T()});let e=window.matchMedia("(prefers-reduced-motion: reduce)");q=e.matches,e.addEventListener?.("change",t=>{q=t.matches,T()}),O=new ResizeObserver(t=>{for(let{target:s}of t){let o=F.get(s);o&&(o.height=o.el.scrollHeight)}T()}),O.observe(document.documentElement)}function T(){!K&&F.size>0&&(K=requestAnimationFrame(Ae))}function Ae(){K=0;let e=[];F.forEach(t=>{e.push({entry:t,rect:t.el.getBoundingClientRect()})});for(let{entry:t,rect:s}of e)Fe(t,s)}function Pe(e){let t=p*ae,s=p*le;return e.top>t?-v((e.top-t)/(p-t),0,1):e.bottom<s?v((s-e.bottom)/s,0,1):0}function Se(e,t){return v((p-e.top)/(p+t),0,1)}function ce(e,t){let s=Math.max(t-p,1);return v(-e.top/s,0,1)}function ke(e,t,s){let o=e*(t-1),i=Math.floor(o);if(o===i)return o;let d=o-i;return s!==!1&&s>0&&(d=d<=s?0:(d-s)/(1-s)),i+z(d)}function R(e,t,s){let o=s.toFixed(4);e.written[t]!==o&&(e.written[t]=o,e.el.style.setProperty(t,o))}function Fe(e,t){let{opts:s}=e,o=t.top<p*ae&&t.bottom>p*le||e.live&&!!s.once;if(o!==e.live&&(e.live=o,e.el.classList.toggle("sv-live",o),s.onLive?.(o)),s.view!==!1&&R(e,"--sv-view",q?0:Pe(t)),s.travel||s.onTravel){let i=Se(t,e.height);s.travel&&R(e,"--sv-t",i),s.onTravel?.(i)}if(s.pin||s.onPin){let i=ce(t,e.height);s.pin&&R(e,"--sv-pin",i),s.onPin?.(i)}if(s.scenes&&s.scenes>1){let i=ce(t,e.height),d=s.snap===!1?!1:s.snap??Me,c=ke(i,s.scenes,d);R(e,"--sv-scene",c);let r=v(Math.round(c),0,s.scenes-1);r!==e.scene&&(e.scene=r,s.onScene?.(r))}}function C(e,t={}){Te();let s={el:e,opts:t,height:e.scrollHeight,live:!1,scene:-1,written:{}};return F.set(e,s),e.classList.add("sv"),O?.observe(e),T(),()=>{F.delete(e),O?.unobserve(e)}}function de(){T()}function fe(e,t,s,o=!0){if(typeof window>"u"||s<2)return;let i=e.scrollHeight,d=Math.max(i-window.innerHeight,1),c=window.scrollY+e.getBoundingClientRect().top+v(t,0,s-1)/(s-1)*d;window.scrollTo({top:Math.max(0,c),behavior:o?"smooth":"instant"})}function ue(){return q}function pe(e,{selector:t=".sv-tilt"}={}){if(typeof window>"u")return()=>{};let s=null,o=0,i=()=>{if(o=0,!s)return;let{el:r,x:l,y:h}=s;s=null;let g=r.getBoundingClientRect();r.style.setProperty("--mx",((l-g.left)/g.width*2-1).toFixed(3)),r.style.setProperty("--my",((h-g.top)/g.height*2-1).toFixed(3))},d=r=>{let l=r.target.closest?.(t);l&&(l.classList.remove("sv-pointer-leave"),s={el:l,x:r.clientX,y:r.clientY},o||(o=requestAnimationFrame(i)))},c=r=>{let l=r.target.closest?.(t);!l||l.contains(r.relatedTarget)||(l.classList.add("sv-pointer-leave"),l.style.setProperty("--mx","0"),l.style.setProperty("--my","0"))};return e.addEventListener("pointermove",d),e.addEventListener("pointerout",c),()=>{e.removeEventListener("pointermove",d),e.removeEventListener("pointerout",c),o&&cancelAnimationFrame(o)}}function He(e){let t=Number(e.getAttribute("data-sv-scenes"));return{once:e.hasAttribute("data-sv-once"),pin:e.hasAttribute("data-sv-pin"),travel:e.hasAttribute("data-sv-travel"),scenes:t>1?t:void 0}}function me(e=document){if(typeof window>"u")return()=>{};let t=new Map,s=c=>{t.has(c)||t.set(c,C(c,He(c)))},o=c=>{t.get(c)?.(),t.delete(c)},i=(c,r)=>{c instanceof HTMLElement&&(c.hasAttribute("data-sv")&&r(c),c.querySelectorAll("[data-sv]").forEach(r))};e.querySelectorAll("[data-sv]").forEach(s);let d=new MutationObserver(c=>{for(let r of c)r.addedNodes.forEach(l=>i(l,s)),r.removedNodes.forEach(l=>i(l,o))});return d.observe(e===document?document.body:e,{childList:!0,subtree:!0}),()=>{d.disconnect(),t.forEach(c=>c()),t.clear()}}var ze={active:0,count:0,position:0,progress:0,dragging:!1,gliding:!1},Re={next:()=>{},prev:()=>{},goTo:()=>{},seek:()=>{},active:()=>0,state:()=>ze,destroy:()=>{}};function ve(e,{axis:t="x",snap:s="mandatory",drag:o=!0,duration:i=600,onSlide:d,onScroll:c}={}){if(typeof window>"u")return Re;let r=t==="x";e.classList.add("sv-slider"),r||e.classList.add("sv-slider-y"),o&&e.classList.add("sv-draggable"),e.style.setProperty("--sv-snap",s);let l=()=>r?e.scrollLeft:e.scrollTop,h=n=>{r?e.scrollLeft=n:e.scrollTop=n},g=()=>r?e.clientWidth:e.clientHeight,A=()=>Math.max((r?e.scrollWidth:e.scrollHeight)-g(),0),_=n=>r?n.offsetLeft:n.offsetTop,I=n=>r?n.offsetWidth:n.offsetHeight,G=e.style.scrollSnapType,H=()=>{e.style.scrollSnapType="none"},N=()=>{e.style.scrollSnapType=G},L=-1,U=0,P=0,S=!1,x=0,k=()=>Array.from(e.children),j=()=>({active:Math.max(L,0),count:k().length,position:U,progress:A()>0?l()/A():0,dragging:S,gliding:x!==0}),J=()=>{P=0;let n=l()+g()/2,a=0,f=1/0;k().forEach((u,w)=>{let V=(_(u)+I(u)/2-n)/Math.max(I(u),1);u.style.setProperty("--sd",V.toFixed(4)),Math.abs(V)<Math.abs(f)&&(f=V,a=w)}),U=Math.max(a-(f===1/0?0:f),0);let b=A()>0?l()/A():0;e.style.setProperty("--sv-progress",b.toFixed(4)),a!==L&&(L=a,k().forEach((u,w)=>u.classList.toggle("sv-active",w===a)),e.style.setProperty("--sv-slide",String(a)),d?.(a)),c?.(j())},X=()=>{P||(P=requestAnimationFrame(J))};e.addEventListener("scroll",X,{passive:!0});let Q=new ResizeObserver(X);Q.observe(e),J();let m=-1,E=()=>{x&&cancelAnimationFrame(x),x=0,e.classList.remove("sv-gliding")},he=n=>{E();let a=l();if(i<=0||Math.abs(n-a)<1){N(),m=-1,h(n);return}H(),e.classList.add("sv-gliding");let f=performance.now(),b=u=>{let w=Math.min(u-f,50);f=u;let oe=1-Math.pow(.002,w/i);a+=(n-a)*oe,Math.abs(n-a)<.5?(h(n),E(),m=-1,N()):(h(a),x=requestAnimationFrame(b))};x=requestAnimationFrame(b)},y=(n,a=!0)=>{let f=k(),b=Math.max(0,Math.min(n,f.length-1)),u=f[b];if(!u)return;let w=_(u)-(g()-I(u))/2;a?(m=b,he(w)):(E(),m=-1,h(w))},ge=n=>{E(),m=-1,H(),h(Math.max(0,Math.min(n,1))*A())},Z=()=>x&&m>=0?m:L,Y=0,D=n=>{if(!S)return;let a=r?n.clientX:n.clientY;h(l()-(a-Y)),Y=a},M=()=>{S&&(S=!1,window.removeEventListener("pointermove",D),window.removeEventListener("pointerup",M),window.removeEventListener("pointercancel",M),e.classList.remove("sv-dragging"),y(L))},$=n=>{E(),m=-1,!(!o||n.pointerType!=="mouse")&&(n.preventDefault(),H(),S=!0,Y=r?n.clientX:n.clientY,e.classList.add("sv-dragging"),window.addEventListener("pointermove",D),window.addEventListener("pointerup",M),window.addEventListener("pointercancel",M))};e.addEventListener("pointerdown",$);let B,ee=n=>{if(G==="none")return;let a=r?n.deltaX:n.deltaY,f=r?n.deltaY:n.deltaX;Math.abs(a)<=Math.abs(f)||(E(),m=-1,H(),clearTimeout(B),B=setTimeout(()=>y(L),200))};e.addEventListener("wheel",ee,{passive:!0});let te=(n=!0)=>y(Z()+1,n),se=(n=!0)=>y(Z()-1,n);e.tabIndex===-1&&(e.tabIndex=0);let ne=n=>{let a=r?"ArrowRight":"ArrowDown",f=r?"ArrowLeft":"ArrowUp";if(n.key===a)te();else if(n.key===f)se();else if(n.key==="Home")y(0);else if(n.key==="End")y(k().length-1);else return;n.preventDefault()};return e.addEventListener("keydown",ne),{next:te,prev:se,goTo:y,seek:ge,active:()=>Math.max(L,0),state:j,destroy:()=>{E(),N(),clearTimeout(B),e.removeEventListener("wheel",ee),e.removeEventListener("keydown",ne),e.removeEventListener("scroll",X),e.removeEventListener("pointerdown",$),window.removeEventListener("pointermove",D),window.removeEventListener("pointerup",M),window.removeEventListener("pointercancel",M),Q.disconnect(),P&&cancelAnimationFrame(P)}}}return be(Oe);})();
+
+
+  var Q = new URLSearchParams(location.search);
+  var SECTIONS = +Q.get('s') || 30, PER = +Q.get('p') || 5;
+  var COLORS = ['#a78bfa', '#ffb454', '#6ee7a0', '#7dd3fc', '#ff7d90'];
+  function seeded(i) { return (Math.sin(i * 999) + 1) / 2; }
+  var boxes = [];
+  for (var s = 0; s < SECTIONS; s++) {
+    var sec = document.createElement('section');
+    for (var b = 0; b < PER; b++) {
+      var i = s * PER + b;
+      var el = document.createElement('div');
+      el.className = 'box';
+      el.style.left = (5 + seeded(i) * 85) + '%';
+      el.style.top = (10 + seeded(i + 0.5) * 70) + '%';
+      el.style.background = COLORS[b];
+      var speed = 120 + seeded(i + 0.25) * 480; // px of total travel
+      sec.appendChild(el);
+      boxes.push({ el: el, sec: sec, speed: speed });
+    }
+    document.body.appendChild(sec);
+  }
+
+  var seen = new Set();
+  boxes.forEach(function (b) {
+    b.el.style.setProperty('--speed', b.speed + 'px');
+    if (!seen.has(b.sec)) { seen.add(b.sec); SV.track(b.sec, { travel: true, view: false }); }
+  });
+
+  function runBench(label) {
+    var hud = document.createElement('div');
+    hud.className = 'hud';
+    hud.textContent = label + '\nscroll to start, or wait — auto-run in 2s';
+    document.body.appendChild(hud);
+    function whenVisible(fn) {
+      if (document.visibilityState === 'visible') return fn();
+      document.addEventListener('visibilitychange', function h() {
+        if (document.visibilityState !== 'visible') return;
+        document.removeEventListener('visibilitychange', h);
+        setTimeout(fn, 300);
+      });
+    }
+    whenVisible(function () { setTimeout(start, 2000); });
+    function start() {
+      var H = document.documentElement.scrollHeight - innerHeight;
+      var DUR = 12000;
+      var frames = [];
+      var t0 = performance.now();
+      var last = t0;
+      var BURN = +(new URLSearchParams(location.search).get('burn')) || 0;
+      function step(now) {
+        frames.push(now - last);
+        last = now;
+        if (BURN) { var bt = performance.now(); while (performance.now() - bt < BURN); }
+        var t = (now - t0) / DUR;
+        if (t >= 1) return finish();
+        var p = t < 0.5 ? t * 2 : (1 - t) * 2; // there and back
+        scrollTo(0, p * H);
+        requestAnimationFrame(step);
+      }
+      function finish() {
+        frames.shift();
+        frames = frames.filter(function (f) { return f < 500; });
+        var sorted = frames.slice().sort(function (a, b) { return a - b; });
+        var avg = frames.reduce(function (a, b) { return a + b; }, 0) / frames.length;
+        var p95 = sorted[Math.floor(sorted.length * 0.95)];
+        var worst = sorted[sorted.length - 1];
+        var long = frames.filter(function (f) { return f > 25; }).length;
+        var out = {
+          engine: label,
+          frames: frames.length,
+          avgMs: +avg.toFixed(2),
+          fps: +(1000 / avg).toFixed(1),
+          p95Ms: +p95.toFixed(2),
+          worstMs: +worst.toFixed(1),
+          framesOver25ms: long,
+        };
+        hud.textContent = label + '  ·  ' + (SECTIONS * PER) + ' scrubbed elements\n' +
+          'avg ' + out.avgMs + ' ms (' + out.fps + ' fps)\n' +
+          'p95 ' + out.p95Ms + ' ms · worst ' + out.worstMs + ' ms\n' +
+          'frames >25ms: ' + long + ' / ' + out.frames;
+        document.title = 'DONE ' + JSON.stringify(out);
+        if (window.parent !== window) window.parent.postMessage({ bench: out }, '*');
+        console.log('BENCH', out);
+      }
+      requestAnimationFrame(step);
+    }
+  }
+
+  runBench('scrollvars');
+</script>
+</body></html>
