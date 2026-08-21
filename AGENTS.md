@@ -145,6 +145,9 @@ animations where supported.
 ## Performance rules (violating these is the whole reason this lib exists)
 
 1. Animate only `transform`/`translate`/`opacity` (compositor-only). Never top/left/width/margin.
+   ⚠️ Individual transform properties apply in FIXED order translate→rotate→scale
+   regardless of declaration order — for radial/chained math (wheels, orbits)
+   use the `transform:` shorthand, where the order is literal.
 2. No scroll values in React state. Callbacks (`onScene`) fire on integer change only — that may set state.
 3. Discrete snapped value + transition = smooth. Continuous value + transition = rubber-band. For lag/inertia on a continuous value, use a JS exponential lerp (`current += (target - current) * factor`), not a transition.
 4. Never put `mask-image` or `backdrop-filter` over content that moves every frame (forces re-raster).

@@ -2335,8 +2335,10 @@ nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current
 <span class="c">// no resting position between two pizzas (quiet-debounce + smooth scroll)</span>
 onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * <span class="n">4</span>), <span class="n">5</span>))
 
-.hub   { rotate: <span class="k">calc(var(--sv-scene) * -72deg)</span>; }
-.slice { rotate: <span class="k">calc(var(--i) * 72deg)</span>; translate: 0 -470px; }</code></pre>
+.hub   { rotate: <span class="k">calc(var(--pz-scene) * -72deg)</span>; }  <span class="c">/* --pz-scene = lerped --sv-scene */</span>
+<span class="c">/* GOTCHA: individual props apply in fixed order translate→rotate —</span>
+<span class="c">   radial math needs the shorthand, where the order is literal: */</span>
+.slice { transform: <span class="k">rotate(calc(var(--i) * 72deg)) translateY(-470px)</span>; }</code></pre>
   </div>
 </section>
 
