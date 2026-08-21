@@ -36,7 +36,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "demo:sync": "npm run build && node scripts/demo-sync.mjs",
+    "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"
   },
   "keywords": [
     "scroll",
