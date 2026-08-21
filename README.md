@@ -185,6 +185,19 @@ import { track } from 'scrollvars'
 const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) })
 ```
 
+## Defaults (the tuned knobs)
+
+| Knob | Default | Where |
+| --- | --- | --- |
+| Live band | enter 75% / exit 25% of viewport | driver (`sv-live`, `--sv-view` ramps) |
+| Scene snap dead-zone | 0.4 (`snap` option; `false` disables) | driver `scenes` |
+| Entrance distance | `--sv-distance: 6rem` | styles.css |
+| Stagger step | `--sv-stagger: 110ms` | styles.css |
+| Entrance duration | `--sv-duration: 800ms` | styles.css |
+| Slider glide settle | `duration: 600` ms (exponential lerp) | slider |
+| Slider wheel-quiet window | 200 ms | slider |
+| Canvas DPR cap | 2 (`dprCap`) | canvas harness |
+
 ## Browser support
 
 The floor is set by two things: the dist ships ES2020 (optional chaining) and

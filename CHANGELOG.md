@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 — 2026-08-21
+
+- **API freeze.** The 0.x surface ships as-is: driver (`track`, `scan`,
+  `slider`, `trackPointer`, `scrollToScene`, `refresh`), React layer
+  (`Track/Reveal/Parallax/Scenes/Item`, `ScrollVarsBoot`, hooks, VarProps
+  attribute API), `scrollvars/canvas`, `scrollvars/compat`, styles.css presets.
+- `SliderState` type now exported from the root.
+- Packaging: `sideEffects` scoped to CSS (bundlers no longer risk
+  tree-shaking the stylesheet import), repository/homepage/bugs metadata,
+  `prepublishOnly` runs build + tests. README gains a Defaults table.
+- Demo tooling: `npm run demo:sync` / `demo:deploy` (dist-inline sync with
+  parse checks; deploy re-points the alias and verifies). Driver core test
+  suite added — 9 test files green.
+
 ## 0.12.0 — 2026-08-20
 
 - **`scrollvars/compat`** — opt-in legacy module: ResizeObserver stub

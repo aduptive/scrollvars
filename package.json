@@ -1,11 +1,13 @@
 {
   "name": "scrollvars",
-  "version": "0.12.0",
+  "version": "1.0.0",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": "./dist/index.js",
     "./react": "./dist/react/index.js",
@@ -37,6 +39,7 @@
     "build": "tsc",
     "dev": "tsc -w",
     "test": "node --test test/",
+    "prepublishOnly": "npm run build && npm test",
     "demo:sync": "npm run build && node scripts/demo-sync.mjs",
     "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"
   },
@@ -45,11 +48,25 @@
     "animation",
     "css-variables",
     "scroll-driven",
+    "parallax",
+    "carousel",
+    "slider",
+    "scroll-snap",
+    "intersection",
     "react",
-    "nextjs"
+    "nextjs",
+    "rsc",
+    "lightweight",
+    "zero-dependencies"
   ],
   "author": "aduptive <aduptive@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aduptive/scrollvars.git"
+  },
+  "homepage": "https://scrollvars.vercel.app",
+  "bugs": "https://github.com/aduptive/scrollvars/issues",
   "private": false,
   "peerDependencies": {
     "react": ">=18"
