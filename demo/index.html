@@ -3642,9 +3642,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
      quiet-debounce idea as the slider's wheel assist, applied to the page. */
   var pzQuiet;
   window.addEventListener('scroll', function () {
-    if (pzPin <= 0.001 || pzPin >= 0.999) return;
+    // ALWAYS clear first: a timer armed mid-pin must die the moment the
+    // scroll crosses the section boundary, or it fires late and yanks the
+    // page back in (the enter/leave "jump"). Re-check at fire time too —
+    // momentum may have carried the user out during the quiet window.
     clearTimeout(pzQuiet);
+    if (pzPin <= 0.001 || pzPin >= 0.999) return;
     pzQuiet = setTimeout(function () {
+      if (pzPin <= 0.001 || pzPin >= 0.999) return;
       pzGo(Math.round(pzPin * (PZ_FLAVORS.length - 1)));
     }, 150);
   }, { passive: true });
