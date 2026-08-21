@@ -94,6 +94,23 @@ variables. A few highlights:
 
 The demo is served unminified on purpose: view-source is the documentation.
 
+For scale, measured from the same CDN (min / gzip):
+
+| engine | minified | gzipped |
+| --- | --- | --- |
+| framer-motion 11 | 144 KB | 46.9 KB |
+| GSAP core + ScrollTrigger | 117 KB | 46.3 KB |
+| Swiper 11 bundle | 151 KB | 42 KB |
+| **scrollvars, everything** (core + slider + presets CSS) | 15.8 KB | **5.9 KB** |
+| **scrollvars driver alone** | 2.3 KB | **1.2 KB** |
+
+Bytes are the small half of it. The structural difference is *where the
+per-frame cost lives*: spring-based engines compute and write styles per
+animated element per frame, so cost grows with every component you stack.
+Here, per-frame JS is constant — one batched read, a handful of variable
+writes — and the animating elements are the compositor's job, no matter
+whether the page runs three effects or forty.
+
 ## Five lessons that cost real hours
 
 **1. Safari will wedge if you scrub video.** Driving `video.currentTime`
