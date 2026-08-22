@@ -107,12 +107,18 @@ For scale, measured from the same CDN (min / gzip):
 And because a size table invites the obvious question, there is a
 [public benchmark](https://scrollvars.vercel.app/bench/) — identical DOM,
 identical scroll driver, 150 and 900 scrubbed elements, only the engine
-varies. The honest finding: **on capable hardware all three deliver the
-same 60 fps.** That *is* the point — the 46 KB engines buy API surface,
-not frames. What doesn't tie: the bundle column, a page that renders
-complete without JavaScript, server components staying on the server, and
-the cost on weak devices, where per-element JS work is the first thing to
-fold. Run it on your own machine; that's what it's for.
+varies. Two honest findings. First: **on capable
+hardware all three deliver the same 60 fps** — every competent engine
+animates only the viewport, so frame parity in scrubbing is structural.
+Second, and this is where they separate: **what those frames cost.**
+Measured over the identical run via CDP (script + style recalc + layout):
+scrollvars 421 ms of CPU and 1.3 MB of JS heap; GSAP 476 ms and 7.2 MB;
+framer-motion 918 ms and 10.8 MB. Same frames at 2.2× less CPU and 8× less
+memory than Framer — on phones that's battery and headroom for your own
+code, and it's why stacked Framer pages fold on weak devices first. GSAP
+is genuinely efficient; against it the difference is the 15× bundle, the
+heap, and the no-JS/SSR story. Run it on your own machine; that's what
+it's for.
 
 ## Five lessons that cost real hours
 

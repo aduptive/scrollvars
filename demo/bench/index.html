@@ -34,6 +34,21 @@ identically. <b>Keep this tab visible</b> — browsers freeze background tabs.</
   <tbody></tbody>
 </table>
 <iframe id="stage" hidden></iframe>
+<h1 style="font-size:17px; margin-top:26px;">Reference: CPU cost for the same frames</h1>
+<p class="sub">Frame delivery ties because every competent engine animates only the viewport.
+What differs is what those frames <i>cost</i>. Measured over the identical 12&nbsp;s run
+(900 elements, headless Chrome on an M-series Mac, CDP <code>Performance.getMetrics</code>):</p>
+<table>
+  <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>CPU total</th><th>JS heap</th></tr></thead>
+  <tbody>
+    <tr><td>scrollvars</td><td class="n best">155 ms</td><td class="n">266 ms</td><td class="n best">421 ms</td><td class="n best">1.3 MB</td></tr>
+    <tr><td>gsap + ScrollTrigger</td><td class="n">358 ms</td><td class="n">118 ms</td><td class="n">476 ms</td><td class="n">7.2 MB</td></tr>
+    <tr><td>framer-motion (React)</td><td class="n">854 ms</td><td class="n">63 ms</td><td class="n">918 ms</td><td class="n">10.8 MB</td></tr>
+  </tbody>
+</table>
+<p class="sub">Same frames at 2.2× less CPU and 8× less memory than framer-motion — on phones
+that is battery and headroom for your own code. GSAP is genuinely efficient; against it the
+difference is the 15× bundle, the heap, and the no-JS/SSR story.</p>
 <small>Methodology: identical DOM and scroll driver in every page; the only variable is the
 animation engine. Bundle sizes measured from jsDelivr/esm.sh (framer-motion additionally needs
 React, not counted). Run it on your own machine — that's the point. Sources:
