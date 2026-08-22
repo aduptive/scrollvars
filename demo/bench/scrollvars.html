@@ -53,6 +53,7 @@
     hud.className = 'hud';
     hud.textContent = label + '\nscroll to start, or wait — auto-run in 2s';
     document.body.appendChild(hud);
+    if (/[?&]norun/.test(location.search)) { hud.textContent = label + '\nload-only mode (lighthouse)'; return; }
     function whenVisible(fn) {
       if (document.visibilityState === 'visible') return fn();
       document.addEventListener('visibilitychange', function h() {

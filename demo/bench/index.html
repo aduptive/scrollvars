@@ -46,6 +46,10 @@ What differs is what those frames <i>cost</i>. Measured over the identical 12&nb
     <tr><td>framer-motion (React)</td><td class="n">854 ms</td><td class="n">63 ms</td><td class="n">918 ms</td><td class="n">10.8 MB</td></tr>
   </tbody>
 </table>
+<p class="sub">Lighthouse mobile (Moto G emulation, the PageSpeed profile) on the same
+pages, load-only: <b>scrollvars 100</b> · framer-motion 94 (LCP 2.8&nbsp;s) · GSAP+ST 88
+(TBT 230&nbsp;ms — building 900 triggers blocks the throttled main thread). Engine bytes and
+per-element setup are exactly what PageSpeed's metrics punish.</p>
 <p class="sub">Same frames at 2.2× less CPU and 8× less memory than framer-motion — on phones
 that is battery and headroom for your own code. GSAP is genuinely efficient; against it the
 difference is the 15× bundle, the heap, and the no-JS/SSR story.</p>

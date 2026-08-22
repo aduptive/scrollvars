@@ -117,8 +117,11 @@ framer-motion 918 ms and 10.8 MB. Same frames at 2.2× less CPU and 8× less
 memory than Framer — on phones that's battery and headroom for your own
 code, and it's why stacked Framer pages fold on weak devices first. GSAP
 is genuinely efficient; against it the difference is the 15× bundle, the
-heap, and the no-JS/SSR story. Run it on your own machine; that's what
-it's for.
+heap, and the no-JS/SSR story. And on Google's own ruler — Lighthouse
+mobile, the PageSpeed profile — the load cost decides it: scrollvars 100,
+framer-motion 94, GSAP + ScrollTrigger 88, the latter losing 230 ms of
+Total Blocking Time just building its 900 triggers on a throttled main
+thread. Run it all on your own machine; that's what it's for.
 
 ## Five lessons that cost real hours
 
