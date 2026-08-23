@@ -56,9 +56,41 @@ dialog.sv-pop:not([open]) {
     var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
 }
 
+/* Acts: a time-driven MASTER CLOCK in pure CSS — the same slice idiom the
+   scroll scenes use, but the clock is a registered custom property in
+   transition. Trigger with a class: sv-open (toggles/click) or sv-live
+   (scroll-triggered timed choreography — zero JS). Define acts as slices:
+
+     .stage  { --a1: clamp(0, var(--sv-act), 1);
+               --a2: clamp(0, calc(var(--sv-act) - 1), 1); }
+     .title  { opacity: var(--a1); translate: 0 calc((1 - var(--a1)) * 2rem); }
+     .cards  { scale: calc(0.9 + var(--a2) * 0.1); }
+
+   Knobs: --sv-acts-count (how many acts, default 3) and --sv-acts-duration
+   (whole timeline, default 2s) — retiming is relative: change one number
+   and every act rescales. Reversible and interruptible by nature: remove
+   the class mid-flight and the transition RETARGETS instead of restarting.
+   Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
+   straight to the finished state — content never hidden. */
+@property --sv-act {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: true;
+}
+.sv-acts {
+  --sv-act: 0;
+  transition: --sv-act var(--sv-acts-duration, 2s) linear;
+}
+.sv-acts.sv-open,
+.sv-on .sv.sv-live.sv-acts,
+.sv-on .sv.sv-live .sv-acts {
+  --sv-act: var(--sv-acts-count, 3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sv-pop,
-  .sv-words > * {
+  .sv-words > *,
+  .sv-acts {
     transition-duration: 0.01ms;
   }
 }

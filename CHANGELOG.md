@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-08-24
+
+- **`sv-acts` — multi-act timelines in pure CSS**: a registered custom
+  property (`--sv-act`) transitions 0 → N when `sv-open` (click) or
+  `sv-live` (scroll) arrives; acts are the same `clamp()` slices as the
+  scroll scenes — one idiom for every timeline. Relative retiming
+  (`--sv-acts-duration` rescales all acts), reversible and interruptible
+  by construction. Older browsers snap to the finished state.
+
 ## 1.2.0 — 2026-08-24
 
 - **Click states — the third input**: `toggles()` (wired by ScrollVarsBoot) —

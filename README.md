@@ -174,6 +174,21 @@ variables; CSS animates — same contract as scroll:
   checkbox hack — with accessibility the hack never had)
 - `sv-words` — rotating words: a clipped column, slide with `--sv-word: n`
 
+**Multi-act sequences** — `sv-acts` is a time-driven master clock in pure
+CSS: a registered custom property transitions 0 → N when the class arrives
+(`sv-open` from a click, or `sv-live` from the scroll — timed choreography
+with zero JS). Acts are the same `clamp()` slices the scroll scenes use, so
+one idiom drives every timeline; the clock is reversible and interruptible
+(class removed mid-flight = the transition retargets, no restart). What it
+deliberately doesn't do: branching, per-act JS callbacks, physics — that's
+GSAP.
+
+```css
+.hero { --a1: clamp(0, var(--sv-act), 1); --a2: clamp(0, calc(var(--sv-act) - 1), 1); }
+.hero h1 { opacity: var(--a1); translate: 0 calc((1 - var(--a1)) * 2rem); }
+.hero .cards { scale: calc(0.9 + var(--a2) * 0.1); }
+```
+
 Three tricks worth knowing before writing any JS: toggling `sv-live` by hand
 replays the whole entrance system on demand; `:has()` puts state anywhere
 (`body:has(#tab-2:checked) .panel-2`); the Popover API opens/closes with zero

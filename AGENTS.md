@@ -120,7 +120,12 @@ canvas with the same camera transform (`Path2D` from the SVG `d`).
 `--sv-state` and syncs `aria-expanded`. Presets: `sv-pop` (popover/dialog/
 panel entry-exit via @starting-style) and `sv-words` (rotating words via
 `--sv-word`). Manual `classList.add('sv-live')` replays the entrance system
-on demand. Do NOT add Framer for a modal; do NOT use checkbox hacks (wrong
+on demand. **Multi-act timed sequences**: `sv-acts` preset — a registered
+custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
+as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
+Knobs: --sv-acts-count / --sv-acts-duration. Reversible (retargets, never
+restarts). Use it BEFORE reaching for GSAP; GSAP only for branching/physics/
+per-act callbacks. Do NOT add Framer for a modal; do NOT use checkbox hacks (wrong
 a11y semantics — use toggles(), Popover API or `:has()` + radios).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
