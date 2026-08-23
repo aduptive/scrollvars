@@ -19,9 +19,31 @@ npm i scrollvars
 ```
 
 ```ts
-// app/globals.css or layout
+// app/globals.css or layout — everything:
 import 'scrollvars/styles.css'
+// …or only what the page uses (modular since 1.1):
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, native view()-tier — 1.2 KB gz
+import 'scrollvars/styles/pin.css'     // curtain, rail, deck, reading, counter — 1.3 KB gz
+import 'scrollvars/styles/slider.css'  // carousel rails — 0.4 KB gz
+import 'scrollvars/styles/tilt.css'    // pointer tilt — 0.5 KB gz
 ```
+
+## Pay for what you use
+
+The package is fully tree-shakeable (ESM, side-effect-free JS); measured
+min+gzip per import:
+
+| you import | JS on the wire |
+| --- | --- |
+| `track` (the driver) | 1.0 KB |
+| `track` + `scan` (zero-wrapper mode) | 1.3 KB |
+| `slider` | 1.5 KB |
+| `trackPointer` | 0.4 KB |
+| `mountEffect` (canvas) | 0.7 KB |
+| everything | 3.1 KB |
+
+A typical page (reveals + stagger) ships `track` + `styles/core.css`:
+**~2.2 KB gzipped, total.**
 
 ## Mental model
 

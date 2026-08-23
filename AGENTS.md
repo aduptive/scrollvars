@@ -36,7 +36,9 @@ import { track, trackPointer, scrollToScene, scan, slider } from 'scrollvars' //
 import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
          useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
-import 'scrollvars/styles.css'                                           // presets
+import 'scrollvars/styles.css'                    // all presets — or modular:
+import 'scrollvars/styles/core.css'               // entrances only (1.2 KB gz);
+// also styles/pin.css, styles/slider.css, styles/tilt.css — import per page needs
 ```
 
 ## Recipes

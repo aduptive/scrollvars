@@ -1,0 +1,89 @@
+/* scrollvars — pinned presets (curtain, rail, deck, reading, counter).
+ * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
+
+/* ---- Pin presets (continuous: track with { pin: true }) ---- */
+
+/* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
+   .sv-curtain-l / .sv-curtain-r panels over the revealed content. */
+.sv .sv-curtain-l {
+  translate: calc(var(--sv-pin, 0) * -101%) 0;
+}
+.sv .sv-curtain-r {
+  translate: calc(var(--sv-pin, 0) * 101%) 0;
+}
+
+/* Rail: horizontal travel on vertical scroll. Put on a max-content flex row
+   inside a sticky stage. Starts one viewport offscreen to the right, ends
+   right-edge aligned (min() keeps it moving even when the track fits). */
+.sv .sv-rail {
+  width: max-content;
+  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0;
+}
+
+/* Deck: pinned card pile — each child flies away across its own slice of the
+   pin. Children stack via grid (no absolute positioning needed); set
+   --sv-count on the container to the number of cards (default 4). The first
+   8 children are auto-indexed; beyond that set --sv-order manually. */
+.sv .sv-deck {
+  display: grid;
+  place-items: center;
+}
+.sv .sv-deck > * {
+  grid-area: 1 / 1;
+  --sv-slice: clamp(0, calc(var(--sv-pin, 0) * var(--sv-count, 4) - var(--sv-order, 0)), 1);
+  translate: 0 calc(var(--sv-order, 0) * 14px - var(--sv-slice) * 130vh);
+  rotate: calc(var(--sv-slice) * -7deg);
+  scale: calc(1 - var(--sv-order, 0) * 0.045 + var(--sv-slice) * 0.045);
+}
+.sv .sv-deck > :nth-child(1) { --sv-order: 0; z-index: 8; }
+.sv .sv-deck > :nth-child(2) { --sv-order: 1; z-index: 7; }
+.sv .sv-deck > :nth-child(3) { --sv-order: 2; z-index: 6; }
+.sv .sv-deck > :nth-child(4) { --sv-order: 3; z-index: 5; }
+.sv .sv-deck > :nth-child(5) { --sv-order: 4; z-index: 4; }
+.sv .sv-deck > :nth-child(6) { --sv-order: 5; z-index: 3; }
+.sv .sv-deck > :nth-child(7) { --sv-order: 6; z-index: 2; }
+.sv .sv-deck > :nth-child(8) { --sv-order: 7; z-index: 1; }
+
+/* Guided reading: children (word spans) lit progressively across the pin.
+   Set --sv-count on the container to the word count and --sv-order on each
+   span (0-based). The +3 lead keeps a few words warming up ahead. */
+.sv .sv-reading > * {
+  opacity: clamp(0.13, calc(var(--sv-pin, 0) * (var(--sv-count, 1) + 3) - var(--sv-order, 0)), 1);
+}
+
+/* Counter: an integer counted up by the scroll, rendered without JS via
+   @property + counter(). Set --sv-max on the element; the number appears
+   as its ::after content. */
+@property --sv-int {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: true;
+}
+.sv .sv-counter {
+  font-variant-numeric: tabular-nums;
+  --sv-int: calc(var(--sv-pin, 0) * var(--sv-max, 100));
+  counter-reset: sv-counter var(--sv-int);
+}
+.sv .sv-counter::after {
+  content: counter(sv-counter);
+}
+
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r {
+    display: none;
+  }
+  .sv .sv-rail {
+    translate: none;
+  }
+  .sv .sv-deck > * {
+    translate: none;
+    rotate: none;
+    scale: none;
+  }
+  .sv .sv-reading > * {
+    opacity: 1;
+  }
+}

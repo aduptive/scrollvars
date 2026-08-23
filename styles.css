@@ -1,3 +1,7 @@
+/* scrollvars — AGGREGATE stylesheet (generated from styles/*.css by
+ * scripts/build-styles.mjs — edit the parts, not this file).
+ * Modular imports ship less: styles/core.css alone covers entrances. */
+
 /* scrollvars — preset styles.
  *
  * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
@@ -72,6 +76,47 @@
   translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
 }
 
+/* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
+
+@keyframes sv-in-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sv-in-rise {
+  from { opacity: 0; translate: 0 4rem; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@supports (animation-timeline: view()) {
+  .sv-view-fade,
+  .sv-view-rise {
+    animation: sv-in-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 70%;
+  }
+  .sv-view-rise {
+    animation-name: sv-in-rise;
+  }
+}
+
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+  .sv-on .sv.sv-auto > *,
+  .sv-view-fade,
+  .sv-view-rise {
+    transition: none;
+    animation: none;
+    opacity: 1;
+    translate: none;
+  }
+}
+
+/* scrollvars — pinned presets (curtain, rail, deck, reading, counter).
+ * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
+
 /* ---- Pin presets (continuous: track with { pin: true }) ---- */
 
 /* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
@@ -139,6 +184,28 @@
   content: counter(sv-counter);
 }
 
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r {
+    display: none;
+  }
+  .sv .sv-rail {
+    translate: none;
+  }
+  .sv .sv-deck > * {
+    translate: none;
+    rotate: none;
+    scale: none;
+  }
+  .sv .sv-reading > * {
+    opacity: 1;
+  }
+}
+
+/* scrollvars — slider styles (the class is added by slider()). */
+
 /* Slider: native rails + snap magnetism; the class is added by slider().
    Slides get --sd (signed distance from center, in slide widths) and
    .sv-active — any CSS reading them animates the carousel. */
@@ -172,58 +239,8 @@
   scroll-snap-type: none;
 }
 
-/* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 
-@keyframes sv-in-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes sv-in-rise {
-  from { opacity: 0; translate: 0 4rem; }
-  to   { opacity: 1; translate: 0 0; }
-}
-
-@supports (animation-timeline: view()) {
-  .sv-view-fade,
-  .sv-view-rise {
-    animation: sv-in-fade linear both;
-    animation-timeline: view();
-    animation-range: entry 10% entry 70%;
-  }
-  .sv-view-rise {
-    animation-name: sv-in-rise;
-  }
-}
-
-/* ---- Accessibility ---- */
-
-@media (prefers-reduced-motion: reduce) {
-  .sv .sv-curtain-l,
-  .sv .sv-curtain-r {
-    display: none;
-  }
-  .sv .sv-rail {
-    translate: none;
-  }
-  .sv .sv-deck > * {
-    translate: none;
-    rotate: none;
-    scale: none;
-  }
-  .sv .sv-reading > * {
-    opacity: 1;
-  }
-  .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
-  .sv-on .sv.sv-auto > *,
-  .sv-view-fade,
-  .sv-view-rise {
-    transition: none;
-    animation: none;
-    opacity: 1;
-    translate: none;
-  }
-}
+/* scrollvars — pointer tilt preset (use with trackPointer / usePointer). */
 
 /* ---- Pointer preset (use with trackPointer / usePointer) ---- */
 

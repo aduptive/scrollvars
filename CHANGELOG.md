@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — 2026-08-23
+
+- **Modular stylesheets**: `scrollvars/styles/core.css` (1.2 KB gz —
+  entrances, stagger, drift, native view()-tier), `pin.css` (1.3 KB),
+  `slider.css` (0.4 KB), `tilt.css` (0.5 KB). `styles.css` remains as the
+  generated aggregate (scripts/build-styles.mjs) — fully backwards
+  compatible, selector set verified identical.
+- README "Pay for what you use": measured per-import JS costs — a typical
+  reveal page ships ~2.2 KB gzipped total (track + core.css).
+
 ## 1.0.0 — 2026-08-21
 
 - **API freeze.** The 0.x surface ships as-is: driver (`track`, `scan`,

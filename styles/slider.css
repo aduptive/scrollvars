@@ -1,0 +1,35 @@
+/* scrollvars — slider styles (the class is added by slider()). */
+
+/* Slider: native rails + snap magnetism; the class is added by slider().
+   Slides get --sd (signed distance from center, in slide widths) and
+   .sv-active — any CSS reading them animates the carousel. */
+.sv-slider {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  overflow-x: auto;
+  scroll-snap-type: x var(--sv-snap, mandatory);
+  overscroll-behavior-x: contain;
+}
+.sv-slider.sv-draggable {
+  cursor: grab;
+}
+.sv-slider-y {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y var(--sv-snap, mandatory);
+  overscroll-behavior-y: contain;
+}
+.sv-slider > * {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+.sv-slider.sv-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+.sv-slider.sv-gliding {
+  scroll-snap-type: none;
+}
+

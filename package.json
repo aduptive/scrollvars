@@ -1,6 +1,6 @@
 {
   "name": "scrollvars",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
@@ -14,6 +14,7 @@
     "./canvas": "./dist/canvas/index.js",
     "./compat": "./dist/compat/index.js",
     "./styles.css": "./styles.css",
+    "./styles/*.css": "./styles/*.css",
     "./package.json": "./package.json"
   },
   "typesVersions": {
@@ -31,12 +32,13 @@
   },
   "files": [
     "dist",
+    "styles",
     "CHANGELOG.md",
     "styles.css",
     "AGENTS.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/build-styles.mjs",
     "dev": "tsc -w",
     "test": "node --test test/",
     "prepublishOnly": "npm run build && npm test",
