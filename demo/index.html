@@ -2366,6 +2366,59 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
   </div>
 </section>
 
+<!-- ══════════════ BENCHMARKS ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="receipts" id="benchmarks">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">reference · measured</p>
+      <h2 class="sv-rise" style="--sv-order: 1">The receipts</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Every number below was measured, not quoted — same CDN, same workload, same
+        machine, methodology on the <a href="bench/" style="color: var(--accent)">benchmark
+        page</a>, where you can also run all of it on your own hardware.
+      </p>
+    </div>
+
+    <h3 class="sv-rise" style="--sv-order: 3; font-size: 15px; margin: 18px 0 6px;">Weight on the wire (min / gzip)</h3>
+    <table class="sv-rise" style="--sv-order: 3">
+      <tbody>
+        <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
+        <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
+        <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
+        <tr><td><b>scrollvars — everything</b></td><td class="range"><b>15.8 KB / 5.9 KB</b></td><td>core + slider + presets CSS</td></tr>
+        <tr><td><b>scrollvars driver alone</b></td><td class="range"><b>2.3 KB / 1.2 KB</b></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost for the same frames <span style="color: var(--muted); font-weight: 400;">(identical 12s run, 900 scrubbed elements — all three deliver 60 fps; this is what those frames cost)</span></h3>
+    <table class="sv-rise" style="--sv-order: 4">
+      <thead><tr><th>engine</th><th>JS script</th><th>CPU total</th><th>JS heap</th></tr></thead>
+      <tbody>
+        <tr><td><b>scrollvars</b></td><td class="range"><b>155 ms</b></td><td class="range"><b>421 ms</b></td><td class="range"><b>1.3 MB</b></td></tr>
+        <tr><td>GSAP + ScrollTrigger</td><td class="range">358 ms</td><td class="range">476 ms</td><td class="range">7.2 MB</td></tr>
+        <tr><td>framer-motion</td><td class="range">854 ms</td><td class="range">918 ms</td><td class="range">10.8 MB</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sv-rise" style="--sv-order: 5; font-size: 15px; margin: 22px 0 6px;">Lighthouse mobile <span style="color: var(--muted); font-weight: 400;">(the PageSpeed profile: Moto G, 4× CPU, slow 4G)</span></h3>
+    <table class="sv-rise" style="--sv-order: 5">
+      <thead><tr><th>page</th><th>score</th><th>LCP</th><th>TBT</th></tr></thead>
+      <tbody>
+        <tr><td><b>scrollvars</b></td><td class="range"><b>100</b></td><td class="range"><b>1.0 s</b></td><td class="range"><b>0 ms</b></td></tr>
+        <tr><td>framer-motion</td><td class="range">94</td><td class="range">2.8 s</td><td class="range">20 ms</td></tr>
+        <tr><td>GSAP + ScrollTrigger</td><td class="range">88</td><td class="range">2.7 s</td><td class="range">230 ms</td></tr>
+      </tbody>
+    </table>
+
+    <p class="sv-rise" style="--sv-order: 6; color: var(--muted); font-size: 14px; margin-top: 16px;">
+      The honest summary: in frame delivery all engines tie — every competent one animates
+      only the viewport. What separates them is what the frames <em>cost</em> (CPU, memory,
+      battery) and what the engine costs to <em>load</em> — which is exactly what PageSpeed
+      punishes. <a href="bench/" style="color: var(--accent)">Run the benchmark yourself →</a>
+    </p>
+  </div>
+</section>
+
 <!-- ══════════════ API ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="api">
   <div class="wrap">
@@ -2487,7 +2540,7 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.2 KB gzip · whole lib &lt; 6 KB gzip · v1.0</p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.2 KB gzip · whole lib &lt; 6 KB gzip · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · v1.0</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
