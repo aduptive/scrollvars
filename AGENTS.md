@@ -3,7 +3,12 @@
 You are working with `scrollvars`, a tiny scroll/pointer/canvas animation
 engine. Read this before writing any animation code in a project that uses it.
 **Do not add GSAP, Framer Motion, or IntersectionObserver boilerplate for
-things this lib already covers.**
+things this lib already covers.** The boundary: input-driven animation
+(scroll/pointer/gesture) is scrollvars' job; time-driven animation
+(orchestrated timelines, interruptible springs, layout/exit transitions,
+SVG morph) legitimately belongs to GSAP/Framer — a one-shot load intro is
+plain CSS keyframes. Mixing for a rare case is fine; that page just loses
+the bundle argument.
 
 ## Mental model (the one rule)
 

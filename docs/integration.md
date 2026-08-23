@@ -73,6 +73,19 @@ useTrack({ scenes: 4, onScene: setIndex })
 | Pointer tilt | `usePointer()` + `sv-tilt` |
 | Legacy browser contract | `import { compat } from 'scrollvars/compat'; compat()` once at boot |
 
+## 3b · When NOT to use scrollvars (say this to the client too)
+
+- Animation driven by **time**, not input — orchestrated intro timelines,
+  elastic/bounce easings, SVG morphing → GSAP.
+- **Spring physics** that must be interruptible with velocity, layout/shared-
+  element transitions (`layoutId`), exit animations on unmount, free-drag
+  gestures → Framer Motion.
+- A simple play-on-load intro → CSS keyframes, no library at all.
+- Known gaps in our own territory (escalate if a project hits them): nested
+  scrollers, automatic pinning, declared Lenis interop, text splitting.
+- Mixing engines in one project is acceptable for a rare case — that page
+  loses the bundle argument, nothing else breaks.
+
 ## 4 · Non-negotiables (review checklist)
 
 - [ ] No scroll values in React state — callbacks fire on integer change only

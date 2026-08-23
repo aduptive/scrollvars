@@ -220,6 +220,29 @@ const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) }
 | Slider wheel-quiet window | 200 ms | slider |
 | Canvas DPR cap | 2 (`dprCap`) | canvas harness |
 
+## When to use what
+
+The honest boundary: scrollvars maps **inputs to values** — if the animation
+happens because the *user did something* (scroll, pointer, gesture), it does
+the job at a fraction of the cost. If it happens because *time passes*, use
+the tools built for that.
+
+| You need | Use |
+| --- | --- |
+| Reveals, parallax, pinned stories, scrubbing, carousels, tilt, camera paths | **scrollvars** |
+| Orchestrated timelines (`tl.to(a).to(b, "-=0.2")`), elastic/bounce easings, SVG morphing, animating arbitrary JS values | **GSAP** |
+| Interruptible spring physics, layout/`layoutId` "magic motion", exit animations on React unmount, `whileDrag` gestures | **Framer Motion** |
+| A one-shot intro that plays on load | plain **CSS keyframes** (before reaching for a library) |
+
+Known gaps inside scrollvars' own territory (candidates for 1.x, tell us if
+you hit them): nested scrollers (the driver tracks window scroll only),
+automatic pinning (the sticky skeleton is hand-written), declared smooth-scroll
+(Lenis) interop, and a SplitText-style text splitter.
+
+Mixing is fine: GSAP for one intro timeline + scrollvars for everything
+scroll-driven coexist without conflict — that page just gives up the bundle
+argument.
+
 ## Browser support
 
 The floor is set by two things: the dist ships ES2020 (optional chaining) and
