@@ -1186,6 +1186,25 @@ html.snap-region { scroll-snap-type: y proximity; }
   text-transform: uppercase;
 }
 .pz-head h3 b { color: #ff5a4e; }
+/* word-switch: the flavor is a clipped column of words; the snapped scene
+   slides it one row per flavor — discrete value + transition = smooth */
+#pz-flavor {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: bottom;
+  height: 1.15em;
+  overflow: hidden;
+}
+#pz-flavor span {
+  display: block;
+  height: 1.15em;
+  line-height: 1.15;
+  translate: 0 calc(var(--pz-word, 0) * -1.15em);
+  transition: translate 650ms cubic-bezier(0.28, 0.84, 0.42, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  #pz-flavor span { transition: none; }
+}
 .pz-head p { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
 .pz-hub {
   position: absolute;
@@ -3661,9 +3680,15 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
   var pzDots = document.getElementById('pz-dots');
   var pzScene = 0;
   PZ_FLAVORS.forEach(function () { pzDots.appendChild(document.createElement('i')); });
+  pzFlavor.textContent = '';
+  PZ_FLAVORS.forEach(function (f) {
+    var word = document.createElement('span');
+    word.textContent = f[0];
+    pzFlavor.appendChild(word);
+  });
   function pzPaint(i) {
     pzScene = i;
-    pzFlavor.textContent = PZ_FLAVORS[i][0];
+    pzFlavor.style.setProperty('--pz-word', i);
     pzTag.textContent = PZ_FLAVORS[i][1];
     Array.prototype.forEach.call(pzDots.children, function (dot, j) {
       dot.classList.toggle('on', j === i);
