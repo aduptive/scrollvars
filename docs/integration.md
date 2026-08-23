@@ -71,6 +71,8 @@ useTrack({ scenes: 4, onScene: setIndex })
 | 3D / WebGL | three.js as a consumer: `onScene`/`onTravel` drive the camera, render-on-demand |
 | Ambient canvas (particles, generative) | `mountEffect` / `useCanvasEffect` — never a bare rAF loop |
 | Pointer tilt | `usePointer()` + `sv-tilt` |
+| Menus, modals, tabs, accordions (click states) | `data-sv-toggle`/`data-sv-target` (Boot wires it) + `sv-pop`; tabs = radios + `:has()` |
+| Rotating hero words | `sv-words` + `--sv-word: n` |
 | Legacy browser contract | `import { compat } from 'scrollvars/compat'; compat()` once at boot |
 
 ## 3b · When NOT to use scrollvars (say this to the client too)

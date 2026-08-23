@@ -9,6 +9,7 @@ import { scrollToScene, track } from '../core/driver.js'
 import type { PointerOptions } from '../core/pointer.js'
 import { trackPointer } from '../core/pointer.js'
 import { scan } from '../core/scan.js'
+import { toggles } from '../core/toggles.js'
 import type { SliderHandle, SliderOptions } from '../core/slider.js'
 import { slider } from '../core/slider.js'
 
@@ -27,7 +28,14 @@ import { slider } from '../core/slider.js'
  *   </section>
  */
 export const ScrollVarsBoot: React.FC = () => {
-  useEffect(() => scan(), [])
+  useEffect(() => {
+    const stopScan = scan()
+    const stopToggles = toggles()
+    return () => {
+      stopScan()
+      stopToggles()
+    }
+  }, [])
   return null
 }
 

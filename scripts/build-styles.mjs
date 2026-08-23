@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const PARTS = ['core.css', 'pin.css', 'slider.css', 'tilt.css']
+const PARTS = ['core.css', 'pin.css', 'slider.css', 'tilt.css', 'state.css']
 const banner =
   '/* scrollvars — AGGREGATE stylesheet (generated from styles/*.css by\n' +
   ' * scripts/build-styles.mjs — edit the parts, not this file).\n' +

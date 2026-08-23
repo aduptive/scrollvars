@@ -115,6 +115,14 @@ janks as the camera enters unrasterized territory). Keep the transformed
 div paint-sparse (cards only) and draw grids/routes on a viewport-sized
 canvas with the same camera transform (`Path2D` from the SVG `d`).
 
+**Click states (menus/modals/tabs):** `toggles()` (Boot wires it) —
+`data-sv-toggle="class"` + `data-sv-target="sel"` flips the class, writes
+`--sv-state` and syncs `aria-expanded`. Presets: `sv-pop` (popover/dialog/
+panel entry-exit via @starting-style) and `sv-words` (rotating words via
+`--sv-word`). Manual `classList.add('sv-live')` replays the entrance system
+on demand. Do NOT add Framer for a modal; do NOT use checkbox hacks (wrong
+a11y semantics — use toggles(), Popover API or `:has()` + radios).
+
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
 

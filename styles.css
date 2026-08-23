@@ -278,3 +278,68 @@
     display: none;
   }
 }
+
+/* scrollvars — interaction-state presets (use with toggles(), the Popover
+ * API, or any class you flip yourself — including sv-live by hand, which
+ * replays the whole entrance system on demand). */
+
+/* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
+   modern discrete-transition trio (@starting-style + allow-discrete).
+   Works with [popover] / <dialog> out of the box, or with the `sv-open`
+   class that toggles() flips. */
+.sv-pop {
+  --sv-pop-distance: 0.75rem;
+  --sv-pop-duration: 350ms;
+  transition:
+    opacity var(--sv-pop-duration) var(--sv-ease, ease),
+    translate var(--sv-pop-duration) var(--sv-ease, ease),
+    display var(--sv-pop-duration) allow-discrete,
+    overlay var(--sv-pop-duration) allow-discrete;
+}
+[popover].sv-pop:not(:popover-open) {
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+dialog.sv-pop:not([open]) {
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+.sv-pop:not([popover]):not(dialog):not(.sv-open) {
+  display: none;
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+@starting-style {
+  [popover].sv-pop:popover-open,
+  dialog.sv-pop[open],
+  .sv-pop.sv-open {
+    opacity: 0;
+    translate: 0 var(--sv-pop-distance);
+  }
+}
+
+/* Rotating words: a clipped column of words; set --sv-word (integer index)
+   to slide one row per word — old word exits up, the next rises from below.
+   Discrete value + transition = smooth, the house idiom. */
+.sv-words {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: bottom;
+  height: 1.15em;
+  overflow: hidden;
+}
+.sv-words > * {
+  display: block;
+  height: 1.15em;
+  line-height: 1.15;
+  translate: 0 calc(var(--sv-word, 0) * -1.15em);
+  transition: translate var(--sv-duration, 650ms)
+    var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-pop,
+  .sv-words > * {
+    transition-duration: 0.01ms;
+  }
+}

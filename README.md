@@ -156,6 +156,30 @@ slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 Size, measured: this module 3.1 KB min / 1.4 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
+## Interaction states (click)
+
+The third input. One delegated listener turns clicks into classes and
+variables; CSS animates — same contract as scroll:
+
+```html
+<button data-sv-toggle="open" data-sv-target="#menu">menu</button>
+<nav id="menu" class="sv-pop">…</nav>   <!-- animated show/hide, aria-expanded synced -->
+```
+
+`<ScrollVarsBoot />` wires it automatically (vanilla: `toggles()`). Presets in
+`styles/state.css`:
+
+- `sv-pop` — entry/exit for `[popover]`, `<dialog>` and class-toggled panels
+  via `@starting-style` + `allow-discrete` (the modern replacement for the
+  checkbox hack — with accessibility the hack never had)
+- `sv-words` — rotating words: a clipped column, slide with `--sv-word: n`
+
+Three tricks worth knowing before writing any JS: toggling `sv-live` by hand
+replays the whole entrance system on demand; `:has()` puts state anywhere
+(`body:has(#tab-2:checked) .panel-2`); the Popover API opens/closes with zero
+JS. One-shot intros on load are plain CSS keyframes. Orchestrated multi-act
+timelines remain GSAP's turf — this module is one click, one state change.
+
 ## Pointer tilt
 
 Same philosophy, different input — the pointer becomes `--mx`/`--my` (−1..1 from each card's center):

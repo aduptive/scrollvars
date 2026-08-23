@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 — 2026-08-24
+
+- **Click states — the third input**: `toggles()` (wired by ScrollVarsBoot) —
+  `data-sv-toggle`/`data-sv-target` flip a class, write `--sv-state` and keep
+  `aria-expanded` in sync. Deliberately one click = one state change; no
+  timeline engine.
+- **Presets** (`styles/state.css`): `sv-pop` — popover/dialog/panel entry-exit
+  via `@starting-style` + `allow-discrete`; `sv-words` — rotating words
+  (clipped column, `--sv-word: n`), promoted from the pizza demo.
+
 ## 1.1.0 — 2026-08-23
 
 - **Modular stylesheets**: `scrollvars/styles/core.css` (1.2 KB gz —

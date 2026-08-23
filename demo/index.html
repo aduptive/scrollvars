@@ -1186,24 +1186,25 @@ html.snap-region { scroll-snap-type: y proximity; }
   text-transform: uppercase;
 }
 .pz-head h3 b { color: #ff5a4e; }
-/* word-switch: the flavor is a clipped column of words; the snapped scene
-   slides it one row per flavor — discrete value + transition = smooth */
-#pz-flavor {
+/* sv-words (official preset since v1.2): a clipped column of words; the
+   snapped scene slides it one row per flavor via --sv-word —
+   discrete value + transition = smooth */
+.sv-words {
   display: inline-flex;
   flex-direction: column;
   vertical-align: bottom;
   height: 1.15em;
   overflow: hidden;
 }
-#pz-flavor span {
+.sv-words > * {
   display: block;
   height: 1.15em;
   line-height: 1.15;
-  translate: 0 calc(var(--pz-word, 0) * -1.15em);
+  translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate 650ms cubic-bezier(0.28, 0.84, 0.42, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  #pz-flavor span { transition: none; }
+  .sv-words > * { transition: none; }
 }
 .pz-head p { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
 .pz-hub {
@@ -2333,7 +2334,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     <div class="pz-sticky">
       <div class="pz-head">
         <p class="kicker">scrollvars pizzeria</p>
-        <h3>I'm tempted by <b id="pz-flavor">pepperoni</b></h3>
+        <h3>I'm tempted by <b class="sv-words" id="pz-flavor">pepperoni</b></h3>
         <p id="pz-tag">spicy, loud and always hot</p>
       </div>
       <div class="pz-hub">
@@ -3688,7 +3689,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
   });
   function pzPaint(i) {
     pzScene = i;
-    pzFlavor.style.setProperty('--pz-word', i);
+    pzFlavor.style.setProperty('--sv-word', i);
     pzTag.textContent = PZ_FLAVORS[i][1];
     Array.prototype.forEach.call(pzDots.children, function (dot, j) {
       dot.classList.toggle('on', j === i);
