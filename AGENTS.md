@@ -190,7 +190,7 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`
 (harness), `src/react/`, `styles.css` (presets), `demo/index.html`
-(26 live patterns, self-contained — slider/canvas inline blocks are synced
+(27 live patterns, self-contained — slider/canvas inline blocks are synced
 from the built dist by `npm run demo:sync`; NEVER hand-edit them. Deploy
 with `npm run demo:deploy` — it builds, syncs, deploys and re-points the
 alias in one step), `test/` (node:test, no DOM —

@@ -23,6 +23,11 @@ const BLOCKS = [
     label: 'scrollvars slider',
     dist: 'dist/core/slider.js',
   },
+  {
+    name: 'toggles',
+    label: 'scrollvars toggles',
+    dist: 'dist/core/toggles.js',
+  },
 ]
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 26 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 27 live patterns.">
 <meta property="og:title" content="scrollvars — one rAF in, CSS variables out">
 <meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.vercel.app">
@@ -1278,6 +1278,96 @@ html.snap-region { scroll-snap-type: y proximity; }
   .pz-outer { height: auto; }
   .pz-sticky { position: static; contain: none; }
 }
+
+/* ── case 17 · the CSS timeline (sv-acts, official preset since v1.3) ── */
+@property --sv-act {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: true;
+}
+.sv-acts {
+  --sv-act: 0;
+  transition: --sv-act var(--sv-acts-duration, 2s) linear;
+}
+.sv-acts.sv-open {
+  --sv-act: var(--sv-acts-count, 3);
+}
+.acts-stage {
+  --sv-acts-count: 3;
+  --sv-acts-duration: 2.4s;
+  /* the acts, as slices of the clock — same idiom as the scroll scenes */
+  --a1: clamp(0, var(--sv-act), 1);
+  --a2: clamp(0, calc(var(--sv-act) - 1), 1);
+  --a3: clamp(0, calc(var(--sv-act) - 2), 1);
+  padding: 56px 28px 40px;
+  background: #17151f;
+  border-radius: 16px;
+  text-align: center;
+  overflow: hidden;
+}
+.acts-stage h3 {
+  font-size: clamp(26px, 4vw, 44px);
+  font-weight: 800;
+  opacity: var(--a1);
+  translate: 0 calc((1 - var(--a1)) * 2.2rem);
+  letter-spacing: calc(0.3em - var(--a1) * 0.28em);
+}
+.acts-chips {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 26px 0;
+  flex-wrap: wrap;
+}
+.acts-chips span {
+  --chip: clamp(0, calc(var(--a2) * 3 - var(--i)), 1); /* slices inside the act */
+  padding: 10px 18px;
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  font: 500 13px var(--mono);
+  color: var(--accent);
+  opacity: var(--chip);
+  translate: 0 calc((1 - var(--chip)) * 18px);
+  scale: calc(0.9 + var(--chip) * 0.1);
+}
+.acts-line {
+  width: calc(var(--a3) * min(300px, 60%));
+  height: 3px;
+  margin: 0 auto 14px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--num));
+}
+.acts-tag {
+  color: var(--muted);
+  font-size: 14px;
+  opacity: var(--a3);
+}
+.acts-clock {
+  height: 4px;
+  margin-top: 30px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.acts-clock i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  width: calc(var(--sv-act) / 3 * 100%);
+}
+.acts-btn {
+  margin-top: 18px;
+  font: 600 14px var(--sans);
+  padding: 12px 26px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-acts { transition-duration: 0.01ms; }
+}
 </style>
 </head>
 <body>
@@ -2390,6 +2480,58 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
       <div class="g3"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23ffd9a0'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%234a1c28'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%232a0f18'/></svg>");'></div><h3>ember</h3></div>
       <div class="g4"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23cfe3ff'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%2316294a'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%230b1830'/></svg>");'></div><h3>north</h3></div>
     </div>
+  </div>
+</section>
+
+<!-- ══════════════ 17 · THE CSS TIMELINE ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="acts">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 17 · the CSS timeline</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Multi-act, no timeline engine</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        <strong>What it is:</strong> <span class="inline-code">sv-acts</span> — a master
+        clock in a registered custom property. When the class lands (a click via
+        <span class="inline-code">toggles()</span>, or <span class="inline-code">sv-live</span>
+        from the scroll), <span class="inline-code">--sv-act</span> <em>transitions</em>
+        from 0 to N, and every act reads its slice of the clock — the same
+        <span class="inline-code">clamp()</span> idiom the scroll scenes use.
+        <strong>What it's for:</strong> intros, hero choreographies, menu sequences —
+        anything linear. Press play; press again <em>mid-flight</em> and watch it reverse
+        from wherever it is — the transition retargets, it never restarts.
+        This case ships <strong>zero JavaScript of its own</strong>.
+      </p>
+    </div>
+    <div class="acts-stage sv-acts" id="acts-stage">
+      <h3>three acts</h3>
+      <div class="acts-chips">
+        <span style="--i: 0">01 · title</span>
+        <span style="--i: 1">02 · cascade</span>
+        <span style="--i: 2">03 · signature</span>
+      </div>
+      <div class="acts-line"></div>
+      <p class="acts-tag">one property is the whole timeline</p>
+      <div class="acts-clock"><i></i></div>
+    </div>
+    <div style="text-align: center;">
+      <button class="acts-btn" data-sv-toggle="sv-open" data-sv-target="#acts-stage">play / reverse</button>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition — that's the engine */</span>
+@property --sv-act { syntax: <span class="s">'&lt;number&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
+.sv-acts { --sv-act: <span class="n">0</span>; transition: <span class="k">--sv-act 2.4s linear</span>; }
+.sv-acts.sv-open { --sv-act: <span class="n">3</span>; }
+
+<span class="c">/* acts = slices; sub-slices stagger inside an act (the chips) */</span>
+--a2: <span class="k">clamp(0, calc(var(--sv-act) - 1), 1)</span>;
+.chip { --chip: <span class="k">clamp(0, calc(var(--a2) * 3 - var(--i)), 1)</span>; }
+
+<span class="c">/* the same sequence in GSAP, the market reference: */</span>
+<span class="c">//   gsap.timeline().to('.title',{…}).to('.chip',{stagger:.2},'-=.2').to('.line',{…})</span>
+<span class="c">//   → identical result, plus a 28 KB core on the page.</span>
+<span class="c">// Where GSAP legitimately goes further — and sv-acts stops:</span>
+<span class="c">//   branching mid-timeline · per-act JS callbacks · spring physics ·</span>
+<span class="c">//   exotic eases on the clock itself · nested master timelines.</span>
+<span class="c">//   Linear sequence? You don't need the engine.</span></code></pre>
   </div>
 </section>
 
@@ -3638,6 +3780,54 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 
   return slider;
   })();
+
+  /* ═══════ scrollvars toggles — inlined from the built dist, verbatim ═══════ */
+  var toggles = (function () {
+/**
+ * Click → state → CSS. The third input, after scroll and pointer: one
+ * delegated listener turns clicks into classes + variables, and CSS does
+ * every pixel of the animation — same contract as the scroll driver.
+ *
+ *   <button data-sv-toggle="open" data-sv-target="#menu">menu</button>
+ *   <nav id="menu">…</nav>        <!-- gains/loses .open on click -->
+ *
+ * - `data-sv-toggle="class"` — class to toggle ('sv-open' when empty)
+ * - `data-sv-target="sel"`   — what receives it (the trigger itself when absent)
+ * - the target also gets `--sv-state: 1|0` for continuous CSS use
+ * - the trigger gets `aria-expanded` kept in sync — the accessibility the
+ *   old checkbox hack never gave you
+ *
+ * Deliberately NOT a timeline engine: one click, one state change. For
+ * orchestrated multi-act sequences, use GSAP — that's its turf.
+ *
+ * `<ScrollVarsBoot />` wires this automatically alongside scan().
+ */
+function toggles(root = document) {
+    if (typeof window === 'undefined')
+        return () => { };
+    const onClick = (event) => {
+        const trigger = event.target.closest?.('[data-sv-toggle]');
+        if (!trigger)
+            return;
+        const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
+        const selector = trigger.getAttribute('data-sv-target');
+        const target = selector
+            ? root.querySelector(selector)
+            : trigger;
+        if (!target)
+            return;
+        const on = target.classList.toggle(className);
+        target.style.setProperty('--sv-state', on ? '1' : '0');
+        trigger.setAttribute('aria-expanded', String(on));
+    };
+    root.addEventListener('click', onClick);
+    return () => root.removeEventListener('click', onClick);
+}
+
+  return toggles;
+  })();
+
+  toggles(); // wires every [data-sv-toggle] on the page — case 17 has no JS of its own
 
   var sliderDots = document.getElementById('slider-dots');
   var sliderEl = document.getElementById('slider-demo');
