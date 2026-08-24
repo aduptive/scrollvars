@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars</title>
-<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 27 live patterns.">
+<meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="scrollvars — one rAF in, CSS variables out">
 <meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.vercel.app">
@@ -1368,6 +1368,52 @@ html.snap-region { scroll-snap-type: y proximity; }
 @media (prefers-reduced-motion: reduce) {
   .sv-acts { transition-duration: 0.01ms; }
 }
+
+/* ── case 18 · the spread (sv-spread, official preset since v1.4) ── */
+.sv-spread {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  justify-content: center;
+}
+.sv-spread > * {
+  --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
+  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
+  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg);
+}
+.sv-on .sv .sv-spread.sv-spread-in > * {
+  transition:
+    translate 800ms var(--sv-ease, ease),
+    rotate 800ms var(--sv-ease, ease);
+  transition-delay: calc(var(--sv-order, 0) * 90ms);
+}
+.sv-on .sv.sv-live .sv-spread.sv-spread-in > * {
+  --sv-spread: 1;
+}
+.spread-cards { margin: 26px 0 8px; }
+.spread-cards > div {
+  width: min(200px, 26vw);
+  height: 150px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font: 500 13px var(--mono);
+  color: var(--text);
+}
+.spread-cards > :nth-child(1) { background: linear-gradient(150deg, #2b1d4d, var(--surface) 75%); }
+.spread-cards > :nth-child(2) { background: linear-gradient(150deg, #103029, var(--surface) 75%); z-index: 2; }
+.spread-cards > :nth-child(3) { background: linear-gradient(150deg, #33121f, var(--surface) 75%); }
+.spread-scrub > * { --sv-spread: clamp(0, calc(var(--sv-t, 0) * 2), 1); }
+.spread-label {
+  font: 500 12px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 26px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > * { translate: none; rotate: none; transition: none; }
+}
 </style>
 </head>
 <body>
@@ -2532,6 +2578,50 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
 <span class="c">//   branching mid-timeline · per-act JS callbacks · spring physics ·</span>
 <span class="c">//   exotic eases on the clock itself · nested master timelines.</span>
 <span class="c">//   Linear sequence? You don't need the engine.</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════ 18 · THE SPREAD ══════════════ -->
+<section class="demo sv" data-sv data-hud="spread">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">case 18 · the spread</p>
+      <h2 class="sv-rise" style="--sv-order: 1">A deck that deals itself into the grid</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Cards live in their final flex row; a per-card translate collapses them onto the
+        center (with a slight fan) while <span class="inline-code">--sv-spread</span> is 0.
+        The same preset, two clocks: the first row <strong>plays on arrival</strong>
+        (<span class="inline-code">sv-live</span> flips the variable, transitions play with
+        a stagger — scroll away and back, it re-deals); the second is
+        <strong>scrubbed</strong> — <span class="inline-code">--sv-spread</span> maps from
+        <span class="inline-code">--sv-t</span>, so the deal follows your finger both ways.
+        Zero JavaScript of its own.
+      </p>
+    </div>
+    <p class="spread-label sv-rise" style="--sv-order: 3">on arrival · plays once live</p>
+    <div class="sv-spread sv-spread-in spread-cards">
+      <div style="--sv-order: 0">01</div>
+      <div style="--sv-order: 1">02</div>
+      <div style="--sv-order: 2">03</div>
+    </div>
+    <p class="spread-label">scrubbed · follows the scroll</p>
+    <div class="sv-spread spread-cards spread-scrub">
+      <div style="--sv-order: 0">01</div>
+      <div style="--sv-order: 1">02</div>
+      <div style="--sv-order: 2">03</div>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* cards sit in their real flex row; the deck is just a translate */</span>
+.sv-spread &gt; * {
+  --sv-d: <span class="k">calc(var(--sv-order) - var(--sv-mid, 1))</span>;  <span class="c">/* slots from center */</span>
+  translate: <span class="k">calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + 16px))</span> 0;
+  rotate: <span class="k">calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg)</span>;
+}
+
+<span class="c">/* clock 1 — on arrival: sv-live flips the var, transitions deal the cards */</span>
+.sv-live .sv-spread-in &gt; * { <span class="k">--sv-spread: 1</span>; }
+
+<span class="c">/* clock 2 — scrubbed: map it from the driver (spread done by mid-viewport) */</span>
+.spread-scrub &gt; * { --sv-spread: <span class="k">clamp(0, calc(var(--sv-t) * 2), 1)</span>; }</code></pre>
   </div>
 </section>
 

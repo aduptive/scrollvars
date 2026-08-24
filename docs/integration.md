@@ -73,6 +73,7 @@ useTrack({ scenes: 4, onScene: setIndex })
 | Pointer tilt | `usePointer()` + `sv-tilt` |
 | Menus, modals, tabs, accordions (click states) | `data-sv-toggle`/`data-sv-target` (Boot wires it) + `sv-pop`; tabs = radios + `:has()` |
 | Timed multi-act sequence (click or scroll-triggered) | `sv-acts` + clamp() slices per act |
+| Deck that deals into the grid (triggered or scrubbed) | `sv-spread` (+ `.sv-spread-in` or map `--sv-spread`) |
 | Rotating hero words | `sv-words` + `--sv-word: n` |
 | Legacy browser contract | `import { compat } from 'scrollvars/compat'; compat()` once at boot |
 

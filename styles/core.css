@@ -72,6 +72,35 @@
   translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
 }
 
+/* ---- Spread preset: a centered deck that fans out into its row ---- */
+/* Children start stacked at the container's center (slight fan) and spread
+   into their natural flex slots. Two clocks drive it:
+     entrance — add .sv-spread-in: spreads (with transition + stagger) the
+                moment the tracked section goes live
+     scrub    — map --sv-spread from a driver variable yourself, e.g.
+                .mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+   Index children with .sv-stagger (auto --sv-order) or set --sv-order by
+   hand; set --sv-mid to (N−1)/2 on the container (default 1 = 3 cards). */
+.sv-spread {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  justify-content: center;
+}
+.sv-spread > * {
+  --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
+  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
+  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg);
+}
+.sv-on .sv .sv-spread.sv-spread-in > * {
+  transition:
+    translate var(--sv-duration, 800ms) var(--sv-ease, ease),
+    rotate var(--sv-duration, 800ms) var(--sv-ease, ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
+}
+.sv-on .sv.sv-live .sv-spread.sv-spread-in > * {
+  --sv-spread: 1;
+}
+
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
 
 @keyframes sv-in-fade {
@@ -99,6 +128,11 @@
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
+  .sv-spread > * {
+    translate: none;
+    rotate: none;
+    transition: none;
+  }
   .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
   .sv-on .sv.sv-auto > *,
   .sv-view-fade,

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 — 2026-08-24
+
+- **`sv-spread`** — the deck-to-grid pattern: children live in their final
+  flex row and a per-card translate collapses them onto the center (slight
+  fan) while `--sv-spread` is 0. Two clocks: `.sv-spread-in` plays on
+  arrival (sv-live + transition + stagger, re-deals on re-entry), or map
+  the variable from `--sv-t`/`--sv-pin` to scrub it. Demo case 18, zero
+  bespoke JS.
+
 ## 1.3.0 — 2026-08-24
 
 - **`sv-acts` — multi-act timelines in pure CSS**: a registered custom

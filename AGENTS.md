@@ -80,6 +80,12 @@ root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
 `data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`) — no client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
+**Spread (deck → grid):** `sv-spread` — children sit in their real flex row,
+a translate collapses them onto the center while `--sv-spread` is 0. Add
+`.sv-spread-in` to play on arrival (sv-live + stagger), or map the var to
+scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
+Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
+
 **Pinned presets:** `sv-deck` (card pile, children stack via grid, set
 `--sv-count`), `sv-reading` (word spans lit across the pin: `--sv-count` on
 the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
@@ -190,7 +196,7 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 
 `src/core/driver.ts` (scroll), `src/core/pointer.ts`, `src/canvas/`
 (harness), `src/react/`, `styles.css` (presets), `demo/index.html`
-(27 live patterns, self-contained — slider/canvas inline blocks are synced
+(28 live patterns, self-contained — slider/canvas inline blocks are synced
 from the built dist by `npm run demo:sync`; NEVER hand-edit them. Deploy
 with `npm run demo:deploy` — it builds, syncs, deploys and re-points the
 alias in one step), `test/` (node:test, no DOM —

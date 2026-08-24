@@ -64,6 +64,7 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-rise` / `sv-fade` / `sv-slide-l` / `sv-slide-r` | Entrance transitions, triggered by `.sv-live` |
 | `sv-auto` (on the container) | Every direct child rises in DOM order — no classes on children (`sv-skip` opts out) |
 | `sv-drift` | Continuous drift tied to `--sv-view` — follows the finger, no transition |
+| `sv-spread` | Centered deck fans out into its flex row — `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
 | `sv-deck` | Pinned card pile — each child flies away across its slice of the pin (`--sv-count`) |
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`) |
