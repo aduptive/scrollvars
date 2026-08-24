@@ -1,0 +1,59 @@
+/* scrollvars — UI presets (marquee, accordion) for the React kit and
+ * vanilla markup alike. */
+
+/* Marquee: an infinite strip (logos, taglines). The track holds TWO copies
+   of the content and slides one copy-width; knobs: --sv-marquee-duration
+   (one loop) and --sv-gap. Pauses on hover by default
+   (--sv-marquee-hover: running to disable). */
+.sv-marquee {
+  overflow: hidden;
+  display: flex;
+}
+.sv-marquee-track {
+  display: flex;
+  align-items: center;
+  gap: var(--sv-gap, 48px);
+  width: max-content;
+  padding-right: var(--sv-gap, 48px);
+  animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite;
+}
+.sv-marquee:hover .sv-marquee-track {
+  animation-play-state: var(--sv-marquee-hover, paused);
+}
+@keyframes sv-marquee {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* Accordion: native <details> animated — accessibility for free, exclusive
+   groups via the native name attribute. Needs interpolate-size (Chrome 129+);
+   older browsers open/close without the height animation. */
+.sv-accordion {
+  interpolate-size: allow-keywords;
+}
+.sv-accordion > summary {
+  cursor: pointer;
+}
+.sv-accordion::details-content {
+  opacity: 0;
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--sv-duration, 350ms) var(--sv-ease, ease),
+    opacity var(--sv-duration, 350ms) var(--sv-ease, ease),
+    content-visibility var(--sv-duration, 350ms) allow-discrete;
+}
+.sv-accordion[open]::details-content {
+  opacity: 1;
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track {
+    animation: none;
+  }
+  .sv-accordion::details-content {
+    transition: none;
+  }
+}

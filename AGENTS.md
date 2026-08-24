@@ -91,7 +91,15 @@ Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 `@property` + `counter()`, set `--sv-max`; number renders as `::after`).
 
-**Carousel / slider (do NOT add Swiper):** `useSlider()` / `slider(el)` —
+**Carousel / slider (do NOT add Swiper):** in React prefer the kit:
+`<Slider perView={{base:1.2, md:2.5, xl:4}} gap={16} arrows dots autoplay={5000}>`
+with `<Slide span={2}>` for per-slide overrides — breakpoints are media
+queries (map keys = Tailwind names or raw min-widths). Chrome customization:
+var knobs (--sv-arrow-*/--sv-dot-*) globally or per instance → stable
+classes (sv-arrow, sv-dot) → prevIcon/nextIcon/renderDot → external UI via
+the ref (full SliderHandle). Also `<Marquee>` (use it where Swiper loop
+would be), `<Accordion>` (native details), `<Modal>` (dialog + sv-pop).
+Lower level: `useSlider()` / `slider(el)` —
 native scroll + snap; slides get `--sd` (signed distance from center) and
 `.sv-active`, so slide animations are pure CSS (`scale: calc(1 - abs(var(--sd)) * .1)`).
 Handle: `next/prev/goTo/seek/active/state`. Options: `snap`, `drag`,

@@ -331,14 +331,14 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
   const ref = useRef<HTMLDivElement>(null)
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
-  const { snap, drag } = options
+  const { snap, drag, duration, axis } = options
 
   useEffect(() => {
     if (!ref.current) return
-    const handle = slider(ref.current, { snap, drag, onSlide: setActive })
+    const handle = slider(ref.current, { snap, drag, duration, axis, onSlide: setActive })
     handleRef.current = handle
     return handle.destroy
-  }, [snap, drag])
+  }, [snap, drag, duration, axis])
 
   const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
   const prev = useCallback((smooth?: boolean) => handleRef.current?.prev(smooth), [])
@@ -347,7 +347,278 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
     []
   )
 
-  return { ref, active, next, prev, goTo }
+  return { ref, active, next, prev, goTo, handle: handleRef }
+}
+
+const BREAKPOINTS: Record<string, number> = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536,
+}
+
+/** Media-query CSS for a responsive perView map — breakpoints ARE media
+ * queries here (Tailwind-style keys or raw min-width numbers). */
+function perViewCss(scope: string, perView: Record<string, number>): string {
+  let css = ''
+  for (const [key, value] of Object.entries(perView)) {
+    const rule = `${scope}{--sv-per-view:${value}}`
+    if (key === 'base') css = rule + css
+    else css += `@media (min-width:${BREAKPOINTS[key] ?? Number(key)}px){${rule}}`
+  }
+  return css
+}
+
+export interface SliderComponentProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onScroll'> {
+  /** Slides per view — a number, or a responsive map: `{ base: 1.2, md: 2.5, xl: 4 }`
+   * (Tailwind breakpoint names or raw min-width numbers). Fractional = peek. */
+  perView?: number | Record<string, number>
+  /** Gap between slides (px number or CSS length). */
+  gap?: number | string
+  snap?: 'mandatory' | 'proximity'
+  drag?: boolean
+  duration?: number
+  axis?: 'x' | 'y'
+  arrows?: boolean
+  dots?: boolean
+  /** Auto-advance interval in ms (wraps to the start). Pauses on hover,
+   * offscreen and hidden tab. */
+  autoplay?: number
+  prevIcon?: React.ReactNode
+  nextIcon?: React.ReactNode
+  /** Full control over each dot's content; wiring/aria stay handled. */
+  renderDot?: (index: number, active: boolean) => React.ReactNode
+  onSlide?: (index: number) => void
+  children: React.ReactNode
+}
+
+/**
+ * The batteries-included carousel: `useSlider` + chrome. Everything visual
+ * hangs off stable classes (`sv-slider-shell`, `sv-arrow`, `sv-dots`,
+ * `sv-dot`) and var knobs (`--sv-arrow-*`, `--sv-dot-*`) — override them
+ * globally for the project or per instance via className/style. A ref
+ * exposes the full SliderHandle for external controls placed anywhere.
+ */
+export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps>(
+  function Slider(
+    {
+      perView,
+      gap,
+      snap,
+      drag,
+      duration,
+      axis,
+      arrows,
+      dots,
+      autoplay,
+      prevIcon,
+      nextIcon,
+      renderDot,
+      onSlide,
+      className,
+      style,
+      children,
+      ...rest
+    },
+    apiRef
+  ) {
+    const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis })
+    const uid = React.useId()
+    const count = React.Children.count(children)
+
+    React.useImperativeHandle(apiRef, () => handle.current as SliderHandle, [handle])
+
+    const onSlideRef = useRef(onSlide)
+    onSlideRef.current = onSlide
+    useEffect(() => {
+      onSlideRef.current?.(active)
+    }, [active])
+
+    // autoplay: pauses on hover, offscreen and hidden tab
+    const hovering = useRef(false)
+    useEffect(() => {
+      if (!autoplay || autoplay <= 0) return
+      let onscreen = true
+      const io = new IntersectionObserver((entries) => {
+        onscreen = entries[0].isIntersecting
+      })
+      const el = ref.current
+      if (el) io.observe(el)
+      const timer = setInterval(() => {
+        if (hovering.current || !onscreen || document.visibilityState === 'hidden') return
+        const h = handle.current
+        if (!h) return
+        const s = h.state()
+        if (s.active >= s.count - 1) h.goTo(0)
+        else h.next()
+      }, autoplay)
+      return () => {
+        clearInterval(timer)
+        io.disconnect()
+      }
+    }, [autoplay, handle, ref])
+
+    const scope = `[data-sv-uid="${uid}"] .sv-slider`
+    const styleVars: Record<string, string | number> = {}
+    if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
+    if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
+
+    return (
+      <div
+        className={className ? `sv-slider-shell ${className}` : 'sv-slider-shell'}
+        data-sv-uid={uid}
+        style={{ ...style, ...styleVars } as React.CSSProperties}
+        onPointerEnter={() => (hovering.current = true)}
+        onPointerLeave={() => (hovering.current = false)}
+        {...rest}
+      >
+        {perView && typeof perView === 'object' && <style>{perViewCss(scope, perView)}</style>}
+        <div ref={ref} className={perView !== undefined ? 'sv-slider sv-cols' : 'sv-slider'}>
+          {children}
+        </div>
+        {arrows && (
+          <>
+            <button
+              type="button"
+              className="sv-arrow sv-arrow-prev"
+              aria-label="previous slide"
+              onClick={() => prev()}
+            >
+              {prevIcon ?? '\u2039'}
+            </button>
+            <button
+              type="button"
+              className="sv-arrow sv-arrow-next"
+              aria-label="next slide"
+              onClick={() => next()}
+            >
+              {nextIcon ?? '\u203a'}
+            </button>
+          </>
+        )}
+        {dots && (
+          <div className="sv-dots">
+            {Array.from({ length: count }, (_, i) =>
+              renderDot ? (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`go to slide ${i + 1}`}
+                  onClick={() => goTo(i)}
+                  style={{ all: 'unset', cursor: 'pointer' }}
+                >
+                  {renderDot(i, i === active)}
+                </button>
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  className={i === active ? 'sv-dot on' : 'sv-dot'}
+                  aria-label={`go to slide ${i + 1}`}
+                  onClick={() => goTo(i)}
+                />
+              )
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+)
+
+export interface SlideProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Columns this slide spans (per-slide override — vars cascade). */
+  span?: number
+}
+
+/** One slide. Per-slide knobs are just vars: `span`, or any `--sv-*` in style. */
+export const Slide: React.FC<SlideProps> = ({ span, style, ...rest }) => (
+  <div
+    style={span ? ({ ...style, '--sv-span': span } as React.CSSProperties) : style}
+    {...rest}
+  />
+)
+
+export interface MarqueeProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Seconds for one full loop (default 30). */
+  speed?: number
+  children: React.ReactNode
+}
+
+/** Infinite strip (logos, taglines): two copies of the children on a CSS
+ * animation. Pauses on hover; stops under prefers-reduced-motion. */
+export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, children, ...rest }) => (
+  <div
+    className={className ? `sv-marquee ${className}` : 'sv-marquee'}
+    style={
+      speed ? ({ ...style, '--sv-marquee-duration': `${speed}s` } as React.CSSProperties) : style
+    }
+    {...rest}
+  >
+    <div className="sv-marquee-track">
+      {children}
+      <span aria-hidden="true" style={{ display: 'contents' }}>
+        {children}
+      </span>
+    </div>
+  </div>
+)
+
+export interface AccordionProps
+  extends Omit<React.DetailsHTMLAttributes<HTMLDetailsElement>, 'title'> {
+  title: React.ReactNode
+  /** Same name = native exclusive group (one open at a time). */
+  group?: string
+  children: React.ReactNode
+}
+
+/** Native <details> with animated height — accessibility for free. */
+export const Accordion: React.FC<AccordionProps> = ({
+  title,
+  group,
+  className,
+  children,
+  ...rest
+}) => (
+  <details
+    className={className ? `sv-accordion ${className}` : 'sv-accordion'}
+    name={group}
+    {...rest}
+  >
+    <summary>{title}</summary>
+    {children}
+  </details>
+)
+
+export interface ModalProps extends React.DialogHTMLAttributes<HTMLDialogElement> {
+  open: boolean
+  onClose?: () => void
+  children: React.ReactNode
+}
+
+/** Native <dialog> + the sv-pop entry/exit preset. */
+export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children, ...rest }) => {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = ref.current
+    if (!dialog) return
+    if (open && !dialog.open) dialog.showModal()
+    else if (!open && dialog.open) dialog.close()
+  }, [open])
+
+  return (
+    <dialog
+      ref={ref}
+      className={className ? `sv-pop ${className}` : 'sv-pop'}
+      onClose={onClose}
+      {...rest}
+    >
+      {children}
+    </dialog>
+  )
 }
 
 /** Pointer tilt for every `.sv-tilt` descendant — one delegated listener. */

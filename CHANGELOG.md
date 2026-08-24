@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 — 2026-08-24
+
+- **React component kit**: `<Slider>`/`<Slide>` (the Swiper replacement:
+  `perView` number or responsive map — breakpoints ARE media queries; `gap`,
+  `span` per slide, arrows/dots chrome on stable classes + var knobs,
+  `prevIcon`/`nextIcon`/`renderDot`, external control via ref exposing the
+  full SliderHandle, `autoplay` that pauses on hover/offscreen/hidden),
+  `<Marquee>` (infinite strip, the honest answer to Swiper loop),
+  `<Accordion>` (native details + interpolate-size animation, exclusive
+  groups via name), `<Modal>` (native dialog + sv-pop).
+- CSS: `sv-cols` column sizing (`--sv-per-view`, fractional = peek;
+  `--sv-span` per slide), slider chrome, `styles/ui.css` (marquee,
+  accordion). `useSlider` now returns the handle and accepts
+  duration/axis.
+
 ## 1.4.0 — 2026-08-24
 
 - **`sv-spread`** — the deck-to-grid pattern: children live in their final

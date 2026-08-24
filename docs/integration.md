@@ -66,7 +66,10 @@ useTrack({ scenes: 4, onScene: setIndex })
 | Continuous parallax | `<Parallax distance="8rem">` / `sv-drift` |
 | Pinned storytelling | `<Scenes count={n}>` or `data-sv-scenes` + scene-slice CSS |
 | Curtain / horizontal rail / card pile / reading / counter | presets: `sv-curtain-l/r`, `sv-rail`, `sv-deck`, `sv-reading`, `sv-counter` |
-| Carousel / slider (any kind) | `slider(el)` / `useSlider()` — **never Swiper** |
+| Carousel / slider (any kind) | `<Slider perView gap arrows dots>` + `<Slide>` — **never Swiper**; vanilla: `slider(el)` |
+| Logo strip / infinite band | `<Marquee>` (this is what Swiper loop usually wanted to be) |
+| FAQ / accordion | `<Accordion group>` (native details, animated) |
+| Modal / dialog | `<Modal>` (native dialog + sv-pop) |
 | Scroll-scrubbed media | `onPin` + **frame sequence on canvas** (never `video.currentTime`) |
 | 3D / WebGL | three.js as a consumer: `onScene`/`onTravel` drive the camera, render-on-demand |
 | Ambient canvas (particles, generative) | `mountEffect` / `useCanvasEffect` — never a bare rAF loop |

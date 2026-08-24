@@ -126,6 +126,41 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 `data-sv-scenes="4"`. New nodes from route changes are picked up automatically
 (vanilla: `scan()`).
 
+## The component kit (React)
+
+Batteries-included wrappers over the same engine — less React, less JS,
+less CSS than the usual suspects:
+
+```tsx
+import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
+
+// the Swiper replacement — breakpoints ARE media queries (or a familiar map):
+<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}>
+  {cards.map(c => <Slide key={c.id}><Card {...c} /></Slide>)}
+  <Slide span={2}>a wide feature slide</Slide>   {/* per-slide override */}
+</Slider>
+
+<Marquee speed={24}>{logos}</Marquee>            // infinite strip, pauses on hover
+<Accordion title="Question?" group="faq">…</Accordion>  // native <details>, animated
+<Modal open={open} onClose={…}>…</Modal>         // native <dialog> + sv-pop
+```
+
+**Customizing the Slider chrome** — three layers, pick your depth:
+1. **Var knobs** (`--sv-arrow-size/-inset/-bg/-color/-radius`, `--sv-dot-size/
+   -gap/-color/-active`, `--sv-dots-justify/-offset`) — set on `:root` for the
+   whole project, or on one slider via className/style.
+2. **Stable classes** (`sv-slider-shell`, `sv-arrow[-prev/-next]`, `sv-dots`,
+   `sv-dot.on`) — restyle or reposition freely in project CSS.
+3. **Full control** — `prevIcon`/`nextIcon`, `renderDot(i, active)`, or turn the
+   chrome off and drive an external UI through the ref (`SliderHandle`:
+   next/prev/goTo/seek/state) placed anywhere in the page.
+
+`perView` fractional gives the peek (`1.2`); responsive via the map above,
+media queries, or Tailwind: `className="[--sv-per-view:1.2] md:[--sv-per-view:2.5]"`.
+Vars cascade, so every knob has a global default and a per-instance (or
+per-slide) override. No `loop` in v1 — where Swiper's loop is used, a
+`<Marquee>` is usually the honest fit.
+
 ## Slider (Swiper, featherweight)
 
 Native scroll + scroll-snap do the carousel; the module adds mouse drag,
