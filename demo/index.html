@@ -2625,6 +2625,47 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
   </div>
 </section>
 
+<!-- ══════════════ USE IT ══════════════ -->
+<section class="demo sv" data-sv data-once data-hud="install">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">use it</p>
+      <h2 class="sv-rise" style="--sv-order: 1">In your Next.js project, in one minute</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Everything on this page renders on the server: the React layer is thin
+        <span class="inline-code">'use client'</span> wrappers whose children stay Server
+        Components, hiding styles only exist after the driver boots
+        (<span class="inline-code">html.sv-on</span>), so there is no hydration flash and
+        no-JS visitors get the complete page. This is the lightest way to animate a page
+        that we know how to measure — the receipts are above.
+      </p>
+    </div>
+    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
+npm i scrollvars
+
+<span class="c">// app/layout.tsx — one client component, the whole wiring</span>
+<span class="k">import</span> { ScrollVarsBoot } <span class="k">from</span> <span class="s">'scrollvars/react'</span>
+<span class="k">import</span> <span class="s">'scrollvars/styles/core.css'</span>   <span class="c">// or styles.css for everything</span>
+
+&lt;body&gt;&lt;ScrollVarsBoot /&gt;{children}&lt;/body&gt;
+
+<span class="c">// any page — plain Server Components, Tailwind as usual</span>
+&lt;section data-sv data-sv-once className=<span class="s">"py-24"</span>&gt;
+  &lt;h2 className=<span class="s">"sv-rise text-4xl"</span>&gt;Title&lt;/h2&gt;
+  &lt;p className=<span class="s">"sv-rise"</span> style={{ <span class="s">'--sv-order'</span>: 1 }}&gt;Copy&lt;/p&gt;
+&lt;/section&gt;
+
+<span class="c">// responsive knobs ARE Tailwind arbitrary properties:</span>
+&lt;Slider className=<span class="s">"[--sv-per-view:1.2] md:[--sv-per-view:2.5] xl:[--sv-per-view:4]"</span> arrows dots&gt;
+  {cards.map(c =&gt; &lt;Slide key={c.id}&gt;&lt;Card {...c} /&gt;&lt;/Slide&gt;)}
+&lt;/Slider&gt;</code></pre>
+    <p class="sv-rise" style="--sv-order: 4" style="color: var(--muted); font-size: 14px;">
+      Machine-readable docs for AI assistants: <a href="llms.txt" style="color: var(--accent)">/llms.txt</a>
+      — the full API, recipes and performance rules, ready to ingest.
+    </p>
+  </div>
+</section>
+
 <!-- ══════════════ BENCHMARKS ══════════════ -->
 <section class="demo sv" data-sv data-once data-hud="receipts" id="benchmarks">
   <div class="wrap">
