@@ -30,7 +30,7 @@ identically. <b>Keep this tab visible</b> — browsers freeze background tabs.</
 <button id="go">run the benchmark (~2min: 150 · 900 · 900+12ms app work)</button>
 <div id="status"></div>
 <table id="results" hidden>
-  <thead><tr><th>engine</th><th>elements</th><th>bundle (gzip)</th><th>avg frame</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
+  <thead><tr><th>engine</th><th>elements</th><th>bundle (gzip)</th><th>avg frame</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th><th>JS heap</th></tr></thead>
   <tbody></tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">Reference run <span style="color:#8f8ca6; font-weight:400;">(Apple-silicon Mac, headless Chrome via CDP — replace it with yours above)</span></h2>
@@ -59,6 +59,15 @@ What differs is what those frames <i>cost</i>. Measured over the identical 12&nb
 pages, load-only: <b>scrollvars 100</b> · framer-motion 94 (LCP 2.8&nbsp;s) · GSAP+ST 88
 (TBT 230&nbsp;ms — building 900 triggers blocks the throttled main thread). Engine bytes and
 per-element setup are exactly what PageSpeed's metrics punish.</p>
+<p class="sub"><b>Fine print, so you don't have to diff the sources:</b> the CPU/heap
+table above is a reference run (headless Chrome + CDP <code>Performance.getMetrics</code>) —
+the in-page runner reproduces frame timing and JS heap, not the CPU split. The workload is
+scroll-scrub, scrollvars' home turf: it tracks 30 sections (children inherit via
+<code>calc()</code>) while the GSAP page creates 900 individual scrubbed ScrollTriggers —
+idiomatic, as commonly written, but a hand-optimized GSAP build would batch into fewer
+triggers and close part of the CPU gap. Also note scrollvars posts the <i>worst</i> style-recalc
+of the table (266&nbsp;ms vs GSAP's 118&nbsp;ms): writing vars on a section invalidates
+descendant styles. It still wins on total — the mechanism is cheap, not free.</p>
 <p class="sub">Same frames at 2.2× less CPU and 8× less memory than framer-motion — on phones
 that is battery and headroom for your own code. GSAP is genuinely efficient; against it the
 difference is the 15× bundle, the heap, and the no-JS/SSR story.</p>
@@ -107,16 +116,18 @@ scrollvars via esbuild+gzip of its own source, inlined in its harness
     tr.innerHTML = '<td>' + r.engine + '</td><td class="n">' + current.n + '</td><td class="n">' + current.bundle + '</td>' +
       '<td class="n">' + r.avgMs + ' ms</td><td class="n">' + r.fps + '</td>' +
       '<td class="n">' + r.p95Ms + ' ms</td><td class="n">' + r.worstMs + ' ms</td>' +
-      '<td class="n">' + r.framesOver25ms + ' / ' + r.frames + '</td>';
+      '<td class="n">' + r.framesOver25ms + ' / ' + r.frames + '</td>' +
+      '<td class="n">' + (r.heapMB != null ? r.heapMB + ' MB' : '\u2014') + '</td>';
     tbody.appendChild(tr);
     table.hidden = false;
     next();
   });
   function highlight() {
     var rows = Array.prototype.slice.call(tbody.children);
-    [3, 5, 7].forEach(function (col) {
+    [3, 5, 7, 8].forEach(function (col) {
       var vals = rows.map(function (tr) { return parseFloat(tr.children[col].textContent); });
       var best = Math.min.apply(null, vals);
+      if (!isFinite(best)) return;
       rows.forEach(function (tr, i) { if (vals[i] === best) tr.children[col].classList.add('best'); });
     });
   }

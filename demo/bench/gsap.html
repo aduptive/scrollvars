@@ -94,6 +94,7 @@
           p95Ms: +p95.toFixed(2),
           worstMs: +worst.toFixed(1),
           framesOver25ms: long,
+          heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(1) : null,
         };
         hud.textContent = label + '  ·  ' + (SECTIONS * PER) + ' scrubbed elements\n' +
           'avg ' + out.avgMs + ' ms (' + out.fps + ' fps)\n' +

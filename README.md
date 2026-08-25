@@ -38,6 +38,11 @@ Why the numbers come out this way — each is a design decision, not tuning:
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so without JS the page is a complete static page — SSR, SEO and
   the Lighthouse load profile stay untouched.
+- **Cheap, not free.** Writing vars invalidates descendant styles — scrollvars
+  posts the *highest* style-recalc in its own table (266 ms vs GSAP's 118 ms)
+  and still wins total CPU. The workload is scroll-scrub, this lib's home turf,
+  and the GSAP page uses 900 idiomatic per-element triggers, not a hand-tuned
+  batch. Read the bench sources before quoting it.
 - **Honest scope.** Input-driven animation (scroll/pointer/gesture) is this
   lib's job; time-driven orchestration (timelines, springs, exit
   transitions) legitimately belongs to GSAP/Framer. Pick per page.
@@ -46,6 +51,8 @@ Why the numbers come out this way — each is a design decision, not tuning:
 
 ```bash
 npm i scrollvars
+# or pin to a git ref (the `prepare` script builds on install):
+npm i github:aduptive/scrollvars
 ```
 
 ```ts
