@@ -230,7 +230,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   <div class="sv-tilt fxcard">hover</div>
   <div class="sv-tilt fxcard">me</div>
 </section>
-<script>SV.trackPointer(document.getElementById('fxtiltrow'))</script>`,
+<script>addEventListener('load',()=>SV.trackPointer(document.getElementById('fxtiltrow')))</script>`,
     css: `<div class="grid">          <!-- any container -->
   <div class="sv-tilt">…</div>
   <div class="sv-tilt">…</div>
@@ -263,8 +263,8 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}</style>
-<script>SV.slider(document.getElementById('fxslider'),{duration:900})</script>`,
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}</style>
+<script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>`,
     css: `<div class="sv-slider" id="cards">
   <div class="slide">…</div> ×N
 </div>
@@ -349,11 +349,15 @@ const SHELL_CSS = `
     --text:#e6e4f0; --muted:#8f8ca6; --accent:#a78bfa;
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); padding:32px 20px 80px; }
-  main { max-width: 880px; margin: 0 auto; }
+  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
   a { color: var(--accent); }
-  header.fx { display:flex; justify-content:space-between; align-items:baseline; gap:16px;
-    max-width:880px; margin:0 auto 28px; font-size:14px; }
+  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
+    font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  footer.fx b { color: var(--text); }
   h1 { font-size: 30px; margin: 6px 0 4px; }
   p.tag { color: var(--muted); margin-bottom: 6px; }
   p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
@@ -394,10 +398,12 @@ const SHELL_CSS = `
   .fxlink span { color:var(--muted); font-size:13px; }
   .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
     color:var(--muted); margin:30px 0 12px; }
-  .fxwrap { max-width:1160px; margin:0 auto; display:grid;
-    grid-template-columns:200px minmax(0,1fr); gap:48px; align-items:start; }
-  .fxwrap > main { margin:0; }
-  .fxside { position:sticky; top:28px; align-self:start; font-size:14px; }
+  .fxwrap { display:grid; grid-template-columns:240px minmax(0,1fr); padding-top:56px;
+    min-height:100vh; }
+  .fxwrap > main { max-width:1000px; padding:44px clamp(24px,4vw,64px) 96px; }
+  .fxside { border-right:1px solid var(--line); }
+  .fxsidein { position:sticky; top:56px; max-height:calc(100vh - 56px); overflow-y:auto;
+    padding:24px 20px 40px; font-size:14px; }
   .fxnav[open] > summary { display:none; }
   .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
   .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
@@ -412,7 +418,8 @@ const SHELL_CSS = `
     border-left-color:var(--accent); }
   @media (max-width: 919px) {
     .fxwrap { display:block; }
-    .fxside { position:static; margin-bottom:28px; }
+    .fxside { border-right:0; }
+    .fxsidein { position:static; max-height:none; padding:20px 20px 0; }
     .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
       font:600 14px var(--sans);
       padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#17151f; }
@@ -422,7 +429,7 @@ const SHELL_CSS = `
   }
 `
 
-const header = (sub) => `<header class="fx"${sub ? ' style="max-width:1160px"' : ''}>
+const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>scrollvars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
   <div><a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a></div>
 </header>`
@@ -431,7 +438,7 @@ const header = (sub) => `<header class="fx"${sub ? ' style="max-width:1160px"' :
    Mobile starts collapsed (script below); desktop hides the outer summary only
    while [open], so a closed nav is always reopenable at any width */
 const CATEGORIES = [...new Set(EFFECTS.map((e) => e.category))]
-const sidebar = (current) => `<aside class="fxside">
+const sidebar = (current) => `<aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
     <nav>
@@ -444,8 +451,12 @@ const sidebar = (current) => `<aside class="fxside">
       ).join('\n      ')}
     </nav>
   </details>
-</aside>`
-const NAV_COLLAPSE = `<script>if(matchMedia('(max-width:919px)').matches)document.querySelector('.fxnav').removeAttribute('open')</script>`
+</div></aside>`
+const NAV_COLLAPSE = `<script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>`
+const footer = `<footer class="fx">
+  <div><b>scrollvars</b> — one scroll listener in, CSS variables out. MIT.</div>
+  <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
+</footer>`
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
@@ -478,6 +489,7 @@ ${sidebar(fx.slug)}
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
+${footer}
 ${NAV_COLLAPSE}
 <script src="sv.js"></script>
 <script>
@@ -522,6 +534,7 @@ ${sidebar()}
   <a href="../">scrollvars.vercel.app</a> · benchmarks: <a href="../bench/">/bench/</a></p>
 </main>
 </div>
+${footer}
 ${NAV_COLLAPSE}
 </body></html>`
 writeFileSync(join(out, 'index.html'), hub)
