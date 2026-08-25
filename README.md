@@ -12,6 +12,36 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 - **Fails visible** — hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
 - **`prefers-reduced-motion`** respected by driver and presets.
 
+## The receipts (measured — why the design holds up)
+
+Public, reproducible benchmark: https://scrollvars.vercel.app/bench/ —
+identical DOM and animations, three engines, headless Chrome + CDP with a
+verified CPU throttle. Frame delivery ties (every competent engine animates
+only the viewport); what differs is what those frames cost:
+
+| engine | bundle (gzip) | CPU total (12 s, 900 elements) | JS heap | Lighthouse mobile |
+|---|---|---|---|---|
+| scrollvars | 3.1 KB | 421 ms | 1.3 MB | **100** |
+| gsap + ScrollTrigger | 46.3 KB | 476 ms | 7.2 MB | 88 |
+| framer-motion | 46.9 KB (+ React) | 918 ms | 10.8 MB | 94 |
+
+Why the numbers come out this way — each is a design decision, not tuning:
+
+- **The hot path writes CSS variables and nothing else.** The browser's own
+  transition/animation machinery does the animating; JS only steers. That is
+  why 900 animated elements cost 155 ms of script in 12 s.
+- **One passive scroll listener + one rAF for the whole page**, strict
+  read-phase-then-write-phase. Layout thrashing is impossible by
+  construction, not by discipline.
+- **Scroll state never enters the framework.** React renders zero times
+  during scroll — the per-frame framework bill is never paid.
+- **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
+  driver), so without JS the page is a complete static page — SSR, SEO and
+  the Lighthouse load profile stay untouched.
+- **Honest scope.** Input-driven animation (scroll/pointer/gesture) is this
+  lib's job; time-driven orchestration (timelines, springs, exit
+  transitions) legitimately belongs to GSAP/Framer. Pick per page.
+
 ## Install
 
 ```bash
