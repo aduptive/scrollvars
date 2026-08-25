@@ -33,6 +33,15 @@ identically. <b>Keep this tab visible</b> — browsers freeze background tabs.</
   <thead><tr><th>engine</th><th>elements</th><th>bundle (gzip)</th><th>avg frame</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
   <tbody></tbody>
 </table>
+<h2 style="font-size:15px; margin-top:18px;">Reference run <span style="color:#8f8ca6; font-weight:400;">(Apple-silicon Mac, headless Chrome via CDP — replace it with yours above)</span></h2>
+<table>
+  <thead><tr><th>engine</th><th>elements</th><th>fps</th><th>p95</th><th>frames &gt;25ms</th></tr></thead>
+  <tbody>
+    <tr><td>scrollvars</td><td class="n">900</td><td class="n">60</td><td class="n">17.6 ms</td><td class="n">0 / 721</td></tr>
+    <tr><td>gsap + ScrollTrigger</td><td class="n">900</td><td class="n">60</td><td class="n">17.6 ms</td><td class="n">0 / 720</td></tr>
+    <tr><td>framer-motion (React)</td><td class="n">900</td><td class="n">59.9</td><td class="n">17.6 ms</td><td class="n">1 / 720</td></tr>
+  </tbody>
+</table>
 <iframe id="stage" hidden></iframe>
 <h1 style="font-size:17px; margin-top:26px;">Reference: CPU cost for the same frames</h1>
 <p class="sub">Frame delivery ties because every competent engine animates only the viewport.
@@ -54,8 +63,9 @@ per-element setup are exactly what PageSpeed's metrics punish.</p>
 that is battery and headroom for your own code. GSAP is genuinely efficient; against it the
 difference is the 15× bundle, the heap, and the no-JS/SSR story.</p>
 <small>Methodology: identical DOM and scroll driver in every page; the only variable is the
-animation engine. Bundle sizes measured from jsDelivr/esm.sh (framer-motion additionally needs
-React, not counted). Run it on your own machine — that's the point. Sources:
+animation engine. Bundle sizes: competitors measured from their jsDelivr/esm.sh builds;
+scrollvars via esbuild+gzip of its own source, inlined in its harness
+(framer-motion additionally needs React, not counted for it). Run it on your own machine — that's the point. Sources:
 <a href="scrollvars.html" style="color:#a78bfa">scrollvars</a> ·
 <a href="gsap.html" style="color:#a78bfa">gsap</a> ·
 <a href="framer.html" style="color:#a78bfa">framer-motion</a></small>

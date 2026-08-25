@@ -2673,9 +2673,11 @@ npm i scrollvars
       <p class="eyebrow sv-rise">reference · measured</p>
       <h2 class="sv-rise" style="--sv-order: 1">The receipts</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        Every number below was measured, not quoted — same CDN, same workload, same
-        machine, methodology on the <a href="bench/" style="color: var(--accent)">benchmark
-        page</a>, where you can also run all of it on your own hardware.
+        Every number below was measured, not quoted — competitors from their public
+        CDN builds, scrollvars via esbuild+gzip on its own source (it wasn't on a CDN
+        to be measured); workload and machine identical, methodology on the
+        <a href="bench/" style="color: var(--accent)">benchmark page</a>, where you can
+        run all of it on your own hardware.
       </p>
     </div>
 
@@ -2841,7 +2843,8 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.2 KB gzip · whole lib &lt; 6 KB gzip · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · v1.0</p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.2 KB gzip · whole lib &lt; 6 KB gzip · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.5 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
