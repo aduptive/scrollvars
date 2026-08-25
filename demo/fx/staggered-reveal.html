@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staggered reveal — scrollvars fx</title>
+<meta name="description" content="Children rise in sequence when the section enters the viewport. Copy-paste in Tailwind, CSS or React.">
+<link rel="stylesheet" href="sv.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --ink:#121118; --surface:#1b1a24; --line:rgba(230,228,240,.09);
+    --text:#e6e4f0; --muted:#8f8ca6; --accent:#a78bfa;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); padding:32px 20px 80px; }
+  main { max-width: 880px; margin: 0 auto; }
+  a { color: var(--accent); }
+  header.fx { display:flex; justify-content:space-between; align-items:baseline; gap:16px;
+    max-width:880px; margin:0 auto 28px; font-size:14px; }
+  h1 { font-size: 30px; margin: 6px 0 4px; }
+  p.tag { color: var(--muted); margin-bottom: 6px; }
+  p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  p.meta b { color: var(--text); font-weight: 600; }
+  .fxstage { background:#17151f; border:1px solid var(--line); border-radius:16px;
+    padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
+  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
+  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
+    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
+    display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
+  .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
+    font:700 34px var(--sans); }
+  .fxh { font-size: 30px; font-weight: 800; }
+  .fxp { color: var(--muted); }
+  .fxaccent { color: var(--accent); }
+  .fxcard { width:150px; height:110px; flex:0 0 auto; border-radius:12px;
+    border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
+    display:grid; place-items:center; font:600 15px var(--mono); }
+  .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
+  .tabs { display:flex; gap:8px; margin: 26px 0 0; }
+  .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
+    border:1px solid var(--line); border-bottom:0; background:transparent;
+    color:var(--muted); cursor:pointer; }
+  .tabs button.on { background:#17151f; color:var(--accent); }
+  .code { position: relative; }
+  .code pre { background:#17151f; border:1px solid var(--line); border-radius:0 12px 12px 12px;
+    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#cfcbe4; display:none; }
+  .code pre.on { display:block; }
+  .copy { position:absolute; top:10px; right:10px; font:600 12px var(--mono);
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(0,0,0,.4); color:var(--muted); cursor:pointer; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
+    text-decoration:none; color:var(--text); background:#17151f; }
+  .fxlink:hover { border-color: var(--accent); }
+  .fxlink b { display:block; margin-bottom:6px; }
+  .fxlink span { color:var(--muted); font-size:13px; }
+</style>
+</head><body>
+<header class="fx">
+  <div><a href="." style="text-decoration:none"><b>scrollvars</b> <span style="color:var(--muted)">/ fx</span></a></div>
+  <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a></div>
+</header>
+<main>
+  <h1>Staggered reveal</h1>
+  <p class="tag">Children rise in sequence when the section enters the viewport.</p>
+  <p class="meta"><b>Use it for:</b> Heroes, editorial sections, any "content arrives" moment.<br><b>Knobs:</b> --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ease</p>
+  <section data-sv class="fxstage">
+  <h3 class="sv-rise fxh">The headline</h3>
+  <p class="sv-rise fxp" style="--sv-order: 1">Rises second.</p>
+  <p class="sv-rise fxp" style="--sv-order: 2">Rises third.</p>
+</section>
+  <div class="tabs">
+    <button class="on" data-tab="tailwind">Tailwind</button>
+    <button data-tab="css">CSS</button>
+    <button data-tab="react">React</button>
+  </div>
+  <div class="code">
+    <button class="copy">copy</button>
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
+  &lt;h2 class="sv-rise text-4xl font-bold"&gt;Title&lt;/h2&gt;
+  &lt;p class="sv-rise [--sv-order:1]"&gt;Copy&lt;/p&gt;
+  &lt;p class="sv-rise [--sv-order:2] [--sv-distance:3rem]"&gt;More&lt;/p&gt;
+&lt;/section&gt;
+&lt;!-- once: import 'scrollvars/styles/core.css' + &lt;ScrollVarsBoot /&gt; in the layout --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; gets .sv-live in the band --&gt;
+  &lt;h2 class="sv-rise"&gt;Title&lt;/h2&gt;
+  &lt;p class="sv-rise" style="--sv-order: 1"&gt;Copy&lt;/p&gt;
+&lt;/section&gt;
+
+/* needs styles/core.css (or paste the preset): */
+.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
+  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
+.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }</code></pre>
+    <pre data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
+  &lt;h2&gt;Title&lt;/h2&gt;
+  &lt;p&gt;Copy&lt;/p&gt;
+&lt;/Reveal&gt;
+
+// or per-child knobs as props:
+&lt;Reveal stagger={140}&gt;
+  &lt;Item order={0}&gt;first&lt;/Item&gt;
+  &lt;Item order={1} effect="slide-l" distance="4rem"&gt;second&lt;/Item&gt;
+&lt;/Reveal&gt;</code></pre>
+  </div>
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
+  All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
+</main>
+<script src="sv.js"></script>
+<script>
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.code pre').forEach(p =>
+      p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+  }));
+  document.querySelector('.copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.querySelector('.code pre.on code').innerText);
+    this.textContent = 'copied!';
+    setTimeout(() => (this.textContent = 'copy'), 1200);
+  });
+</script>
+</body></html>

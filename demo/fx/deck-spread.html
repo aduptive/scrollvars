@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck spread — scrollvars fx</title>
+<meta name="description" content="A centered card deck deals itself into the grid — on arrival or scrubbed. Copy-paste in Tailwind, CSS or React.">
+<link rel="stylesheet" href="sv.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --ink:#121118; --surface:#1b1a24; --line:rgba(230,228,240,.09);
+    --text:#e6e4f0; --muted:#8f8ca6; --accent:#a78bfa;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); padding:32px 20px 80px; }
+  main { max-width: 880px; margin: 0 auto; }
+  a { color: var(--accent); }
+  header.fx { display:flex; justify-content:space-between; align-items:baseline; gap:16px;
+    max-width:880px; margin:0 auto 28px; font-size:14px; }
+  h1 { font-size: 30px; margin: 6px 0 4px; }
+  p.tag { color: var(--muted); margin-bottom: 6px; }
+  p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  p.meta b { color: var(--text); font-weight: 600; }
+  .fxstage { background:#17151f; border:1px solid var(--line); border-radius:16px;
+    padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
+  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
+  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
+    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
+    display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
+  .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
+    font:700 34px var(--sans); }
+  .fxh { font-size: 30px; font-weight: 800; }
+  .fxp { color: var(--muted); }
+  .fxaccent { color: var(--accent); }
+  .fxcard { width:150px; height:110px; flex:0 0 auto; border-radius:12px;
+    border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
+    display:grid; place-items:center; font:600 15px var(--mono); }
+  .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
+  .tabs { display:flex; gap:8px; margin: 26px 0 0; }
+  .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
+    border:1px solid var(--line); border-bottom:0; background:transparent;
+    color:var(--muted); cursor:pointer; }
+  .tabs button.on { background:#17151f; color:var(--accent); }
+  .code { position: relative; }
+  .code pre { background:#17151f; border:1px solid var(--line); border-radius:0 12px 12px 12px;
+    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#cfcbe4; display:none; }
+  .code pre.on { display:block; }
+  .copy { position:absolute; top:10px; right:10px; font:600 12px var(--mono);
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(0,0,0,.4); color:var(--muted); cursor:pointer; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
+    text-decoration:none; color:var(--text); background:#17151f; }
+  .fxlink:hover { border-color: var(--accent); }
+  .fxlink b { display:block; margin-bottom:6px; }
+  .fxlink span { color:var(--muted); font-size:13px; }
+</style>
+</head><body>
+<header class="fx">
+  <div><a href="." style="text-decoration:none"><b>scrollvars</b> <span style="color:var(--muted)">/ fx</span></a></div>
+  <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a></div>
+</header>
+<main>
+  <h1>Deck spread</h1>
+  <p class="tag">A centered card deck deals itself into the grid — on arrival or scrubbed.</p>
+  <p class="meta"><b>Use it for:</b> Feature cards, pricing tiers, portfolio grids that deserve an entrance.<br><b>Knobs:</b> --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub</p>
+  <section data-sv class="fxstage">
+  <div class="sv-spread sv-spread-in" style="--sv-gap: 14px">
+    <div class="fxcard" style="--sv-order: 0">01</div>
+    <div class="fxcard" style="--sv-order: 1">02</div>
+    <div class="fxcard" style="--sv-order: 2">03</div>
+  </div>
+</section>
+  <div class="tabs">
+    <button class="on" data-tab="tailwind">Tailwind</button>
+    <button data-tab="css">CSS</button>
+    <button data-tab="react">React</button>
+  </div>
+  <div class="code">
+    <button class="copy">copy</button>
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv class="py-24"&gt;
+  &lt;div class="sv-spread sv-spread-in [--sv-gap:14px]"&gt;
+    &lt;div class="[--sv-order:0] rounded-xl border p-8"&gt;01&lt;/div&gt;
+    &lt;div class="[--sv-order:1] rounded-xl border p-8"&gt;02&lt;/div&gt;
+    &lt;div class="[--sv-order:2] rounded-xl border p-8"&gt;03&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;section data-sv&gt;
+  &lt;div class="sv-spread sv-spread-in"&gt;
+    &lt;div style="--sv-order: 0"&gt;…&lt;/div&gt;
+    &lt;div style="--sv-order: 1"&gt;…&lt;/div&gt;
+    &lt;div style="--sv-order: 2"&gt;…&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+
+/* styles/core.css ships it; the math, if you want it inline: */
+.sv-spread { display: flex; gap: var(--sv-gap, 16px); justify-content: center; }
+.sv-spread &gt; * { --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
+  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
+  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg); }
+
+/* scrub instead of play: */
+.mine &gt; * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }</code></pre>
+    <pre data-pane="react"><code>&lt;Track&gt;
+  &lt;div className="sv-spread sv-spread-in"&gt;
+    {cards.map((c, i) =&gt; (
+      &lt;Card key={c.id} style={{ '--sv-order': i }} {...c} /&gt;
+    ))}
+  &lt;/div&gt;
+&lt;/Track&gt;</code></pre>
+  </div>
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
+  All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
+</main>
+<script src="sv.js"></script>
+<script>
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.code pre').forEach(p =>
+      p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+  }));
+  document.querySelector('.copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.querySelector('.code pre.on code').innerText);
+    this.textContent = 'copied!';
+    setTimeout(() => (this.textContent = 'copy'), 1200);
+  });
+</script>
+</body></html>

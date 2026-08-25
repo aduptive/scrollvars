@@ -1,0 +1,537 @@
+/* scrollvars — AGGREGATE stylesheet (generated from styles/*.css by
+ * scripts/build-styles.mjs — edit the parts, not this file).
+ * Modular imports ship less: styles/core.css alone covers entrances. */
+
+/* scrollvars — preset styles.
+ *
+ * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
+ * variables the driver writes; any CSS of your own that reads them is an
+ * equally valid preset.
+ *
+ * Driver output:            Knobs you set:
+ *   --sv-view  -1..1          --sv-distance  travel length (default 6rem)
+ *   --sv-t      0..1          --sv-order     stagger position (0, 1, 2…)
+ *   --sv-scene  0..N-1        --sv-stagger   delay step (default 90ms)
+ *   .sv-live   (class)        --sv-duration / --sv-ease
+ *
+ * All hiding rules are gated on `html.sv-on` (added by the driver), so if
+ * JavaScript never runs the page stays fully visible.
+ */
+
+.sv {
+  --sv-view: 0;
+  --sv-t: 0;
+  --sv-scene: 0;
+  --sv-distance: 6rem;
+  --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1);
+  --sv-duration: 800ms;
+  --sv-stagger: 90ms;
+}
+
+/* ---- Entrance presets (binary: driven by .sv-live, with transition) ---- */
+
+.sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on .sv.sv-auto > :not(.sv-skip) {
+  opacity: 0;
+  transition:
+    opacity var(--sv-duration) var(--sv-ease),
+    translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+}
+
+.sv-on .sv :is(.sv-rise),
+.sv-on .sv.sv-auto > :not(.sv-skip) {
+  translate: 0 var(--sv-distance);
+}
+.sv-on .sv .sv-slide-l {
+  translate: calc(var(--sv-distance) * -2) 0;
+}
+.sv-on .sv .sv-slide-r {
+  translate: calc(var(--sv-distance) * 2) 0;
+}
+
+.sv-on .sv.sv-live :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on .sv.sv-live.sv-auto > :not(.sv-skip) {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
+.sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
+.sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
+.sv-auto > :nth-child(4),  .sv-stagger > :nth-child(4)  { --sv-order: 3; }
+.sv-auto > :nth-child(5),  .sv-stagger > :nth-child(5)  { --sv-order: 4; }
+.sv-auto > :nth-child(6),  .sv-stagger > :nth-child(6)  { --sv-order: 5; }
+.sv-auto > :nth-child(7),  .sv-stagger > :nth-child(7)  { --sv-order: 6; }
+.sv-auto > :nth-child(8),  .sv-stagger > :nth-child(8)  { --sv-order: 7; }
+.sv-auto > :nth-child(9),  .sv-stagger > :nth-child(9)  { --sv-order: 8; }
+.sv-auto > :nth-child(10), .sv-stagger > :nth-child(10) { --sv-order: 9; }
+.sv-auto > :nth-child(n + 11), .sv-stagger > :nth-child(n + 11) { --sv-order: 10; }
+
+/* ---- Drift preset (continuous: follows the scroll, NO transition) ---- */
+
+.sv .sv-drift {
+  --sv-abs-view: max(var(--sv-view), calc(var(--sv-view) * -1));
+  opacity: calc(1 - var(--sv-abs-view));
+  translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
+}
+
+/* ---- Spread preset: a centered deck that fans out into its row ---- */
+/* Children start stacked at the container's center (slight fan) and spread
+   into their natural flex slots. Two clocks drive it:
+     entrance — add .sv-spread-in: spreads (with transition + stagger) the
+                moment the tracked section goes live
+     scrub    — map --sv-spread from a driver variable yourself, e.g.
+                .mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+   Index children with .sv-stagger (auto --sv-order) or set --sv-order by
+   hand; set --sv-mid to (N−1)/2 on the container (default 1 = 3 cards). */
+.sv-spread {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  justify-content: center;
+}
+.sv-spread > * {
+  --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
+  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
+  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg);
+}
+.sv-on .sv .sv-spread.sv-spread-in > * {
+  transition:
+    translate var(--sv-duration, 800ms) var(--sv-ease, ease),
+    rotate var(--sv-duration, 800ms) var(--sv-ease, ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
+}
+.sv-on .sv.sv-live .sv-spread.sv-spread-in > * {
+  --sv-spread: 1;
+}
+
+/* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
+
+@keyframes sv-in-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sv-in-rise {
+  from { opacity: 0; translate: 0 4rem; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@supports (animation-timeline: view()) {
+  .sv-view-fade,
+  .sv-view-rise {
+    animation: sv-in-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 70%;
+  }
+  .sv-view-rise {
+    animation-name: sv-in-rise;
+  }
+}
+
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > * {
+    translate: none;
+    rotate: none;
+    transition: none;
+  }
+  .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+  .sv-on .sv.sv-auto > *,
+  .sv-view-fade,
+  .sv-view-rise {
+    transition: none;
+    animation: none;
+    opacity: 1;
+    translate: none;
+  }
+}
+
+/* scrollvars — pinned presets (curtain, rail, deck, reading, counter).
+ * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
+
+/* ---- Pin presets (continuous: track with { pin: true }) ---- */
+
+/* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
+   .sv-curtain-l / .sv-curtain-r panels over the revealed content. */
+.sv .sv-curtain-l {
+  translate: calc(var(--sv-pin, 0) * -101%) 0;
+}
+.sv .sv-curtain-r {
+  translate: calc(var(--sv-pin, 0) * 101%) 0;
+}
+
+/* Rail: horizontal travel on vertical scroll. Put on a max-content flex row
+   inside a sticky stage. Starts one viewport offscreen to the right, ends
+   right-edge aligned (min() keeps it moving even when the track fits). */
+.sv .sv-rail {
+  width: max-content;
+  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0;
+}
+
+/* Deck: pinned card pile — each child flies away across its own slice of the
+   pin. Children stack via grid (no absolute positioning needed); set
+   --sv-count on the container to the number of cards (default 4). The first
+   8 children are auto-indexed; beyond that set --sv-order manually. */
+.sv .sv-deck {
+  display: grid;
+  place-items: center;
+}
+.sv .sv-deck > * {
+  grid-area: 1 / 1;
+  --sv-slice: clamp(0, calc(var(--sv-pin, 0) * var(--sv-count, 4) - var(--sv-order, 0)), 1);
+  translate: 0 calc(var(--sv-order, 0) * 14px - var(--sv-slice) * 130vh);
+  rotate: calc(var(--sv-slice) * -7deg);
+  scale: calc(1 - var(--sv-order, 0) * 0.045 + var(--sv-slice) * 0.045);
+}
+.sv .sv-deck > :nth-child(1) { --sv-order: 0; z-index: 8; }
+.sv .sv-deck > :nth-child(2) { --sv-order: 1; z-index: 7; }
+.sv .sv-deck > :nth-child(3) { --sv-order: 2; z-index: 6; }
+.sv .sv-deck > :nth-child(4) { --sv-order: 3; z-index: 5; }
+.sv .sv-deck > :nth-child(5) { --sv-order: 4; z-index: 4; }
+.sv .sv-deck > :nth-child(6) { --sv-order: 5; z-index: 3; }
+.sv .sv-deck > :nth-child(7) { --sv-order: 6; z-index: 2; }
+.sv .sv-deck > :nth-child(8) { --sv-order: 7; z-index: 1; }
+
+/* Guided reading: children (word spans) lit progressively across the pin.
+   Set --sv-count on the container to the word count and --sv-order on each
+   span (0-based). The +3 lead keeps a few words warming up ahead. */
+.sv .sv-reading > * {
+  opacity: clamp(0.13, calc(var(--sv-pin, 0) * (var(--sv-count, 1) + 3) - var(--sv-order, 0)), 1);
+}
+
+/* Counter: an integer counted up by the scroll, rendered without JS via
+   @property + counter(). Set --sv-max on the element; the number appears
+   as its ::after content. */
+@property --sv-int {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: true;
+}
+.sv .sv-counter {
+  font-variant-numeric: tabular-nums;
+  --sv-int: calc(var(--sv-pin, 0) * var(--sv-max, 100));
+  counter-reset: sv-counter var(--sv-int);
+}
+.sv .sv-counter::after {
+  content: counter(sv-counter);
+}
+
+/* ---- Accessibility ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r {
+    display: none;
+  }
+  .sv .sv-rail {
+    translate: none;
+  }
+  .sv .sv-deck > * {
+    translate: none;
+    rotate: none;
+    scale: none;
+  }
+  .sv .sv-reading > * {
+    opacity: 1;
+  }
+}
+
+/* scrollvars — slider styles (the class is added by slider()). */
+
+/* Slider: native rails + snap magnetism; the class is added by slider().
+   Slides get --sd (signed distance from center, in slide widths) and
+   .sv-active — any CSS reading them animates the carousel. */
+.sv-slider {
+  display: flex;
+  gap: var(--sv-gap, 16px);
+  overflow-x: auto;
+  scroll-snap-type: x var(--sv-snap, mandatory);
+  overscroll-behavior-x: contain;
+}
+.sv-slider.sv-draggable {
+  cursor: grab;
+}
+.sv-slider-y {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y var(--sv-snap, mandatory);
+  overscroll-behavior-y: contain;
+}
+.sv-slider > * {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+.sv-slider.sv-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+.sv-slider.sv-gliding {
+  scroll-snap-type: none;
+}
+
+
+/* Columns: set --sv-per-view (fractional = peek) and breakpoints ARE media
+   queries — override the var per breakpoint (or via Tailwind:
+   "[--sv-per-view:1.2] md:[--sv-per-view:2.5]"). Slides can span columns
+   with --sv-span. Gate class sv-cols keeps natural sizing the default. */
+.sv-slider.sv-cols > * {
+  flex: 0 0
+    calc(
+      (100% - (var(--sv-per-view, 1) - 1) * var(--sv-gap, 16px)) / var(--sv-per-view, 1) *
+        var(--sv-span, 1) +
+        (var(--sv-span, 1) - 1) * var(--sv-gap, 16px)
+    );
+}
+
+/* Chrome: arrows + dots with stable class hooks. Appearance and position
+   are var knobs — override them globally (:root / .sv-slider-shell) for the
+   whole project, or on one slider (className/style) for that instance.
+   Beyond the knobs, restyle the classes directly or pass custom icons /
+   renderDot in React. */
+.sv-slider-shell {
+  position: relative;
+}
+.sv-arrow {
+  position: absolute;
+  top: var(--sv-arrow-top, 50%);
+  translate: 0 -50%;
+  z-index: 2;
+  width: var(--sv-arrow-size, 44px);
+  height: var(--sv-arrow-size, 44px);
+  display: grid;
+  place-items: center;
+  border-radius: var(--sv-arrow-radius, 999px);
+  border: 1px solid var(--sv-arrow-border, rgba(128, 128, 128, 0.35));
+  background: var(--sv-arrow-bg, rgba(0, 0, 0, 0.35));
+  color: var(--sv-arrow-color, currentColor);
+  font-size: calc(var(--sv-arrow-size, 44px) * 0.4);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.sv-arrow-prev {
+  left: var(--sv-arrow-inset, 12px);
+}
+.sv-arrow-next {
+  right: var(--sv-arrow-inset, 12px);
+}
+.sv-dots {
+  display: flex;
+  gap: var(--sv-dot-gap, 8px);
+  justify-content: var(--sv-dots-justify, center);
+  margin-top: var(--sv-dots-offset, 14px);
+}
+.sv-dot {
+  width: var(--sv-dot-size, 8px);
+  height: var(--sv-dot-size, 8px);
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: var(--sv-dot-color, rgba(128, 128, 128, 0.35));
+  cursor: pointer;
+  transition: background 300ms, scale 300ms;
+}
+.sv-dot.on {
+  background: var(--sv-dot-active, currentColor);
+  scale: 1.25;
+}
+
+/* scrollvars — pointer tilt preset (use with trackPointer / usePointer). */
+
+/* ---- Pointer preset (use with trackPointer / usePointer) ---- */
+
+.sv-tilt {
+  --mx: 0;
+  --my: 0;
+  position: relative;
+  overflow: hidden;
+  transform: perspective(900px) rotateY(calc(var(--mx) * 14deg))
+    rotateX(calc(var(--my) * -14deg));
+  transform-style: preserve-3d;
+  transition: transform 140ms ease-out;
+}
+.sv-tilt.sv-pointer-leave {
+  transition: transform 600ms var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+}
+.sv-tilt::after {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(
+    circle at calc(50% + var(--mx) * 38%) calc(50% + var(--my) * 38%),
+    rgba(255, 255, 255, 0.14),
+    transparent 42%
+  );
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce), (hover: none) {
+  .sv-tilt {
+    transform: none;
+    transition: none;
+  }
+  .sv-tilt::after {
+    display: none;
+  }
+}
+
+/* scrollvars — interaction-state presets (use with toggles(), the Popover
+ * API, or any class you flip yourself — including sv-live by hand, which
+ * replays the whole entrance system on demand). */
+
+/* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
+   modern discrete-transition trio (@starting-style + allow-discrete).
+   Works with [popover] / <dialog> out of the box, or with the `sv-open`
+   class that toggles() flips. */
+.sv-pop {
+  --sv-pop-distance: 0.75rem;
+  --sv-pop-duration: 350ms;
+  transition:
+    opacity var(--sv-pop-duration) var(--sv-ease, ease),
+    translate var(--sv-pop-duration) var(--sv-ease, ease),
+    display var(--sv-pop-duration) allow-discrete,
+    overlay var(--sv-pop-duration) allow-discrete;
+}
+[popover].sv-pop:not(:popover-open) {
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+dialog.sv-pop:not([open]) {
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+.sv-pop:not([popover]):not(dialog):not(.sv-open) {
+  display: none;
+  opacity: 0;
+  translate: 0 var(--sv-pop-distance);
+}
+@starting-style {
+  [popover].sv-pop:popover-open,
+  dialog.sv-pop[open],
+  .sv-pop.sv-open {
+    opacity: 0;
+    translate: 0 var(--sv-pop-distance);
+  }
+}
+
+/* Rotating words: a clipped column of words; set --sv-word (integer index)
+   to slide one row per word — old word exits up, the next rises from below.
+   Discrete value + transition = smooth, the house idiom. */
+.sv-words {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: bottom;
+  height: 1.15em;
+  overflow: hidden;
+}
+.sv-words > * {
+  display: block;
+  height: 1.15em;
+  line-height: 1.15;
+  translate: 0 calc(var(--sv-word, 0) * -1.15em);
+  transition: translate var(--sv-duration, 650ms)
+    var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+}
+
+/* Acts: a time-driven MASTER CLOCK in pure CSS — the same slice idiom the
+   scroll scenes use, but the clock is a registered custom property in
+   transition. Trigger with a class: sv-open (toggles/click) or sv-live
+   (scroll-triggered timed choreography — zero JS). Define acts as slices:
+
+     .stage  { --a1: clamp(0, var(--sv-act), 1);
+               --a2: clamp(0, calc(var(--sv-act) - 1), 1); }
+     .title  { opacity: var(--a1); translate: 0 calc((1 - var(--a1)) * 2rem); }
+     .cards  { scale: calc(0.9 + var(--a2) * 0.1); }
+
+   Knobs: --sv-acts-count (how many acts, default 3) and --sv-acts-duration
+   (whole timeline, default 2s) — retiming is relative: change one number
+   and every act rescales. Reversible and interruptible by nature: remove
+   the class mid-flight and the transition RETARGETS instead of restarting.
+   Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
+   straight to the finished state — content never hidden. */
+@property --sv-act {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: true;
+}
+.sv-acts {
+  --sv-act: 0;
+  transition: --sv-act var(--sv-acts-duration, 2s) linear;
+}
+.sv-acts.sv-open,
+.sv-on .sv.sv-live.sv-acts,
+.sv-on .sv.sv-live .sv-acts {
+  --sv-act: var(--sv-acts-count, 3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-pop,
+  .sv-words > *,
+  .sv-acts {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* scrollvars — UI presets (marquee, accordion) for the React kit and
+ * vanilla markup alike. */
+
+/* Marquee: an infinite strip (logos, taglines). The track holds TWO copies
+   of the content and slides one copy-width; knobs: --sv-marquee-duration
+   (one loop) and --sv-gap. Pauses on hover by default
+   (--sv-marquee-hover: running to disable). */
+.sv-marquee {
+  overflow: hidden;
+  display: flex;
+}
+.sv-marquee-track {
+  display: flex;
+  align-items: center;
+  gap: var(--sv-gap, 48px);
+  width: max-content;
+  padding-right: var(--sv-gap, 48px);
+  animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite;
+}
+.sv-marquee:hover .sv-marquee-track {
+  animation-play-state: var(--sv-marquee-hover, paused);
+}
+@keyframes sv-marquee {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* Accordion: native <details> animated — accessibility for free, exclusive
+   groups via the native name attribute. Needs interpolate-size (Chrome 129+);
+   older browsers open/close without the height animation. */
+.sv-accordion {
+  interpolate-size: allow-keywords;
+}
+.sv-accordion > summary {
+  cursor: pointer;
+}
+.sv-accordion::details-content {
+  opacity: 0;
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--sv-duration, 350ms) var(--sv-ease, ease),
+    opacity var(--sv-duration, 350ms) var(--sv-ease, ease),
+    content-visibility var(--sv-duration, 350ms) allow-discrete;
+}
+.sv-accordion[open]::details-content {
+  opacity: 1;
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track {
+    animation: none;
+  }
+  .sv-accordion::details-content {
+    transition: none;
+  }
+}

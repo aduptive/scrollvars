@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "effects": [
+    {
+      "slug": "staggered-reveal",
+      "title": "Staggered reveal",
+      "tagline": "Children rise in sequence when the section enters the viewport.",
+      "page": "https://scrollvars.vercel.app/fx/staggered-reveal.html",
+      "file": "StaggeredReveal.tsx",
+      "content": "// scrollvars fx · staggered-reveal\n// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)\n'use client'\nimport * as React from 'react'\nimport { Reveal } from 'scrollvars/react'\n\nexport function StaggeredReveal({ children, ...rest }: React.ComponentProps<typeof Reveal>) {\n  return (\n    <Reveal auto {...rest}>\n      {children}\n    </Reveal>\n  )\n}\n"
+    },
+    {
+      "slug": "deck-spread",
+      "title": "Deck spread",
+      "tagline": "A centered card deck deals itself into the grid — on arrival or scrubbed.",
+      "page": "https://scrollvars.vercel.app/fx/deck-spread.html",
+      "file": "DeckSpread.tsx",
+      "content": "// scrollvars fx · deck-spread\n// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)\n// Knobs: gap, --sv-mid = (children-1)/2 is set for you.\n'use client'\nimport * as React from 'react'\nimport { Track } from 'scrollvars/react'\n\nexport function DeckSpread({\n  children,\n  gap = 16,\n  className,\n}: {\n  children: React.ReactNode\n  gap?: number\n  className?: string\n}) {\n  const count = React.Children.count(children)\n  return (\n    <Track className={className}>\n      <div\n        className=\"sv-spread sv-spread-in\"\n        style={{ '--sv-gap': gap + 'px', '--sv-mid': (count - 1) / 2 } as React.CSSProperties}\n      >\n        {React.Children.map(children, (child, i) => (\n          <div style={{ '--sv-order': i } as React.CSSProperties}>{child}</div>\n        ))}\n      </div>\n    </Track>\n  )\n}\n"
+    },
+    {
+      "slug": "curtain",
+      "title": "Curtain",
+      "tagline": "Two panels slide apart as you scroll through a pinned stretch.",
+      "page": "https://scrollvars.vercel.app/fx/curtain.html",
+      "file": "Curtain.tsx",
+      "content": "// scrollvars fx · curtain\n// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)\n'use client'\nimport * as React from 'react'\nimport { Track } from 'scrollvars/react'\n\nexport function Curtain({\n  children,\n  panelClassName = 'bg-zinc-900',\n  height = '250vh',\n}: {\n  children: React.ReactNode // the revealed content\n  panelClassName?: string\n  height?: string\n}) {\n  return (\n    <Track pin className=\"relative\" style={{ height }}>\n      <div className=\"sticky top-0 h-screen overflow-hidden\">\n        <div className=\"grid h-full place-items-center\">{children}</div>\n        <div className={`sv-curtain-l absolute inset-y-0 left-0 w-1/2 ${panelClassName}`} />\n        <div className={`sv-curtain-r absolute inset-y-0 right-0 w-1/2 ${panelClassName}`} />\n      </div>\n    </Track>\n  )\n}\n"
+    },
+    {
+      "slug": "horizontal-rail",
+      "title": "Horizontal rail",
+      "tagline": "Vertical scroll travels a horizontal track through a pinned stage.",
+      "page": "https://scrollvars.vercel.app/fx/horizontal-rail.html",
+      "file": "HorizontalRail.tsx",
+      "content": "// scrollvars fx · horizontal-rail\n// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)\n'use client'\nimport * as React from 'react'\nimport { Track } from 'scrollvars/react'\n\nexport function HorizontalRail({\n  children,\n  height = '300vh',\n}: {\n  children: React.ReactNode // the cards (give each a fixed width + shrink-0)\n  height?: string\n}) {\n  return (\n    <Track pin className=\"relative\" style={{ height }}>\n      <div className=\"sticky top-0 flex h-screen items-center overflow-hidden\">\n        <div className=\"sv-rail flex gap-4 px-[10vw]\">{children}</div>\n      </div>\n    </Track>\n  )\n}\n"
+    },
+    {
+      "slug": "rotating-words",
+      "title": "Rotating words",
+      "tagline": "One word exits up, the next rises from below — a clipped column on one variable.",
+      "page": "https://scrollvars.vercel.app/fx/rotating-words.html",
+      "file": "RotatingWords.tsx",
+      "content": "// scrollvars fx · rotating-words\n// Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (layout)\n'use client'\nimport * as React from 'react'\n\nexport function RotatingWords({\n  words,\n  interval = 2000,\n  className,\n}: {\n  words: string[]\n  interval?: number\n  className?: string\n}) {\n  const [index, setIndex] = React.useState(0)\n  React.useEffect(() => {\n    const t = setInterval(() => setIndex((i) => (i + 1) % words.length), interval)\n    return () => clearInterval(t)\n  }, [words.length, interval])\n  return (\n    <span className={className ? `sv-words ${className}` : 'sv-words'}\n      style={{ '--sv-word': index } as React.CSSProperties}>\n      {words.map((w) => (\n        <span key={w}>{w}</span>\n      ))}\n    </span>\n  )\n}\n"
+    },
+    {
+      "slug": "pointer-tilt",
+      "title": "Pointer tilt",
+      "tagline": "Cards tilt toward the cursor with a moving glare — one delegated listener.",
+      "page": "https://scrollvars.vercel.app/fx/pointer-tilt.html",
+      "file": "PointerTiltGrid.tsx",
+      "content": "// scrollvars fx · pointer-tilt\n// Requires: npm i scrollvars · import 'scrollvars/styles/tilt.css' (layout)\n// Give each card the sv-tilt class; one delegated listener covers the grid.\n'use client'\nimport * as React from 'react'\nimport { usePointer } from 'scrollvars/react'\n\nexport function PointerTiltGrid({\n  children,\n  className = 'grid grid-cols-3 gap-6',\n}: {\n  children: React.ReactNode\n  className?: string\n}) {\n  const ref = usePointer<HTMLDivElement>()\n  return (\n    <div ref={ref} className={className}>\n      {children}\n    </div>\n  )\n}\n"
+    },
+    {
+      "slug": "coverflow-slider",
+      "title": "Coverflow slider",
+      "tagline": "Native-scroll carousel; slides scale, fade and turn by their distance from center.",
+      "page": "https://scrollvars.vercel.app/fx/coverflow-slider.html",
+      "file": "CoverflowSlider.tsx",
+      "content": "// scrollvars fx · coverflow-slider\n// Requires: npm i scrollvars · import 'scrollvars/styles/slider.css' (layout)\n// Chrome knobs: --sv-arrow-* / --sv-dot-* on this element or :root.\n'use client'\nimport * as React from 'react'\nimport { Slide, Slider } from 'scrollvars/react'\n\nconst coverflow = {\n  scale: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3))',\n  opacity: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7))',\n  transform: 'perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg))',\n} as React.CSSProperties\n\nexport function CoverflowSlider({\n  children,\n  perView = { base: 1.2, md: 2.5, xl: 4 },\n  ...rest\n}: React.ComponentProps<typeof Slider>) {\n  return (\n    <Slider perView={perView} gap={16} arrows dots {...rest}>\n      {React.Children.map(children, (child) => (\n        <Slide style={coverflow}>{child}</Slide>\n      ))}\n    </Slider>\n  )\n}\n"
+    },
+    {
+      "slug": "marquee",
+      "title": "Marquee",
+      "tagline": "An infinite strip — logos, taglines — that pauses on hover.",
+      "page": "https://scrollvars.vercel.app/fx/marquee.html",
+      "file": "LogoMarquee.tsx",
+      "content": "// scrollvars fx · marquee\n// Requires: npm i scrollvars · import 'scrollvars/styles/ui.css' (layout)\n'use client'\nimport * as React from 'react'\nimport { Marquee } from 'scrollvars/react'\n\nexport function LogoMarquee({\n  children,\n  speed = 24,\n  className,\n}: {\n  children: React.ReactNode\n  speed?: number\n  className?: string\n}) {\n  return (\n    <Marquee speed={speed} className={className}>\n      {children}\n    </Marquee>\n  )\n}\n"
+    }
+  ]
+}

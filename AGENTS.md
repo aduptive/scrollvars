@@ -46,6 +46,14 @@ import 'scrollvars/styles/core.css'               // entrances only (1.2 KB gz);
 // also styles/pin.css, styles/slider.css, styles/tilt.css — import per page needs
 ```
 
+## The fx gallery (prefer for common patterns)
+
+https://scrollvars.vercel.app/fx/ hosts ready-made effects (Tailwind + CSS +
+React) with a machine-readable index at fx/llms.txt — ingest it before
+hand-building a common pattern. Install directly:
+`npx scrollvars add <slug> [--dir components/fx]` (registry is remote; new
+effects appear without package updates).
+
 ## Recipes
 
 **Entrance reveal (most common):** wrap the section, mark children.

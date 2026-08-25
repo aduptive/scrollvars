@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0 — 2026-08-24
+
+- **The fx gallery** (/fx/ on the demo site): a growing library of
+  copy-paste effects — live preview, Tailwind + CSS + React tabs with copy
+  button, knobs documented, per-gallery llms.txt for AI ingestion. Built
+  from one data file (`scripts/fx-build.mjs`); 8 seed effects.
+- **shadcn-style CLI**: `npx scrollvars list` / `npx scrollvars add <slug>
+  [--dir] [--force]` — fetches a remote registry (registry.json on the fx
+  site) and writes a complete component file into the project; the library
+  grows without package releases.
+
 ## 1.5.0 — 2026-08-24
 
 - **React component kit**: `<Slider>`/`<Slide>` (the Swiper replacement:

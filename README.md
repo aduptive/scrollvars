@@ -126,6 +126,23 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 `data-sv-scenes="4"`. New nodes from route changes are picked up automatically
 (vanilla: `scan()`).
 
+## The fx gallery — copy-paste effects (+ shadcn-style CLI)
+
+A growing library of effects at **https://scrollvars.vercel.app/fx/** — each
+one live, with Tailwind, CSS and React formats, knobs documented, and a
+machine-readable [fx/llms.txt](https://scrollvars.vercel.app/fx/llms.txt)
+so AI assistants can ingest the whole collection in one request. Install an
+effect straight into your project:
+
+```bash
+npx scrollvars list
+npx scrollvars add coverflow-slider            # → components/fx/CoverflowSlider.tsx
+npx scrollvars add marquee --dir src/ui
+```
+
+The CLI fetches a remote registry, so the library grows without package
+releases.
+
 ## The component kit (React)
 
 Batteries-included wrappers over the same engine — less React, less JS,

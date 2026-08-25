@@ -1,0 +1,344 @@
+# scrollvars fx — llms.txt (copy-paste effects)
+
+> A growing library of scroll/pointer/state effects on the scrollvars engine
+> (npm i scrollvars — driver 1.2 KB gzip). Each effect below includes when to
+> use it, its knobs, and three ready formats. Engine API: see
+> https://scrollvars.vercel.app/llms.txt
+
+## Staggered reveal (staggered-reveal)
+
+Children rise in sequence when the section enters the viewport.
+Use for: Heroes, editorial sections, any "content arrives" moment.
+Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ease
+
+### Tailwind
+```html
+<section data-sv data-sv-once class="py-24">
+  <h2 class="sv-rise text-4xl font-bold">Title</h2>
+  <p class="sv-rise [--sv-order:1]">Copy</p>
+  <p class="sv-rise [--sv-order:2] [--sv-distance:3rem]">More</p>
+</section>
+<!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
+```
+
+### CSS
+```html
+<section data-sv>            <!-- tracked; gets .sv-live in the band -->
+  <h2 class="sv-rise">Title</h2>
+  <p class="sv-rise" style="--sv-order: 1">Copy</p>
+</section>
+
+/* needs styles/core.css (or paste the preset): */
+.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
+  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
+.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }
+```
+
+### React
+```tsx
+<Reveal auto>            {/* every direct child, stagger for free */}
+  <h2>Title</h2>
+  <p>Copy</p>
+</Reveal>
+
+// or per-child knobs as props:
+<Reveal stagger={140}>
+  <Item order={0}>first</Item>
+  <Item order={1} effect="slide-l" distance="4rem">second</Item>
+</Reveal>
+```
+
+## Deck spread (deck-spread)
+
+A centered card deck deals itself into the grid — on arrival or scrubbed.
+Use for: Feature cards, pricing tiers, portfolio grids that deserve an entrance.
+Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub
+
+### Tailwind
+```html
+<section data-sv class="py-24">
+  <div class="sv-spread sv-spread-in [--sv-gap:14px]">
+    <div class="[--sv-order:0] rounded-xl border p-8">01</div>
+    <div class="[--sv-order:1] rounded-xl border p-8">02</div>
+    <div class="[--sv-order:2] rounded-xl border p-8">03</div>
+  </div>
+</section>
+```
+
+### CSS
+```html
+<section data-sv>
+  <div class="sv-spread sv-spread-in">
+    <div style="--sv-order: 0">…</div>
+    <div style="--sv-order: 1">…</div>
+    <div style="--sv-order: 2">…</div>
+  </div>
+</section>
+
+/* styles/core.css ships it; the math, if you want it inline: */
+.sv-spread { display: flex; gap: var(--sv-gap, 16px); justify-content: center; }
+.sv-spread > * { --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
+  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
+  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg); }
+
+/* scrub instead of play: */
+.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+```
+
+### React
+```tsx
+<Track>
+  <div className="sv-spread sv-spread-in">
+    {cards.map((c, i) => (
+      <Card key={c.id} style={{ '--sv-order': i }} {...c} />
+    ))}
+  </div>
+</Track>
+```
+
+## Curtain (curtain)
+
+Two panels slide apart as you scroll through a pinned stretch.
+Use for: Chapter breaks, big reveals, section transitions.
+Knobs: outer height = scroll length; panel content/colors are yours
+
+### Tailwind
+```html
+<div data-sv data-sv-pin class="relative h-[250vh]">
+  <div class="sticky top-0 h-screen overflow-hidden">
+    <div class="grid h-full place-items-center">revealed content</div>
+    <div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"></div>
+    <div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"></div>
+  </div>
+</div>
+```
+
+### CSS
+```html
+<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
+  <div class="sticky">                        <!-- sticky; top:0; h:100vh; overflow:hidden -->
+    <div class="revealed-content">…</div>
+    <div class="panel-left sv-curtain-l">…</div>
+    <div class="panel-right sv-curtain-r">…</div>
+  </div>
+</div>
+
+/* the preset (styles/pin.css): */
+.sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
+.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+```
+
+### React
+```tsx
+<Track pin className="relative h-[250vh]">
+  <div className="sticky top-0 h-screen overflow-hidden">
+    <Revealed />
+    <div className="sv-curtain-l …" />
+    <div className="sv-curtain-r …" />
+  </div>
+</Track>
+```
+
+## Horizontal rail (horizontal-rail)
+
+Vertical scroll travels a horizontal track through a pinned stage.
+Use for: Process steps, timelines, galleries that read left-to-right.
+Knobs: outer height = scroll length; works at any viewport width (min() keeps it moving)
+
+### Tailwind
+```html
+<div data-sv data-sv-pin class="relative h-[300vh]">
+  <div class="sticky top-0 flex h-screen items-center overflow-hidden">
+    <div class="sv-rail flex gap-4 px-[10vw]">
+      {cards.map(c => <Card key={c.id} class="w-80 shrink-0" />)}
+    </div>
+  </div>
+</div>
+```
+
+### CSS
+```html
+<div data-sv data-sv-pin class="outer">   <!-- height: 300vh -->
+  <div class="sticky">                        <!-- sticky stage, flex center -->
+    <div class="sv-rail">…cards…</div>
+  </div>
+</div>
+
+/* the preset (styles/pin.css): */
+.sv .sv-rail { width: max-content;
+  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }
+```
+
+### React
+```tsx
+<Track pin className="relative h-[300vh]">
+  <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+    <div className="sv-rail flex gap-4 px-[10vw]">{cards}</div>
+  </div>
+</Track>
+```
+
+## Rotating words (rotating-words)
+
+One word exits up, the next rises from below — a clipped column on one variable.
+Use for: Hero headlines: "We build ______".
+Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an interval
+
+### Tailwind
+```html
+<h1 class="text-5xl font-extrabold">
+  we build
+  <span class="sv-words text-violet-400">
+    <span>brands</span><span>websites</span><span>products</span>
+  </span>
+</h1>
+<!-- set --sv-word from your state; scenes drive it for free in pinned stories -->
+```
+
+### CSS
+```html
+<h1>we build
+  <span class="sv-words">
+    <span>brands</span><span>websites</span><span>products</span>
+  </span>
+</h1>
+
+/* the preset (styles/state.css): */
+.sv-words { display: inline-flex; flex-direction: column;
+  vertical-align: bottom; height: 1.15em; overflow: hidden; }
+.sv-words > * { display: block; height: 1.15em; line-height: 1.15;
+  translate: 0 calc(var(--sv-word, 0) * -1.15em);
+  transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+
+// drive it (state, scenes, or a timer):
+el.style.setProperty('--sv-word', nextIndex)
+```
+
+### React
+```tsx
+const [word, setWord] = useState(0)
+<h1>we build{' '}
+  <span className="sv-words" style={{ '--sv-word': word }}>
+    {words.map(w => <span key={w}>{w}</span>)}
+  </span>
+</h1>
+```
+
+## Pointer tilt (pointer-tilt)
+
+Cards tilt toward the cursor with a moving glare — one delegated listener.
+Use for: Product cards, team grids, anything that should feel physical.
+Knobs: tilt degrees and glare live in the preset — override .sv-tilt to taste
+
+### Tailwind
+```html
+<div ref={rowRef} class="grid grid-cols-3 gap-6">
+  <div class="sv-tilt rounded-2xl border p-10">…</div>
+</div>
+<!-- tilt/glare read --mx/--my; restyle .sv-tilt::after for the glare -->
+```
+
+### CSS
+```html
+<div class="grid">          <!-- any container -->
+  <div class="sv-tilt">…</div>
+  <div class="sv-tilt">…</div>
+</div>
+
+<script type="module">
+  import { trackPointer } from 'scrollvars'
+  trackPointer(document.querySelector('.grid'))
+</script>
+/* preset in styles/tilt.css — tilt + glare from --mx/--my */
+```
+
+### React
+```tsx
+const ref = usePointer()
+<div ref={ref} className="grid grid-cols-3 gap-6">
+  {cards.map(c => <div key={c.id} className="sv-tilt">…</div>)}
+</div>
+```
+
+## Coverflow slider (coverflow-slider)
+
+Native-scroll carousel; slides scale, fade and turn by their distance from center.
+Use for: Anywhere you were about to install Swiper.
+Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome vars --sv-arrow-*/--sv-dot-*
+
+### Tailwind
+```html
+<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
+  className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
+  {cards.map(c => (
+    <Slide key={c.id} className="[scale:calc(1-min(abs(var(--sd,0))*0.12,0.3))]">
+      <Card {...c} />
+    </Slide>
+  ))}
+</Slider>
+```
+
+### CSS
+```html
+<div class="sv-slider" id="cards">
+  <div class="slide">…</div> ×N
+</div>
+
+<script type="module">
+  import { slider } from 'scrollvars'
+  slider(document.getElementById('cards'))
+</script>
+
+/* the coverflow is pure CSS on --sd: */
+.slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
+  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+```
+
+### React
+```tsx
+<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}>
+  {cards.map(c => <Slide key={c.id}><Card {...c} /></Slide>)}
+</Slider>
+// chrome: --sv-arrow-* / --sv-dot-* vars, prevIcon/nextIcon, renderDot, or your own UI via ref
+```
+
+## Marquee (marquee)
+
+An infinite strip — logos, taglines — that pauses on hover.
+Use for: Logo walls, ticker bands. The honest replacement for Swiper loop.
+Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause
+
+### Tailwind
+```html
+<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
+  <div class="sv-marquee-track">
+    {logos}{/* duplicate once, aria-hidden */}
+  </div>
+</div>
+```
+
+### CSS
+```html
+<div class="sv-marquee">
+  <div class="sv-marquee-track">
+    …content… …content again (aria-hidden)…
+  </div>
+</div>
+
+/* the preset (styles/ui.css): */
+.sv-marquee { overflow: hidden; display: flex; }
+.sv-marquee-track { display: flex; gap: var(--sv-gap, 48px); width: max-content;
+  padding-right: var(--sv-gap, 48px);
+  animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
+.sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
+@keyframes sv-marquee { to { translate: -50% 0; } }
+```
+
+### React
+```tsx
+<Marquee speed={24}>
+  {logos.map(l => <img key={l.id} src={l.src} alt={l.name} className="h-8" />)}
+</Marquee>
+```
