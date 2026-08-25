@@ -52,12 +52,66 @@
   .fxlink:hover { border-color: var(--accent); }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
+  .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
+    color:var(--muted); margin:30px 0 12px; }
+  .fxwrap { max-width:1160px; margin:0 auto; display:grid;
+    grid-template-columns:200px minmax(0,1fr); gap:48px; align-items:start; }
+  .fxwrap > main { margin:0; }
+  .fxside { position:sticky; top:28px; align-self:start; font-size:14px; }
+  .fxnav[open] > summary { display:none; }
+  .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
+  .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
+  .fxnav nav details:first-child { border-top:0; padding-top:0; }
+  .fxnav nav summary { cursor:pointer; user-select:none; font:600 11px/2.2 var(--mono);
+    text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+  .fxnav nav summary:hover { color:var(--text); }
+  .fxnav nav a { display:block; padding:4px 0 4px 14px; margin-left:5px; color:var(--text);
+    opacity:.85; text-decoration:none; border-left:1px solid var(--line); }
+  .fxnav nav a:hover { opacity:1; color:var(--accent); }
+  .fxnav nav a[aria-current] { opacity:1; color:var(--accent); font-weight:600;
+    border-left-color:var(--accent); }
+  @media (max-width: 919px) {
+    .fxwrap { display:block; }
+    .fxside { position:static; margin-bottom:28px; }
+    .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
+      font:600 14px var(--sans);
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#17151f; }
+    .fxnav[open] > summary { border-radius:12px 12px 0 0; }
+    .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
+      padding:10px 16px 14px; background:#17151f; }
+  }
 </style>
 </head><body>
-<header class="fx">
+<header class="fx" style="max-width:1160px">
   <div><a href="." style="text-decoration:none"><b>scrollvars</b> <span style="color:var(--muted)">/ fx</span></a></div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a></div>
 </header>
+<div class="fxwrap">
+<aside class="fxside">
+  <details class="fxnav" open>
+    <summary>All effects</summary>
+    <nav>
+      <details open><summary>Reveals</summary>
+        <a href="staggered-reveal.html">Staggered reveal</a>
+        <a href="deck-spread.html">Deck spread</a>
+      </details>
+      <details open><summary>Pinned scenes</summary>
+        <a href="curtain.html">Curtain</a>
+        <a href="horizontal-rail.html">Horizontal rail</a>
+      </details>
+      <details open><summary>Text</summary>
+        <a href="rotating-words.html">Rotating words</a>
+      </details>
+      <details open><summary>Pointer</summary>
+        <a href="pointer-tilt.html">Pointer tilt</a>
+      </details>
+      <details open><summary>Sliders</summary>
+        <a href="coverflow-slider.html" aria-current="page">Coverflow slider</a>
+        <a href="marquee.html">Marquee</a>
+      </details>
+    </nav>
+  </details>
+</aside>
 <main>
   <h1>Coverflow slider</h1>
   <p class="tag">Native-scroll carousel; slides scale, fade and turn by their distance from center.</p>
@@ -106,6 +160,8 @@
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
+</div>
+<script>if(matchMedia('(max-width:919px)').matches)document.querySelector('.fxnav').removeAttribute('open')</script>
 <script src="sv.js"></script>
 <script>
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {

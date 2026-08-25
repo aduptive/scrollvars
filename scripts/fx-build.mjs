@@ -20,6 +20,7 @@ mkdirSync(out, { recursive: true })
 const EFFECTS = [
   {
     slug: 'staggered-reveal',
+    category: 'Reveals',
     title: 'Staggered reveal',
     tagline: 'Children rise in sequence when the section enters the viewport.',
     when: 'Heroes, editorial sections, any "content arrives" moment.',
@@ -58,6 +59,7 @@ const EFFECTS = [
   },
   {
     slug: 'deck-spread',
+    category: 'Reveals',
     title: 'Deck spread',
     tagline: 'A centered card deck deals itself into the grid — on arrival or scrubbed.',
     when: 'Feature cards, pricing tiers, portfolio grids that deserve an entrance.',
@@ -102,6 +104,7 @@ const EFFECTS = [
   },
   {
     slug: 'curtain',
+    category: 'Pinned scenes',
     title: 'Curtain',
     tagline: 'Two panels slide apart as you scroll through a pinned stretch.',
     when: 'Chapter breaks, big reveals, section transitions.',
@@ -141,6 +144,7 @@ const EFFECTS = [
   },
   {
     slug: 'horizontal-rail',
+    category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
     when: 'Process steps, timelines, galleries that read left-to-right.',
@@ -177,6 +181,7 @@ const EFFECTS = [
   },
   {
     slug: 'rotating-words',
+    category: 'Text',
     title: 'Rotating words',
     tagline: 'One word exits up, the next rises from below — a clipped column on one variable.',
     when: 'Hero headlines: "We build ______".',
@@ -216,6 +221,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   },
   {
     slug: 'pointer-tilt',
+    category: 'Pointer',
     title: 'Pointer tilt',
     tagline: 'Cards tilt toward the cursor with a moving glare — one delegated listener.',
     when: 'Product cards, team grids, anything that should feel physical.',
@@ -246,6 +252,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   },
   {
     slug: 'coverflow-slider',
+    category: 'Sliders',
     title: 'Coverflow slider',
     tagline: 'Native-scroll carousel; slides scale, fade and turn by their distance from center.',
     when: 'Anywhere you were about to install Swiper.',
@@ -286,6 +293,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   },
   {
     slug: 'marquee',
+    category: 'Sliders',
     title: 'Marquee',
     tagline: 'An infinite strip — logos, taglines — that pauses on hover.',
     when: 'Logo walls, ticker bands. The honest replacement for Swiper loop.',
@@ -384,12 +392,60 @@ const SHELL_CSS = `
   .fxlink:hover { border-color: var(--accent); }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
+  .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
+    color:var(--muted); margin:30px 0 12px; }
+  .fxwrap { max-width:1160px; margin:0 auto; display:grid;
+    grid-template-columns:200px minmax(0,1fr); gap:48px; align-items:start; }
+  .fxwrap > main { margin:0; }
+  .fxside { position:sticky; top:28px; align-self:start; font-size:14px; }
+  .fxnav[open] > summary { display:none; }
+  .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
+  .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
+  .fxnav nav details:first-child { border-top:0; padding-top:0; }
+  .fxnav nav summary { cursor:pointer; user-select:none; font:600 11px/2.2 var(--mono);
+    text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+  .fxnav nav summary:hover { color:var(--text); }
+  .fxnav nav a { display:block; padding:4px 0 4px 14px; margin-left:5px; color:var(--text);
+    opacity:.85; text-decoration:none; border-left:1px solid var(--line); }
+  .fxnav nav a:hover { opacity:1; color:var(--accent); }
+  .fxnav nav a[aria-current] { opacity:1; color:var(--accent); font-weight:600;
+    border-left-color:var(--accent); }
+  @media (max-width: 919px) {
+    .fxwrap { display:block; }
+    .fxside { position:static; margin-bottom:28px; }
+    .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
+      font:600 14px var(--sans);
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#17151f; }
+    .fxnav[open] > summary { border-radius:12px 12px 0 0; }
+    .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
+      padding:10px 16px 14px; background:#17151f; }
+  }
 `
 
-const header = (sub) => `<header class="fx">
+const header = (sub) => `<header class="fx"${sub ? ' style="max-width:1160px"' : ''}>
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>scrollvars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
   <div><a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a></div>
 </header>`
+
+/* categorized accordion sidebar — same markup on every fx page; native <details>.
+   Mobile starts collapsed (script below); desktop hides the outer summary only
+   while [open], so a closed nav is always reopenable at any width */
+const CATEGORIES = [...new Set(EFFECTS.map((e) => e.category))]
+const sidebar = (current) => `<aside class="fxside">
+  <details class="fxnav" open>
+    <summary>All effects</summary>
+    <nav>
+      ${CATEGORIES.map(
+        (cat) => `<details open><summary>${cat}</summary>
+        ${EFFECTS.filter((e) => e.category === cat)
+          .map((e) => `<a href="${e.slug}.html"${e.slug === current ? ' aria-current="page"' : ''}>${e.title}</a>`)
+          .join('\n        ')}
+      </details>`
+      ).join('\n      ')}
+    </nav>
+  </details>
+</aside>`
+const NAV_COLLAPSE = `<script>if(matchMedia('(max-width:919px)').matches)document.querySelector('.fxnav').removeAttribute('open')</script>`
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
@@ -400,6 +456,8 @@ for (const fx of EFFECTS) {
 <style>${SHELL_CSS}</style>
 </head><body>
 ${header(true)}
+<div class="fxwrap">
+${sidebar(fx.slug)}
 <main>
   <h1>${fx.title}</h1>
   <p class="tag">${fx.tagline}</p>
@@ -419,6 +477,8 @@ ${header(true)}
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
+</div>
+${NAV_COLLAPSE}
 <script src="sv.js"></script>
 <script>
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
@@ -444,18 +504,25 @@ const hub = `<!doctype html>
 <style>${SHELL_CSS}</style>
 </head><body>
 ${header(true)}
+<div class="fxwrap">
+${sidebar()}
 <main>
   <h1>fx — copy-paste effects</h1>
   <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste — no 47 KB tax.
   Each effect ships three formats and full knobs. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
-  <div class="grid" style="margin-top:24px">
-    ${EFFECTS.map(
-      (fx) => `<a class="fxlink" href="${fx.slug}.html"><b>${fx.title}</b><span>${fx.tagline}</span></a>`
-    ).join('\n    ')}
-  </div>
+  ${CATEGORIES.map(
+    (cat) => `<h2 class="fxcat">${cat}</h2>
+  <div class="grid">
+    ${EFFECTS.filter((e) => e.category === cat)
+      .map((fx) => `<a class="fxlink" href="${fx.slug}.html"><b>${fx.title}</b><span>${fx.tagline}</span></a>`)
+      .join('\n    ')}
+  </div>`
+  ).join('\n  ')}
   <p class="meta" style="margin-top:28px">Growing over time. Engine + 28-pattern showcase:
   <a href="../">scrollvars.vercel.app</a> · benchmarks: <a href="../bench/">/bench/</a></p>
 </main>
+</div>
+${NAV_COLLAPSE}
 </body></html>`
 writeFileSync(join(out, 'index.html'), hub)
 
@@ -471,6 +538,7 @@ ${EFFECTS.map(
   (fx) => `## ${fx.title} (${fx.slug})
 
 ${fx.tagline}
+Category: ${fx.category}
 Use for: ${fx.when}
 Knobs: ${fx.knobs}
 
@@ -717,6 +785,7 @@ export function LogoMarquee({
 
 const registry = EFFECTS.map((fx) => ({
   slug: fx.slug,
+  category: fx.category,
   title: fx.title,
   tagline: fx.tagline,
   page: `https://scrollvars.vercel.app/fx/${fx.slug}.html`,

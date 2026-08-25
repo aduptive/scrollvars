@@ -8,6 +8,7 @@
 ## Staggered reveal (staggered-reveal)
 
 Children rise in sequence when the section enters the viewport.
+Category: Reveals
 Use for: Heroes, editorial sections, any "content arrives" moment.
 Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ease
 
@@ -52,6 +53,7 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
 ## Deck spread (deck-spread)
 
 A centered card deck deals itself into the grid — on arrival or scrubbed.
+Category: Reveals
 Use for: Feature cards, pricing tiers, portfolio grids that deserve an entrance.
 Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub
 
@@ -100,6 +102,7 @@ Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread your
 ## Curtain (curtain)
 
 Two panels slide apart as you scroll through a pinned stretch.
+Category: Pinned scenes
 Use for: Chapter breaks, big reveals, section transitions.
 Knobs: outer height = scroll length; panel content/colors are yours
 
@@ -143,6 +146,7 @@ Knobs: outer height = scroll length; panel content/colors are yours
 ## Horizontal rail (horizontal-rail)
 
 Vertical scroll travels a horizontal track through a pinned stage.
+Category: Pinned scenes
 Use for: Process steps, timelines, galleries that read left-to-right.
 Knobs: outer height = scroll length; works at any viewport width (min() keeps it moving)
 
@@ -182,6 +186,7 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 ## Rotating words (rotating-words)
 
 One word exits up, the next rises from below — a clipped column on one variable.
+Category: Text
 Use for: Hero headlines: "We build ______".
 Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an interval
 
@@ -228,6 +233,7 @@ const [word, setWord] = useState(0)
 ## Pointer tilt (pointer-tilt)
 
 Cards tilt toward the cursor with a moving glare — one delegated listener.
+Category: Pointer
 Use for: Product cards, team grids, anything that should feel physical.
 Knobs: tilt degrees and glare live in the preset — override .sv-tilt to taste
 
@@ -264,6 +270,7 @@ const ref = usePointer()
 ## Coverflow slider (coverflow-slider)
 
 Native-scroll carousel; slides scale, fade and turn by their distance from center.
+Category: Sliders
 Use for: Anywhere you were about to install Swiper.
 Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome vars --sv-arrow-*/--sv-dot-*
 
@@ -307,6 +314,7 @@ Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome v
 ## Marquee (marquee)
 
 An infinite strip — logos, taglines — that pauses on hover.
+Category: Sliders
 Use for: Logo walls, ticker bands. The honest replacement for Swiper loop.
 Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause
 

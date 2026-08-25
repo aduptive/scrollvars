@@ -3,6 +3,7 @@
   "effects": [
     {
       "slug": "staggered-reveal",
+      "category": "Reveals",
       "title": "Staggered reveal",
       "tagline": "Children rise in sequence when the section enters the viewport.",
       "page": "https://scrollvars.vercel.app/fx/staggered-reveal.html",
@@ -11,6 +12,7 @@
     },
     {
       "slug": "deck-spread",
+      "category": "Reveals",
       "title": "Deck spread",
       "tagline": "A centered card deck deals itself into the grid — on arrival or scrubbed.",
       "page": "https://scrollvars.vercel.app/fx/deck-spread.html",
@@ -19,6 +21,7 @@
     },
     {
       "slug": "curtain",
+      "category": "Pinned scenes",
       "title": "Curtain",
       "tagline": "Two panels slide apart as you scroll through a pinned stretch.",
       "page": "https://scrollvars.vercel.app/fx/curtain.html",
@@ -27,6 +30,7 @@
     },
     {
       "slug": "horizontal-rail",
+      "category": "Pinned scenes",
       "title": "Horizontal rail",
       "tagline": "Vertical scroll travels a horizontal track through a pinned stage.",
       "page": "https://scrollvars.vercel.app/fx/horizontal-rail.html",
@@ -35,6 +39,7 @@
     },
     {
       "slug": "rotating-words",
+      "category": "Text",
       "title": "Rotating words",
       "tagline": "One word exits up, the next rises from below — a clipped column on one variable.",
       "page": "https://scrollvars.vercel.app/fx/rotating-words.html",
@@ -43,6 +48,7 @@
     },
     {
       "slug": "pointer-tilt",
+      "category": "Pointer",
       "title": "Pointer tilt",
       "tagline": "Cards tilt toward the cursor with a moving glare — one delegated listener.",
       "page": "https://scrollvars.vercel.app/fx/pointer-tilt.html",
@@ -51,6 +57,7 @@
     },
     {
       "slug": "coverflow-slider",
+      "category": "Sliders",
       "title": "Coverflow slider",
       "tagline": "Native-scroll carousel; slides scale, fade and turn by their distance from center.",
       "page": "https://scrollvars.vercel.app/fx/coverflow-slider.html",
@@ -59,6 +66,7 @@
     },
     {
       "slug": "marquee",
+      "category": "Sliders",
       "title": "Marquee",
       "tagline": "An infinite strip — logos, taglines — that pauses on hover.",
       "page": "https://scrollvars.vercel.app/fx/marquee.html",

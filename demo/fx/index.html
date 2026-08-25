@@ -51,27 +51,96 @@
   .fxlink:hover { border-color: var(--accent); }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
+  .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
+    color:var(--muted); margin:30px 0 12px; }
+  .fxwrap { max-width:1160px; margin:0 auto; display:grid;
+    grid-template-columns:200px minmax(0,1fr); gap:48px; align-items:start; }
+  .fxwrap > main { margin:0; }
+  .fxside { position:sticky; top:28px; align-self:start; font-size:14px; }
+  .fxnav[open] > summary { display:none; }
+  .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
+  .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
+  .fxnav nav details:first-child { border-top:0; padding-top:0; }
+  .fxnav nav summary { cursor:pointer; user-select:none; font:600 11px/2.2 var(--mono);
+    text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+  .fxnav nav summary:hover { color:var(--text); }
+  .fxnav nav a { display:block; padding:4px 0 4px 14px; margin-left:5px; color:var(--text);
+    opacity:.85; text-decoration:none; border-left:1px solid var(--line); }
+  .fxnav nav a:hover { opacity:1; color:var(--accent); }
+  .fxnav nav a[aria-current] { opacity:1; color:var(--accent); font-weight:600;
+    border-left-color:var(--accent); }
+  @media (max-width: 919px) {
+    .fxwrap { display:block; }
+    .fxside { position:static; margin-bottom:28px; }
+    .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
+      font:600 14px var(--sans);
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#17151f; }
+    .fxnav[open] > summary { border-radius:12px 12px 0 0; }
+    .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
+      padding:10px 16px 14px; background:#17151f; }
+  }
 </style>
 </head><body>
-<header class="fx">
+<header class="fx" style="max-width:1160px">
   <div><a href="." style="text-decoration:none"><b>scrollvars</b> <span style="color:var(--muted)">/ fx</span></a></div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a></div>
 </header>
+<div class="fxwrap">
+<aside class="fxside">
+  <details class="fxnav" open>
+    <summary>All effects</summary>
+    <nav>
+      <details open><summary>Reveals</summary>
+        <a href="staggered-reveal.html">Staggered reveal</a>
+        <a href="deck-spread.html">Deck spread</a>
+      </details>
+      <details open><summary>Pinned scenes</summary>
+        <a href="curtain.html">Curtain</a>
+        <a href="horizontal-rail.html">Horizontal rail</a>
+      </details>
+      <details open><summary>Text</summary>
+        <a href="rotating-words.html">Rotating words</a>
+      </details>
+      <details open><summary>Pointer</summary>
+        <a href="pointer-tilt.html">Pointer tilt</a>
+      </details>
+      <details open><summary>Sliders</summary>
+        <a href="coverflow-slider.html">Coverflow slider</a>
+        <a href="marquee.html">Marquee</a>
+      </details>
+    </nav>
+  </details>
+</aside>
 <main>
   <h1>fx — copy-paste effects</h1>
   <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste — no 47 KB tax.
   Each effect ships three formats and full knobs. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
-  <div class="grid" style="margin-top:24px">
+  <h2 class="fxcat">Reveals</h2>
+  <div class="grid">
     <a class="fxlink" href="staggered-reveal.html"><b>Staggered reveal</b><span>Children rise in sequence when the section enters the viewport.</span></a>
     <a class="fxlink" href="deck-spread.html"><b>Deck spread</b><span>A centered card deck deals itself into the grid — on arrival or scrubbed.</span></a>
+  </div>
+  <h2 class="fxcat">Pinned scenes</h2>
+  <div class="grid">
     <a class="fxlink" href="curtain.html"><b>Curtain</b><span>Two panels slide apart as you scroll through a pinned stretch.</span></a>
     <a class="fxlink" href="horizontal-rail.html"><b>Horizontal rail</b><span>Vertical scroll travels a horizontal track through a pinned stage.</span></a>
+  </div>
+  <h2 class="fxcat">Text</h2>
+  <div class="grid">
     <a class="fxlink" href="rotating-words.html"><b>Rotating words</b><span>One word exits up, the next rises from below — a clipped column on one variable.</span></a>
+  </div>
+  <h2 class="fxcat">Pointer</h2>
+  <div class="grid">
     <a class="fxlink" href="pointer-tilt.html"><b>Pointer tilt</b><span>Cards tilt toward the cursor with a moving glare — one delegated listener.</span></a>
+  </div>
+  <h2 class="fxcat">Sliders</h2>
+  <div class="grid">
     <a class="fxlink" href="coverflow-slider.html"><b>Coverflow slider</b><span>Native-scroll carousel; slides scale, fade and turn by their distance from center.</span></a>
     <a class="fxlink" href="marquee.html"><b>Marquee</b><span>An infinite strip — logos, taglines — that pauses on hover.</span></a>
   </div>
   <p class="meta" style="margin-top:28px">Growing over time. Engine + 28-pattern showcase:
   <a href="../">scrollvars.vercel.app</a> · benchmarks: <a href="../bench/">/bench/</a></p>
 </main>
+</div>
+<script>if(matchMedia('(max-width:919px)').matches)document.querySelector('.fxnav').removeAttribute('open')</script>
 </body></html>
