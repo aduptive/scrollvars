@@ -25,6 +25,7 @@ const EFFECTS = [
     tagline: 'Children rise in sequence when the section enters the viewport.',
     when: 'Heroes, editorial sections, any "content arrives" moment.',
     knobs: '--sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ease',
+    runway: true,
     preview: `<section data-sv class="fxstage">
   <h3 class="sv-rise fxh">The headline</h3>
   <p class="sv-rise fxp" style="--sv-order: 1">Rises second.</p>
@@ -64,6 +65,7 @@ const EFFECTS = [
     tagline: 'A centered card deck deals itself into the grid — on arrival or scrubbed.',
     when: 'Feature cards, pricing tiers, portfolio grids that deserve an entrance.',
     knobs: '--sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub',
+    runway: true,
     preview: `<section data-sv class="fxstage">
   <div class="sv-spread sv-spread-in" style="--sv-gap: 14px">
     <div class="fxcard" style="--sv-order: 0">01</div>
@@ -364,6 +366,12 @@ const SHELL_CSS = `
   p.meta b { color: var(--text); font-weight: 600; }
   .fxstage { background:#17151f; border:1px solid var(--line); border-radius:16px;
     padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
+  /* on-arrival effects need the stage to start BELOW the live band, or the driver
+     flags it live on the first frame and the entrance is over before it is seen */
+  .fxrunway { padding: 62vh 0 46vh; position: relative; }
+  .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
+    text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); }
   .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
   .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
     background:#17151f; border:1px solid var(--line); border-radius:16px; }
@@ -473,7 +481,7 @@ ${sidebar(fx.slug)}
   <h1>${fx.title}</h1>
   <p class="tag">${fx.tagline}</p>
   <p class="meta"><b>Use it for:</b> ${fx.when}<br><b>Knobs:</b> ${fx.knobs}</p>
-  ${fx.preview}
+  ${fx.runway ? `<div class="fxrunway">${fx.preview}</div>` : fx.preview}
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
