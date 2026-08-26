@@ -38,6 +38,15 @@
       "content": "// scrollvars fx · horizontal-rail\n// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)\n'use client'\nimport * as React from 'react'\nimport { Track } from 'scrollvars/react'\n\nexport function HorizontalRail({\n  children,\n  height = '300vh',\n}: {\n  children: React.ReactNode // the cards (give each a fixed width + shrink-0)\n  height?: string\n}) {\n  return (\n    <Track pin className=\"relative\" style={{ height }}>\n      <div className=\"sticky top-0 flex h-screen items-center overflow-hidden\">\n        <div className=\"sv-rail flex gap-4 px-[10vw]\">{children}</div>\n      </div>\n    </Track>\n  )\n}\n"
     },
     {
+      "slug": "sequenced-scrub",
+      "category": "Pinned scenes",
+      "title": "Sequenced scrub",
+      "tagline": "Each child animates over its own slice of the pin — choreography without a timeline.",
+      "page": "https://scrollvars.vercel.app/fx/sequenced-scrub.html",
+      "file": "SequencedScrub.tsx",
+      "content": "// scrollvars fx · sequenced-scrub\n// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)\n// Each child animates over its own slice of the pin: pass ranges as\n// [from, to] pairs (0..1); overlapping ranges are fine — that's the point.\n'use client'\nimport * as React from 'react'\nimport { Track } from 'scrollvars/react'\n\nexport function SequencedScrub({\n  children,\n  ranges,\n  height = '250vh',\n  className,\n}: {\n  children: React.ReactNode\n  /** One [from, to] per child; defaults to evenly staggered overlapping slices. */\n  ranges?: [number, number][]\n  height?: string\n  className?: string\n}) {\n  const count = React.Children.count(children)\n  return (\n    <Track pin className={className} style={{ position: 'relative', height }}>\n      <div style={{ position: 'sticky', top: 0, height: '100vh', display: 'grid', placeItems: 'center' }}>\n        <div className=\"sv-range sv-range-rise\" style={{ display: 'grid', gap: 12 }}>\n          {React.Children.map(children, (child, i) => {\n            const [from, to] = ranges?.[i] ?? [i / count, Math.min((i + 1.6) / count, 1)]\n            return (\n              <div style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>{child}</div>\n            )\n          })}\n        </div>\n      </div>\n    </Track>\n  )\n}\n"
+    },
+    {
       "slug": "rotating-words",
       "category": "Text",
       "title": "Rotating words",

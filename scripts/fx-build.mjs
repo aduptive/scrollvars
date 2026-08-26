@@ -648,6 +648,46 @@ writeFileSync(join(out, 'llms.txt'), llms)
 /* ─────────── shadcn-style registry: complete component files ─────────── */
 
 const COMPONENTS = {
+  'sequenced-scrub': {
+    file: 'SequencedScrub.tsx',
+    content: `// scrollvars fx · sequenced-scrub
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)
+// Each child animates over its own slice of the pin: pass ranges as
+// [from, to] pairs (0..1); overlapping ranges are fine — that's the point.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+export function SequencedScrub({
+  children,
+  ranges,
+  height = '250vh',
+  className,
+}: {
+  children: React.ReactNode
+  /** One [from, to] per child; defaults to evenly staggered overlapping slices. */
+  ranges?: [number, number][]
+  height?: string
+  className?: string
+}) {
+  const count = React.Children.count(children)
+  return (
+    <Track pin className={className} style={{ position: 'relative', height }}>
+      <div style={{ position: 'sticky', top: 0, height: '100vh', display: 'grid', placeItems: 'center' }}>
+        <div className="sv-range sv-range-rise" style={{ display: 'grid', gap: 12 }}>
+          {React.Children.map(children, (child, i) => {
+            const [from, to] = ranges?.[i] ?? [i / count, Math.min((i + 1.6) / count, 1)]
+            return (
+              <div style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>{child}</div>
+            )
+          })}
+        </div>
+      </div>
+    </Track>
+  )
+}
+`,
+  },
   'staggered-reveal': {
     file: 'StaggeredReveal.tsx',
     content: `// scrollvars fx · staggered-reveal
