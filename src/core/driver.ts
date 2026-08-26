@@ -24,6 +24,15 @@ export interface TrackOptions {
   /** Fires every frame with the raw pin progress (0..1 across the pinned
    * stretch) — frame scrubbing, camera tours. Implies pin tracking. */
   onPin?: (p: number) => void
+  /** Scroll container to measure against instead of the window viewport —
+   * for tracked elements inside nested scroll panels. (The capture-phase
+   * scroll listener already hears those scrolls; this makes the geometry
+   * agree with them.) */
+  root?: HTMLElement
+  /** Live-band enter line as a fraction of the viewport height (default 0.75). */
+  enter?: number
+  /** Live-band exit line as a fraction of the viewport height (default 0.25). */
+  exit?: number
 }
 
 interface Entry {
@@ -83,15 +92,37 @@ function schedule() {
 
 function update() {
   raf = 0
-  // READ phase: batch all layout reads before any style write
-  const frames: Array<{ entry: Entry; rect: DOMRect }> = []
+  // READ phase: batch all layout reads before any style write. Root rects
+  // are read once per root per frame and shared by its entries.
+  const rootRects = new Map<HTMLElement, DOMRect>()
+  const frames: Array<{ entry: Entry; geo: Geometry }> = []
   entries.forEach((entry) => {
-    frames.push({ entry, rect: entry.el.getBoundingClientRect() })
+    const rect = entry.el.getBoundingClientRect()
+    const root = entry.opts.root
+    let geo: Geometry
+    if (root) {
+      let rr = rootRects.get(root)
+      if (!rr) {
+        rr = root.getBoundingClientRect()
+        rootRects.set(root, rr)
+      }
+      geo = { top: rect.top - rr.top, bottom: rect.bottom - rr.top, height: rect.height, vp: rr.height }
+    } else {
+      geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
+    }
+    frames.push({ entry, geo })
   })
   // WRITE phase
-  for (const { entry, rect } of frames) {
-    apply(entry, rect)
+  for (const { entry, geo } of frames) {
+    apply(entry, geo)
   }
+}
+
+interface Geometry {
+  top: number
+  bottom: number
+  height: number
+  vp: number
 }
 
 /**
@@ -101,27 +132,27 @@ function update() {
  * crosses the enter line; 0 across the whole band; then 0 → +1 as the
  * bottom travels from the exit line out of the viewport.
  */
-function computeView(rect: DOMRect): number {
-  const enterLine = vh * LIVE_ENTER
-  const exitLine = vh * LIVE_EXIT
-  if (rect.top > enterLine) {
-    return -clamp((rect.top - enterLine) / (vh - enterLine), 0, 1)
+function computeView(geo: Geometry, enter: number, exit: number): number {
+  const enterLine = geo.vp * enter
+  const exitLine = geo.vp * exit
+  if (geo.top > enterLine) {
+    return -clamp((geo.top - enterLine) / (geo.vp - enterLine), 0, 1)
   }
-  if (rect.bottom < exitLine) {
-    return clamp((exitLine - rect.bottom) / exitLine, 0, 1)
+  if (geo.bottom < exitLine) {
+    return clamp((exitLine - geo.bottom) / exitLine, 0, 1)
   }
   return 0
 }
 
 /** 0 when the top touches the viewport bottom, 1 when the bottom leaves the top. */
-function computeTravel(rect: DOMRect, height: number): number {
-  return clamp((vh - rect.top) / (vh + height), 0, 1)
+function computeTravel(geo: Geometry): number {
+  return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1)
 }
 
 /** 0..1 across a sticky container's pinned stretch. */
-function computePin(rect: DOMRect, height: number): number {
-  const span = Math.max(height - vh, 1)
-  return clamp(-rect.top / span, 0, 1)
+function computePin(geo: Geometry): number {
+  const span = Math.max(geo.height - geo.vp, 1)
+  return clamp(-geo.top / span, 0, 1)
 }
 
 function computeScene(pin: number, count: number, snap: number | false): number {
@@ -142,11 +173,13 @@ function setVar(entry: Entry, name: string, value: number) {
   entry.el.style.setProperty(name, serialized)
 }
 
-function apply(entry: Entry, rect: DOMRect) {
+function apply(entry: Entry, geo: Geometry) {
   const { opts } = entry
+  const enter = opts.enter ?? LIVE_ENTER
+  const exit = opts.exit ?? LIVE_EXIT
 
   const isLive =
-    (rect.top < vh * LIVE_ENTER && rect.bottom > vh * LIVE_EXIT) ||
+    (geo.top < geo.vp * enter && geo.bottom > geo.vp * exit) ||
     (entry.live && !!opts.once)
   if (isLive !== entry.live) {
     entry.live = isLive
@@ -171,23 +204,23 @@ function apply(entry: Entry, rect: DOMRect) {
   }
 
   if (opts.view !== false) {
-    setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(rect))
+    setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
   }
 
   if (opts.travel || opts.onTravel) {
-    const t = computeTravel(rect, rect.height)
+    const t = computeTravel(geo)
     if (opts.travel) setVar(entry, '--sv-t', t)
     opts.onTravel?.(t)
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(rect, rect.height)
+    const p = computePin(geo)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(rect, rect.height)
+    const pin = computePin(geo)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)

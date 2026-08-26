@@ -375,6 +375,15 @@ makes older engines settle at the end state. The JS twin is
 `mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
 WebGL uniforms). Overlapping ranges are fine — that is the point.
 
+## Nested scrollers & custom live band
+
+`track(el, { root: scrollerEl })` measures against an inner scroll container
+instead of the window — brand-center layouts with inner panels stop being a
+disqualifier (the capture-phase listener already hears those scrolls; `root`
+makes the geometry agree). `enter`/`exit` (fractions, defaults 0.75/0.25) tune
+the live band per element — also as `data-sv-enter="0.6"` / `data-sv-exit="0.2"`
+in zero-wrapper mode and as props on `<Track>`/`<Reveal>`.
+
 ## When to use what
 
 The honest boundary: scrollvars maps **inputs to values** — if the animation

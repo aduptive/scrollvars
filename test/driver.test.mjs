@@ -172,3 +172,35 @@ test('driver: view band, live latch, travel, pin, scenes, dedup, cleanup', async
   assert.equal(Math.round(window.lastScrollTo.top), Math.round(4500 + (2 / 3) * 2000))
   assert.equal(window.lastScrollTo.behavior, 'instant')
 })
+
+test('driver: custom live band and custom root geometry', async () => {
+  const { track } = await import('../dist/core/driver.js')
+
+  // custom thresholds: enter 0.5 / exit 0.1 — at top 600 (< 500? no) stays
+  // out; at 400 (< 500) goes live; default band would already be live at 700
+  const el = makeElement(300)
+  const untrack = track(el, { enter: 0.5, exit: 0.1 })
+  place(el, 700)
+  pump()
+  assert.ok(!el.classes.has('sv-live'), 'default band would be live here; custom is not')
+  place(el, 400)
+  pump()
+  assert.ok(el.classes.has('sv-live'))
+  untrack()
+
+  // custom root: a 500px-tall inner scroller at viewport top 100; the child
+  // rect sits at 450 → relative top 350 = 70% of the root, inside its band
+  const rootEl = {
+    getBoundingClientRect: () => ({ top: 100, bottom: 600, height: 500 }),
+  }
+  const child = makeElement(200)
+  place(child, 450)
+  const untrack2 = track(child, { root: rootEl, travel: true })
+  pump()
+  assert.ok(child.classes.has('sv-live'), 'live relative to the root band')
+  // travel: (vp - top) / (vp + height) = (500 - 350) / (500 + 200)
+  assert.equal(child.vars['--sv-t'], (150 / 700).toFixed(4))
+  // same rect against the WINDOW band (vh 1000): top 450 < 750 → also live,
+  // but travel differs — proves the geometry really is root-relative
+  untrack2()
+})

@@ -20,7 +20,14 @@ function optionsFrom(el: HTMLElement): TrackOptions {
     pin: el.hasAttribute('data-sv-pin'),
     travel: el.hasAttribute('data-sv-travel'),
     scenes: scenes > 1 ? scenes : undefined,
+    enter: band(el, 'data-sv-enter'),
+    exit: band(el, 'data-sv-exit'),
   }
+}
+
+function band(el: HTMLElement, attr: string): number | undefined {
+  const v = Number(el.getAttribute(attr))
+  return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : undefined
 }
 
 export function scan(root?: ParentNode): () => void {

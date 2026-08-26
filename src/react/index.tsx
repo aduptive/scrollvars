@@ -59,7 +59,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
     onPin: options.onPin,
   }
 
-  const { view, travel, scenes, snap, once, pin } = options
+  const { view, travel, scenes, snap, once, pin, root, enter, exit } = options
   const hasTravelCb = !!options.onTravel
   const hasPinCb = !!options.onPin
 
@@ -72,6 +72,9 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
       snap,
       once,
       pin,
+      root,
+      enter,
+      exit,
       onLive: (live) => callbacksRef.current.onLive?.(live),
       onScene: (scene) => callbacksRef.current.onScene?.(scene),
       onTravel: hasTravelCb
@@ -81,7 +84,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
         ? (p) => callbacksRef.current.onPin?.(p)
         : undefined,
     })
-  }, [view, travel, scenes, snap, once, pin, hasTravelCb, hasPinCb])
+  }, [view, travel, scenes, snap, once, pin, root, enter, exit, hasTravelCb, hasPinCb])
 
   return ref
 }
@@ -142,6 +145,9 @@ export const Track: React.FC<TrackProps> = ({
   snap,
   once,
   pin,
+  root,
+  enter,
+  exit,
   onLive,
   onScene,
   onTravel,
@@ -156,7 +162,7 @@ export const Track: React.FC<TrackProps> = ({
   children,
   ...rest
 }) => {
-  const ref = useTrack({ view, travel, scenes, snap, once, pin, onLive, onScene, onTravel, onPin })
+  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin })
 
   return (
     <Tag
