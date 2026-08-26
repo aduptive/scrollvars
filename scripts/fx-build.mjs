@@ -102,10 +102,12 @@ const EFFECTS = [
     react: `<Track>
   <div className="sv-spread sv-spread-in">
     {cards.map((c, i) => (
-      <Card key={c.id} style={{ '--sv-order': i }} {...c} />
+      <Item key={c.id} order={i}><Card {...c} /></Item>
     ))}
   </div>
-</Track>`,
+</Track>
+{/* Item carries the vars as props — no style attr; sv-spread targets
+   direct children, and the Item wrapper IS the direct child. */}`,
   },
   {
     slug: 'curtain',
