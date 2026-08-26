@@ -1,6 +1,6 @@
 # scrollvars
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.2 KB, full core incl. the slider 3.1 KB, presets CSS 2.8 KB — the whole library is under 6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.4 KB, full core incl. the slider 3.9 KB, styles 6.2 KB for every preset or 1.8 KB for the core part — a typical page ships ~3 KB on the wire.
 
 ## Why
 
@@ -22,7 +22,7 @@ what differs is what those frames cost:
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| scrollvars | 3.1 KB | 114 ms | 228 ms | **1.3 MB** |
+| scrollvars | 3.9 KB | 114 ms | 228 ms | **1.3 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 272 ms | 94 ms | 6.3 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 155 ms | 76 ms | 6.8 MB |
 | framer-motion | 46.9 KB (+ React) | 742 ms | 48 ms | 9.5 MB |
@@ -68,7 +68,7 @@ npm i github:aduptive/scrollvars
 // app/globals.css or layout — everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, native view()-tier — 1.2 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, native view()-tier — 1.8 KB gz
 import 'scrollvars/styles/pin.css'     // curtain, rail, deck, reading, counter — 1.3 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails — 0.4 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt — 0.5 KB gz
@@ -86,7 +86,7 @@ min+gzip per import:
 | `slider` | 1.5 KB |
 | `trackPointer` | 0.4 KB |
 | `mountEffect` (canvas) | 0.7 KB |
-| everything | 3.1 KB |
+| everything | 3.9 KB |
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
 **~2.2 KB gzipped, total.**
@@ -252,7 +252,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 3.1 KB min / 1.4 KB gzip; Swiper 11 bundle
+Size, measured: this module 1.7 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)

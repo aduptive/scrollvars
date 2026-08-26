@@ -204,3 +204,41 @@ test('driver: custom live band and custom root geometry', async () => {
   // but travel differs — proves the geometry really is root-relative
   untrack2()
 })
+
+test('driver: offscreen culling skips the rect read, IO wakes it back up', async () => {
+  let ioCallback
+  const observedByIO = new Set()
+  global.IntersectionObserver = class {
+    constructor(cb) { ioCallback = cb }
+    observe(el) { observedByIO.add(el) }
+    unobserve(el) { observedByIO.delete(el) }
+    disconnect() {}
+  }
+  // fresh module instance so init() runs with the IO stub in place
+  const { track } = await import('../dist/core/driver.js?culling')
+
+  const el = makeElement(400)
+  let reads = 0
+  const origGet = el.getBoundingClientRect
+  el.getBoundingClientRect = () => (reads++, origGet())
+  const untrack = track(el, {})
+  assert.ok(observedByIO.has(el), 'culler observes rootless entries')
+  place(el, 400)
+  pump()
+  assert.ok(reads > 0 && el.classes.has('sv-live'))
+
+  // far offscreen: the culler flags it, subsequent frames skip the read
+  ioCallback([{ target: el, isIntersecting: false }])
+  const before = reads
+  pump()
+  pump()
+  assert.equal(reads, before, 'culled entry pays no getBoundingClientRect')
+
+  // back near: reads resume
+  ioCallback([{ target: el, isIntersecting: true }])
+  pump()
+  assert.ok(reads > before)
+  untrack()
+  assert.ok(!observedByIO.has(el))
+  delete global.IntersectionObserver
+})

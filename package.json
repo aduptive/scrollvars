@@ -19,6 +19,7 @@
     "./react": "./dist/react/index.js",
     "./canvas": "./dist/canvas/index.js",
     "./compat": "./dist/compat/index.js",
+    "./debug": "./dist/debug/index.js",
     "./styles.css": "./styles.css",
     "./styles/*.css": "./styles/*.css",
     "./package.json": "./package.json"

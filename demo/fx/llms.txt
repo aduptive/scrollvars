@@ -1,7 +1,7 @@
 # scrollvars fx — llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the scrollvars engine
-> (npm i scrollvars — driver 1.2 KB gzip). Each effect below includes when to
+> (npm i scrollvars — full core 3.9 KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.vercel.app/llms.txt
 

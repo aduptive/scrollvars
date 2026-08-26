@@ -38,6 +38,10 @@ export interface TrackOptions {
 interface Entry {
   el: HTMLElement
   opts: TrackOptions
+  /** Inside the culling margin (one viewport around the screen). Far-away
+   * entries skip the per-frame rect read — their variables are already at
+   * their resting extremes. Entries with a custom root are never culled. */
+  near: boolean
   live: boolean
   scene: number
   written: Record<string, string>
@@ -53,6 +57,7 @@ const entries = new Map<HTMLElement, Entry>()
 let raf = 0
 let vh = 0
 let resizeObserver: ResizeObserver | null = null
+let culler: IntersectionObserver | null = null
 let initialized = false
 let reducedMotion = false
 
@@ -84,6 +89,21 @@ function init() {
   // Layout shifts above an element (images loading, fonts) move it without
   // resizing it — watching the document catches those too.
   resizeObserver.observe(document.documentElement)
+
+  // Offscreen culling: a viewport of margin on each side keeps fast scrolls
+  // correct; far outside it the rect read is skipped entirely.
+  if (typeof IntersectionObserver !== 'undefined') {
+    culler = new IntersectionObserver(
+      (records) => {
+        for (const record of records) {
+          const entry = entries.get(record.target as HTMLElement)
+          if (entry) entry.near = record.isIntersecting
+        }
+        schedule()
+      },
+      { rootMargin: '100% 0px 100% 0px' }
+    )
+  }
 }
 
 function schedule() {
@@ -97,6 +117,7 @@ function update() {
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry }> = []
   entries.forEach((entry) => {
+    if (!entry.near && !entry.opts.root) return
     const rect = entry.el.getBoundingClientRect()
     const root = entry.opts.root
     let geo: Geometry
@@ -199,6 +220,7 @@ function apply(entry: Entry, geo: Geometry) {
     ) {
       entries.delete(entry.el)
       resizeObserver?.unobserve(entry.el)
+      culler?.unobserve(entry.el)
       return
     }
   }
@@ -239,6 +261,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   const entry: Entry = {
     el,
     opts,
+    near: true,
     live: false,
     scene: -1,
     written: {},
@@ -246,11 +269,13 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   entries.set(el, entry)
   el.classList.add('sv')
   resizeObserver?.observe(el)
+  if (!opts.root) culler?.observe(el)
   schedule()
 
   return () => {
     entries.delete(el)
     resizeObserver?.unobserve(el)
+    culler?.unobserve(el)
   }
 }
 

@@ -51,10 +51,26 @@ for (const block of BLOCKS) {
 }
 
 // post-checks — the same ones this repo's history proved necessary
-const script = html.match(/<script>\n\s*\/\* ═+ scrollvars core[\s\S]*?<\/script>/)
+const script = html.match(/<script>\n\s*\/\* ═+ demo driver[\s\S]*?<\/script>/)
 if (!script) throw new Error('main demo script block not found')
 new Function(script[0].replace(/<\/?script>/g, '')) // throws on syntax errors
 if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the demo script')
+
+// footer stamp: version + measured wire sizes (esbuild+gzip of the dist)
+{
+  const { execSync } = await import('node:child_process')
+  const { gzipSync } = await import('node:zlib')
+  const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
+  const gz = (entry) =>
+    (gzipSync(execSync(`npx esbuild ${join(root, entry)} --bundle --minify`, { maxBuffer: 1e7 })).length / 1024).toFixed(1)
+  const driverKB = gz('dist/core/driver.js')
+  const coreKB = gz('dist/index.js')
+  html = html.replace(
+    /<code>npm i scrollvars<\/code> · zero dependencies · driver [\d.]+ KB gzip · whole lib [^·]+·/,
+    `<code>npm i scrollvars</code> · zero dependencies · driver ${driverKB} KB gzip · full core ${coreKB} KB ·`
+  )
+  html = html.replace(/ · v[\d.]+ · MIT · /, ` · v${version} · MIT · `)
+}
 
 if (html !== before) {
   writeFileSync(demoPath, html)

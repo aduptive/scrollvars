@@ -46,7 +46,7 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
          useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
 import 'scrollvars/styles.css'                    // all presets — or modular:
-import 'scrollvars/styles/core.css'               // entrances only (1.2 KB gz);
+import 'scrollvars/styles/core.css'               // entrances only (1.8 KB gz);
 // also styles/pin.css, styles/slider.css, styles/tilt.css — import per page needs
 ```
 
@@ -231,7 +231,7 @@ what differs is what those frames cost:
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| scrollvars | 3.1 KB | 114 ms | 228 ms | **1.3 MB** |
+| scrollvars | 3.9 KB | 114 ms | 228 ms | **1.3 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 272 ms | 94 ms | 6.3 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 155 ms | 76 ms | 6.8 MB |
 | framer-motion | 46.9 KB (+ React) | 742 ms | 48 ms | 9.5 MB |

@@ -7,6 +7,7 @@
  *   fx/sv.css — the full preset stylesheet (copy of styles.css)
  */
 import { execSync } from 'node:child_process'
+import { gzipSync } from 'node:zlib'
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -402,6 +403,7 @@ execSync(
 )
 // boot: track every [data-sv] on fx pages
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
+const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toFixed(1)
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
 // bench: the scrollvars workload page inlines the engine — resync it from
@@ -570,7 +572,7 @@ ${sidebar(fx.slug)}
     <pre data-pane="css"><code>${esc(fx.css)}</code></pre>
     <pre data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core ${ENGINE_KB} KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
@@ -597,7 +599,7 @@ ${NAV_COLLAPSE}
 const hub = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars fx — copy-paste scroll effects</title>
-<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS — powered by a 1.2 KB engine. Copy-paste for humans and AIs.">
+<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS — powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">
 <style>${SHELL_CSS}</style>
 </head><body>
 ${header(true)}
@@ -628,7 +630,7 @@ writeFileSync(join(out, 'index.html'), hub)
 const llms = `# scrollvars fx — llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the scrollvars engine
-> (npm i scrollvars — driver 1.2 KB gzip). Each effect below includes when to
+> (npm i scrollvars — full core ${ENGINE_KB} KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.vercel.app/llms.txt
 
