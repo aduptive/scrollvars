@@ -9,6 +9,14 @@
          font-size: 13px; white-space: pre; }
   section { position: relative; height: 120vh; overflow: hidden;
             border-top: 1px solid rgba(255,255,255,.06); }
+  .card { position: absolute; inset: 8px; overflow: hidden; font-size: 8px;
+          line-height: 1.3; color: rgba(255,255,255,.7); }
+  section .card span { display: inline-block; padding: 0 2px; }
+  section .card span.t0 { color: #fff; font-weight: 600; }
+  section .card span.t1 { opacity: .8; }
+  section .card span.t2 { text-decoration: underline; }
+  section .card span.t3 { letter-spacing: .5px; }
+  section .card span.t4 { font-style: italic; }
   .box { position: absolute; width: 90px; height: 90px; border-radius: 12px;
          will-change: transform, opacity; }
 </style>
@@ -19,7 +27,7 @@
   gsap.registerPlugin(ScrollTrigger);
 
   var Q = new URLSearchParams(location.search);
-  var SECTIONS = +Q.get('s') || 30, PER = +Q.get('p') || 5;
+  var SECTIONS = +Q.get('s') || 30, PER = +Q.get('p') || 5, DEEP = +Q.get('deep') || 0;
   var COLORS = ['#a78bfa', '#ffb454', '#6ee7a0', '#7dd3fc', '#ff7d90'];
   function seeded(i) { return (Math.sin(i * 999) + 1) / 2; }
   var boxes = [];
@@ -33,6 +41,19 @@
       el.style.top = (10 + seeded(i + 0.5) * 70) + '%';
       el.style.background = COLORS[b];
       var speed = 120 + seeded(i + 0.25) * 480; // px of total travel
+      if (DEEP) {
+        // realistic subtree under every animated box: recalc has real
+        // descendants to invalidate (?deep=N controls the size)
+        var card = document.createElement('div');
+        card.className = 'card';
+        for (var d = 0; d < DEEP; d++) {
+          var sp = document.createElement('span');
+          sp.className = 't' + (d % 5);
+          sp.textContent = 'node ' + d;
+          card.appendChild(sp);
+        }
+        el.appendChild(card);
+      }
       sec.appendChild(el);
       boxes.push({ el: el, sec: sec, speed: speed });
     }
@@ -53,7 +74,7 @@
     document.body.appendChild(hud);
     if (/[?&]norun/.test(location.search)) { hud.textContent = label + '\nload-only mode (lighthouse)'; return; }
     function whenVisible(fn) {
-      if (document.visibilityState === 'visible') return fn();
+      if (Q.has('force') || document.visibilityState === 'visible') return fn();
       document.addEventListener('visibilitychange', function h() {
         if (document.visibilityState !== 'visible') return;
         document.removeEventListener('visibilitychange', h);
@@ -94,6 +115,7 @@
           p95Ms: +p95.toFixed(2),
           worstMs: +worst.toFixed(1),
           framesOver25ms: long,
+          deep: DEEP,
           heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(1) : null,
         };
         hud.textContent = label + '  ·  ' + (SECTIONS * PER) + ' scrubbed elements\n' +

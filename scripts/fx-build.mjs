@@ -404,6 +404,18 @@ execSync(
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
+// bench: the scrollvars workload page inlines the engine — resync it from
+// the same fresh IIFE so the bench never runs a stale driver
+{
+  const benchPage = join(root, 'demo', 'bench', 'scrollvars.html')
+  const iife = readFileSync(join(out, 'sv.js'), 'utf8').replace(/\nSV\.scan\(\);\n$/, '')
+  const page = readFileSync(benchPage, 'utf8')
+  const re = /(<script>\n)"use strict";var SV=[\s\S]*?(\n\n\n)/
+  if (!re.test(page)) throw new Error('bench inline engine marker not found')
+  writeFileSync(benchPage, page.replace(re, `$1${iife}$2`))
+  console.log('bench engine resynced from dist')
+}
+
 /* ─────────────────────────── templates ─────────────────────────── */
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -502,7 +514,7 @@ const SHELL_CSS = `
 
 const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>scrollvars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
-  <div><a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a></div>
+  <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a></div>
 </header>`
 
 /* categorized accordion sidebar — same markup on every fx page; native <details>.
@@ -524,8 +536,10 @@ const sidebar = (current) => `<aside class="fxside"><div class="fxsidein">
   </details>
 </div></aside>`
 const NAV_COLLAPSE = `<script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>`
+const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
+
 const footer = `<footer class="fx">
-  <div><b>scrollvars</b> — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>scrollvars</b> v${VERSION} — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>`
 

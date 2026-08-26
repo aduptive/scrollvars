@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "date": "2026-08-26T18:41:55.992Z",
+    "chrome": "Chrome/152.0.7977.64",
+    "runs": 1,
+    "throttle": 1,
+    "host": "darwin"
+  },
+  "scenarios": [
+    {
+      "name": "main-900",
+      "params": "s=60&p=15",
+      "engines": {
+        "scrollvars.html": {
+          "scriptMs": 103,
+          "recalcMs": 198,
+          "layoutMs": 7,
+          "taskMs": 1035,
+          "heapMB": 1.4,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "runs": 1
+        },
+        "gsap.html": {
+          "scriptMs": 258,
+          "recalcMs": 90,
+          "layoutMs": 7,
+          "taskMs": 923,
+          "heapMB": 6.3,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 1
+        },
+        "gsap-batched.html": {
+          "scriptMs": 180,
+          "recalcMs": 84,
+          "layoutMs": 8,
+          "taskMs": 944,
+          "heapMB": 6.9,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 1
+        },
+        "framer.html": {
+          "scriptMs": 634,
+          "recalcMs": 41,
+          "layoutMs": 8,
+          "taskMs": 1328,
+          "heapMB": 9.5,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "runs": 1
+        }
+      }
+    }
+  ]
+}
