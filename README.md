@@ -349,6 +349,32 @@ const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) }
 | Slider wheel-quiet window | 200 ms | slider |
 | Canvas DPR cap | 2 (`dprCap`) | canvas harness |
 
+## Sequenced scrub (`sv-range`) — choreography without a timeline
+
+The routine reason a timeline library gets pulled into a scroll page is not
+springs — it is "A animates over 0–40% of the pin, B over 30–70%, C over
+60–100%". `sv-range` derives a per-child `--sv-r` (0..1) from a slice of the
+parent clock (`--sv-pin` when pinned, else `--sv-t`):
+
+```html
+<div data-sv data-sv-pin class="outer">
+  <div class="sticky">
+    <div class="sv-range sv-range-rise">
+      <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
+      <p style="--sv-from: .3; --sv-to: .7">Second</p>
+      <p style="--sv-from: .6; --sv-to: 1">Third</p>
+    </div>
+  </div>
+</div>
+```
+
+`sv-range-rise` is the ready-made flavor (rise + fade per range); or consume
+`--sv-r` yourself — always as `var(--sv-r, 1)`: the derivation needs calc()
+division by a variable (Chrome 112 / Safari 16.4 / FF 112), and the fallback
+makes older engines settle at the end state. The JS twin is
+`mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
+WebGL uniforms). Overlapping ranges are fine — that is the point.
+
 ## When to use what
 
 The honest boundary: scrollvars maps **inputs to values** — if the animation

@@ -24,3 +24,13 @@ test('easeOutCubic', () => {
   assert.equal(easeOutCubic(1), 1)
   assert.ok(easeOutCubic(0.5) > 0.5)            // out-easing front-loads
 })
+
+test('mapRange: sub-range mapping, clamping, easing', async () => {
+  const { mapRange, easeOutCubic } = await import('../dist/core/math.js')
+  assert.ok(Math.abs(mapRange(0.5, 0.3, 0.7) - 0.5) < 1e-9)
+  assert.equal(mapRange(0.2, 0.3, 0.7), 0)   // before the range
+  assert.equal(mapRange(0.9, 0.3, 0.7), 1)   // past the range
+  assert.equal(mapRange(0.5, 0.5, 0.5), 0)   // degenerate range never divides by zero
+  assert.equal(mapRange(0.7, 0.3, 0.7, easeOutCubic), 1)
+  assert.ok(mapRange(0.5, 0.3, 0.7, easeOutCubic) > 0.5) // ease-out front-loads
+})

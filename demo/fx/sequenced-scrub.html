@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deck spread — scrollvars fx</title>
-<meta name="description" content="A centered card deck deals itself into the grid — on arrival or scrubbed. Copy-paste in Tailwind, CSS or React.">
+<title>Sequenced scrub — scrollvars fx</title>
+<meta name="description" content="Each child animates over its own slice of the pin — choreography without a timeline. Copy-paste in Tailwind, CSS or React.">
 <link rel="stylesheet" href="sv.css">
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -106,12 +106,12 @@
     <nav>
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
-        <a href="deck-spread.html" aria-current="page">Deck spread</a>
+        <a href="deck-spread.html">Deck spread</a>
       </details>
       <details open><summary>Pinned scenes</summary>
         <a href="curtain.html">Curtain</a>
         <a href="horizontal-rail.html">Horizontal rail</a>
-        <a href="sequenced-scrub.html">Sequenced scrub</a>
+        <a href="sequenced-scrub.html" aria-current="page">Sequenced scrub</a>
       </details>
       <details open><summary>Text</summary>
         <a href="rotating-words.html">Rotating words</a>
@@ -127,16 +127,18 @@
   </details>
 </div></aside>
 <main>
-  <h1>Deck spread</h1>
-  <p class="tag">A centered card deck deals itself into the grid — on arrival or scrubbed.</p>
-  <p class="meta"><b>Use it for:</b> Feature cards, pricing tiers, portfolio grids that deserve an entrance.<br><b>Knobs:</b> --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub</p>
-  <div class="fxrunway"><section data-sv class="fxstage">
-  <div class="sv-spread sv-spread-in" style="--sv-gap: 14px">
-    <div class="fxcard" style="--sv-order: 0">01</div>
-    <div class="fxcard" style="--sv-order: 1">02</div>
-    <div class="fxcard" style="--sv-order: 2">03</div>
+  <h1>Sequenced scrub</h1>
+  <p class="tag">Each child animates over its own slice of the pin — choreography without a timeline.</p>
+  <p class="meta"><b>Use it for:</b> Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.<br><b>Knobs:</b> --sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock</p>
+  <div data-sv data-sv-pin class="fxouter">
+  <div class="fxsticky" style="display:grid;place-items:center">
+    <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
+      <h3 class="fxh" style="--sv-from:0; --sv-to:.4">First this</h3>
+      <p class="fxp" style="--sv-from:.3; --sv-to:.7">then this</p>
+      <p class="fxp fxaccent" style="--sv-from:.6; --sv-to:1">then this</p>
+    </div>
   </div>
-</section></div>
+</div>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -144,38 +146,47 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv class="py-24"&gt;
-  &lt;div class="sv-spread sv-spread-in [--sv-gap:14px]"&gt;
-    &lt;div class="[--sv-order:0] rounded-xl border p-8"&gt;01&lt;/div&gt;
-    &lt;div class="[--sv-order:1] rounded-xl border p-8"&gt;02&lt;/div&gt;
-    &lt;div class="[--sv-order:2] rounded-xl border p-8"&gt;03&lt;/div&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[250vh]"&gt;
+  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
+    &lt;div class="sv-range sv-range-rise grid gap-3"&gt;
+      &lt;h2 class="[--sv-from:0] [--sv-to:.4] text-4xl font-bold"&gt;First&lt;/h2&gt;
+      &lt;p class="[--sv-from:.3] [--sv-to:.7]"&gt;Second&lt;/p&gt;
+      &lt;p class="[--sv-from:.6] [--sv-to:1]"&gt;Third&lt;/p&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
-&lt;/section&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv&gt;
-  &lt;div class="sv-spread sv-spread-in"&gt;
-    &lt;div style="--sv-order: 0"&gt;…&lt;/div&gt;
-    &lt;div style="--sv-order: 1"&gt;…&lt;/div&gt;
-    &lt;div style="--sv-order: 2"&gt;…&lt;/div&gt;
+&lt;/div&gt;
+&lt;!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
+     Older engines settle at the end state (consume as var(--sv-r, 1)). --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin class="outer"&gt;   &lt;!-- height: 250vh --&gt;
+  &lt;div class="sticky"&gt;
+    &lt;div class="sv-range sv-range-rise"&gt;
+      &lt;h2 style="--sv-from: 0; --sv-to: .4"&gt;First&lt;/h2&gt;
+      &lt;p style="--sv-from: .3; --sv-to: .7"&gt;Second&lt;/p&gt;
+      &lt;p style="--sv-from: .6; --sv-to: 1"&gt;Third&lt;/p&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
-&lt;/section&gt;
+&lt;/div&gt;
 
-/* styles/core.css ships it; the math, if you want it inline: */
-.sv-spread { display: flex; gap: var(--sv-gap, 16px); justify-content: center; }
-.sv-spread &gt; * { --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
-  translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
-  rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg); }
-
-/* scrub instead of play: */
-.mine &gt; * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }</code></pre>
-    <pre data-pane="react"><code>&lt;Track&gt;
-  &lt;div className="sv-spread sv-spread-in"&gt;
-    {cards.map((c, i) =&gt; (
-      &lt;Item key={c.id} order={i}&gt;&lt;Card {...c} /&gt;&lt;/Item&gt;
-    ))}
+/* styles/pin.css ships it; the mechanism, if you want it inline: */
+.sv .sv-range &gt; * {
+  --sv-clock: var(--sv-pin, var(--sv-t, 0));
+  --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
+                        (var(--sv-to, 1) - var(--sv-from, 0))), 1);
+}
+/* consume --sv-r however you like — ALWAYS with a fallback of 1: */
+.mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }</code></pre>
+    <pre data-pane="react"><code>&lt;Track pin className="relative h-[250vh]"&gt;
+  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
+    &lt;div className="sv-range sv-range-rise grid gap-3"&gt;
+      {steps.map((s, i, all) =&gt; (
+        &lt;Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} /&gt;
+      ))}
+    &lt;/div&gt;
   &lt;/div&gt;
 &lt;/Track&gt;
-{/* Item carries the vars as props — no style attr; sv-spread targets
-   direct children, and the Item wrapper IS the direct child. */}</code></pre>
+
+// JS twin for canvas/WebGL consumers:
+// track(el, { pin: true, onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — driver 1.2 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

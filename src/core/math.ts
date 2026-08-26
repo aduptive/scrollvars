@@ -19,3 +19,18 @@ export function snapProgress(value: number, threshold: number): number {
 export function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
 }
+
+/**
+ * Map `t` through the `[from, to]` sub-range to 0..1 (clamped), optionally
+ * eased — the JS twin of the `sv-range` CSS preset, for `onTravel`/`onPin`
+ * consumers (canvas scenes, WebGL uniforms).
+ */
+export function mapRange(
+  t: number,
+  from: number,
+  to: number,
+  ease?: (x: number) => number
+): number {
+  const raw = clamp((t - from) / Math.max(to - from, 1e-6), 0, 1)
+  return ease ? ease(raw) : raw
+}

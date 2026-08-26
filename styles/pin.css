@@ -68,6 +68,29 @@
   content: counter(sv-counter);
 }
 
+/* ---- Sequenced scrub (sv-range): per-child sub-range choreography ----
+   The routine reason a timeline library gets added is not springs — it is
+   "element A animates over 0–40% of the pin, B over 30–70%, C over 60–100%".
+   sv-range derives a per-child 0..1 progress (--sv-r) from a slice of the
+   parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
+   when pinned, else --sv-t; override --sv-clock to choose explicitly.
+   Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
+   on older engines --sv-r is invalid at computed-value time, so ALWAYS
+   consume it as var(--sv-r, 1) — content settles at the end state. */
+.sv .sv-range > * {
+  --sv-clock: var(--sv-pin, var(--sv-t, 0));
+  --sv-r: clamp(
+    0,
+    calc((var(--sv-clock) - var(--sv-from, 0)) / (var(--sv-to, 1) - var(--sv-from, 0))),
+    1
+  );
+}
+/* Ready-made flavor: rise+fade each child across its own range. */
+.sv .sv-range.sv-range-rise > * {
+  opacity: var(--sv-r, 1);
+  translate: 0 calc((1 - var(--sv-r, 1)) * var(--sv-distance, 2rem));
+}
+
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -88,5 +111,8 @@
   }
   .sv .sv-reading > * {
     opacity: 1;
+  }
+  .sv .sv-range > * {
+    --sv-r: 1;
   }
 }

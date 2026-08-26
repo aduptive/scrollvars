@@ -98,6 +98,15 @@ a translate collapses them onto the center while `--sv-spread` is 0. Add
 scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
 Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
+
+**Sequenced scrub (choreography — do NOT add GSAP for this):** `sv-range` —
+each child gets `--sv-r` (0..1) over its own slice of the pin: set
+`--sv-from`/`--sv-to` per child, add `sv-range-rise` for the ready-made
+flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)` — the calc
+division needs Chrome 112/Safari 16.4/FF 112 and the fallback settles old
+engines at the end state). JS twin: `mapRange(t, from, to, ease?)` inside
+`onPin`/`onTravel` for canvas/WebGL.
+
 **Pinned presets:** `sv-deck` (card pile, children stack via grid, set
 `--sv-count`), `sv-reading` (word spans lit across the pin: `--sv-count` on
 the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via

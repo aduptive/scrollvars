@@ -187,6 +187,64 @@ const EFFECTS = [
 </Track>`,
   },
   {
+    slug: 'sequenced-scrub',
+    category: 'Pinned scenes',
+    title: 'Sequenced scrub',
+    tagline: 'Each child animates over its own slice of the pin — choreography without a timeline.',
+    when: 'Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.',
+    knobs: '--sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock',
+    preview: `<div data-sv data-sv-pin class="fxouter">
+  <div class="fxsticky" style="display:grid;place-items:center">
+    <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
+      <h3 class="fxh" style="--sv-from:0; --sv-to:.4">First this</h3>
+      <p class="fxp" style="--sv-from:.3; --sv-to:.7">then this</p>
+      <p class="fxp fxaccent" style="--sv-from:.6; --sv-to:1">then this</p>
+    </div>
+  </div>
+</div>`,
+    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
+  <div class="sticky">
+    <div class="sv-range sv-range-rise">
+      <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
+      <p style="--sv-from: .3; --sv-to: .7">Second</p>
+      <p style="--sv-from: .6; --sv-to: 1">Third</p>
+    </div>
+  </div>
+</div>
+
+/* styles/pin.css ships it; the mechanism, if you want it inline: */
+.sv .sv-range > * {
+  --sv-clock: var(--sv-pin, var(--sv-t, 0));
+  --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
+                        (var(--sv-to, 1) - var(--sv-from, 0))), 1);
+}
+/* consume --sv-r however you like — ALWAYS with a fallback of 1: */
+.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }`,
+    tailwind: `<div data-sv data-sv-pin class="relative h-[250vh]">
+  <div class="sticky top-0 grid h-screen place-items-center">
+    <div class="sv-range sv-range-rise grid gap-3">
+      <h2 class="[--sv-from:0] [--sv-to:.4] text-4xl font-bold">First</h2>
+      <p class="[--sv-from:.3] [--sv-to:.7]">Second</p>
+      <p class="[--sv-from:.6] [--sv-to:1]">Third</p>
+    </div>
+  </div>
+</div>
+<!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
+     Older engines settle at the end state (consume as var(--sv-r, 1)). -->`,
+    react: `<Track pin className="relative h-[250vh]">
+  <div className="sticky top-0 grid h-screen place-items-center">
+    <div className="sv-range sv-range-rise grid gap-3">
+      {steps.map((s, i, all) => (
+        <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} />
+      ))}
+    </div>
+  </div>
+</Track>
+
+// JS twin for canvas/WebGL consumers:
+// track(el, { pin: true, onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
+  },
+  {
     slug: 'rotating-words',
     category: 'Text',
     title: 'Rotating words',
