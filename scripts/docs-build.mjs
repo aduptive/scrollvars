@@ -199,7 +199,7 @@ gsap.ticker.add(() =&gt; {
 <tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale) — radial math needs the <code>transform:</code> shorthand</td></tr>
 <tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var — transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
 <tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112) — expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
-<tr><td>style-recalc heavy on giant sections</td><td>vars on a section invalidate its subtree — consume vars close to the leaf, add <code>contain: style</code>, keep big static content outside the tracked element (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
+<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant — keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
 </table>
 
 <h2 id="changelog">Changelog</h2>

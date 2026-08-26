@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.8.0 — 2026-08-25
+
+The "path to 8" release — everything the external review panel said would
+move the score, minus the parts only the real world can provide.
+
+- **`sv-range` — sequenced scrub choreography without a timeline.** Each
+  child of `.sv-range` derives `--sv-r` (0..1) from its `--sv-from`/`--sv-to`
+  slice of the parent clock (`--sv-pin`, else `--sv-t`); `sv-range-rise` is
+  the ready-made flavor; `mapRange(t, from, to, ease?)` is the JS twin for
+  `onPin`/`onTravel` consumers. Reduced motion settles ranges at the end
+  state. New fx entry + CLI component: `sequenced-scrub`.
+- **Custom root scroller + configurable live band.** `track(el, { root })`
+  measures against an inner scroll container (root rects read once per root
+  per frame, still strictly read-then-write); `enter`/`exit` options — also
+  `data-sv-enter`/`data-sv-exit` and `<Track>` props — replace the
+  hard-coded 75%/25% band.
+- **Reproducible benchmark.** `demo/bench/harness` (puppeteer-core + CDP)
+  reproduces every published number: symmetric pairings both directions
+  (idiomatic AND batched one-trigger-per-section GSAP), medians of N runs,
+  rotated engine order, calibrated CPU throttle, raw JSON committed. The
+  bench page tables regenerate from `results/latest.json`
+  (`scripts/bench-tables.mjs`); the inline engine resyncs from dist on
+  every build; the 900-trigger Lighthouse row is labeled a stress test.
+- **The style-recalc curve, published — including where it loses.**
+  `?deep=N` gives every box a realistic subtree; at 50 nodes/box the
+  batched GSAP build wins total CPU. The measured curve and the authoring
+  rule (keep tracked elements thin; static content next to, not inside,
+  animated elements) are on /bench/ and in the docs.
+- **APG carousel contract for `<Slider>`.** `role=region` +
+  `aria-roledescription` + `label` prop; per-slide "i of n" annotation in
+  place; visible pause/resume control whenever autoplay is set (`.sv-pause`,
+  arrow knob family); `aria-live` off-while-rotating / polite otherwise;
+  `renderDot` keeps focus indication. Marquee pauses on focus-within.
+- **First React-layer tests** — `renderToStaticMarkup` in plain node (also
+  guards SSR): carousel contract, `<Scenes>` prop hygiene, inert marquee
+  duplicate. react/react-dom join as devDependencies.
+- **Human docs** at /docs/: quickstart, the six variables, every export,
+  preset vocabulary, coming-from-GSAP mapping (with the honest "keep GSAP"
+  row), when-NOT-to-use, interop recipe, per-surface accessibility
+  contract, troubleshooting, rendered changelog — version visible on every
+  gallery page.
+
+
 ## 1.7.0 — 2026-08-25
 
 Fix release driven by a four-model external review panel (blind site

@@ -50,12 +50,39 @@ one-trigger-per-box page people actually write, and the batched expert build (on
 section) that is symmetric to scrollvars’ one-tracker-per-section — compare against the
 batched row for the fair fight.</p>
 <!-- measured:start -->
+<p class="sub">Measured by the committed harness (<code>demo/bench/harness</code> — clone the repo,
+<code>npm i && npm run measure</code>): headless Chrome Chrome/152.0.7977.64,
+median of 3 runs, engine order rotated per repetition.
+Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+<table>
+  <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
+  <tbody>
+    <tr><td>scrollvars</td><td class="n">114 ms</td><td class="n">228 ms</td><td class="n">7 ms</td><td class="n">1144 ms</td><td class="n">1.3 MB</td><td class="n">60</td></tr>
+    <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">272 ms</td><td class="n">94 ms</td><td class="n">7 ms</td><td class="n">991 ms</td><td class="n">6.3 MB</td><td class="n">60</td></tr>
+    <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">155 ms</td><td class="n">76 ms</td><td class="n">7 ms</td><td class="n">834 ms</td><td class="n">6.8 MB</td><td class="n">60</td></tr>
+    <tr><td>framer-motion (React)</td><td class="n">742 ms</td><td class="n">48 ms</td><td class="n">10 ms</td><td class="n">1534 ms</td><td class="n">9.5 MB</td><td class="n">60</td></tr>
+  </tbody>
+</table>
+<h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
+<p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
+selectors); vars written on the section invalidate it all. scrollvars vs the batched GSAP
+build, 150 boxes, medians:</p>
+<table>
+  <thead><tr><th>subtree size</th><th>scrollvars recalc</th><th>gsap-batched recalc</th><th>scrollvars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
+  <tbody>
+    <tr><td>5 nodes/box</td><td class="n">232 ms</td><td class="n">82 ms</td><td class="n">106 ms</td><td class="n">175 ms</td><td class="n">1.2 MB</td><td class="n">3.2 MB</td></tr>
+    <tr><td>20 nodes/box</td><td class="n">479 ms</td><td class="n">84 ms</td><td class="n">144 ms</td><td class="n">174 ms</td><td class="n">1.2 MB</td><td class="n">3.3 MB</td></tr>
+    <tr><td>50 nodes/box</td><td class="n">744 ms</td><td class="n">102 ms</td><td class="n">129 ms</td><td class="n">204 ms</td><td class="n">1.2 MB</td><td class="n">3.4 MB</td></tr>
+  </tbody>
+</table>
 <!-- measured:end -->
 <p class="sub"><b>Read the numbers honestly:</b> scrollvars wins JS script and heap in both
-pairings and posts the <i>worst</i> style-recalc of the table — writing vars on a section
-invalidates its descendants; the deep-DOM curve above is that cost growing with subtree size.
-Mitigations if it bites: consume vars close to the leaf, <code>contain: style</code> on
-sections, keep giant static subtrees outside the tracked element. It is cheap, not free.</p>
+pairings and posts the <i>worst</i> style-recalc — an inherited custom property pays
+per-descendant on every change, a direct transform write pays per-element. The curve above is
+that cost growing with subtree size, and at the deep end the batched GSAP build wins total CPU.
+The authoring rule that keeps you on the cheap side: keep tracked elements thin — big static
+content lives <i>next to</i> the animated elements, not inside them (the var then never
+inherits through it). It is cheap, not free, and now it is measured.</p>
 <p class="sub"><b>Stress test (not a typical page):</b> Lighthouse mobile (Moto G emulation,
 load-only) on the 900-element pages: <b>scrollvars 100</b> · framer-motion 94 (LCP 2.8&nbsp;s) ·
 idiomatic GSAP 88 (TBT 230&nbsp;ms — building 900 triggers on a throttled main thread). No real

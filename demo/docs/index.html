@@ -34,7 +34,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.7.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.8.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -170,10 +170,53 @@ gsap.ticker.add(() =&gt; {
 <tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale) — radial math needs the <code>transform:</code> shorthand</td></tr>
 <tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var — transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
 <tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112) — expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
-<tr><td>style-recalc heavy on giant sections</td><td>vars on a section invalidate its subtree — consume vars close to the leaf, add <code>contain: style</code>, keep big static content outside the tracked element (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
+<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant — keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.8.0 — 2026-08-25</h3>
+
+The "path to 8" release — everything the external review panel said would
+move the score, minus the parts only the real world can provide.
+
+<ul><li><b><code>sv-range</code> — sequenced scrub choreography without a timeline.</b> Each</li></ul>
+  child of <code>.sv-range</code> derives <code>--sv-r</code> (0..1) from its <code>--sv-from</code>/<code>--sv-to</code>
+  slice of the parent clock (<code>--sv-pin</code>, else <code>--sv-t</code>); <code>sv-range-rise</code> is
+  the ready-made flavor; <code>mapRange(t, from, to, ease?)</code> is the JS twin for
+  <code>onPin</code>/<code>onTravel</code> consumers. Reduced motion settles ranges at the end
+  state. New fx entry + CLI component: <code>sequenced-scrub</code>.
+<ul><li><b>Custom root scroller + configurable live band.</b> <code>track(el, { root })</code></li></ul>
+  measures against an inner scroll container (root rects read once per root
+  per frame, still strictly read-then-write); <code>enter</code>/<code>exit</code> options — also
+  <code>data-sv-enter</code>/<code>data-sv-exit</code> and <code>&lt;Track></code> props — replace the
+  hard-coded 75%/25% band.
+<ul><li><b>Reproducible benchmark.</b> <code>demo/bench/harness</code> (puppeteer-core + CDP)</li></ul>
+  reproduces every published number: symmetric pairings both directions
+  (idiomatic AND batched one-trigger-per-section GSAP), medians of N runs,
+  rotated engine order, calibrated CPU throttle, raw JSON committed. The
+  bench page tables regenerate from <code>results/latest.json</code>
+  (<code>scripts/bench-tables.mjs</code>); the inline engine resyncs from dist on
+  every build; the 900-trigger Lighthouse row is labeled a stress test.
+<ul><li><b>The style-recalc curve, published — including where it loses.</b></li></ul>
+  <code>?deep=N</code> gives every box a realistic subtree; at 50 nodes/box the
+  batched GSAP build wins total CPU. The measured curve and the authoring
+  rule (keep tracked elements thin; static content next to, not inside,
+  animated elements) are on /bench/ and in the docs.
+<ul><li><b>APG carousel contract for <code>&lt;Slider></code>.</b> <code>role=region</code> +</li></ul>
+  <code>aria-roledescription</code> + <code>label</code> prop; per-slide "i of n" annotation in
+  place; visible pause/resume control whenever autoplay is set (<code>.sv-pause</code>,
+  arrow knob family); <code>aria-live</code> off-while-rotating / polite otherwise;
+  <code>renderDot</code> keeps focus indication. Marquee pauses on focus-within.
+<ul><li><b>First React-layer tests</b> — <code>renderToStaticMarkup</code> in plain node (also</li></ul>
+  guards SSR): carousel contract, <code>&lt;Scenes></code> prop hygiene, inert marquee
+  duplicate. react/react-dom join as devDependencies.
+<ul><li><b>Human docs</b> at /docs/: quickstart, the six variables, every export,</li></ul>
+  preset vocabulary, coming-from-GSAP mapping (with the honest "keep GSAP"
+  row), when-NOT-to-use, interop recipe, per-surface accessibility
+  contract, troubleshooting, rendered changelog — version visible on every
+  gallery page.
 
 
 <h3>1.7.0 — 2026-08-25</h3>

@@ -1,8 +1,8 @@
 {
   "meta": {
-    "date": "2026-08-26T18:41:55.992Z",
+    "date": "2026-08-26T18:43:09.744Z",
     "chrome": "Chrome/152.0.7977.64",
-    "runs": 1,
+    "runs": 3,
     "throttle": 1,
     "host": "darwin"
   },
@@ -12,44 +12,122 @@
       "params": "s=60&p=15",
       "engines": {
         "scrollvars.html": {
-          "scriptMs": 103,
-          "recalcMs": 198,
+          "scriptMs": 114,
+          "recalcMs": 228,
           "layoutMs": 7,
-          "taskMs": 1035,
-          "heapMB": 1.4,
+          "taskMs": 1144,
+          "heapMB": 1.3,
           "fps": 60,
-          "p95Ms": 16.8,
-          "runs": 1
+          "p95Ms": 16.7,
+          "runs": 3
         },
         "gsap.html": {
-          "scriptMs": 258,
-          "recalcMs": 90,
+          "scriptMs": 272,
+          "recalcMs": 94,
           "layoutMs": 7,
-          "taskMs": 923,
+          "taskMs": 991,
           "heapMB": 6.3,
           "fps": 60,
           "p95Ms": 16.7,
-          "runs": 1
+          "runs": 3
         },
         "gsap-batched.html": {
-          "scriptMs": 180,
-          "recalcMs": 84,
-          "layoutMs": 8,
-          "taskMs": 944,
-          "heapMB": 6.9,
-          "fps": 60,
-          "p95Ms": 16.7,
-          "runs": 1
-        },
-        "framer.html": {
-          "scriptMs": 634,
-          "recalcMs": 41,
-          "layoutMs": 8,
-          "taskMs": 1328,
-          "heapMB": 9.5,
+          "scriptMs": 155,
+          "recalcMs": 76,
+          "layoutMs": 7,
+          "taskMs": 834,
+          "heapMB": 6.8,
           "fps": 60,
           "p95Ms": 16.8,
-          "runs": 1
+          "runs": 3
+        },
+        "framer.html": {
+          "scriptMs": 742,
+          "recalcMs": 48,
+          "layoutMs": 10,
+          "taskMs": 1534,
+          "heapMB": 9.5,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 3
+        }
+      }
+    },
+    {
+      "name": "deep-5",
+      "params": "s=30&p=5&deep=5",
+      "engines": {
+        "scrollvars.html": {
+          "scriptMs": 106,
+          "recalcMs": 232,
+          "layoutMs": 11,
+          "taskMs": 870,
+          "heapMB": 1.2,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "runs": 3
+        },
+        "gsap-batched.html": {
+          "scriptMs": 175,
+          "recalcMs": 82,
+          "layoutMs": 11,
+          "taskMs": 927,
+          "heapMB": 3.2,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 3
+        }
+      }
+    },
+    {
+      "name": "deep-20",
+      "params": "s=30&p=5&deep=20",
+      "engines": {
+        "scrollvars.html": {
+          "scriptMs": 144,
+          "recalcMs": 479,
+          "layoutMs": 15,
+          "taskMs": 1529,
+          "heapMB": 1.2,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "runs": 3
+        },
+        "gsap-batched.html": {
+          "scriptMs": 174,
+          "recalcMs": 84,
+          "layoutMs": 16,
+          "taskMs": 1034,
+          "heapMB": 3.3,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 3
+        }
+      }
+    },
+    {
+      "name": "deep-50",
+      "params": "s=30&p=5&deep=50",
+      "engines": {
+        "scrollvars.html": {
+          "scriptMs": 129,
+          "recalcMs": 744,
+          "layoutMs": 24,
+          "taskMs": 1764,
+          "heapMB": 1.2,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "runs": 3
+        },
+        "gsap-batched.html": {
+          "scriptMs": 204,
+          "recalcMs": 102,
+          "layoutMs": 24,
+          "taskMs": 1371,
+          "heapMB": 3.4,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "runs": 3
         }
       }
     }
