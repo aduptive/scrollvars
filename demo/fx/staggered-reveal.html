@@ -146,7 +146,10 @@
   &lt;p class="sv-rise [--sv-order:1]"&gt;Copy&lt;/p&gt;
   &lt;p class="sv-rise [--sv-order:2] [--sv-distance:3rem]"&gt;More&lt;/p&gt;
 &lt;/section&gt;
-&lt;!-- once: import 'scrollvars/styles/core.css' + &lt;ScrollVarsBoot /&gt; in the layout --&gt;</code></pre>
+&lt;!-- once: import 'scrollvars/styles/core.css' + &lt;ScrollVarsBoot /&gt; in the layout --&gt;
+&lt;!-- arbitrary classes are for static one-offs. Mapped content: use
+     style={{'--sv-order': i}} (the JIT can't see dynamic class names).
+     Sequential lists: add sv-stagger to the parent, drop per-child order. --&gt;</code></pre>
     <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; gets .sv-live in the band --&gt;
   &lt;h2 class="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p class="sv-rise" style="--sv-order: 1"&gt;Copy&lt;/p&gt;

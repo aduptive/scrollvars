@@ -46,7 +46,10 @@ const EFFECTS = [
   <p class="sv-rise [--sv-order:1]">Copy</p>
   <p class="sv-rise [--sv-order:2] [--sv-distance:3rem]">More</p>
 </section>
-<!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->`,
+<!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
+<!-- arbitrary classes are for static one-offs. Mapped content: use
+     style={{'--sv-order': i}} (the JIT can't see dynamic class names).
+     Sequential lists: add sv-stagger to the parent, drop per-child order. -->`,
     react: `<Reveal auto>            {/* every direct child, stagger for free */}
   <h2>Title</h2>
   <p>Copy</p>

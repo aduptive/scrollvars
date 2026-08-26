@@ -70,6 +70,14 @@ effects appear without package updates).
 // Parallax/Item — prefer them over style={{'--sv-…'}} in React code.
 ```
 
+
+**Tailwind + the vars:** `[--sv-order:1]` is fine for static one-off markup
+(each unique value adds one tiny global rule). For mapped/dynamic content use
+`style={{'--sv-order': i}}` — required, not just cleaner: Tailwind's JIT scans
+source statically and never generates interpolated arbitrary classes. For
+sequential children skip the bookkeeping entirely: `sv-stagger` on the parent
+orders them via nth-child.
+
 **Parallax drift:** `<Parallax distance="8rem">…</Parallax>` — continuous,
 tied to `--sv-t`, no transition (transitions on continuous values rubber-band).
 
