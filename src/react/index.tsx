@@ -276,21 +276,54 @@ export const Scenes: React.FC<ScenesProps> = ({
   children,
   style,
   className,
+  as: Tag = 'div',
+  view,
+  travel,
+  snap,
+  once,
+  pin,
+  onLive,
+  onScene,
+  onTravel,
+  onPin,
+  order,
+  distance,
+  stagger,
+  duration,
+  ease,
   ...rest
 }) => {
-  const { ref, scene, goTo } = useScenes(count)
+  const { ref, scene, goTo } = useScenes(count, {
+    view,
+    travel,
+    snap,
+    once,
+    pin,
+    onLive,
+    onTravel,
+    onPin,
+  })
+  const onSceneRef = useRef(onScene)
+  onSceneRef.current = onScene
+  useEffect(() => {
+    onSceneRef.current?.(scene)
+  }, [scene])
 
   return (
-    <div
+    <Tag
       ref={ref}
       className={className ? `sv ${className}` : 'sv'}
-      style={{ height: height ?? `${count * 100}vh`, position: 'relative', ...style }}
-      {...(rest as React.HTMLAttributes<HTMLDivElement>)}
+      style={{
+        height: height ?? `${count * 100}vh`,
+        position: 'relative',
+        ...varStyle({ order, distance, stagger, duration, ease }, style),
+      }}
+      {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
       <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
         {children({ scene, goTo })}
       </div>
-    </div>
+    </Tag>
   )
 }
 
@@ -332,10 +365,19 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
   const { snap, drag, duration, axis } = options
+  const onScrollRef = useRef(options.onScroll)
+  onScrollRef.current = options.onScroll
 
   useEffect(() => {
     if (!ref.current) return
-    const handle = slider(ref.current, { snap, drag, duration, axis, onSlide: setActive })
+    const handle = slider(ref.current, {
+      snap,
+      drag,
+      duration,
+      axis,
+      onSlide: setActive,
+      onScroll: (state) => onScrollRef.current?.(state),
+    })
     handleRef.current = handle
     return handle.destroy
   }, [snap, drag, duration, axis])
@@ -362,10 +404,12 @@ const BREAKPOINTS: Record<string, number> = {
  * queries here (Tailwind-style keys or raw min-width numbers). */
 function perViewCss(scope: string, perView: Record<string, number>): string {
   let css = ''
-  for (const [key, value] of Object.entries(perView)) {
-    const rule = `${scope}{--sv-per-view:${value}}`
-    if (key === 'base') css = rule + css
-    else css += `@media (min-width:${BREAKPOINTS[key] ?? Number(key)}px){${rule}}`
+  const entries = Object.entries(perView)
+    .filter(([key]) => key !== 'base')
+    .sort(([a], [b]) => (BREAKPOINTS[a] ?? Number(a)) - (BREAKPOINTS[b] ?? Number(b)))
+  if ('base' in perView) css += `${scope}{--sv-per-view:${perView.base}}`
+  for (const [key, value] of entries) {
+    css += `@media (min-width:${BREAKPOINTS[key] ?? Number(key)}px){${scope}{--sv-per-view:${value}}}`
   }
   return css
 }
@@ -428,7 +472,29 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     const uid = React.useId()
     const count = React.Children.count(children)
 
-    React.useImperativeHandle(apiRef, () => handle.current as SliderHandle, [handle])
+    React.useImperativeHandle(
+      apiRef,
+      // delegate at call time — the handle only exists after the passive
+      // effect runs, so capturing handle.current here would freeze null
+      () => ({
+        next: (smooth?: boolean) => handle.current?.next(smooth),
+        prev: (smooth?: boolean) => handle.current?.prev(smooth),
+        goTo: (index: number, smooth?: boolean) => handle.current?.goTo(index, smooth),
+        seek: (progress: number) => handle.current?.seek(progress),
+        active: () => handle.current?.active() ?? 0,
+        state: () =>
+          handle.current?.state() ?? {
+            active: 0,
+            count: 0,
+            position: 0,
+            progress: 0,
+            dragging: false,
+            gliding: false,
+          },
+        destroy: () => handle.current?.destroy(),
+      }),
+      []
+    )
 
     const onSlideRef = useRef(onSlide)
     onSlideRef.current = onSlide
@@ -441,13 +507,21 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     useEffect(() => {
       if (!autoplay || autoplay <= 0) return
       let onscreen = true
+      let focused = false
       const io = new IntersectionObserver((entries) => {
-        onscreen = entries[0].isIntersecting
+        onscreen = entries[entries.length - 1].isIntersecting
       })
       const el = ref.current
       if (el) io.observe(el)
+      // WCAG 2.2.2: the pause must be reachable without a mouse — keyboard
+      // focus anywhere inside the slider halts autoplay like hover does
+      const onFocusIn = () => (focused = true)
+      const onFocusOut = () => (focused = false)
+      el?.addEventListener('focusin', onFocusIn)
+      el?.addEventListener('focusout', onFocusOut)
       const timer = setInterval(() => {
-        if (hovering.current || !onscreen || document.visibilityState === 'hidden') return
+        if (hovering.current || focused || !onscreen || document.visibilityState === 'hidden')
+          return
         const h = handle.current
         if (!h) return
         const s = h.state()
@@ -457,6 +531,8 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       return () => {
         clearInterval(timer)
         io.disconnect()
+        el?.removeEventListener('focusin', onFocusIn)
+        el?.removeEventListener('focusout', onFocusOut)
       }
     }, [autoplay, handle, ref])
 
@@ -559,7 +635,7 @@ export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, child
   >
     <div className="sv-marquee-track">
       {children}
-      <span aria-hidden="true" style={{ display: 'contents' }}>
+      <span aria-hidden="true" inert style={{ display: 'contents' }}>
         {children}
       </span>
     </div>

@@ -56,6 +56,22 @@
   translate: 0 0;
 }
 
+/* Nested tracked sections: a live ancestor must not reveal entrance children
+   that belong to an inner .sv which hasn't gone live itself yet. Higher
+   specificity than the reveal above; plain CSS3 selectors only. */
+.sv-on .sv .sv:not(.sv-live) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r) {
+  opacity: 0;
+}
+.sv-on .sv .sv:not(.sv-live) .sv-rise {
+  translate: 0 var(--sv-distance);
+}
+.sv-on .sv .sv:not(.sv-live) .sv-slide-l {
+  translate: calc(var(--sv-distance) * -2) 0;
+}
+.sv-on .sv .sv:not(.sv-live) .sv-slide-r {
+  translate: calc(var(--sv-distance) * 2) 0;
+}
+
 /* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
 .sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
 .sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
@@ -227,6 +243,9 @@
   }
   .sv .sv-rail {
     translate: none;
+  }
+  .sv .sv-deck {
+    display: block; /* stacked grid cells would overlap without the motion */
   }
   .sv .sv-deck > * {
     translate: none;

@@ -43,6 +43,7 @@ export function trackPointer(
   const onOut = (event: PointerEvent) => {
     const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
     if (!el || el.contains(event.relatedTarget as Node)) return
+    if (pending?.el === el) pending = null // drop queued move — it's stale now
     el.classList.add('sv-pointer-leave')
     el.style.setProperty('--mx', '0')
     el.style.setProperty('--my', '0')

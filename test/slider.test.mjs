@@ -134,3 +134,56 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
   assert.equal(Math.round(container.scrollLeft), 100)
   handle.destroy()
 })
+
+test('slider: RTL normalizes to logical coordinates', async () => {
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => 1
+  global.cancelAnimationFrame = () => {}
+  global.ResizeObserver = class {
+    observe() {}
+    disconnect() {}
+  }
+  // direction: rtl — slides laid out right-to-left; raw scrollLeft is 0..-range
+  global.getComputedStyle = () => ({ direction: 'rtl' })
+
+  const slides = [makeSlide(400), makeSlide(300), makeSlide(200), makeSlide(100), makeSlide(0)]
+  slides.forEach((s) => {
+    s.style._owner = s
+    s.classList._owner = s
+  })
+  const container = {
+    children: slides,
+    scrollLeft: 0,
+    clientWidth: 300,
+    scrollWidth: 500,
+    vars: {},
+    classList: { add: () => {}, remove: () => {} },
+    style: {
+      setProperty(k, v) {
+        container.vars[k] = v
+      },
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js')
+  const handle = slider(container, { duration: 0 })
+
+  // at raw 0 (start, rightmost) logical pos is 0 → progress 0; the slide
+  // nearest the 300px viewport's center is index 1, same as the LTR case
+  assert.equal(handle.state().progress, 0)
+  assert.equal(handle.active(), 1)
+
+  // goTo the last slide: its logical start is 500-0-100=400 → centered target
+  // logical 300 → raw scrollLeft must be -300 (spec RTL negative domain)
+  handle.goTo(4, false)
+  assert.equal(container.scrollLeft, -300)
+
+  // seek(1) lands on the logical end, raw -range
+  handle.seek(1)
+  assert.equal(container.scrollLeft, -200)
+
+  handle.destroy()
+  delete global.getComputedStyle
+})

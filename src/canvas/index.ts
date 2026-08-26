@@ -113,7 +113,7 @@ export function mountEffect(
   ro.observe(canvas)
 
   const io = new IntersectionObserver((entries) => {
-    onscreen = entries[0].isIntersecting
+    onscreen = entries[entries.length - 1].isIntersecting
     sync()
   })
   io.observe(canvas)
@@ -124,10 +124,24 @@ export function mountEffect(
   }
   document.addEventListener('visibilitychange', onVisibility)
 
+  // A fixed-CSS-size canvas gets no ResizeObserver callback when it moves to
+  // a monitor with a different devicePixelRatio — watch the resolution too.
+  let dprQuery: MediaQueryList | null = null
+  const watchDpr = () => {
+    dprQuery?.removeEventListener?.('change', onDprChange)
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+    dprQuery.addEventListener?.('change', onDprChange)
+  }
+  const onDprChange = () => {
+    applySize()
+    watchDpr()
+  }
+  watchDpr()
+
   const onMotion = () => {
     fx.reducedMotion = motionQuery.matches
   }
-  motionQuery.addEventListener('change', onMotion)
+  motionQuery.addEventListener?.('change', onMotion)
 
   return {
     pause: () => {
@@ -144,7 +158,8 @@ export function mountEffect(
       ro.disconnect()
       io.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
-      motionQuery.removeEventListener('change', onMotion)
+      motionQuery.removeEventListener?.('change', onMotion)
+      dprQuery?.removeEventListener?.('change', onDprChange)
     },
   }
 }

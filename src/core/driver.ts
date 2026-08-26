@@ -1,4 +1,4 @@
-import { clamp, easeOutCubic, snapProgress } from './math.js'
+import { clamp, easeOutCubic } from './math.js'
 
 export interface TrackOptions {
   /** Write `--sv-view` (-1 below viewport → 0 in scene → 1 gone above). Default true. */
@@ -29,7 +29,6 @@ export interface TrackOptions {
 interface Entry {
   el: HTMLElement
   opts: TrackOptions
-  height: number
   live: boolean
   scene: number
   written: Record<string, string>
@@ -57,7 +56,9 @@ function init() {
   // failed bundle degrades to a static, fully visible page.
   document.documentElement.classList.add('sv-on')
 
-  window.addEventListener('scroll', schedule, { passive: true })
+  // capture: scroll doesn't bubble, but it does capture-descend — one
+  // listener covers nested scrollers (modals, inner panels) for free
+  window.addEventListener('scroll', schedule, { passive: true, capture: true })
   window.addEventListener('resize', () => {
     vh = window.innerHeight
     schedule()
@@ -70,13 +71,7 @@ function init() {
     schedule()
   })
 
-  resizeObserver = new ResizeObserver((observed) => {
-    for (const { target } of observed) {
-      const entry = entries.get(target as HTMLElement)
-      if (entry) entry.height = entry.el.scrollHeight
-    }
-    schedule()
-  })
+  resizeObserver = new ResizeObserver(() => schedule())
   // Layout shifts above an element (images loading, fonts) move it without
   // resizing it — watching the document catches those too.
   resizeObserver.observe(document.documentElement)
@@ -157,6 +152,22 @@ function apply(entry: Entry, rect: DOMRect) {
     entry.live = isLive
     entry.el.classList.toggle('sv-live', isLive)
     opts.onLive?.(isLive)
+    // once + nothing continuous = fire-and-forget: stop tracking, stop paying
+    // the per-frame rect read. The class stays; --sv-view freezes as-is.
+    if (
+      isLive &&
+      opts.once &&
+      !opts.travel &&
+      !opts.pin &&
+      !(opts.scenes && opts.scenes > 1) &&
+      !opts.onTravel &&
+      !opts.onPin &&
+      !opts.onScene
+    ) {
+      entries.delete(entry.el)
+      resizeObserver?.unobserve(entry.el)
+      return
+    }
   }
 
   if (opts.view !== false) {
@@ -164,19 +175,19 @@ function apply(entry: Entry, rect: DOMRect) {
   }
 
   if (opts.travel || opts.onTravel) {
-    const t = computeTravel(rect, entry.height)
+    const t = computeTravel(rect, rect.height)
     if (opts.travel) setVar(entry, '--sv-t', t)
     opts.onTravel?.(t)
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(rect, entry.height)
+    const p = computePin(rect, rect.height)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(rect, entry.height)
+    const pin = computePin(rect, rect.height)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)
@@ -195,7 +206,6 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   const entry: Entry = {
     el,
     opts,
-    height: el.scrollHeight,
     live: false,
     scene: -1,
     written: {},

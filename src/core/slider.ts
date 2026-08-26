@@ -92,21 +92,34 @@ export function slider(
   if (typeof window === 'undefined') return noop
 
   const horizontal = axis === 'x'
+  // RTL: normalize to logical coordinates — pos() runs 0 → range() from the
+  // start of content regardless of direction (raw scrollLeft is 0 → -range
+  // in RTL per spec), and slideStart() mirrors offsets to match.
+  const rtl =
+    horizontal &&
+    typeof getComputedStyle === 'function' &&
+    getComputedStyle(container).direction === 'rtl'
   container.classList.add('sv-slider')
   if (!horizontal) container.classList.add('sv-slider-y')
   if (drag) container.classList.add('sv-draggable') // grab cursor only where dragging works
   container.style.setProperty('--sv-snap', snap)
 
   // axis accessors — the only place the orientation matters
-  const pos = () => (horizontal ? container.scrollLeft : container.scrollTop)
+  const pos = () =>
+    horizontal ? (rtl ? -container.scrollLeft + 0 : container.scrollLeft) : container.scrollTop
   const setPos = (v: number) => {
-    if (horizontal) container.scrollLeft = v
+    if (horizontal) container.scrollLeft = rtl ? -v : v
     else container.scrollTop = v
   }
   const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
   const range = () =>
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
-  const slideStart = (el: HTMLElement) => (horizontal ? el.offsetLeft : el.offsetTop)
+  const slideStart = (el: HTMLElement) =>
+    horizontal
+      ? rtl
+        ? container.scrollWidth - el.offsetLeft - el.offsetWidth
+        : el.offsetLeft
+      : el.offsetTop
   const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
 
   // Snap suspension via inline style — one source of truth. The authored
@@ -182,7 +195,8 @@ export function slider(
   const glide = (to: number) => {
     stopGlide()
     let current = pos()
-    if (duration <= 0 || Math.abs(to - current) < 1) {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
       resumeSnap()
       target = -1
       setPos(to)
@@ -246,34 +260,65 @@ export function slider(
   // leaving the element (release happens on the real pointerup, anywhere).
   // ponytail: no momentum fling of our own — the release glide covers it.
   let lastPointer = 0
+  let startPoint = 0
+  let pressed = false // mouse is down; becomes a drag only after real movement
+  const DRAG_THRESHOLD = 5
+
   const onMove = (event: PointerEvent) => {
-    if (!dragging) return
     const point = horizontal ? event.clientX : event.clientY
-    setPos(pos() - (point - lastPointer))
+    if (!dragging) {
+      // pending press: activating only after movement keeps plain clicks on
+      // links/inputs inside slides working (no preventDefault on pointerdown,
+      // so focus works too)
+      if (Math.abs(point - startPoint) < DRAG_THRESHOLD) return
+      dragging = true
+      suspendSnap()
+      container.classList.add('sv-dragging') // slider.css: user-select none
+      // a selection started in the first few px would auto-scroll toward the
+      // pointer, fighting the drag frame by frame — clear it
+      getSelection()?.removeAllRanges()
+      lastPointer = point
+      return
+    }
+    const step = point - lastPointer
+    setPos(pos() - (rtl ? -step : step))
     lastPointer = point
   }
+  // the click that follows a real drag would activate whatever link the
+  // pointer happens to be over — swallow exactly that one
+  const suppressClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    window.removeEventListener('click', suppressClick, true)
+  }
   const endDrag = () => {
-    if (!dragging) return
-    dragging = false
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', endDrag)
     window.removeEventListener('pointercancel', endDrag)
+    pressed = false
+    if (!dragging) return // never crossed the threshold: an ordinary click
+    dragging = false
     container.classList.remove('sv-dragging')
+    window.addEventListener('click', suppressClick, true)
+    setTimeout(() => window.removeEventListener('click', suppressClick, true), 0)
     goTo(active) // release: glide softly onto the nearest slide
   }
+  // native image/link drag-and-drop would hijack the gesture mid-press
+  const onDragStart = (event: Event) => {
+    if (pressed) event.preventDefault()
+  }
+  container.addEventListener('dragstart', onDragStart)
   const onDown = (event: PointerEvent) => {
+    const wasGliding = anim !== 0
     stopGlide() // the user takes over
     target = -1
-    if (!drag || event.pointerType !== 'mouse') return
-    // kill native text-selection at the root: with a live selection inside a
-    // scrollable container the browser auto-scrolls toward the pointer,
-    // fighting the drag frame by frame (user-select:none alone doesn't stop
-    // the selection from STARTING in every browser)
-    event.preventDefault()
-    suspendSnap()
-    dragging = true
-    lastPointer = horizontal ? event.clientX : event.clientY
-    container.classList.add('sv-dragging')
+    if (!drag || event.pointerType !== 'mouse') {
+      // an interrupted glide must not leave snap suspended forever
+      if (wasGliding) resumeSnap()
+      return
+    }
+    pressed = true
+    startPoint = horizontal ? event.clientX : event.clientY
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', endDrag)
     window.addEventListener('pointercancel', endDrag)
@@ -309,8 +354,9 @@ export function slider(
   // The container is made focusable (Safari never focuses scrollers on its own).
   if (container.tabIndex === -1) container.tabIndex = 0
   const onKey = (event: KeyboardEvent) => {
-    const nextKey = horizontal ? 'ArrowRight' : 'ArrowDown'
-    const prevKey = horizontal ? 'ArrowLeft' : 'ArrowUp'
+    if (event.target !== container) return // arrows inside inputs stay theirs
+    const nextKey = horizontal ? (rtl ? 'ArrowLeft' : 'ArrowRight') : 'ArrowDown'
+    const prevKey = horizontal ? (rtl ? 'ArrowRight' : 'ArrowLeft') : 'ArrowUp'
     if (event.key === nextKey) next()
     else if (event.key === prevKey) prev()
     else if (event.key === 'Home') goTo(0)
@@ -335,6 +381,8 @@ export function slider(
       container.removeEventListener('keydown', onKey)
       container.removeEventListener('scroll', schedule)
       container.removeEventListener('pointerdown', onDown)
+      container.removeEventListener('dragstart', onDragStart)
+      window.removeEventListener('click', suppressClick, true)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', endDrag)
       window.removeEventListener('pointercancel', endDrag)

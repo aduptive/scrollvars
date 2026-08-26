@@ -343,7 +343,7 @@ const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) }
 | Live band | enter 75% / exit 25% of viewport | driver (`sv-live`, `--sv-view` ramps) |
 | Scene snap dead-zone | 0.4 (`snap` option; `false` disables) | driver `scenes` |
 | Entrance distance | `--sv-distance: 6rem` | styles.css |
-| Stagger step | `--sv-stagger: 110ms` | styles.css |
+| Stagger step | `--sv-stagger: 90ms` | styles.css |
 | Entrance duration | `--sv-duration: 800ms` | styles.css |
 | Slider glide settle | `duration: 600` ms (exponential lerp) | slider |
 | Slider wheel-quiet window | 200 ms | slider |
@@ -364,9 +364,9 @@ the tools built for that.
 | A one-shot intro that plays on load | plain **CSS keyframes** (before reaching for a library) |
 
 Known gaps inside scrollvars' own territory (candidates for 1.x, tell us if
-you hit them): nested scrollers (the driver tracks window scroll only),
-automatic pinning (the sticky skeleton is hand-written), declared smooth-scroll
-(Lenis) interop, and a SplitText-style text splitter.
+you hit them): automatic pinning (the sticky skeleton is hand-written),
+declared smooth-scroll (Lenis) interop, and a SplitText-style text splitter.
+(Nested scrollers work since 1.7 — the driver listens in the capture phase.)
 
 Mixing is fine: GSAP for one intro timeline + scrollvars for everything
 scroll-driven coexist without conflict — that page just gives up the bundle

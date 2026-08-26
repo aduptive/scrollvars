@@ -18,8 +18,9 @@
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  */
 
-export function toggles(root: Document | HTMLElement = document): () => void {
+export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
+  const scope: Document | HTMLElement = root ?? document
 
   const onClick = (event: Event) => {
     const trigger = (event.target as HTMLElement).closest?.(
@@ -29,7 +30,7 @@ export function toggles(root: Document | HTMLElement = document): () => void {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
     const selector = trigger.getAttribute('data-sv-target')
     const target = selector
-      ? (root.querySelector(selector) as HTMLElement | null)
+      ? (scope.querySelector(selector) as HTMLElement | null)
       : trigger
     if (!target) return
     const on = target.classList.toggle(className)
@@ -37,6 +38,6 @@ export function toggles(root: Document | HTMLElement = document): () => void {
     trigger.setAttribute('aria-expanded', String(on))
   }
 
-  root.addEventListener('click', onClick)
-  return () => root.removeEventListener('click', onClick)
+  scope.addEventListener('click', onClick)
+  return () => scope.removeEventListener('click', onClick)
 }

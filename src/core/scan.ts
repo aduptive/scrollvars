@@ -23,8 +23,9 @@ function optionsFrom(el: HTMLElement): TrackOptions {
   }
 }
 
-export function scan(root: ParentNode = document): () => void {
+export function scan(root?: ParentNode): () => void {
   if (typeof window === 'undefined') return () => {}
+  const scope: ParentNode = root ?? document
 
   const tracked = new Map<HTMLElement, () => void>()
 
@@ -41,7 +42,7 @@ export function scan(root: ParentNode = document): () => void {
     node.querySelectorAll<HTMLElement>('[data-sv]').forEach(fn)
   }
 
-  root.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+  scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
 
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -49,7 +50,7 @@ export function scan(root: ParentNode = document): () => void {
       mutation.removedNodes.forEach((node) => sweep(node, remove))
     }
   })
-  observer.observe(root === document ? document.body : (root as Node), {
+  observer.observe(scope === document ? document.body : (scope as Node), {
     childList: true,
     subtree: true,
   })

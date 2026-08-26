@@ -45,6 +45,7 @@ const FALLBACK_CSS = `
   transform: none;
 }
 .sv .sv-drift {
+  opacity: 1; /* fallback: max() postdates the floor — old engines keep this */
   opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));
   transform: translateY(calc(var(--sv-view, 0) * var(--sv-distance, 6rem) * -1));
 }

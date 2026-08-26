@@ -1,5 +1,72 @@
 # Changelog
 
+## 1.7.0 — 2026-08-25
+
+Fix release driven by a four-model external review panel (blind site
+evaluations + source-level code reviews). Everything below was independently
+found by at least one reviewer and verified before fixing.
+
+Core driver:
+
+- **Nested scrollers now work**: the scroll listener runs in the capture
+  phase, so scrolls inside modals and inner panels reach the driver.
+- **Travel/pin math uses the rendered box** (`rect.height`) instead of
+  `scrollHeight` — progress reaches 1 on fixed-height elements with
+  overflowing content.
+- **`once` is fire-and-forget**: after going live, entries with no
+  continuous outputs (travel/pin/scenes/callbacks) stop paying the
+  per-frame `getBoundingClientRect`. `--sv-view` freezes at its last value.
+- `scan()`/`toggles()` no longer throw during SSR (default params were
+  evaluated before the environment guard).
+
+Slider:
+
+- **RTL support**: positions normalize to logical coordinates (0 → range
+  from the content start); arrows mirror; progress/seek/goTo correct under
+  `dir="rtl"`.
+- **Drag no longer eats clicks**: a 5px movement threshold separates clicks
+  from drags (links and inputs inside slides work again, focus included),
+  and the accidental click after a real drag is swallowed.
+- Arrow keys typed into inputs inside slides no longer move the carousel.
+- A glide interrupted by touch (or with `drag: false`) no longer leaves
+  native snap suspended forever.
+- The scripted glide respects `prefers-reduced-motion` (jumps instead).
+
+React:
+
+- **`<Slider ref>` works** — the forwarded handle is a stable proxy that
+  delegates at call time (it was permanently `null`).
+- **`<Scenes>` honors its declared props**: tracking options reach the
+  driver, `onScene`/`as`/VarProps work, and nothing leaks to the DOM.
+- `useSlider` forwards `onScroll` (it was typed but dropped).
+- Responsive `perView` breakpoints emit in ascending order (`{xl: 4, md: 2}`
+  no longer lets `md` win at desktop widths).
+- Autoplay pauses while keyboard focus is inside the slider (WCAG 2.2.2)
+  and reads the last IntersectionObserver record, not the first.
+- The Marquee duplicate is `inert`, so its links aren't tabbable.
+
+Canvas & pointer:
+
+- Canvas re-applies its backing size when the monitor's DPR changes.
+- Pointer tilt can't get stuck by a leave racing the queued rAF.
+- Legacy-guard consistency: the canvas module uses the same optional
+  `matchMedia` listener calls as the driver.
+
+Styles & packaging:
+
+- Nested tracked sections: a live ancestor no longer reveals entrance
+  children of an inner `.sv` that hasn't gone live (plain CSS3 selectors).
+- Reduced motion on `sv-deck` lays cards out in flow instead of leaving
+  them stacked in one grid cell.
+- The compat drift preset carries an `opacity: 1` fallback where `max()`
+  doesn't parse (the advertised Chrome 61 floor).
+- `sideEffects` glob is `**/*.css` — `styles/*.css` imports survive
+  tree-shaking.
+- `engines.node >= 18`; `pretest` builds before testing; `prepare` builds
+  on git installs (`npm i github:aduptive/scrollvars` works).
+- README: documented stagger default corrected to 90ms (matches the CSS).
+
+
 ## 1.6.0 — 2026-08-24
 
 - **The fx gallery** (/fx/ on the demo site): a growing library of

@@ -78,6 +78,9 @@
   .sv .sv-rail {
     translate: none;
   }
+  .sv .sv-deck {
+    display: block; /* stacked grid cells would overlap without the motion */
+  }
   .sv .sv-deck > * {
     translate: none;
     rotate: none;
