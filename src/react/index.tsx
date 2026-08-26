@@ -434,8 +434,13 @@ export interface SliderComponentProps
   arrows?: boolean
   dots?: boolean
   /** Auto-advance interval in ms (wraps to the start). Pauses on hover,
-   * offscreen and hidden tab. */
+   * keyboard focus, offscreen and hidden tab; renders a visible pause/resume
+   * control (APG carousel pattern). */
   autoplay?: number
+  /** Accessible name for the carousel region. Default "carousel". */
+  label?: string
+  pauseIcon?: React.ReactNode
+  playIcon?: React.ReactNode
   prevIcon?: React.ReactNode
   nextIcon?: React.ReactNode
   /** Full control over each dot's content; wiring/aria stay handled. */
@@ -463,6 +468,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       arrows,
       dots,
       autoplay,
+      label = 'carousel',
+      pauseIcon,
+      playIcon,
       prevIcon,
       nextIcon,
       renderDot,
@@ -510,6 +518,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     // autoplay: pauses on hover, offscreen and hidden tab
     const hovering = useRef(false)
+    const [paused, setPaused] = useState(false)
+    const pausedRef = useRef(paused)
+    pausedRef.current = paused
     useEffect(() => {
       if (!autoplay || autoplay <= 0) return
       let onscreen = true
@@ -526,7 +537,13 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       el?.addEventListener('focusin', onFocusIn)
       el?.addEventListener('focusout', onFocusOut)
       const timer = setInterval(() => {
-        if (hovering.current || focused || !onscreen || document.visibilityState === 'hidden')
+        if (
+          pausedRef.current ||
+          hovering.current ||
+          focused ||
+          !onscreen ||
+          document.visibilityState === 'hidden'
+        )
           return
         const h = handle.current
         if (!h) return
@@ -547,8 +564,24 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
+    const rotating = !!autoplay && autoplay > 0 && !paused
+    // APG slide semantics without breaking layout: annotate each child in
+    // place (no wrapper — sv-cols and --sv-span target direct children)
+    const slides = React.Children.map(children, (child, i) =>
+      React.isValidElement<Record<string, unknown>>(child)
+        ? React.cloneElement(child, {
+            role: (child.props.role as string) ?? 'group',
+            'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
+            'aria-label': child.props['aria-label'] ?? `${i + 1} of ${count}`,
+          })
+        : child
+    )
+
     return (
       <div
+        role="region"
+        aria-roledescription="carousel"
+        aria-label={label}
         className={className ? `sv-slider-shell ${className}` : 'sv-slider-shell'}
         data-sv-uid={uid}
         style={{ ...style, ...styleVars } as React.CSSProperties}
@@ -557,8 +590,22 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         {...rest}
       >
         {perView && typeof perView === 'object' && <style>{perViewCss(scope, perView)}</style>}
-        <div ref={ref} className={perView !== undefined ? 'sv-slider sv-cols' : 'sv-slider'}>
-          {children}
+        {!!autoplay && autoplay > 0 && (
+          <button
+            type="button"
+            className="sv-pause"
+            aria-label={paused ? 'start slide rotation' : 'stop slide rotation'}
+            onClick={() => setPaused((p) => !p)}
+          >
+            {paused ? (playIcon ?? '\u25b6') : (pauseIcon ?? '\u23f8')}
+          </button>
+        )}
+        <div
+          ref={ref}
+          aria-live={rotating ? 'off' : 'polite'}
+          className={perView !== undefined ? 'sv-slider sv-cols' : 'sv-slider'}
+        >
+          {slides}
         </div>
         {arrows && (
           <>
@@ -589,7 +636,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
                   type="button"
                   aria-label={`go to slide ${i + 1}`}
                   onClick={() => goTo(i)}
-                  style={{ all: 'unset', cursor: 'pointer' }}
+                  style={{ all: 'unset', outline: 'revert', cursor: 'pointer' }}
                 >
                   {renderDot(i, i === active)}
                 </button>

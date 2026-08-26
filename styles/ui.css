@@ -17,7 +17,8 @@
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite;
 }
-.sv-marquee:hover .sv-marquee-track {
+.sv-marquee:hover .sv-marquee-track,
+.sv-marquee:focus-within .sv-marquee-track {
   animation-play-state: var(--sv-marquee-hover, paused);
 }
 @keyframes sv-marquee {

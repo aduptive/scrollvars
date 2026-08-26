@@ -361,6 +361,26 @@
 .sv-arrow-prev {
   left: var(--sv-arrow-inset, 12px);
 }
+/* Autoplay pause/resume (APG carousel: a visible rotation control, first in
+   the tab order). Same knob family as the arrows. */
+.sv-pause {
+  position: absolute;
+  top: var(--sv-pause-inset, 10px);
+  right: var(--sv-pause-inset, 10px);
+  z-index: 2;
+  width: var(--sv-pause-size, 32px);
+  height: var(--sv-pause-size, 32px);
+  display: grid;
+  place-items: center;
+  border-radius: var(--sv-arrow-radius, 999px);
+  border: 1px solid var(--sv-arrow-border, rgba(128, 128, 128, 0.35));
+  background: var(--sv-arrow-bg, rgba(0, 0, 0, 0.35));
+  color: var(--sv-arrow-color, currentColor);
+  font-size: calc(var(--sv-pause-size, 32px) * 0.38);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
 .sv-arrow-next {
   right: var(--sv-arrow-inset, 12px);
 }
@@ -540,7 +560,8 @@ dialog.sv-pop:not([open]) {
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite;
 }
-.sv-marquee:hover .sv-marquee-track {
+.sv-marquee:hover .sv-marquee-track,
+.sv-marquee:focus-within .sv-marquee-track {
   animation-play-state: var(--sv-marquee-hover, paused);
 }
 @keyframes sv-marquee {
