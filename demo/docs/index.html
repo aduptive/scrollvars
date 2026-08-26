@@ -34,7 +34,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.8.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.9.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -174,6 +174,32 @@ gsap.ticker.add(() =&gt; {
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.9.0 — 2026-08-26</h3>
+
+Driven by the third blind-review round (Kimi K3 moved 7 → 8; the remaining
+criticisms became this release).
+
+<ul><li><b>Offscreen culling.</b> Entries far outside a one-viewport margin skip the</li></ul>
+  per-frame <code>getBoundingClientRect</code> (IntersectionObserver-gated; entries
+  with a custom <code>root</code> and <code>once</code>-completed entries are handled; tested).
+  Long pages stop paying for sections nowhere near the screen — and the
+  main bench scenario's total CPU flipped in scrollvars' favor with it.
+<ul><li><b><code>scrollvars/debug</code></b> — the devtools story: a dev overlay listing every</li></ul>
+  tracked element with live variable values, live badge, tracked-element
+  outlines and click-to-scroll. <code>import('scrollvars/debug').then(m => m.debug())</code>.
+<ul><li><b>Honest numbers, mechanically enforced.</b> The demo footer version and</li></ul>
+  wire sizes are stamped at build time from the actual dist (esbuild+gzip);
+  fx pages compute the engine size from the real bundle; every stale
+  1.2/3.1 KB claim corrected to measured values (driver 1.4 KB gz, full
+  core 3.9, slider 1.7, core.css 1.8). The demo page's inline driver is
+  labeled as that page's teaching copy — the package in dist/ is the
+  source of truth.
+<ul><li><b>Benchmark: medians of 5 runs</b> (was 3) and a precisely-stated headline</li></ul>
+  claim: not faster frames — the same frames for ~12× less bundle and a
+  fraction of the heap, with total CPU trading blows (scrollvars wins
+  shallow scenarios, batched GSAP wins deep subtrees; both published).
 
 
 <h3>1.8.0 — 2026-08-25</h3>

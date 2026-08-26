@@ -44,23 +44,26 @@ identically. <b>Keep this tab visible</b> — browsers freeze background tabs.</
 </table>
 <iframe id="stage" hidden></iframe>
 <h1 style="font-size:17px; margin-top:26px;">The CPU cost for the same frames — measured, reproducible</h1>
-<p class="sub">Frame delivery ties because every competent engine animates only the viewport.
-What differs is what those frames <i>cost</i>. Both GSAP variants are included: the idiomatic
-one-trigger-per-box page people actually write, and the batched expert build (one trigger per
-section) that is symmetric to scrollvars’ one-tracker-per-section — compare against the
-batched row for the fair fight.</p>
+<p class="sub"><b>The claim, stated precisely:</b> scrollvars does not promise faster frames —
+frame delivery ties at 60 fps in every row, because every competent engine animates only the
+viewport. The claim is: the same frames for a ~12× smaller bundle, a fraction of the heap,
+zero React re-renders, and a fail-visible no-JS story — with total CPU trading blows
+(scrollvars wins the shallow scenarios, batched GSAP wins deep subtrees; both are below).
+Both GSAP variants are included: the idiomatic one-trigger-per-box page people actually
+write, and the batched expert build (one trigger per section), symmetric to scrollvars'
+one-tracker-per-section — compare against the batched row for the fair fight.</p>
 <!-- measured:start -->
 <p class="sub">Measured by the committed harness (<code>demo/bench/harness</code> — clone the repo,
 <code>npm i && npm run measure</code>): headless Chrome Chrome/152.0.7977.64,
-median of 3 runs, engine order rotated per repetition.
+median of 5 runs, engine order rotated per repetition.
 Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
   <tbody>
-    <tr><td>scrollvars</td><td class="n">114 ms</td><td class="n">228 ms</td><td class="n">7 ms</td><td class="n">1144 ms</td><td class="n">1.3 MB</td><td class="n">60</td></tr>
-    <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">272 ms</td><td class="n">94 ms</td><td class="n">7 ms</td><td class="n">991 ms</td><td class="n">6.3 MB</td><td class="n">60</td></tr>
-    <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">155 ms</td><td class="n">76 ms</td><td class="n">7 ms</td><td class="n">834 ms</td><td class="n">6.8 MB</td><td class="n">60</td></tr>
-    <tr><td>framer-motion (React)</td><td class="n">742 ms</td><td class="n">48 ms</td><td class="n">10 ms</td><td class="n">1534 ms</td><td class="n">9.5 MB</td><td class="n">60</td></tr>
+    <tr><td>scrollvars</td><td class="n">100 ms</td><td class="n">195 ms</td><td class="n">7 ms</td><td class="n">958 ms</td><td class="n">1.4 MB</td><td class="n">60</td></tr>
+    <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">233 ms</td><td class="n">85 ms</td><td class="n">7 ms</td><td class="n">904 ms</td><td class="n">6.2 MB</td><td class="n">60</td></tr>
+    <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">175 ms</td><td class="n">86 ms</td><td class="n">7 ms</td><td class="n">993 ms</td><td class="n">6.7 MB</td><td class="n">60</td></tr>
+    <tr><td>framer-motion (React)</td><td class="n">740 ms</td><td class="n">48 ms</td><td class="n">8 ms</td><td class="n">1523 ms</td><td class="n">11.1 MB</td><td class="n">60</td></tr>
   </tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
@@ -70,9 +73,9 @@ build, 150 boxes, medians:</p>
 <table>
   <thead><tr><th>subtree size</th><th>scrollvars recalc</th><th>gsap-batched recalc</th><th>scrollvars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
   <tbody>
-    <tr><td>5 nodes/box</td><td class="n">232 ms</td><td class="n">82 ms</td><td class="n">106 ms</td><td class="n">175 ms</td><td class="n">1.2 MB</td><td class="n">3.2 MB</td></tr>
-    <tr><td>20 nodes/box</td><td class="n">479 ms</td><td class="n">84 ms</td><td class="n">144 ms</td><td class="n">174 ms</td><td class="n">1.2 MB</td><td class="n">3.3 MB</td></tr>
-    <tr><td>50 nodes/box</td><td class="n">744 ms</td><td class="n">102 ms</td><td class="n">129 ms</td><td class="n">204 ms</td><td class="n">1.2 MB</td><td class="n">3.4 MB</td></tr>
+    <tr><td>5 nodes/box</td><td class="n">288 ms</td><td class="n">73 ms</td><td class="n">98 ms</td><td class="n">153 ms</td><td class="n">1.1 MB</td><td class="n">3.2 MB</td></tr>
+    <tr><td>20 nodes/box</td><td class="n">516 ms</td><td class="n">98 ms</td><td class="n">95 ms</td><td class="n">204 ms</td><td class="n">1 MB</td><td class="n">3.3 MB</td></tr>
+    <tr><td>50 nodes/box</td><td class="n">769 ms</td><td class="n">96 ms</td><td class="n">87 ms</td><td class="n">192 ms</td><td class="n">1.1 MB</td><td class="n">3.4 MB</td></tr>
   </tbody>
 </table>
 <!-- measured:end -->

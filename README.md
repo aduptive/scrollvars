@@ -22,14 +22,17 @@ what differs is what those frames cost:
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| scrollvars | 3.9 KB | 114 ms | 228 ms | **1.3 MB** |
-| gsap + ScrollTrigger (idiomatic) | 46.3 KB | 272 ms | 94 ms | 6.3 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 155 ms | 76 ms | 6.8 MB |
-| framer-motion | 46.9 KB (+ React) | 742 ms | 48 ms | 9.5 MB |
+| scrollvars | 3.9 KB | 100 ms | 195 ms | **1.4 MB** |
+| gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
+| framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
 
-Medians of 3 runs from the committed harness (`demo/bench/harness` —
+Medians of 5 runs from the committed harness (`demo/bench/harness` —
 `npm i && npm run measure` reproduces every number, engine order rotated,
-throttle calibrated). Frame delivery ties at 60 fps in every row.
+throttle calibrated). Frame delivery ties at 60 fps in every row. The
+precise claim: not faster frames — the same frames for ~12× less bundle
+and a fraction of the heap; total CPU trades blows (scrollvars wins
+shallow, batched GSAP wins deep subtrees — the published curve).
 
 Why the numbers come out this way — each is a design decision, not tuning:
 

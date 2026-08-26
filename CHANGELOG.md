@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.9.0 — 2026-08-26
+
+Driven by the third blind-review round (Kimi K3 moved 7 → 8; the remaining
+criticisms became this release).
+
+- **Offscreen culling.** Entries far outside a one-viewport margin skip the
+  per-frame `getBoundingClientRect` (IntersectionObserver-gated; entries
+  with a custom `root` and `once`-completed entries are handled; tested).
+  Long pages stop paying for sections nowhere near the screen — and the
+  main bench scenario's total CPU flipped in scrollvars' favor with it.
+- **`scrollvars/debug`** — the devtools story: a dev overlay listing every
+  tracked element with live variable values, live badge, tracked-element
+  outlines and click-to-scroll. `import('scrollvars/debug').then(m => m.debug())`.
+- **Honest numbers, mechanically enforced.** The demo footer version and
+  wire sizes are stamped at build time from the actual dist (esbuild+gzip);
+  fx pages compute the engine size from the real bundle; every stale
+  1.2/3.1 KB claim corrected to measured values (driver 1.4 KB gz, full
+  core 3.9, slider 1.7, core.css 1.8). The demo page's inline driver is
+  labeled as that page's teaching copy — the package in dist/ is the
+  source of truth.
+- **Benchmark: medians of 5 runs** (was 3) and a precisely-stated headline
+  claim: not faster frames — the same frames for ~12× less bundle and a
+  fraction of the heap, with total CPU trading blows (scrollvars wins
+  shallow scenarios, batched GSAP wins deep subtrees; both published).
+
+
 ## 1.8.0 — 2026-08-25
 
 The "path to 8" release — everything the external review panel said would
