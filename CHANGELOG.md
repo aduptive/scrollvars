@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.0 — 2026-08-27
+
+- **Attribute knobs — the style attribute is now optional everywhere.**
+  `data-sv-order`, `data-sv-distance`, `data-sv-from`, `data-sv-to` become
+  the matching CSS variables, written once on mount by `scan()` (and for
+  route-change nodes via the existing MutationObserver) — never in the
+  frame loop, zero global CSS, safe for mapped CMS content where Tailwind's
+  JIT can't interpolate classes. When typed CSS `attr()` settles, this
+  mapping becomes pure CSS.
+- Docs: "One knob, four ways" before/after table (style attr vs attribute
+  vs React prop vs arbitrary class vs sv-stagger) and a Browser support
+  section on /docs/ — the full matrix plus the `scrollvars/compat` legacy
+  answer (previously README-only).
+- fx: staggered-reveal and sequenced-scrub teach the attribute path in
+  their Tailwind tabs; the sequenced-scrub preview dogfoods it.
+
+
 ## 1.10.0 — 2026-08-27
 
 "Hitting the ceiling never means rewriting" — interop as official recipes,

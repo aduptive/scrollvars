@@ -93,7 +93,7 @@ when the track fits the viewport:
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
-`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band)) — no client components
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes — `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no style attr; prefer these over style vars for mapped/CMS content)) — no client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
 **Spread (deck → grid):** `sv-spread` — children sit in their real flex row,

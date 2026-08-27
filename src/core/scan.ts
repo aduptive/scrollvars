@@ -9,9 +9,29 @@ import { track } from './driver.js'
  *   <div data-sv data-sv-pin>…</div>
  *   <div data-sv data-sv-scenes="4">…</div>
  *
+ * Per-element knobs are attributes too — no style attribute needed:
+ *
+ *   <p class="sv-rise" data-sv-order="1" data-sv-distance="3rem">…</p>
+ *   <h2 data-sv-from="0" data-sv-to=".4">…</h2>   (sv-range slices)
+ *
+ * Each is written once as the matching CSS variable on mount (never in the
+ * frame loop). When typed CSS attr() support settles, this mapping becomes
+ * pure CSS and the write disappears.
+ *
  * A MutationObserver picks up nodes added later (route transitions, CMS
  * blocks) and untracks removed ones. Returns a stop function.
  */
+
+// per-element variable knobs: data-sv-<name> → --sv-<name>, written once
+const VAR_ATTRS = ['order', 'distance', 'from', 'to'] as const
+const VAR_SELECTOR = VAR_ATTRS.map((name) => `[data-sv-${name}]`).join(',')
+
+function applyVarAttrs(el: HTMLElement) {
+  for (const name of VAR_ATTRS) {
+    const value = el.getAttribute(`data-sv-${name}`)
+    if (value !== null) el.style.setProperty(`--sv-${name}`, value)
+  }
+}
 
 function optionsFrom(el: HTMLElement): TrackOptions {
   const scenes = Number(el.getAttribute('data-sv-scenes'))
@@ -47,9 +67,14 @@ export function scan(root?: ParentNode): () => void {
     if (!(node instanceof HTMLElement)) return
     if (node.hasAttribute('data-sv')) fn(node)
     node.querySelectorAll<HTMLElement>('[data-sv]').forEach(fn)
+    if (fn === add) {
+      if (node.matches?.(VAR_SELECTOR)) applyVarAttrs(node)
+      node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+    }
   }
 
   scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+  scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
 
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {

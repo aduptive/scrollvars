@@ -2847,7 +2847,7 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.10.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.11.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS — any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3160,6 +3160,15 @@ var SV = (() => {
   }
 
   // dist/core/scan.js
+  var VAR_ATTRS = ["order", "distance", "from", "to"];
+  var VAR_SELECTOR = VAR_ATTRS.map((name) => `[data-sv-${name}]`).join(",");
+  function applyVarAttrs(el) {
+    for (const name of VAR_ATTRS) {
+      const value = el.getAttribute(`data-sv-${name}`);
+      if (value !== null)
+        el.style.setProperty(`--sv-${name}`, value);
+    }
+  }
   function optionsFrom(el) {
     const scenes = Number(el.getAttribute("data-sv-scenes"));
     return {
@@ -3195,8 +3204,14 @@ var SV = (() => {
       if (node.hasAttribute("data-sv"))
         fn(node);
       node.querySelectorAll("[data-sv]").forEach(fn);
+      if (fn === add) {
+        if (node.matches?.(VAR_SELECTOR))
+          applyVarAttrs(node);
+        node.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+      }
     };
     scope.querySelectorAll("[data-sv]").forEach(add);
+    scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => sweep(node, add));

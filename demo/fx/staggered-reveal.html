@@ -148,13 +148,14 @@
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
   &lt;h2 class="sv-rise text-4xl font-bold"&gt;Title&lt;/h2&gt;
-  &lt;p class="sv-rise [--sv-order:1]"&gt;Copy&lt;/p&gt;
-  &lt;p class="sv-rise [--sv-order:2] [--sv-distance:3rem]"&gt;More&lt;/p&gt;
+  &lt;p class="sv-rise" data-sv-order="1"&gt;Copy&lt;/p&gt;
+  &lt;p class="sv-rise" data-sv-order="2" data-sv-distance="3rem"&gt;More&lt;/p&gt;
 &lt;/section&gt;
 &lt;!-- once: import 'scrollvars/styles/core.css' + &lt;ScrollVarsBoot /&gt; in the layout --&gt;
-&lt;!-- arbitrary classes are for static one-offs. Mapped content: use
-     style={{'--sv-order': i}} (the JIT can't see dynamic class names).
-     Sequential lists: add sv-stagger to the parent, drop per-child order. --&gt;</code></pre>
+&lt;!-- data-sv-order/-distance/-from/-to become the CSS vars on mount — no
+     style attr, works with mapped CMS content, adds zero global CSS.
+     Also fine: [--sv-order:1] arbitrary classes for static one-offs;
+     sv-stagger on the parent for sequential lists (no attrs at all). --&gt;</code></pre>
     <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; gets .sv-live in the band --&gt;
   &lt;h2 class="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p class="sv-rise" style="--sv-order: 1"&gt;Copy&lt;/p&gt;
@@ -176,12 +177,12 @@
   &lt;Item order={1} effect="slide-l" distance="4rem"&gt;second&lt;/Item&gt;
 &lt;/Reveal&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 3.9 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.0 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>scrollvars</b> v1.10.0 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>scrollvars</b> v1.11.0 — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

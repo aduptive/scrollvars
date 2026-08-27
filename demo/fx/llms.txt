@@ -1,7 +1,7 @@
 # scrollvars fx — llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the scrollvars engine
-> (npm i scrollvars — full core 3.9 KB gzip). Each effect below includes when to
+> (npm i scrollvars — full core 4.0 KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -16,13 +16,14 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
 ```html
 <section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
-  <p class="sv-rise [--sv-order:1]">Copy</p>
-  <p class="sv-rise [--sv-order:2] [--sv-distance:3rem]">More</p>
+  <p class="sv-rise" data-sv-order="1">Copy</p>
+  <p class="sv-rise" data-sv-order="2" data-sv-distance="3rem">More</p>
 </section>
 <!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
-<!-- arbitrary classes are for static one-offs. Mapped content: use
-     style={{'--sv-order': i}} (the JIT can't see dynamic class names).
-     Sequential lists: add sv-stagger to the parent, drop per-child order. -->
+<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount — no
+     style attr, works with mapped CMS content, adds zero global CSS.
+     Also fine: [--sv-order:1] arbitrary classes for static one-offs;
+     sv-stagger on the parent for sequential lists (no attrs at all). -->
 ```
 
 ### CSS
@@ -200,9 +201,9 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 <div data-sv data-sv-pin class="relative h-[250vh]">
   <div class="sticky top-0 grid h-screen place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
-      <h2 class="[--sv-from:0] [--sv-to:.4] text-4xl font-bold">First</h2>
-      <p class="[--sv-from:.3] [--sv-to:.7]">Second</p>
-      <p class="[--sv-from:.6] [--sv-to:1]">Third</p>
+      <h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold">First</h2>
+      <p data-sv-from=".3" data-sv-to=".7">Second</p>
+      <p data-sv-from=".6" data-sv-to="1">Third</p>
     </div>
   </div>
 </div>

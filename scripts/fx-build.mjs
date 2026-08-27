@@ -44,13 +44,14 @@ const EFFECTS = [
 .sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
-  <p class="sv-rise [--sv-order:1]">Copy</p>
-  <p class="sv-rise [--sv-order:2] [--sv-distance:3rem]">More</p>
+  <p class="sv-rise" data-sv-order="1">Copy</p>
+  <p class="sv-rise" data-sv-order="2" data-sv-distance="3rem">More</p>
 </section>
 <!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
-<!-- arbitrary classes are for static one-offs. Mapped content: use
-     style={{'--sv-order': i}} (the JIT can't see dynamic class names).
-     Sequential lists: add sv-stagger to the parent, drop per-child order. -->`,
+<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount — no
+     style attr, works with mapped CMS content, adds zero global CSS.
+     Also fine: [--sv-order:1] arbitrary classes for static one-offs;
+     sv-stagger on the parent for sequential lists (no attrs at all). -->`,
     react: `<Reveal auto>            {/* every direct child, stagger for free */}
   <h2>Title</h2>
   <p>Copy</p>
@@ -197,9 +198,9 @@ const EFFECTS = [
     preview: `<div data-sv data-sv-pin class="fxouter">
   <div class="fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
-      <h3 class="fxh" style="--sv-from:0; --sv-to:.4">First this</h3>
-      <p class="fxp" style="--sv-from:.3; --sv-to:.7">then this</p>
-      <p class="fxp fxaccent" style="--sv-from:.6; --sv-to:1">then this</p>
+      <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
+      <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp fxaccent" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
 </div>`,
@@ -224,9 +225,9 @@ const EFFECTS = [
     tailwind: `<div data-sv data-sv-pin class="relative h-[250vh]">
   <div class="sticky top-0 grid h-screen place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
-      <h2 class="[--sv-from:0] [--sv-to:.4] text-4xl font-bold">First</h2>
-      <p class="[--sv-from:.3] [--sv-to:.7]">Second</p>
-      <p class="[--sv-from:.6] [--sv-to:1]">Third</p>
+      <h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold">First</h2>
+      <p data-sv-from=".3" data-sv-to=".7">Second</p>
+      <p data-sv-from=".6" data-sv-to="1">Third</p>
     </div>
   </div>
 </div>

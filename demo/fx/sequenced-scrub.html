@@ -137,9 +137,9 @@
   <div data-sv data-sv-pin class="fxouter">
   <div class="fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
-      <h3 class="fxh" style="--sv-from:0; --sv-to:.4">First this</h3>
-      <p class="fxp" style="--sv-from:.3; --sv-to:.7">then this</p>
-      <p class="fxp fxaccent" style="--sv-from:.6; --sv-to:1">then this</p>
+      <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
+      <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp fxaccent" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
 </div>
@@ -153,9 +153,9 @@
     <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[250vh]"&gt;
   &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
     &lt;div class="sv-range sv-range-rise grid gap-3"&gt;
-      &lt;h2 class="[--sv-from:0] [--sv-to:.4] text-4xl font-bold"&gt;First&lt;/h2&gt;
-      &lt;p class="[--sv-from:.3] [--sv-to:.7]"&gt;Second&lt;/p&gt;
-      &lt;p class="[--sv-from:.6] [--sv-to:1]"&gt;Third&lt;/p&gt;
+      &lt;h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold"&gt;First&lt;/h2&gt;
+      &lt;p data-sv-from=".3" data-sv-to=".7"&gt;Second&lt;/p&gt;
+      &lt;p data-sv-from=".6" data-sv-to="1"&gt;Third&lt;/p&gt;
     &lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;
@@ -192,12 +192,12 @@
 // JS twin for canvas/WebGL consumers:
 // track(el, { pin: true, onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 3.9 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.0 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>scrollvars</b> v1.10.0 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>scrollvars</b> v1.11.0 — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

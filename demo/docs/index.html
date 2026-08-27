@@ -34,7 +34,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.10.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.11.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -43,7 +43,9 @@ the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats eac
 <nav class="toc">
 <a href="#quickstart">Quickstart</a> <a href="#vars">The six variables</a>
 <a href="#exports">Every export</a> <a href="#presets">Preset vocabulary</a>
+<a href="#knobs">One knob, four ways</a>
 <a href="#gsap">Coming from GSAP</a> <a href="#not">When NOT to use it</a>
+<a href="#browsers">Browser support</a>
 <a href="#interop">Interop</a> <a href="#a11y">Accessibility contract</a>
 <a href="#trouble">Troubleshooting</a> <a href="#changelog">Changelog</a>
 </nav>
@@ -60,8 +62,13 @@ import { ScrollVarsBoot } from 'scrollvars/react'
 // any page — no client components needed:
 &lt;section data-sv data-sv-once&gt;
   &lt;h2 className="sv-rise"&gt;Title&lt;/h2&gt;
-  &lt;p className="sv-rise" style={{ '--sv-order': 1 }}&gt;Copy&lt;/p&gt;
+  &lt;p className="sv-rise" data-sv-order="1"&gt;Copy&lt;/p&gt;
 &lt;/section&gt;</code></pre>
+<p>Per-element knobs are attributes too: <code>data-sv-order</code>,
+<code>data-sv-distance</code>, <code>data-sv-from</code>/<code>data-sv-to</code> become the
+matching CSS variables on mount — no style attribute, safe for mapped CMS content, zero
+global CSS. (React props on <code>&lt;Item&gt;</code>/<code>&lt;Reveal&gt;</code> compile the
+same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <p><b>Vanilla:</b> <code>import { scan } from 'scrollvars'; scan()</code> — same attributes.
 <b>React components:</b> <code>&lt;Reveal auto&gt;</code>, <code>&lt;Track pin&gt;</code>,
 <code>&lt;Scenes count={4}&gt;</code> when you want props instead of attributes.</p>
@@ -80,6 +87,37 @@ import { ScrollVarsBoot } from 'scrollvars/react'
 tunable per element via <code>enter</code>/<code>exit</code> or
 <code>data-sv-enter</code>/<code>data-sv-exit</code>) and the no-JS guard: hiding styles apply
 only under <code>html.sv-on</code>, so without JavaScript the page renders complete.</p>
+
+<h2 id="knobs">One knob, four ways (de/para)</h2>
+<p>Same result — a child rising second, 3rem of travel — pick the authoring style
+that fits the context. You never need the style attribute unless the value is
+computed in JS at runtime:</p>
+<table>
+<tr><th>context</th><th>before (works, but…)</th><th>after (preferred)</th></tr>
+<tr><td>HTML / CMS / RSC</td>
+<td><code>&lt;p class="sv-rise" style="--sv-order: 1; --sv-distance: 3rem"&gt;</code></td>
+<td><code>&lt;p class="sv-rise" data-sv-order="1" data-sv-distance="3rem"&gt;</code></td></tr>
+<tr><td>React</td>
+<td><code>&lt;p className="sv-rise" style={{ '--sv-order': 1 }}&gt;</code></td>
+<td><code>&lt;Item order={1} distance="3rem"&gt;…&lt;/Item&gt;</code></td></tr>
+<tr><td>Tailwind, static value</td>
+<td><code>&lt;p class="sv-rise" style="--sv-order: 1"&gt;</code></td>
+<td><code>&lt;p class="sv-rise [--sv-order:1]"&gt;</code></td></tr>
+<tr><td>Sequential list</td>
+<td>an order per child, by hand</td>
+<td><code>&lt;div class="sv-stagger"&gt;</code> on the parent — nth-child does it, zero per-child anything</td></tr>
+<tr><td>Mapped data (CMS loop)</td>
+<td><code>style={{ '--sv-order': i }}</code></td>
+<td><code>data-sv-order={i}</code> — attributes interpolate; Tailwind classes don't (the JIT scans statically)</td></tr>
+<tr><td>sv-range slices</td>
+<td><code>style="--sv-from: .3; --sv-to: .7"</code></td>
+<td><code>data-sv-from=".3" data-sv-to=".7"</code></td></tr>
+</table>
+<p>The attributes (<code>data-sv-order</code>, <code>data-sv-distance</code>,
+<code>data-sv-from</code>, <code>data-sv-to</code>) are written once as the matching CSS
+variable on mount by <code>scan()</code>/<code>&lt;ScrollVarsBoot /&gt;</code> — never in the
+frame loop, zero global CSS. When typed CSS <code>attr()</code> settles cross-browser this
+mapping becomes pure CSS.</p>
 
 <h2 id="exports">Every export</h2>
 <p class="grp">scrollvars (vanilla core)</p>
@@ -167,11 +205,32 @@ plug in what's missing.</p>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked — the driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 </table>
 
+<h2 id="browsers">Browser support — and the answer for older ones</h2>
+<table>
+<tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
+<tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
+<tr><td>Firefox</td><td><b>74+</b> (Mar 2020)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
+</table>
+<p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
+breaks — the page renders complete and static. Animation is progressive enhancement, never a
+dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
+degrade to their end state individually.</p>
+<p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
+two feature checks and exits (free); on old ones it installs ResizeObserver/
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet written
+without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>. With your bundler
+downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets animate on
+roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
+<pre><code>import { compat } from 'scrollvars/compat'
+compat()   // once, before anything else</code></pre>
+
 <h2 id="trouble">Troubleshooting</h2>
 <table>
 <tr><th>symptom</th><th>cause → fix</th></tr>
 <tr><td>content hidden until first scroll</td><td>entrance CSS not gated on <code>.sv-on</code> — use the shipped presets or copy their guard pattern</td></tr>
-<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names — use <code>style={{ '--sv-order': i }}</code> for dynamic values (static one-offs like <code>[--sv-order:1]</code> are fine)</td></tr>
+<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names — use <code>data-sv-order={i}</code> (or a style var) for dynamic values; static one-offs like <code>[--sv-order:1]</code> are fine</td></tr>
 <tr><td>animation inside a modal/panel doesn't run</td><td>tracked element lives in a nested scroller — pass <code>root: scrollerEl</code> so geometry matches (the listener already hears it)</td></tr>
 <tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale) — radial math needs the <code>transform:</code> shorthand</td></tr>
 <tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var — transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
@@ -180,6 +239,23 @@ plug in what's missing.</p>
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.11.0 — 2026-08-27</h3>
+
+<ul><li><b>Attribute knobs — the style attribute is now optional everywhere.</b></li></ul>
+  <code>data-sv-order</code>, <code>data-sv-distance</code>, <code>data-sv-from</code>, <code>data-sv-to</code> become
+  the matching CSS variables, written once on mount by <code>scan()</code> (and for
+  route-change nodes via the existing MutationObserver) — never in the
+  frame loop, zero global CSS, safe for mapped CMS content where Tailwind's
+  JIT can't interpolate classes. When typed CSS <code>attr()</code> settles, this
+  mapping becomes pure CSS.
+<ul><li>Docs: "One knob, four ways" before/after table (style attr vs attribute</li></ul>
+  vs React prop vs arbitrary class vs sv-stagger) and a Browser support
+  section on /docs/ — the full matrix plus the <code>scrollvars/compat</code> legacy
+  answer (previously README-only).
+<ul><li>fx: staggered-reveal and sequenced-scrub teach the attribute path in</li></ul>
+  their Tailwind tabs; the sequenced-scrub preview dogfoods it.
 
 
 <h3>1.10.0 — 2026-08-27</h3>

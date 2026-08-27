@@ -84,3 +84,45 @@ test('scan tracks [data-sv] nodes, follows mutations, stops cleanly', async () =
   stop()
   assert.equal(trackedCount(), 0)
 })
+
+test('scan writes data-sv-* knob attributes as CSS variables, once', async () => {
+  global.window = { innerHeight: 1000, addEventListener: () => {}, matchMedia: () => ({ matches: false, addEventListener: () => {} }) }
+  global.document = { documentElement: { classList: { add: () => {} } }, body: {}, visibilityState: 'visible' }
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  global.MutationObserver = class { constructor(cb) { global.__mutCb = cb } observe() {} disconnect() {} }
+  global.HTMLElement = class {}
+
+  const VAR_SEL = '[data-sv-order],[data-sv-distance],[data-sv-from],[data-sv-to]'
+  const knob = (attrs) => {
+    const el = new global.HTMLElement()
+    Object.assign(el, {
+      attrs,
+      vars: {},
+      style: { setProperty: (k, v) => (el.vars[k] = v) },
+      classList: { add: () => {}, toggle: () => {} },
+      hasAttribute: (n) => n in attrs,
+      getAttribute: (n) => attrs[n] ?? null,
+      matches: (sel) => sel === VAR_SEL && Object.keys(attrs).some((a) => sel.includes(`[${a}]`)),
+      querySelectorAll: () => [],
+      getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),
+    })
+    return el
+  }
+  const child = knob({ 'data-sv-order': '2', 'data-sv-distance': '3rem' })
+  const scope = {
+    querySelectorAll: (sel) => (sel === VAR_SEL ? [child] : []),
+  }
+
+  const { scan } = await import('../dist/core/scan.js?varattrs')
+  const stop = scan(scope)
+  assert.equal(child.vars['--sv-order'], '2')
+  assert.equal(child.vars['--sv-distance'], '3rem')
+  assert.equal(child.vars['--sv-from'], undefined)
+
+  // a node arriving later (route change) gets the same treatment
+  const late = knob({ 'data-sv-from': '0.3', 'data-sv-to': '0.7' })
+  global.__mutCb([{ addedNodes: [late], removedNodes: [] }])
+  assert.equal(late.vars['--sv-from'], '0.3')
+  assert.equal(late.vars['--sv-to'], '0.7')
+  stop()
+})
