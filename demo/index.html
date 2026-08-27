@@ -41,7 +41,8 @@
   }
   ::selection { background: var(--accent); color: var(--ink); }
 
-  /* ══════════════ scrollvars presets (the lib stylesheet, inlined) ══════════════ */
+  /* ══════════ page copy of the preset tier — tuned for this page (stagger 110ms
+     here; the SHIPPED styles.css defaults to 90ms and is the source of truth) ══════════ */
   .sv { --sv-view: -1; --sv-t: 0; --sv-scene: 0; --sv-distance: 6rem; --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1); --sv-duration: 800ms; --sv-stagger: 110ms; }
   .sv .sv-rise, .sv .sv-fade {
     opacity: 0;
@@ -2100,6 +2101,7 @@ mountEffect(canvas, {
   frame:  (fx, dt) =&gt; { <span class="c">/* one step; dt in seconds, ctx pre-scaled to CSS px */</span> },
 })
 <span class="c">// resize + DPR cap · pauses offscreen &amp; on hidden tab · fx.reducedMotion live</span>
+<span class="c">// WebGL/Three: { context: null } — your renderer owns the canvas, the harness the lifecycle</span>
 <span class="c">// scroll input crosses over by closure, the modules stay decoupled:</span>
 <span class="k">track</span>(section, { onTravel: (t) =&gt; { amplitude = t } })</code></pre>
   </div>
@@ -2845,7 +2847,8 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.10.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.10.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+<p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS — any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
