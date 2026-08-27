@@ -112,6 +112,10 @@
         <a href="horizontal-rail.html">Horizontal rail</a>
         <a href="sequenced-scrub.html">Sequenced scrub</a>
       </details>
+      <details open><summary>Interop</summary>
+        <a href="gsap-scrub.html">GSAP timeline under scrub</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
+      </details>
       <details open><summary>Text</summary>
         <a href="rotating-words.html">Rotating words</a>
       </details>
@@ -140,6 +144,11 @@
     <a class="fxlink" href="horizontal-rail.html"><b>Horizontal rail</b><span>Vertical scroll travels a horizontal track through a pinned stage.</span></a>
     <a class="fxlink" href="sequenced-scrub.html"><b>Sequenced scrub</b><span>Each child animates over its own slice of the pin — choreography without a timeline.</span></a>
   </div>
+  <h2 class="fxcat">Interop</h2>
+  <div class="grid">
+    <a class="fxlink" href="gsap-scrub.html"><b>GSAP timeline under scrub</b><span>Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.</span></a>
+    <a class="fxlink" href="three-scene.html"><b>Three.js scene on the pin</b><span>A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.</span></a>
+  </div>
   <h2 class="fxcat">Text</h2>
   <div class="grid">
     <a class="fxlink" href="rotating-words.html"><b>Rotating words</b><span>One word exits up, the next rises from below — a clipped column on one variable.</span></a>
@@ -158,7 +167,7 @@
 </main>
 </div>
 <footer class="fx">
-  <div><b>scrollvars</b> v1.9.0 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>scrollvars</b> v1.10.0 — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

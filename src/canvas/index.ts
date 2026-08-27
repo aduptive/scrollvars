@@ -13,8 +13,11 @@
  */
 
 export interface EffectFrame {
-  ctx: CanvasRenderingContext2D
-  /** Canvas size in CSS pixels (already DPR-scaled on the context). */
+  /** The 2D context — or null when `context: null` (WebGL/Three effects own
+   * their renderer and read `canvas` instead). */
+  ctx: CanvasRenderingContext2D | null
+  canvas: HTMLCanvasElement
+  /** Canvas size in CSS pixels (already DPR-scaled on the 2D context). */
   width: number
   height: number
   dpr: number
@@ -31,6 +34,10 @@ export interface EffectOptions {
   resize?: (fx: EffectFrame) => void
   /** Max device-pixel-ratio (default 2 — beyond that it's just heat). */
   dprCap?: number
+  /** `'2d'` (default) grabs and DPR-scales a 2D context. `null` grabs
+   * nothing — for WebGL/Three: create your own renderer on `fx.canvas`
+   * (the harness still sizes the backing store and runs the lifecycle). */
+  context?: '2d' | null
   /** Pause automatically when offscreen / tab hidden (default true). */
   autoPause?: boolean
 }
@@ -45,16 +52,17 @@ const noop: EffectHandle = { pause: () => {}, resume: () => {}, destroy: () => {
 
 export function mountEffect(
   canvas: HTMLCanvasElement,
-  { setup, frame, resize, dprCap = 2, autoPause = true }: EffectOptions
+  { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }: EffectOptions
 ): EffectHandle {
   if (typeof window === 'undefined') return noop
 
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return noop
+  const ctx = context === '2d' ? canvas.getContext('2d') : null
+  if (context === '2d' && !ctx) return noop
 
   const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
   const fx: EffectFrame = {
     ctx,
+    canvas,
     width: 0,
     height: 0,
     dpr: 1,
@@ -99,7 +107,7 @@ export function mountEffect(
     fx.height = rect.height
     canvas.width = Math.round(rect.width * fx.dpr)
     canvas.height = Math.round(rect.height * fx.dpr)
-    ctx.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0)
+    ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0)
     if (!ready) {
       ready = true
       setup?.(fx)

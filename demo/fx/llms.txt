@@ -248,6 +248,115 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 // track(el, { pin: true, onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })
 ```
 
+## GSAP timeline under scrub (gsap-scrub)
+
+Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.
+Category: Interop
+Use for: The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.
+Knobs: the timeline is yours; scrollvars owns scroll (pin/onPin) — never let GSAP add its own scroll listener
+
+### Tailwind
+```html
+<div data-x class="relative h-[250vh]">   <!-- no data-sv: this one is tracked in JS -->
+  <div class="sticky top-0 grid h-screen place-items-center">…</div>
+</div>
+<!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
+     gsap.ticker.add(() => tl.progress(
+       parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->
+```
+
+### CSS
+```html
+<div class="outer">          <!-- height: 250vh; position: relative -->
+  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+</div>
+
+<script>
+  // author in time-space, consume as a scrub — this stays input-driven:
+  const tl = gsap.timeline({ paused: true })
+    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+
+  track(document.querySelector('.outer'), {
+    pin: true,
+    onPin: (p) => tl.progress(p), // scrollvars steers, GSAP renders
+  })
+  // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
+</script>
+```
+
+### React
+```tsx
+const tl = useRef<gsap.core.Timeline>(null)
+useEffect(() => {
+  tl.current = gsap.timeline({ paused: true })
+    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+  return () => tl.current?.kill()
+}, [])
+
+<Track pin onPin={(p) => tl.current?.progress(p)} className="relative h-[250vh]">
+  <div className="sticky top-0 h-screen">…</div>
+</Track>
+```
+
+## Three.js scene on the pin (three-scene)
+
+A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.
+Category: Interop
+Use for: Hero 3D moments, product tours, camera paths — WebGL driven by the same variables.
+Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures
+
+### Tailwind
+```html
+<div class="relative h-[250vh]">
+  <div class="sticky top-0 grid h-screen place-items-center">
+    <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
+  </div>
+</div>
+<!-- same JS as the CSS tab — Tailwind only does the skeleton here -->
+```
+
+### CSS
+```html
+<div class="outer">              <!-- height: 250vh -->
+  <div class="sticky"><canvas id="scene"></canvas></div>
+</div>
+
+<script type="module">
+  import { track } from 'scrollvars'
+  import { mountEffect } from 'scrollvars/canvas'
+  import * as THREE from 'three'
+
+  let progress = 0
+  mountEffect(document.getElementById('scene'), {
+    context: null,                       // you own the WebGL context
+    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
+    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
+    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
+  })
+  track(outer, { pin: true, onPin: (p) => (progress = p) })
+  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
+  // delta-time loop, reduced-motion flag, cleanup — Three stays userland.
+</script>
+```
+
+### React
+```tsx
+'use client'
+const progress = useRef(0)
+const canvasRef = useCanvasEffect({
+  context: null,
+  setup(fx)  { /* THREE renderer on fx.canvas */ },
+  resize(fx) { /* size + DPR */ },
+  frame(fx, dt) { /* render with progress.current */ },
+})
+
+<Track pin onPin={(p) => (progress.current = p)} className="relative h-[250vh]">
+  <div className="sticky top-0 grid h-screen place-items-center">
+    <canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" />
+  </div>
+</Track>
+```
+
 ## Rotating words (rotating-words)
 
 One word exits up, the next rises from below — a clipped column on one variable.

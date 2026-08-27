@@ -107,6 +107,14 @@ division needs Chrome 112/Safari 16.4/FF 112 and the fallback settles old
 engines at the end state). JS twin: `mapRange(t, from, to, ease?)` inside
 `onPin`/`onTravel` for canvas/WebGL.
 
+
+**Hitting the ceiling ≠ rewriting (official interop):** author a GSAP timeline
+in time-space and scrub it — `track(el, { pin: true, onPin: (p) => tl.progress(p) })`
+(one listener, one writer; never ALSO give GSAP a scroll listener). Three/WebGL:
+`mountEffect(canvas, { context: null, ... })` — the harness owns lifecycle
+(DPR/resize/pause/reduced-motion), your renderer owns the canvas, `onPin`
+feeds progress. Live recipes: fx/gsap-scrub, fx/three-scene.
+
 **Pinned presets:** `sv-deck` (card pile, children stack via grid, set
 `--sv-count`), `sv-reading` (word spans lit across the pin: `--sv-count` on
 the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via

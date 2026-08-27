@@ -33,7 +33,7 @@ for (const alias of ALIASES) {
     const res = await fetch(`https://${alias}/?deploy=${process.pid}`, { redirect: 'follow' })
     const body = await res.text()
     if (res.status !== 200) throw new Error(`HTTP ${res.status}`)
-    if (!body.includes('demo driver (this page')) throw new Error('content marker missing')
+    if (!body.includes('demo driver (page wiring only')) throw new Error('content marker missing')
     console.log(`verified ${alias}: HTTP 200 + content marker`)
   } catch (err) {
     if (alias === 'scrollvars.vercel.app') throw new Error(`alias check failed for ${alias}: ${err.message}`)

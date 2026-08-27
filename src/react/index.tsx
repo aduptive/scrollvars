@@ -343,19 +343,20 @@ export function useCanvasEffect(options: EffectOptions) {
   const optionsRef = useRef(options)
   optionsRef.current = options
 
-  const { dprCap, autoPause } = options
+  const { dprCap, autoPause, context } = options
 
   useEffect(() => {
     if (!ref.current) return
     const handle = mountEffect(ref.current, {
       dprCap,
       autoPause,
+      context,
       setup: (fx) => optionsRef.current.setup?.(fx),
       frame: (fx, dt) => optionsRef.current.frame(fx, dt),
       resize: (fx) => optionsRef.current.resize?.(fx),
     })
     return handle.destroy
-  }, [dprCap, autoPause])
+  }, [dprCap, autoPause, context])
 
   return ref
 }

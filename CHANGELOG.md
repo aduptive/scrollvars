@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.10.0 — 2026-08-27
+
+"Hitting the ceiling never means rewriting" — interop as official recipes,
+not adapter modules (no new dependencies, the scope boundary stays).
+
+- **Canvas harness works for WebGL/Three**: `mountEffect(canvas, { context:
+  null })` grabs no 2D context — your renderer owns the canvas, the harness
+  keeps the lifecycle (DPR cap, resize, pause offscreen/hidden, delta-time,
+  reduced-motion, cleanup). `EffectFrame` gains `canvas`; `ctx` is null in
+  that mode. `useCanvasEffect` forwards the option.
+- **Two Interop fx recipes** (new gallery category): `gsap-scrub` — author a
+  GSAP timeline, scrub it via `onPin` (one listener, one writer; with the
+  honest per-page bundle note) — and `three-scene` — a Three.js torus-knot
+  scrubbed by the pin on the harness. Both ship CLI components
+  (`npx scrollvars add gsap-scrub|three-scene`).
+- Docs interop section links both recipes; AGENTS/llms carry the pattern.
+
+
 ## 1.9.0 — 2026-08-26
 
 Driven by the third blind-review round (Kimi K3 moved 7 → 8; the remaining

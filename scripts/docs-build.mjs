@@ -178,7 +178,13 @@ gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // scrollvars steers, GSAP renders
 })</code></pre>
-<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.</p>
+<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.
+Both patterns exist as official fx recipes with live previews:
+<a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
+a scrub — still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
+(the canvas harness with <code>context: null</code> owns the lifecycle, Three owns the WebGL,
+scroll feeds progress). Hitting the scope ceiling never means rewriting: the driver stays, you
+plug in what's missing.</p>
 
 <h2 id="a11y">Accessibility contract</h2>
 <table>

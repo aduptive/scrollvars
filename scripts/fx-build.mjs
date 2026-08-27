@@ -246,6 +246,146 @@ const EFFECTS = [
 // track(el, { pin: true, onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
   },
   {
+    slug: 'gsap-scrub',
+    category: 'Interop',
+    title: 'GSAP timeline under scrub',
+    tagline: 'Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.',
+    when: 'The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.',
+    knobs: 'the timeline is yours; scrollvars owns scroll (pin/onPin) — never let GSAP add its own scroll listener',
+    preview: `<div class="fxouter" id="fxgsap-outer">
+  <div class="fxsticky" style="display:grid;place-items:center;overflow:hidden">
+    <div id="fxgsap" style="display:flex;gap:14px">
+      <div class="fxcard">sv</div><div class="fxcard">drives</div><div class="fxcard">gsap</div>
+    </div>
+  </div>
+</div>
+<p class="meta" style="margin-top:8px"><b>Honesty:</b> this page pays GSAP's ~46 KB — adopt it per page
+that needs timeline authoring, never globally, or the bundle argument dies for that page.</p>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>addEventListener('load', () => {
+  const tl = gsap.timeline({ paused: true })
+    .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
+    .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
+  SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
+})</script>`,
+    css: `<div class="outer">          <!-- height: 250vh; position: relative -->
+  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+</div>
+
+<script>
+  // author in time-space, consume as a scrub — this stays input-driven:
+  const tl = gsap.timeline({ paused: true })
+    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+
+  track(document.querySelector('.outer'), {
+    pin: true,
+    onPin: (p) => tl.progress(p), // scrollvars steers, GSAP renders
+  })
+  // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
+</script>`,
+    tailwind: `<div data-x class="relative h-[250vh]">   <!-- no data-sv: this one is tracked in JS -->
+  <div class="sticky top-0 grid h-screen place-items-center">…</div>
+</div>
+<!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
+     gsap.ticker.add(() => tl.progress(
+       parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
+    react: `const tl = useRef<gsap.core.Timeline>(null)
+useEffect(() => {
+  tl.current = gsap.timeline({ paused: true })
+    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+  return () => tl.current?.kill()
+}, [])
+
+<Track pin onPin={(p) => tl.current?.progress(p)} className="relative h-[250vh]">
+  <div className="sticky top-0 h-screen">…</div>
+</Track>`,
+  },
+  {
+    slug: 'three-scene',
+    category: 'Interop',
+    title: 'Three.js scene on the pin',
+    tagline: 'A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.',
+    when: 'Hero 3D moments, product tours, camera paths — WebGL driven by the same variables.',
+    knobs: "mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures",
+    preview: `<div class="fxouter" id="fxthree-outer">
+  <div class="fxsticky" style="display:grid;place-items:center">
+    <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="sv-canvas.js"></script>
+<script>addEventListener('load', () => {
+  let progress = 0
+  let renderer, scene, camera, mesh
+  SVC.mountEffect(document.getElementById('fxthree'), {
+    context: null, // WebGL owns the canvas; the harness owns the lifecycle
+    setup(fx) {
+      renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
+      scene = new THREE.Scene()
+      camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
+      mesh = new THREE.Mesh(
+        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
+        new THREE.MeshNormalMaterial({ wireframe: true })
+      )
+      scene.add(mesh)
+    },
+    resize(fx) {
+      renderer.setPixelRatio(fx.dpr)
+      renderer.setSize(fx.width, fx.height, false)
+      camera.aspect = fx.width / fx.height
+      camera.updateProjectionMatrix()
+    },
+    frame(fx, dt) {
+      mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
+      mesh.rotation.x = progress * Math.PI
+      camera.position.z = 6 - progress * 2.2
+      renderer.render(scene, camera)
+    },
+  })
+  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
+})</script>`,
+    css: `<div class="outer">              <!-- height: 250vh -->
+  <div class="sticky"><canvas id="scene"></canvas></div>
+</div>
+
+<script type="module">
+  import { track } from 'scrollvars'
+  import { mountEffect } from 'scrollvars/canvas'
+  import * as THREE from 'three'
+
+  let progress = 0
+  mountEffect(document.getElementById('scene'), {
+    context: null,                       // you own the WebGL context
+    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
+    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
+    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
+  })
+  track(outer, { pin: true, onPin: (p) => (progress = p) })
+  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
+  // delta-time loop, reduced-motion flag, cleanup — Three stays userland.
+</script>`,
+    tailwind: `<div class="relative h-[250vh]">
+  <div class="sticky top-0 grid h-screen place-items-center">
+    <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
+  </div>
+</div>
+<!-- same JS as the CSS tab — Tailwind only does the skeleton here -->`,
+    react: `'use client'
+const progress = useRef(0)
+const canvasRef = useCanvasEffect({
+  context: null,
+  setup(fx)  { /* THREE renderer on fx.canvas */ },
+  resize(fx) { /* size + DPR */ },
+  frame(fx, dt) { /* render with progress.current */ },
+})
+
+<Track pin onPin={(p) => (progress.current = p)} className="relative h-[250vh]">
+  <div className="sticky top-0 grid h-screen place-items-center">
+    <canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" />
+  </div>
+</Track>`,
+  },
+  {
     slug: 'rotating-words',
     category: 'Text',
     title: 'Rotating words',
@@ -404,6 +544,10 @@ execSync(
 // boot: track every [data-sv] on fx pages
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
 const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toFixed(1)
+execSync(
+  `npx esbuild ${join(root, 'dist/canvas/index.js')} --bundle --minify --format=iife --global-name=SVC --outfile=${join(out, 'sv-canvas.js')}`,
+  { stdio: 'pipe' }
+)
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
 // bench: the scrollvars workload page inlines the engine — resync it from
@@ -698,6 +842,102 @@ export function SequencedScrub({
             )
           })}
         </div>
+      </div>
+    </Track>
+  )
+}
+`,
+  },
+  'gsap-scrub': {
+    file: 'GsapScrub.tsx',
+    content: `// scrollvars fx · gsap-scrub
+// Requires: npm i scrollvars gsap · import 'scrollvars/styles/pin.css'
+// Author choreography in GSAP, let scrollvars drive it: one scroll
+// listener, one writer. Never ALSO create a ScrollTrigger for it.
+// Honesty: this page pays GSAP's bundle — adopt per page, not globally.
+'use client'
+import * as React from 'react'
+import gsap from 'gsap'
+import { Track } from 'scrollvars/react'
+
+export function GsapScrub({
+  children,
+  buildTimeline,
+  height = '250vh',
+  className,
+}: {
+  children: React.ReactNode
+  /** Build and return a PAUSED timeline over the given stage element. */
+  buildTimeline: (stage: HTMLDivElement) => gsap.core.Timeline
+  height?: string
+  className?: string
+}) {
+  const stage = React.useRef<HTMLDivElement>(null)
+  const tl = React.useRef<gsap.core.Timeline>(null)
+  React.useEffect(() => {
+    if (stage.current) tl.current = buildTimeline(stage.current)
+    return () => { tl.current?.kill() }
+  }, [buildTimeline])
+  return (
+    <Track pin onPin={(p) => tl.current?.progress(p)} className={className} style={{ position: 'relative', height }}>
+      <div ref={stage} style={{ position: 'sticky', top: 0, height: '100vh', display: 'grid', placeItems: 'center' }}>
+        {children}
+      </div>
+    </Track>
+  )
+}
+`,
+  },
+  'three-scene': {
+    file: 'ThreeScene.tsx',
+    content: `// scrollvars fx · three-scene
+// Requires: npm i scrollvars three · import 'scrollvars/styles/pin.css'
+// The canvas harness owns the lifecycle (DPR, resize, pause offscreen,
+// reduced motion, cleanup); Three owns the rendering; scroll feeds progress.
+'use client'
+import * as React from 'react'
+import * as THREE from 'three'
+import { Track, useCanvasEffect } from 'scrollvars/react'
+
+export function ThreeScene({ height = '250vh', className }: { height?: string; className?: string }) {
+  const progress = React.useRef(0)
+  const three = React.useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; mesh: THREE.Mesh }>(null)
+
+  const canvasRef = useCanvasEffect({
+    context: null, // WebGL owns the canvas
+    setup(fx) {
+      const renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
+      const mesh = new THREE.Mesh(
+        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
+        new THREE.MeshNormalMaterial({ wireframe: true })
+      )
+      scene.add(mesh)
+      three.current = { renderer, scene, camera, mesh }
+    },
+    resize(fx) {
+      const t = three.current
+      if (!t) return
+      t.renderer.setPixelRatio(fx.dpr)
+      t.renderer.setSize(fx.width, fx.height, false)
+      t.camera.aspect = fx.width / fx.height
+      t.camera.updateProjectionMatrix()
+    },
+    frame(fx, dt) {
+      const t = three.current
+      if (!t) return
+      t.mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15
+      t.mesh.rotation.x = progress.current * Math.PI
+      t.camera.position.z = 6 - progress.current * 2.2
+      t.renderer.render(t.scene, t.camera)
+    },
+  })
+
+  return (
+    <Track pin onPin={(p) => (progress.current = p)} className={className} style={{ position: 'relative', height }}>
+      <div style={{ position: 'sticky', top: 0, display: 'grid', placeItems: 'center', height: '100vh' }}>
+        <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
   )

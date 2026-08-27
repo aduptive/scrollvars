@@ -34,7 +34,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.9.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.10.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -149,7 +149,13 @@ gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // scrollvars steers, GSAP renders
 })</code></pre>
-<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.</p>
+<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.
+Both patterns exist as official fx recipes with live previews:
+<a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
+a scrub — still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
+(the canvas harness with <code>context: null</code> owns the lifecycle, Three owns the WebGL,
+scroll feeds progress). Hitting the scope ceiling never means rewriting: the driver stays, you
+plug in what's missing.</p>
 
 <h2 id="a11y">Accessibility contract</h2>
 <table>
@@ -174,6 +180,24 @@ gsap.ticker.add(() =&gt; {
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.10.0 — 2026-08-27</h3>
+
+"Hitting the ceiling never means rewriting" — interop as official recipes,
+not adapter modules (no new dependencies, the scope boundary stays).
+
+<ul><li><b>Canvas harness works for WebGL/Three</b>: <code>mountEffect(canvas, { context:</li></ul>
+  null })</code> grabs no 2D context — your renderer owns the canvas, the harness
+  keeps the lifecycle (DPR cap, resize, pause offscreen/hidden, delta-time,
+  reduced-motion, cleanup). <code>EffectFrame</code> gains <code>canvas</code>; <code>ctx</code> is null in
+  that mode. <code>useCanvasEffect</code> forwards the option.
+<ul><li><b>Two Interop fx recipes</b> (new gallery category): <code>gsap-scrub</code> — author a</li></ul>
+  GSAP timeline, scrub it via <code>onPin</code> (one listener, one writer; with the
+  honest per-page bundle note) — and <code>three-scene</code> — a Three.js torus-knot
+  scrubbed by the pin on the harness. Both ship CLI components
+  (<code>npx scrollvars add gsap-scrub|three-scene</code>).
+<ul><li>Docs interop section links both recipes; AGENTS/llms carry the pattern.</li></ul>
 
 
 <h3>1.9.0 — 2026-08-26</h3>
