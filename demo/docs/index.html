@@ -34,7 +34,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.11.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.11.1</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -239,6 +239,21 @@ compat()   // once, before anything else</code></pre>
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.11.1 — 2026-08-27</h3>
+
+<ul><li><b><code>sv-words</code> aligns to the text baseline at any host line-height.</b> The</li></ul>
+  preset used <code>vertical-align: bottom</code>, which only lined up when the host
+  line-height was ~1.15 — inside a loose-leading heading the rotating word
+  sat visibly low. Now <code>vertical-align: baseline</code>: an inline flex container
+  exports its first item's baseline, so the rotator self-aligns by
+  construction (all words share the same metrics, so every word lands on
+  it).
+<ul><li>Demo: the pizzeria wheel is height-driven — px caps removed (58vh/46vw),</li></ul>
+  and on vertical screens (<code>max-aspect-ratio: 1/1</code>) the height rules
+  (52vh radius, 48vh slices) so the wheel keeps ~60vh of presence instead
+  of shrinking with the width.
 
 
 <h3>1.11.0 — 2026-08-27</h3>

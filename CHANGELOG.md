@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.1 — 2026-08-27
+
+- **`sv-words` aligns to the text baseline at any host line-height.** The
+  preset used `vertical-align: bottom`, which only lined up when the host
+  line-height was ~1.15 — inside a loose-leading heading the rotating word
+  sat visibly low. Now `vertical-align: baseline`: an inline flex container
+  exports its first item's baseline, so the rotator self-aligns by
+  construction (all words share the same metrics, so every word lands on
+  it).
+- Demo: the pizzeria wheel is height-driven — px caps removed (58vh/46vw),
+  and on vertical screens (`max-aspect-ratio: 1/1`) the height rules
+  (52vh radius, 48vh slices) so the wheel keeps ~60vh of presence instead
+  of shrinking with the width.
+
+
 ## 1.11.0 — 2026-08-27
 
 - **Attribute knobs — the style attribute is now optional everywhere.**

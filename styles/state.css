@@ -43,7 +43,10 @@ dialog.sv-pop:not([open]) {
 .sv-words {
   display: inline-flex;
   flex-direction: column;
-  vertical-align: bottom;
+  /* baseline (the default) on an inline flex container exports the FIRST
+     word's baseline — so the rotator aligns with surrounding text at any
+     host line-height. (bottom only lined up when the host was ~1.15 too.) */
+  vertical-align: baseline;
   height: 1.15em;
   overflow: hidden;
 }
