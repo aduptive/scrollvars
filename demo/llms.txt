@@ -41,10 +41,11 @@ custom presets.
 ## Imports
 
 ```ts
-import { track, trackPointer, scrollToScene, scan, slider } from 'scrollvars' // vanilla core
+import { track, trackPointer, scrollToScene, scan, slider, mapRange } from 'scrollvars' // vanilla core
 import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
          useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
-import { mountEffect } from 'scrollvars/canvas'                          // ambient canvas harness
+import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
+import { debug } from 'scrollvars/debug'           // dev overlay — never ship enabled
 import 'scrollvars/styles.css'                    // all presets — or modular:
 import 'scrollvars/styles/core.css'               // entrances only (1.8 KB gz);
 // also styles/pin.css, styles/slider.css, styles/tilt.css — import per page needs
