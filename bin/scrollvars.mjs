@@ -13,7 +13,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const REGISTRY = process.env.SCROLLVARS_REGISTRY || 'https://scrollvars.vercel.app/fx/registry.json'
+const REGISTRY = process.env.SCROLLVARS_REGISTRY || 'https://scrollvars.dev/fx/registry.json'
+const REGISTRY_FALLBACK = 'https://scrollvars.dev/fx/registry.json'
 
 const args = process.argv.slice(2)
 const flags = new Set(args.filter((a) => a.startsWith('--')))
@@ -26,9 +27,16 @@ async function loadRegistry() {
   if (REGISTRY.startsWith('/') || REGISTRY.startsWith('.')) {
     return JSON.parse(readFileSync(REGISTRY, 'utf8'))
   }
-  const res = await fetch(REGISTRY)
-  if (!res.ok) throw new Error(`registry fetch failed: HTTP ${res.status}`)
-  return res.json()
+  try {
+    const res = await fetch(REGISTRY)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return await res.json()
+  } catch (err) {
+    if (REGISTRY === REGISTRY_FALLBACK) throw err
+    const res = await fetch(REGISTRY_FALLBACK) // .vercel.app mirror of the same deploy
+    if (!res.ok) throw new Error(`registry fetch failed on both hosts: ${err.message} / HTTP ${res.status}`)
+    return res.json()
+  }
 }
 
 function usage() {
@@ -37,7 +45,7 @@ function usage() {
   npx scrollvars list
   npx scrollvars add <effect> [--dir components/fx] [--force]
 
-Gallery: https://scrollvars.vercel.app/fx/`)
+Gallery: https://scrollvars.dev/fx/`)
 }
 
 const registry = await loadRegistry().catch((e) => {
@@ -50,7 +58,7 @@ if (command === 'list') {
   for (const e of registry.effects) {
     console.log(`  ${e.slug.padEnd(width)}  ${e.tagline}`)
   }
-  console.log(`\n  npx scrollvars add <slug>   ·   pages: https://scrollvars.vercel.app/fx/`)
+  console.log(`\n  npx scrollvars add <slug>   ·   pages: https://scrollvars.dev/fx/`)
 } else if (command === 'add' && slug) {
   const effect = registry.effects.find((e) => e.slug === slug)
   if (!effect) {

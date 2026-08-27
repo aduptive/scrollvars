@@ -2,7 +2,7 @@
 
 The checklist for wiring scrollvars into a real (typically Next.js) project.
 Full API reference: [AGENTS.md](../AGENTS.md) · live patterns with source:
-https://scrollvars.vercel.app
+https://scrollvars.dev
 
 ## 1 · Install
 

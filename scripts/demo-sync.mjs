@@ -50,6 +50,23 @@ for (const block of BLOCKS) {
   html = html.replace(re, wrapped)
 }
 
+// engine block: the whole built package as an IIFE (global `SV`) — the same
+// esbuild invocation fx-build.mjs uses for the bench page
+{
+  const { execSync } = await import('node:child_process')
+  const iife = execSync(
+    `npx esbuild ${join(root, 'dist/index.js')} --bundle --format=iife --global-name=SV`,
+    { maxBuffer: 1e7 }
+  ).toString().trimEnd()
+  new Function(iife) // throws on syntax errors
+  const start = '/* ═══════ scrollvars engine — inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */'
+  const end = '/* ═══════ end scrollvars engine ═══════ */'
+  const re = new RegExp(`${escapeRe(start)}\\n[\\s\\S]*?${escapeRe(end)}`)
+  if (!re.test(html)) throw new Error('engine marker block not found')
+  // replacer function: dist code must land verbatim, immune to $-patterns
+  html = html.replace(re, () => `${start}\n${iife}\n${end}`)
+}
+
 // post-checks — the same ones this repo's history proved necessary
 const script = html.match(/<script>\n\s*\/\* ═+ demo driver[\s\S]*?<\/script>/)
 if (!script) throw new Error('main demo script block not found')

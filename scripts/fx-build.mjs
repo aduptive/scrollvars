@@ -618,7 +618,7 @@ ${sidebar()}
   </div>`
   ).join('\n  ')}
   <p class="meta" style="margin-top:28px">Growing over time. Engine + 28-pattern showcase:
-  <a href="../">scrollvars.vercel.app</a> · benchmarks: <a href="../bench/">/bench/</a></p>
+  <a href="../">scrollvars.dev</a> · benchmarks: <a href="../bench/">/bench/</a></p>
 </main>
 </div>
 ${footer}
@@ -632,7 +632,7 @@ const llms = `# scrollvars fx — llms.txt (copy-paste effects)
 > A growing library of scroll/pointer/state effects on the scrollvars engine
 > (npm i scrollvars — full core ${ENGINE_KB} KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
-> https://scrollvars.vercel.app/llms.txt
+> https://scrollvars.dev/llms.txt
 
 ${EFFECTS.map(
   (fx) => `## ${fx.title} (${fx.slug})
@@ -928,7 +928,7 @@ const registry = EFFECTS.map((fx) => ({
   category: fx.category,
   title: fx.title,
   tagline: fx.tagline,
-  page: `https://scrollvars.vercel.app/fx/${fx.slug}.html`,
+  page: `https://scrollvars.dev/fx/${fx.slug}.html`,
   file: COMPONENTS[fx.slug].file,
   content: COMPONENTS[fx.slug].content,
 }))

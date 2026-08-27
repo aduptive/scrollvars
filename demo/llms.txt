@@ -2,7 +2,7 @@
 
 > Tiny scroll/pointer/click/canvas animation engine: one rAF in, CSS
 > variables out. Zero dependencies. Live demo with view-source docs:
-> https://scrollvars.vercel.app · Benchmarks: https://scrollvars.vercel.app/bench/
+> https://scrollvars.dev · Benchmarks: https://scrollvars.dev/bench/
 
 You are working with `scrollvars`, a tiny scroll/pointer/canvas animation
 engine. Read this before writing any animation code in a project that uses it.
@@ -223,7 +223,7 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 
 ## The receipts (measured — why the design holds up)
 
-Public, reproducible benchmark: https://scrollvars.vercel.app/bench/ —
+Public, reproducible benchmark: https://scrollvars.dev/bench/ —
 identical DOM and animations, four engine builds (including the batched
 expert GSAP variant, symmetric to scrollvars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);

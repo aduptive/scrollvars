@@ -74,7 +74,7 @@ Committing to "variables out" bought more than performance:
 ## The stress test: 26 patterns in public
 
 A transport claim is cheap until you push real weight through it, so the
-[public demo](https://scrollvars.vercel.app) became a stress test: every
+[public demo](https://scrollvars.dev) became a stress test: every
 pattern I could steal from award-site land, implemented on the same four
 variables. A few highlights:
 
@@ -105,7 +105,7 @@ For scale, measured from the same CDN (min / gzip):
 | **scrollvars driver alone** | 2.3 KB | **1.2 KB** |
 
 And because a size table invites the obvious question, there is a
-[public benchmark](https://scrollvars.vercel.app/bench/) — identical DOM,
+[public benchmark](https://scrollvars.dev/bench/) — identical DOM,
 identical scroll driver, 150 and 900 scrubbed elements, only the engine
 varies. Two honest findings. First: **on capable
 hardware all three deliver the same 60 fps** — every competent engine
@@ -177,7 +177,7 @@ are their own paradigm; scrollvars only offers them a lifecycle harness
 ## Try it
 
 The demo — 26 live patterns, each with its skeleton and source:
-**https://scrollvars.vercel.app**
+**https://scrollvars.dev**
 
 `npm i scrollvars` — MIT, zero dependencies, Chrome/Edge 104+, Firefox 74+,
 Safari 14.1+ fully animated; everything older gets the complete page, static.

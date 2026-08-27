@@ -14,7 +14,7 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 
 ## The receipts (measured — why the design holds up)
 
-Public, reproducible benchmark: https://scrollvars.vercel.app/bench/ —
+Public, reproducible benchmark: https://scrollvars.dev/bench/ —
 identical DOM and animations, four engine builds (including the batched
 expert GSAP variant, symmetric to scrollvars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
@@ -177,9 +177,9 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 
 ## The fx gallery — copy-paste effects (+ shadcn-style CLI)
 
-A growing library of effects at **https://scrollvars.vercel.app/fx/** — each
+A growing library of effects at **https://scrollvars.dev/fx/** — each
 one live, with Tailwind, CSS and React formats, knobs documented, and a
-machine-readable [fx/llms.txt](https://scrollvars.vercel.app/fx/llms.txt)
+machine-readable [fx/llms.txt](https://scrollvars.dev/fx/llms.txt)
 so AI assistants can ingest the whole collection in one request. Install an
 effect straight into your project:
 

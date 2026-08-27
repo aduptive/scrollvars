@@ -7,7 +7,7 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="scrollvars — one rAF in, CSS variables out">
 <meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
-<meta property="og:url" content="https://scrollvars.vercel.app">
+<meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="scrollvars — one rAF in, CSS variables out">
@@ -2859,131 +2859,689 @@ npm i scrollvars
 </div>
 
 <script>
-/* ════════════════ demo driver (this page's own simplified inline copy — teaching
-   code wired to the HUDs; the PACKAGE driver in dist/ is the source of truth and
-   has moved past it: capture-phase listener, culling, custom root/thresholds.
-   See /docs/ + CHANGELOG. Never quote this block as the library.) ════════════════ */
-(function () {
-  var entries = [];
-  var raf = 0;
-  var vh = window.innerHeight;
-  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
-  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
-
-  // signed position relative to the live band (same 75%/25% lines as sv-live)
-  function computeView(rect) {
-    var enterLine = vh * 0.75;
-    var exitLine = vh * 0.25;
-    if (rect.top > enterLine) {
-      return -clamp((rect.top - enterLine) / (vh - enterLine), 0, 1);
+/* ═══════ scrollvars engine — inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */
+"use strict";
+var SV = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
     }
-    if (rect.bottom < exitLine) {
-      return clamp((exitLine - rect.bottom) / exitLine, 0, 1);
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // dist/index.js
+  var index_exports = {};
+  __export(index_exports, {
+    clamp: () => clamp,
+    easeOutCubic: () => easeOutCubic,
+    mapRange: () => mapRange,
+    prefersReducedMotion: () => prefersReducedMotion,
+    refresh: () => refresh,
+    scan: () => scan,
+    scrollToScene: () => scrollToScene,
+    slider: () => slider,
+    snapProgress: () => snapProgress,
+    toggles: () => toggles,
+    track: () => track,
+    trackPointer: () => trackPointer
+  });
+
+  // dist/core/math.js
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+  function snapProgress(value, threshold) {
+    if (threshold <= 0)
+      return value;
+    const base = Math.floor(value);
+    const f = value - base;
+    if (f <= threshold)
+      return base;
+    if (f >= 1 - threshold)
+      return base + 1;
+    return base + (f - threshold) / (1 - 2 * threshold);
+  }
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+  function mapRange(t, from, to, ease) {
+    const raw = clamp((t - from) / Math.max(to - from, 1e-6), 0, 1);
+    return ease ? ease(raw) : raw;
+  }
+
+  // dist/core/driver.js
+  var SCENE_SNAP = 0.4;
+  var LIVE_ENTER = 0.75;
+  var LIVE_EXIT = 0.25;
+  var entries = /* @__PURE__ */ new Map();
+  var raf = 0;
+  var vh = 0;
+  var resizeObserver = null;
+  var culler = null;
+  var initialized = false;
+  var reducedMotion = false;
+  function init() {
+    if (initialized || typeof window === "undefined")
+      return;
+    initialized = true;
+    vh = window.innerHeight;
+    document.documentElement.classList.add("sv-on");
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
+    window.addEventListener("resize", () => {
+      vh = window.innerHeight;
+      schedule();
+    });
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotion = media.matches;
+    media.addEventListener?.("change", (event) => {
+      reducedMotion = event.matches;
+      schedule();
+    });
+    resizeObserver = new ResizeObserver(() => schedule());
+    resizeObserver.observe(document.documentElement);
+    if (typeof IntersectionObserver !== "undefined") {
+      culler = new IntersectionObserver((records) => {
+        for (const record of records) {
+          const entry = entries.get(record.target);
+          if (entry)
+            entry.near = record.isIntersecting;
+        }
+        schedule();
+      }, { rootMargin: "100% 0px 100% 0px" });
+    }
+  }
+  function schedule() {
+    if (!raf && entries.size > 0)
+      raf = requestAnimationFrame(update);
+  }
+  function update() {
+    raf = 0;
+    const rootRects = /* @__PURE__ */ new Map();
+    const frames = [];
+    entries.forEach((entry) => {
+      if (!entry.near && !entry.opts.root)
+        return;
+      const rect = entry.el.getBoundingClientRect();
+      const root = entry.opts.root;
+      let geo;
+      if (root) {
+        let rr = rootRects.get(root);
+        if (!rr) {
+          rr = root.getBoundingClientRect();
+          rootRects.set(root, rr);
+        }
+        geo = { top: rect.top - rr.top, bottom: rect.bottom - rr.top, height: rect.height, vp: rr.height };
+      } else {
+        geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
+      }
+      frames.push({ entry, geo });
+    });
+    for (const { entry, geo } of frames) {
+      apply(entry, geo);
+    }
+  }
+  function computeView(geo, enter, exit) {
+    const enterLine = geo.vp * enter;
+    const exitLine = geo.vp * exit;
+    if (geo.top > enterLine) {
+      return -clamp((geo.top - enterLine) / (geo.vp - enterLine), 0, 1);
+    }
+    if (geo.bottom < exitLine) {
+      return clamp((exitLine - geo.bottom) / exitLine, 0, 1);
     }
     return 0;
   }
-  function computeTravel(rect, height) {
-    return clamp((vh - rect.top) / (vh + height), 0, 1);
+  function computeTravel(geo) {
+    return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1);
   }
-  function computePin(rect, height) {
-    return clamp(-rect.top / Math.max(height - vh, 1), 0, 1);
+  function computePin(geo) {
+    const span = Math.max(geo.height - geo.vp, 1);
+    return clamp(-geo.top / span, 0, 1);
   }
+  function computeScene(pin, count, snap) {
+    const raw = pin * (count - 1);
+    const base = Math.floor(raw);
+    if (raw === base)
+      return raw;
+    let fraction = raw - base;
+    if (snap !== false && snap > 0) {
+      fraction = fraction <= snap ? 0 : (fraction - snap) / (1 - snap);
+    }
+    return base + easeOutCubic(fraction);
+  }
+  function setVar(entry, name, value) {
+    const serialized = value.toFixed(4);
+    if (entry.written[name] === serialized)
+      return;
+    entry.written[name] = serialized;
+    entry.el.style.setProperty(name, serialized);
+  }
+  function apply(entry, geo) {
+    const { opts } = entry;
+    const enter = opts.enter ?? LIVE_ENTER;
+    const exit = opts.exit ?? LIVE_EXIT;
+    const isLive = geo.top < geo.vp * enter && geo.bottom > geo.vp * exit || entry.live && !!opts.once;
+    if (isLive !== entry.live) {
+      entry.live = isLive;
+      entry.el.classList.toggle("sv-live", isLive);
+      opts.onLive?.(isLive);
+      if (isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene) {
+        entries.delete(entry.el);
+        resizeObserver?.unobserve(entry.el);
+        culler?.unobserve(entry.el);
+        return;
+      }
+    }
+    if (opts.view !== false) {
+      setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
+    }
+    if (opts.travel || opts.onTravel) {
+      const t = computeTravel(geo);
+      if (opts.travel)
+        setVar(entry, "--sv-t", t);
+      opts.onTravel?.(t);
+    }
+    if (opts.pin || opts.onPin) {
+      const p = computePin(geo);
+      if (opts.pin)
+        setVar(entry, "--sv-pin", p);
+      opts.onPin?.(p);
+    }
+    if (opts.scenes && opts.scenes > 1) {
+      const pin = computePin(geo);
+      const snap = opts.snap === false ? false : opts.snap ?? SCENE_SNAP;
+      const scene = computeScene(pin, opts.scenes, snap);
+      setVar(entry, "--sv-scene", scene);
+      const index = clamp(Math.round(scene), 0, opts.scenes - 1);
+      if (index !== entry.scene) {
+        entry.scene = index;
+        opts.onScene?.(index);
+      }
+    }
+  }
+  function track(el, opts = {}) {
+    init();
+    const entry = {
+      el,
+      opts,
+      near: true,
+      live: false,
+      scene: -1,
+      written: {}
+    };
+    entries.set(el, entry);
+    el.classList.add("sv");
+    resizeObserver?.observe(el);
+    if (!opts.root)
+      culler?.observe(el);
+    schedule();
+    return () => {
+      entries.delete(el);
+      resizeObserver?.unobserve(el);
+      culler?.unobserve(el);
+    };
+  }
+  function refresh() {
+    schedule();
+  }
+  function scrollToScene(el, index, count, smooth = true) {
+    if (typeof window === "undefined" || count < 2)
+      return;
+    const height = el.scrollHeight;
+    const span = Math.max(height - window.innerHeight, 1);
+    const top = window.scrollY + el.getBoundingClientRect().top + clamp(index, 0, count - 1) / (count - 1) * span;
+    window.scrollTo({
+      top: Math.max(0, top),
+      behavior: smooth ? "smooth" : "instant"
+    });
+  }
+  function prefersReducedMotion() {
+    return reducedMotion;
+  }
+
+  // dist/core/pointer.js
+  function trackPointer(container, { selector = ".sv-tilt" } = {}) {
+    if (typeof window === "undefined")
+      return () => {
+      };
+    let pending = null;
+    let raf2 = 0;
+    const flush = () => {
+      raf2 = 0;
+      if (!pending)
+        return;
+      const { el, x, y } = pending;
+      pending = null;
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty("--mx", ((x - rect.left) / rect.width * 2 - 1).toFixed(3));
+      el.style.setProperty("--my", ((y - rect.top) / rect.height * 2 - 1).toFixed(3));
+    };
+    const onMove = (event) => {
+      const el = event.target.closest?.(selector);
+      if (!el)
+        return;
+      el.classList.remove("sv-pointer-leave");
+      pending = { el, x: event.clientX, y: event.clientY };
+      if (!raf2)
+        raf2 = requestAnimationFrame(flush);
+    };
+    const onOut = (event) => {
+      const el = event.target.closest?.(selector);
+      if (!el || el.contains(event.relatedTarget))
+        return;
+      if (pending?.el === el)
+        pending = null;
+      el.classList.add("sv-pointer-leave");
+      el.style.setProperty("--mx", "0");
+      el.style.setProperty("--my", "0");
+    };
+    container.addEventListener("pointermove", onMove);
+    container.addEventListener("pointerout", onOut);
+    return () => {
+      container.removeEventListener("pointermove", onMove);
+      container.removeEventListener("pointerout", onOut);
+      if (raf2)
+        cancelAnimationFrame(raf2);
+    };
+  }
+
+  // dist/core/scan.js
+  function optionsFrom(el) {
+    const scenes = Number(el.getAttribute("data-sv-scenes"));
+    return {
+      once: el.hasAttribute("data-sv-once"),
+      pin: el.hasAttribute("data-sv-pin"),
+      travel: el.hasAttribute("data-sv-travel"),
+      scenes: scenes > 1 ? scenes : void 0,
+      enter: band(el, "data-sv-enter"),
+      exit: band(el, "data-sv-exit")
+    };
+  }
+  function band(el, attr) {
+    const v = Number(el.getAttribute(attr));
+    return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : void 0;
+  }
+  function scan(root) {
+    if (typeof window === "undefined")
+      return () => {
+      };
+    const scope = root ?? document;
+    const tracked = /* @__PURE__ */ new Map();
+    const add = (el) => {
+      if (!tracked.has(el))
+        tracked.set(el, track(el, optionsFrom(el)));
+    };
+    const remove = (el) => {
+      tracked.get(el)?.();
+      tracked.delete(el);
+    };
+    const sweep = (node, fn) => {
+      if (!(node instanceof HTMLElement))
+        return;
+      if (node.hasAttribute("data-sv"))
+        fn(node);
+      node.querySelectorAll("[data-sv]").forEach(fn);
+    };
+    scope.querySelectorAll("[data-sv]").forEach(add);
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => sweep(node, add));
+        mutation.removedNodes.forEach((node) => sweep(node, remove));
+      }
+    });
+    observer.observe(scope === document ? document.body : scope, {
+      childList: true,
+      subtree: true
+    });
+    return () => {
+      observer.disconnect();
+      tracked.forEach((untrack) => untrack());
+      tracked.clear();
+    };
+  }
+
+  // dist/core/toggles.js
+  function toggles(root) {
+    if (typeof window === "undefined")
+      return () => {
+      };
+    const scope = root ?? document;
+    const onClick = (event) => {
+      const trigger = event.target.closest?.("[data-sv-toggle]");
+      if (!trigger)
+        return;
+      const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
+      const selector = trigger.getAttribute("data-sv-target");
+      const target = selector ? scope.querySelector(selector) : trigger;
+      if (!target)
+        return;
+      const on = target.classList.toggle(className);
+      target.style.setProperty("--sv-state", on ? "1" : "0");
+      trigger.setAttribute("aria-expanded", String(on));
+    };
+    scope.addEventListener("click", onClick);
+    return () => scope.removeEventListener("click", onClick);
+  }
+
+  // dist/core/slider.js
+  var noopState = {
+    active: 0,
+    count: 0,
+    position: 0,
+    progress: 0,
+    dragging: false,
+    gliding: false
+  };
+  var noop = {
+    next: () => {
+    },
+    prev: () => {
+    },
+    goTo: () => {
+    },
+    seek: () => {
+    },
+    active: () => 0,
+    state: () => noopState,
+    destroy: () => {
+    }
+  };
+  function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, onSlide, onScroll } = {}) {
+    if (typeof window === "undefined")
+      return noop;
+    const horizontal = axis === "x";
+    const rtl = horizontal && typeof getComputedStyle === "function" && getComputedStyle(container).direction === "rtl";
+    container.classList.add("sv-slider");
+    if (!horizontal)
+      container.classList.add("sv-slider-y");
+    if (drag)
+      container.classList.add("sv-draggable");
+    container.style.setProperty("--sv-snap", snap);
+    const pos = () => horizontal ? rtl ? -container.scrollLeft + 0 : container.scrollLeft : container.scrollTop;
+    const setPos = (v) => {
+      if (horizontal)
+        container.scrollLeft = rtl ? -v : v;
+      else
+        container.scrollTop = v;
+    };
+    const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
+    const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
+    const slideStart = (el) => horizontal ? rtl ? container.scrollWidth - el.offsetLeft - el.offsetWidth : el.offsetLeft : el.offsetTop;
+    const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
+    const authoredSnap = container.style.scrollSnapType;
+    const suspendSnap = () => {
+      container.style.scrollSnapType = "none";
+    };
+    const resumeSnap = () => {
+      container.style.scrollSnapType = authoredSnap;
+    };
+    let active = -1;
+    let position = 0;
+    let raf2 = 0;
+    let dragging = false;
+    let anim = 0;
+    const slides = () => Array.from(container.children);
+    const state = () => ({
+      active: Math.max(active, 0),
+      count: slides().length,
+      position,
+      progress: range() > 0 ? pos() / range() : 0,
+      dragging,
+      gliding: anim !== 0
+    });
+    const measure = () => {
+      raf2 = 0;
+      const center = pos() + viewport() / 2;
+      let best = 0;
+      let bestSd = Infinity;
+      slides().forEach((slide, i) => {
+        const mid = slideStart(slide) + slideSize(slide) / 2;
+        const sd = (mid - center) / Math.max(slideSize(slide), 1);
+        slide.style.setProperty("--sd", sd.toFixed(4));
+        if (Math.abs(sd) < Math.abs(bestSd)) {
+          bestSd = sd;
+          best = i;
+        }
+      });
+      position = Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0);
+      const progress = range() > 0 ? pos() / range() : 0;
+      container.style.setProperty("--sv-progress", progress.toFixed(4));
+      if (best !== active) {
+        active = best;
+        slides().forEach((slide, i) => slide.classList.toggle("sv-active", i === best));
+        container.style.setProperty("--sv-slide", String(best));
+        onSlide?.(best);
+      }
+      onScroll?.(state());
+    };
+    const schedule2 = () => {
+      if (!raf2)
+        raf2 = requestAnimationFrame(measure);
+    };
+    container.addEventListener("scroll", schedule2, { passive: true });
+    const ro = new ResizeObserver(schedule2);
+    ro.observe(container);
+    measure();
+    let target = -1;
+    const stopGlide = () => {
+      if (anim)
+        cancelAnimationFrame(anim);
+      anim = 0;
+      container.classList.remove("sv-gliding");
+    };
+    const glide = (to) => {
+      stopGlide();
+      let current = pos();
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+        resumeSnap();
+        target = -1;
+        setPos(to);
+        return;
+      }
+      suspendSnap();
+      container.classList.add("sv-gliding");
+      let last = performance.now();
+      const step = (now) => {
+        const dt = Math.min(now - last, 50);
+        last = now;
+        const factor = 1 - Math.pow(2e-3, dt / duration);
+        current += (to - current) * factor;
+        if (Math.abs(to - current) < 0.5) {
+          setPos(to);
+          stopGlide();
+          target = -1;
+          resumeSnap();
+        } else {
+          setPos(current);
+          anim = requestAnimationFrame(step);
+        }
+      };
+      anim = requestAnimationFrame(step);
+    };
+    const goTo = (index, smooth = true) => {
+      const all = slides();
+      const clamped = Math.max(0, Math.min(index, all.length - 1));
+      const slide = all[clamped];
+      if (!slide)
+        return;
+      const to = slideStart(slide) - (viewport() - slideSize(slide)) / 2;
+      if (smooth) {
+        target = clamped;
+        glide(to);
+      } else {
+        stopGlide();
+        target = -1;
+        setPos(to);
+      }
+    };
+    const seek = (progress) => {
+      stopGlide();
+      target = -1;
+      suspendSnap();
+      setPos(Math.max(0, Math.min(progress, 1)) * range());
+    };
+    const stepBase = () => anim && target >= 0 ? target : active;
+    let lastPointer = 0;
+    let startPoint = 0;
+    let pressed = false;
+    const DRAG_THRESHOLD = 5;
+    const onMove = (event) => {
+      const point = horizontal ? event.clientX : event.clientY;
+      if (!dragging) {
+        if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
+          return;
+        dragging = true;
+        suspendSnap();
+        container.classList.add("sv-dragging");
+        getSelection()?.removeAllRanges();
+        lastPointer = point;
+        return;
+      }
+      const step = point - lastPointer;
+      setPos(pos() - (rtl ? -step : step));
+      lastPointer = point;
+    };
+    const suppressClick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      window.removeEventListener("click", suppressClick, true);
+    };
+    const endDrag = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      pressed = false;
+      if (!dragging)
+        return;
+      dragging = false;
+      container.classList.remove("sv-dragging");
+      window.addEventListener("click", suppressClick, true);
+      setTimeout(() => window.removeEventListener("click", suppressClick, true), 0);
+      goTo(active);
+    };
+    const onDragStart = (event) => {
+      if (pressed)
+        event.preventDefault();
+    };
+    container.addEventListener("dragstart", onDragStart);
+    const onDown = (event) => {
+      const wasGliding = anim !== 0;
+      stopGlide();
+      target = -1;
+      if (!drag || event.pointerType !== "mouse") {
+        if (wasGliding)
+          resumeSnap();
+        return;
+      }
+      pressed = true;
+      startPoint = horizontal ? event.clientX : event.clientY;
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", endDrag);
+      window.addEventListener("pointercancel", endDrag);
+    };
+    container.addEventListener("pointerdown", onDown);
+    let wheelTimer;
+    const onWheel = (event) => {
+      if (authoredSnap === "none")
+        return;
+      const along = horizontal ? event.deltaX : event.deltaY;
+      const cross = horizontal ? event.deltaY : event.deltaX;
+      if (Math.abs(along) <= Math.abs(cross))
+        return;
+      stopGlide();
+      target = -1;
+      suspendSnap();
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(() => goTo(active), 200);
+    };
+    container.addEventListener("wheel", onWheel, { passive: true });
+    const next = (smooth = true) => goTo(stepBase() + 1, smooth);
+    const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
+    if (container.tabIndex === -1)
+      container.tabIndex = 0;
+    const onKey = (event) => {
+      if (event.target !== container)
+        return;
+      const nextKey = horizontal ? rtl ? "ArrowLeft" : "ArrowRight" : "ArrowDown";
+      const prevKey = horizontal ? rtl ? "ArrowRight" : "ArrowLeft" : "ArrowUp";
+      if (event.key === nextKey)
+        next();
+      else if (event.key === prevKey)
+        prev();
+      else if (event.key === "Home")
+        goTo(0);
+      else if (event.key === "End")
+        goTo(slides().length - 1);
+      else
+        return;
+      event.preventDefault();
+    };
+    container.addEventListener("keydown", onKey);
+    return {
+      next,
+      prev,
+      goTo,
+      seek,
+      active: () => Math.max(active, 0),
+      state,
+      destroy: () => {
+        stopGlide();
+        resumeSnap();
+        clearTimeout(wheelTimer);
+        container.removeEventListener("wheel", onWheel);
+        container.removeEventListener("keydown", onKey);
+        container.removeEventListener("scroll", schedule2);
+        container.removeEventListener("pointerdown", onDown);
+        container.removeEventListener("dragstart", onDragStart);
+        window.removeEventListener("click", suppressClick, true);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", endDrag);
+        window.removeEventListener("pointercancel", endDrag);
+        ro.disconnect();
+        if (raf2)
+          cancelAnimationFrame(raf2);
+      }
+    };
+  }
+  return __toCommonJS(index_exports);
+})();
+/* ═══════ end scrollvars engine ═══════ */
+</script>
+<script>
+/* ════════════════ demo driver (page wiring only — the block above IS the real
+   package engine, inlined verbatim from dist by scripts/demo-sync.mjs on every
+   build. register() is a thin shim over SV.track that keeps the page's HUD
+   instrumentation. Never hand-patch either block.) ════════════════ */
+(function () {
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // same formula as the engine's internal scene easing — the pizza wheel's
+  // inertia loop chases the eased scene between frames, so it needs it in JS
   function computeScene(pin, count, sn) {
     var raw = pin * (count - 1);
     var base = Math.floor(raw);
     if (raw === base) return raw;
     var f = raw - base;
     if (sn > 0) f = f <= sn ? 0 : (f - sn) / (1 - sn);
-    return base + easeOut(f);
+    return base + SV.easeOutCubic(f);
   }
 
-  function register(el, opts) {
-    entries.push({ el: el, opts: opts || {}, height: el.scrollHeight, active: false, kfIndex: -1, written: {} });
-    el.classList.add('sv');
-    ro.observe(el);
-    schedule();
-  }
-
-  function setVar(e, name, value) {
-    var s = value.toFixed(3);
-    if (e.written[name] === s) return;
-    e.written[name] = s;
-    e.el.style.setProperty(name, s);
-  }
-
-  function update() {
-    raf = 0;
-    // READ phase
-    var frames = entries.map(function (e) { return { e: e, rect: e.el.getBoundingClientRect() }; });
-    // WRITE phase
-    var hudPick = null;
-    frames.forEach(function (fr) {
-      var e = fr.e, rect = fr.rect, o = e.opts;
-      var isActive = (rect.top < vh * 0.75 && rect.bottom > vh * 0.25) || (e.active && o.once);
-      if (isActive !== e.active) {
-        e.active = isActive;
-        e.el.classList.toggle('sv-live', isActive);
-        if (o.onLive) o.onLive(isActive);
-      }
-      var d = reduced ? 0 : computeView(rect);
-      setVar(e, '--sv-view', d);
-      var p = computeTravel(rect, e.height);
-      setVar(e, '--sv-t', p);
-      if (o.onTravel) o.onTravel(p);
-      var pinv = 0;
-      if (o.pin) {
-        pinv = computePin(rect, e.height);
-        setVar(e, '--sv-pin', pinv);
-        if (o.onPin) o.onPin(pinv);
-      }
-      var kf = 0;
-      if (o.scenes) {
-        kf = computeScene(computePin(rect, e.height), o.scenes, o.snap === false ? false : (o.snap || 0.4));
-        setVar(e, '--sv-scene', kf);
-        var idx = clamp(Math.round(kf), 0, o.scenes - 1);
-        if (idx !== e.kfIndex) { e.kfIndex = idx; if (o.onScene) o.onScene(idx); }
-      }
-      // HUD: the section covering the viewport center
-      if (rect.top < vh / 2 && rect.bottom > vh / 2) hudPick = { e: e, d: d, p: p, kf: kf, pin: pinv };
-    });
-    var now = performance.now();
-    if (hudPick && now - hudLast > 100) {
-      hudLast = now;
-      hudSec.textContent = hudPick.e.opts.hud || '·';
-      hudD.textContent = hudPick.d.toFixed(3);
-      hudP.textContent = hudPick.p.toFixed(3);
-      hudKf.textContent = hudPick.kf.toFixed(3);
-      hudPin.textContent = hudPick.pin.toFixed(3);
-      if (hudPick.e.el.id === 'hero') {
-        hvD.textContent = hudPick.d.toFixed(3);
-        hvP.textContent = hudPick.p.toFixed(3);
-        hvKf.textContent = hudPick.kf.toFixed(3);
-      }
-    }
-  }
-
-  function schedule() {
-    if (raf) return;
-    // rAF never fires in hidden/throttled tabs — fallback so we never freeze
-    raf = document.hidden
-      ? setTimeout(function () { raf = 0; update(); }, 32)
-      : requestAnimationFrame(update);
-  }
-
-  var ro = new ResizeObserver(function (obs) {
-    obs.forEach(function (o) {
-      entries.forEach(function (e) { if (e.el === o.target) e.height = e.el.scrollHeight; });
-    });
-    schedule();
-  });
-
-  window.addEventListener('scroll', schedule, { passive: true });
-  window.addEventListener('resize', function () { vh = window.innerHeight; schedule(); });
-
-  /* ── wire the page ── */
-  var hudLast = 0;
+  /* ── HUD instrumentation: reads back the variables the engine wrote on the
+     section covering the viewport center (throttled to 100ms) ── */
+  var hudEls = [];
+  var hudTimer = 0;
   var hudSec = document.getElementById('hud-sec');
   var hudD = document.getElementById('hud-d');
   var hudP = document.getElementById('hud-p');
@@ -2993,6 +3551,62 @@ npm i scrollvars
   var hvP = document.getElementById('hv-p');
   var hvKf = document.getElementById('hv-kf');
 
+  function readVar(el, name) {
+    return parseFloat(el.style.getPropertyValue(name)) || 0;
+  }
+  function hudUpdate() {
+    hudTimer = 0;
+    var mid = window.innerHeight / 2;
+    for (var i = 0; i < hudEls.length; i++) {
+      var el = hudEls[i].el;
+      var rect = el.getBoundingClientRect();
+      if (rect.top < mid && rect.bottom > mid) {
+        hudSec.textContent = hudEls[i].label || '·';
+        var d = readVar(el, '--sv-view');
+        var p = readVar(el, '--sv-t');
+        var kf = readVar(el, '--sv-scene');
+        var pin = readVar(el, '--sv-pin');
+        hudD.textContent = d.toFixed(3);
+        hudP.textContent = p.toFixed(3);
+        hudKf.textContent = kf.toFixed(3);
+        hudPin.textContent = pin.toFixed(3);
+        if (el.id === 'hero') {
+          hvD.textContent = d.toFixed(3);
+          hvP.textContent = p.toFixed(3);
+          hvKf.textContent = kf.toFixed(3);
+        }
+        return;
+      }
+    }
+  }
+  function hudSchedule() {
+    if (!hudTimer) hudTimer = setTimeout(hudUpdate, 100);
+  }
+  // capture: hear nested scrollers too, same as the engine's own listener
+  window.addEventListener('scroll', hudSchedule, { passive: true, capture: true });
+  window.addEventListener('resize', hudSchedule);
+  hudSchedule();
+
+  // thin shim over the real engine: forwards the tracking options, keeps the
+  // element on the HUD's radar. travel:true because the page reads --sv-t
+  // everywhere (the old inline driver wrote it unconditionally).
+  function register(el, opts) {
+    opts = opts || {};
+    SV.track(el, {
+      travel: true,
+      pin: opts.pin,
+      scenes: opts.scenes,
+      snap: opts.snap,
+      once: opts.once,
+      onLive: opts.onLive,
+      onScene: opts.onScene,
+      onTravel: opts.onTravel,
+      onPin: opts.onPin,
+    });
+    hudEls.push({ el: el, label: opts.hud });
+  }
+
+  /* ── wire the page ── */
   document.querySelectorAll('[data-sv]').forEach(function (el) {
     register(el, { once: el.hasAttribute('data-once'), hud: el.getAttribute('data-hud') });
   });
@@ -4131,11 +4745,7 @@ function toggles(root) {
     }, 150);
   }, { passive: true });
   function pzGo(i) {
-    var count = PZ_FLAVORS.length;
-    var clamped = Math.max(0, Math.min(i, count - 1));
-    var span = pzOuter.scrollHeight - window.innerHeight;
-    var top = window.scrollY + pzOuter.getBoundingClientRect().top + (clamped / (count - 1)) * span;
-    window.scrollTo({ top: top, behavior: 'smooth' });
+    SV.scrollToScene(pzOuter, i, PZ_FLAVORS.length);
   }
   document.getElementById('pz-prev').addEventListener('click', function () { pzGo(pzScene - 1); });
   document.getElementById('pz-next').addEventListener('click', function () { pzGo(pzScene + 1); });

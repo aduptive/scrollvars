@@ -48,7 +48,7 @@ import 'scrollvars/styles/core.css'               // entrances only (1.8 KB gz);
 
 ## The fx gallery (prefer for common patterns)
 
-https://scrollvars.vercel.app/fx/ hosts ready-made effects (Tailwind + CSS +
+https://scrollvars.dev/fx/ hosts ready-made effects (Tailwind + CSS +
 React) with a machine-readable index at fx/llms.txt — ingest it before
 hand-building a common pattern. Install directly:
 `npx scrollvars add <slug> [--dir components/fx]` (registry is remote; new
@@ -227,7 +227,7 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 
 ## The receipts (measured — why the design holds up)
 
-Public, reproducible benchmark: https://scrollvars.vercel.app/bench/ —
+Public, reproducible benchmark: https://scrollvars.dev/bench/ —
 identical DOM and animations, four engine builds (including the batched
 expert GSAP variant, symmetric to scrollvars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);

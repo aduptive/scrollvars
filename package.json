@@ -77,7 +77,7 @@
     "type": "git",
     "url": "git+https://github.com/aduptive/scrollvars.git"
   },
-  "homepage": "https://scrollvars.vercel.app",
+  "homepage": "https://scrollvars.dev",
   "bugs": "https://github.com/aduptive/scrollvars/issues",
   "private": false,
   "peerDependencies": {
