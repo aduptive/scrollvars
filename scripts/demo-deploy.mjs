@@ -17,7 +17,7 @@ const run = (cmd) => execSync(cmd, { cwd: demoDir, encoding: 'utf8', stdio: ['ig
 
 console.log('deploying…')
 const out = run(`vercel deploy --prod --yes --scope ${SCOPE}`)
-const url = out.match(/https:\/\/demo-[a-z0-9]+-aduptives-projects\.vercel\.app/)?.[0]
+const url = out.match(/https:\/\/[a-z0-9-]+-aduptives-projects\.vercel\.app/)?.[0]
 if (!url) throw new Error('could not parse deployment URL from vercel output:\n' + out)
 console.log('deployed', url)
 
