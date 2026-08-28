@@ -33,7 +33,7 @@ jobs:
           npm pack
           mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
           npm i "$GITHUB_WORKSPACE"/scrollvars-*.tgz
-          node -e "const sv=require('scrollvars');if(typeof sv.track!=='function')process.exit(1);console.log('consumer import ok')"
+          node --input-type=module -e "import * as sv from 'scrollvars'; import * as c from 'scrollvars/canvas'; if (typeof sv.track !== 'function' || typeof c.mountEffect !== 'function') process.exit(1); console.log('consumer import ok (ESM)')"
       - name: publish to npm (with provenance)
         run: npm publish --provenance --access public
         env:
