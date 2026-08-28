@@ -64,7 +64,7 @@ const page = `<!doctype html>
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v${VERSION}</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v${VERSION}</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get

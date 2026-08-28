@@ -712,7 +712,7 @@ const SHELL_CSS = `
 
 const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>scrollvars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
-  <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a></div>
+  <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>`
 
 /* categorized accordion sidebar — same markup on every fx page; native <details>.
