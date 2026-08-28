@@ -18,7 +18,7 @@ const label = (e) =>
 const main = results.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
 
-let html = `<p class="sub">Measured by the committed harness (<code>demo/bench/harness</code> — clone the repo,
+let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a> — clone the repo,
 <code>npm i && npm run measure</code>): headless Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
 median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle (calibration verified)` : ''}.
 Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
