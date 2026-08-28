@@ -1,0 +1,5 @@
+# Every PR needs a review from an owner (enforced once branch protection
+# turns on "Require review from Code Owners"). Add colleagues per area as
+# they join, e.g.:
+#   /src/react/  @aduptive @colleague
+* @aduptive

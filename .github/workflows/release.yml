@@ -1,0 +1,40 @@
+# Publishing happens HERE, never from a laptop: push a version tag and the
+# release only reaches npm if every gate is green. Requires the NPM_TOKEN
+# secret (repo Settings → Secrets → Actions) — until it exists, the publish
+# step fails safely and nothing ships.
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write   # npm provenance
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, registry-url: 'https://registry.npmjs.org' }
+      - run: npm ci
+      - run: npm test                    # pretest builds; 21 unit tests
+      - run: npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/docs-build.mjs
+      - run: npm run test:e2e            # progressive-enhancement invariants
+        env: { CHROME: /usr/bin/google-chrome }
+      - name: tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          [ "$TAG" = "$PKG" ] || { echo "tag v$TAG != package.json $PKG"; exit 1; }
+      - name: pack smoke — the tarball actually installs and imports
+        run: |
+          npm pack
+          mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
+          npm i "$GITHUB_WORKSPACE"/scrollvars-*.tgz
+          node -e "const sv=require('scrollvars');if(typeof sv.track!=='function')process.exit(1);console.log('consumer import ok')"
+      - name: publish to npm (with provenance)
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
