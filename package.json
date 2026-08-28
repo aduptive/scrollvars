@@ -1,6 +1,6 @@
 {
   "name": "scrollvars",
-  "version": "1.11.1",
+  "version": "1.12.0",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
@@ -51,6 +51,7 @@
     "pretest": "npm run build",
     "dev": "tsc -w",
     "test": "node --test test/",
+    "test:e2e": "cd demo/bench/harness && npm i --silent && node e2e-invariants.mjs",
     "prepublishOnly": "npm run build && npm test",
     "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/docs-build.mjs",
     "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"

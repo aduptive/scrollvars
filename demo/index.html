@@ -6,11 +6,14 @@
 <title>scrollvars</title>
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="scrollvars — one rAF in, CSS variables out">
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="scrollvars — one rAF in, CSS variables out">
+<meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Lighthouse 100 on the PageSpeed profile. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
@@ -2859,7 +2862,7 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.11.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · v1.12.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS — any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -2907,6 +2910,8 @@ var SV = (() => {
     scrollToScene: () => scrollToScene,
     slider: () => slider,
     snapProgress: () => snapProgress,
+    split: () => split,
+    splitParts: () => splitParts,
     toggles: () => toggles,
     track: () => track,
     trackPointer: () => trackPointer
@@ -3171,6 +3176,58 @@ var SV = (() => {
     };
   }
 
+  // dist/core/split.js
+  function splitParts(text, by = "word") {
+    const words = text.split(/\s+/).filter(Boolean);
+    if (by === "word")
+      return words;
+    return words.flatMap((word) => Array.from(word));
+  }
+  function split(el, { by = "word" } = {}) {
+    if (typeof window === "undefined")
+      return () => {
+      };
+    const original = el.innerHTML;
+    const text = (el.textContent ?? "").trim();
+    if (!text)
+      return () => {
+      };
+    el.setAttribute("aria-label", text);
+    el.classList.add("sv-split");
+    el.innerHTML = "";
+    let order = 0;
+    const append = (word) => {
+      if (by === "word") {
+        const span = document.createElement("span");
+        span.textContent = word;
+        span.setAttribute("aria-hidden", "true");
+        span.style.setProperty("--sv-order", String(order++));
+        el.appendChild(span);
+      } else {
+        for (const ch of Array.from(word)) {
+          const span = document.createElement("span");
+          span.textContent = ch;
+          span.setAttribute("aria-hidden", "true");
+          span.style.setProperty("--sv-order", String(order++));
+          el.appendChild(span);
+        }
+      }
+    };
+    const words = text.split(/\s+/).filter(Boolean);
+    words.forEach((word, i) => {
+      if (i > 0)
+        el.appendChild(document.createTextNode(" "));
+      append(word);
+    });
+    el.style.setProperty("--sv-count", String(order));
+    return () => {
+      el.innerHTML = original;
+      el.removeAttribute("aria-label");
+      el.classList.remove("sv-split");
+      el.style.removeProperty("--sv-count");
+    };
+  }
+
   // dist/core/scan.js
   var VAR_ATTRS = ["order", "distance", "from", "to"];
   var VAR_SELECTOR = VAR_ATTRS.map((name) => `[data-sv-${name}]`).join(",");
@@ -3202,6 +3259,13 @@ var SV = (() => {
       };
     const scope = root ?? document;
     const tracked = /* @__PURE__ */ new Map();
+    const splits = /* @__PURE__ */ new Map();
+    const addSplit = (el) => {
+      if (splits.has(el))
+        return;
+      const by = el.getAttribute("data-sv-split") === "char" ? "char" : "word";
+      splits.set(el, split(el, { by }));
+    };
     const add = (el) => {
       if (!tracked.has(el))
         tracked.set(el, track(el, optionsFrom(el)));
@@ -3220,10 +3284,14 @@ var SV = (() => {
         if (node.matches?.(VAR_SELECTOR))
           applyVarAttrs(node);
         node.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+        if (node.hasAttribute("data-sv-split"))
+          addSplit(node);
+        node.querySelectorAll("[data-sv-split]").forEach(addSplit);
       }
     };
     scope.querySelectorAll("[data-sv]").forEach(add);
     scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+    scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => sweep(node, add));
@@ -3238,6 +3306,8 @@ var SV = (() => {
       observer.disconnect();
       tracked.forEach((untrack) => untrack());
       tracked.clear();
+      splits.forEach((restore) => restore());
+      splits.clear();
     };
   }
 

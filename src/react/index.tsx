@@ -12,6 +12,7 @@ import { scan } from '../core/scan.js'
 import { toggles } from '../core/toggles.js'
 import type { SliderHandle, SliderOptions } from '../core/slider.js'
 import { slider } from '../core/slider.js'
+import { splitParts } from '../core/split.js'
 
 /**
  * Zero-wrapper mode: drop one `<ScrollVarsBoot />` in the root layout and
@@ -31,9 +32,18 @@ export const ScrollVarsBoot: React.FC = () => {
   useEffect(() => {
     const stopScan = scan()
     const stopToggles = toggles()
+    // dev convenience: ?sv-debug mounts the overlay (code-split — costs
+    // nothing unless the flag is present)
+    let stopDebug: (() => void) | undefined
+    if (new URLSearchParams(location.search).has('sv-debug')) {
+      import('../debug/index.js').then((m) => {
+        stopDebug = m.debug()
+      })
+    }
     return () => {
       stopScan()
       stopToggles()
+      stopDebug?.()
     }
   }, [])
   return null
@@ -276,6 +286,68 @@ export interface ScenesProps extends Omit<TrackProps, 'scenes' | 'children'> {
  * and the scroll drives the scene index. The continuous `--sv-scene`
  * variable stays on the element for pure-CSS effects (progress bars).
  */
+export interface SplitProps extends React.HTMLAttributes<HTMLElement>, VarProps {
+  children: string
+  /** 'word' (default) or 'char'. */
+  by?: 'word' | 'char'
+  as?: React.ElementType
+}
+
+/**
+ * SplitText-lite, server-rendered: the text arrives as word/char spans with
+ * `--sv-order` already in the HTML — no client-side splitting, no layout
+ * shift, no hydration flash. Pair with `sv-split-rise` (staggered entrance)
+ * or `sv-reading` (scrubbed) on a tracked ancestor.
+ */
+export const Split: React.FC<SplitProps> = ({
+  children,
+  by = 'word',
+  as: Tag = 'span',
+  className,
+  style,
+  order,
+  distance,
+  stagger,
+  duration,
+  ease,
+  ...rest
+}) => {
+  const words = children.split(/\s+/).filter(Boolean)
+  let index = 0
+  return (
+    <Tag
+      aria-label={children}
+      className={className ? `sv-split ${className}` : 'sv-split'}
+      style={{
+        '--sv-count': splitParts(children, by).length,
+        ...varStyle({ order, distance, stagger, duration, ease }, style),
+      } as React.CSSProperties}
+      {...rest}
+    >
+      {words.map((word, w) => (
+        <React.Fragment key={w}>
+          {w > 0 && ' '}
+          {by === 'word' ? (
+            <span aria-hidden="true" style={{ '--sv-order': index++ } as React.CSSProperties}>
+              {word}
+            </span>
+          ) : (
+            Array.from(word).map((ch, c) => (
+              <span
+                key={c}
+                aria-hidden="true"
+                style={{ '--sv-order': index++ } as React.CSSProperties}
+              >
+                {ch}
+              </span>
+            ))
+          )}
+        </React.Fragment>
+      ))}
+    </Tag>
+  )
+}
+
 export const Scenes: React.FC<ScenesProps> = ({
   count,
   height,

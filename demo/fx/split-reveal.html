@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Curtain — scrollvars fx</title>
-<meta name="description" content="Two panels slide apart as you scroll through a pinned stretch. Copy-paste in Tailwind, CSS or React.">
+<title>Split reveal — scrollvars fx</title>
+<meta name="description" content="A headline broken into words, each rising on its own beat — SplitText without the engine. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -110,7 +110,7 @@
         <a href="deck-spread.html">Deck spread</a>
       </details>
       <details open><summary>Pinned scenes</summary>
-        <a href="curtain.html" aria-current="page">Curtain</a>
+        <a href="curtain.html">Curtain</a>
         <a href="horizontal-rail.html">Horizontal rail</a>
         <a href="sequenced-scrub.html">Sequenced scrub</a>
       </details>
@@ -119,7 +119,7 @@
         <a href="three-scene.html">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
-        <a href="split-reveal.html">Split reveal</a>
+        <a href="split-reveal.html" aria-current="page">Split reveal</a>
         <a href="rotating-words.html">Rotating words</a>
       </details>
       <details open><summary>Pointer</summary>
@@ -133,16 +133,13 @@
   </details>
 </div></aside>
 <main>
-  <h1>Curtain</h1>
-  <p class="tag">Two panels slide apart as you scroll through a pinned stretch.</p>
-  <p class="meta"><b>Use it for:</b> Chapter breaks, big reveals, section transitions.<br><b>Knobs:</b> outer height = scroll length; panel content/colors are yours</p>
-  <div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky">
-    <div class="fxreveal">revealed</div>
-    <div class="fxpanel sv-curtain-l">scroll</div>
-    <div class="fxpanel sv-curtain-r" style="left:50%">vars</div>
-  </div>
-</div>
+  <h1>Split reveal</h1>
+  <p class="tag">A headline broken into words, each rising on its own beat — SplitText without the engine.</p>
+  <p class="meta"><b>Use it for:</b> Hero headlines, section titles, any text that deserves an entrance.<br><b>Knobs:</b> data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead</p>
+  <div class="fxrunway"><section data-sv data-sv-once class="fxstage">
+  <h3 class="fxh sv-split-rise" data-sv-split>Words arrive one by one</h3>
+  <p class="fxp sv-rise" style="--sv-order: 5">and the copy follows.</p>
+</section></div>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -150,31 +147,41 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 h-screen overflow-hidden"&gt;
-    &lt;div class="grid h-full place-items-center"&gt;revealed content&lt;/div&gt;
-    &lt;div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
-    &lt;div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
-  &lt;/div&gt;
-&lt;/div&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin class="outer"&gt;   &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;                        &lt;!-- sticky; top:0; h:100vh; overflow:hidden --&gt;
-    &lt;div class="revealed-content"&gt;…&lt;/div&gt;
-    &lt;div class="panel-left sv-curtain-l"&gt;…&lt;/div&gt;
-    &lt;div class="panel-right sv-curtain-r"&gt;…&lt;/div&gt;
-  &lt;/div&gt;
-&lt;/div&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
+  &lt;h2 class="sv-split-rise text-5xl font-extrabold" data-sv-split&gt;
+    Words arrive one by one
+  &lt;/h2&gt;
+&lt;/section&gt;
+&lt;!-- knobs per element: [--sv-stagger:60ms] [--sv-duration:600ms] --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
+  &lt;h2 class="sv-split-rise" data-sv-split&gt;Words arrive one by one&lt;/h2&gt;
+&lt;/section&gt;
+&lt;!-- data-sv-split wraps each word in a span with --sv-order (aria-label
+     keeps the full text for AT; spans are aria-hidden). char mode:
+     data-sv-split="char". --&gt;
 
-/* the preset (styles/pin.css): */
-.sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
-.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 h-screen overflow-hidden"&gt;
-    &lt;Revealed /&gt;
-    &lt;div className="sv-curtain-l …" /&gt;
-    &lt;div className="sv-curtain-r …" /&gt;
-  &lt;/div&gt;
-&lt;/Track&gt;</code></pre>
+/* the preset (styles/core.css): */
+.sv-on .sv .sv-split-rise &gt; span {
+  opacity: 0; translate: 0 .6em;
+  transition: opacity var(--sv-duration) var(--sv-ease),
+              translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+}
+.sv-on .sv.sv-live .sv-split-rise &gt; span { opacity: 1; translate: 0 0; }
+
+/* scrub instead of play: the same spans feed sv-reading directly */
+&lt;h2 class="sv-reading" data-sv-split&gt;…&lt;/h2&gt;   &lt;!-- inside a data-sv-pin --&gt;</code></pre>
+    <pre data-pane="react"><code>import { Split } from 'scrollvars/react'
+
+&lt;Reveal&gt;
+  &lt;Split as="h2" className="sv-split-rise" stagger={60}&gt;
+    Words arrive one by one
+  &lt;/Split&gt;
+&lt;/Reveal&gt;
+
+{/* &lt;Split&gt; renders the spans ON THE SERVER — the split markup is in the
+   HTML, so no client-side splitting, no layout shift, no hydration
+   flash. by="char" for letters. */}</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.4 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

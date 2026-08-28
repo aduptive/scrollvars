@@ -47,7 +47,7 @@ for (const block of BLOCKS) {
     `${escapeRe(marker)}\\n  var ${block.name} = \\(function \\(\\) \\{[\\s\\S]*?\\n  return ${block.name};\\n  \\}\\)\\(\\);`
   )
   if (!re.test(html)) throw new Error(`marker block not found for "${block.label}"`)
-  html = html.replace(re, wrapped)
+  html = html.replace(re, () => wrapped) // function replacer: dist code may contain $-patterns
 }
 
 // engine block: the whole built package as an IIFE (global `SV`) — the same

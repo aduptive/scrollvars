@@ -56,7 +56,25 @@ if (WHICH.includes('deep'))
       engines: ['scrollvars.html', 'gsap-batched.html'],
     })
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true })
+// Under CPU throttle, headless-new never produces the first BeginFrame —
+// rAF starves and the run hangs. The throttled profile launches headful
+// with the window parked offscreen: real vsync frames, throttled CPU.
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: THROTTLE <= 1,
+  args:
+    THROTTLE > 1
+      ? [
+          // parked offscreen counts as occluded on macOS — these keep the
+          // renderer producing real vsync frames anyway
+          '--window-position=-3200,-3200',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-background-timer-throttling',
+          '--mute-audio',
+        ]
+      : [],
+})
 const chromeVersion = await browser.version()
 
 async function measureOnce(page_, params) {
@@ -139,8 +157,9 @@ server.close()
 
 const outDir = join(root, 'bench', 'results')
 mkdirSync(outDir, { recursive: true })
-writeFileSync(join(outDir, 'latest.json'), JSON.stringify(results, null, 2))
-console.log('\nwritten to bench/results/latest.json')
+const outName = THROTTLE > 1 ? `throttled-${THROTTLE}x.json` : 'latest.json'
+writeFileSync(join(outDir, outName), JSON.stringify(results, null, 2))
+console.log(`\nwritten to bench/results/${outName}`)
 for (const sc of results.scenarios) {
   console.log(`\n### ${sc.name}`)
   console.log('| engine | script | recalc | layout | task total | heap | fps | p95 |')

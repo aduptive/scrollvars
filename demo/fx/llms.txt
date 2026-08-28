@@ -1,7 +1,7 @@
 # scrollvars fx — llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the scrollvars engine
-> (npm i scrollvars — full core 4.0 KB gzip). Each effect below includes when to
+> (npm i scrollvars — full core 4.4 KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -356,6 +356,60 @@ const canvasRef = useCanvasEffect({
     <canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" />
   </div>
 </Track>
+```
+
+## Split reveal (split-reveal)
+
+A headline broken into words, each rising on its own beat — SplitText without the engine.
+Category: Text
+Use for: Hero headlines, section titles, any text that deserves an entrance.
+Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead
+
+### Tailwind
+```html
+<section data-sv data-sv-once class="py-24">
+  <h2 class="sv-split-rise text-5xl font-extrabold" data-sv-split>
+    Words arrive one by one
+  </h2>
+</section>
+<!-- knobs per element: [--sv-stagger:60ms] [--sv-duration:600ms] -->
+```
+
+### CSS
+```html
+<section data-sv data-sv-once>
+  <h2 class="sv-split-rise" data-sv-split>Words arrive one by one</h2>
+</section>
+<!-- data-sv-split wraps each word in a span with --sv-order (aria-label
+     keeps the full text for AT; spans are aria-hidden). char mode:
+     data-sv-split="char". -->
+
+/* the preset (styles/core.css): */
+.sv-on .sv .sv-split-rise > span {
+  opacity: 0; translate: 0 .6em;
+  transition: opacity var(--sv-duration) var(--sv-ease),
+              translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+}
+.sv-on .sv.sv-live .sv-split-rise > span { opacity: 1; translate: 0 0; }
+
+/* scrub instead of play: the same spans feed sv-reading directly */
+<h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->
+```
+
+### React
+```tsx
+import { Split } from 'scrollvars/react'
+
+<Reveal>
+  <Split as="h2" className="sv-split-rise" stagger={60}>
+    Words arrive one by one
+  </Split>
+</Reveal>
+
+{/* <Split> renders the spans ON THE SERVER — the split markup is in the
+   HTML, so no client-side splitting, no layout shift, no hydration
+   flash. by="char" for letters. */}
 ```
 
 ## Rotating words (rotating-words)

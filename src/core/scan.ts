@@ -1,5 +1,6 @@
 import type { TrackOptions } from './driver.js'
 import { track } from './driver.js'
+import { split } from './split.js'
 
 /**
  * Zero-wrapper mode: track every `[data-sv]` element and keep watching the
@@ -55,6 +56,13 @@ export function scan(root?: ParentNode): () => void {
   const scope: ParentNode = root ?? document
 
   const tracked = new Map<HTMLElement, () => void>()
+  const splits = new Map<HTMLElement, () => void>()
+
+  const addSplit = (el: HTMLElement) => {
+    if (splits.has(el)) return
+    const by = el.getAttribute('data-sv-split') === 'char' ? 'char' : 'word'
+    splits.set(el, split(el, { by }))
+  }
 
   const add = (el: HTMLElement) => {
     if (!tracked.has(el)) tracked.set(el, track(el, optionsFrom(el)))
@@ -70,11 +78,14 @@ export function scan(root?: ParentNode): () => void {
     if (fn === add) {
       if (node.matches?.(VAR_SELECTOR)) applyVarAttrs(node)
       node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+      if (node.hasAttribute('data-sv-split')) addSplit(node)
+      node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
     }
   }
 
   scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
   scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+  scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
 
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -91,5 +102,7 @@ export function scan(root?: ParentNode): () => void {
     observer.disconnect()
     tracked.forEach((untrack) => untrack())
     tracked.clear()
+    splits.forEach((restore) => restore())
+    splits.clear()
   }
 }

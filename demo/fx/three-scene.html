@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Three.js scene on the pin — scrollvars fx</title>
 <meta name="description" content="A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders. Copy-paste in Tailwind, CSS or React.">
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -118,6 +119,7 @@
         <a href="three-scene.html" aria-current="page">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
+        <a href="split-reveal.html">Split reveal</a>
         <a href="rotating-words.html">Rotating words</a>
       </details>
       <details open><summary>Pointer</summary>
@@ -219,12 +221,12 @@ const canvasRef = useCanvasEffect({
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.0 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.4 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>scrollvars</b> v1.11.1 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>scrollvars</b> v1.12.0 — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

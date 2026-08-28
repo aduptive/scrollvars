@@ -30,6 +30,7 @@ const changelogHtml = mdLite(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'))
 const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars docs — the human reference</title>
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -157,13 +158,14 @@ mapping becomes pure CSS.</p>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
+<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable — also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
 <tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers — children stay RSC)</p>
 <table>
 <tr><td><code>&lt;ScrollVarsBoot /&gt;</code></td><td>mounts <code>scan()</code> + <code>toggles()</code> once.</td></tr>
-<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
+<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
 <tr><td><code>&lt;Slider&gt; &lt;Slide&gt; &lt;Marquee&gt; &lt;Accordion&gt; &lt;Modal&gt;</code></td><td>the component kit (see the accessibility contract below).</td></tr>
 <tr><td><code>useTrack / useScenes / useSlider / usePointer / useCanvasEffect</code></td><td>hooks under the components.</td></tr>
 </table>
@@ -179,7 +181,7 @@ transform-fallback CSS.</p>
 (<code>styles/core.css</code> 1.2&nbsp;KB gz · pin 1.3 · slider 0.4 · tilt 0.5 · ui).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
-<tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
+<tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
 <tr><td>pin (scrub)</td><td><code>sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise sv-acts</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
 <tr><td>state / ui</td><td><code>sv-open sv-pop sv-words sv-marquee sv-accordion sv-tilt</code></td></tr>

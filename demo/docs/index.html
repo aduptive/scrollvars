@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>scrollvars docs — the human reference</title>
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -34,7 +35,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.11.1</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
+<div><span class="v">v1.12.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -128,13 +129,14 @@ mapping becomes pure CSS.</p>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
+<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable — also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
 <tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers — children stay RSC)</p>
 <table>
 <tr><td><code>&lt;ScrollVarsBoot /&gt;</code></td><td>mounts <code>scan()</code> + <code>toggles()</code> once.</td></tr>
-<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
+<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
 <tr><td><code>&lt;Slider&gt; &lt;Slide&gt; &lt;Marquee&gt; &lt;Accordion&gt; &lt;Modal&gt;</code></td><td>the component kit (see the accessibility contract below).</td></tr>
 <tr><td><code>useTrack / useScenes / useSlider / usePointer / useCanvasEffect</code></td><td>hooks under the components.</td></tr>
 </table>
@@ -150,7 +152,7 @@ transform-fallback CSS.</p>
 (<code>styles/core.css</code> 1.2&nbsp;KB gz · pin 1.3 · slider 0.4 · tilt 0.5 · ui).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
-<tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
+<tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
 <tr><td>pin (scrub)</td><td><code>sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise sv-acts</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
 <tr><td>state / ui</td><td><code>sv-open sv-pop sv-words sv-marquee sv-accordion sv-tilt</code></td></tr>
@@ -239,6 +241,36 @@ compat()   // once, before anything else</code></pre>
 </table>
 
 <h2 id="changelog">Changelog</h2>
+
+
+<h3>1.12.0 — 2026-08-27</h3>
+
+The last executable items from the review panel's path-to-9, plus launch
+readiness.
+
+<ul><li><b><code>split</code> — SplitText-lite.</b> Word/char spans carrying <code>--sv-order</code></li></ul>
+  (+ <code>--sv-count</code> on the container), aria-label kept, spans aria-hidden,
+  fully restorable. Zero-wrapper: <code>data-sv-split</code> / <code>data-sv-split="char"</code>.
+  React: <code>&lt;Split></code> renders the spans <b>on the server</b> — no client-side
+  splitting, no layout shift, no hydration flash. New presets <code>sv-split</code> /
+  <code>sv-split-rise</code>; pairs with <code>sv-reading</code> for scrubbed text. New fx entry
+  + CLI component: <code>split-reveal</code>.
+<ul><li><b>Progressive-enhancement invariants, proven.</b> <code>npm run test:e2e</code></li></ul>
+  (harness): no-JS renders complete, nothing is ever hidden before
+  <code>html.sv-on</code> exists (probed from the first frame), attribute knobs land.
+  All green; wired into CI.
+<ul><li><b>CI</b> (GitHub Actions): build + 21 unit tests + the e2e invariants on</li></ul>
+  every push/PR.
+<ul><li><b>Low-end bench profile</b>: the harness runs the 4× CPU-throttle suite</li></ul>
+  headful (headless Chrome never produces frames under throttle — found
+  the hard way) and publishes <code>results/throttled-4x.json</code> + a table on
+  /bench/.
+<ul><li><b>Launch assets</b>: og:image social card on every page, README hero GIF</li></ul>
+  (generated by <code>harness/make-gif.mjs</code> from a real scroll), and
+  <code>article/launch-kit.md</code> — Show HN, thread, newsletter pitch, ready to
+  fire on publish day.
+<ul><li><code>ScrollVarsBoot</code> mounts the debug overlay on <code>?sv-debug</code> (code-split;</li></ul>
+  free otherwise). Release tags v1.7.0–v1.11.1 pushed.
 
 
 <h3>1.11.1 — 2026-08-27</h3>

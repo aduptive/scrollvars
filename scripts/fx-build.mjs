@@ -387,6 +387,54 @@ const canvasRef = useCanvasEffect({
 </Track>`,
   },
   {
+    slug: 'split-reveal',
+    category: 'Text',
+    title: 'Split reveal',
+    tagline: 'A headline broken into words, each rising on its own beat — SplitText without the engine.',
+    when: 'Hero headlines, section titles, any text that deserves an entrance.',
+    knobs: 'data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead',
+    runway: true,
+    preview: `<section data-sv data-sv-once class="fxstage">
+  <h3 class="fxh sv-split-rise" data-sv-split>Words arrive one by one</h3>
+  <p class="fxp sv-rise" style="--sv-order: 5">and the copy follows.</p>
+</section>`,
+    css: `<section data-sv data-sv-once>
+  <h2 class="sv-split-rise" data-sv-split>Words arrive one by one</h2>
+</section>
+<!-- data-sv-split wraps each word in a span with --sv-order (aria-label
+     keeps the full text for AT; spans are aria-hidden). char mode:
+     data-sv-split="char". -->
+
+/* the preset (styles/core.css): */
+.sv-on .sv .sv-split-rise > span {
+  opacity: 0; translate: 0 .6em;
+  transition: opacity var(--sv-duration) var(--sv-ease),
+              translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+}
+.sv-on .sv.sv-live .sv-split-rise > span { opacity: 1; translate: 0 0; }
+
+/* scrub instead of play: the same spans feed sv-reading directly */
+<h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,
+    tailwind: `<section data-sv data-sv-once class="py-24">
+  <h2 class="sv-split-rise text-5xl font-extrabold" data-sv-split>
+    Words arrive one by one
+  </h2>
+</section>
+<!-- knobs per element: [--sv-stagger:60ms] [--sv-duration:600ms] -->`,
+    react: `import { Split } from 'scrollvars/react'
+
+<Reveal>
+  <Split as="h2" className="sv-split-rise" stagger={60}>
+    Words arrive one by one
+  </Split>
+</Reveal>
+
+{/* <Split> renders the spans ON THE SERVER — the split markup is in the
+   HTML, so no client-side splitting, no layout shift, no hydration
+   flash. by="char" for letters. */}`,
+  },
+  {
     slug: 'rotating-words',
     category: 'Text',
     title: 'Rotating words',
@@ -559,7 +607,10 @@ copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
   const page = readFileSync(benchPage, 'utf8')
   const re = /(<script>\n)"use strict";var SV=[\s\S]*?(\n\n\n)/
   if (!re.test(page)) throw new Error('bench inline engine marker not found')
-  writeFileSync(benchPage, page.replace(re, `$1${iife}$2`))
+  // function replacer: the dist contains `$&`-like sequences that a string
+  // replacement would corrupt (found the hard way — the page died with a
+  // SyntaxError and every bench run silently hung)
+  writeFileSync(benchPage, page.replace(re, (_, open, close) => `${open}${iife}${close}`))
   console.log('bench engine resynced from dist')
 }
 
@@ -695,6 +746,7 @@ for (const fx of EFFECTS) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${fx.title} — scrollvars fx</title>
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>${SHELL_CSS}</style>
 </head><body>
@@ -941,6 +993,37 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
         <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
+  )
+}
+`,
+  },
+  'split-reveal': {
+    file: 'SplitReveal.tsx',
+    content: `// scrollvars fx · split-reveal
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)
+// <Split> renders word/char spans on the server: no client splitting,
+// no CLS, no hydration flash. aria-label carries the full text.
+'use client'
+import * as React from 'react'
+import { Reveal, Split } from 'scrollvars/react'
+
+export function SplitReveal({
+  children,
+  by = 'word',
+  stagger = 60,
+  className,
+}: {
+  children: string
+  by?: 'word' | 'char'
+  stagger?: number
+  className?: string
+}) {
+  return (
+    <Reveal once>
+      <Split as="h2" by={by} stagger={stagger} className={className ? \`sv-split-rise \${className}\` : 'sv-split-rise'}>
+        {children}
+      </Split>
+    </Reveal>
   )
 }
 `,

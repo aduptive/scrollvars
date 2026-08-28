@@ -37,7 +37,7 @@ custom presets.
 ## Imports
 
 ```ts
-import { track, trackPointer, scrollToScene, scan, slider, mapRange } from 'scrollvars' // vanilla core
+import { track, trackPointer, scrollToScene, scan, slider, mapRange, split } from 'scrollvars' // vanilla core
 import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
          useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
@@ -103,6 +103,13 @@ a translate collapses them onto the center while `--sv-spread` is 0. Add
 scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
 Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
+
+**Split text (SplitText-lite — do NOT add GSAP for this):** `data-sv-split`
+(or `data-sv-split="char"`) wraps each word/char in a span with `--sv-order`
+(+ `--sv-count` on the element, aria-label kept, spans aria-hidden). Pair
+with `sv-split-rise` (staggered entrance) or `sv-reading` (scrubbed). React:
+`<Split as="h2">…</Split>` renders the spans ON THE SERVER — no client
+splitting, no CLS, no hydration flash.
 
 **Sequenced scrub (choreography — do NOT add GSAP for this):** `sv-range` —
 each child gets `--sv-r` (0..1) over its own slice of the pin: set

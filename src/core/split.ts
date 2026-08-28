@@ -1,0 +1,67 @@
+/**
+ * SplitText-lite: break an element's text into word/char spans carrying
+ * `--sv-order` (and `--sv-count` on the container), so every order-driven
+ * preset — entrances with stagger, `sv-reading`, `sv-range` slices — works
+ * on text with no manual markup.
+ *
+ * Accessibility: the container keeps the full text as `aria-label`; the
+ * spans are `aria-hidden`. The original content is restored by the returned
+ * function. Markup inside the element is flattened to text — split plain
+ * text, not rich fragments.
+ */
+
+export interface SplitOptions {
+  /** 'word' (default) or 'char'. */
+  by?: 'word' | 'char'
+}
+
+/** Pure splitter: returns the animated parts (whitespace stays out — the
+ * DOM/React layers re-insert it as plain text so wrapping stays natural). */
+export function splitParts(text: string, by: 'word' | 'char' = 'word'): string[] {
+  const words = text.split(/\s+/).filter(Boolean)
+  if (by === 'word') return words
+  return words.flatMap((word) => Array.from(word))
+}
+
+export function split(el: HTMLElement, { by = 'word' }: SplitOptions = {}): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const original = el.innerHTML
+  const text = (el.textContent ?? '').trim()
+  if (!text) return () => {}
+
+  el.setAttribute('aria-label', text)
+  el.classList.add('sv-split')
+  el.innerHTML = ''
+
+  let order = 0
+  const append = (word: string) => {
+    if (by === 'word') {
+      const span = document.createElement('span')
+      span.textContent = word
+      span.setAttribute('aria-hidden', 'true')
+      span.style.setProperty('--sv-order', String(order++))
+      el.appendChild(span)
+    } else {
+      for (const ch of Array.from(word)) {
+        const span = document.createElement('span')
+        span.textContent = ch
+        span.setAttribute('aria-hidden', 'true')
+        span.style.setProperty('--sv-order', String(order++))
+        el.appendChild(span)
+      }
+    }
+  }
+  const words = text.split(/\s+/).filter(Boolean)
+  words.forEach((word, i) => {
+    if (i > 0) el.appendChild(document.createTextNode(' '))
+    append(word)
+  })
+  el.style.setProperty('--sv-count', String(order))
+
+  return () => {
+    el.innerHTML = original
+    el.removeAttribute('aria-label')
+    el.classList.remove('sv-split')
+    el.style.removeProperty('--sv-count')
+  }
+}

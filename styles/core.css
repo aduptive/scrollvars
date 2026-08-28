@@ -68,6 +68,25 @@
   translate: calc(var(--sv-distance) * 2) 0;
 }
 
+/* ---- sv-split: text broken into word/char spans (split()/data-sv-split/
+   <Split>) — spans carry --sv-order, the container --sv-count, so every
+   order-driven preset works on text. sv-split-rise = staggered entrance. */
+.sv-split > span {
+  display: inline-block;
+}
+.sv-on .sv .sv-split-rise > span {
+  opacity: 0;
+  translate: 0 0.6em;
+  transition:
+    opacity var(--sv-duration) var(--sv-ease),
+    translate var(--sv-duration) var(--sv-ease);
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+}
+.sv-on .sv.sv-live .sv-split-rise > span {
+  opacity: 1;
+  translate: 0 0;
+}
+
 /* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
 .sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
 .sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
@@ -149,6 +168,7 @@
     rotate: none;
     transition: none;
   }
+  .sv-on .sv .sv-split-rise > span,
   .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
   .sv-on .sv.sv-auto > *,
   .sv-view-fade,
