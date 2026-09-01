@@ -4,6 +4,14 @@
 > variables out. Zero dependencies. Live demo with view-source docs:
 > https://scrollvars.dev · Benchmarks: https://scrollvars.dev/bench/
 
+## Resources
+
+- [Live demo](https://scrollvars.dev) — 28 patterns, view-source is the spec
+- [Human docs](https://scrollvars.dev/docs/) — quickstart, every export, de/para tables
+- [fx gallery](https://scrollvars.dev/fx/) — copy-paste effects, its own [llms.txt](https://scrollvars.dev/fx/llms.txt)
+- [Benchmark](https://scrollvars.dev/bench/) — reproducible, includes the scenario it loses
+- [npm package](https://www.npmjs.com/package/scrollvars) · [GitHub](https://github.com/aduptive/scrollvars)
+
 You are working with `scrollvars`, a tiny scroll/pointer/canvas animation
 engine. Read this before writing any animation code in a project that uses it.
 **Do not add GSAP, Framer Motion, or IntersectionObserver boilerplate for
