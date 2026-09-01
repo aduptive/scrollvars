@@ -187,3 +187,75 @@ test('slider: RTL normalizes to logical coordinates', async () => {
   handle.destroy()
   delete global.getComputedStyle
 })
+
+test('slider: mouse drag kills native text-selection at pointerdown, and restores focus on a plain click', async () => {
+  global.requestAnimationFrame = () => 1
+  global.cancelAnimationFrame = () => {}
+  global.ResizeObserver = class {
+    observe() {}
+    disconnect() {}
+  }
+  global.getSelection = () => ({ removeAllRanges: () => {} })
+  global.matchMedia = undefined
+
+  const winHandlers = {}
+  global.window = {
+    addEventListener: (type, fn) => (winHandlers[type] = fn),
+    removeEventListener: (type, fn) => {
+      if (winHandlers[type] === fn) delete winHandlers[type]
+    },
+  }
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => {
+    s.style._owner = s
+    s.classList._owner = s
+  })
+
+  const containerHandlers = {}
+  const container = {
+    children: slides,
+    scrollLeft: 0,
+    clientWidth: 300,
+    classList: { add: () => {}, remove: () => {} },
+    style: { scrollSnapType: '', setProperty: () => {} },
+    addEventListener: (type, fn) => (containerHandlers[type] = fn),
+    removeEventListener: () => {},
+    scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js')
+  const handle = slider(container, { duration: 0 })
+
+  // --- a plain click: pointerdown, no movement, pointerup ---
+  let prevented = false
+  const focusSpy = { focused: false, focus: () => (focusSpy.focused = true) }
+  const linkTarget = { closest: (sel) => (sel.includes('a[href]') ? focusSpy : null) }
+  containerHandlers.pointerdown({
+    pointerType: 'mouse',
+    clientX: 50,
+    target: linkTarget,
+    preventDefault: () => (prevented = true),
+  })
+  assert.ok(prevented, 'pointerdown on mouse must preventDefault (kills native selection-drag)')
+  assert.ok(winHandlers.pointermove, 'drag tracking armed on window')
+  winHandlers.pointerup() // released before crossing the drag threshold
+  assert.ok(focusSpy.focused, 'a genuine click restores focus that preventDefault suppressed')
+
+  // --- a real drag: pointerdown, move past threshold, release ---
+  let prevented2 = false
+  containerHandlers.pointerdown({
+    pointerType: 'mouse',
+    clientX: 50,
+    target: { closest: () => null },
+    preventDefault: () => (prevented2 = true),
+  })
+  assert.ok(prevented2)
+  winHandlers.pointermove({ clientX: 80 }) // 30px > 5px threshold: now dragging
+  const before = container.scrollLeft
+  winHandlers.pointermove({ clientX: 70 })
+  assert.notEqual(container.scrollLeft, before, 'a real drag moves scrollLeft')
+  winHandlers.pointerup()
+
+  handle.destroy()
+})

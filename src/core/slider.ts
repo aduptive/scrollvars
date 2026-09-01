@@ -267,16 +267,13 @@ export function slider(
   const onMove = (event: PointerEvent) => {
     const point = horizontal ? event.clientX : event.clientY
     if (!dragging) {
-      // pending press: activating only after movement keeps plain clicks on
-      // links/inputs inside slides working (no preventDefault on pointerdown,
-      // so focus works too)
+      // pending press: activating only after real movement keeps a plain
+      // click a plain click (see the focus restore in endDrag for the one
+      // side effect of the preventDefault below)
       if (Math.abs(point - startPoint) < DRAG_THRESHOLD) return
       dragging = true
       suspendSnap()
       container.classList.add('sv-dragging') // slider.css: user-select none
-      // a selection started in the first few px would auto-scroll toward the
-      // pointer, fighting the drag frame by frame — clear it
-      getSelection()?.removeAllRanges()
       lastPointer = point
       return
     }
@@ -291,12 +288,23 @@ export function slider(
     event.stopPropagation()
     window.removeEventListener('click', suppressClick, true)
   }
+  const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]'
+  let pressedTarget: HTMLElement | null = null
   const endDrag = () => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', endDrag)
     window.removeEventListener('pointercancel', endDrag)
     pressed = false
-    if (!dragging) return // never crossed the threshold: an ordinary click
+    if (!dragging) {
+      // ordinary click: preventDefault on pointerdown (below) killed the
+      // browser's native focus-on-mousedown along with text selection —
+      // restore it now that we know this press was never a drag. The click
+      // event itself was never suppressed, so link/button activation was
+      // unaffected either way.
+      const focusable = pressedTarget?.closest<HTMLElement>(FOCUSABLE)
+      focusable?.focus({ preventScroll: true })
+      return
+    }
     dragging = false
     container.classList.remove('sv-dragging')
     window.addEventListener('click', suppressClick, true)
@@ -318,7 +326,17 @@ export function slider(
       return
     }
     pressed = true
+    pressedTarget = event.target as HTMLElement
     startPoint = horizontal ? event.clientX : event.clientY
+    // Kill native text-selection-drag AT THE SOURCE, not reactively: once a
+    // selection anchor exists, the browser auto-scrolls toward the pointer
+    // on every native mousemove, fighting our own scrollLeft writes frame
+    // by frame (the visible jitter). user-select:none alone doesn't reliably
+    // stop a selection from STARTING in every engine — preventDefault does.
+    // The one side effect (this also suppresses native focus-on-mousedown)
+    // is repaired in endDrag for genuine clicks; the click event itself
+    // still fires natively either way, so link/button activation is fine.
+    event.preventDefault()
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', endDrag)
     window.addEventListener('pointercancel', endDrag)

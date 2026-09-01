@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.12.3 — 2026-09-01
+
+Fixes a regression from 1.7.0's drag-click fix.
+
+- **Slider: mouse drag no longer fights native text-selection.** 1.7.0
+  removed `preventDefault()` from `pointerdown` to stop drags from eating
+  clicks on links/buttons inside slides — but that also removed the only
+  thing killing the browser's native text-selection-drag. Without it, a
+  drag that leaves the container starts a live selection, and the browser
+  auto-scrolls toward the pointer to extend it — fighting the slider's own
+  `scrollLeft` writes every frame (visible as jitter/trembling, plus
+  visible text selection). Fix: `preventDefault()` is back on `pointerdown`
+  for mouse (kills selection-drag at the source, same as pre-1.7.0), and
+  the one real side effect — it also suppresses the browser's native
+  focus-on-mousedown — is repaired by manually restoring focus in `endDrag`
+  when the press turns out to be a plain click, not a drag. The click event
+  itself was never suppressed by `preventDefault` (confirmed in 1.7.0's own
+  fix notes), so link/button activation was never at risk — only focus was.
+  Verified with a real mouse-drag test (Puppeteer, dragging 480px outside
+  the slider): zero text selection, smooth monotonic `scrollLeft`, no
+  jitter — and a unit test locks in both halves (preventDefault fires,
+  focus restores on a plain click) so this can't quietly regress again.
+
+
 ## 1.12.0 — 2026-08-27
 
 The last executable items from the review panel's path-to-9, plus launch
