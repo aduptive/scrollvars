@@ -1,19 +1,19 @@
 /**
  * Click → state → CSS. The third input, after scroll and pointer: one
  * delegated listener turns clicks into classes + variables, and CSS does
- * every pixel of the animation — same contract as the scroll driver.
+ * every pixel of the animation. Same contract as the scroll driver.
  *
  *   <button data-sv-toggle="open" data-sv-target="#menu">menu</button>
  *   <nav id="menu">…</nav>        <!-- gains/loses .open on click -->
  *
- * - `data-sv-toggle="class"` — class to toggle ('sv-open' when empty)
- * - `data-sv-target="sel"`   — what receives it (the trigger itself when absent)
+ * - `data-sv-toggle="class"`. Class to toggle ('sv-open' when empty)
+ * - `data-sv-target="sel"`. What receives it (the trigger itself when absent)
  * - the target also gets `--sv-state: 1|0` for continuous CSS use
- * - the trigger gets `aria-expanded` kept in sync — the accessibility the
+ * - the trigger gets `aria-expanded` kept in sync. The accessibility the
  *   old checkbox hack never gave you
  *
  * Deliberately NOT a timeline engine: one click, one state change. For
- * orchestrated multi-act sequences, use GSAP — that's its turf.
+ * orchestrated multi-act sequences, use GSAP. That's its turf.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  */

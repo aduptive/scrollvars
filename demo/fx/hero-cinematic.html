@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Three.js scene on the pin · ScrollVars fx</title>
-<meta name="description" content="A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders. Copy-paste in Tailwind, CSS or React.">
+<title>Cinematic hero · ScrollVars fx</title>
+<meta name="description" content="Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t). Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -117,7 +117,7 @@
       </details>
       <details open><summary>Interop</summary>
         <a href="gsap-scrub.html">GSAP timeline under scrub</a>
-        <a href="three-scene.html" aria-current="page">Three.js scene on the pin</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
         <a href="split-reveal.html">Split reveal</a>
@@ -131,7 +131,7 @@
         <a href="marquee.html">Marquee</a>
       </details>
       <details open><summary>Sections</summary>
-        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="hero-cinematic.html" aria-current="page">Cinematic hero</a>
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
@@ -140,46 +140,37 @@
   </details>
 </div></aside>
 <main>
-  <h1>Three.js scene on the pin</h1>
-  <p class="tag">A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</p>
-  <p class="meta"><b>Use it for:</b> Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.<br><b>Knobs:</b> mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures</p>
-  <div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
-    <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
+  <h1>Cinematic hero</h1>
+  <p class="tag">Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).</p>
+  <p class="meta"><b>Use it for:</b> Landing pages, studio reels, product launches. The first fold that has to land.<br><b>Knobs:</b> --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video</p>
+  <style>
+.sv-hero { position: relative; min-height: 86vh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; padding: 0; }
+.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
+.hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
+.hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
+.hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
+.hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
+.hero-cta { display: inline-block; padding: 12px 22px; border-radius: 999px; background: var(--accent); color: #121118; font-weight: 700; text-decoration: none; }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid var(--line); font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero-strip span { margin: 0 18px; }
+</style>
+<section data-sv data-sv-travel class="sv-hero fxstage" id="fxhero" style="--sv-stagger: 70ms">
+  <div class="hero-orb a"></div><div class="hero-orb b"></div>
+  <div class="hero-inner">
+    <p class="hero-eyebrow sv-rise">Studio · 2026 reel</p>
+    <h3 class="hero-title sv-split-rise" data-sv-split>Sites that move with intent</h3>
+    <p class="hero-sub sv-rise" data-sv-order="6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p>
+    <p class="sv-rise" data-sv-order="7"><a class="hero-cta" href="#">See the work</a></p>
   </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="sv-canvas.js"></script>
-<script>addEventListener('load', () => {
-  let progress = 0
-  let renderer, scene, camera, mesh
-  SVC.mountEffect(document.getElementById('fxthree'), {
-    context: null, // WebGL owns the canvas; the harness owns the lifecycle
-    setup(fx) {
-      renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
-      scene = new THREE.Scene()
-      camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
-      mesh = new THREE.Mesh(
-        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
-        new THREE.MeshNormalMaterial({ wireframe: true })
-      )
-      scene.add(mesh)
-    },
-    resize(fx) {
-      renderer.setPixelRatio(fx.dpr)
-      renderer.setSize(fx.width, fx.height, false)
-      camera.aspect = fx.width / fx.height
-      camera.updateProjectionMatrix()
-    },
-    frame(fx, dt) {
-      mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
-      mesh.rotation.x = progress * Math.PI
-      camera.position.z = 6 - progress * 2.2
-      renderer.render(scene, camera)
-    },
-  })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
-})</script>
+  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
+    <span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span>
+    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span>
+  </div></div>
+</section>
+<script>addEventListener('load', () => SV.trackPointer(document.getElementById('fxhero'), { selector: '.sv-hero' }))</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -187,46 +178,62 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]"&gt;
+  &lt;div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"&gt;&lt;/div&gt;
+  &lt;div class="inner text-center"&gt;
+    &lt;p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400"&gt;Eyebrow&lt;/p&gt;
+    &lt;h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
+    &lt;p class="sv-rise text-neutral-400" data-sv-order="6"&gt;Sub copy.&lt;/p&gt;
   &lt;/div&gt;
-&lt;/div&gt;
-&lt;!-- same JS as the CSS tab, Tailwind only does the skeleton here --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="outer"&gt;              &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;&lt;canvas id="scene"&gt;&lt;/canvas&gt;&lt;/div&gt;
-&lt;/div&gt;
-
-&lt;script type="module"&gt;
-  import { track } from 'scrollvars'
-  import { mountEffect } from 'scrollvars/canvas'
-  import * as THREE from 'three'
-
-  let progress = 0
-  mountEffect(document.getElementById('scene'), {
-    context: null,                       // you own the WebGL context
-    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
-    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
-    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
-  })
-  track(outer, { pin: true, onPin: (p) =&gt; (progress = p) })
-  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
-&lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>'use client'
-const progress = useRef(0)
-const canvasRef = useCanvasEffect({
-  context: null,
-  setup(fx)  { /* THREE renderer on fx.canvas */ },
-  resize(fx) { /* size + DPR */ },
-  frame(fx, dt) { /* render with progress.current */ },
-})
-
-&lt;Track pin onPin={(p) =&gt; (progress.current = p)} className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" /&gt;
+  &lt;div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"&gt;&lt;div class="sv-marquee-track"&gt;…&lt;/div&gt;&lt;/div&gt;
+&lt;/section&gt;
+&lt;script&gt;SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })&lt;/script&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;section data-sv data-sv-travel class="sv-hero" id="hero"&gt;   &lt;!-- travel: --sv-t 0..1 through the viewport --&gt;
+  &lt;div class="hero-orb a"&gt;&lt;/div&gt;&lt;div class="hero-orb b"&gt;&lt;/div&gt;
+  &lt;div class="hero-inner"&gt;
+    &lt;p class="sv-rise"&gt;Eyebrow&lt;/p&gt;
+    &lt;h1 class="sv-split-rise" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
+    &lt;p class="sv-rise" data-sv-order="6"&gt;Sub copy.&lt;/p&gt;
+    &lt;p class="sv-rise" data-sv-order="7"&gt;&lt;a class="cta" href="#"&gt;See the work&lt;/a&gt;&lt;/p&gt;
   &lt;/div&gt;
-&lt;/Track&gt;</code></pre>
+  &lt;div class="sv-marquee hero-strip"&gt;&lt;div class="sv-marquee-track"&gt;
+    &lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;
+    &lt;span aria-hidden="true" style="display:contents"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/span&gt;
+  &lt;/div&gt;&lt;/div&gt;
+&lt;/section&gt;
+&lt;script&gt;SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })&lt;/script&gt;   &lt;!-- --mx/--my (-1..1) on the section itself --&gt;
+
+/* presets do the entrance (core.css) and the strip (ui.css); this is the whole section: */
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
+.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px));
+  transition: translate .5s ease-out; }
+.hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
+.hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
+  opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
+/* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */</code></pre>
+    <pre data-pane="react"><code>import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
+
+function Hero() {
+  const ref = usePointer&lt;HTMLElement&gt;({ selector: '.sv-hero' })   // --mx/--my (-1..1) on the section
+  return (
+    &lt;section ref={ref} className="sv-hero"&gt;
+      &lt;div className="hero-orb a" /&gt;&lt;div className="hero-orb b" /&gt;
+      &lt;Track travel&gt;                              {/* .sv-live for the entrance, --sv-t for the exit */}
+        &lt;div className="hero-inner"&gt;
+          &lt;p className="sv-rise"&gt;Eyebrow&lt;/p&gt;
+          &lt;Split as="h1" className="sv-split-rise"&gt;Sites that move with intent&lt;/Split&gt;
+          &lt;p className="sv-rise" style={{ '--sv-order': 6 }}&gt;Sub copy.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/Track&gt;
+      &lt;Marquee className="hero-strip"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/Marquee&gt;
+    &lt;/section&gt;
+  )
+}
+// npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

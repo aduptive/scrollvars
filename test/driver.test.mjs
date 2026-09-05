@@ -234,11 +234,48 @@ test('driver: offscreen culling skips the rect read, IO wakes it back up', async
   pump()
   assert.equal(reads, before, 'culled entry pays no getBoundingClientRect')
 
+  // a jump longer than a viewport gives every entry one pass even while culled
+  // (an element carried from far below to far above never intersects the culler)
+  window.scrollY += 3000
+  const beforeJump = reads
+  pump()
+  assert.equal(reads, beforeJump + 1, 'jump frame reads culled entries once')
+  pump()
+  assert.equal(reads, beforeJump + 1, 'and only once')
+
   // back near: reads resume
   ioCallback([{ target: el, isIntersecting: true }])
   pump()
-  assert.ok(reads > before)
+  assert.ok(reads > beforeJump + 1)
   untrack()
   assert.ok(!observedByIO.has(el))
   delete global.IntersectionObserver
+})
+
+test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', async () => {
+  const pageVars = {}
+  global.document = {
+    documentElement: {
+      classList: { add: () => {} },
+      style: { setProperty: (k, v) => (pageVars[k] = v) },
+      scrollHeight: 3000,
+    },
+  }
+  window.scrollY = 1000
+  const { track } = await import('../dist/core/driver.js?pagevars')
+  const el = makeElement(400)
+  el.rect = { top: 100, bottom: 600, width: 800, height: 500 }
+  const untrack = track(el, { scenes: 4 })
+  assert.equal(el.vars['--sv-scenes'], '4', 'scene count written once at track time')
+  pump()
+  // 1000 / (3000 - 1000)
+  assert.equal(pageVars['--sv-page'], '0.5000')
+  assert.equal(pageVars['--sv-v'], '0.000', 'first frame has no velocity')
+  window.scrollY = 1500
+  await new Promise((r) => setTimeout(r, 20))
+  pump()
+  assert.ok(parseFloat(pageVars['--sv-v']) > 0, 'downward scroll is positive velocity')
+  await new Promise((r) => setTimeout(r, 120))
+  assert.equal(pageVars['--sv-v'], '0', 'velocity decays to 0 at rest')
+  untrack()
 })

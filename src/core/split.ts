@@ -1,13 +1,13 @@
 /**
  * SplitText-lite: break an element's text into word/char spans carrying
  * `--sv-order` (and `--sv-count` on the container), so every order-driven
- * preset — entrances with stagger, `sv-reading`, `sv-range` slices — works
+ * preset (entrances with stagger, `sv-reading`, `sv-range` slices) works
  * on text with no manual markup.
  *
  * Accessibility: the full text is kept as a visually-hidden first child
- * (aria-label is prohibited on generic roles like p/span/div — axe
+ * (aria-label is prohibited on generic roles like p/span/div. Axe
  * `aria-prohibited-attr`); the animated spans are `aria-hidden`. The original content is restored by the returned
- * function. Markup inside the element is flattened to text — split plain
+ * function. Markup inside the element is flattened to text. Split plain
  * text, not rich fragments.
  */
 
@@ -20,12 +20,20 @@ export interface SplitOptions {
   by?: 'word' | 'char'
 }
 
-/** Pure splitter: returns the animated parts (whitespace stays out — the
+/** Pure splitter: returns the animated parts (whitespace stays out. The
  * DOM/React layers re-insert it as plain text so wrapping stays natural). */
 export function splitParts(text: string, by: 'word' | 'char' = 'word'): string[] {
   const words = text.split(/\s+/).filter(Boolean)
   if (by === 'word') return words
-  return words.flatMap((word) => Array.from(word))
+  return words.flatMap(chars)
+}
+
+/** Grapheme clusters when the engine has Intl.Segmenter (emoji, combining
+ * marks stay whole); code points otherwise. */
+function chars(word: string): string[] {
+  const Segmenter = (Intl as unknown as { Segmenter?: new (l?: string, o?: object) => { segment: (s: string) => Iterable<{ segment: string }> } }).Segmenter
+  if (!Segmenter) return Array.from(word)
+  return Array.from(new Segmenter(undefined, { granularity: 'grapheme' }).segment(word), (s) => s.segment)
 }
 
 export function split(el: HTMLElement, { by = 'word' }: SplitOptions = {}): () => void {
@@ -50,7 +58,7 @@ export function split(el: HTMLElement, { by = 'word' }: SplitOptions = {}): () =
       span.style.setProperty('--sv-order', String(order++))
       el.appendChild(span)
     } else {
-      for (const ch of Array.from(word)) {
+      for (const ch of chars(word)) {
         const span = document.createElement('span')
         span.textContent = ch
         span.setAttribute('aria-hidden', 'true')

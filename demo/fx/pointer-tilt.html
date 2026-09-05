@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pointer tilt — ScrollVars fx</title>
-<meta name="description" content="Cards tilt toward the cursor with a moving glare — one delegated listener. Copy-paste in Tailwind, CSS or React.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Pointer tilt · ScrollVars fx</title>
+<meta name="description" content="Cards tilt toward the cursor with a moving glare. One delegated listener. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -129,13 +130,19 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
   <h1>Pointer tilt</h1>
-  <p class="tag">Cards tilt toward the cursor with a moving glare — one delegated listener.</p>
-  <p class="meta"><b>Use it for:</b> Product cards, team grids, anything that should feel physical.<br><b>Knobs:</b> tilt degrees and glare live in the preset — override .sv-tilt to taste</p>
+  <p class="tag">Cards tilt toward the cursor with a moving glare. One delegated listener.</p>
+  <p class="meta"><b>Use it for:</b> Product cards, team grids, anything that should feel physical.<br><b>Knobs:</b> tilt degrees and glare live in the preset. Override .sv-tilt to taste</p>
   <section class="fxstage" id="fxtiltrow" style="display:flex;gap:16px;justify-content:center">
   <div class="sv-tilt fxcard">hover</div>
   <div class="sv-tilt fxcard">me</div>
@@ -161,18 +168,18 @@
   import { trackPointer } from 'scrollvars'
   trackPointer(document.querySelector('.grid'))
 &lt;/script&gt;
-/* preset in styles/tilt.css — tilt + glare from --mx/--my */</code></pre>
+/* preset in styles/tilt.css. Tilt + glare from --mx/--my */</code></pre>
     <pre data-pane="react"><code>const ref = usePointer()
 &lt;div ref={ref} className="grid grid-cols-3 gap-6"&gt;
   {cards.map(c =&gt; &lt;div key={c.id} className="sv-tilt"&gt;…&lt;/div&gt;)}
 &lt;/div&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

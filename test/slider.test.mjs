@@ -6,6 +6,16 @@ function makeSlide(offsetLeft) {
   return {
     offsetLeft,
     offsetWidth: 100,
+    // rect geometry derived from the same numbers; _c is bound by the container's
+    // children getter. RTL content is right-aligned: its left edge sits at
+    // -(scrollWidth - clientWidth), and a negative scrollLeft shifts it right.
+    getBoundingClientRect() {
+      const c = this._c
+      const left = c.__rtl
+        ? this.offsetLeft - (c.scrollWidth - c.clientWidth) - c.scrollLeft
+        : this.offsetLeft - c.scrollLeft
+      return { left, right: left + this.offsetWidth, top: 0, bottom: 100, width: this.offsetWidth, height: 100 }
+    },
     vars: {},
     classes: new Set(),
     style: {
@@ -39,11 +49,20 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
 
   const scrolls = []
   const container = {
-    children: slides,
+    get children() {
+      slides.forEach((sl) => (sl._c = this))
+      return slides
+    },
+    clientLeft: 0,
+    clientTop: 0,
+    scrollTop: 0,
+    getBoundingClientRect() {
+      return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
+    },
     scrollLeft: 0,
     clientWidth: 300,
     vars: {},
-    classList: { add: () => {}, remove: () => {} },
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: {
       setProperty(k, v) {
         container.vars[k] = v
@@ -106,10 +125,19 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
     s.classList._owner = s
   })
   const container = {
-    children: slides,
+    get children() {
+      slides.forEach((sl) => (sl._c = this))
+      return slides
+    },
+    clientLeft: 0,
+    clientTop: 0,
+    scrollTop: 0,
+    getBoundingClientRect() {
+      return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
+    },
     scrollLeft: 0,
     clientWidth: 300,
-    classList: { add: () => {}, remove: () => {} },
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: { scrollSnapType: '', setProperty: () => {} },
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -152,12 +180,22 @@ test('slider: RTL normalizes to logical coordinates', async () => {
     s.classList._owner = s
   })
   const container = {
-    children: slides,
+    get children() {
+      slides.forEach((sl) => (sl._c = this))
+      return slides
+    },
+    clientLeft: 0,
+    clientTop: 0,
+    scrollTop: 0,
+    getBoundingClientRect() {
+      return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
+    },
     scrollLeft: 0,
     clientWidth: 300,
     scrollWidth: 500,
+    __rtl: true,
     vars: {},
-    classList: { add: () => {}, remove: () => {} },
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: {
       setProperty(k, v) {
         container.vars[k] = v
@@ -214,10 +252,19 @@ test('slider: mouse drag kills native text-selection at pointerdown, and restore
 
   const containerHandlers = {}
   const container = {
-    children: slides,
+    get children() {
+      slides.forEach((sl) => (sl._c = this))
+      return slides
+    },
+    clientLeft: 0,
+    clientTop: 0,
+    scrollTop: 0,
+    getBoundingClientRect() {
+      return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
+    },
     scrollLeft: 0,
     clientWidth: 300,
-    classList: { add: () => {}, remove: () => {} },
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: { scrollSnapType: '', setProperty: () => {} },
     addEventListener: (type, fn) => (containerHandlers[type] = fn),
     removeEventListener: () => {},
@@ -257,5 +304,48 @@ test('slider: mouse drag kills native text-selection at pointerdown, and restore
   assert.notEqual(container.scrollLeft, before, 'a real drag moves scrollLeft')
   winHandlers.pointerup()
 
+  handle.destroy()
+})
+
+test('slider: goTo(i, false) after seek() restores the authored snap; position clamps at the last slide', async () => {
+  const rafQueue = []
+  const listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+  const container = {
+    get children() { slides.forEach((sl) => (sl._c = this)); return slides },
+    clientLeft: 0, clientTop: 0, scrollTop: 0,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0,
+    clientWidth: 200,
+    scrollWidth: 300,
+    vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v }, scrollSnapType: 'x mandatory' },
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: () => {},
+    scrollTo: () => {},
+  }
+  const { slider } = await import('../dist/core/slider.js?snap')
+  const handle = slider(container, { duration: 0 })
+
+  handle.seek(0.5) // the driver takes over: snap suspended
+  assert.equal(container.style.scrollSnapType, 'none')
+  handle.goTo(1, false) // manual jump: authored snap must come back
+  assert.equal(container.style.scrollSnapType, 'x mandatory')
+
+  // overscroll (rubber band): scrollLeft past the range makes the last slide's
+  // signed distance negative; position must not exceed count - 1
+  container.scrollLeft = 200
+  listeners.scroll()
+  while (rafQueue.length) rafQueue.shift()(0)
+  assert.equal(handle.state().position, 2)
+  assert.equal(handle.state().count, 3)
   handle.destroy()
 })

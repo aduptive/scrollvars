@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Three.js scene on the pin · ScrollVars fx</title>
-<meta name="description" content="A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders. Copy-paste in Tailwind, CSS or React.">
+<title>Sticky steps · ScrollVars fx</title>
+<meta name="description" content="Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -117,7 +117,7 @@
       </details>
       <details open><summary>Interop</summary>
         <a href="gsap-scrub.html">GSAP timeline under scrub</a>
-        <a href="three-scene.html" aria-current="page">Three.js scene on the pin</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
         <a href="split-reveal.html">Split reveal</a>
@@ -133,53 +133,51 @@
       <details open><summary>Sections</summary>
         <a href="hero-cinematic.html">Cinematic hero</a>
         <a href="timeline-scrub.html">Pinned timeline</a>
-        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="sticky-steps.html" aria-current="page">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
       </details>
     </nav>
   </details>
 </div></aside>
 <main>
-  <h1>Three.js scene on the pin</h1>
-  <p class="tag">A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</p>
-  <p class="meta"><b>Use it for:</b> Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.<br><b>Knobs:</b> mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures</p>
-  <div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
-    <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
+  <h1>Sticky steps</h1>
+  <p class="tag">Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.</p>
+  <p class="meta"><b>Use it for:</b> Product features, "how it works", case-study walkthroughs, onboarding explainers.<br><b>Knobs:</b> data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)</p>
+  <style>
+.st { height: 300vh; }
+.st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
+.st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
+.st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
+.st-shot:nth-child(2) { background: linear-gradient(160deg, #1f2a3a, #17151f 70%); color: #7dd3fc; }
+.st-shot:nth-child(3) { background: linear-gradient(160deg, #3a2a1f, #17151f 70%); color: #ffb454; }
+/* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
+.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
+.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+.st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+.st-steps h4 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
+.st-steps p { margin: 0; color: var(--muted); max-width: 36ch; }
+.st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
+.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); background: var(--accent); }
+html:not(.sv-on) .st-steps > li { opacity: 1; }
+@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
+</style>
+<div data-sv data-sv-pin data-sv-scenes="3" class="fxouter st">
+  <div class="fxsticky st-grid">
+    <div class="st-media">
+      <figure class="st-shot" style="--i: 0">01</figure>
+      <figure class="st-shot" style="--i: 1">02</figure>
+      <figure class="st-shot" style="--i: 2">03</figure>
+    </div>
+    <ol class="st-steps">
+      <li style="--i: 0"><b>Step 1</b><h4>Track the section</h4><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li>
+      <li style="--i: 1"><b>Step 2</b><h4>Give each piece an index</h4><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li>
+      <li style="--i: 2"><b>Step 3</b><h4>Ship it</h4><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li>
+    </ol>
+    <div class="st-dots"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i></div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="sv-canvas.js"></script>
-<script>addEventListener('load', () => {
-  let progress = 0
-  let renderer, scene, camera, mesh
-  SVC.mountEffect(document.getElementById('fxthree'), {
-    context: null, // WebGL owns the canvas; the harness owns the lifecycle
-    setup(fx) {
-      renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
-      scene = new THREE.Scene()
-      camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
-      mesh = new THREE.Mesh(
-        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
-        new THREE.MeshNormalMaterial({ wireframe: true })
-      )
-      scene.add(mesh)
-    },
-    resize(fx) {
-      renderer.setPixelRatio(fx.dpr)
-      renderer.setSize(fx.width, fx.height, false)
-      camera.aspect = fx.width / fx.height
-      camera.updateProjectionMatrix()
-    },
-    frame(fx, dt) {
-      mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
-      mesh.rotation.x = progress * Math.PI
-      camera.position.z = 6 - progress * 2.2
-      renderer.render(scene, camera)
-    },
-  })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
-})</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -187,46 +185,65 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]"&gt;
+  &lt;div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12"&gt;
+    &lt;div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl"&gt;
+      &lt;img class="st-shot [--i:0]" src="shot-1.jpg" alt=""&gt;
+      &lt;img class="st-shot [--i:1]" src="shot-2.jpg" alt=""&gt;
+      &lt;img class="st-shot [--i:2]" src="shot-3.jpg" alt=""&gt;
+    &lt;/div&gt;
+    &lt;ol class="grid gap-10"&gt;
+      &lt;li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Track the section&lt;/h3&gt;&lt;/li&gt;
+      &lt;li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Give each piece an index&lt;/h3&gt;&lt;/li&gt;
+      &lt;li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Ship it&lt;/h3&gt;&lt;/li&gt;
+    &lt;/ol&gt;
   &lt;/div&gt;
 &lt;/div&gt;
-&lt;!-- same JS as the CSS tab, Tailwind only does the skeleton here --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="outer"&gt;              &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;&lt;canvas id="scene"&gt;&lt;/canvas&gt;&lt;/div&gt;
+&lt;!-- --st-d and the .st-shot crossfade are 3 lines of global CSS (CSS tab); the math does not fit a class name --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st"&gt;   &lt;!-- --sv-scene: 0..2, eased + snapped; 100vh per scene --&gt;
+  &lt;div class="sv-stage st-sticky"&gt;
+    &lt;div class="st-media"&gt;
+      &lt;img class="st-shot" style="--i: 0" src="shot-1.jpg" alt=""&gt;
+      &lt;img class="st-shot" style="--i: 1" src="shot-2.jpg" alt=""&gt;
+      &lt;img class="st-shot" style="--i: 2" src="shot-3.jpg" alt=""&gt;
+    &lt;/div&gt;
+    &lt;ol class="st-steps"&gt;
+      &lt;li style="--i: 0"&gt;&lt;h3&gt;Track the section&lt;/h3&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+      &lt;li style="--i: 1"&gt;&lt;h3&gt;Give each piece an index&lt;/h3&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+      &lt;li style="--i: 2"&gt;&lt;h3&gt;Ship it&lt;/h3&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+    &lt;/ol&gt;
+  &lt;/div&gt;
 &lt;/div&gt;
 
-&lt;script type="module"&gt;
-  import { track } from 'scrollvars'
-  import { mountEffect } from 'scrollvars/canvas'
-  import * as THREE from 'three'
+.st-sticky { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; }   /* sv-stage pins it */
+.st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
+/* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
+.st-shot, .st-steps &gt; li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.st-steps &gt; li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
+html:not(.sv-on) .st-steps &gt; li { opacity: 1; }                 /* no JS: shots stack, every step readable */</code></pre>
+    <pre data-pane="react"><code>import { Track } from 'scrollvars/react'
 
-  let progress = 0
-  mountEffect(document.getElementById('scene'), {
-    context: null,                       // you own the WebGL context
-    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
-    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
-    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
-  })
-  track(outer, { pin: true, onPin: (p) =&gt; (progress = p) })
-  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
-&lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>'use client'
-const progress = useRef(0)
-const canvasRef = useCanvasEffect({
-  context: null,
-  setup(fx)  { /* THREE renderer on fx.canvas */ },
-  resize(fx) { /* size + DPR */ },
-  frame(fx, dt) { /* render with progress.current */ },
-})
-
-&lt;Track pin onPin={(p) =&gt; (progress.current = p)} className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" /&gt;
-  &lt;/div&gt;
-&lt;/Track&gt;</code></pre>
+const steps = [
+  { title: 'Track the section', text: '…', src: 'shot-1.jpg' },
+  { title: 'Give each piece an index', text: '…', src: 'shot-2.jpg' },
+  { title: 'Ship it', text: '…', src: 'shot-3.jpg' },
+]
+function StickySteps() {
+  return (
+    &lt;Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className="st"&gt;
+      &lt;div className="sv-stage st-sticky"&gt;
+        &lt;div className="st-media"&gt;
+          {steps.map((s, i) =&gt; &lt;img key={i} className="st-shot" style={{ '--i': i }} src={s.src} alt="" /&gt;)}
+        &lt;/div&gt;
+        &lt;ol className="st-steps"&gt;
+          {steps.map((s, i) =&gt; &lt;li key={i} style={{ '--i': i }}&gt;&lt;h3&gt;{s.title}&lt;/h3&gt;&lt;p&gt;{s.text}&lt;/p&gt;&lt;/li&gt;)}
+        &lt;/ol&gt;
+      &lt;/div&gt;
+    &lt;/Track&gt;
+  )
+}
+// npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

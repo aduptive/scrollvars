@@ -18,7 +18,7 @@ const label = (e) =>
 const main = results.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
 
-let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a> — clone the repo,
+let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
 <code>npm i && npm run measure</code>): headless Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
 median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle (calibration verified)` : ''}.
 Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
@@ -55,7 +55,7 @@ if (existsSync(throttledPath)) {
   const main4 = th.scenarios.find((s) => s.name === 'main-900')
   if (main4) {
     html += `
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle, calibration verified — the phone your client actually has)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle, calibration verified. The phone your client actually has)</span></h2>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>

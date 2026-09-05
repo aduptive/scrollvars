@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Split reveal — ScrollVars fx</title>
-<meta name="description" content="A headline broken into words, each rising on its own beat — SplitText without the engine. Copy-paste in Tailwind, CSS or React.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Split reveal · ScrollVars fx</title>
+<meta name="description" content="A headline broken into words, each rising on its own beat, SplitText without the engine. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -129,12 +130,18 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
   <h1>Split reveal</h1>
-  <p class="tag">A headline broken into words, each rising on its own beat — SplitText without the engine.</p>
+  <p class="tag">A headline broken into words, each rising on its own beat, SplitText without the engine.</p>
   <p class="meta"><b>Use it for:</b> Hero headlines, section titles, any text that deserves an entrance.<br><b>Knobs:</b> data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead</p>
   <div class="fxrunway"><section data-sv data-sv-once class="fxstage">
   <h3 class="fxh sv-split-rise" data-sv-split>Words arrive one by one</h3>
@@ -156,9 +163,9 @@
     <pre data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
   &lt;h2 class="sv-split-rise" data-sv-split&gt;Words arrive one by one&lt;/h2&gt;
 &lt;/section&gt;
-&lt;!-- data-sv-split wraps each word in a span with --sv-order (aria-label
-     keeps the full text for AT; spans are aria-hidden). char mode:
-     data-sv-split="char". --&gt;
+&lt;!-- data-sv-split wraps each word in a span with --sv-order; the full text
+     stays in a visually-hidden span for AT and the animated spans are
+     aria-hidden. char mode: data-sv-split="char". --&gt;
 
 /* the preset (styles/core.css): */
 .sv-on .sv .sv-split-rise &gt; span {
@@ -179,16 +186,16 @@
   &lt;/Split&gt;
 &lt;/Reveal&gt;
 
-{/* &lt;Split&gt; renders the spans ON THE SERVER — the split markup is in the
+{/* &lt;Split&gt; renders the spans ON THE SERVER. The split markup is in the
    HTML, so no client-side splitting, no layout shift, no hydration
    flash. by="char" for letters. */}</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

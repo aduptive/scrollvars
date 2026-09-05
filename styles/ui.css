@@ -1,4 +1,4 @@
-/* ScrollVars — UI presets (marquee, accordion) for the React kit and
+/* ScrollVars: UI presets (marquee, accordion) for the React kit and
  * vanilla markup alike. */
 
 /* Marquee: an infinite strip (logos, taglines). The track holds TWO copies
@@ -27,7 +27,7 @@
   }
 }
 
-/* Accordion: native <details> animated — accessibility for free, exclusive
+/* Accordion: native <details> animated: accessibility for free, exclusive
    groups via the native name attribute. Needs interpolate-size (Chrome 129+);
    older browsers open/close without the height animation. */
 .sv-accordion {

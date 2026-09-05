@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars</title>
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
-<meta property="og:title" content="ScrollVars — one rAF in, CSS variables out">
+<meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 1.4 KB driver. Same frames as the 46 KB engines. Measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="ScrollVars — one rAF in, CSS variables out">
+<meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Lighthouse 100 on the PageSpeed profile. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 1.4 KB driver. Lighthouse 100 on the PageSpeed profile. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -44,7 +45,7 @@
   }
   ::selection { background: var(--accent); color: var(--ink); }
 
-  /* ══════════ page copy of the preset tier — tuned for this page (stagger 110ms
+  /* ══════════ page copy of the preset tier. Tuned for this page (stagger 110ms
      here; the SHIPPED styles.css defaults to 90ms and is the source of truth) ══════════ */
   .sv { --sv-view: -1; --sv-t: 0; --sv-scene: 0; --sv-distance: 6rem; --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1); --sv-duration: 800ms; --sv-stagger: 110ms; }
   .sv .sv-rise, .sv .sv-fade {
@@ -239,7 +240,7 @@
     flex-direction: column;
     gap: 16px;
     will-change: translate;
-    /* translate is written directly by JS (exponential smoothing) — no var +
+    /* translate is written directly by JS (exponential smoothing). No var +
        calc indirection in the hot path */
   }
   .pgal-col:nth-child(1) { --speed: 24vh; }
@@ -395,7 +396,7 @@
     flex-direction: column;
     justify-content: space-between;
     font-family: var(--mono);
-    /* pi: the card's own progress — its slice of the section pin */
+    /* pi: the card's own progress: its slice of the section pin */
     --pi: clamp(0, calc(var(--sv-pin, 0) * 4 - var(--ci)), 1);
     translate: 0 calc(var(--ci) * 14px - var(--pi) * 130vh);
     rotate: calc(var(--pi) * -7deg);
@@ -640,7 +641,7 @@
 
   }
 
-  /* ── demo 5: 3D product tour — one panel per scene ── */
+  /* ── demo 5: 3D product tour: one panel per scene ── */
   .tour-panel {
     --pd: calc(var(--pz-scene, 0) - var(--i));
     --pabs: max(var(--pd), calc(var(--pd) * -1));
@@ -957,7 +958,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   will-change: transform;
   /* deliberately paints nothing itself: the promoted layer holds only the
      5 station cards (sparse tiles). Grid + route are drawn on the
-     viewport-sized canvas below — Sofia's old-GPU lesson: the ceiling is
+     viewport-sized canvas below, Sofia's old-GPU lesson: the ceiling is
      the PAINTED layer size, not the transform. */
 }
 .map-world svg { position: absolute; visibility: hidden; }
@@ -1064,7 +1065,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   text-align: center;
   font: 500 14px/1.6 var(--mono);
   color: var(--muted);
-  /* coverflow — all of it reads --sd, zero per-frame JS */
+  /* coverflow: all of it reads --sd, zero per-frame JS */
   scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.13, 0.3));
   opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.75));
   transform: perspective(900px) rotateY(clamp(-28deg, calc(var(--sd, 0) * -18deg), 28deg));
@@ -1166,7 +1167,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   display: grid;
   place-items: end start;
 }
-/* two scenery layers at different speeds — the differential IS the depth */
+/* two scenery layers at different speeds. The differential IS the depth */
 .wingal .layer {
   position: absolute;
   inset: -8% -35%;
@@ -1188,7 +1189,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 }
 
 /* ── case 15 · the flavor wheel: a rotating slider whose hub sits below
-      the fold — you see only the top half. Scroll rotates it (scenes),
+      the fold. You see only the top half. Scroll rotates it (scenes),
       the buttons scroll the page to the matching scene: one writer. ── */
 .pz-outer { height: 300vh; position: relative; }
 .pz-sticky {
@@ -1222,8 +1223,8 @@ html.snap-region { scroll-snap-type: y proximity; }
 }
 .pz-head h3 b { color: #ff5a4e; }
 /* sv-words (official preset since v1.2): a clipped column of words; the
-   snapped scene slides it one row per flavor via --sv-word —
-   discrete value + transition = smooth */
+   snapped scene slides it one row per flavor via --sv-word.
+Discrete value + transition = smooth */
 .sv-words {
   display: inline-flex;
   flex-direction: column;
@@ -1262,8 +1263,8 @@ html.snap-region { scroll-snap-type: y proximity; }
   /* transform shorthand, NOT the individual props: their fixed order is
      translate→rotate, which would break the radial math. Here the order is
      explicit: rotate the spoke, then push outward along it. */
-  /* height-driven: on tall/vertical screens the wheel scales with vh —
-     vw only guards narrow phones (px caps made it tiny on big screens) */
+  /* height-driven: on tall/vertical screens the wheel scales with vh.
+Vw only guards narrow phones (px caps made it tiny on big screens) */
   transform: rotate(calc(var(--i) * 72deg)) translateY(calc(min(58vh, 46vw) * -1));
 }
 .pz-slice img {
@@ -1278,7 +1279,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   opacity: calc(1 - min(var(--pabs) * 0.5, 0.68));
   filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
 }
-/* vertical screens: height rules (the user-facing request) — the wheel takes
+/* vertical screens: height rules (the user-facing request). The wheel takes
    ~60vh of presence; side slices may peek offscreen, which is the look anyway */
 @media (max-aspect-ratio: 1/1) {
   .pz-slice {
@@ -1342,7 +1343,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 .acts-stage {
   --sv-acts-count: 3;
   --sv-acts-duration: 2.4s;
-  /* the acts, as slices of the clock — same idiom as the scroll scenes */
+  /* the acts, as slices of the clock. Same idiom as the scroll scenes */
   --a1: clamp(0, var(--sv-act), 1);
   --a2: clamp(0, calc(var(--sv-act) - 1), 1);
   --a3: clamp(0, calc(var(--sv-act) - 2), 1);
@@ -1491,7 +1492,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   <p class="sub sv-rise" style="--sv-order: 2">
     A scroll-animation engine with no framework in the hot path: one listener, one
     requestAnimationFrame, reads and writes in separate phases. JS computes
-    numbers; CSS does the rest. This entire page runs on it — the panel in the
+    numbers; CSS does the rest. This entire page runs on it. The panel in the
     corner shows the live variables of the section in focus.
   </p>
   <div class="hero-vars sv-rise" style="--sv-order: 3">
@@ -1513,7 +1514,7 @@ html.snap-region { scroll-snap-type: y proximity; }
         The binary trigger: the section crosses the activation band, gains the
         <span class="inline-code">sv-live</span> class, and its children transition with
         incremental delays via <span class="inline-code">--sv-order</span>. Pure CSS
-        transitions — React renders nothing during scroll.
+        transitions: React renders nothing during scroll.
       </p>
     </div>
     <div class="cards">
@@ -1533,7 +1534,7 @@ html.snap-region { scroll-snap-type: y proximity; }
         <p>Driver and presets honor prefers-reduced-motion: content visible, no movement.</p>
       </div>
     </div>
-    <pre><code><span class="c">// React — automatic stagger: no classes on children</span>
+    <pre><code><span class="c">// React. Automatic stagger: no classes on children</span>
 <span class="k">import</span> { Reveal } <span class="k">from</span> <span class="s">'scrollvars/react'</span>
 
 &lt;<span class="k">Reveal</span> as=<span class="s">"section"</span> auto&gt;
@@ -1552,8 +1553,8 @@ html.snap-region { scroll-snap-type: y proximity; }
       <h2 class="sv-rise" style="--sv-order: 1">Parallax that follows your finger</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">--sv-view</span> goes from −1 (entering) to 0 (on stage) to +1 (leaving).
-        The three cards below read the same variable with different distances —
-        and have <em>no transition</em>: continuous value + transition is what causes that
+        The three cards below read the same variable with different distances.
+And have <em>no transition</em>: continuous value + transition is what causes that
         rubber-band lag. Scroll up and down here.
       </p>
     </div>
@@ -1565,7 +1566,7 @@ html.snap-region { scroll-snap-type: y proximity; }
     <pre><code><span class="c">/* ready-made preset */</span>
 &lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-distance'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
 
-<span class="c">/* or custom CSS — the public API is the variables */</span>
+<span class="c">/* or custom CSS: the public API is the variables */</span>
 .my-parallax {
   translate: <span class="k">0 calc(var(--sv-view) * -120px)</span>;
   opacity: <span class="k">calc(1 - max(var(--sv-view), -1 * var(--sv-view)))</span>;
@@ -1581,7 +1582,7 @@ html.snap-region { scroll-snap-type: y proximity; }
       <h2 class="sv-rise" style="--sv-order: 1">Three columns, three speeds</h2>
       <p class="sv-rise" style="--sv-order: 2">
         The classic parallax of award-site galleries: columns riding the scroll at
-        different speeds — the middle one against the flow. Depth without 3D:
+        different speeds. The middle one against the flow. Depth without 3D:
         different speed = perceived distance. One line of CSS per column,
         reading the section's continuous <span class="inline-code">--sv-t</span>.
       </p>
@@ -1615,7 +1616,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 .column:nth-child(1) { --speed: <span class="n">24vh</span>;  }
 .column:nth-child(2) { --speed: <span class="n">-34vh</span>;  }  <span class="c">/* against the flow */</span>
 
-<span class="c">// inertia: exponential smoothing — silky in motion, and the stop
+<span class="c">// inertia: exponential smoothing: silky in motion, and the stop
 // decelerates asymptotically (natural ease-out). One lerp per column:</span>
 current += <span class="k">(target - current) * factor</span>   <span class="c">// 0.07…0.16 per frame</span>
 col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
@@ -1632,7 +1633,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         The pinned-storytelling technique: the section is N screens tall, the content
         sticks, and scroll becomes an index. The number swaps via callback (React state,
         integer changes only); the progress bar reads <span class="inline-code">--sv-scene</span>
-        straight from CSS — zero re-renders while scrubbing.
+        straight from CSS. Zero re-renders while scrubbing.
       </p>
     </div>
   </div>
@@ -1644,13 +1645,13 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* THE PINNED SKELETON — every pinned case on this page reuses it:
+    <pre><code><span class="c">/* THE PINNED SKELETON. Every pinned case on this page reuses it:
    &lt;div class="outer"&gt;          height: 300vh  (the scroll length)
      &lt;div class="sticky"&gt;…&lt;/div&gt;  position: sticky; top: 0; height: 100vh; overflow: hidden
    &lt;/div&gt;
-   track(outer, { pin: true })    or  { scenes: N } — writes --sv-pin / --sv-scene */</span>
+   track(outer, { pin: true })    or  { scenes: N }: writes --sv-pin / --sv-scene */</span>
 
-<span class="c">// React — scene as state, fraction as a CSS var</span>
+<span class="c">// React: scene as state, fraction as a CSS var</span>
 &lt;<span class="k">Scenes</span> count={<span class="n">4</span>}&gt;
   {({ scene, goTo }) =&gt; (
     &lt;div&gt;
@@ -1672,7 +1673,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
       <p>
         The panels read <span class="inline-code">--sv-pin</span> (0→1 across the pinned
         stretch) and slide in opposite directions. The revealed text's letter-spacing reads
-        the same variable. No JS beyond the driver — just CSS calc.
+        the same variable. No JS beyond the driver. Just CSS calc.
       </p>
     </div>
   </div>
@@ -1707,7 +1708,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
       <h2>Vertical scroll, horizontal travel</h2>
       <p>
         The award-site classic: the track travels on the X axis while you scroll on Y.
-        One line of CSS — <span class="inline-code">100vw − 100%</span>
+        One line of CSS: <span class="inline-code">100vw − 100%</span>
         is exactly how much the track overflows the screen.
       </p>
     </div>
@@ -1716,10 +1717,10 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     <div class="hcar-sticky">
       <div class="hcar-track">
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
-        <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame — reads first, writes after.</p></div></div>
+        <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
         <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 1.2 KB gzip.</p></div></div>
-        <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video — it is all the same handful of numbers.</p></div></div>
+        <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
   </div>
@@ -1746,7 +1747,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
       <p>
         Four stacked cards; each clips its own slice of
         <span class="inline-code">--sv-pin</span> with a clamp and flies away on its turn.
-        All the sequencing is CSS — no state, no callbacks.
+        All the sequencing is CSS. No state, no callbacks.
       </p>
     </div>
   </div>
@@ -1755,14 +1756,14 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
       <div class="deck-card"><span class="tag">01 · read</span><div><h3>Batched reads</h3><p>Every getBoundingClientRect of the frame happens together, before any write.</p></div></div>
       <div class="deck-card"><span class="tag">02 · compute</span><div><h3>Just arithmetic</h3><p>view, t, pin and scene come from the same four sums per element.</p></div></div>
       <div class="deck-card"><span class="tag">03 · write</span><div><h3>Vars, not styles</h3><p>The driver writes numbers. Your CSS decides what they mean.</p></div></div>
-      <div class="deck-card"><span class="tag">04 · repeat</span><div><h3>60 fps with headroom</h3><p>No re-renders, no thrashing — the whole frame fits in a fraction of the budget.</p></div></div>
+      <div class="deck-card"><span class="tag">04 · repeat</span><div><h3>60 fps with headroom</h3><p>No re-renders, no thrashing. The whole frame fits in a fraction of the budget.</p></div></div>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
     <pre><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
    track(outer, { pin: true }) */</span>
 
-<span class="c">/* official preset since v0.7 — children stack via grid, auto-indexed */</span>
+<span class="c">/* official preset since v0.7. Children stack via grid, auto-indexed */</span>
 &lt;div class=<span class="s">"sv-deck"</span> style=<span class="s">"--sv-count: 4"</span>&gt; …4 cards… &lt;/div&gt;
 
 <span class="c">/* under the hood: each card clips its own slice of the pin */</span>
@@ -1781,7 +1782,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
       <p>
         The manifesto effect of award sites: every word becomes a span with an
         index, and opacity compares that index against <span class="inline-code">--sv-pin</span>.
-        JS splits the text once — the rest is one clamp per word.
+        JS splits the text once. The rest is one clamp per word.
       </p>
     </div>
   </div>
@@ -1811,8 +1812,8 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
       <h2>From 0 to 421 without JavaScript</h2>
       <p>
         <span class="inline-code">@property</span> types the variable as an integer and
-        <span class="inline-code">counter()</span> prints it. The driver only writes the pin —
-        the counting number is 100% CSS.
+        <span class="inline-code">counter()</span> prints it. The driver only writes the pin.
+The counting number is 100% CSS.
       </p>
     </div>
   </div>
@@ -1829,7 +1830,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
 <span class="c">/* official preset since v0.7 */</span>
 &lt;div class=<span class="s">"sv-counter"</span> style=<span class="s">"--sv-max: 421"</span>&gt;&lt;/div&gt;
 
-<span class="c">/* under the hood — a typed custom property makes the value countable */</span>
+<span class="c">/* under the hood: a typed custom property makes the value countable */</span>
 @property <span class="k">--sv-int</span> { syntax: <span class="s">'&lt;integer&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
 .sv-counter {
   --sv-int: <span class="k">calc(var(--sv-pin) * var(--sv-max))</span>;
@@ -1847,10 +1848,10 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
       <h2>The scroll is the timeline</h2>
       <p>
         The technique behind cinematic "3D" (Apple product pages): the scene is
-        pre-rendered and the scroll picks the frame — forward and backward. This is a
+        pre-rendered and the scroll picks the frame. Forward and backward. This is a
         <strong>frame sequence on canvas</strong>, not a &lt;video&gt;: video decoders keep
-        state and Safari's wedges under fast bidirectional seeking. Images are stateless —
-        there is nothing to get stuck.
+        state and Safari's wedges under fast bidirectional seeking. Images are stateless:
+there is nothing to get stuck.
       </p>
     </div>
   </div>
@@ -1872,7 +1873,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
   ctx.drawImage(frames[<span class="k">Math.round(p * (frames.length - 1))</span>], 0, 0)
 }})
 
-<span class="c">// video.currentTime works too (Chromium) — but decoders keep state;</span>
+<span class="c">// video.currentTime works too (Chromium). But decoders keep state;</span>
 <span class="c">// for bulletproof cross-browser scrubbing, ship frames (like Apple does)</span></code></pre>
   </div>
 </section>
@@ -1889,7 +1890,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
         act choreographs one thing. Letters are born scattered, the word assembles,
         a <em>continuous</em> wave rolls through it (notice: it follows your finger, no
         transition) and color sweeps letter by letter. Two triggers living on the same
-        element — snapped states with transition, continuous without.
+        element. Snapped states with transition, continuous without.
       </p>
     </div>
   </div>
@@ -1934,10 +1935,10 @@ color: <span class="k">color-mix(in oklab, var(--accent) calc(var(--lit) * 100%)
       <h2 class="sv-rise" style="--sv-order: 1">Every object arrives its own way</h2>
       <p class="sv-rise" style="--sv-order: 2">
         The editorial pattern of award sites: elements enter from different corners,
-        each with its own vector, curve and timing — one bounces (overshoot curve),
+        each with its own vector, curve and timing. One bounces (overshoot curve),
         one slides, one spins. No <span class="inline-code">once</span> latch here:
-        leave the section and they fly back out; return and the choreography replays —
-        the scroll conducts it in both directions.
+        leave the section and they fly back out; return and the choreography replays.
+The scroll conducts it in both directions.
       </p>
     </div>
     <div class="collage-stage">
@@ -1949,8 +1950,8 @@ color: <span class="k">color-mix(in oklab, var(--accent) calc(var(--lit) * 100%)
       <div class="collage-item co-dot" style="top:18%;left:44%;--ex:0px;--ey:-45vh;--dur:800ms;--wait:420ms"></div>
       <div class="collage-item co-dot" style="bottom:24%;right:38%;--ex:12vw;--ey:38vh;--dur:850ms;--wait:500ms;--es:2"></div>
     </div>
-    <pre><code><span class="c">/* markup: a normal section tracked with { once: true } —
-   sv-live latches and every item plays its own entrance */</span>
+    <pre><code><span class="c">/* markup: a normal section tracked with { once: true }:
+sv-live latches and every item plays its own entrance */</span>
 
 <span class="c">/* each item declares its own entrance */</span>
 &lt;div class=<span class="s">"collage-item"</span> style=<span class="s">"--ex:-60vw; --er:-180deg;
@@ -1970,8 +1971,8 @@ color: <span class="k">color-mix(in oklab, var(--accent) calc(var(--lit) * 100%)
       <p>
         Two tricks on the same curve: <span class="inline-code">pathLength="1"</span> +
         <span class="inline-code">stroke-dashoffset</span> draw the stroke, and the dot
-        travels the SAME path in the SVG's own units. The scroll does the driving —
-        including in reverse.
+        travels the SAME path in the SVG's own units. The scroll does the driving.
+Including in reverse.
       </p>
     </div>
   </div>
@@ -1996,7 +1997,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
   <span class="k">const</span> pt = path.getPointAtLength(p * path.getTotalLength())
   car.setAttribute(<span class="s">'cx'</span>, pt.x); car.setAttribute(<span class="s">'cy'</span>, pt.y)
 }
-<span class="c">/* offset-path works for HTML elements — but uses document px;
+<span class="c">/* offset-path works for HTML elements. But uses document px;
    inside a scaled SVG, getPointAtLength is the exact alignment */</span></code></pre>
   </div>
 </section>
@@ -2010,8 +2011,8 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       <p>
         The award product-page pattern: the object turns to the right angle for each
         scene and a card presents that part. The camera <em>interpolates between
-        orientation targets</em> — three.js with no loop of its own (one frame per scroll) —
-        and the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scene</span>.
+        orientation targets</em>, three.js with no loop of its own (one frame per scroll).
+And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scene</span>.
       </p>
     </div>
   </div>
@@ -2026,7 +2027,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       <div class="tour-panel" data-pos="tr" style="--i: 1">
         <span class="n">02 · the wing</span>
         <h3>Aerodynamic profile</h3>
-        <p>The card you are reading crossfades in pure CSS — opacity derived from the distance to its scene.</p>
+        <p>The card you are reading crossfades in pure CSS. Opacity derived from the distance to its scene.</p>
       </div>
       <div class="tour-panel" data-pos="bl" style="--i: 2">
         <span class="n">03 · the tail</span>
@@ -2063,7 +2064,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       <h2 class="sv-rise" style="--sv-order: 1">Three ways to do "3D"</h2>
       <p class="sv-rise" style="--sv-order: 2">
         The card below is <strong>pure CSS 3D</strong>: one <span class="inline-code">rotateY</span>
-        reading <span class="inline-code">--sv-t</span>. No WebGL, no library — and it already
+        reading <span class="inline-code">--sv-t</span>. No WebGL, no library: and it already
         covers plenty of client work. The other two paths are in the code below.
       </p>
     </div>
@@ -2081,7 +2082,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
         </div>
       </div>
     </div>
-    <pre><code><span class="c">/* 1 · CSS 3D (this demo) — cheap, runs on any phone */</span>
+    <pre><code><span class="c">/* 1 · CSS 3D (this demo). Cheap, runs on any phone */</span>
 .card3d { transform: <span class="k">rotateY(calc(var(--sv-t) * 240deg))</span>; }
 
 <span class="c">// 2 · Scrubbed video (pre-rendered 3D scene,</span>
@@ -2090,7 +2091,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
   video.currentTime = t * video.duration
 }})
 
-<span class="c">// 3 · Real-time WebGL (React Three Fiber) — when the client</span>
+<span class="c">// 3 · Real-time WebGL (React Three Fiber). When the client</span>
 <span class="c">//     needs INTERACTION: rotate, recolor, day/night</span>
 <span class="k">useTrack</span>({ scenes: <span class="n">4</span>, onScene: (i) =&gt; camera.lookAt(points[i]) })</code></pre>
   </div>
@@ -2107,7 +2108,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
         (<span class="inline-code">--mx</span>/<span class="inline-code">--my</span>, −1 to 1
         from the card's center) and CSS does the tilt, the glare and the layered depth
         (<span class="inline-code">translateZ</span>). One delegated listener for the whole
-        row, writes batched in a rAF — the driver's rules, applied to the mouse.
+        row, writes batched in a rAF. The driver's rules, applied to the mouse.
       </p>
     </div>
     <div class="tilt-row sv-rise" style="--sv-order: 3" id="tilt-row">
@@ -2117,7 +2118,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       </div>
       <div class="tilt-card">
         <span class="glyph">✦</span>
-        <div><h3>Glare</h3><p>A radial-gradient whose center mirrors the pointer — the "reflection" is one line of CSS.</p></div>
+        <div><h3>Glare</h3><p>A radial-gradient whose center mirrors the pointer. The "reflection" is one line of CSS.</p></div>
       </div>
       <div class="tilt-card">
         <span class="glyph">z</span>
@@ -2145,11 +2146,11 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
       <h2 class="sv-rise" style="--sv-order: 1">A canvas that sleeps when you leave</h2>
       <p class="sv-rise" style="--sv-order: 2">
         Ambient effects (particle spheres, generative heroes) are <strong>time-driven</strong>,
-        not scroll-driven — a different paradigm, so they live in their own module:
+        not scroll-driven. A different paradigm, so they live in their own module:
         <span class="inline-code">scrollvars/canvas</span>. The simulation stays yours;
         the harness owns the lifecycle everyone rewrites badly: resize, DPR cap,
         delta-time loop, <strong>auto-pause when offscreen or the tab hides</strong>,
-        reduced-motion, cleanup. Watch the frame counter — scroll away and come back:
+        reduced-motion, cleanup. Watch the frame counter: scroll away and come back:
         it didn't move. Most ambient canvases burn CPU forever; this one sleeps.
         And the scroll still feeds it: <span class="inline-code">onTravel</span> drives
         the wave height below.
@@ -2157,7 +2158,7 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
     </div>
     <div class="amb-stage sv-rise" style="--sv-order: 3">
       <canvas id="amb-canvas"></canvas>
-      <div class="amb-hud"><b id="amb-frames">0</b> frames rendered — only while you watch</div>
+      <div class="amb-hud"><b id="amb-frames">0</b> frames rendered. Only while you watch</div>
     </div>
     <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
 
@@ -2166,7 +2167,7 @@ mountEffect(canvas, {
   frame:  (fx, dt) =&gt; { <span class="c">/* one step; dt in seconds, ctx pre-scaled to CSS px */</span> },
 })
 <span class="c">// resize + DPR cap · pauses offscreen &amp; on hidden tab · fx.reducedMotion live</span>
-<span class="c">// WebGL/Three: { context: null } — your renderer owns the canvas, the harness the lifecycle</span>
+<span class="c">// WebGL/Three: { context: null }: your renderer owns the canvas, the harness the lifecycle</span>
 <span class="c">// scroll input crosses over by closure, the modules stay decoupled:</span>
 <span class="k">track</span>(section, { onTravel: (t) =&gt; { amplitude = t } })</code></pre>
   </div>
@@ -2201,7 +2202,7 @@ mountEffect(canvas, {
     <div class="warp-arrival">
       <div class="big sv-rise">…and you've arrived.</div>
       <p class="sv-rise" style="--sv-order: 1">
-        No route change, no transition library — one pinned track, one canvas,
+        No route change, no transition library. One pinned track, one canvas,
         and a fade driven by the same variable that drove the stars.
       </p>
     </div>
@@ -2211,7 +2212,7 @@ mountEffect(canvas, {
 <span class="c">// the pin drives the camera; the harness only renders while visible</span>
 <span class="k">track</span>(section, { pin: <span class="k">true</span>, onPin: (p) =&gt; { thrust = p } })
 
-<span class="c">/* the exit is pure CSS — same variable, no JS choreography */</span>
+<span class="c">/* the exit is pure CSS. Same variable, no JS choreography */</span>
 .stage { opacity: <span class="k">clamp(0, 5.5 - var(--sv-pin) * 6.2, 1)</span>; }</code></pre>
   </div>
 </section>
@@ -2224,7 +2225,7 @@ mountEffect(canvas, {
       <h2 class="sv-rise" style="--sv-order: 1">Soft bodies that dodge the pointer</h2>
       <p class="sv-rise" style="--sv-order: 2">
         Six radial-gradient blobs drifting on slow sine paths, composited with
-        <span class="inline-code">screen</span> blending — the organic-hero look.
+        <span class="inline-code">screen</span> blending. The organic-hero look.
         Move the mouse: each blob is pushed away with a spring
         (<span class="inline-code">offset += (target − offset) × 0.06</span>) and eases
         back when you leave. Same harness as the others, so it also sleeps offscreen.
@@ -2233,7 +2234,7 @@ mountEffect(canvas, {
   </div>
   <div class="blob-stage" id="blob-stage">
     <canvas id="blob-canvas"></canvas>
-    <div class="blob-hint">move the pointer — the blobs give way</div>
+    <div class="blob-hint">move the pointer. The blobs give way</div>
   </div>
   <div class="wrap">
     <pre style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
@@ -2241,7 +2242,7 @@ mountEffect(canvas, {
   frame: (fx, dt) =&gt; {
     blob.ox += ((push.x - blob.ox)) * <span class="n">0.06</span>   <span class="c">// spring toward (or back from) the pointer</span>
     fx.ctx.globalCompositeOperation = <span class="s">'screen'</span>
-    <span class="c">// radial gradient per blob — soft edges do the "organic" work</span>
+    <span class="c">// radial gradient per blob. Soft edges do the "organic" work</span>
   },
 })</code></pre>
   </div>
@@ -2254,11 +2255,11 @@ mountEffect(canvas, {
       <p class="eyebrow sv-rise">case 10 · scroll-snap, regional</p>
       <h2 class="sv-rise" style="--sv-order: 1">A magnet only where you want it</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        Scroll-snap is the browser's native magnet — but declared on
+        Scroll-snap is the browser's native magnet. But declared on
         <span class="inline-code">&lt;html&gt;</span> it would magnetize the whole page and
         fight every pinned section. The trick: <span class="inline-code">onLive</span>
         toggles a class on the root, so <strong>the snap exists only while these three
-        panels are on screen</strong>. Proximity, not mandatory — free in between, magnetic
+        panels are on screen</strong>. Proximity, not mandatory: free in between, magnetic
         near the seams. The variables keep flowing during the settle: watch the entrances.
       </p>
     </div>
@@ -2267,7 +2268,7 @@ mountEffect(canvas, {
     <div class="snap-panel sv" data-sv>
       <div>
         <div class="big sv-rise">panel one</div>
-        <p class="sv-rise" style="--sv-order: 1">release the scroll near an edge — it settles</p>
+        <p class="sv-rise" style="--sv-order: 1">release the scroll near an edge. It settles</p>
       </div>
     </div>
     <div class="snap-panel sv" data-sv>
@@ -2291,7 +2292,7 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
 <span class="k">track</span>(group, { onLive: (live) =&gt;
   document.documentElement.classList.toggle(<span class="s">'snap-region'</span>, live)
 })
-<span class="c">// proximity, never mandatory, on a page with pinned sections —</span>
+<span class="c">// proximity, never mandatory, on a page with pinned sections, </span>
 <span class="c">// mandatory would forbid resting mid-pin</span></code></pre>
   </div>
 </section>
@@ -2303,12 +2304,12 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
       <p class="eyebrow sv-rise">case 11 · snap flavors</p>
       <h2 class="sv-rise" style="--sv-order: 1">Four magnets, one carousel</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        Same inner scroller, four <span class="inline-code">scroll-snap</span> configs —
-        drag it after each switch. <strong>free</strong>: no snap, momentum decides.
+        Same inner scroller, four <span class="inline-code">scroll-snap</span> configs.
+Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
         <strong>proximity</strong>: settles when you stop near a card.
         <strong>mandatory</strong>: always lands centered on a card.
         <strong>stop</strong>: mandatory + <span class="inline-code">scroll-snap-stop:
-        always</span> — one card per gesture, the slideshow feel. All of it is CSS;
+        always</span>: one card per gesture, the slideshow feel. All of it is CSS;
         no library required, and none of it fights the driver.
       </p>
     </div>
@@ -2337,12 +2338,12 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
   <div class="wrap sv" data-sv data-once>
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 12 · the treasure map</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The page doesn't scroll — the camera travels</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The page doesn't scroll. The camera travels</h2>
       <p class="sv-rise" style="--sv-order: 2">
         A 2400×1800 world, a dashed route, and one inversion: the scroll is fuel for a
         <strong>camera following an SVG path</strong>. <span class="inline-code">getPointAtLength</span>
         gives the position, a point sampled just ahead gives the heading, and the whole
-        world counter-rotates so you always travel "forward" — right, down, around the bend.
+        world counter-rotates so you always travel "forward". Right, down, around the bend.
         One composited transform; the browser never lays out the world. The cards
         counter-rotate to stay readable.
       </p>
@@ -2364,7 +2365,7 @@ html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
         <div class="map-station" style="left: 1980px; top: 300px;">
           <div class="n0">station 02</div>
           <h3>First bend</h3>
-          <p>The heading comes from a point sampled just ahead on the path — atan2, nothing more.</p>
+          <p>The heading comes from a point sampled just ahead on the path. Atan2, nothing more.</p>
         </div>
         <div class="map-station" style="left: 492px; top: 840px;">
           <div class="n0">station 03</div>
@@ -2409,20 +2410,20 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 1.4&nbsp;KB carousel — 30× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 1.4&nbsp;KB carousel, 30× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        <span class="inline-code">slider(el)</span> — the browser does the carousel
+        <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
         adds mouse drag, <span class="inline-code">next/prev</span>, and the observer:
         each slide gets <span class="inline-code">--sd</span> (signed distance from
-        center) and <span class="inline-code">.sv-active</span>. The coverflow below —
-        scale, fade, rotateY — is <strong>pure CSS reading --sd</strong>. Drag it with
-        the mouse, fling it on touch, or use the arrows — and the vertical rail beside it
+        center) and <span class="inline-code">.sv-active</span>. The coverflow below:
+scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
+        the mouse, fling it on touch, or use the arrows. And the vertical rail beside it
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 3.1&nbsp;KB minified —
-        <strong>1.4&nbsp;KB gzipped, ~30× lighter</strong> — because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 3.1&nbsp;KB minified,
+<strong>1.4&nbsp;KB gzipped, ~30× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2445,14 +2446,14 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
       <div class="slider-dots" id="slider-dots"></div>
       <button id="slider-next" aria-label="next">&#8594;</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup — the whole carousel:
+    <pre class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup. The whole carousel:
    &lt;div class="sv-slider" id="el"&gt; &lt;div&gt;…slide…&lt;/div&gt; ×N &lt;/div&gt;
    import { slider } from 'scrollvars'   (styles.css ships the base CSS) */</span>
 
 <span class="k">const</span> s = <span class="k">slider</span>(el, { duration: <span class="n">1400</span>, onSlide: (i) =&gt; dots.select(i) })  <span class="c">// or useSlider() in React</span>
 s.next(); s.prev(); s.goTo(<span class="n">3</span>)
 
-<span class="c">/* the coverflow — every slide reads its own --sd */</span>
+<span class="c">/* the coverflow: every slide reads its own --sd */</span>
 .slide {
   scale: <span class="k">calc(1 - abs(var(--sd)) * 0.13)</span>;
   transform: perspective(900px) <span class="k">rotateY(calc(var(--sd) * -18deg))</span>;
@@ -2460,7 +2461,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   </div>
   <div class="sliderail-outer sv" id="slider-rail-outer" data-hud="slider · scroll">
     <div class="sliderail-sticky">
-      <div class="sliderail-hint">13b · same module, one writer — only the PAGE scroll drives it</div>
+      <div class="sliderail-hint">13b · same module, one writer. Only the PAGE scroll drives it</div>
       <div class="sv-slider demo-slider" id="slider-rail" style="scroll-snap-type: none; overflow-x: hidden;">
         <div>01<br>vertical in</div>
         <div>02<br>horizontal out</div>
@@ -2478,7 +2479,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   carousel.scrollLeft = p * (carousel.scrollWidth - carousel.clientWidth)
 }})
 <span class="c">// one writer only: overflow-x hidden turns off direct swiping here,</span>
-<span class="c">// or the two scrolls desync — JS can still write scrollLeft freely</span></code></pre>
+<span class="c">// or the two scrolls desync, JS can still write scrollLeft freely</span></code></pre>
   </div>
 </section>
 
@@ -2491,7 +2492,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
       <p class="sv-rise" style="--sv-order: 2">
         The same module with <span class="inline-code">axis: 'y'</span>, styled like an
         iOS picker: each option rotates on X by its own <span class="inline-code">--sd</span>
-        and fades with distance — a drum you spin with wheel, drag or touch. Snap is the
+        and fades with distance. A drum you spin with wheel, drag or touch. Snap is the
         detent; <span class="inline-code">onSlide</span> is the value.
       </p>
     </div>
@@ -2527,7 +2528,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
         the rotation (<span class="inline-code">scenes</span> eases and snaps
         <span class="inline-code">--sv-scene</span>, and the disc reads it:
         <span class="inline-code">rotate: calc(var(--sv-scene) * -72deg)</span>);
-        the arrows don't touch the wheel at all — they <strong>scroll the page</strong>
+        the arrows don't touch the wheel at all. They <strong>scroll the page</strong>
         to the matching scene, so scroll and clicks never fight: one writer.
         Slices are transparent WebP, dimming and shrinking by their distance from the top.
       </p>
@@ -2555,18 +2556,18 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   <div class="wrap sv" data-sv data-once>
     <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
    &lt;div class="hub"&gt; &lt;div class="slice" style="--i:0"&gt;&lt;img&gt;… ×5 &lt;/div&gt;
-   hub sits at left:50%; top:calc(100% + 8vh) — the center below the fold */</span>
+   hub sits at left:50%; top:calc(100% + 8vh): the center below the fold */</span>
 
-<span class="c">// scroll owns the wheel; buttons just drive the scroll — one writer</span>
+<span class="c">// scroll owns the wheel; buttons just drive the scroll. One writer</span>
 <span class="k">track</span>(section, { scenes: <span class="n">5</span>, onScene: (i) =&gt; setFlavor(FLAVORS[i]) })
 nextBtn.onclick = () =&gt; <span class="k">scrollToScene</span>(section, current + 1, <span class="n">5</span>)
 
-<span class="c">// the magnet: a quiet scroll mid-pin settles onto the nearest flavor —</span>
+<span class="c">// the magnet: a quiet scroll mid-pin settles onto the nearest flavor, </span>
 <span class="c">// no resting position between two pizzas (quiet-debounce + smooth scroll)</span>
 onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * <span class="n">4</span>), <span class="n">5</span>))
 
 .hub   { rotate: <span class="k">calc(var(--pz-scene) * -72deg)</span>; }  <span class="c">/* --pz-scene = lerped --sv-scene */</span>
-<span class="c">/* GOTCHA: individual props apply in fixed order translate→rotate —</span>
+<span class="c">/* GOTCHA: individual props apply in fixed order translate→rotate, </span>
 <span class="c">   radial math needs the shorthand, where the order is literal: */</span>
 .slice { transform: <span class="k">rotate(calc(var(--i) * 72deg)) translateY(-470px)</span>; }</code></pre>
   </div>
@@ -2580,8 +2581,8 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
       <h2 class="sv-rise" style="--sv-order: 1">Every card is a window</h2>
       <p class="sv-rise" style="--sv-order: 2">
         The award-site gallery: each slide holds two oversized scenery layers moving at
-        different speeds — mountains at <span class="inline-code">calc(var(--sd) * 8%)</span>,
-        foreground at <span class="inline-code">26%</span> — and the differential is what
+        different speeds. Mountains at <span class="inline-code">calc(var(--sd) * 8%)</span>,
+        foreground at <span class="inline-code">26%</span>. And the differential is what
         your eye reads as depth, like scenery through a train window. Still just CSS
         reading <span class="inline-code">--sd</span>; the scenes are inline SVGs, ~600
         bytes each.
@@ -2603,15 +2604,15 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
       <p class="eyebrow sv-rise">case 17 · the CSS timeline</p>
       <h2 class="sv-rise" style="--sv-order: 1">Multi-act, no timeline engine</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        <strong>What it is:</strong> <span class="inline-code">sv-acts</span> — a master
+        <strong>What it is:</strong> <span class="inline-code">sv-acts</span>. A master
         clock in a registered custom property. When the class lands (a click via
         <span class="inline-code">toggles()</span>, or <span class="inline-code">sv-live</span>
         from the scroll), <span class="inline-code">--sv-act</span> <em>transitions</em>
-        from 0 to N, and every act reads its slice of the clock — the same
+        from 0 to N, and every act reads its slice of the clock. The same
         <span class="inline-code">clamp()</span> idiom the scroll scenes use.
-        <strong>What it's for:</strong> intros, hero choreographies, menu sequences —
-        anything linear. Press play; press again <em>mid-flight</em> and watch it reverse
-        from wherever it is — the transition retargets, it never restarts.
+        <strong>What it's for:</strong> intros, hero choreographies, menu sequences.
+Anything linear. Press play; press again <em>mid-flight</em> and watch it reverse
+        from wherever it is. The transition retargets, it never restarts.
         This case ships <strong>zero JavaScript of its own</strong>.
       </p>
     </div>
@@ -2629,7 +2630,7 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
     <div style="text-align: center;">
       <button class="acts-btn" data-sv-toggle="sv-open" data-sv-target="#acts-stage">play / reverse</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition — that's the engine */</span>
+    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition. That's the engine */</span>
 @property --sv-act { syntax: <span class="s">'&lt;number&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
 .sv-acts { --sv-act: <span class="n">0</span>; transition: <span class="k">--sv-act 2.4s linear</span>; }
 .sv-acts.sv-open { --sv-act: <span class="n">3</span>; }
@@ -2641,7 +2642,7 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
 <span class="c">/* the same sequence in GSAP, the market reference: */</span>
 <span class="c">//   gsap.timeline().to('.title',{…}).to('.chip',{stagger:.2},'-=.2').to('.line',{…})</span>
 <span class="c">//   → identical result, plus a 28 KB core on the page.</span>
-<span class="c">// Where GSAP legitimately goes further — and sv-acts stops:</span>
+<span class="c">// Where GSAP legitimately goes further. And sv-acts stops:</span>
 <span class="c">//   branching mid-timeline · per-act JS callbacks · spring physics ·</span>
 <span class="c">//   exotic eases on the clock itself · nested master timelines.</span>
 <span class="c">//   Linear sequence? You don't need the engine.</span></code></pre>
@@ -2659,8 +2660,8 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
         center (with a slight fan) while <span class="inline-code">--sv-spread</span> is 0.
         The same preset, two clocks: the first row <strong>plays on arrival</strong>
         (<span class="inline-code">sv-live</span> flips the variable, transitions play with
-        a stagger — scroll away and back, it re-deals); the second is
-        <strong>scrubbed</strong> — <span class="inline-code">--sv-spread</span> maps from
+        a stagger. Scroll away and back, it re-deals); the second is
+        <strong>scrubbed</strong>: <span class="inline-code">--sv-spread</span> maps from
         <span class="inline-code">--sv-t</span>, so the deal follows your finger both ways.
         Zero JavaScript of its own.
       </p>
@@ -2684,10 +2685,10 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
   rotate: <span class="k">calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg)</span>;
 }
 
-<span class="c">/* clock 1 — on arrival: sv-live flips the var, transitions deal the cards */</span>
+<span class="c">/* clock 1: on arrival: sv-live flips the var, transitions deal the cards */</span>
 .sv-live .sv-spread-in &gt; * { <span class="k">--sv-spread: 1</span>; }
 
-<span class="c">/* clock 2 — scrubbed: map it from the driver (spread done by mid-viewport) */</span>
+<span class="c">/* clock 2: scrubbed: map it from the driver (spread done by mid-viewport) */</span>
 .spread-scrub &gt; * { --sv-spread: <span class="k">clamp(0, calc(var(--sv-t) * 2), 1)</span>; }</code></pre>
   </div>
 </section>
@@ -2704,19 +2705,19 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
         Components, hiding styles only exist after the driver boots
         (<span class="inline-code">html.sv-on</span>), so there is no hydration flash and
         no-JS visitors get the complete page. This is the lightest way to animate a page
-        that we know how to measure — the receipts are above.
+        that we know how to measure. The receipts are above.
       </p>
     </div>
     <pre class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
 npm i scrollvars
 
-<span class="c">// app/layout.tsx — one client component, the whole wiring</span>
+<span class="c">// app/layout.tsx: one client component, the whole wiring</span>
 <span class="k">import</span> { ScrollVarsBoot } <span class="k">from</span> <span class="s">'scrollvars/react'</span>
 <span class="k">import</span> <span class="s">'scrollvars/styles/core.css'</span>   <span class="c">// or styles.css for everything</span>
 
 &lt;body&gt;&lt;ScrollVarsBoot /&gt;{children}&lt;/body&gt;
 
-<span class="c">// any page — plain Server Components, Tailwind as usual</span>
+<span class="c">// any page: plain Server Components, Tailwind as usual</span>
 &lt;section data-sv data-sv-once className=<span class="s">"py-24"</span>&gt;
   &lt;h2 className=<span class="s">"sv-rise text-4xl"</span>&gt;Title&lt;/h2&gt;
   &lt;p className=<span class="s">"sv-rise"</span> style={{ <span class="s">'--sv-order'</span>: 1 }}&gt;Copy&lt;/p&gt;
@@ -2727,8 +2728,8 @@ npm i scrollvars
   {cards.map(c =&gt; &lt;Slide key={c.id}&gt;&lt;Card {...c} /&gt;&lt;/Slide&gt;)}
 &lt;/Slider&gt;</code></pre>
     <p class="sv-rise" style="--sv-order: 4" style="color: var(--muted); font-size: 14px;">
-      Machine-readable docs for AI assistants: <a href="llms.txt" style="color: var(--accent)">/llms.txt</a>
-      — the full API, recipes and performance rules, ready to ingest.
+      Machine-readable docs for AI assistants: <a href="llms.txt" style="color: var(--accent)">/llms.txt</a>:
+the full API, recipes and performance rules, ready to ingest.
     </p>
   </div>
 </section>
@@ -2740,7 +2741,7 @@ npm i scrollvars
       <p class="eyebrow sv-rise">reference · measured</p>
       <h2 class="sv-rise" style="--sv-order: 1">The receipts</h2>
       <p class="sv-rise" style="--sv-order: 2">
-        Every number below was measured, not quoted — competitors from their public
+        Every number below was measured, not quoted. Competitors from their public
         CDN builds, ScrollVars via esbuild+gzip on its own source (it wasn't on a CDN
         to be measured); workload and machine identical, methodology on the
         <a href="bench/" style="color: var(--accent)">benchmark page</a>, where you can
@@ -2754,13 +2755,13 @@ npm i scrollvars
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars — everything</b></td><td class="range"><b>15.8 KB / 6.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars — typical page</b></td><td class="range"><b>~2.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>15.8 KB / 6.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~2.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>2.3 KB / 1.2 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
-    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost for the same frames <span style="color: var(--muted); font-weight: 400;">(identical 12s run, 900 scrubbed elements — all three deliver 60 fps; this is what those frames cost)</span></h3>
+    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost for the same frames <span style="color: var(--muted); font-weight: 400;">(identical 12s run, 900 scrubbed elements. All three deliver 60 fps; this is what those frames cost)</span></h3>
     <table class="sv-rise" style="--sv-order: 4">
       <thead><tr><th>engine</th><th>JS script</th><th>CPU total</th><th>JS heap</th></tr></thead>
       <tbody>
@@ -2781,9 +2782,9 @@ npm i scrollvars
     </table>
 
     <p class="sv-rise" style="--sv-order: 6; color: var(--muted); font-size: 14px; margin-top: 16px;">
-      The honest summary: in frame delivery all engines tie — every competent one animates
+      The honest summary: in frame delivery all engines tie. Every competent one animates
       only the viewport. What separates them is what the frames <em>cost</em> (CPU, memory,
-      battery) and what the engine costs to <em>load</em> — which is exactly what PageSpeed
+      battery) and what the engine costs to <em>load</em>. Which is exactly what PageSpeed
       punishes. <a href="bench/" style="color: var(--accent)">Run the benchmark yourself →</a>
     </p>
   </div>
@@ -2799,7 +2800,7 @@ npm i scrollvars
         Any CSS that reads these variables is a valid preset. That is what keeps the
         library small and flexible at once: the presets are just examples.
         And to replicate any demo above: each case's snippet carries its markup
-        skeleton and registration — <strong>this page ships unminified</strong>, so
+        skeleton and registration, <strong>this page ships unminified</strong>, so
         View&nbsp;Source is the complete implementation. For ready-to-paste versions
         (Tailwind, CSS and React, with a copy button and a shadcn-style
         <span class="inline-code">npx scrollvars add</span>), see the growing
@@ -2812,14 +2813,14 @@ npm i scrollvars
       </thead>
       <tbody>
         <tr><td><code>--sv-view</code></td><td class="range">−1 → 0 → 1</td><td>Entering from below → on stage → leaving above</td></tr>
-        <tr><td><code>--sv-t</code></td><td class="range">0 → 1</td><td>Travel through the viewport — same semantics as native view()</td></tr>
-        <tr><td><code>--sv-pin</code></td><td class="range">0 → 1</td><td>Raw progress across the pinned stretch — curtains, carousels, scrubbing</td></tr>
+        <tr><td><code>--sv-t</code></td><td class="range">0 → 1</td><td>Travel through the viewport. Same semantics as native view()</td></tr>
+        <tr><td><code>--sv-pin</code></td><td class="range">0 → 1</td><td>Raw progress across the pinned stretch. Curtains, carousels, scrubbing</td></tr>
         <tr><td><code>--sv-scene</code></td><td class="range">0 → n−1</td><td>Scene of the pinned section, eased and snapped</td></tr>
-        <tr><td><code>--mx</code> <code>--my</code></td><td class="range">−1 → 1</td><td>Pointer position from the element's center (trackPointer) — tilt, glare</td></tr>
-        <tr><td><code>.sv-live</code></td><td class="range">class</td><td>On while inside the activation band (75% / 25%) — fires the entrances</td></tr>
+        <tr><td><code>--mx</code> <code>--my</code></td><td class="range">−1 → 1</td><td>Pointer position from the element's center (trackPointer). Tilt, glare</td></tr>
+        <tr><td><code>.sv-live</code></td><td class="range">class</td><td>On while inside the activation band (75% / 25%). Fires the entrances</td></tr>
       </tbody>
     </table>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla — no React at all</span>
+    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla. No React at all</span>
 <span class="k">import</span> { track } <span class="k">from</span> <span class="s">'scrollvars'</span>
 
 <span class="k">const</span> untrack = <span class="k">track</span>(el, {
@@ -2837,7 +2838,7 @@ npm i scrollvars
       <p class="sv-rise" style="--sv-order: 2">
         The floor is set by ES2020 in the dist and individual transform properties
         in the presets. The rule that matters for production:
-        <strong>below the floor nothing breaks</strong> — the <span class="inline-code">html.sv-on</span>
+        <strong>below the floor nothing breaks</strong>. The <span class="inline-code">html.sv-on</span>
         guard means hiding styles only exist after the driver boots, so older browsers
         (and no-JS) get the complete page, static. Animation is progressive
         enhancement, never a dependency.
@@ -2852,7 +2853,7 @@ npm i scrollvars
         <tr><td>Firefox</td><td class="range">74+ · Mar 2020</td><td>sv-counter preset: 128+</td></tr>
         <tr><td>Safari / iOS</td><td class="range">14.1+ · Apr 2021</td><td>sv-counter preset: 16.4+</td></tr>
         <tr><td>with <code>scrollvars/compat</code></td><td class="range">~Chrome 61 · FF 60 · Safari 11</td><td>opt-in module: stubs + transform fallback presets; free on modern browsers</td></tr>
-        <tr><td>older / no JS</td><td class="range">static</td><td>content 100% visible — nothing breaks</td></tr>
+        <tr><td>older / no JS</td><td class="range">static</td><td>content 100% visible. Nothing breaks</td></tr>
       </tbody>
     </table>
   </div>
@@ -2865,46 +2866,46 @@ npm i scrollvars
       <h2>Go deeper</h2>
       <p>
         Nothing here is an isolated invention: scroll-driven animation is a public
-        lineage more than a decade deep — from data-journalism scrollytelling to Apple's
+        lineage more than a decade deep. From data-journalism scrollytelling to Apple's
         product pages to the native CSS spec. These are the sources at the base.
       </p>
     </div>
     <div class="refs-grid">
       <div>
-        <h3>The native — scroll-driven animations</h3>
+        <h3>The native, scroll-driven animations</h3>
         <ul>
-          <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_scroll-driven_animations" target="_blank" rel="noreferrer">CSS scroll-driven animations<span class="by">MDN — the native API reference (animation-timeline, view(), scroll())</span></a></li>
-          <li><a href="https://developer.chrome.com/docs/css-ui/scroll-driven-animations" target="_blank" rel="noreferrer">Animate elements on scroll with scroll-driven animations<span class="by">Bramus Van Damme, Chrome for Developers — the canonical guide</span></a></li>
+          <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_scroll-driven_animations" target="_blank" rel="noreferrer">CSS scroll-driven animations<span class="by">MDN. The native API reference (animation-timeline, view(), scroll())</span></a></li>
+          <li><a href="https://developer.chrome.com/docs/css-ui/scroll-driven-animations" target="_blank" rel="noreferrer">Animate elements on scroll with scroll-driven animations<span class="by">Bramus Van Damme, Chrome for Developers. The canonical guide</span></a></li>
           <li><a href="https://scroll-driven-animations.style" target="_blank" rel="noreferrer">scroll-driven-animations.style<span class="by">Bramus's official gallery of demos and tools</span></a></li>
-          <li><a href="https://drafts.csswg.org/scroll-animations-1/" target="_blank" rel="noreferrer">Scroll-driven Animations — spec W3C<span class="by">CSS Working Group — the spec text</span></a></li>
-          <li><a href="https://github.com/flackr/scroll-timeline" target="_blank" rel="noreferrer">scroll-timeline polyfill<span class="by">Rob Flack (Google) — the reference polyfill</span></a></li>
+          <li><a href="https://drafts.csswg.org/scroll-animations-1/" target="_blank" rel="noreferrer">Scroll-driven Animations (spec W3C<span class="by">CSS Working Group) the spec text</span></a></li>
+          <li><a href="https://github.com/flackr/scroll-timeline" target="_blank" rel="noreferrer">scroll-timeline polyfill<span class="by">Rob Flack (Google). The reference polyfill</span></a></li>
         </ul>
       </div>
       <div>
         <h3>Technique & inspiration</h3>
         <ul>
-          <li><a href="https://css-tricks.com/lets-make-one-of-those-fancy-scrolling-animations-used-on-apple-product-pages/" target="_blank" rel="noreferrer">Let's make one of those fancy scrolling animations used on Apple product pages<span class="by">CSS-Tricks — the scrubbed frame-sequence classic (this page's "scrubbed video")</span></a></li>
-          <li><a href="https://pudding.cool/process/how-to-implement-scrollytelling/" target="_blank" rel="noreferrer">How to implement scrollytelling<span class="by">The Pudding — the data-journalism lineage where the genre was born</span></a></li>
-          <li><a href="https://ishadeed.com/article/scroll-driven-animations/" target="_blank" rel="noreferrer">An interactive guide to scroll-driven animations<span class="by">Ahmad Shadeed — the best visual guide to the mental model</span></a></li>
-          <li><a href="https://www.bram.us/2021/02/23/the-future-of-css-scroll-linked-animations-part-1/" target="_blank" rel="noreferrer">The future of CSS: scroll-linked animations<span class="by">Bramus — the series that anticipated the spec</span></a></li>
-          <li><a href="https://web.dev/articles/css-trig-functions" target="_blank" rel="noreferrer">Trigonometric functions in CSS<span class="by">web.dev — the cos()/sin() used in the choreography here</span></a></li>
+          <li><a href="https://css-tricks.com/lets-make-one-of-those-fancy-scrolling-animations-used-on-apple-product-pages/" target="_blank" rel="noreferrer">Let's make one of those fancy scrolling animations used on Apple product pages<span class="by">CSS-Tricks. The scrubbed frame-sequence classic (this page's "scrubbed video")</span></a></li>
+          <li><a href="https://pudding.cool/process/how-to-implement-scrollytelling/" target="_blank" rel="noreferrer">How to implement scrollytelling<span class="by">The Pudding. The data-journalism lineage where the genre was born</span></a></li>
+          <li><a href="https://ishadeed.com/article/scroll-driven-animations/" target="_blank" rel="noreferrer">An interactive guide to scroll-driven animations<span class="by">Ahmad Shadeed. The best visual guide to the mental model</span></a></li>
+          <li><a href="https://www.bram.us/2021/02/23/the-future-of-css-scroll-linked-animations-part-1/" target="_blank" rel="noreferrer">The future of CSS: scroll-linked animations<span class="by">Bramus: the series that anticipated the spec</span></a></li>
+          <li><a href="https://web.dev/articles/css-trig-functions" target="_blank" rel="noreferrer">Trigonometric functions in CSS<span class="by">web.dev. The cos()/sin() used in the choreography here</span></a></li>
         </ul>
       </div>
       <div>
-        <h3>Performance — why the driver is built this way</h3>
+        <h3>Performance. Why the driver is built this way</h3>
         <ul>
-          <li><a href="https://gist.github.com/paulirish/5d52fb081b3570c81e3a" target="_blank" rel="noreferrer">What forces layout / reflow<span class="by">Paul Irish — the list of what causes layout thrashing (the reason for the read/write phases)</span></a></li>
-          <li><a href="https://web.dev/articles/rendering-performance" target="_blank" rel="noreferrer">Rendering performance<span class="by">Paul Lewis, web.dev — the render pipeline and why transform/opacity are cheap</span></a></li>
-          <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API" target="_blank" rel="noreferrer">Intersection Observer API<span class="by">MDN — observing visibility without scroll-handler cost</span></a></li>
+          <li><a href="https://gist.github.com/paulirish/5d52fb081b3570c81e3a" target="_blank" rel="noreferrer">What forces layout / reflow<span class="by">Paul Irish. The list of what causes layout thrashing (the reason for the read/write phases)</span></a></li>
+          <li><a href="https://web.dev/articles/rendering-performance" target="_blank" rel="noreferrer">Rendering performance<span class="by">Paul Lewis, web.dev. The render pipeline and why transform/opacity are cheap</span></a></li>
+          <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API" target="_blank" rel="noreferrer">Intersection Observer API<span class="by">MDN. Observing visibility without scroll-handler cost</span></a></li>
         </ul>
       </div>
       <div>
         <h3>Reference tools & accessibility</h3>
         <ul>
           <li><a href="https://gsap.com/docs/v3/Plugins/ScrollTrigger/" target="_blank" rel="noreferrer">GSAP ScrollTrigger<span class="by">the commercial reference implementation of the same model (pin, scrub, snap)</span></a></li>
-          <li><a href="https://github.com/darkroomengineering/lenis" target="_blank" rel="noreferrer">Lenis<span class="by">darkroom.engineering — the smooth scroll behind award sites</span></a></li>
-          <li><a href="https://alistapart.com/article/designing-safer-web-animation-for-motion-sensitivity/" target="_blank" rel="noreferrer">Designing safer web animation for motion sensitivity<span class="by">Val Head, A List Apart — why reduced-motion is not optional</span></a></li>
-          <li><a href="https://web.dev/articles/prefers-reduced-motion" target="_blank" rel="noreferrer">prefers-reduced-motion<span class="by">web.dev — the practical implementation of respecting the user</span></a></li>
+          <li><a href="https://github.com/darkroomengineering/lenis" target="_blank" rel="noreferrer">Lenis<span class="by">darkroom.engineering. The smooth scroll behind award sites</span></a></li>
+          <li><a href="https://alistapart.com/article/designing-safer-web-animation-for-motion-sensitivity/" target="_blank" rel="noreferrer">Designing safer web animation for motion sensitivity<span class="by">Val Head, A List Apart. Why reduced-motion is not optional</span></a></li>
+          <li><a href="https://web.dev/articles/prefers-reduced-motion" target="_blank" rel="noreferrer">prefers-reduced-motion<span class="by">web.dev. The practical implementation of respecting the user</span></a></li>
         </ul>
       </div>
     </div>
@@ -2912,9 +2913,9 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.12.4 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
-<p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS — any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+<p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
+<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
@@ -2927,7 +2928,7 @@ npm i scrollvars
 </div>
 
 <script>
-/* ═══════ scrollvars engine — inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */
+/* ═══════ scrollvars engine, inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */
 "use strict";
 var SV = (() => {
   var __defProp = Object.defineProperty;
@@ -3006,7 +3007,6 @@ var SV = (() => {
       return;
     initialized = true;
     vh = window.innerHeight;
-    document.documentElement.classList.add("sv-on");
     window.addEventListener("scroll", schedule, { passive: true, capture: true });
     window.addEventListener("resize", () => {
       vh = window.innerHeight;
@@ -3018,8 +3018,12 @@ var SV = (() => {
       reducedMotion = event.matches;
       schedule();
     });
-    resizeObserver = new ResizeObserver(() => schedule());
-    resizeObserver.observe(document.documentElement);
+    try {
+      resizeObserver = new ResizeObserver(() => schedule());
+      resizeObserver.observe(document.documentElement);
+    } catch {
+      return;
+    }
     if (typeof IntersectionObserver !== "undefined") {
       culler = new IntersectionObserver((records) => {
         for (const record of records) {
@@ -3030,17 +3034,27 @@ var SV = (() => {
         schedule();
       }, { rootMargin: "100% 0px 100% 0px" });
     }
+    document.documentElement.classList.add("sv-on");
+    window.__scrollvars = true;
   }
+  var lastY = -1;
+  var lastT = 0;
+  var velTimer;
   function schedule() {
     if (!raf && entries.size > 0)
       raf = requestAnimationFrame(update);
   }
   function update() {
     raf = 0;
+    const y = window.scrollY;
+    const now = performance.now();
+    const jumped = lastY >= 0 && Math.abs(y - lastY) > vh;
+    const docEl = document.documentElement;
+    const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1);
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];
     entries.forEach((entry) => {
-      if (!entry.near && !entry.opts.root)
+      if (!entry.near && !entry.opts.root && !jumped)
         return;
       const rect = entry.el.getBoundingClientRect();
       const root = entry.opts.root;
@@ -3060,6 +3074,14 @@ var SV = (() => {
     for (const { entry, geo } of frames) {
       apply(entry, geo);
     }
+    const dt = now - lastT;
+    const v = lastY < 0 || dt <= 0 ? 0 : (y - lastY) / dt * 1e3 / vh;
+    docEl.style?.setProperty("--sv-page", clamp(y / pageSpan, 0, 1).toFixed(4));
+    docEl.style?.setProperty("--sv-v", (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3));
+    clearTimeout(velTimer);
+    velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", "0"), 80);
+    lastY = y;
+    lastT = now;
   }
   function computeView(geo, enter, exit) {
     const enterLine = geo.vp * enter;
@@ -3152,6 +3174,13 @@ var SV = (() => {
     };
     entries.set(el, entry);
     el.classList.add("sv");
+    if (opts.scenes && opts.scenes > 1)
+      el.style.setProperty("--sv-scenes", String(opts.scenes));
+    if (typeof opts.pin === "string" && !reducedMotion) {
+      el.style.height = opts.pin;
+      if (!el.style.position)
+        el.style.position = "relative";
+    }
     resizeObserver?.observe(el);
     if (!opts.root)
       culler?.observe(el);
@@ -3165,16 +3194,19 @@ var SV = (() => {
   function refresh() {
     schedule();
   }
-  function scrollToScene(el, index, count, smooth = true) {
+  function scrollToScene(el, index, count, smooth = true, root) {
     if (typeof window === "undefined" || count < 2)
       return;
-    const height = el.scrollHeight;
-    const span = Math.max(height - window.innerHeight, 1);
-    const top = window.scrollY + el.getBoundingClientRect().top + clamp(index, 0, count - 1) / (count - 1) * span;
-    window.scrollTo({
-      top: Math.max(0, top),
-      behavior: smooth ? "smooth" : "instant"
-    });
+    const rect = el.getBoundingClientRect();
+    const vp = root ? root.clientHeight : window.innerHeight;
+    const span = Math.max(rect.height - vp, 1);
+    const offset = clamp(index, 0, count - 1) / (count - 1) * span;
+    const behavior = smooth ? "smooth" : "instant";
+    if (root) {
+      root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior });
+    } else {
+      window.scrollTo({ top: window.scrollY + rect.top + offset, behavior });
+    }
   }
   function prefersReducedMotion() {
     return reducedMotion;
@@ -3194,8 +3226,9 @@ var SV = (() => {
       const { el, x, y } = pending;
       pending = null;
       const rect = el.getBoundingClientRect();
-      el.style.setProperty("--mx", ((x - rect.left) / rect.width * 2 - 1).toFixed(3));
-      el.style.setProperty("--my", ((y - rect.top) / rect.height * 2 - 1).toFixed(3));
+      const unit = (v) => Math.max(-1, Math.min(1, v)).toFixed(3);
+      el.style.setProperty("--mx", unit((x - rect.left) / rect.width * 2 - 1));
+      el.style.setProperty("--my", unit((y - rect.top) / rect.height * 2 - 1));
     };
     const onMove = (event) => {
       const el = event.target.closest?.(selector);
@@ -3232,7 +3265,13 @@ var SV = (() => {
     const words = text.split(/\s+/).filter(Boolean);
     if (by === "word")
       return words;
-    return words.flatMap((word) => Array.from(word));
+    return words.flatMap(chars);
+  }
+  function chars(word) {
+    const Segmenter = Intl.Segmenter;
+    if (!Segmenter)
+      return Array.from(word);
+    return Array.from(new Segmenter(void 0, { granularity: "grapheme" }).segment(word), (s) => s.segment);
   }
   function split(el, { by = "word" } = {}) {
     if (typeof window === "undefined")
@@ -3258,7 +3297,7 @@ var SV = (() => {
         span.style.setProperty("--sv-order", String(order++));
         el.appendChild(span);
       } else {
-        for (const ch of Array.from(word)) {
+        for (const ch of chars(word)) {
           const span = document.createElement("span");
           span.textContent = ch;
           span.setAttribute("aria-hidden", "true");
@@ -3295,7 +3334,7 @@ var SV = (() => {
     const scenes = Number(el.getAttribute("data-sv-scenes"));
     return {
       once: el.hasAttribute("data-sv-once"),
-      pin: el.hasAttribute("data-sv-pin"),
+      pin: el.getAttribute("data-sv-pin") || el.hasAttribute("data-sv-pin"),
       travel: el.hasAttribute("data-sv-travel"),
       scenes: scenes > 1 ? scenes : void 0,
       enter: band(el, "data-sv-enter"),
@@ -3327,6 +3366,10 @@ var SV = (() => {
       tracked.get(el)?.();
       tracked.delete(el);
     };
+    const removeSplit = (el) => {
+      splits.get(el)?.();
+      splits.delete(el);
+    };
     const sweep = (node, fn) => {
       if (!(node instanceof HTMLElement))
         return;
@@ -3340,6 +3383,10 @@ var SV = (() => {
         if (node.hasAttribute("data-sv-split"))
           addSplit(node);
         node.querySelectorAll("[data-sv-split]").forEach(addSplit);
+      } else {
+        if (node.hasAttribute("data-sv-split"))
+          removeSplit(node);
+        node.querySelectorAll("[data-sv-split]").forEach(removeSplit);
       }
     };
     scope.querySelectorAll("[data-sv]").forEach(add);
@@ -3416,10 +3463,8 @@ var SV = (() => {
     const horizontal = axis === "x";
     const rtl = horizontal && typeof getComputedStyle === "function" && getComputedStyle(container).direction === "rtl";
     container.classList.add("sv-slider");
-    if (!horizontal)
-      container.classList.add("sv-slider-y");
-    if (drag)
-      container.classList.add("sv-draggable");
+    container.classList.toggle("sv-slider-y", !horizontal);
+    container.classList.toggle("sv-draggable", !!drag);
     container.style.setProperty("--sv-snap", snap);
     const pos = () => horizontal ? rtl ? -container.scrollLeft + 0 : container.scrollLeft : container.scrollTop;
     const setPos = (v) => {
@@ -3430,7 +3475,13 @@ var SV = (() => {
     };
     const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    const slideStart = (el) => horizontal ? rtl ? container.scrollWidth - el.offsetLeft - el.offsetWidth : el.offsetLeft : el.offsetTop;
+    const slideStart = (el) => {
+      const c = container.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      if (!horizontal)
+        return r.top - c.top - container.clientTop + container.scrollTop;
+      return rtl ? c.right - r.right - container.clientLeft + pos() : r.left - c.left - container.clientLeft + pos();
+    };
     const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
     const authoredSnap = container.style.scrollSnapType;
     const suspendSnap = () => {
@@ -3467,7 +3518,7 @@ var SV = (() => {
           best = i;
         }
       });
-      position = Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0);
+      position = Math.min(Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0), Math.max(slides().length - 1, 0));
       const progress = range() > 0 ? pos() / range() : 0;
       container.style.setProperty("--sv-progress", progress.toFixed(4));
       if (best !== active) {
@@ -3535,6 +3586,7 @@ var SV = (() => {
         glide(to);
       } else {
         stopGlide();
+        resumeSnap();
         target = -1;
         setPos(to);
       }
@@ -3580,6 +3632,7 @@ var SV = (() => {
       if (!dragging) {
         const focusable = pressedTarget?.closest(FOCUSABLE);
         focusable?.focus({ preventScroll: true });
+        resumeSnap();
         return;
       }
       dragging = false;
@@ -3658,6 +3711,7 @@ var SV = (() => {
       destroy: () => {
         stopGlide();
         resumeSnap();
+        container.classList.remove("sv-slider", "sv-slider-y", "sv-draggable", "sv-dragging");
         clearTimeout(wheelTimer);
         container.removeEventListener("wheel", onWheel);
         container.removeEventListener("keydown", onKey);
@@ -3679,7 +3733,7 @@ var SV = (() => {
 /* ═══════ end scrollvars engine ═══════ */
 </script>
 <script>
-/* ════════════════ demo driver (page wiring only — the block above IS the real
+/* ════════════════ demo driver (page wiring only. The block above IS the real
    package engine, inlined verbatim from dist by scripts/demo-sync.mjs on every
    build. register() is a thin shim over SV.track that keeps the page's HUD
    instrumentation. Never hand-patch either block.) ════════════════ */
@@ -3697,7 +3751,7 @@ var SV = (() => {
     });
   }
 
-  // same formula as the engine's internal scene easing — the pizza wheel's
+  // same formula as the engine's internal scene easing. The pizza wheel's
   // inertia loop chases the eased scene between frames, so it needs it in JS
   function computeScene(pin, count, sn) {
     var raw = pin * (count - 1);
@@ -3801,8 +3855,8 @@ var SV = (() => {
 
 
 
-  // pointer tilt: one delegated listener, writes batched in a rAF —
-  // the driver's philosophy applied to a different input
+  // pointer tilt: one delegated listener, writes batched in a rAF,
+// the driver's philosophy applied to a different input
   var tiltRow = document.getElementById('tilt-row');
   var tiltPending = null;
   var tiltRaf = 0;
@@ -3857,7 +3911,7 @@ var SV = (() => {
   });
 
   // svg path: the stroke is pure CSS; the dot is positioned in the SVG's own
-  // units (getPointAtLength) — same coordinate system as the line
+  // units (getPointAtLength). Same coordinate system as the line
   var drawPath = document.getElementById('draw-path');
   var drawCar = document.getElementById('draw-car');
   var drawLen = drawPath.getTotalLength();
@@ -3872,7 +3926,7 @@ var SV = (() => {
   });
 
   // parallax gallery inertia: exponential smoothing per column.
-  // current += (target - current) * factor — smooth in motion, and the stop
+  // current += (target - current) * factor. Smooth in motion, and the stop
   // decelerates asymptotically (a natural ease-out no bezier retarget gives).
   var pgalCols = document.querySelectorAll('.pgal-col');
   var pgalLags = [0.16, 0.07, 0.11]; // per-frame factor: lower = longer trail
@@ -3919,16 +3973,16 @@ var SV = (() => {
     },
   });
 
-  /* ═══════ scrollvars/canvas harness — inlined from the built dist, verbatim ═══════ */
+  /* ═══════ scrollvars/canvas harness, inlined from the built dist, verbatim ═══════ */
   var mountEffect = (function () {
 /**
- * Canvas effect harness — the lifecycle chassis every ambient canvas effect
+ * Canvas effect harness: the lifecycle chassis every ambient canvas effect
  * repeats: mount, resize, DPR cap, delta-time rAF loop, pause when offscreen
  * or the tab is hidden, reduced-motion flag, full cleanup.
  *
  * The simulation itself stays yours: `setup` builds state, `frame` advances
  * one step. The harness never touches what you draw. Feed it scroll/pointer
- * values from the driver (`--sv-t`, `--mx`…) via your own closure — the two
+ * values from the driver (`--sv-t`, `--mx`…) via your own closure. The two
  * modules stay decoupled.
  *
  * Drawing space is CSS pixels: the context is pre-scaled by DPR, so
@@ -3953,6 +4007,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     let raf = 0;
     let last = 0;
     let ready = false;
+    let cleanup;
     let destroyed = false;
     // the loop runs only when every gate is open
     let userPaused = false;
@@ -3988,7 +4043,10 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
         if (!ready) {
             ready = true;
-            setup?.(fx);
+            const dispose = setup?.(fx);
+            if (typeof dispose === 'function')
+                cleanup = dispose;
+            resize?.(fx); // sizing that lives in resize() must also run once
         }
         else {
             resize?.(fx);
@@ -4008,7 +4066,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     };
     document.addEventListener('visibilitychange', onVisibility);
     // A fixed-CSS-size canvas gets no ResizeObserver callback when it moves to
-    // a monitor with a different devicePixelRatio — watch the resolution too.
+    // a monitor with a different devicePixelRatio. Watch the resolution too.
     let dprQuery = null;
     const watchDpr = () => {
         dprQuery?.removeEventListener?.('change', onDprChange);
@@ -4035,6 +4093,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         },
         destroy: () => {
             destroyed = true;
+            cleanup?.();
             sync();
             ro.disconnect();
             io.disconnect();
@@ -4049,7 +4108,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
   })();
 
   /* ambient canvas demo: a dot-wave field. The simulation is userland; the
-     harness only gives it the loop — and the frame counter proves the
+     harness only gives it the loop. And the frame counter proves the
      auto-pause (it freezes whenever the canvas leaves the viewport). */
   var ambTime = 0;
   var ambAmp = 0.5; // fed by the scroll driver below
@@ -4110,7 +4169,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     });
   });
 
-  /* warp: pinned starfield — the pin value is the camera's travel, its
+  /* warp: pinned starfield: the pin value is the camera's travel, its
      per-frame delta is the velocity (stretches stars into streaks). */
   var WARP_N = 420;
   var warpStars = [];
@@ -4331,25 +4390,25 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
       },
     });
   }
-  /* ═══════ scrollvars slider — inlined from the built dist, verbatim ═══════ */
+  /* ═══════ scrollvars slider, inlined from the built dist, verbatim ═══════ */
   var slider = (function () {
 /**
  * A featherweight carousel on native rails: the browser does the scrolling
  * (momentum, touch, accessibility) and scroll-snap does the magnetism; this
- * module only adds what the platform lacks —
- *
+ * module only adds what the platform lacks,
+*
  *   - mouse drag-to-scroll on desktop (touch is already native)
  *   - the active-slide observer, exposed the ScrollVars way:
  *       container:  --sv-slide (active index) · --sv-progress (0..1)
  *       each slide: --sd        (signed distance from center, in slide sizes)
  *                   .sv-active  (nearest to center)
  *   - next / prev / goTo, glide with a soft exponential settle
- *   - full state (`state()` / `onScroll`) and `seek()` — enough to chain
+ *   - full state (`state()` / `onScroll`) and `seek()`. Enough to chain
  *     sliders: `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`
  *   - `axis: 'y'` for vertical sliders
  *
- * Any CSS reading `--sd` animates the slides: scale, fade, coverflow —
- * no per-frame JS, same philosophy as the scroll driver.
+ * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
+* no per-frame JS, same philosophy as the scroll driver.
  */
 const noopState = {
     active: 0,
@@ -4372,19 +4431,17 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     if (typeof window === 'undefined')
         return noop;
     const horizontal = axis === 'x';
-    // RTL: normalize to logical coordinates — pos() runs 0 → range() from the
+    // RTL: normalize to logical coordinates: pos() runs 0 → range() from the
     // start of content regardless of direction (raw scrollLeft is 0 → -range
     // in RTL per spec), and slideStart() mirrors offsets to match.
     const rtl = horizontal &&
         typeof getComputedStyle === 'function' &&
         getComputedStyle(container).direction === 'rtl';
     container.classList.add('sv-slider');
-    if (!horizontal)
-        container.classList.add('sv-slider-y');
-    if (drag)
-        container.classList.add('sv-draggable'); // grab cursor only where dragging works
+    container.classList.toggle('sv-slider-y', !horizontal);
+    container.classList.toggle('sv-draggable', !!drag); // grab cursor only where dragging works
     container.style.setProperty('--sv-snap', snap);
-    // axis accessors — the only place the orientation matters
+    // axis accessors: the only place the orientation matters
     const pos = () => horizontal ? (rtl ? -container.scrollLeft + 0 : container.scrollLeft) : container.scrollTop;
     const setPos = (v) => {
         if (horizontal)
@@ -4394,13 +4451,20 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     const viewport = () => (horizontal ? container.clientWidth : container.clientHeight);
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    const slideStart = (el) => horizontal
-        ? rtl
-            ? container.scrollWidth - el.offsetLeft - el.offsetWidth
-            : el.offsetLeft
-        : el.offsetTop;
+    // Container-local start of a slide in logical scroll units. Rect-based, so
+    // it does not depend on which ancestor happens to be the offsetParent, and
+    // RTL mirrors against the container's own right edge.
+    const slideStart = (el) => {
+        const c = container.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        if (!horizontal)
+            return r.top - c.top - container.clientTop + container.scrollTop;
+        return rtl
+            ? c.right - r.right - container.clientLeft + pos()
+            : r.left - c.left - container.clientLeft + pos();
+    };
     const slideSize = (el) => (horizontal ? el.offsetWidth : el.offsetHeight);
-    // Snap suspension via inline style — one source of truth. The authored
+    // Snap suspension via inline style. One source of truth. The authored
     // inline value (e.g. 'none' on scroll-driven instances) is preserved.
     const authoredSnap = container.style.scrollSnapType;
     const suspendSnap = () => {
@@ -4437,7 +4501,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 best = i;
             }
         });
-        position = Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0);
+        position = Math.min(Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0), Math.max(slides().length - 1, 0));
         const progress = range() > 0 ? pos() / range() : 0;
         container.style.setProperty('--sv-progress', progress.toFixed(4));
         if (best !== active) {
@@ -4456,7 +4520,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     const ro = new ResizeObserver(schedule);
     ro.observe(container);
     measure();
-    // pending glide destination — rapid next/prev clicks accumulate from here,
+    // pending glide destination: rapid next/prev clicks accumulate from here,
     // not from `active` (which lags mid-glide and would swallow the clicks)
     let target = -1;
     const stopGlide = () => {
@@ -4491,7 +4555,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 setPos(to);
                 stopGlide();
                 target = -1;
-                resumeSnap(); // position is centered — safe to re-engage
+                resumeSnap(); // position is centered. Safe to re-engage
             }
             else {
                 setPos(current);
@@ -4513,6 +4577,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         }
         else {
             stopGlide();
+            resumeSnap(); // a previous seek()/glide may have suspended it
             target = -1;
             setPos(to);
         }
@@ -4527,10 +4592,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
      * a glide is running, the measured active slide otherwise. */
     const stepBase = () => (anim && target >= 0 ? target : active);
     // mouse drag: snap is suspended from grab until the release glide finishes.
-    // move/up listeners live on window WHILE dragging — pointer capture on a
+    // move/up listeners live on window WHILE dragging. Pointer capture on a
     // scrollable container is unreliable, and this way the gesture survives
     // leaving the element (release happens on the real pointerup, anywhere).
-    // ponytail: no momentum fling of our own — the release glide covers it.
+    // ponytail: no momentum fling of our own. The release glide covers it.
     let lastPointer = 0;
     let startPoint = 0;
     let pressed = false; // mouse is down; becomes a drag only after real movement
@@ -4554,7 +4619,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         lastPointer = point;
     };
     // the click that follows a real drag would activate whatever link the
-    // pointer happens to be over — swallow exactly that one
+    // pointer happens to be over. Swallow exactly that one
     const suppressClick = (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4569,12 +4634,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         pressed = false;
         if (!dragging) {
             // ordinary click: preventDefault on pointerdown (below) killed the
-            // browser's native focus-on-mousedown along with text selection —
+            // browser's native focus-on-mousedown along with text selection,
             // restore it now that we know this press was never a drag. The click
             // event itself was never suppressed, so link/button activation was
             // unaffected either way.
             const focusable = pressedTarget?.closest(FOCUSABLE);
             focusable?.focus({ preventScroll: true });
+            resumeSnap(); // the press interrupted a glide that had suspended snap
             return;
         }
         dragging = false;
@@ -4606,7 +4672,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         // selection anchor exists, the browser auto-scrolls toward the pointer
         // on every native mousemove, fighting our own scrollLeft writes frame
         // by frame (the visible jitter). user-select:none alone doesn't reliably
-        // stop a selection from STARTING in every engine — preventDefault does.
+        // stop a selection from STARTING in every engine. PreventDefault does.
         // The one side effect (this also suppresses native focus-on-mousedown)
         // is repaired in endDrag for genuine clicks; the click event itself
         // still fires natively either way, so link/button activation is fine.
@@ -4617,14 +4683,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     container.addEventListener('pointerdown', onDown);
     // trackpad/wheel pan: native mandatory snap settles fast and can't be
-    // slowed, so replace it — suspend snap while wheeling, then glide to the
+    // slowed, so replace it. Suspend snap while wheeling, then glide to the
     // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
     // instances authored with snap none (scroll-driven ones own their position).
     let wheelTimer;
     const onWheel = (event) => {
         if (authoredSnap === 'none')
             return;
-        // only react when the gesture's dominant axis is OUR axis — otherwise
+        // only react when the gesture's dominant axis is OUR axis. Otherwise
         // this is the page scrolling past the carousel (trackpad gestures are
         // always slightly diagonal) and assisting would yank the slider around
         const along = horizontal ? event.deltaX : event.deltaY;
@@ -4641,7 +4707,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     const next = (smooth = true) => goTo(stepBase() + 1, smooth);
     const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
     // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
-    // hard after each — replace it with the same soft glide as everything else.
+    // hard after each. Replace it with the same soft glide as everything else.
     // The container is made focusable (Safari never focuses scrollers on its own).
     if (container.tabIndex === -1)
         container.tabIndex = 0;
@@ -4673,6 +4739,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         destroy: () => {
             stopGlide();
             resumeSnap();
+            container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging');
             clearTimeout(wheelTimer);
             container.removeEventListener('wheel', onWheel);
             container.removeEventListener('keydown', onKey);
@@ -4693,24 +4760,24 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
   return slider;
   })();
 
-  /* ═══════ scrollvars toggles — inlined from the built dist, verbatim ═══════ */
+  /* ═══════ scrollvars toggles, inlined from the built dist, verbatim ═══════ */
   var toggles = (function () {
 /**
  * Click → state → CSS. The third input, after scroll and pointer: one
  * delegated listener turns clicks into classes + variables, and CSS does
- * every pixel of the animation — same contract as the scroll driver.
+ * every pixel of the animation. Same contract as the scroll driver.
  *
  *   <button data-sv-toggle="open" data-sv-target="#menu">menu</button>
  *   <nav id="menu">…</nav>        <!-- gains/loses .open on click -->
  *
- * - `data-sv-toggle="class"` — class to toggle ('sv-open' when empty)
- * - `data-sv-target="sel"`   — what receives it (the trigger itself when absent)
+ * - `data-sv-toggle="class"`. Class to toggle ('sv-open' when empty)
+ * - `data-sv-target="sel"`. What receives it (the trigger itself when absent)
  * - the target also gets `--sv-state: 1|0` for continuous CSS use
- * - the trigger gets `aria-expanded` kept in sync — the accessibility the
+ * - the trigger gets `aria-expanded` kept in sync. The accessibility the
  *   old checkbox hack never gave you
  *
  * Deliberately NOT a timeline engine: one click, one state change. For
- * orchestrated multi-act sequences, use GSAP — that's its turf.
+ * orchestrated multi-act sequences, use GSAP. That's its turf.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  */
@@ -4740,15 +4807,15 @@ function toggles(root) {
   return toggles;
   })();
 
-  toggles(); // wires every [data-sv-toggle] on the page — case 17 has no JS of its own
+  toggles(); // wires every [data-sv-toggle] on the page. Case 17 has no JS of its own
 
   var sliderDots = document.getElementById('slider-dots');
   var sliderEl = document.getElementById('slider-demo');
   Array.prototype.forEach.call(sliderEl.children, function () {
     sliderDots.appendChild(document.createElement('i'));
   });
-  /* the vertical follower: a second slider on axis y, chained in one line —
-     the main's onScroll drives it through seek (unidirectional, no loops) */
+  /* the vertical follower: a second slider on axis y, chained in one line.
+The main's onScroll drives it through seek (unidirectional, no loops) */
   var thumbsEl = document.getElementById('slider-thumbs');
   var thumbsHandle = slider(thumbsEl, { axis: 'y', drag: false });
   var sliderHandle = slider(sliderEl, {
@@ -4770,7 +4837,7 @@ function toggles(root) {
   slider(document.getElementById('wingal-slider'), { duration: 1100 });
 
   /* case 15 · the flavor wheel: scenes rotate the disc; the buttons scroll
-     the page to the target scene — the scroll stays the single writer. */
+     the page to the target scene. The scroll stays the single writer. */
   var PZ_FLAVORS = [
     ['pepperoni', 'spicy, loud and always hot'],
     ['funghi', 'earthy salami and mushrooms'],
@@ -4804,7 +4871,7 @@ function toggles(root) {
   var pzHub = document.querySelector('.pz-hub');
   var pzRafId = 0;
   /* the wheel has its own inertia: a lerp chases the eased scene, so the
-     rotation speed is decoupled from how hard the user scrolls — the spin
+     rotation speed is decoupled from how hard the user scrolls. The spin
      is always soft, and the settle decelerates asymptotically. */
   function pzTick() {
     pzRafId = 0;
@@ -4828,14 +4895,14 @@ function toggles(root) {
   });
 
   /* the magnet: while pinned, a quiet scroll settles onto the nearest
-     flavor — there is no resting position between two pizzas. Same
+     flavor. There is no resting position between two pizzas. Same
      quiet-debounce idea as the slider's wheel assist, applied to the page. */
   var pzQuiet;
   window.addEventListener('scroll', function () {
     // ALWAYS clear first: a timer armed mid-pin must die the moment the
     // scroll crosses the section boundary, or it fires late and yanks the
-    // page back in (the enter/leave "jump"). Re-check at fire time too —
-    // momentum may have carried the user out during the quiet window.
+    // page back in (the enter/leave "jump"). Re-check at fire time too,
+// momentum may have carried the user out during the quiet window.
     clearTimeout(pzQuiet);
     if (pzPin <= 0.001 || pzPin >= 0.999) return;
     pzQuiet = setTimeout(function () {
@@ -4859,7 +4926,7 @@ function toggles(root) {
     if (i >= 0) sliderHandle.goTo(i);
   });
 
-  /* 13b: page scroll drives the slider — one line of glue. This instance
+  /* 13b: page scroll drives the slider. One line of glue. This instance
      has snap off AND overflow-x hidden: the pin is the single writer of
      scrollLeft (direct swipes would desync and snap back). --sd/.sv-active
      still flow because the observer just reads the scroll position. */
@@ -4879,15 +4946,15 @@ function toggles(root) {
    FRAMES is ~1.6 MB of base64 jpeg. In the SAME <script> tag as the code
    that reveals the page (register() → SV.track() → html.sv-on), it forced
    every visitor to download the whole frame sequence before ANYTHING
-   painted — inline <script> can't execute a byte until its closing tag
+   painted. Inline <script> can't execute a byte until its closing tag
    has fully arrived. Its own tag: the page reveals fast, this loads after,
-   invisible below the fold either way. Never hand-patch — this is the
+   invisible below the fold either way. Never hand-patch: this is the
    verbatim block scripts/demo-sync.mjs cuts out of the driver above. */
 (function () {
 // scrubbed video: the pin becomes currentTime
   // scrubbed video, the bulletproof way: a frame sequence on canvas.
   // Video decoders keep state (and Safari's wedges under fast bidirectional
-  // seeks); images are stateless — there is nothing to get stuck.
+  // seeks); images are stateless: there is nothing to get stuck.
   var FRAMES = [];
   var scrubIO = new IntersectionObserver(function (entries) {
     if (!entries[0].isIntersecting) return;

@@ -16,23 +16,31 @@ import { splitParts } from '../core/split.js'
 
 /**
  * Zero-wrapper mode: drop one `<ScrollVarsBoot />` in the root layout and
- * write plain server components with `data-sv` attributes — no client
+ * write plain server components with `data-sv` attributes. No client
  * wrappers anywhere else. New nodes (route changes, streamed content) are
  * picked up automatically.
  *
  *   // app/layout.tsx
  *   <body><ScrollVarsBoot />{children}</body>
  *
- *   // any RSC — stays on the server
+ *   // any RSC. Stays on the server
  *   <section data-sv data-sv-once className="…">
  *     <h2 className="sv-rise">Title</h2>
  *   </section>
  */
+/** Inline, runs before first paint when <ScrollVarsBoot /> is the first child of <body>:
+ * adds html.sv-on immediately (no flash of visible-then-hidden content) and removes
+ * it again if the driver has not booted within 3s, so a broken bundle still fails visible. */
+const PREPAINT =
+  "(function(){try{if(!('IntersectionObserver'in window&&'ResizeObserver'in window))return;" +
+  "var h=document.documentElement;h.classList.add('sv-on');" +
+  "setTimeout(function(){if(!window.__scrollvars)h.classList.remove('sv-on')},3000)}catch(e){}})()"
+
 export const ScrollVarsBoot: React.FC = () => {
   useEffect(() => {
     const stopScan = scan()
     const stopToggles = toggles()
-    // dev convenience: ?sv-debug mounts the overlay (code-split — costs
+    // dev convenience: ?sv-debug mounts the overlay (code-split. Costs
     // nothing unless the flag is present)
     let stopDebug: (() => void) | undefined
     if (new URLSearchParams(location.search).has('sv-debug')) {
@@ -46,14 +54,14 @@ export const ScrollVarsBoot: React.FC = () => {
       stopDebug?.()
     }
   }, [])
-  return null
+  return <script dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
 
 /**
  * Track an element with the scroll driver.
- * No React state is touched on scroll — values land as CSS variables.
+ * No React state is touched on scroll. Values land as CSS variables.
  */
 export function useTrack<T extends HTMLElement = HTMLDivElement>(
   options: TrackOptions = {}
@@ -71,6 +79,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
 
   const { view, travel, scenes, snap, once, pin, root, enter, exit } = options
   const hasTravelCb = !!options.onTravel
+  const hasSceneCb = !!options.onScene
   const hasPinCb = !!options.onPin
 
   useEffect(() => {
@@ -86,7 +95,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
       enter,
       exit,
       onLive: (live) => callbacksRef.current.onLive?.(live),
-      onScene: (scene) => callbacksRef.current.onScene?.(scene),
+      onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
       onTravel: hasTravelCb
         ? (t) => callbacksRef.current.onTravel?.(t)
         : undefined,
@@ -100,7 +109,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
 }
 
 /**
- * Animation knobs as component attributes — sugar that compiles to the
+ * Animation knobs as component attributes. Sugar that compiles to the
  * corresponding CSS variables. The variables stay the real API; these
  * props just save the `style={{'--sv-…'}}` ceremony.
  */
@@ -196,7 +205,7 @@ export interface ItemProps extends React.HTMLAttributes<HTMLElement>, VarProps {
 
 /**
  * A child of a tracked section, fully configured by attributes:
- * `<Item effect="rise" order={2} distance="4rem">` — no classes, no
+ * `<Item effect="rise" order={2} distance="4rem">`. No classes, no
  * style-variable ceremony. Renders `sv-<effect>` + the vars.
  */
 export const Item: React.FC<ItemProps> = ({
@@ -219,7 +228,7 @@ export const Item: React.FC<ItemProps> = ({
 )
 
 export interface RevealProps extends Omit<TrackProps, 'scenes' | 'travel'> {
-  /** Animate every direct child with an automatic stagger — no classes needed. */
+  /** Animate every direct child with an automatic stagger. No classes needed. */
   auto?: boolean
 }
 
@@ -239,7 +248,7 @@ export const Reveal: React.FC<RevealProps> = ({ auto, className, ...rest }) => (
 
 export interface ParallaxProps extends Omit<TrackProps, 'scenes'> {}
 
-/** Continuous drift tied to the scroll position — no transition lag. */
+/** Continuous drift tied to the scroll position. No transition lag. */
 export const Parallax: React.FC<ParallaxProps> = ({ children, ...rest }) => (
   <Track {...rest}>
     <div className="sv-drift">{children}</div>
@@ -266,9 +275,9 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
 
   const goTo = useCallback(
     (target: number, smooth = true) => {
-      if (ref.current) scrollToScene(ref.current, target, count, smooth)
+      if (ref.current) scrollToScene(ref.current, target, count, smooth, options.root)
     },
-    [count]
+    [count, options.root]
   )
 
   return { ref, scene, goTo }
@@ -293,8 +302,8 @@ export interface SplitProps extends React.HTMLAttributes<HTMLElement>, VarProps 
   as?: React.ElementType
 }
 
-// aria-label is prohibited on generic roles (p/span/div) — axe
-// `aria-prohibited-attr` — so the readable text is a visually-hidden child.
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// `aria-prohibited-attr`: so the readable text is a visually-hidden child.
 const SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -306,7 +315,7 @@ const SR_ONLY: React.CSSProperties = {
 
 /**
  * SplitText-lite, server-rendered: the text arrives as word/char spans with
- * `--sv-order` already in the HTML — no client-side splitting, no layout
+ * `--sv-order` already in the HTML. No client-side splitting, no layout
  * shift, no hydration flash. Pair with `sv-split-rise` (staggered entrance)
  * or `sv-reading` (scrubbed) on a tracked ancestor.
  */
@@ -359,6 +368,18 @@ export const Split: React.FC<SplitProps> = ({
   )
 }
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+  return reduced
+}
+
 export const Scenes: React.FC<ScenesProps> = ({
   count,
   height,
@@ -371,6 +392,9 @@ export const Scenes: React.FC<ScenesProps> = ({
   snap,
   once,
   pin,
+  root,
+  enter,
+  exit,
   onLive,
   onScene,
   onTravel,
@@ -382,7 +406,11 @@ export const Scenes: React.FC<ScenesProps> = ({
   ease,
   ...rest
 }) => {
+  const reduced = useReducedMotion()
   const { ref, scene, goTo } = useScenes(count, {
+    root,
+    enter,
+    exit,
     view,
     travel,
     snap,
@@ -403,13 +431,16 @@ export const Scenes: React.FC<ScenesProps> = ({
       ref={ref}
       className={className ? `sv ${className}` : 'sv'}
       style={{
-        height: height ?? `${count * 100}vh`,
+        height: reduced ? undefined : (height ?? `${count * 100}vh`),
         position: 'relative',
         ...varStyle({ order, distance, stagger, duration, ease }, style),
       }}
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
-      <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
+      <div
+        className="sv-stage"
+        style={reduced ? undefined : { position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}
+      >
         {children({ scene, goTo })}
       </div>
     </Tag>
@@ -418,7 +449,7 @@ export const Scenes: React.FC<ScenesProps> = ({
 
 /**
  * Mount a canvas effect (see `scrollvars/canvas`). Callbacks follow the
- * latest-ref pattern — changing them never remounts the effect.
+ * latest-ref pattern. Changing them never remounts the effect.
  */
 export function useCanvasEffect(options: EffectOptions) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -490,7 +521,7 @@ const BREAKPOINTS: Record<string, number> = {
   '2xl': 1536,
 }
 
-/** Media-query CSS for a responsive perView map — breakpoints ARE media
+/** Media-query CSS for a responsive perView map. Breakpoints ARE media
  * queries here (Tailwind-style keys or raw min-width numbers). */
 function perViewCss(scope: string, perView: Record<string, number>): string {
   let css = ''
@@ -506,7 +537,7 @@ function perViewCss(scope: string, perView: Record<string, number>): string {
 
 export interface SliderComponentProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onScroll'> {
-  /** Slides per view — a number, or a responsive map: `{ base: 1.2, md: 2.5, xl: 4 }`
+  /** Slides per view. A number, or a responsive map: `{ base: 1.2, md: 2.5, xl: 4 }`
    * (Tailwind breakpoint names or raw min-width numbers). Fractional = peek. */
   perView?: number | Record<string, number>
   /** Gap between slides (px number or CSS length). */
@@ -536,7 +567,7 @@ export interface SliderComponentProps
 /**
  * The batteries-included carousel: `useSlider` + chrome. Everything visual
  * hangs off stable classes (`sv-slider-shell`, `sv-arrow`, `sv-dots`,
- * `sv-dot`) and var knobs (`--sv-arrow-*`, `--sv-dot-*`) — override them
+ * `sv-dot`) and var knobs (`--sv-arrow-*`, `--sv-dot-*`). Override them
  * globally for the project or per instance via className/style. A ref
  * exposes the full SliderHandle for external controls placed anywhere.
  */
@@ -572,7 +603,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     React.useImperativeHandle(
       apiRef,
-      // delegate at call time — the handle only exists after the passive
+      // delegate at call time. The handle only exists after the passive
       // effect runs, so capturing handle.current here would freeze null
       () => ({
         next: (smooth?: boolean) => handle.current?.next(smooth),
@@ -602,6 +633,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     // autoplay: pauses on hover, offscreen and hidden tab
     const hovering = useRef(false)
+    const shellRef = useRef<HTMLDivElement>(null)
     const [paused, setPaused] = useState(false)
     const pausedRef = useRef(paused)
     pausedRef.current = paused
@@ -614,12 +646,13 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       })
       const el = ref.current
       if (el) io.observe(el)
-      // WCAG 2.2.2: the pause must be reachable without a mouse — keyboard
+      // WCAG 2.2.2: the pause must be reachable without a mouse. Keyboard
       // focus anywhere inside the slider halts autoplay like hover does
       const onFocusIn = () => (focused = true)
       const onFocusOut = () => (focused = false)
-      el?.addEventListener('focusin', onFocusIn)
-      el?.addEventListener('focusout', onFocusOut)
+      const focusEl = shellRef.current ?? el
+      focusEl?.addEventListener('focusin', onFocusIn)
+      focusEl?.addEventListener('focusout', onFocusOut)
       const timer = setInterval(() => {
         if (
           pausedRef.current ||
@@ -632,14 +665,14 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         const h = handle.current
         if (!h) return
         const s = h.state()
-        if (s.active >= s.count - 1) h.goTo(0)
+        if (s.active >= s.count - 1 || s.progress >= 0.999) h.goTo(0)
         else h.next()
       }, autoplay)
       return () => {
         clearInterval(timer)
         io.disconnect()
-        el?.removeEventListener('focusin', onFocusIn)
-        el?.removeEventListener('focusout', onFocusOut)
+        focusEl?.removeEventListener('focusin', onFocusIn)
+        focusEl?.removeEventListener('focusout', onFocusOut)
       }
     }, [autoplay, handle, ref])
 
@@ -650,7 +683,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     const rotating = !!autoplay && autoplay > 0 && !paused
     // APG slide semantics without breaking layout: annotate each child in
-    // place (no wrapper — sv-cols and --sv-span target direct children)
+    // place (no wrapper, sv-cols and --sv-span target direct children)
     const slides = React.Children.map(children, (child, i) =>
       React.isValidElement<Record<string, unknown>>(child)
         ? React.cloneElement(child, {
@@ -663,6 +696,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     return (
       <div
+        ref={shellRef}
         role="region"
         aria-roledescription="carousel"
         aria-label={label}
@@ -742,7 +776,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 )
 
 export interface SlideProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Columns this slide spans (per-slide override — vars cascade). */
+  /** Columns this slide spans (per-slide override. Vars cascade). */
   span?: number
 }
 
@@ -787,7 +821,7 @@ export interface AccordionProps
   children: React.ReactNode
 }
 
-/** Native <details> with animated height — accessibility for free. */
+/** Native <details> with animated height. Accessibility for free. */
 export const Accordion: React.FC<AccordionProps> = ({
   title,
   group,
@@ -834,7 +868,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
   )
 }
 
-/** Pointer tilt for every `.sv-tilt` descendant — one delegated listener. */
+/** Pointer tilt for every `.sv-tilt` descendant. One delegated listener. */
 export function usePointer<T extends HTMLElement = HTMLDivElement>(
   options: PointerOptions = {}
 ) {

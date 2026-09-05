@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScrollVars fx — copy-paste scroll effects</title>
-<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS — powered by a 4.6 KB engine. Copy-paste for humans and AIs.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>ScrollVars fx: copy-paste scroll effects</title>
+<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS. Powered by a 5.0 KB engine. Copy-paste for humans and AIs.">
 <style>
   * { box-sizing: border-box; margin: 0; }
   :root { --ink:#121118; --surface:#1b1a24; --line:rgba(230,228,240,.09);
@@ -127,49 +128,62 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
-  <h1>fx — copy-paste effects</h1>
-  <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste — no 47 KB tax.
+  <h1>fx, copy-paste effects</h1>
+  <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste. No 47 KB tax.
   Each effect ships three formats and full knobs. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
   <h2 class="fxcat">Reveals</h2>
   <div class="grid">
     <a class="fxlink" href="staggered-reveal.html"><b>Staggered reveal</b><span>Children rise in sequence when the section enters the viewport.</span></a>
-    <a class="fxlink" href="deck-spread.html"><b>Deck spread</b><span>A centered card deck deals itself into the grid — on arrival or scrubbed.</span></a>
+    <a class="fxlink" href="deck-spread.html"><b>Deck spread</b><span>A centered card deck deals itself into the grid. On arrival or scrubbed.</span></a>
   </div>
   <h2 class="fxcat">Pinned scenes</h2>
   <div class="grid">
     <a class="fxlink" href="curtain.html"><b>Curtain</b><span>Two panels slide apart as you scroll through a pinned stretch.</span></a>
     <a class="fxlink" href="horizontal-rail.html"><b>Horizontal rail</b><span>Vertical scroll travels a horizontal track through a pinned stage.</span></a>
-    <a class="fxlink" href="sequenced-scrub.html"><b>Sequenced scrub</b><span>Each child animates over its own slice of the pin — choreography without a timeline.</span></a>
+    <a class="fxlink" href="sequenced-scrub.html"><b>Sequenced scrub</b><span>Each child animates over its own slice of the pin. Choreography without a timeline.</span></a>
   </div>
   <h2 class="fxcat">Interop</h2>
   <div class="grid">
-    <a class="fxlink" href="gsap-scrub.html"><b>GSAP timeline under scrub</b><span>Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.</span></a>
-    <a class="fxlink" href="three-scene.html"><b>Three.js scene on the pin</b><span>A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.</span></a>
+    <a class="fxlink" href="gsap-scrub.html"><b>GSAP timeline under scrub</b><span>Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.</span></a>
+    <a class="fxlink" href="three-scene.html"><b>Three.js scene on the pin</b><span>A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</span></a>
   </div>
   <h2 class="fxcat">Text</h2>
   <div class="grid">
-    <a class="fxlink" href="split-reveal.html"><b>Split reveal</b><span>A headline broken into words, each rising on its own beat — SplitText without the engine.</span></a>
-    <a class="fxlink" href="rotating-words.html"><b>Rotating words</b><span>One word exits up, the next rises from below — a clipped column on one variable.</span></a>
+    <a class="fxlink" href="split-reveal.html"><b>Split reveal</b><span>A headline broken into words, each rising on its own beat, SplitText without the engine.</span></a>
+    <a class="fxlink" href="rotating-words.html"><b>Rotating words</b><span>One word exits up, the next rises from below. A clipped column on one variable.</span></a>
   </div>
   <h2 class="fxcat">Pointer</h2>
   <div class="grid">
-    <a class="fxlink" href="pointer-tilt.html"><b>Pointer tilt</b><span>Cards tilt toward the cursor with a moving glare — one delegated listener.</span></a>
+    <a class="fxlink" href="pointer-tilt.html"><b>Pointer tilt</b><span>Cards tilt toward the cursor with a moving glare. One delegated listener.</span></a>
   </div>
   <h2 class="fxcat">Sliders</h2>
   <div class="grid">
     <a class="fxlink" href="coverflow-slider.html"><b>Coverflow slider</b><span>Native-scroll carousel; slides scale, fade and turn by their distance from center.</span></a>
-    <a class="fxlink" href="marquee.html"><b>Marquee</b><span>An infinite strip — logos, taglines — that pauses on hover.</span></a>
+    <a class="fxlink" href="marquee.html"><b>Marquee</b><span>An infinite strip (logos, taglines) that pauses on hover.</span></a>
+  </div>
+  <h2 class="fxcat">Sections</h2>
+  <div class="grid">
+    <a class="fxlink" href="hero-cinematic.html"><b>Cinematic hero</b><span>Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).</span></a>
+    <a class="fxlink" href="timeline-scrub.html"><b>Pinned timeline</b><span>Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.</span></a>
+    <a class="fxlink" href="sticky-steps.html"><b>Sticky steps</b><span>Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.</span></a>
+    <a class="fxlink" href="stats-countup.html"><b>Stats count-up</b><span>Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.</span></a>
   </div>
   <p class="meta" style="margin-top:28px">Growing over time. Engine + 28-pattern showcase:
   <a href="../">scrollvars.dev</a> · benchmarks: <a href="../bench/">/bench/</a></p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

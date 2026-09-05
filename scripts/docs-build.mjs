@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds demo/docs/index.html — the human-facing reference (llms.txt stays
+ * Builds demo/docs/index.html. The human-facing reference (llms.txt stays
  * the machine-facing one). Content lives here; changelog + version are read
  * from the repo so the page can never drift from the release.
  */
@@ -29,7 +29,8 @@ const changelogHtml = mdLite(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'))
 
 const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScrollVars docs — the human reference</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>ScrollVars docs: the human reference</title>
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
@@ -89,17 +90,17 @@ import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
 
-// any page — no client components needed:
+// any page: no client components needed:
 &lt;section data-sv data-sv-once&gt;
   &lt;h2 className="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p className="sv-rise" data-sv-order="1"&gt;Copy&lt;/p&gt;
 &lt;/section&gt;</code></pre>
 <p>Per-element knobs are attributes too: <code>data-sv-order</code>,
 <code>data-sv-distance</code>, <code>data-sv-from</code>/<code>data-sv-to</code> become the
-matching CSS variables on mount — no style attribute, safe for mapped CMS content, zero
+matching CSS variables on mount. No style attribute, safe for mapped CMS content, zero
 global CSS. (React props on <code>&lt;Item&gt;</code>/<code>&lt;Reveal&gt;</code> compile the
 same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
-<p><b>Vanilla:</b> <code>import { scan } from 'scrollvars'; scan()</code> — same attributes.
+<p><b>Vanilla:</b> <code>import { scan } from 'scrollvars'; scan()</code>: same attributes.
 <b>React components:</b> <code>&lt;Reveal auto&gt;</code>, <code>&lt;Track pin&gt;</code>,
 <code>&lt;Scenes count={4}&gt;</code> when you want props instead of attributes.</p>
 
@@ -119,7 +120,7 @@ tunable per element via <code>enter</code>/<code>exit</code> or
 only under <code>html.sv-on</code>, so without JavaScript the page renders complete.</p>
 
 <h2 id="knobs">One knob, four ways (de/para)</h2>
-<p>Same result — a child rising second, 3rem of travel — pick the authoring style
+<p>Same result (a child rising second, 3rem of travel) pick the authoring style
 that fits the context. You never need the style attribute unless the value is
 computed in JS at runtime:</p>
 <table>
@@ -135,17 +136,17 @@ computed in JS at runtime:</p>
 <td><code>&lt;p class="sv-rise [--sv-order:1]"&gt;</code></td></tr>
 <tr><td>Sequential list</td>
 <td>an order per child, by hand</td>
-<td><code>&lt;div class="sv-stagger"&gt;</code> on the parent — nth-child does it, zero per-child anything</td></tr>
+<td><code>&lt;div class="sv-stagger"&gt;</code> on the parent, nth-child does it, zero per-child anything</td></tr>
 <tr><td>Mapped data (CMS loop)</td>
 <td><code>style={{ '--sv-order': i }}</code></td>
-<td><code>data-sv-order={i}</code> — attributes interpolate; Tailwind classes don't (the JIT scans statically)</td></tr>
+<td><code>data-sv-order={i}</code>. Attributes interpolate; Tailwind classes don't (the JIT scans statically)</td></tr>
 <tr><td>sv-range slices</td>
 <td><code>style="--sv-from: .3; --sv-to: .7"</code></td>
 <td><code>data-sv-from=".3" data-sv-to=".7"</code></td></tr>
 </table>
 <p>The attributes (<code>data-sv-order</code>, <code>data-sv-distance</code>,
 <code>data-sv-from</code>, <code>data-sv-to</code>) are written once as the matching CSS
-variable on mount by <code>scan()</code>/<code>&lt;ScrollVarsBoot /&gt;</code> — never in the
+variable on mount by <code>scan()</code>/<code>&lt;ScrollVarsBoot /&gt;</code>. Never in the
 frame loop, zero global CSS. When typed CSS <code>attr()</code> settles cross-browser this
 mapping becomes pure CSS.</p>
 
@@ -158,33 +159,37 @@ mapping becomes pure CSS.</p>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
-<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable — also zero-wrapper via <code>data-sv-split</code>.</td></tr>
+<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
 <tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
 </table>
-<p class="grp">scrollvars/react ('use client' wrappers — children stay RSC)</p>
+<p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
 <tr><td><code>&lt;ScrollVarsBoot /&gt;</code></td><td>mounts <code>scan()</code> + <code>toggles()</code> once.</td></tr>
-<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
+<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API, <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
 <tr><td><code>&lt;Slider&gt; &lt;Slide&gt; &lt;Marquee&gt; &lt;Accordion&gt; &lt;Modal&gt;</code></td><td>the component kit (see the accessibility contract below).</td></tr>
 <tr><td><code>useTrack / useScenes / useSlider / usePointer / useCanvasEffect</code></td><td>hooks under the components.</td></tr>
 </table>
-<p class="grp">scrollvars/canvas · scrollvars/compat</p>
-<p><code>mountEffect(canvas, effect)</code> — lifecycle harness for ambient canvas scenes
+<p class="grp">scrollvars/canvas · scrollvars/compat · scrollvars/debug</p>
+<p><code>mountEffect(canvas, effect)</code>. Lifecycle harness for ambient canvas scenes
 (DPR cap, delta-time loop, auto-pause offscreen/hidden, reduced-motion flag).
-<code>scrollvars/compat</code> — opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
-transform-fallback CSS.</p>
+<code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
+transform-fallback CSS.<br>
+<code>scrollvars/debug</code>. Dev overlay: <code>debug()</code> lists every tracked element with its live
+variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
 
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(<code>styles/core.css</code> 1.2&nbsp;KB gz · pin 1.3 · slider 0.4 · tilt 0.5 · ui).</p>
+(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
-<tr><td>pin (scrub)</td><td><code>sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise sv-acts</code></td></tr>
+<tr><td>pin (scrub)</td><td><code>sv-stage sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
-<tr><td>state / ui</td><td><code>sv-open sv-pop sv-words sv-marquee sv-accordion sv-tilt</code></td></tr>
+<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code></td></tr>
+<tr><td>ui</td><td><code>sv-marquee sv-accordion</code></td></tr>
+<tr><td>tilt</td><td><code>sv-tilt</code> + <code>--sv-tilt</code> (angle)</td></tr>
 </table>
 
 <h2 id="gsap">Coming from GSAP + ScrollTrigger</h2>
@@ -197,31 +202,31 @@ transform-fallback CSS.</p>
 <tr><td><code>ScrollTrigger.batch()</code> reveals</td><td><code>sv-auto</code> / <code>sv-stagger</code></td><td>nth-child order for free</td></tr>
 <tr><td><code>scroller: el</code></td><td><code>root: el</code></td><td>nested scroll panels</td></tr>
 <tr><td><code>onUpdate(self.progress)</code></td><td><code>onTravel</code>/<code>onPin</code> callbacks</td><td>canvas, WebGL, video scrub</td></tr>
-<tr><td>timelines with springs/exits/SVG morph</td><td><b>keep GSAP</b></td><td>time-driven work is out of scope here — honestly</td></tr>
+<tr><td>timelines with springs/exits/SVG morph</td><td><b>keep GSAP</b></td><td>time-driven work is out of scope here. Honestly</td></tr>
 </table>
 
 <h2 id="not">When NOT to use ScrollVars</h2>
 <ul>
-<li><b>Time-driven orchestration</b> — interruptible springs, layout/exit transitions, SVG
+<li><b>Time-driven orchestration</b>. Interruptible springs, layout/exit transitions, SVG
 morphing, choreographed intros on a clock: GSAP or Motion are the right tools.</li>
-<li><b>One load-in animation</b> — plain CSS keyframes; no library at all.</li>
-<li><b>App-like gesture physics</b> (drag with momentum between arbitrary states) — Motion.</li>
-<li>Chromium-only projects that can require the native tier — pure CSS scroll-driven
+<li><b>One load-in animation</b>. Plain CSS keyframes; no library at all.</li>
+<li><b>App-like gesture physics</b> (drag with momentum between arbitrary states), Motion.</li>
+<li>Chromium-only projects that can require the native tier. Pure CSS scroll-driven
 animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where supported.</li>
 </ul>
 
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
-<p>They don't conflict — different writers on different properties. Keep each element owned by
+<p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
 <pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
 })</code></pre>
-<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.
+<p>The page pays GSAP's bundle then. Do it for the page that needs it, not globally.
 Both patterns exist as official fx recipes with live previews:
 <a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
-a scrub — still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
+a scrub. Still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
 (the canvas harness with <code>context: null</code> owns the lifecycle, Three owns the WebGL,
 scroll feeds progress). Hitting the scope ceiling never means rewriting: the driver stays, you
 plug in what's missing.</p>
@@ -229,14 +234,14 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks — entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
-<tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code> — focus management, Escape, exclusivity from the platform</td></tr>
-<tr><td>pinned scenes</td><td>native scroll is never hijacked — the driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
+<tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
+<tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 </table>
 
-<h2 id="browsers">Browser support — and the answer for older ones</h2>
+<h2 id="browsers">Browser support: and the answer for older ones</h2>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
@@ -245,7 +250,7 @@ plug in what's missing.</p>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
-breaks — the page renders complete and static. Animation is progressive enhancement, never a
+breaks. The page renders complete and static. Animation is progressive enhancement, never a
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
@@ -260,13 +265,13 @@ compat()   // once, before anything else</code></pre>
 <h2 id="trouble">Troubleshooting</h2>
 <table>
 <tr><th>symptom</th><th>cause → fix</th></tr>
-<tr><td>content hidden until first scroll</td><td>entrance CSS not gated on <code>.sv-on</code> — use the shipped presets or copy their guard pattern</td></tr>
-<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names — use <code>data-sv-order={i}</code> (or a style var) for dynamic values; static one-offs like <code>[--sv-order:1]</code> are fine</td></tr>
-<tr><td>animation inside a modal/panel doesn't run</td><td>tracked element lives in a nested scroller — pass <code>root: scrollerEl</code> so geometry matches (the listener already hears it)</td></tr>
-<tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale) — radial math needs the <code>transform:</code> shorthand</td></tr>
-<tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var — transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
-<tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112) — expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
-<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant — keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
+<tr><td>content hidden until first scroll</td><td>entrance CSS not gated on <code>.sv-on</code>. Use the shipped presets or copy their guard pattern</td></tr>
+<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names. Use <code>data-sv-order={i}</code> (or a style var) for dynamic values; static one-offs like <code>[--sv-order:1]</code> are fine</td></tr>
+<tr><td>animation inside a modal/panel doesn't run</td><td>tracked element lives in a nested scroller. Pass <code>root: scrollerEl</code> so geometry matches (the listener already hears it)</td></tr>
+<tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale). Radial math needs the <code>transform:</code> shorthand</td></tr>
+<tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var. Transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
+<tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112). Expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
+<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant. Keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
 </table>
 
 <h2 id="changelog">Changelog</h2>

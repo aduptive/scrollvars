@@ -1,7 +1,7 @@
-# ScrollVars fx — llms.txt (copy-paste effects)
+# ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars — full core 4.6 KB gzip). Each effect below includes when to
+> (npm i scrollvars, 4.7 KB gzip as ESM; the fx/sv.js IIFE on these pages is 5.0 KB). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -20,7 +20,7 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
   <p class="sv-rise" data-sv-order="2" data-sv-distance="3rem">More</p>
 </section>
 <!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
-<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount — no
+<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount. No
      style attr, works with mapped CMS content, adds zero global CSS.
      Also fine: [--sv-order:1] arbitrary classes for static one-offs;
      sv-stagger on the parent for sequential lists (no attrs at all). -->
@@ -56,7 +56,7 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
 
 ## Deck spread (deck-spread)
 
-A centered card deck deals itself into the grid — on arrival or scrubbed.
+A centered card deck deals itself into the grid. On arrival or scrubbed.
 Category: Reveals
 Use for: Feature cards, pricing tiers, portfolio grids that deserve an entrance.
 Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub
@@ -101,7 +101,7 @@ Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread your
     ))}
   </div>
 </Track>
-{/* Item carries the vars as props — no style attr; sv-spread targets
+{/* Item carries the vars as props. No style attr; sv-spread targets
    direct children, and the Item wrapper IS the direct child. */}
 ```
 
@@ -191,7 +191,7 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 
 ## Sequenced scrub (sequenced-scrub)
 
-Each child animates over its own slice of the pin — choreography without a timeline.
+Each child animates over its own slice of the pin. Choreography without a timeline.
 Category: Pinned scenes
 Use for: Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.
 Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock
@@ -229,7 +229,7 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like — ALWAYS with a fallback of 1: */
+/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
 ```
 
@@ -251,10 +251,10 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 
 ## GSAP timeline under scrub (gsap-scrub)
 
-Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.
+Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.
 Category: Interop
 Use for: The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.
-Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let GSAP add its own scroll listener
+Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP add its own scroll listener
 
 ### Tailwind
 ```html
@@ -273,7 +273,7 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let G
 </div>
 
 <script>
-  // author in time-space, consume as a scrub — this stays input-driven:
+  // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
@@ -281,7 +281,7 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let G
     pin: true,
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
-  // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
+  // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 </script>
 ```
 
@@ -301,9 +301,9 @@ useEffect(() => {
 
 ## Three.js scene on the pin (three-scene)
 
-A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.
+A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.
 Category: Interop
-Use for: Hero 3D moments, product tours, camera paths — WebGL driven by the same variables.
+Use for: Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.
 Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures
 
 ### Tailwind
@@ -313,7 +313,7 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
     <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
   </div>
 </div>
-<!-- same JS as the CSS tab — Tailwind only does the skeleton here -->
+<!-- same JS as the CSS tab, Tailwind only does the skeleton here -->
 ```
 
 ### CSS
@@ -336,7 +336,7 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
   })
   track(outer, { pin: true, onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup — Three stays userland.
+  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>
 ```
 
@@ -360,7 +360,7 @@ const canvasRef = useCanvasEffect({
 
 ## Split reveal (split-reveal)
 
-A headline broken into words, each rising on its own beat — SplitText without the engine.
+A headline broken into words, each rising on its own beat, SplitText without the engine.
 Category: Text
 Use for: Hero headlines, section titles, any text that deserves an entrance.
 Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead
@@ -380,9 +380,9 @@ Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-d
 <section data-sv data-sv-once>
   <h2 class="sv-split-rise" data-sv-split>Words arrive one by one</h2>
 </section>
-<!-- data-sv-split wraps each word in a span with --sv-order (aria-label
-     keeps the full text for AT; spans are aria-hidden). char mode:
-     data-sv-split="char". -->
+<!-- data-sv-split wraps each word in a span with --sv-order; the full text
+     stays in a visually-hidden span for AT and the animated spans are
+     aria-hidden. char mode: data-sv-split="char". -->
 
 /* the preset (styles/core.css): */
 .sv-on .sv .sv-split-rise > span {
@@ -407,14 +407,14 @@ import { Split } from 'scrollvars/react'
   </Split>
 </Reveal>
 
-{/* <Split> renders the spans ON THE SERVER — the split markup is in the
+{/* <Split> renders the spans ON THE SERVER. The split markup is in the
    HTML, so no client-side splitting, no layout shift, no hydration
    flash. by="char" for letters. */}
 ```
 
 ## Rotating words (rotating-words)
 
-One word exits up, the next rises from below — a clipped column on one variable.
+One word exits up, the next rises from below. A clipped column on one variable.
 Category: Text
 Use for: Hero headlines: "We build ______".
 Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an interval
@@ -440,7 +440,7 @@ Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an inter
 
 /* the preset (styles/state.css): */
 .sv-words { display: inline-flex; flex-direction: column;
-  vertical-align: bottom; height: 1.15em; overflow: hidden; }
+  vertical-align: baseline; height: 1.15em; overflow: hidden; }
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
@@ -461,10 +461,10 @@ const [word, setWord] = useState(0)
 
 ## Pointer tilt (pointer-tilt)
 
-Cards tilt toward the cursor with a moving glare — one delegated listener.
+Cards tilt toward the cursor with a moving glare. One delegated listener.
 Category: Pointer
 Use for: Product cards, team grids, anything that should feel physical.
-Knobs: tilt degrees and glare live in the preset — override .sv-tilt to taste
+Knobs: tilt degrees and glare live in the preset. Override .sv-tilt to taste
 
 ### Tailwind
 ```html
@@ -485,7 +485,7 @@ Knobs: tilt degrees and glare live in the preset — override .sv-tilt to taste
   import { trackPointer } from 'scrollvars'
   trackPointer(document.querySelector('.grid'))
 </script>
-/* preset in styles/tilt.css — tilt + glare from --mx/--my */
+/* preset in styles/tilt.css. Tilt + glare from --mx/--my */
 ```
 
 ### React
@@ -542,7 +542,7 @@ Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome v
 
 ## Marquee (marquee)
 
-An infinite strip — logos, taglines — that pauses on hover.
+An infinite strip (logos, taglines) that pauses on hover.
 Category: Sliders
 Use for: Logo walls, ticker bands. The honest replacement for Swiper loop.
 Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause
@@ -578,4 +578,300 @@ Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running d
 <Marquee speed={24}>
   {logos.map(l => <img key={l.id} src={l.src} alt={l.name} className="h-8" />)}
 </Marquee>
+```
+
+## Cinematic hero (hero-cinematic)
+
+Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).
+Category: Sections
+Use for: Landing pages, studio reels, product launches. The first fold that has to land.
+Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video
+
+### Tailwind
+```html
+<section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
+  <div class="inner text-center">
+    <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
+    <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
+    <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
+  </div>
+  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"><div class="sv-marquee-track">…</div></div>
+</section>
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>
+```
+
+### CSS
+```html
+<section data-sv data-sv-travel class="sv-hero" id="hero">   <!-- travel: --sv-t 0..1 through the viewport -->
+  <div class="hero-orb a"></div><div class="hero-orb b"></div>
+  <div class="hero-inner">
+    <p class="sv-rise">Eyebrow</p>
+    <h1 class="sv-split-rise" data-sv-split>Sites that move with intent</h1>
+    <p class="sv-rise" data-sv-order="6">Sub copy.</p>
+    <p class="sv-rise" data-sv-order="7"><a class="cta" href="#">See the work</a></p>
+  </div>
+  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
+    <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
+    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+  </div></div>
+</section>
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
+
+/* presets do the entrance (core.css) and the strip (ui.css); this is the whole section: */
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
+.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px));
+  transition: translate .5s ease-out; }
+.hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
+.hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
+  opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
+/* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */
+```
+
+### React
+```tsx
+import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
+
+function Hero() {
+  const ref = usePointer<HTMLElement>({ selector: '.sv-hero' })   // --mx/--my (-1..1) on the section
+  return (
+    <section ref={ref} className="sv-hero">
+      <div className="hero-orb a" /><div className="hero-orb b" />
+      <Track travel>                              {/* .sv-live for the entrance, --sv-t for the exit */}
+        <div className="hero-inner">
+          <p className="sv-rise">Eyebrow</p>
+          <Split as="h1" className="sv-split-rise">Sites that move with intent</Split>
+          <p className="sv-rise" style={{ '--sv-order': 6 }}>Sub copy.</p>
+        </div>
+      </Track>
+      <Marquee className="hero-strip"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></Marquee>
+    </section>
+  )
+}
+// npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)
+```
+
+## Pinned timeline (timeline-scrub)
+
+Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.
+Category: Sections
+Use for: Company history, case-study process, roadmap, "how we got here". Any ordered story.
+Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)
+
+### Tailwind
+```html
+<div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]">
+  <div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
+    <span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
+      [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"></span>
+    <ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8">
+      <li data-sv-from="0"   data-sv-to=".28"><b class="font-mono text-xs text-violet-400">2019</b><p>…</p></li>
+      <li data-sv-from=".22" data-sv-to=".52"><b class="font-mono text-xs text-violet-400">2021</b><p>…</p></li>
+      <li data-sv-from=".7"  data-sv-to="1"><b class="font-mono text-xs text-violet-400">2026</b><p>…</p></li>
+    </ol>
+  </div>
+</div>
+<!-- the filling line: a pseudo-element with [scale:1_var(--sv-pin,1)] origin-top (see CSS tab) -->
+```
+
+### CSS
+```html
+<div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
+  <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
+    <span class="tl-year"></span>
+    <div class="tl-track"><i class="tl-line"></i>
+      <ol class="sv-range sv-range-rise tl-items">                              <!-- preset: --sv-r per child -->
+        <li data-sv-from="0"   data-sv-to=".28"><b>2019</b><p>…</p></li>
+        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>…</p></li>
+        <li data-sv-from=".7"  data-sv-to="1"><b>2026</b><p>…</p></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+.tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
+/* the year is a CSS counter driven by the pin. No JS, no innerText */
+.tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
+.tl-year::after { content: counter(tl-year); }
+/* the line fills with the pin */
+.tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
+/* each milestone rises over its own slice (sv-range-rise) and its dot lights with --sv-r */
+.tl-items > li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; position: absolute; left: -32px;
+  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); }
+/* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */
+```
+
+### React
+```tsx
+import { Track } from 'scrollvars/react'
+
+const steps = [
+  { year: 2019, range: [0, .28], text: '…' },
+  { year: 2021, range: [.22, .52], text: '…' },
+  { year: 2026, range: [.7, 1], text: '…' },
+]
+function Timeline() {
+  return (
+    <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
+      <div className="sv-stage tl-sticky">
+        <span className="tl-year" />
+        <div className="tl-track"><i className="tl-line" />
+          <ol className="sv-range sv-range-rise tl-items">
+            {steps.map((s) => (
+              <li key={s.year} style={{ '--sv-from': s.range[0], '--sv-to': s.range[1] }}>
+                <b>{s.year}</b><p>{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </Track>
+  )
+}
+// npx scrollvars add timeline-scrub → components/fx/TimelineScrub.tsx (CSS included)
+```
+
+## Sticky steps (sticky-steps)
+
+Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.
+Category: Sections
+Use for: Product features, "how it works", case-study walkthroughs, onboarding explainers.
+Knobs: data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)
+
+### Tailwind
+```html
+<div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]">
+  <div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
+    <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
+      <img class="st-shot [--i:0]" src="shot-1.jpg" alt="">
+      <img class="st-shot [--i:1]" src="shot-2.jpg" alt="">
+      <img class="st-shot [--i:2]" src="shot-3.jpg" alt="">
+    </div>
+    <ol class="grid gap-10">
+      <li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Track the section</h3></li>
+      <li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Give each piece an index</h3></li>
+      <li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Ship it</h3></li>
+    </ol>
+  </div>
+</div>
+<!-- --st-d and the .st-shot crossfade are 3 lines of global CSS (CSS tab); the math does not fit a class name -->
+```
+
+### CSS
+```html
+<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
+  <div class="sv-stage st-sticky">
+    <div class="st-media">
+      <img class="st-shot" style="--i: 0" src="shot-1.jpg" alt="">
+      <img class="st-shot" style="--i: 1" src="shot-2.jpg" alt="">
+      <img class="st-shot" style="--i: 2" src="shot-3.jpg" alt="">
+    </div>
+    <ol class="st-steps">
+      <li style="--i: 0"><h3>Track the section</h3><p>…</p></li>
+      <li style="--i: 1"><h3>Give each piece an index</h3><p>…</p></li>
+      <li style="--i: 2"><h3>Ship it</h3><p>…</p></li>
+    </ol>
+  </div>
+</div>
+
+.st-sticky { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; }   /* sv-stage pins it */
+.st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
+/* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
+.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
+html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+```
+
+### React
+```tsx
+import { Track } from 'scrollvars/react'
+
+const steps = [
+  { title: 'Track the section', text: '…', src: 'shot-1.jpg' },
+  { title: 'Give each piece an index', text: '…', src: 'shot-2.jpg' },
+  { title: 'Ship it', text: '…', src: 'shot-3.jpg' },
+]
+function StickySteps() {
+  return (
+    <Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className="st">
+      <div className="sv-stage st-sticky">
+        <div className="st-media">
+          {steps.map((s, i) => <img key={i} className="st-shot" style={{ '--i': i }} src={s.src} alt="" />)}
+        </div>
+        <ol className="st-steps">
+          {steps.map((s, i) => <li key={i} style={{ '--i': i }}><h3>{s.title}</h3><p>{s.text}</p></li>)}
+        </ol>
+      </div>
+    </Track>
+  )
+}
+// npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)
+```
+
+## Stats count-up (stats-countup)
+
+Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.
+Category: Sections
+Use for: Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.
+Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1
+
+### Tailwind
+```html
+<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
+  <dl class="grid grid-cols-3 gap-6 text-center">
+    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
+    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+  </dl>
+</section>
+<!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->
+```
+
+### CSS
+```html
+<section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
+  <dl class="stats">
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+  </dl>
+</section>
+
+/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
+   block goes live; the counter re-renders every frame of that transition. */
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
+.stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
+/* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
+   older engines show the final numbers immediately. */
+```
+
+### React
+```tsx
+import { Track } from 'scrollvars/react'
+
+const stats = [
+  { label: 'client sites shipped', max: 248, suffix: '+' },
+  { label: 'median Lighthouse performance', max: 99 },
+  { label: 'KB of engine, gzipped', max: 4 },
+]
+function Stats() {
+  return (
+    <Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' }}>
+      <dl className="stats">
+        {stats.map((s) => (
+          <div key={s.label}>
+            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
+            <dt>{s.label}</dt>
+          </div>
+        ))}
+      </dl>
+    </Track>
+  )
+}
+// npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)
 ```

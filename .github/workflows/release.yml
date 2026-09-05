@@ -19,10 +19,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm, registry-url: 'https://registry.npmjs.org' }
       - run: npm ci
-      - run: npm test                    # pretest builds; 21 unit tests
+      - run: npm test                    # pretest builds, then the unit suite
       - run: npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/docs-build.mjs
       - run: npm run test:e2e            # progressive-enhancement invariants
         env: { CHROME: /usr/bin/google-chrome }
+      - name: CHANGELOG has an entry for this version
+        run: grep -q "^## $(node -p "require('./package.json').version") " CHANGELOG.md
       - name: tag matches package.json version
         run: |
           TAG="${GITHUB_REF_NAME#v}"

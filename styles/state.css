@@ -1,5 +1,5 @@
-/* ScrollVars — interaction-state presets (use with toggles(), the Popover
- * API, or any class you flip yourself — including sv-live by hand, which
+/* ScrollVars: interaction-state presets (use with toggles(), the Popover
+ * API, or any class you flip yourself. Including sv-live by hand, which
  * replays the whole entrance system on demand). */
 
 /* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
@@ -38,13 +38,13 @@ dialog.sv-pop:not([open]) {
 }
 
 /* Rotating words: a clipped column of words; set --sv-word (integer index)
-   to slide one row per word — old word exits up, the next rises from below.
+   to slide one row per word. Old word exits up, the next rises from below.
    Discrete value + transition = smooth, the house idiom. */
 .sv-words {
   display: inline-flex;
   flex-direction: column;
   /* baseline (the default) on an inline flex container exports the FIRST
-     word's baseline — so the rotator aligns with surrounding text at any
+     word's baseline. So the rotator aligns with surrounding text at any
      host line-height. (bottom only lined up when the host was ~1.15 too.) */
   vertical-align: baseline;
   height: 1.15em;
@@ -59,10 +59,10 @@ dialog.sv-pop:not([open]) {
     var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
 }
 
-/* Acts: a time-driven MASTER CLOCK in pure CSS — the same slice idiom the
+/* Acts: a time-driven MASTER CLOCK in pure CSS. The same slice idiom the
    scroll scenes use, but the clock is a registered custom property in
    transition. Trigger with a class: sv-open (toggles/click) or sv-live
-   (scroll-triggered timed choreography — zero JS). Define acts as slices:
+   (scroll-triggered timed choreography. Zero JS). Define acts as slices:
 
      .stage  { --a1: clamp(0, var(--sv-act), 1);
                --a2: clamp(0, calc(var(--sv-act) - 1), 1); }
@@ -70,11 +70,11 @@ dialog.sv-pop:not([open]) {
      .cards  { scale: calc(0.9 + var(--a2) * 0.1); }
 
    Knobs: --sv-acts-count (how many acts, default 3) and --sv-acts-duration
-   (whole timeline, default 2s) — retiming is relative: change one number
+   (whole timeline, default 2s). Retiming is relative: change one number
    and every act rescales. Reversible and interruptible by nature: remove
    the class mid-flight and the transition RETARGETS instead of restarting.
    Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
-   straight to the finished state — content never hidden. */
+   straight to the finished state. Content never hidden. */
 @property --sv-act {
   syntax: '<number>';
   initial-value: 0;
@@ -83,6 +83,9 @@ dialog.sv-pop:not([open]) {
 .sv-acts {
   --sv-act: 0;
   transition: --sv-act var(--sv-acts-duration, 2s) linear;
+}
+html:not(.sv-on) .sv-acts {
+  --sv-act: var(--sv-acts-count, 3); /* no JS: the finished state, not act zero */
 }
 .sv-acts.sv-open,
 .sv-on .sv.sv-live.sv-acts,

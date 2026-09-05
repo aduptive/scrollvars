@@ -1,19 +1,19 @@
 /**
- * Extended compatibility — OPT-IN module for old browsers. Call `compat()`
+ * Extended compatibility: OPT-IN module for old browsers. Call `compat()`
  * once, before anything else from scrollvars:
  *
  *   import { compat } from 'scrollvars/compat'
  *   compat()
  *
- * On a modern browser it runs two feature checks and returns false — no
+ * On a modern browser it runs two feature checks and returns false. No
  * stubs, no styles, effectively free. On an old one it patches the gaps:
  *
- *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub —
- *     re-measures on viewport changes (misses pure content growth; the page
+ *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub:
+*     re-measures on viewport changes (misses pure content growth; the page
  *     still works, call `refresh()` after big DOM swaps if needed).
- *   - IntersectionObserver missing (Safari < 12.1): an always-visible stub —
- *     the canvas harness simply never auto-pauses offscreen.
- *   - Individual transform properties missing (`translate:` — Chrome < 104,
+ *   - IntersectionObserver missing (Safari < 12.1): an always-visible stub:
+*     the canvas harness simply never auto-pauses offscreen.
+ *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
  *     re-expresses the presets with `transform:`. Written without :is(),
  *     clamp() or min() so the old parser accepts it. sv-reading falls back
@@ -26,14 +26,14 @@
 
 const FALLBACK_CSS = `
 .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
-.sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > * {
+.sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip) {
   opacity: 0;
   transition:
     opacity var(--sv-duration, 800ms) var(--sv-ease, ease-out),
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 110ms));
 }
-.sv-on .sv .sv-rise, .sv-on .sv.sv-auto > * {
+.sv-on .sv .sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
   transform: translateY(var(--sv-distance, 6rem));
 }
 .sv-on .sv .sv-slide-l { transform: translateX(calc(var(--sv-distance, 6rem) * -2)); }
@@ -45,7 +45,7 @@ const FALLBACK_CSS = `
   transform: none;
 }
 .sv .sv-drift {
-  opacity: 1; /* fallback: max() postdates the floor — old engines keep this */
+  opacity: 1; /* fallback: max() postdates the floor: old engines keep this */
   opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));
   transform: translateY(calc(var(--sv-view, 0) * var(--sv-distance, 6rem) * -1));
 }
@@ -55,7 +55,7 @@ const FALLBACK_CSS = `
 .sv .sv-reading > * { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
-  .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > *,
+  .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),
   .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail {
     opacity: 1;
     transform: none;
@@ -88,6 +88,7 @@ export function compat(): boolean {
       }
       observe(el: Element) {
         this.els.add(el)
+        this.cb([{ target: el }]) // like the real one: an initial observation
       }
       unobserve(el: Element) {
         this.els.delete(el)

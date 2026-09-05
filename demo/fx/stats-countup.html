@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Three.js scene on the pin · ScrollVars fx</title>
-<meta name="description" content="A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders. Copy-paste in Tailwind, CSS or React.">
+<title>Stats count-up · ScrollVars fx</title>
+<meta name="description" content="Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -117,7 +117,7 @@
       </details>
       <details open><summary>Interop</summary>
         <a href="gsap-scrub.html">GSAP timeline under scrub</a>
-        <a href="three-scene.html" aria-current="page">Three.js scene on the pin</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
         <a href="split-reveal.html">Split reveal</a>
@@ -134,52 +134,33 @@
         <a href="hero-cinematic.html">Cinematic hero</a>
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
-        <a href="stats-countup.html">Stats count-up</a>
+        <a href="stats-countup.html" aria-current="page">Stats count-up</a>
       </details>
     </nav>
   </details>
 </div></aside>
 <main>
-  <h1>Three.js scene on the pin</h1>
-  <p class="tag">A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</p>
-  <p class="meta"><b>Use it for:</b> Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.<br><b>Knobs:</b> mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures</p>
-  <div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
-    <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="sv-canvas.js"></script>
-<script>addEventListener('load', () => {
-  let progress = 0
-  let renderer, scene, camera, mesh
-  SVC.mountEffect(document.getElementById('fxthree'), {
-    context: null, // WebGL owns the canvas; the harness owns the lifecycle
-    setup(fx) {
-      renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
-      scene = new THREE.Scene()
-      camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
-      mesh = new THREE.Mesh(
-        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
-        new THREE.MeshNormalMaterial({ wireframe: true })
-      )
-      scene.add(mesh)
-    },
-    resize(fx) {
-      renderer.setPixelRatio(fx.dpr)
-      renderer.setSize(fx.width, fx.height, false)
-      camera.aspect = fx.width / fx.height
-      camera.updateProjectionMatrix()
-    },
-    frame(fx, dt) {
-      mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
-      mesh.rotation.x = progress * Math.PI
-      camera.position.z = 6 - progress * 2.2
-      renderer.render(scene, camera)
-    },
-  })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
-})</script>
+  <h1>Stats count-up</h1>
+  <p class="tag">Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.</p>
+  <p class="meta"><b>Use it for:</b> Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.<br><b>Knobs:</b> --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1</p>
+  <div class="fxrunway"><style>
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 10px 0; }
+.stats > div { padding: 22px 12px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, #221f31, #17151f 80%); }
+.stats dt { order: 2; color: var(--muted); font-size: 13px; margin-top: 8px; }
+.stats dd { margin: 0; font: 800 clamp(34px, 6vw, 64px)/1 var(--mono); letter-spacing: -.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stats > div { display: flex; flex-direction: column; }
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
+@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
+</style>
+<section data-sv data-sv-once class="fxstage sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
+  <dl class="stats">
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+    <div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max: 4"></dd></div>
+  </dl>
+</section></div>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -187,46 +168,49 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
-  &lt;/div&gt;
-&lt;/div&gt;
-&lt;!-- same JS as the CSS tab, Tailwind only does the skeleton here --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="outer"&gt;              &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;&lt;canvas id="scene"&gt;&lt;/canvas&gt;&lt;/div&gt;
-&lt;/div&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]"&gt;
+  &lt;dl class="grid grid-cols-3 gap-6 text-center"&gt;
+    &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;/div&gt;
+  &lt;/dl&gt;
+&lt;/section&gt;
+&lt;!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s"&gt;
+  &lt;dl class="stats"&gt;
+    &lt;div&gt;&lt;dt&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 248" data-suffix="+"&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt&gt;median Lighthouse performance&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 99"&gt;&lt;/dd&gt;&lt;/div&gt;
+  &lt;/dl&gt;
+&lt;/section&gt;
 
-&lt;script type="module"&gt;
-  import { track } from 'scrollvars'
-  import { mountEffect } from 'scrollvars/canvas'
-  import * as THREE from 'three'
+/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
+   block goes live; the counter re-renders every frame of that transition. */
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
+.stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
+/* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
+   older engines show the final numbers immediately. */</code></pre>
+    <pre data-pane="react"><code>import { Track } from 'scrollvars/react'
 
-  let progress = 0
-  mountEffect(document.getElementById('scene'), {
-    context: null,                       // you own the WebGL context
-    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
-    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
-    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
-  })
-  track(outer, { pin: true, onPin: (p) =&gt; (progress = p) })
-  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
-&lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>'use client'
-const progress = useRef(0)
-const canvasRef = useCanvasEffect({
-  context: null,
-  setup(fx)  { /* THREE renderer on fx.canvas */ },
-  resize(fx) { /* size + DPR */ },
-  frame(fx, dt) { /* render with progress.current */ },
-})
-
-&lt;Track pin onPin={(p) =&gt; (progress.current = p)} className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" /&gt;
-  &lt;/div&gt;
-&lt;/Track&gt;</code></pre>
+const stats = [
+  { label: 'client sites shipped', max: 248, suffix: '+' },
+  { label: 'median Lighthouse performance', max: 99 },
+  { label: 'KB of engine, gzipped', max: 4 },
+]
+function Stats() {
+  return (
+    &lt;Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' }}&gt;
+      &lt;dl className="stats"&gt;
+        {stats.map((s) =&gt; (
+          &lt;div key={s.label}&gt;
+            &lt;dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} /&gt;
+            &lt;dt&gt;{s.label}&lt;/dt&gt;
+          &lt;/div&gt;
+        ))}
+      &lt;/dl&gt;
+    &lt;/Track&gt;
+  )
+}
+// npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

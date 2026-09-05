@@ -1,10 +1,18 @@
-/* ScrollVars — pinned presets (curtain, rail, deck, reading, counter).
+/* ScrollVars: pinned presets (curtain, rail, deck, reading, counter).
  * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
 
 /* ---- Pin presets (continuous: track with { pin: true }) ---- */
 
 /* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
    .sv-curtain-l / .sv-curtain-r panels over the revealed content. */
+/* Registered so that on an engine without calc() division by a variable the
+   consumer sees the settled value (1) instead of an invalid declaration. */
+@property --sv-r {
+  syntax: '<number>';
+  initial-value: 1;
+  inherits: true;
+}
+
 .sv .sv-curtain-l {
   translate: calc(var(--sv-pin, 0) * -101%) 0;
 }
@@ -20,7 +28,7 @@
   translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0;
 }
 
-/* Deck: pinned card pile — each child flies away across its own slice of the
+/* Deck: pinned card pile: each child flies away across its own slice of the
    pin. Children stack via grid (no absolute positioning needed); set
    --sv-count on the container to the number of cards (default 4). The first
    8 children are auto-indexed; beyond that set --sv-order manually. */
@@ -69,14 +77,14 @@
 }
 
 /* ---- Sequenced scrub (sv-range): per-child sub-range choreography ----
-   The routine reason a timeline library gets added is not springs — it is
+   The routine reason a timeline library gets added is not springs. It is
    "element A animates over 0–40% of the pin, B over 30–70%, C over 60–100%".
    sv-range derives a per-child 0..1 progress (--sv-r) from a slice of the
    parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
    when pinned, else --sv-t; override --sv-clock to choose explicitly.
    Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
    on older engines --sv-r is invalid at computed-value time, so ALWAYS
-   consume it as var(--sv-r, 1) — content settles at the end state. */
+   consume it as var(--sv-r, 1). Content settles at the end state. */
 .sv .sv-range > * {
   --sv-clock: var(--sv-pin, var(--sv-t, 0));
   --sv-r: clamp(
@@ -91,9 +99,54 @@
   translate: 0 calc((1 - var(--sv-r, 1)) * var(--sv-distance, 2rem));
 }
 
+/* Pin stage: the sticky viewport inside a pinned wrapper. With the pin helper
+   (data-sv-pin="320vh" / pin: '320vh' / <Track pin="320vh">) this class is the
+   whole skeleton. Without JS (SSR markup) and under reduced motion it returns
+   to flow instead of clipping. */
+.sv-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+html:not(.sv-on) .sv-stage {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+/* SSR markup carries .sv before the driver runs: nothing may hide or fly off */
+html:not(.sv-on) .sv .sv-curtain-l,
+html:not(.sv-on) .sv .sv-curtain-r {
+  display: none;
+}
+html:not(.sv-on) .sv .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+html:not(.sv-on) .sv .sv-deck {
+  display: block;
+}
+html:not(.sv-on) .sv .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+html:not(.sv-on) .sv .sv-reading > * {
+  opacity: 1;
+}
+html:not(.sv-on) .sv .sv-counter {
+  --sv-int: var(--sv-max, 100);
+}
+
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
+  .sv-stage {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
   .sv .sv-curtain-l,
   .sv .sv-curtain-r {
     display: none;

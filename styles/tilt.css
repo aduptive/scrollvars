@@ -1,4 +1,4 @@
-/* ScrollVars — pointer tilt preset (use with trackPointer / usePointer). */
+/* ScrollVars: pointer tilt preset (use with trackPointer / usePointer). */
 
 /* ---- Pointer preset (use with trackPointer / usePointer) ---- */
 
@@ -7,8 +7,8 @@
   --my: 0;
   position: relative;
   overflow: hidden;
-  transform: perspective(900px) rotateY(calc(var(--mx) * 14deg))
-    rotateX(calc(var(--my) * -14deg));
+  transform: perspective(900px) rotateY(calc(var(--mx) * var(--sv-tilt, 14deg)))
+    rotateX(calc(var(--my) * var(--sv-tilt, 14deg) * -1));
   transform-style: preserve-3d;
   transition: transform 140ms ease-out;
 }

@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rotating words — ScrollVars fx</title>
-<meta name="description" content="One word exits up, the next rises from below — a clipped column on one variable. Copy-paste in Tailwind, CSS or React.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Rotating words · ScrollVars fx</title>
+<meta name="description" content="One word exits up, the next rises from below. A clipped column on one variable. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -129,12 +130,18 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
   <h1>Rotating words</h1>
-  <p class="tag">One word exits up, the next rises from below — a clipped column on one variable.</p>
+  <p class="tag">One word exits up, the next rises from below. A clipped column on one variable.</p>
   <p class="meta"><b>Use it for:</b> Hero headlines: "We build ______".<br><b>Knobs:</b> --sv-word (index), --sv-duration; drive it from state, scenes or an interval</p>
   <section data-sv class="fxstage">
   <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords"><span>brands</span><span>websites</span><span>products</span></b></h3>
@@ -162,7 +169,7 @@
 
 /* the preset (styles/state.css): */
 .sv-words { display: inline-flex; flex-direction: column;
-  vertical-align: bottom; height: 1.15em; overflow: hidden; }
+  vertical-align: baseline; height: 1.15em; overflow: hidden; }
 .sv-words &gt; * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
@@ -176,12 +183,12 @@ el.style.setProperty('--sv-word', nextIndex)</code></pre>
   &lt;/span&gt;
 &lt;/h1&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

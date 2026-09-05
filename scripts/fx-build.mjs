@@ -3,8 +3,8 @@
  * Builds the /fx/ gallery: one page per effect + hub + llms.txt, all
  * generated from the EFFECTS array below. Adding an effect = add an entry,
  * run `npm run fx:build` (demo:deploy chains it). Shared assets:
- *   fx/sv.js  — the engine, IIFE bundle from dist (esbuild)
- *   fx/sv.css — the full preset stylesheet (copy of styles.css)
+ *   fx/sv.js: the engine, IIFE bundle from dist (esbuild)
+ *   fx/sv.css. The full preset stylesheet (copy of styles.css)
  */
 import { execSync } from 'node:child_process'
 import { gzipSync } from 'node:zlib'
@@ -48,7 +48,7 @@ const EFFECTS = [
   <p class="sv-rise" data-sv-order="2" data-sv-distance="3rem">More</p>
 </section>
 <!-- once: import 'scrollvars/styles/core.css' + <ScrollVarsBoot /> in the layout -->
-<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount — no
+<!-- data-sv-order/-distance/-from/-to become the CSS vars on mount. No
      style attr, works with mapped CMS content, adds zero global CSS.
      Also fine: [--sv-order:1] arbitrary classes for static one-offs;
      sv-stagger on the parent for sequential lists (no attrs at all). -->`,
@@ -67,7 +67,7 @@ const EFFECTS = [
     slug: 'deck-spread',
     category: 'Reveals',
     title: 'Deck spread',
-    tagline: 'A centered card deck deals itself into the grid — on arrival or scrubbed.',
+    tagline: 'A centered card deck deals itself into the grid. On arrival or scrubbed.',
     when: 'Feature cards, pricing tiers, portfolio grids that deserve an entrance.',
     knobs: '--sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread yourself to scrub',
     runway: true,
@@ -108,7 +108,7 @@ const EFFECTS = [
     ))}
   </div>
 </Track>
-{/* Item carries the vars as props — no style attr; sv-spread targets
+{/* Item carries the vars as props. No style attr; sv-spread targets
    direct children, and the Item wrapper IS the direct child. */}`,
   },
   {
@@ -192,7 +192,7 @@ const EFFECTS = [
     slug: 'sequenced-scrub',
     category: 'Pinned scenes',
     title: 'Sequenced scrub',
-    tagline: 'Each child animates over its own slice of the pin — choreography without a timeline.',
+    tagline: 'Each child animates over its own slice of the pin. Choreography without a timeline.',
     when: 'Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.',
     knobs: '--sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock',
     preview: `<div data-sv data-sv-pin class="fxouter">
@@ -220,7 +220,7 @@ const EFFECTS = [
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like — ALWAYS with a fallback of 1: */
+/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }`,
     tailwind: `<div data-sv data-sv-pin class="relative h-[250vh]">
   <div class="sticky top-0 grid h-screen place-items-center">
@@ -250,9 +250,9 @@ const EFFECTS = [
     slug: 'gsap-scrub',
     category: 'Interop',
     title: 'GSAP timeline under scrub',
-    tagline: 'Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.',
+    tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
     when: 'The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.',
-    knobs: 'the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let GSAP add its own scroll listener',
+    knobs: 'the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP add its own scroll listener',
     preview: `<div class="fxouter" id="fxgsap-outer">
   <div class="fxsticky" style="display:grid;place-items:center;overflow:hidden">
     <div id="fxgsap" style="display:flex;gap:14px">
@@ -260,7 +260,7 @@ const EFFECTS = [
     </div>
   </div>
 </div>
-<p class="meta" style="margin-top:8px"><b>Honesty:</b> this page pays GSAP's ~46 KB — adopt it per page
+<p class="meta" style="margin-top:8px"><b>Honesty:</b> this page pays GSAP's ~46 KB. Adopt it per page
 that needs timeline authoring, never globally, or the bundle argument dies for that page.</p>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
 <script>addEventListener('load', () => {
@@ -274,7 +274,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 </div>
 
 <script>
-  // author in time-space, consume as a scrub — this stays input-driven:
+  // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
@@ -282,7 +282,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     pin: true,
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
-  // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
+  // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 </script>`,
     tailwind: `<div data-x class="relative h-[250vh]">   <!-- no data-sv: this one is tracked in JS -->
   <div class="sticky top-0 grid h-screen place-items-center">…</div>
@@ -305,8 +305,8 @@ useEffect(() => {
     slug: 'three-scene',
     category: 'Interop',
     title: 'Three.js scene on the pin',
-    tagline: 'A WebGL scene scrubbed by scroll — the canvas harness runs the lifecycle, Three renders.',
-    when: 'Hero 3D moments, product tours, camera paths — WebGL driven by the same variables.',
+    tagline: 'A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.',
+    when: 'Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.',
     knobs: "mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures",
     preview: `<div class="fxouter" id="fxthree-outer">
   <div class="fxsticky" style="display:grid;place-items:center">
@@ -363,14 +363,14 @@ useEffect(() => {
   })
   track(outer, { pin: true, onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup — Three stays userland.
+  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>`,
     tailwind: `<div class="relative h-[250vh]">
   <div class="sticky top-0 grid h-screen place-items-center">
     <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
   </div>
 </div>
-<!-- same JS as the CSS tab — Tailwind only does the skeleton here -->`,
+<!-- same JS as the CSS tab, Tailwind only does the skeleton here -->`,
     react: `'use client'
 const progress = useRef(0)
 const canvasRef = useCanvasEffect({
@@ -390,7 +390,7 @@ const canvasRef = useCanvasEffect({
     slug: 'split-reveal',
     category: 'Text',
     title: 'Split reveal',
-    tagline: 'A headline broken into words, each rising on its own beat — SplitText without the engine.',
+    tagline: 'A headline broken into words, each rising on its own beat, SplitText without the engine.',
     when: 'Hero headlines, section titles, any text that deserves an entrance.',
     knobs: 'data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-duration; pair with sv-reading to scrub instead',
     runway: true,
@@ -401,9 +401,9 @@ const canvasRef = useCanvasEffect({
     css: `<section data-sv data-sv-once>
   <h2 class="sv-split-rise" data-sv-split>Words arrive one by one</h2>
 </section>
-<!-- data-sv-split wraps each word in a span with --sv-order (aria-label
-     keeps the full text for AT; spans are aria-hidden). char mode:
-     data-sv-split="char". -->
+<!-- data-sv-split wraps each word in a span with --sv-order; the full text
+     stays in a visually-hidden span for AT and the animated spans are
+     aria-hidden. char mode: data-sv-split="char". -->
 
 /* the preset (styles/core.css): */
 .sv-on .sv .sv-split-rise > span {
@@ -430,7 +430,7 @@ const canvasRef = useCanvasEffect({
   </Split>
 </Reveal>
 
-{/* <Split> renders the spans ON THE SERVER — the split markup is in the
+{/* <Split> renders the spans ON THE SERVER. The split markup is in the
    HTML, so no client-side splitting, no layout shift, no hydration
    flash. by="char" for letters. */}`,
   },
@@ -438,7 +438,7 @@ const canvasRef = useCanvasEffect({
     slug: 'rotating-words',
     category: 'Text',
     title: 'Rotating words',
-    tagline: 'One word exits up, the next rises from below — a clipped column on one variable.',
+    tagline: 'One word exits up, the next rises from below. A clipped column on one variable.',
     when: 'Hero headlines: "We build ______".',
     knobs: '--sv-word (index), --sv-duration; drive it from state, scenes or an interval',
     preview: `<section data-sv class="fxstage">
@@ -453,7 +453,7 @@ const canvasRef = useCanvasEffect({
 
 /* the preset (styles/state.css): */
 .sv-words { display: inline-flex; flex-direction: column;
-  vertical-align: bottom; height: 1.15em; overflow: hidden; }
+  vertical-align: baseline; height: 1.15em; overflow: hidden; }
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
@@ -478,9 +478,9 @@ el.style.setProperty('--sv-word', nextIndex)`,
     slug: 'pointer-tilt',
     category: 'Pointer',
     title: 'Pointer tilt',
-    tagline: 'Cards tilt toward the cursor with a moving glare — one delegated listener.',
+    tagline: 'Cards tilt toward the cursor with a moving glare. One delegated listener.',
     when: 'Product cards, team grids, anything that should feel physical.',
-    knobs: 'tilt degrees and glare live in the preset — override .sv-tilt to taste',
+    knobs: 'tilt degrees and glare live in the preset. Override .sv-tilt to taste',
     preview: `<section class="fxstage" id="fxtiltrow" style="display:flex;gap:16px;justify-content:center">
   <div class="sv-tilt fxcard">hover</div>
   <div class="sv-tilt fxcard">me</div>
@@ -495,7 +495,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   import { trackPointer } from 'scrollvars'
   trackPointer(document.querySelector('.grid'))
 </script>
-/* preset in styles/tilt.css — tilt + glare from --mx/--my */`,
+/* preset in styles/tilt.css. Tilt + glare from --mx/--my */`,
     tailwind: `<div ref={rowRef} class="grid grid-cols-3 gap-6">
   <div class="sv-tilt rounded-2xl border p-10">…</div>
 </div>
@@ -550,7 +550,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     slug: 'marquee',
     category: 'Sliders',
     title: 'Marquee',
-    tagline: 'An infinite strip — logos, taglines — that pauses on hover.',
+    tagline: 'An infinite strip (logos, taglines) that pauses on hover.',
     when: 'Logo walls, ticker bands. The honest replacement for Swiper loop.',
     knobs: '--sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause',
     preview: `<div class="sv-marquee fxstage" style="padding:28px 0">
@@ -582,6 +582,373 @@ el.style.setProperty('--sv-word', nextIndex)`,
   {logos.map(l => <img key={l.id} src={l.src} alt={l.name} className="h-8" />)}
 </Marquee>`,
   },
+  // ── Sections: whole premium blocks, not single effects. Same rules: presets +
+  //    a few CSS lines, no JS in the hot path, complete without JS, reduced-motion safe.
+  {
+    slug: 'hero-cinematic',
+    category: 'Sections',
+    title: 'Cinematic hero',
+    tagline: 'Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).',
+    when: 'Landing pages, studio reels, product launches. The first fold that has to land.',
+    knobs: '--sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video',
+    preview: `<style>
+.sv-hero { position: relative; min-height: 86vh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; padding: 0; }
+.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
+.hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
+.hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
+.hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
+.hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
+.hero-cta { display: inline-block; padding: 12px 22px; border-radius: 999px; background: var(--accent); color: #121118; font-weight: 700; text-decoration: none; }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid var(--line); font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero-strip span { margin: 0 18px; }
+</style>
+<section data-sv data-sv-travel class="sv-hero fxstage" id="fxhero" style="--sv-stagger: 70ms">
+  <div class="hero-orb a"></div><div class="hero-orb b"></div>
+  <div class="hero-inner">
+    <p class="hero-eyebrow sv-rise">Studio · 2026 reel</p>
+    <h3 class="hero-title sv-split-rise" data-sv-split>Sites that move with intent</h3>
+    <p class="hero-sub sv-rise" data-sv-order="6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p>
+    <p class="sv-rise" data-sv-order="7"><a class="hero-cta" href="#">See the work</a></p>
+  </div>
+  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
+    <span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span>
+    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span>
+  </div></div>
+</section>
+<script>addEventListener('load', () => SV.trackPointer(document.getElementById('fxhero'), { selector: '.sv-hero' }))</script>`,
+    css: `<section data-sv data-sv-travel class="sv-hero" id="hero">   <!-- travel: --sv-t 0..1 through the viewport -->
+  <div class="hero-orb a"></div><div class="hero-orb b"></div>
+  <div class="hero-inner">
+    <p class="sv-rise">Eyebrow</p>
+    <h1 class="sv-split-rise" data-sv-split>Sites that move with intent</h1>
+    <p class="sv-rise" data-sv-order="6">Sub copy.</p>
+    <p class="sv-rise" data-sv-order="7"><a class="cta" href="#">See the work</a></p>
+  </div>
+  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
+    <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
+    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+  </div></div>
+</section>
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
+
+/* presets do the entrance (core.css) and the strip (ui.css); this is the whole section: */
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
+.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px));
+  transition: translate .5s ease-out; }
+.hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
+.hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
+  opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
+/* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
+    tailwind: `<section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
+  <div class="inner text-center">
+    <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
+    <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
+    <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
+  </div>
+  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"><div class="sv-marquee-track">…</div></div>
+</section>
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>`,
+    react: `import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
+
+function Hero() {
+  const ref = usePointer<HTMLElement>({ selector: '.sv-hero' })   // --mx/--my (-1..1) on the section
+  return (
+    <section ref={ref} className="sv-hero">
+      <div className="hero-orb a" /><div className="hero-orb b" />
+      <Track travel>                              {/* .sv-live for the entrance, --sv-t for the exit */}
+        <div className="hero-inner">
+          <p className="sv-rise">Eyebrow</p>
+          <Split as="h1" className="sv-split-rise">Sites that move with intent</Split>
+          <p className="sv-rise" style={{ '--sv-order': 6 }}>Sub copy.</p>
+        </div>
+      </Track>
+      <Marquee className="hero-strip"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></Marquee>
+    </section>
+  )
+}
+// npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)`,
+  },
+  {
+    slug: 'timeline-scrub',
+    category: 'Sections',
+    title: 'Pinned timeline',
+    tagline: 'Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.',
+    when: 'Company history, case-study process, roadmap, "how we got here". Any ordered story.',
+    knobs: '--tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)',
+    preview: `<style>
+.tl { --tl-from: 2019; --tl-span: 7; height: 320vh; }
+.tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
+.tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
+  counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
+.tl-year::after { content: counter(tl-year); }
+.tl-cap { display: block; margin-top: 10px; color: var(--muted); font: 600 12px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.tl-track { position: relative; padding-left: 34px; }
+.tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
+.tl-items { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(18px, 4vh, 40px); text-align: left; }
+.tl-items > li { position: relative; --sv-distance: 1.6rem; }
+.tl-items > li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); box-shadow: 0 0 0 4px #17151f; }
+.tl-items b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--accent); margin-bottom: 4px; }
+.tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
+@media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
+</style>
+<div data-sv data-sv-pin class="fxouter tl">
+  <div class="fxsticky tl-sticky">
+    <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
+    <div class="tl-track"><i class="tl-line"></i>
+      <ol class="sv-range sv-range-rise tl-items">
+        <li data-sv-from="0" data-sv-to=".28"><b>2019</b><p>First client site on a hand-rolled scroll engine.</p></li>
+        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>The engine becomes a package; five sites share one codebase.</p></li>
+        <li data-sv-from=".46" data-sv-to=".76"><b>2024</b><p>Benchmarks published, CSS-variable API frozen.</p></li>
+        <li data-sv-from=".7" data-sv-to="1"><b>2026</b><p>ScrollVars ships on npm. This timeline is one pinned block and four ranges.</p></li>
+      </ol>
+    </div>
+  </div>
+</div>`,
+    css: `<div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
+  <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
+    <span class="tl-year"></span>
+    <div class="tl-track"><i class="tl-line"></i>
+      <ol class="sv-range sv-range-rise tl-items">                              <!-- preset: --sv-r per child -->
+        <li data-sv-from="0"   data-sv-to=".28"><b>2019</b><p>…</p></li>
+        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>…</p></li>
+        <li data-sv-from=".7"  data-sv-to="1"><b>2026</b><p>…</p></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+.tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
+/* the year is a CSS counter driven by the pin. No JS, no innerText */
+.tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
+.tl-year::after { content: counter(tl-year); }
+/* the line fills with the pin */
+.tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
+/* each milestone rises over its own slice (sv-range-rise) and its dot lights with --sv-r */
+.tl-items > li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; position: absolute; left: -32px;
+  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); }
+/* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */`,
+    tailwind: `<div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]">
+  <div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
+    <span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
+      [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"></span>
+    <ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8">
+      <li data-sv-from="0"   data-sv-to=".28"><b class="font-mono text-xs text-violet-400">2019</b><p>…</p></li>
+      <li data-sv-from=".22" data-sv-to=".52"><b class="font-mono text-xs text-violet-400">2021</b><p>…</p></li>
+      <li data-sv-from=".7"  data-sv-to="1"><b class="font-mono text-xs text-violet-400">2026</b><p>…</p></li>
+    </ol>
+  </div>
+</div>
+<!-- the filling line: a pseudo-element with [scale:1_var(--sv-pin,1)] origin-top (see CSS tab) -->`,
+    react: `import { Track } from 'scrollvars/react'
+
+const steps = [
+  { year: 2019, range: [0, .28], text: '…' },
+  { year: 2021, range: [.22, .52], text: '…' },
+  { year: 2026, range: [.7, 1], text: '…' },
+]
+function Timeline() {
+  return (
+    <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
+      <div className="sv-stage tl-sticky">
+        <span className="tl-year" />
+        <div className="tl-track"><i className="tl-line" />
+          <ol className="sv-range sv-range-rise tl-items">
+            {steps.map((s) => (
+              <li key={s.year} style={{ '--sv-from': s.range[0], '--sv-to': s.range[1] }}>
+                <b>{s.year}</b><p>{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </Track>
+  )
+}
+// npx scrollvars add timeline-scrub → components/fx/TimelineScrub.tsx (CSS included)`,
+  },
+  {
+    slug: 'sticky-steps',
+    category: 'Sections',
+    title: 'Sticky steps',
+    tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
+    when: 'Product features, "how it works", case-study walkthroughs, onboarding explainers.',
+    knobs: 'data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)',
+    preview: `<style>
+.st { height: 300vh; }
+.st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
+.st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
+.st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
+.st-shot:nth-child(2) { background: linear-gradient(160deg, #1f2a3a, #17151f 70%); color: #7dd3fc; }
+.st-shot:nth-child(3) { background: linear-gradient(160deg, #3a2a1f, #17151f 70%); color: #ffb454; }
+/* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
+.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
+.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+.st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+.st-steps h4 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
+.st-steps p { margin: 0; color: var(--muted); max-width: 36ch; }
+.st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
+.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); background: var(--accent); }
+html:not(.sv-on) .st-steps > li { opacity: 1; }
+@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
+</style>
+<div data-sv data-sv-pin data-sv-scenes="3" class="fxouter st">
+  <div class="fxsticky st-grid">
+    <div class="st-media">
+      <figure class="st-shot" style="--i: 0">01</figure>
+      <figure class="st-shot" style="--i: 1">02</figure>
+      <figure class="st-shot" style="--i: 2">03</figure>
+    </div>
+    <ol class="st-steps">
+      <li style="--i: 0"><b>Step 1</b><h4>Track the section</h4><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li>
+      <li style="--i: 1"><b>Step 2</b><h4>Give each piece an index</h4><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li>
+      <li style="--i: 2"><b>Step 3</b><h4>Ship it</h4><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li>
+    </ol>
+    <div class="st-dots"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i></div>
+  </div>
+</div>`,
+    css: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
+  <div class="sv-stage st-sticky">
+    <div class="st-media">
+      <img class="st-shot" style="--i: 0" src="shot-1.jpg" alt="">
+      <img class="st-shot" style="--i: 1" src="shot-2.jpg" alt="">
+      <img class="st-shot" style="--i: 2" src="shot-3.jpg" alt="">
+    </div>
+    <ol class="st-steps">
+      <li style="--i: 0"><h3>Track the section</h3><p>…</p></li>
+      <li style="--i: 1"><h3>Give each piece an index</h3><p>…</p></li>
+      <li style="--i: 2"><h3>Ship it</h3><p>…</p></li>
+    </ol>
+  </div>
+</div>
+
+.st-sticky { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; }   /* sv-stage pins it */
+.st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
+/* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
+.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
+html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
+    tailwind: `<div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]">
+  <div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
+    <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
+      <img class="st-shot [--i:0]" src="shot-1.jpg" alt="">
+      <img class="st-shot [--i:1]" src="shot-2.jpg" alt="">
+      <img class="st-shot [--i:2]" src="shot-3.jpg" alt="">
+    </div>
+    <ol class="grid gap-10">
+      <li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Track the section</h3></li>
+      <li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Give each piece an index</h3></li>
+      <li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Ship it</h3></li>
+    </ol>
+  </div>
+</div>
+<!-- --st-d and the .st-shot crossfade are 3 lines of global CSS (CSS tab); the math does not fit a class name -->`,
+    react: `import { Track } from 'scrollvars/react'
+
+const steps = [
+  { title: 'Track the section', text: '…', src: 'shot-1.jpg' },
+  { title: 'Give each piece an index', text: '…', src: 'shot-2.jpg' },
+  { title: 'Ship it', text: '…', src: 'shot-3.jpg' },
+]
+function StickySteps() {
+  return (
+    <Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className="st">
+      <div className="sv-stage st-sticky">
+        <div className="st-media">
+          {steps.map((s, i) => <img key={i} className="st-shot" style={{ '--i': i }} src={s.src} alt="" />)}
+        </div>
+        <ol className="st-steps">
+          {steps.map((s, i) => <li key={i} style={{ '--i': i }}><h3>{s.title}</h3><p>{s.text}</p></li>)}
+        </ol>
+      </div>
+    </Track>
+  )
+}
+// npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)`,
+  },
+  {
+    slug: 'stats-countup',
+    category: 'Sections',
+    title: 'Stats count-up',
+    tagline: 'Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.',
+    when: 'Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.',
+    knobs: '--sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1',
+    runway: true,
+    preview: `<style>
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 10px 0; }
+.stats > div { padding: 22px 12px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, #221f31, #17151f 80%); }
+.stats dt { order: 2; color: var(--muted); font-size: 13px; margin-top: 8px; }
+.stats dd { margin: 0; font: 800 clamp(34px, 6vw, 64px)/1 var(--mono); letter-spacing: -.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stats > div { display: flex; flex-direction: column; }
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
+@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
+</style>
+<section data-sv data-sv-once class="fxstage sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
+  <dl class="stats">
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+    <div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max: 4"></dd></div>
+  </dl>
+</section>`,
+    css: `<section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
+  <dl class="stats">
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+  </dl>
+</section>
+
+/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
+   block goes live; the counter re-renders every frame of that transition. */
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
+.stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
+/* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
+   older engines show the final numbers immediately. */`,
+    tailwind: `<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
+  <dl class="grid grid-cols-3 gap-6 text-center">
+    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
+    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+  </dl>
+</section>
+<!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->`,
+    react: `import { Track } from 'scrollvars/react'
+
+const stats = [
+  { label: 'client sites shipped', max: 248, suffix: '+' },
+  { label: 'median Lighthouse performance', max: 99 },
+  { label: 'KB of engine, gzipped', max: 4 },
+]
+function Stats() {
+  return (
+    <Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' }}>
+      <dl className="stats">
+        {stats.map((s) => (
+          <div key={s.label}>
+            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
+            <dt>{s.label}</dt>
+          </div>
+        ))}
+      </dl>
+    </Track>
+  )
+}
+// npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)`,
+  },
 ]
 
 /* ─────────────────────────── shared assets ─────────────────────────── */
@@ -593,13 +960,15 @@ execSync(
 // boot: track every [data-sv] on fx pages
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
 const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toFixed(1)
+// what a bundler ships: the ESM core, tree-shaken from dist/index.js
+const CORE_KB = (gzipSync(execSync(`npx esbuild ${join(root, 'dist/index.js')} --bundle --minify --format=esm --log-level=silent`)).length / 1024).toFixed(1)
 execSync(
   `npx esbuild ${join(root, 'dist/canvas/index.js')} --bundle --minify --format=iife --global-name=SVC --outfile=${join(out, 'sv-canvas.js')}`,
   { stdio: 'pipe' }
 )
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
-// bench: the ScrollVars workload page inlines the engine — resync it from
+// bench: the ScrollVars workload page inlines the engine. Resync it from
 // the same fresh IIFE so the bench never runs a stale driver
 {
   const benchPage = join(root, 'demo', 'bench', 'scrollvars.html')
@@ -608,7 +977,7 @@ copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
   const re = /(<script>\n)"use strict";var SV=[\s\S]*?(\n\n\n)/
   if (!re.test(page)) throw new Error('bench inline engine marker not found')
   // function replacer: the dist contains `$&`-like sequences that a string
-  // replacement would corrupt (found the hard way — the page died with a
+  // replacement would corrupt (found the hard way. The page died with a
   // SyntaxError and every bench run silently hung)
   writeFileSync(benchPage, page.replace(re, (_, open, close) => `${open}${iife}${close}`))
   console.log('bench engine resynced from dist')
@@ -715,7 +1084,7 @@ const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>`
 
-/* categorized accordion sidebar — same markup on every fx page; native <details>.
+/* categorized accordion sidebar: same markup on every fx page; native <details>.
    Mobile starts collapsed (script below); desktop hides the outer summary only
    while [open], so a closed nav is always reopenable at any width */
 const CATEGORIES = [...new Set(EFFECTS.map((e) => e.category))]
@@ -737,14 +1106,15 @@ const NAV_COLLAPSE = `<script>(()=>{const q=matchMedia('(max-width:919px)'),n=do
 const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
 
 const footer = `<footer class="fx">
-  <div><b>ScrollVars</b> v${VERSION} — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v${VERSION}. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>`
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${fx.title} — ScrollVars fx</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>${fx.title} · ScrollVars fx</title>
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
@@ -769,7 +1139,7 @@ ${sidebar(fx.slug)}
     <pre data-pane="css"><code>${esc(fx.css)}</code></pre>
     <pre data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core ${ENGINE_KB} KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
@@ -795,16 +1165,17 @@ ${NAV_COLLAPSE}
 /* hub */
 const hub = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScrollVars fx — copy-paste scroll effects</title>
-<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS — powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>ScrollVars fx: copy-paste scroll effects</title>
+<meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS. Powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">
 <style>${SHELL_CSS}</style>
 </head><body>
 ${header(true)}
 <div class="fxwrap">
 ${sidebar()}
 <main>
-  <h1>fx — copy-paste effects</h1>
-  <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste — no 47 KB tax.
+  <h1>fx, copy-paste effects</h1>
+  <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste. No 47 KB tax.
   Each effect ships three formats and full knobs. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
   ${CATEGORIES.map(
     (cat) => `<h2 class="fxcat">${cat}</h2>
@@ -824,10 +1195,10 @@ ${NAV_COLLAPSE}
 writeFileSync(join(out, 'index.html'), hub)
 
 /* llms.txt for the gallery */
-const llms = `# ScrollVars fx — llms.txt (copy-paste effects)
+const llms = `# ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars — full core ${ENGINE_KB} KB gzip). Each effect below includes when to
+> (npm i scrollvars, ${CORE_KB} KB gzip as ESM; the fx/sv.js IIFE on these pages is ${ENGINE_KB} KB). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -861,12 +1232,299 @@ writeFileSync(join(out, 'llms.txt'), llms)
 /* ─────────── shadcn-style registry: complete component files ─────────── */
 
 const COMPONENTS = {
+  'hero-cinematic': {
+    file: 'HeroCinematic.tsx',
+    content: `// ScrollVars fx · hero-cinematic
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/ui.css'
+// Split headline rising on a beat, pointer-parallax glow, marquee strip; the block
+// fades and scales out as it leaves (--sv-t). The CSS below is the whole section.
+'use client'
+import * as React from 'react'
+import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
+
+const css = \`
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; }
+.sv-hero .hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
+.sv-hero .hero-orb.a { background: var(--hero-glow, #a78bfa); top: -14%; left: -8%; }
+.sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
+.sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+.sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
+.sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
+.sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip span { margin: 0 18px; }
+\`
+
+export function HeroCinematic({
+  eyebrow,
+  title,
+  copy,
+  cta,
+  strip = ['Brand', '·', 'Motion', '·', 'Web', '·', 'Type', '·'],
+  className,
+}: {
+  eyebrow?: string
+  /** Plain text: it is split into words on the server, each rising on its own beat. */
+  title: string
+  copy?: React.ReactNode
+  cta?: React.ReactNode
+  strip?: string[]
+  className?: string
+}) {
+  const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
+  return (
+    <section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}>
+      <style>{css}</style>
+      <div className="hero-orb a" />
+      <div className="hero-orb b" />
+      <Track travel>
+        <div className="hero-inner">
+          {eyebrow && <p className="hero-eyebrow sv-rise">{eyebrow}</p>}
+          <Split as="h1" className="hero-title sv-split-rise">
+            {title}
+          </Split>
+          {copy && (
+            <p className="hero-sub sv-rise" style={{ '--sv-order': 6 } as React.CSSProperties}>
+              {copy}
+            </p>
+          )}
+          {cta && (
+            <p className="sv-rise" style={{ '--sv-order': 7 } as React.CSSProperties}>
+              {cta}
+            </p>
+          )}
+        </div>
+      </Track>
+      <Marquee className="hero-strip">
+        {strip.map((s, i) => (
+          <span key={i}>{s}</span>
+        ))}
+      </Marquee>
+    </section>
+  )
+}
+`,
+  },
+  'timeline-scrub': {
+    file: 'TimelineScrub.tsx',
+    content: `// ScrollVars fx · timeline-scrub
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage, sv-range)
+// Pinned: the scroll draws the line, counts the year (a CSS counter) and lights each
+// milestone over its own slice of the pin. No JS beyond the driver.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = \`
+.sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
+.sv-timeline .tl-year { font-size: clamp(64px, 12vw, 150px); line-height: 1; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
+  counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
+.sv-timeline .tl-year::after { content: counter(tl-year); }
+.sv-timeline .tl-cap { display: block; margin-top: 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
+.sv-timeline .tl-track { position: relative; padding-left: 34px; }
+.sv-timeline .tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: rgba(128,128,128,.25); }
+.sv-timeline .tl-line::after { content: ""; position: absolute; inset: 0; background: currentColor; transform-origin: top; scale: 1 var(--sv-pin, 1); }
+.sv-timeline .tl-items { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(18px, 4vh, 40px); }
+.sv-timeline .tl-items > li { position: relative; --sv-distance: 1.6rem; }
+.sv-timeline .tl-items > li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
+  background: color-mix(in oklab, currentColor calc(var(--sv-r, 1) * 100%), rgba(128,128,128,.35)); }
+.sv-timeline .tl-items b { display: block; font-size: 12px; letter-spacing: .12em; margin-bottom: 4px; }
+.sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
+@media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
+\`
+
+export interface TimelineStep {
+  year: number
+  text: React.ReactNode
+  /** Slice of the pin (0..1) this milestone animates over; defaults to evenly staggered, overlapping. */
+  range?: [number, number]
+}
+
+export function TimelineScrub({
+  steps,
+  caption = 'years of shipping',
+  height = '320vh',
+  className,
+}: {
+  steps: TimelineStep[]
+  caption?: string
+  /** Scroll length of the pinned stretch. */
+  height?: string
+  className?: string
+}) {
+  const from = steps[0]?.year ?? 0
+  const span = (steps[steps.length - 1]?.year ?? from) - from
+  const n = steps.length
+  return (
+    <Track
+      pin={height}
+      className={className ? 'sv-timeline ' + className : 'sv-timeline'}
+      style={{ '--tl-from': from, '--tl-span': span } as React.CSSProperties}
+    >
+      <style>{css}</style>
+      <div className="sv-stage tl-sticky">
+        <div>
+          <span className="tl-year" aria-label={String(from + span)} />
+          <span className="tl-cap">{caption}</span>
+        </div>
+        <div className="tl-track">
+          <i className="tl-line" />
+          <ol className="sv-range sv-range-rise tl-items">
+            {steps.map((s, i) => {
+              const [a, b] = s.range ?? [i / n, Math.min((i + 1.4) / n, 1)]
+              return (
+                <li key={s.year} style={{ '--sv-from': a, '--sv-to': b } as React.CSSProperties}>
+                  <b>{s.year}</b>
+                  <p>{s.text}</p>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      </div>
+    </Track>
+  )
+}
+`,
+  },
+  'sticky-steps': {
+    file: 'StickySteps.tsx',
+    content: `// ScrollVars fx · sticky-steps
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage)
+// Media stays put while the copy scrolls; each step swaps the shot. --sv-scene does the
+// swapping, the crossfade is one max() per element. Without JS the shots stack in flow.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = \`
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
+.sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
+.sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
+.sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
+.sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
+  --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
+.sv-steps .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
+.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.sv-steps .st-steps h3 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
+.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
+.sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
+.sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+@media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
+\`
+
+export interface StickyStep {
+  title: React.ReactNode
+  text?: React.ReactNode
+  /** The shot for this step: an <img>, <video>, or any node. */
+  media: React.ReactNode
+  label?: string
+}
+
+export function StickySteps({ steps, className }: { steps: StickyStep[]; className?: string }) {
+  return (
+    <Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+      <style>{css}</style>
+      <div className="sv-stage st-grid">
+        <div className="st-media">
+          {steps.map((s, i) => (
+            <figure key={i} className="st-shot" style={{ '--i': i } as React.CSSProperties}>
+              {s.media}
+            </figure>
+          ))}
+        </div>
+        <ol className="st-steps">
+          {steps.map((s, i) => (
+            <li key={i} style={{ '--i': i } as React.CSSProperties}>
+              <b>{s.label ?? 'Step ' + (i + 1)}</b>
+              <h3>{s.title}</h3>
+              {s.text && <p>{s.text}</p>}
+            </li>
+          ))}
+        </ol>
+        <div className="st-dots" aria-hidden="true">
+          {steps.map((_, i) => (
+            <i key={i} style={{ '--i': i } as React.CSSProperties} />
+          ))}
+        </div>
+      </div>
+    </Track>
+  )
+}
+`,
+  },
+  'stats-countup': {
+    file: 'StatsCountup.tsx',
+    content: `// ScrollVars fx · stats-countup
+// Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (sv-acts)
+// Numbers count from zero when the block enters: a CSS counter driven by the
+// registered --sv-act transition. No JS, no innerText. Without JS or under
+// reduced motion the final numbers render immediately.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = \`
+.sv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; margin: 0; }
+.sv-stats > div { display: flex; flex-direction: column; padding: 22px 12px; border-radius: 14px; border: 1px solid rgba(128,128,128,.25); text-align: center; }
+.sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
+.sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.sv-stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+\`
+
+export interface Stat {
+  label: React.ReactNode
+  value: number
+  suffix?: string
+}
+
+export function StatsCountup({
+  stats,
+  duration = 1.8,
+  className,
+}: {
+  stats: Stat[]
+  /** Seconds the count takes. */
+  duration?: number
+  className?: string
+}) {
+  return (
+    <Track
+      once
+      className={className ? 'sv-acts ' + className : 'sv-acts'}
+      style={{ '--sv-acts-count': 1, '--sv-acts-duration': duration + 's' } as React.CSSProperties}
+    >
+      <style>{css}</style>
+      <dl className="sv-stats">
+        {stats.map((s, i) => (
+          <div key={i}>
+            <dd
+              className="stat"
+              style={{ '--sv-max': s.value } as React.CSSProperties}
+              data-suffix={s.suffix ?? ''}
+              aria-label={s.value + (s.suffix ?? '')}
+            />
+            <dt>{s.label}</dt>
+          </div>
+        ))}
+      </dl>
+    </Track>
+  )
+}
+`,
+  },
   'sequenced-scrub': {
     file: 'SequencedScrub.tsx',
     content: `// ScrollVars fx · sequenced-scrub
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)
 // Each child animates over its own slice of the pin: pass ranges as
-// [from, to] pairs (0..1); overlapping ranges are fine — that's the point.
+// [from, to] pairs (0..1); overlapping ranges are fine: that's the point.
 'use client'
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
@@ -907,7 +1565,7 @@ export function SequencedScrub({
 // Requires: npm i scrollvars gsap · import 'scrollvars/styles/pin.css'
 // Author choreography in GSAP, let ScrollVars drive it: one scroll
 // listener, one writer. Never ALSO create a ScrollTrigger for it.
-// Honesty: this page pays GSAP's bundle — adopt per page, not globally.
+// Honesty: this page pays GSAP's bundle. Adopt per page, not globally.
 'use client'
 import * as React from 'react'
 import gsap from 'gsap'
@@ -968,6 +1626,12 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
       )
       scene.add(mesh)
       three.current = { renderer, scene, camera, mesh }
+      return () => {
+        mesh.geometry.dispose()
+        ;(mesh.material as THREE.Material).dispose()
+        renderer.dispose()
+        three.current = null
+      }
     },
     resize(fx) {
       const t = three.current
@@ -1002,7 +1666,7 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
     content: `// ScrollVars fx · split-reveal
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)
 // <Split> renders word/char spans on the server: no client splitting,
-// no CLS, no hydration flash. aria-label carries the full text.
+// no CLS, no hydration flash. The full text stays in a visually-hidden span for AT.
 'use client'
 import * as React from 'react'
 import { Reveal, Split } from 'scrollvars/react'

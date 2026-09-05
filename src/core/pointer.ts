@@ -28,8 +28,9 @@ export function trackPointer(
     const { el, x, y } = pending
     pending = null
     const rect = el.getBoundingClientRect()
-    el.style.setProperty('--mx', (((x - rect.left) / rect.width) * 2 - 1).toFixed(3))
-    el.style.setProperty('--my', (((y - rect.top) / rect.height) * 2 - 1).toFixed(3))
+    const unit = (v: number) => Math.max(-1, Math.min(1, v)).toFixed(3)
+    el.style.setProperty('--mx', unit(((x - rect.left) / rect.width) * 2 - 1))
+    el.style.setProperty('--my', unit(((y - rect.top) / rect.height) * 2 - 1))
   }
 
   const onMove = (event: PointerEvent) => {
@@ -43,7 +44,7 @@ export function trackPointer(
   const onOut = (event: PointerEvent) => {
     const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
     if (!el || el.contains(event.relatedTarget as Node)) return
-    if (pending?.el === el) pending = null // drop queued move — it's stale now
+    if (pending?.el === el) pending = null // drop queued move. It's stale now
     el.classList.add('sv-pointer-leave')
     el.style.setProperty('--mx', '0')
     el.style.setProperty('--my', '0')

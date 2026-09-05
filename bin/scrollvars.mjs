@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scrollvars CLI — shadcn-style effect installer.
+ * ScrollVars CLI, shadcn-style effect installer.
  *
  *   npx scrollvars list                       show available effects
  *   npx scrollvars add coverflow-slider       write the component into ./components/fx
@@ -14,13 +14,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const REGISTRY = process.env.SCROLLVARS_REGISTRY || 'https://scrollvars.dev/fx/registry.json'
-const REGISTRY_FALLBACK = 'https://scrollvars.dev/fx/registry.json'
+const REGISTRY_FALLBACK = 'https://scrollvars.vercel.app/fx/registry.json' // same deploy, second host
 
 const args = process.argv.slice(2)
 const flags = new Set(args.filter((a) => a.startsWith('--')))
-const positional = args.filter((a) => !a.startsWith('--'))
 const dirFlag = args.indexOf('--dir')
 const dir = dirFlag >= 0 ? args[dirFlag + 1] : 'components/fx'
+// a flag's value (`--dir src/ui`) is not a positional: `add --dir src/ui marquee` works
+const positional = args.filter((a, i) => !a.startsWith('--') && !(dirFlag >= 0 && i === dirFlag + 1))
 const [command, slug] = positional
 
 async function loadRegistry() {
@@ -40,7 +41,7 @@ async function loadRegistry() {
 }
 
 function usage() {
-  console.log(`scrollvars fx installer
+  console.log(`ScrollVars fx installer
 
   npx scrollvars list
   npx scrollvars add <effect> [--dir components/fx] [--force]
@@ -62,12 +63,17 @@ if (command === 'list') {
 } else if (command === 'add' && slug) {
   const effect = registry.effects.find((e) => e.slug === slug)
   if (!effect) {
-    console.error(`unknown effect "${slug}" — run \`npx scrollvars list\``)
+    console.error(`unknown effect "${slug}". Run \`npx scrollvars list\``)
+    process.exit(1)
+  }
+  // registry data is remote: a filename is a bare name, never a path
+  if (!/^[\w.-]+$/.test(effect.file) || effect.file.includes('..')) {
+    console.error(`registry entry "${slug}" has an invalid file name: ${effect.file}`)
     process.exit(1)
   }
   const target = join(process.cwd(), dir, effect.file)
   if (existsSync(target) && !flags.has('--force')) {
-    console.error(`${join(dir, effect.file)} already exists — pass --force to overwrite`)
+    console.error(`${join(dir, effect.file)} already exists. Pass --force to overwrite`)
     process.exit(1)
   }
   mkdirSync(join(process.cwd(), dir), { recursive: true })

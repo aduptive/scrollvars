@@ -6,9 +6,9 @@ export interface TrackOptions {
   /** Write `--sv-t` (0..1 across the element's full travel through the viewport,
    * same semantics as the native `animation-timeline: view()` cover range). */
   travel?: boolean
-  /** Write `--sv-pin` (0..1 across the element's pinned stretch) — the raw
+  /** Write `--sv-pin` (0..1 across the element's pinned stretch). The raw
    * fuel for curtains, horizontal carousels and any sticky choreography. */
-  pin?: boolean
+  pin?: boolean | string
   /** Sticky storytelling: split the element's pinned travel into N scenes.
    * Writes `--sv-scene` (0..N-1, eased + snapped) and fires onScene on integer changes. */
   scenes?: number
@@ -18,14 +18,14 @@ export interface TrackOptions {
   once?: boolean
   onLive?: (live: boolean) => void
   onScene?: (scene: number) => void
-  /** Fires every frame with the raw travel t (0..1) — for video scrubbing,
+  /** Fires every frame with the raw travel t (0..1). For video scrubbing,
    * WebGL cameras, or anything JS-driven. Keep the callback cheap. */
   onTravel?: (t: number) => void
   /** Fires every frame with the raw pin progress (0..1 across the pinned
-   * stretch) — frame scrubbing, camera tours. Implies pin tracking. */
+   * stretch). Frame scrubbing, camera tours. Implies pin tracking. */
   onPin?: (p: number) => void
-  /** Scroll container to measure against instead of the window viewport —
-   * for tracked elements inside nested scroll panels. (The capture-phase
+  /** Scroll container to measure against instead of the window viewport,
+* for tracked elements inside nested scroll panels. (The capture-phase
    * scroll listener already hears those scrolls; this makes the geometry
    * agree with them.) */
   root?: HTMLElement
@@ -39,7 +39,7 @@ interface Entry {
   el: HTMLElement
   opts: TrackOptions
   /** Inside the culling margin (one viewport around the screen). Far-away
-   * entries skip the per-frame rect read — their variables are already at
+   * entries skip the per-frame rect read. Their variables are already at
    * their resting extremes. Entries with a custom root are never culled. */
   near: boolean
   live: boolean
@@ -49,7 +49,7 @@ interface Entry {
 
 const SCENE_SNAP = 0.4
 // Live band: enter when the top reaches 75% down the viewport, stay while the
-// bottom is past 25% — the standard reveal-on-scroll feel.
+// bottom is past 25%. The standard reveal-on-scroll feel.
 const LIVE_ENTER = 0.75
 const LIVE_EXIT = 0.25
 
@@ -66,11 +66,7 @@ function init() {
   initialized = true
   vh = window.innerHeight
 
-  // No-JS guard: preset styles only hide content under `html.sv-on`, so a
-  // failed bundle degrades to a static, fully visible page.
-  document.documentElement.classList.add('sv-on')
-
-  // capture: scroll doesn't bubble, but it does capture-descend — one
+  // capture: scroll doesn't bubble, but it does capture-descend. One
   // listener covers nested scrollers (modals, inner panels) for free
   window.addEventListener('scroll', schedule, { passive: true, capture: true })
   window.addEventListener('resize', () => {
@@ -85,10 +81,14 @@ function init() {
     schedule()
   })
 
-  resizeObserver = new ResizeObserver(() => schedule())
-  // Layout shifts above an element (images loading, fonts) move it without
-  // resizing it — watching the document catches those too.
-  resizeObserver.observe(document.documentElement)
+  try {
+    resizeObserver = new ResizeObserver(() => schedule())
+    // Layout shifts above an element (images loading, fonts) move it without
+    // resizing it: watching the document catches those too.
+    resizeObserver.observe(document.documentElement)
+  } catch {
+    return // no ResizeObserver: stay a static page (scrollvars/compat adds a shim)
+  }
 
   // Offscreen culling: a viewport of margin on each side keeps fast scrolls
   // correct; far outside it the rect read is skipped entirely.
@@ -104,7 +104,19 @@ function init() {
       { rootMargin: '100% 0px 100% 0px' }
     )
   }
+
+  // No-JS guard: preset styles only hide content under `html.sv-on`, so a
+  // failed bundle degrades to a static, fully visible page. The class lands
+  // last, once every observer exists, so a throwing constructor can never
+  // leave the page hidden. __scrollvars lets the SSR pre-paint script (React
+  // ScrollVarsBoot) confirm the driver arrived.
+  document.documentElement.classList.add('sv-on')
+  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = true
 }
+
+let lastY = -1
+let lastT = 0
+let velTimer: ReturnType<typeof setTimeout> | undefined
 
 function schedule() {
   if (!raf && entries.size > 0) raf = requestAnimationFrame(update)
@@ -114,10 +126,18 @@ function update() {
   raf = 0
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
+  const y = window.scrollY
+  const now = performance.now()
+  // A jump longer than a viewport (anchor, scrollTo, restored position) can
+  // carry an element from far below to far above without the culler ever
+  // seeing it intersect: give every entry one geometry pass on such frames.
+  const jumped = lastY >= 0 && Math.abs(y - lastY) > vh
+  const docEl = document.documentElement
+  const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1)
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry }> = []
   entries.forEach((entry) => {
-    if (!entry.near && !entry.opts.root) return
+    if (!entry.near && !entry.opts.root && !jumped) return
     const rect = entry.el.getBoundingClientRect()
     const root = entry.opts.root
     let geo: Geometry
@@ -137,6 +157,18 @@ function update() {
   for (const { entry, geo } of frames) {
     apply(entry, geo)
   }
+  // Page-level outputs on <html>: --sv-page (0..1 through the document) and
+  // --sv-v (signed velocity, viewport-heights per second). Velocity decays to
+  // 0 shortly after the last scroll event so a CSS transition can ease a
+  // skew/stretch effect back to rest.
+  const dt = now - lastT
+  const v = lastY < 0 || dt <= 0 ? 0 : ((y - lastY) / dt) * 1000 / vh
+  docEl.style?.setProperty('--sv-page', clamp(y / pageSpan, 0, 1).toFixed(4))
+  docEl.style?.setProperty('--sv-v', (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3))
+  clearTimeout(velTimer)
+  velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', '0'), 80)
+  lastY = y
+  lastT = now
 }
 
 interface Geometry {
@@ -147,7 +179,7 @@ interface Geometry {
 }
 
 /**
- * Signed position relative to the live band — the same 75%/25% lines the
+ * Signed position relative to the live band. The same 75%/25% lines the
  * `sv-live` class uses, so the variable and the class always agree.
  * −1: the top is still at the viewport's bottom edge; ramps to 0 as it
  * crosses the enter line; 0 across the whole band; then 0 → +1 as the
@@ -268,6 +300,14 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   }
   entries.set(el, entry)
   el.classList.add('sv')
+  // constants CSS can read: how many scenes, so progress bars need no hard-coded count
+  if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
+  // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
+  // under reduced motion the wrapper stays in flow instead of an empty scroll
+  if (typeof opts.pin === 'string' && !reducedMotion) {
+    el.style.height = opts.pin
+    if (!el.style.position) el.style.position = 'relative'
+  }
   resizeObserver?.observe(el)
   if (!opts.root) culler?.observe(el)
   schedule()
@@ -284,20 +324,27 @@ export function refresh() {
   schedule()
 }
 
-/** Scroll the window so a Scenes container lands on the given scene. */
-export function scrollToScene(el: HTMLElement, index: number, count: number, smooth = true) {
+/** Scroll so a Scenes container lands on the given scene. Pass the same
+ * `root` the container is tracked with to scroll that element instead of the
+ * window. Uses the rendered height, like the driver's pin math. */
+export function scrollToScene(
+  el: HTMLElement,
+  index: number,
+  count: number,
+  smooth = true,
+  root?: HTMLElement
+) {
   if (typeof window === 'undefined' || count < 2) return
-  const height = el.scrollHeight
-  const span = Math.max(height - window.innerHeight, 1)
-  const top =
-    window.scrollY +
-    el.getBoundingClientRect().top +
-    (clamp(index, 0, count - 1) / (count - 1)) * span
-
-  window.scrollTo({
-    top: Math.max(0, top),
-    behavior: smooth ? 'smooth' : 'instant',
-  })
+  const rect = el.getBoundingClientRect()
+  const vp = root ? root.clientHeight : window.innerHeight
+  const span = Math.max(rect.height - vp, 1)
+  const offset = (clamp(index, 0, count - 1) / (count - 1)) * span
+  const behavior: ScrollBehavior = smooth ? 'smooth' : 'instant'
+  if (root) {
+    root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior })
+  } else {
+    window.scrollTo({ top: window.scrollY + rect.top + offset, behavior })
+  }
 }
 
 export function prefersReducedMotion() {

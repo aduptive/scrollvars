@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sequenced scrub — ScrollVars fx</title>
-<meta name="description" content="Each child animates over its own slice of the pin — choreography without a timeline. Copy-paste in Tailwind, CSS or React.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Sequenced scrub · ScrollVars fx</title>
+<meta name="description" content="Each child animates over its own slice of the pin. Choreography without a timeline. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -129,12 +130,18 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
   <h1>Sequenced scrub</h1>
-  <p class="tag">Each child animates over its own slice of the pin — choreography without a timeline.</p>
+  <p class="tag">Each child animates over its own slice of the pin. Choreography without a timeline.</p>
   <p class="meta"><b>Use it for:</b> Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.<br><b>Knobs:</b> --sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock</p>
   <div data-sv data-sv-pin class="fxouter">
   <div class="fxsticky" style="display:grid;place-items:center">
@@ -179,7 +186,7 @@
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like — ALWAYS with a fallback of 1: */
+/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }</code></pre>
     <pre data-pane="react"><code>&lt;Track pin className="relative h-[250vh]"&gt;
   &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
@@ -194,12 +201,12 @@
 // JS twin for canvas/WebGL consumers:
 // track(el, { pin: true, onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

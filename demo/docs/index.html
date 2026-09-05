@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScrollVars docs — the human reference</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>ScrollVars docs: the human reference</title>
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
@@ -35,7 +36,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.12.4</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.13.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -60,17 +61,17 @@ import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
 
-// any page — no client components needed:
+// any page: no client components needed:
 &lt;section data-sv data-sv-once&gt;
   &lt;h2 className="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p className="sv-rise" data-sv-order="1"&gt;Copy&lt;/p&gt;
 &lt;/section&gt;</code></pre>
 <p>Per-element knobs are attributes too: <code>data-sv-order</code>,
 <code>data-sv-distance</code>, <code>data-sv-from</code>/<code>data-sv-to</code> become the
-matching CSS variables on mount — no style attribute, safe for mapped CMS content, zero
+matching CSS variables on mount. No style attribute, safe for mapped CMS content, zero
 global CSS. (React props on <code>&lt;Item&gt;</code>/<code>&lt;Reveal&gt;</code> compile the
 same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
-<p><b>Vanilla:</b> <code>import { scan } from 'scrollvars'; scan()</code> — same attributes.
+<p><b>Vanilla:</b> <code>import { scan } from 'scrollvars'; scan()</code>: same attributes.
 <b>React components:</b> <code>&lt;Reveal auto&gt;</code>, <code>&lt;Track pin&gt;</code>,
 <code>&lt;Scenes count={4}&gt;</code> when you want props instead of attributes.</p>
 
@@ -90,7 +91,7 @@ tunable per element via <code>enter</code>/<code>exit</code> or
 only under <code>html.sv-on</code>, so without JavaScript the page renders complete.</p>
 
 <h2 id="knobs">One knob, four ways (de/para)</h2>
-<p>Same result — a child rising second, 3rem of travel — pick the authoring style
+<p>Same result (a child rising second, 3rem of travel) pick the authoring style
 that fits the context. You never need the style attribute unless the value is
 computed in JS at runtime:</p>
 <table>
@@ -106,17 +107,17 @@ computed in JS at runtime:</p>
 <td><code>&lt;p class="sv-rise [--sv-order:1]"&gt;</code></td></tr>
 <tr><td>Sequential list</td>
 <td>an order per child, by hand</td>
-<td><code>&lt;div class="sv-stagger"&gt;</code> on the parent — nth-child does it, zero per-child anything</td></tr>
+<td><code>&lt;div class="sv-stagger"&gt;</code> on the parent, nth-child does it, zero per-child anything</td></tr>
 <tr><td>Mapped data (CMS loop)</td>
 <td><code>style={{ '--sv-order': i }}</code></td>
-<td><code>data-sv-order={i}</code> — attributes interpolate; Tailwind classes don't (the JIT scans statically)</td></tr>
+<td><code>data-sv-order={i}</code>. Attributes interpolate; Tailwind classes don't (the JIT scans statically)</td></tr>
 <tr><td>sv-range slices</td>
 <td><code>style="--sv-from: .3; --sv-to: .7"</code></td>
 <td><code>data-sv-from=".3" data-sv-to=".7"</code></td></tr>
 </table>
 <p>The attributes (<code>data-sv-order</code>, <code>data-sv-distance</code>,
 <code>data-sv-from</code>, <code>data-sv-to</code>) are written once as the matching CSS
-variable on mount by <code>scan()</code>/<code>&lt;ScrollVarsBoot /&gt;</code> — never in the
+variable on mount by <code>scan()</code>/<code>&lt;ScrollVarsBoot /&gt;</code>. Never in the
 frame loop, zero global CSS. When typed CSS <code>attr()</code> settles cross-browser this
 mapping becomes pure CSS.</p>
 
@@ -129,33 +130,37 @@ mapping becomes pure CSS.</p>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
-<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable — also zero-wrapper via <code>data-sv-split</code>.</td></tr>
+<tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
 <tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
 </table>
-<p class="grp">scrollvars/react ('use client' wrappers — children stay RSC)</p>
+<p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
 <tr><td><code>&lt;ScrollVarsBoot /&gt;</code></td><td>mounts <code>scan()</code> + <code>toggles()</code> once.</td></tr>
-<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API — <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
+<tr><td><code>&lt;Track&gt; &lt;Reveal&gt; &lt;Parallax&gt; &lt;Item&gt; &lt;Scenes&gt; &lt;Split&gt;</code></td><td>attribute API, <code>order/distance/stagger/duration/ease</code> props compile to the vars.</td></tr>
 <tr><td><code>&lt;Slider&gt; &lt;Slide&gt; &lt;Marquee&gt; &lt;Accordion&gt; &lt;Modal&gt;</code></td><td>the component kit (see the accessibility contract below).</td></tr>
 <tr><td><code>useTrack / useScenes / useSlider / usePointer / useCanvasEffect</code></td><td>hooks under the components.</td></tr>
 </table>
-<p class="grp">scrollvars/canvas · scrollvars/compat</p>
-<p><code>mountEffect(canvas, effect)</code> — lifecycle harness for ambient canvas scenes
+<p class="grp">scrollvars/canvas · scrollvars/compat · scrollvars/debug</p>
+<p><code>mountEffect(canvas, effect)</code>. Lifecycle harness for ambient canvas scenes
 (DPR cap, delta-time loop, auto-pause offscreen/hidden, reduced-motion flag).
-<code>scrollvars/compat</code> — opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
-transform-fallback CSS.</p>
+<code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
+transform-fallback CSS.<br>
+<code>scrollvars/debug</code>. Dev overlay: <code>debug()</code> lists every tracked element with its live
+variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
 
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(<code>styles/core.css</code> 1.2&nbsp;KB gz · pin 1.3 · slider 0.4 · tilt 0.5 · ui).</p>
+(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
-<tr><td>pin (scrub)</td><td><code>sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise sv-acts</code></td></tr>
+<tr><td>pin (scrub)</td><td><code>sv-stage sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
-<tr><td>state / ui</td><td><code>sv-open sv-pop sv-words sv-marquee sv-accordion sv-tilt</code></td></tr>
+<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code></td></tr>
+<tr><td>ui</td><td><code>sv-marquee sv-accordion</code></td></tr>
+<tr><td>tilt</td><td><code>sv-tilt</code> + <code>--sv-tilt</code> (angle)</td></tr>
 </table>
 
 <h2 id="gsap">Coming from GSAP + ScrollTrigger</h2>
@@ -168,31 +173,31 @@ transform-fallback CSS.</p>
 <tr><td><code>ScrollTrigger.batch()</code> reveals</td><td><code>sv-auto</code> / <code>sv-stagger</code></td><td>nth-child order for free</td></tr>
 <tr><td><code>scroller: el</code></td><td><code>root: el</code></td><td>nested scroll panels</td></tr>
 <tr><td><code>onUpdate(self.progress)</code></td><td><code>onTravel</code>/<code>onPin</code> callbacks</td><td>canvas, WebGL, video scrub</td></tr>
-<tr><td>timelines with springs/exits/SVG morph</td><td><b>keep GSAP</b></td><td>time-driven work is out of scope here — honestly</td></tr>
+<tr><td>timelines with springs/exits/SVG morph</td><td><b>keep GSAP</b></td><td>time-driven work is out of scope here. Honestly</td></tr>
 </table>
 
 <h2 id="not">When NOT to use ScrollVars</h2>
 <ul>
-<li><b>Time-driven orchestration</b> — interruptible springs, layout/exit transitions, SVG
+<li><b>Time-driven orchestration</b>. Interruptible springs, layout/exit transitions, SVG
 morphing, choreographed intros on a clock: GSAP or Motion are the right tools.</li>
-<li><b>One load-in animation</b> — plain CSS keyframes; no library at all.</li>
-<li><b>App-like gesture physics</b> (drag with momentum between arbitrary states) — Motion.</li>
-<li>Chromium-only projects that can require the native tier — pure CSS scroll-driven
+<li><b>One load-in animation</b>. Plain CSS keyframes; no library at all.</li>
+<li><b>App-like gesture physics</b> (drag with momentum between arbitrary states), Motion.</li>
+<li>Chromium-only projects that can require the native tier. Pure CSS scroll-driven
 animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where supported.</li>
 </ul>
 
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
-<p>They don't conflict — different writers on different properties. Keep each element owned by
+<p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
 <pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
 })</code></pre>
-<p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.
+<p>The page pays GSAP's bundle then. Do it for the page that needs it, not globally.
 Both patterns exist as official fx recipes with live previews:
 <a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
-a scrub — still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
+a scrub. Still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
 (the canvas harness with <code>context: null</code> owns the lifecycle, Three owns the WebGL,
 scroll feeds progress). Hitting the scope ceiling never means rewriting: the driver stays, you
 plug in what's missing.</p>
@@ -200,14 +205,14 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks — entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
-<tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code> — focus management, Escape, exclusivity from the platform</td></tr>
-<tr><td>pinned scenes</td><td>native scroll is never hijacked — the driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
+<tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
+<tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 </table>
 
-<h2 id="browsers">Browser support — and the answer for older ones</h2>
+<h2 id="browsers">Browser support: and the answer for older ones</h2>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
@@ -216,7 +221,7 @@ plug in what's missing.</p>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
-breaks — the page renders complete and static. Animation is progressive enhancement, never a
+breaks. The page renders complete and static. Animation is progressive enhancement, never a
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
@@ -231,51 +236,149 @@ compat()   // once, before anything else</code></pre>
 <h2 id="trouble">Troubleshooting</h2>
 <table>
 <tr><th>symptom</th><th>cause → fix</th></tr>
-<tr><td>content hidden until first scroll</td><td>entrance CSS not gated on <code>.sv-on</code> — use the shipped presets or copy their guard pattern</td></tr>
-<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names — use <code>data-sv-order={i}</code> (or a style var) for dynamic values; static one-offs like <code>[--sv-order:1]</code> are fine</td></tr>
-<tr><td>animation inside a modal/panel doesn't run</td><td>tracked element lives in a nested scroller — pass <code>root: scrollerEl</code> so geometry matches (the listener already hears it)</td></tr>
-<tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale) — radial math needs the <code>transform:</code> shorthand</td></tr>
-<tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var — transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
-<tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112) — expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
-<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant — keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
+<tr><td>content hidden until first scroll</td><td>entrance CSS not gated on <code>.sv-on</code>. Use the shipped presets or copy their guard pattern</td></tr>
+<tr><td>Tailwind arbitrary class does nothing for mapped data</td><td>the JIT never generates interpolated class names. Use <code>data-sv-order={i}</code> (or a style var) for dynamic values; static one-offs like <code>[--sv-order:1]</code> are fine</td></tr>
+<tr><td>animation inside a modal/panel doesn't run</td><td>tracked element lives in a nested scroller. Pass <code>root: scrollerEl</code> so geometry matches (the listener already hears it)</td></tr>
+<tr><td>rotate/translate combo lands wrong</td><td>individual transform properties apply in fixed order (translate→rotate→scale). Radial math needs the <code>transform:</code> shorthand</td></tr>
+<tr><td>parallax rubber-bands</td><td>never put a <code>transition</code> on a property driven by a continuous var. Transitions are for state flips (<code>sv-live</code>), continuous motion is direct</td></tr>
+<tr><td><code>--sv-r</code> stuck at end state</td><td>engine lacks calc() division by var (needs Chrome 112/Safari 16.4/FF 112). Expected degradation; keep consuming as <code>var(--sv-r, 1)</code></td></tr>
+<tr><td>style-recalc heavy on giant sections</td><td>an inherited var pays per-descendant. Keep tracked elements thin: big static content lives next to, not inside, the animated elements (measured curve on <a href="../bench/">/bench/</a>)</td></tr>
 </table>
 
 <h2 id="changelog">Changelog</h2>
 
 
-<h3>1.12.3 — 2026-09-01</h3>
+<h3>1.13.0 (2026-09-05)</h3>
+
+Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
+clone): every confirmed defect fixed, plus the primitives both reviewers
+said premium sections would need.
+
+### Sections in the fx gallery
+<ul><li>New category <b>Sections</b>: <code>hero-cinematic</code>, <code>timeline-scrub</code>,</li></ul>
+  <code>sticky-steps</code>, <code>stats-countup</code>. Whole blocks built only on the presets,
+  each with CSS / Tailwind / React snippets and a CLI component
+  (<code>npx scrollvars add &lt;slug></code>). They are also the dogfooding that surfaced
+  the items below.
+
+### Driver
+<ul><li><code>--sv-page</code> (0..1 through the document) and <code>--sv-v</code> (signed velocity in</li></ul>
+  viewport-heights per second, decays to 0 after the scroll stops) are written
+  on <code>&lt;html></code> every frame: reading-progress bars and skew/stretch effects need
+  no JS.
+<ul><li><code>--sv-scenes</code> (the scene count) is written next to <code>--sv-scene</code>, so a</li></ul>
+  progress bar is <code>calc(var(--sv-scene) / (var(--sv-scenes) - 1))</code> instead of a
+  hard-coded divisor.
+<ul><li>Pin helper: <code>pin: '320vh'</code> / <code>data-sv-pin="320vh"</code> / <code>&lt;Track pin="320vh"></code></li></ul>
+  sets the wrapper's height and <code>position: relative</code>; with the new <code>.sv-stage</code>
+  preset (sticky viewport) the pinned skeleton is no longer hand-written.
+  Under reduced motion the wrapper stays in flow.
+<ul><li>Culling now gives every entry one geometry pass on a scroll jump longer than</li></ul>
+  a viewport (anchors, <code>scrollTo</code>, restored positions): an element carried from
+  far below to far above no longer keeps stale variables.
+<ul><li><code>html.sv-on</code> lands last, after every observer is built, and never if the</li></ul>
+  <code>ResizeObserver</code> constructor throws. <code>window.__scrollvars</code> marks arrival.
+<ul><li><code>scrollToScene</code> uses the rendered height (like the pin math) and takes an</li></ul>
+  optional <code>root</code> scroller; <code>useScenes().goTo</code> passes the root it tracks with.
+
+### React
+<ul><li><code>&lt;ScrollVarsBoot /></code> renders a tiny pre-paint script: <code>html.sv-on</code> is set</li></ul>
+  before first paint (no visible-then-hidden flash on SSR entrances) and
+  removed again after 3s if the driver never booted. Place it first in
+  <code>&lt;body></code>.
+<ul><li><code>&lt;Scenes></code> forwards <code>root</code>, <code>enter</code>, <code>exit</code>; its stage is <code>.sv-stage</code> and</li></ul>
+  returns to flow under reduced motion.
+<ul><li><code>useTrack</code> only hands the driver an <code>onScene</code> when the consumer has one, so</li></ul>
+  <code>once</code> entries are actually released.
+<ul><li>Slider autoplay wraps when the rail reaches its end (multi-slide views never</li></ul>
+  make the last slide active), and pauses on focus anywhere in the shell
+  (arrows, dots, pause button), not only inside the rail.
+
+### Slider
+<ul><li>Geometry is rect-based and container-local: active slide and <code>goTo</code> targets</li></ul>
+  no longer depend on which ancestor is the <code>offsetParent</code>; RTL mirrors
+  against the container's own right edge.
+<ul><li><code>goTo(i, false)</code> after <code>seek()</code>, and a plain click that interrupted a glide,</li></ul>
+  restore the authored <code>scroll-snap-type</code>.
+<ul><li>Orientation/drag classes follow the options on re-init and are removed on</li></ul>
+  <code>destroy()</code>; <code>state().position</code> is clamped to <code>count - 1</code>.
+
+### Presets and no-JS
+<ul><li>Knob defaults moved from <code>.sv</code> to <code>:where(:root)</code>: an author <code>:root</code></li></ul>
+  override now wins regardless of import order.
+<ul><li><code>.sv</code> resets <code>--sv-pin</code>, so a nested tracked element never reads an</li></ul>
+  ancestor's pin clock.
+<ul><li>Split entrances get the nested-ownership guard; the reduced-motion override</li></ul>
+  now outranks the nested hide rules.
+<ul><li>SSR markup carries <code>.sv</code> before the driver runs: rail, deck, curtain,</li></ul>
+  reading, counter, spread and acts render their finished state without JS
+  (<code>html:not(.sv-on)</code> rules). <code>--sv-r</code> is a registered property (initial 1).
+<ul><li><code>.sv-tilt</code> angle is a knob: <code>--sv-tilt</code> (default 14deg).</li>
+<li>compat: the transform fallback honours <code>sv-skip</code>; the ResizeObserver shim</li></ul>
+  delivers an initial observation, so legacy canvases start.
+
+### Canvas, debug, CLI, split
+<ul><li><code>setup()</code> may return a cleanup, called on <code>destroy()</code>; <code>resize()</code> also runs</li></ul>
+  once after <code>setup()</code>. The three-scene component disposes its GPU resources.
+<ul><li>Debug overlay renders element names as text, never markup.</li>
+<li>CLI: a flag value is not a positional (<code>add --dir src/ui marquee</code> works),</li></ul>
+  registry file names are validated as bare names, the fallback registry is
+  the real second host.
+<ul><li><code>split(…, { by: 'char' })</code> splits on grapheme clusters when</li></ul>
+  <code>Intl.Segmenter</code> exists (emoji and combining marks stay whole).
+<ul><li><code>--mx</code>/<code>--my</code> are clamped to -1..1.</li></ul>
+
+### Docs and release
+<ul><li>Sizes re-measured and stated once: ESM core 4.3 KB gz, driver 1.4, slider</li></ul>
+  1.8, stylesheets core 1.9 / pin 1.8 / slider 1.3 / tilt 0.5 / state 1.5 /
+  ui 0.8. Stale claims fixed across README, AGENTS, llms.txt, docs, fx
+  recipes (rotating-words <code>vertical-align</code>, split's sr-only span, "SplitText
+  gap", <code>.sv-open</code> toggle example, Parallax reads <code>--sv-view</code>, and more).
+<ul><li>e2e invariants: every fx page must render every text node without JS; the</li></ul>
+  split invariant follows the sr-only contract.
+<ul><li>Release workflow fails when CHANGELOG has no entry for the tagged version.</li>
+<li>Brand name is written ScrollVars in prose; every identifier stays</li></ul>
+  <code>scrollvars</code>.
+
+<h3>1.12.4 (2026-09-02)</h3>
+
+<ul><li><code>&lt;Split></code> / <code>split()</code> drop <code>aria-label</code> on the container (axe</li></ul>
+  <code>aria-prohibited-attr</code> on generic roles); the full text stays in a
+  visually-hidden span, the animated spans are <code>aria-hidden</code>.
+
+<h3>1.12.3 (2026-09-01)</h3>
 
 Fixes a regression from 1.7.0's drag-click fix.
 
 <ul><li><b>Slider: mouse drag no longer fights native text-selection.</b> 1.7.0</li></ul>
   removed <code>preventDefault()</code> from <code>pointerdown</code> to stop drags from eating
-  clicks on links/buttons inside slides — but that also removed the only
+  clicks on links/buttons inside slides. But that also removed the only
   thing killing the browser's native text-selection-drag. Without it, a
   drag that leaves the container starts a live selection, and the browser
-  auto-scrolls toward the pointer to extend it — fighting the slider's own
+  auto-scrolls toward the pointer to extend it. Fighting the slider's own
   <code>scrollLeft</code> writes every frame (visible as jitter/trembling, plus
   visible text selection). Fix: <code>preventDefault()</code> is back on <code>pointerdown</code>
   for mouse (kills selection-drag at the source, same as pre-1.7.0), and
-  the one real side effect — it also suppresses the browser's native
-  focus-on-mousedown — is repaired by manually restoring focus in <code>endDrag</code>
+  the one real side effect. It also suppresses the browser's native
+  focus-on-mousedown. Is repaired by manually restoring focus in <code>endDrag</code>
   when the press turns out to be a plain click, not a drag. The click event
   itself was never suppressed by <code>preventDefault</code> (confirmed in 1.7.0's own
-  fix notes), so link/button activation was never at risk — only focus was.
+  fix notes), so link/button activation was never at risk. Only focus was.
   Verified with a real mouse-drag test (Puppeteer, dragging 480px outside
   the slider): zero text selection, smooth monotonic <code>scrollLeft</code>, no
-  jitter — and a unit test locks in both halves (preventDefault fires,
+  jitter. And a unit test locks in both halves (preventDefault fires,
   focus restores on a plain click) so this can't quietly regress again.
 
 
-<h3>1.12.0 — 2026-08-27</h3>
+<h3>1.12.0 (2026-08-27)</h3>
 
 The last executable items from the review panel's path-to-9, plus launch
 readiness.
 
-<ul><li><b><code>split</code> — SplitText-lite.</b> Word/char spans carrying <code>--sv-order</code></li></ul>
+<ul><li><b><code>split</code>: SplitText-lite.</b> Word/char spans carrying <code>--sv-order</code></li></ul>
   (+ <code>--sv-count</code> on the container), aria-label kept, spans aria-hidden,
   fully restorable. Zero-wrapper: <code>data-sv-split</code> / <code>data-sv-split="char"</code>.
-  React: <code>&lt;Split></code> renders the spans <b>on the server</b> — no client-side
+  React: <code>&lt;Split></code> renders the spans <b>on the server</b>. No client-side
   splitting, no layout shift, no hydration flash. New presets <code>sv-split</code> /
   <code>sv-split-rise</code>; pairs with <code>sv-reading</code> for scrubbed text. New fx entry
   + CLI component: <code>split-reveal</code>.
@@ -286,68 +389,68 @@ readiness.
 <ul><li><b>CI</b> (GitHub Actions): build + 21 unit tests + the e2e invariants on</li></ul>
   every push/PR.
 <ul><li><b>Low-end bench profile</b>: the harness runs the 4× CPU-throttle suite</li></ul>
-  headful (headless Chrome never produces frames under throttle — found
+  headful (headless Chrome never produces frames under throttle. Found
   the hard way) and publishes <code>results/throttled-4x.json</code> + a table on
   /bench/.
 <ul><li><b>Launch assets</b>: og:image social card on every page, README hero GIF</li></ul>
   (generated by <code>harness/make-gif.mjs</code> from a real scroll), and
-  <code>article/launch-kit.md</code> — Show HN, thread, newsletter pitch, ready to
+  <code>article/launch-kit.md</code>, Show HN, thread, newsletter pitch, ready to
   fire on publish day.
 <ul><li><code>ScrollVarsBoot</code> mounts the debug overlay on <code>?sv-debug</code> (code-split;</li></ul>
   free otherwise). Release tags v1.7.0–v1.11.1 pushed.
 
 
-<h3>1.11.1 — 2026-08-27</h3>
+<h3>1.11.1 (2026-08-27)</h3>
 
 <ul><li><b><code>sv-words</code> aligns to the text baseline at any host line-height.</b> The</li></ul>
   preset used <code>vertical-align: bottom</code>, which only lined up when the host
-  line-height was ~1.15 — inside a loose-leading heading the rotating word
+  line-height was ~1.15. Inside a loose-leading heading the rotating word
   sat visibly low. Now <code>vertical-align: baseline</code>: an inline flex container
   exports its first item's baseline, so the rotator self-aligns by
   construction (all words share the same metrics, so every word lands on
   it).
-<ul><li>Demo: the pizzeria wheel is height-driven — px caps removed (58vh/46vw),</li></ul>
+<ul><li>Demo: the pizzeria wheel is height-driven. Px caps removed (58vh/46vw),</li></ul>
   and on vertical screens (<code>max-aspect-ratio: 1/1</code>) the height rules
   (52vh radius, 48vh slices) so the wheel keeps ~60vh of presence instead
   of shrinking with the width.
 
 
-<h3>1.11.0 — 2026-08-27</h3>
+<h3>1.11.0 (2026-08-27)</h3>
 
-<ul><li><b>Attribute knobs — the style attribute is now optional everywhere.</b></li></ul>
+<ul><li><b>Attribute knobs: the style attribute is now optional everywhere.</b></li></ul>
   <code>data-sv-order</code>, <code>data-sv-distance</code>, <code>data-sv-from</code>, <code>data-sv-to</code> become
   the matching CSS variables, written once on mount by <code>scan()</code> (and for
-  route-change nodes via the existing MutationObserver) — never in the
+  route-change nodes via the existing MutationObserver). Never in the
   frame loop, zero global CSS, safe for mapped CMS content where Tailwind's
   JIT can't interpolate classes. When typed CSS <code>attr()</code> settles, this
   mapping becomes pure CSS.
 <ul><li>Docs: "One knob, four ways" before/after table (style attr vs attribute</li></ul>
   vs React prop vs arbitrary class vs sv-stagger) and a Browser support
-  section on /docs/ — the full matrix plus the <code>scrollvars/compat</code> legacy
+  section on /docs/. The full matrix plus the <code>scrollvars/compat</code> legacy
   answer (previously README-only).
 <ul><li>fx: staggered-reveal and sequenced-scrub teach the attribute path in</li></ul>
   their Tailwind tabs; the sequenced-scrub preview dogfoods it.
 
 
-<h3>1.10.0 — 2026-08-27</h3>
+<h3>1.10.0 (2026-08-27)</h3>
 
-"Hitting the ceiling never means rewriting" — interop as official recipes,
+"Hitting the ceiling never means rewriting". Interop as official recipes,
 not adapter modules (no new dependencies, the scope boundary stays).
 
 <ul><li><b>Canvas harness works for WebGL/Three</b>: <code>mountEffect(canvas, { context:</li></ul>
-  null })</code> grabs no 2D context — your renderer owns the canvas, the harness
+  null })</code> grabs no 2D context. Your renderer owns the canvas, the harness
   keeps the lifecycle (DPR cap, resize, pause offscreen/hidden, delta-time,
   reduced-motion, cleanup). <code>EffectFrame</code> gains <code>canvas</code>; <code>ctx</code> is null in
   that mode. <code>useCanvasEffect</code> forwards the option.
-<ul><li><b>Two Interop fx recipes</b> (new gallery category): <code>gsap-scrub</code> — author a</li></ul>
+<ul><li><b>Two Interop fx recipes</b> (new gallery category): <code>gsap-scrub</code>: author a</li></ul>
   GSAP timeline, scrub it via <code>onPin</code> (one listener, one writer; with the
-  honest per-page bundle note) — and <code>three-scene</code> — a Three.js torus-knot
+  honest per-page bundle note) (and <code>three-scene</code>) a Three.js torus-knot
   scrubbed by the pin on the harness. Both ship CLI components
   (<code>npx scrollvars add gsap-scrub|three-scene</code>).
 <ul><li>Docs interop section links both recipes; AGENTS/llms carry the pattern.</li></ul>
 
 
-<h3>1.9.0 — 2026-08-26</h3>
+<h3>1.9.0 (2026-08-26)</h3>
 
 Driven by the third blind-review round (Kimi K3 moved 7 → 8; the remaining
 criticisms became this release).
@@ -355,9 +458,9 @@ criticisms became this release).
 <ul><li><b>Offscreen culling.</b> Entries far outside a one-viewport margin skip the</li></ul>
   per-frame <code>getBoundingClientRect</code> (IntersectionObserver-gated; entries
   with a custom <code>root</code> and <code>once</code>-completed entries are handled; tested).
-  Long pages stop paying for sections nowhere near the screen — and the
+  Long pages stop paying for sections nowhere near the screen. And the
   main bench scenario's total CPU flipped in scrollvars' favor with it.
-<ul><li><b><code>scrollvars/debug</code></b> — the devtools story: a dev overlay listing every</li></ul>
+<ul><li><b><code>scrollvars/debug</code></b>: the devtools story: a dev overlay listing every</li></ul>
   tracked element with live variable values, live badge, tracked-element
   outlines and click-to-scroll. <code>import('scrollvars/debug').then(m => m.debug())</code>.
 <ul><li><b>Honest numbers, mechanically enforced.</b> The demo footer version and</li></ul>
@@ -365,20 +468,20 @@ criticisms became this release).
   fx pages compute the engine size from the real bundle; every stale
   1.2/3.1 KB claim corrected to measured values (driver 1.4 KB gz, full
   core 3.9, slider 1.7, core.css 1.8). The demo page's inline driver is
-  labeled as that page's teaching copy — the package in dist/ is the
+  labeled as that page's teaching copy. The package in dist/ is the
   source of truth.
 <ul><li><b>Benchmark: medians of 5 runs</b> (was 3) and a precisely-stated headline</li></ul>
-  claim: not faster frames — the same frames for ~12× less bundle and a
+  claim: not faster frames: the same frames for ~12× less bundle and a
   fraction of the heap, with total CPU trading blows (scrollvars wins
   shallow scenarios, batched GSAP wins deep subtrees; both published).
 
 
-<h3>1.8.0 — 2026-08-25</h3>
+<h3>1.8.0 (2026-08-25)</h3>
 
-The "path to 8" release — everything the external review panel said would
+The "path to 8" release. Everything the external review panel said would
 move the score, minus the parts only the real world can provide.
 
-<ul><li><b><code>sv-range</code> — sequenced scrub choreography without a timeline.</b> Each</li></ul>
+<ul><li><b><code>sv-range</code>: sequenced scrub choreography without a timeline.</b> Each</li></ul>
   child of <code>.sv-range</code> derives <code>--sv-r</code> (0..1) from its <code>--sv-from</code>/<code>--sv-to</code>
   slice of the parent clock (<code>--sv-pin</code>, else <code>--sv-t</code>); <code>sv-range-rise</code> is
   the ready-made flavor; <code>mapRange(t, from, to, ease?)</code> is the JS twin for
@@ -386,8 +489,8 @@ move the score, minus the parts only the real world can provide.
   state. New fx entry + CLI component: <code>sequenced-scrub</code>.
 <ul><li><b>Custom root scroller + configurable live band.</b> <code>track(el, { root })</code></li></ul>
   measures against an inner scroll container (root rects read once per root
-  per frame, still strictly read-then-write); <code>enter</code>/<code>exit</code> options — also
-  <code>data-sv-enter</code>/<code>data-sv-exit</code> and <code>&lt;Track></code> props — replace the
+  per frame, still strictly read-then-write); <code>enter</code>/<code>exit</code> options: also
+  <code>data-sv-enter</code>/<code>data-sv-exit</code> and <code>&lt;Track></code> props. Replace the
   hard-coded 75%/25% band.
 <ul><li><b>Reproducible benchmark.</b> <code>demo/bench/harness</code> (puppeteer-core + CDP)</li></ul>
   reproduces every published number: symmetric pairings both directions
@@ -396,7 +499,7 @@ move the score, minus the parts only the real world can provide.
   bench page tables regenerate from <code>results/latest.json</code>
   (<code>scripts/bench-tables.mjs</code>); the inline engine resyncs from dist on
   every build; the 900-trigger Lighthouse row is labeled a stress test.
-<ul><li><b>The style-recalc curve, published — including where it loses.</b></li></ul>
+<ul><li><b>The style-recalc curve, published. Including where it loses.</b></li></ul>
   <code>?deep=N</code> gives every box a realistic subtree; at 50 nodes/box the
   batched GSAP build wins total CPU. The measured curve and the authoring
   rule (keep tracked elements thin; static content next to, not inside,
@@ -406,17 +509,17 @@ move the score, minus the parts only the real world can provide.
   place; visible pause/resume control whenever autoplay is set (<code>.sv-pause</code>,
   arrow knob family); <code>aria-live</code> off-while-rotating / polite otherwise;
   <code>renderDot</code> keeps focus indication. Marquee pauses on focus-within.
-<ul><li><b>First React-layer tests</b> — <code>renderToStaticMarkup</code> in plain node (also</li></ul>
+<ul><li><b>First React-layer tests</b>: <code>renderToStaticMarkup</code> in plain node (also</li></ul>
   guards SSR): carousel contract, <code>&lt;Scenes></code> prop hygiene, inert marquee
   duplicate. react/react-dom join as devDependencies.
 <ul><li><b>Human docs</b> at /docs/: quickstart, the six variables, every export,</li></ul>
   preset vocabulary, coming-from-GSAP mapping (with the honest "keep GSAP"
   row), when-NOT-to-use, interop recipe, per-surface accessibility
-  contract, troubleshooting, rendered changelog — version visible on every
+  contract, troubleshooting, rendered changelog. Version visible on every
   gallery page.
 
 
-<h3>1.7.0 — 2026-08-25</h3>
+<h3>1.7.0 (2026-08-25)</h3>
 
 Fix release driven by a four-model external review panel (blind site
 evaluations + source-level code reviews). Everything below was independently
@@ -427,7 +530,7 @@ found by at least one reviewer and verified before fixing.
 <ul><li><b>Nested scrollers now work</b>: the scroll listener runs in the capture</li></ul>
   phase, so scrolls inside modals and inner panels reach the driver.
 <ul><li><b>Travel/pin math uses the rendered box</b> (<code>rect.height</code>) instead of</li></ul>
-  <code>scrollHeight</code> — progress reaches 1 on fixed-height elements with
+  <code>scrollHeight</code>. Progress reaches 1 on fixed-height elements with
   overflowing content.
 <ul><li><b><code>once</code> is fire-and-forget</b>: after going live, entries with no</li></ul>
   continuous outputs (travel/pin/scenes/callbacks) stop paying the
@@ -450,7 +553,7 @@ found by at least one reviewer and verified before fixing.
 
 <p class="grp">React:</p>
 
-<ul><li><b><code>&lt;Slider ref></code> works</b> — the forwarded handle is a stable proxy that</li></ul>
+<ul><li><b><code>&lt;Slider ref></code> works</b>: the forwarded handle is a stable proxy that</li></ul>
   delegates at call time (it was permanently <code>null</code>).
 <ul><li><b><code>&lt;Scenes></code> honors its declared props</b>: tracking options reach the</li></ul>
   driver, <code>onScene</code>/<code>as</code>/VarProps work, and nothing leaks to the DOM.
@@ -476,28 +579,28 @@ found by at least one reviewer and verified before fixing.
   them stacked in one grid cell.
 <ul><li>The compat drift preset carries an <code>opacity: 1</code> fallback where <code>max()</code></li></ul>
   doesn't parse (the advertised Chrome 61 floor).
-<ul><li><code>sideEffects</code> glob is <code>**/*.css</code> — <code>styles/*.css</code> imports survive</li></ul>
+<ul><li><code>sideEffects</code> glob is <code>**/*.css</code>, <code>styles/*.css</code> imports survive</li></ul>
   tree-shaking.
 <ul><li><code>engines.node >= 18</code>; <code>pretest</code> builds before testing; <code>prepare</code> builds</li></ul>
   on git installs (<code>npm i github:aduptive/scrollvars</code> works).
 <ul><li>README: documented stagger default corrected to 90ms (matches the CSS).</li></ul>
 
 
-<h3>1.6.0 — 2026-08-24</h3>
+<h3>1.6.0 (2026-08-24)</h3>
 
 <ul><li><b>The fx gallery</b> (/fx/ on the demo site): a growing library of</li></ul>
-  copy-paste effects — live preview, Tailwind + CSS + React tabs with copy
+  copy-paste effects. Live preview, Tailwind + CSS + React tabs with copy
   button, knobs documented, per-gallery llms.txt for AI ingestion. Built
   from one data file (<code>scripts/fx-build.mjs</code>); 8 seed effects.
 <ul><li><b>shadcn-style CLI</b>: <code>npx scrollvars list</code> / <code>npx scrollvars add &lt;slug></li></ul>
-  [--dir] [--force]</code> — fetches a remote registry (registry.json on the fx
+  [--dir] [--force]</code>. Fetches a remote registry (registry.json on the fx
   site) and writes a complete component file into the project; the library
   grows without package releases.
 
-<h3>1.5.0 — 2026-08-24</h3>
+<h3>1.5.0 (2026-08-24)</h3>
 
 <ul><li><b>React component kit</b>: <code>&lt;Slider></code>/<code>&lt;Slide></code> (the Swiper replacement:</li></ul>
-  <code>perView</code> number or responsive map — breakpoints ARE media queries; <code>gap</code>,
+  <code>perView</code> number or responsive map. Breakpoints ARE media queries; <code>gap</code>,
   <code>span</code> per slide, arrows/dots chrome on stable classes + var knobs,
   <code>prevIcon</code>/<code>nextIcon</code>/<code>renderDot</code>, external control via ref exposing the
   full SliderHandle, <code>autoplay</code> that pauses on hover/offscreen/hidden),
@@ -509,45 +612,45 @@ found by at least one reviewer and verified before fixing.
   accordion). <code>useSlider</code> now returns the handle and accepts
   duration/axis.
 
-<h3>1.4.0 — 2026-08-24</h3>
+<h3>1.4.0 (2026-08-24)</h3>
 
-<ul><li><b><code>sv-spread</code></b> — the deck-to-grid pattern: children live in their final</li></ul>
+<ul><li><b><code>sv-spread</code></b>: the deck-to-grid pattern: children live in their final</li></ul>
   flex row and a per-card translate collapses them onto the center (slight
   fan) while <code>--sv-spread</code> is 0. Two clocks: <code>.sv-spread-in</code> plays on
   arrival (sv-live + transition + stagger, re-deals on re-entry), or map
   the variable from <code>--sv-t</code>/<code>--sv-pin</code> to scrub it. Demo case 18, zero
   bespoke JS.
 
-<h3>1.3.0 — 2026-08-24</h3>
+<h3>1.3.0 (2026-08-24)</h3>
 
-<ul><li><b><code>sv-acts</code> — multi-act timelines in pure CSS</b>: a registered custom</li></ul>
+<ul><li><b><code>sv-acts</code>: multi-act timelines in pure CSS</b>: a registered custom</li></ul>
   property (<code>--sv-act</code>) transitions 0 → N when <code>sv-open</code> (click) or
   <code>sv-live</code> (scroll) arrives; acts are the same <code>clamp()</code> slices as the
-  scroll scenes — one idiom for every timeline. Relative retiming
+  scroll scenes. One idiom for every timeline. Relative retiming
   (<code>--sv-acts-duration</code> rescales all acts), reversible and interruptible
   by construction. Older browsers snap to the finished state.
 
-<h3>1.2.0 — 2026-08-24</h3>
+<h3>1.2.0 (2026-08-24)</h3>
 
-<ul><li><b>Click states — the third input</b>: <code>toggles()</code> (wired by ScrollVarsBoot) —</li></ul>
-  <code>data-sv-toggle</code>/<code>data-sv-target</code> flip a class, write <code>--sv-state</code> and keep
+<ul><li><b>Click states: the third input</b>: <code>toggles()</code> (wired by ScrollVarsBoot):</li></ul>
+<code>data-sv-toggle</code>/<code>data-sv-target</code> flip a class, write <code>--sv-state</code> and keep
   <code>aria-expanded</code> in sync. Deliberately one click = one state change; no
   timeline engine.
-<ul><li><b>Presets</b> (<code>styles/state.css</code>): <code>sv-pop</code> — popover/dialog/panel entry-exit</li></ul>
-  via <code>@starting-style</code> + <code>allow-discrete</code>; <code>sv-words</code> — rotating words
+<ul><li><b>Presets</b> (<code>styles/state.css</code>): <code>sv-pop</code>: popover/dialog/panel entry-exit</li></ul>
+  via <code>@starting-style</code> + <code>allow-discrete</code>; <code>sv-words</code>: rotating words
   (clipped column, <code>--sv-word: n</code>), promoted from the pizza demo.
 
-<h3>1.1.0 — 2026-08-23</h3>
+<h3>1.1.0 (2026-08-23)</h3>
 
-<ul><li><b>Modular stylesheets</b>: <code>scrollvars/styles/core.css</code> (1.2 KB gz —</li></ul>
-  entrances, stagger, drift, native view()-tier), <code>pin.css</code> (1.3 KB),
+<ul><li><b>Modular stylesheets</b>: <code>scrollvars/styles/core.css</code> (1.2 KB gz.</li></ul>
+Entrances, stagger, drift, native view()-tier), <code>pin.css</code> (1.3 KB),
   <code>slider.css</code> (0.4 KB), <code>tilt.css</code> (0.5 KB). <code>styles.css</code> remains as the
-  generated aggregate (scripts/build-styles.mjs) — fully backwards
+  generated aggregate (scripts/build-styles.mjs). Fully backwards
   compatible, selector set verified identical.
-<ul><li>README "Pay for what you use": measured per-import JS costs — a typical</li></ul>
+<ul><li>README "Pay for what you use": measured per-import JS costs: a typical</li></ul>
   reveal page ships ~2.2 KB gzipped total (track + core.css).
 
-<h3>1.0.0 — 2026-08-21</h3>
+<h3>1.0.0 (2026-08-21)</h3>
 
 <ul><li><b>API freeze.</b> The 0.x surface ships as-is: driver (<code>track</code>, <code>scan</code>,</li></ul>
   <code>slider</code>, <code>trackPointer</code>, <code>scrollToScene</code>, <code>refresh</code>), React layer
@@ -559,32 +662,32 @@ found by at least one reviewer and verified before fixing.
   <code>prepublishOnly</code> runs build + tests. README gains a Defaults table.
 <ul><li>Demo tooling: <code>npm run demo:sync</code> / <code>demo:deploy</code> (dist-inline sync with</li></ul>
   parse checks; deploy re-points the alias and verifies). Driver core test
-  suite added — 9 test files green.
+  suite added, 9 test files green.
 
-<h3>0.12.0 — 2026-08-20</h3>
+<h3>0.12.0 (2026-08-20)</h3>
 
-<ul><li><b><code>scrollvars/compat</code></b> — opt-in legacy module: ResizeObserver stub</li></ul>
+<ul><li><b><code>scrollvars/compat</code></b>: opt-in legacy module: ResizeObserver stub</li></ul>
   (viewport-resize backed), always-visible IntersectionObserver stub, and a
   <code>transform:</code>-based preset fallback stylesheet (no <code>:is()</code>/<code>clamp()</code>/
   <code>min()</code>). Free on modern browsers (feature-checks and exits). With the
   consumer bundler downleveling ES2020, the animated floor extends to
   ~Chrome 61 / Firefox 60 / Safari 11.
 
-<h3>0.11.4 — 2026-08-20</h3>
+<h3>0.11.4 (2026-08-20)</h3>
 
 <ul><li>Keyboard navigation glides: arrow keys (axis-aware), Home and End go</li></ul>
   through the same soft glide instead of native 40px key-scroll steps +
   hard snap settle. Containers are made focusable (<code>tabindex=0</code>) so this
   works in Safari too.
 
-<h3>0.11.3 — 2026-08-20</h3>
+<h3>0.11.3 (2026-08-20)</h3>
 
-<ul><li>Mouse drag: <code>preventDefault()</code> on pointerdown — native text selection was</li></ul>
+<ul><li>Mouse drag: <code>preventDefault()</code> on pointerdown: native text selection was</li></ul>
   starting under the drag, and selection auto-scroll inside the scrollable
   container fought the gesture (the opposite-direction tug). Note: mousedown
   no longer focuses elements inside slides; irrelevant for carousels.
 
-<h3>0.11.2 — 2026-08-20</h3>
+<h3>0.11.2 (2026-08-20)</h3>
 
 <ul><li>Wheel-assist only reacts when the gesture's dominant axis matches the</li></ul>
   slider's axis: vertical page scrolling over the carousel (trackpad
@@ -592,122 +695,122 @@ found by at least one reviewer and verified before fixing.
   <code>goTo(nearest)</code> and made multi-slide travel feel impossible. Quiet
   window 160 → 200ms.
 
-<h3>0.11.1 — 2026-08-20</h3>
+<h3>0.11.1 (2026-08-20)</h3>
 
 <ul><li>Mouse drag survives leaving the container: move/up listeners live on</li></ul>
   <code>window</code> while dragging (pointer capture on scrollable containers is
-  unreliable) — release happens on the real pointerup, anywhere on the page.
+  unreliable). Release happens on the real pointerup, anywhere on the page.
 
-<h3>0.11.0 — 2026-08-20</h3>
+<h3>0.11.0 (2026-08-20)</h3>
 
 <ul><li><b>Slider state &amp; chaining</b>: <code>state()</code> and <code>onScroll(state)</code> expose</li></ul>
   active/count/position (continuous)/progress/dragging/gliding; container
-  gets <code>--sv-progress</code>; new <code>seek(progress)</code> for followers — two sliders
+  gets <code>--sv-progress</code>; new <code>seek(progress)</code> for followers: two sliders
   chain in one line (Swiper controller/thumbs, unidirectional).
 <ul><li><b><code>axis: 'y'</code></b>: vertical sliders (<code>.sv-slider-y</code>), same API.</li>
 <li>Size reference measured: this module 3.1 KB min / 1.4 KB gzip vs Swiper 11</li></ul>
   bundle 151 KB min / 42 KB gzip (+18 KB CSS).
 
-<h3>0.10.3 — 2026-08-20</h3>
+<h3>0.10.3 (2026-08-20)</h3>
 
 <ul><li>Glide is now an exponential lerp (velocity ∝ remaining distance) instead of</li></ul>
   a fixed-duration tween: short drag-release settles feel as soft as long
-  button glides — the tween front-loaded short distances and read as a dry
+  button glides. The tween front-loaded short distances and read as a dry
   snap. Retargets stay continuous. <code>duration</code> calibrates the settle time.
 
-<h3>0.10.2 — 2026-08-20</h3>
+<h3>0.10.2 (2026-08-20)</h3>
 
 <ul><li>Rapid <code>next()</code>/<code>prev()</code> clicks accumulate: relative steps count from the</li></ul>
   in-flight glide destination (pending target), not from the lagging active
-  index — five fast clicks land five slides ahead.
+  index. Five fast clicks land five slides ahead.
 
-<h3>0.10.1 — 2026-08-20</h3>
+<h3>0.10.1 (2026-08-20)</h3>
 
 <ul><li>Drag release and trackpad pan now glide too: snap is suspended via inline</li></ul>
   style for the whole interaction (authored inline value preserved), and a
   wheel-quiet debounce replaces the native fast settle with the slow glide.
   Skipped on instances authored with <code>scroll-snap-type: none</code>.
-<ul><li>Grab cursor only on draggable instances (<code>sv-draggable</code>) — <code>drag: false</code></li></ul>
+<ul><li>Grab cursor only on draggable instances (<code>sv-draggable</code>), <code>drag: false</code></li></ul>
   sliders no longer advertise a hand they can't honor.
 
-<h3>0.10.0 — 2026-08-20</h3>
+<h3>0.10.0 (2026-08-20)</h3>
 
 <ul><li><b>Slider glide</b>: own eased scrollLeft animation (ease-out) with a</li></ul>
-  configurable <code>duration</code> for next/prev/goTo AND the drag release — native
+  configurable <code>duration</code> for next/prev/goTo AND the drag release. Native
   smooth scrolling is fast and not configurable. Snap suspends while gliding
   (<code>sv-gliding</code>); pointerdown cancels the glide (the user takes over).
 
-<h3>0.9.0 — 2026-08-20</h3>
+<h3>0.9.0 (2026-08-20)</h3>
 
-<ul><li><b><code>slider()</code> / <code>useSlider</code></b> — featherweight Swiper: native scroll +</li></ul>
+<ul><li><b><code>slider()</code> / <code>useSlider</code></b>: featherweight Swiper: native scroll +</li></ul>
   scroll-snap, mouse drag, active-slide observer as <code>--sd</code> per slide (signed
   distance from center) + <code>.sv-active</code>, <code>next/prev/goTo</code>. <code>.sv-slider</code> CSS
   in styles.css.
 <ul><li>Demo case 10/11: regional scroll-snap (onLive toggles the magnet) and the</li></ul>
-  four snap flavors. Case 12: the treasure map — scroll drives a camera along
+  four snap flavors. Case 12: the treasure map: scroll drives a camera along
   an SVG path with heading + counter-rotating stations.
 
-<h3>0.8.0 — 2026-08-20</h3>
+<h3>0.8.0 (2026-08-20)</h3>
 
-<ul><li><b><code>onPin</code> callback</b> on TrackOptions and the React layer — raw 0..1 across</li></ul>
+<ul><li><b><code>onPin</code> callback</b> on TrackOptions and the React layer. Raw 0..1 across</li></ul>
   the pinned stretch, for frame scrubbing and camera tours. The demo already
   taught it; now the package has it.
 <ul><li>Demo code samples audited against the current API: <code>--sv-y</code> leftover fixed,</li></ul>
   deck/reading/counter samples now show the official presets, <code>useScenes</code>
   misuse replaced by <code>useTrack({ scenes })</code>.
 
-<h3>0.7.0 — 2026-08-19</h3>
+<h3>0.7.0 (2026-08-19)</h3>
 
 <ul><li><b>Zero-wrapper mode</b>: <code>scan()</code> tracks every <code>[data-sv]</code> element (options</li></ul>
   via <code>data-sv-once/pin/travel/scenes</code>) and follows DOM mutations;
-  <code>&lt;ScrollVarsBoot /></code> wraps it for Next.js layouts — pages stay 100% RSC.
+  <code>&lt;ScrollVarsBoot /></code> wraps it for Next.js layouts. Pages stay 100% RSC.
 <ul><li><b>Presets promoted from the demo</b>: <code>sv-deck</code> (pinned card pile),</li></ul>
   <code>sv-reading</code> (guided reading), <code>sv-counter</code> (<code>@property</code> + <code>counter()</code>).
-<ul><li>ESM-correct relative imports (<code>.js</code> extensions) — dist now runs in plain</li></ul>
+<ul><li>ESM-correct relative imports (<code>.js</code> extensions). Dist now runs in plain</li></ul>
   Node too, not only through bundlers.
 
-<h3>0.6.0 — 2026-08-19</h3>
+<h3>0.6.0 (2026-08-19)</h3>
 
 <ul><li><b><code>--sv-view</code> reformulated</b>: now the signed position relative to the live</li></ul>
-  band — the same 75%/25% lines the <code>sv-live</code> class uses, so the variable and
+  band. The same 75%/25% lines the <code>sv-live</code> class uses, so the variable and
   the class always agree. −1 with the top at the viewport's bottom edge,
   0 across the whole band, +1 once the bottom clears the exit line.
   Entrance/exit ramps are shorter than before (0.25 vh each); <code>sv-drift</code>
   reacts a touch snappier near the edges.
 <ul><li><code>LICENSE</code> file and this changelog.</li></ul>
 
-<h3>0.5.0 — 2026-08-19</h3>
+<h3>0.5.0 (2026-08-19)</h3>
 
 <ul><li><b>Attribute API for React</b> (Felipe's feedback): <code>order</code>, <code>distance</code>,</li></ul>
-  <code>stagger</code>, <code>duration</code>, <code>ease</code> as props on <code>Track</code>/<code>Reveal</code>/<code>Parallax</code> —
-  they compile to the CSS variables; new <code>&lt;Item effect="rise|fade|slide-l|
+  <code>stagger</code>, <code>duration</code>, <code>ease</code> as props on <code>Track</code>/<code>Reveal</code>/<code>Parallax</code>.
+They compile to the CSS variables; new <code>&lt;Item effect="rise|fade|slide-l|
   slide-r|drift|tilt"></code> for children. The variables remain the real API.
 <ul><li><code>sv-rail</code> fixed on wide windows: starts one viewport offscreen right, ends</li></ul>
   right-edge aligned (<code>min()</code> keeps it moving when the track fits).
 
-<h3>0.4.0 — 2026-08-18</h3>
+<h3>0.4.0 (2026-08-18)</h3>
 
-<ul><li><b><code>scrollvars/canvas</code></b>: <code>mountEffect</code> / <code>useCanvasEffect</code> — lifecycle</li></ul>
+<ul><li><b><code>scrollvars/canvas</code></b>: <code>mountEffect</code> / <code>useCanvasEffect</code>: lifecycle</li></ul>
   harness for ambient (time-driven) canvas effects: resize, DPR cap (2),
   delta-time loop, auto-pause offscreen and on hidden tab, live
   reduced-motion flag, full cleanup. Simulations stay in userland.
 <ul><li><code>AGENTS.md</code> (agent-facing docs, shipped in the npm package) and</li></ul>
   <code>test/canvas.test.mjs</code>.
 
-<h3>0.3.0 — 2026-08-18</h3>
+<h3>0.3.0 (2026-08-18)</h3>
 
 <ul><li><b>Pointer module</b>: <code>trackPointer</code> / <code>usePointer</code> write <code>--mx</code>/<code>--my</code></li></ul>
   (−1..1 from the element's center) with one delegated listener; <code>sv-tilt</code>
   preset (3D tilt + glare).
 
-<h3>0.2.0 — 2026-08-17</h3>
+<h3>0.2.0 (2026-08-17)</h3>
 
 <ul><li>Vocabulary finalized: <code>--sv-view</code>, <code>--sv-t</code>, <code>--sv-pin</code>, <code>--sv-scene</code>,</li></ul>
   <code>.sv-live</code>, <code>html.sv-on</code> guard. React layer: <code>Track</code>, <code>Reveal</code>, <code>Parallax</code>,
   <code>Scenes</code>, <code>useTrack</code>, <code>useScenes</code>. Presets incl. <code>sv-curtain-l/r</code>,
   <code>sv-rail</code>, <code>sv-auto</code> stagger, <code>sv-view-*</code> pure-CSS tier.
 
-<h3>0.1.0 — 2026-08-17</h3>
+<h3>0.1.0 (2026-08-17)</h3>
 
 <ul><li>First cut: single global driver (one passive scroll listener + one rAF,</li></ul>
   batched read → write), CSS variables as the entire output surface, zero

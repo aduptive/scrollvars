@@ -1,8 +1,8 @@
-/* ScrollVars — slider styles (the class is added by slider()). */
+/* ScrollVars: slider styles (the class is added by slider()). */
 
 /* Slider: native rails + snap magnetism; the class is added by slider().
    Slides get --sd (signed distance from center, in slide widths) and
-   .sv-active — any CSS reading them animates the carousel. */
+   .sv-active. Any CSS reading them animates the carousel. */
 .sv-slider {
   display: flex;
   gap: var(--sv-gap, 16px);
@@ -35,7 +35,7 @@
 
 
 /* Columns: set --sv-per-view (fractional = peek) and breakpoints ARE media
-   queries — override the var per breakpoint (or via Tailwind:
+   queries. Override the var per breakpoint (or via Tailwind:
    "[--sv-per-view:1.2] md:[--sv-per-view:2.5]"). Slides can span columns
    with --sv-span. Gate class sv-cols keeps natural sizing the default. */
 .sv-slider.sv-cols > * {
@@ -48,7 +48,7 @@
 }
 
 /* Chrome: arrows + dots with stable class hooks. Appearance and position
-   are var knobs — override them globally (:root / .sv-slider-shell) for the
+   are var knobs. Override them globally (:root / .sv-slider-shell) for the
    whole project, or on one slider (className/style) for that instance.
    Beyond the knobs, restyle the classes directly or pass custom icons /
    renderDot in React. */

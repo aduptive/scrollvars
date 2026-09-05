@@ -1,5 +1,5 @@
 /**
- * Dev overlay — the "what is the driver doing" panel. Zero coupling with the
+ * Dev overlay: the "what is the driver doing" panel. Zero coupling with the
  * core: it finds tracked elements by the `.sv` class and reads their computed
  * variables each frame. Costs what it costs; never ship it enabled.
  *
@@ -58,10 +58,19 @@ export function debug({ outlines = true }: DebugOptions = {}): () => void {
         .filter(Boolean)
         .join(' · ')
       const live = el.classList.contains('sv-live')
-      row.innerHTML =
-        `<span style="color:${live ? '#6ee7a0' : '#8f8ca6'}">${live ? '●' : '○'}</span> ` +
-        `<span style="color:#cfcbe4">${name(el)}</span> ` +
-        `<span style="color:#8f8ca6">${vals}</span>`
+      const span = (color: string, text: string) => {
+        const s = document.createElement('span')
+        s.style.color = color
+        s.textContent = text
+        return s
+      }
+      row.replaceChildren(
+        span(live ? '#6ee7a0' : '#8f8ca6', live ? '●' : '○'),
+        ' ',
+        span('#cfcbe4', name(el)), // ids/classes are page data, not markup
+        ' ',
+        span('#8f8ca6', vals)
+      )
     })
     rows.forEach((row, el) => {
       if (!el.isConnected) {

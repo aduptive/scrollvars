@@ -12,7 +12,7 @@
  *   node e2e-invariants.mjs
  */
 import { createServer } from 'node:http'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
@@ -39,6 +39,28 @@ let failures = 0
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok ' : 'FAIL'} ${name}${ok ? '' : ' — ' + detail}`)
   if (!ok) failures++
+}
+
+// ── 0. Every fx page, no JS: no text hidden, no stage clipping content away ──
+{
+  const pages = readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html')
+  const page = await browser.newPage()
+  await page.setJavaScriptEnabled(false)
+  const bad = []
+  for (const f of pages) {
+    await page.goto(`${base}/fx/${f}`, { waitUntil: 'load' })
+    const hidden = await page.evaluate(() => {
+      const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+      return [...document.body.querySelectorAll('*')].filter((el) => {
+        if (!own(el) || el.closest('[aria-hidden="true"], script, style, template')) return false
+        const cs = getComputedStyle(el)
+        return cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none'
+      }).length
+    })
+    if (hidden > 0) bad.push(`${f}:${hidden}`)
+  }
+  await page.close()
+  check(`no-JS: ${pages.length} fx pages render every text node`, bad.length === 0, bad.join(' '))
 }
 
 // ── 1. No JS → fully visible ──

@@ -126,3 +126,44 @@ test('scan writes data-sv-* knob attributes as CSS variables, once', async () =>
   assert.equal(late.vars['--sv-to'], '0.7')
   stop()
 })
+
+test('scan releases split closures when the subtree is removed', async () => {
+  global.window = { innerHeight: 1000, addEventListener: () => {}, matchMedia: () => ({ matches: false, addEventListener: () => {} }) }
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  let mutationCallback
+  global.MutationObserver = class { constructor(cb) { mutationCallback = cb } observe() {} disconnect() {} }
+  global.HTMLElement = class {}
+  const made = []
+  global.document = {
+    documentElement: { classList: { add: () => {} } },
+    body: { querySelectorAll: () => [] },
+    visibilityState: 'visible',
+    querySelectorAll: () => [],
+    createElement: () => { const n = { style: { setProperty() {} }, setAttribute() {}, textContent: '' }; made.push(n); return n },
+    createTextNode: () => ({}),
+  }
+  const el = new global.HTMLElement()
+  let html = 'Hello world'
+  Object.defineProperty(el, 'innerHTML', { get: () => html, set: (v) => (html = v) })
+  Object.assign(el, {
+    attrs: { 'data-sv-split': '' },
+    textContent: 'Hello world',
+    style: { setProperty() {}, removeProperty() {} },
+    classList: { add() {}, remove() {} },
+    appendChild() {},
+    hasAttribute: (n) => n in el.attrs,
+    getAttribute: (n) => el.attrs[n] ?? null,
+    matches: () => false,
+    querySelectorAll: () => [],
+  })
+
+  const { scan } = await import('../dist/core/scan.js?splitcleanup')
+  const stop = scan()
+  mutationCallback([{ addedNodes: [el], removedNodes: [] }])
+  assert.equal(html, '', 'split emptied the element and rebuilt it from spans')
+  assert.ok(made.length >= 3, 'sr-only span + word spans created')
+
+  mutationCallback([{ addedNodes: [], removedNodes: [el] }])
+  assert.equal(html, 'Hello world', 'removal restored the original markup (closure released)')
+  stop()
+})

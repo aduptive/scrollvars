@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Three.js scene on the pin · ScrollVars fx</title>
-<meta name="description" content="A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders. Copy-paste in Tailwind, CSS or React.">
+<title>Pinned timeline · ScrollVars fx</title>
+<meta name="description" content="Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -117,7 +117,7 @@
       </details>
       <details open><summary>Interop</summary>
         <a href="gsap-scrub.html">GSAP timeline under scrub</a>
-        <a href="three-scene.html" aria-current="page">Three.js scene on the pin</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
       </details>
       <details open><summary>Text</summary>
         <a href="split-reveal.html">Split reveal</a>
@@ -132,7 +132,7 @@
       </details>
       <details open><summary>Sections</summary>
         <a href="hero-cinematic.html">Cinematic hero</a>
-        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="timeline-scrub.html" aria-current="page">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
       </details>
@@ -140,46 +140,40 @@
   </details>
 </div></aside>
 <main>
-  <h1>Three.js scene on the pin</h1>
-  <p class="tag">A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</p>
-  <p class="meta"><b>Use it for:</b> Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.<br><b>Knobs:</b> mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures</p>
-  <div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
-    <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
+  <h1>Pinned timeline</h1>
+  <p class="tag">Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.</p>
+  <p class="meta"><b>Use it for:</b> Company history, case-study process, roadmap, "how we got here". Any ordered story.<br><b>Knobs:</b> --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)</p>
+  <style>
+.tl { --tl-from: 2019; --tl-span: 7; height: 320vh; }
+.tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
+.tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
+  counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
+.tl-year::after { content: counter(tl-year); }
+.tl-cap { display: block; margin-top: 10px; color: var(--muted); font: 600 12px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.tl-track { position: relative; padding-left: 34px; }
+.tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
+.tl-items { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(18px, 4vh, 40px); text-align: left; }
+.tl-items > li { position: relative; --sv-distance: 1.6rem; }
+.tl-items > li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); box-shadow: 0 0 0 4px #17151f; }
+.tl-items b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--accent); margin-bottom: 4px; }
+.tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
+@media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
+</style>
+<div data-sv data-sv-pin class="fxouter tl">
+  <div class="fxsticky tl-sticky">
+    <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
+    <div class="tl-track"><i class="tl-line"></i>
+      <ol class="sv-range sv-range-rise tl-items">
+        <li data-sv-from="0" data-sv-to=".28"><b>2019</b><p>First client site on a hand-rolled scroll engine.</p></li>
+        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>The engine becomes a package; five sites share one codebase.</p></li>
+        <li data-sv-from=".46" data-sv-to=".76"><b>2024</b><p>Benchmarks published, CSS-variable API frozen.</p></li>
+        <li data-sv-from=".7" data-sv-to="1"><b>2026</b><p>ScrollVars ships on npm. This timeline is one pinned block and four ranges.</p></li>
+      </ol>
+    </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="sv-canvas.js"></script>
-<script>addEventListener('load', () => {
-  let progress = 0
-  let renderer, scene, camera, mesh
-  SVC.mountEffect(document.getElementById('fxthree'), {
-    context: null, // WebGL owns the canvas; the harness owns the lifecycle
-    setup(fx) {
-      renderer = new THREE.WebGLRenderer({ canvas: fx.canvas, alpha: true, antialias: true })
-      scene = new THREE.Scene()
-      camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100)
-      mesh = new THREE.Mesh(
-        new THREE.TorusKnotGeometry(1.1, 0.34, 160, 24),
-        new THREE.MeshNormalMaterial({ wireframe: true })
-      )
-      scene.add(mesh)
-    },
-    resize(fx) {
-      renderer.setPixelRatio(fx.dpr)
-      renderer.setSize(fx.width, fx.height, false)
-      camera.aspect = fx.width / fx.height
-      camera.updateProjectionMatrix()
-    },
-    frame(fx, dt) {
-      mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
-      mesh.rotation.x = progress * Math.PI
-      camera.position.z = 6 - progress * 2.2
-      renderer.render(scene, camera)
-    },
-  })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
-})</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -187,46 +181,68 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]"&gt;
+  &lt;div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12"&gt;
+    &lt;span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
+      [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"&gt;&lt;/span&gt;
+    &lt;ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8"&gt;
+      &lt;li data-sv-from="0"   data-sv-to=".28"&gt;&lt;b class="font-mono text-xs text-violet-400"&gt;2019&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+      &lt;li data-sv-from=".22" data-sv-to=".52"&gt;&lt;b class="font-mono text-xs text-violet-400"&gt;2021&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+      &lt;li data-sv-from=".7"  data-sv-to="1"&gt;&lt;b class="font-mono text-xs text-violet-400"&gt;2026&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+    &lt;/ol&gt;
   &lt;/div&gt;
 &lt;/div&gt;
-&lt;!-- same JS as the CSS tab, Tailwind only does the skeleton here --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="outer"&gt;              &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;&lt;canvas id="scene"&gt;&lt;/canvas&gt;&lt;/div&gt;
+&lt;!-- the filling line: a pseudo-element with [scale:1_var(--sv-pin,1)] origin-top (see CSS tab) --&gt;</code></pre>
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7"&gt;   &lt;!-- pin helper: the value is the scroll length --&gt;
+  &lt;div class="sv-stage tl-sticky"&gt;                                                     &lt;!-- preset: sticky viewport; flow again without JS --&gt;
+    &lt;span class="tl-year"&gt;&lt;/span&gt;
+    &lt;div class="tl-track"&gt;&lt;i class="tl-line"&gt;&lt;/i&gt;
+      &lt;ol class="sv-range sv-range-rise tl-items"&gt;                              &lt;!-- preset: --sv-r per child --&gt;
+        &lt;li data-sv-from="0"   data-sv-to=".28"&gt;&lt;b&gt;2019&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+        &lt;li data-sv-from=".22" data-sv-to=".52"&gt;&lt;b&gt;2021&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+        &lt;li data-sv-from=".7"  data-sv-to="1"&gt;&lt;b&gt;2026&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
+      &lt;/ol&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 &lt;/div&gt;
 
-&lt;script type="module"&gt;
-  import { track } from 'scrollvars'
-  import { mountEffect } from 'scrollvars/canvas'
-  import * as THREE from 'three'
+.tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
+/* the year is a CSS counter driven by the pin. No JS, no innerText */
+.tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
+.tl-year::after { content: counter(tl-year); }
+/* the line fills with the pin */
+.tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
+/* each milestone rises over its own slice (sv-range-rise) and its dot lights with --sv-r */
+.tl-items &gt; li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; position: absolute; left: -32px;
+  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); }
+/* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */</code></pre>
+    <pre data-pane="react"><code>import { Track } from 'scrollvars/react'
 
-  let progress = 0
-  mountEffect(document.getElementById('scene'), {
-    context: null,                       // you own the WebGL context
-    setup(fx)  { /* renderer/scene/camera on fx.canvas */ },
-    resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
-    frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
-  })
-  track(outer, { pin: true, onPin: (p) =&gt; (progress = p) })
-  // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
-  // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
-&lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>'use client'
-const progress = useRef(0)
-const canvasRef = useCanvasEffect({
-  context: null,
-  setup(fx)  { /* THREE renderer on fx.canvas */ },
-  resize(fx) { /* size + DPR */ },
-  frame(fx, dt) { /* render with progress.current */ },
-})
-
-&lt;Track pin onPin={(p) =&gt; (progress.current = p)} className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
-    &lt;canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" /&gt;
-  &lt;/div&gt;
-&lt;/Track&gt;</code></pre>
+const steps = [
+  { year: 2019, range: [0, .28], text: '…' },
+  { year: 2021, range: [.22, .52], text: '…' },
+  { year: 2026, range: [.7, 1], text: '…' },
+]
+function Timeline() {
+  return (
+    &lt;Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}&gt;
+      &lt;div className="sv-stage tl-sticky"&gt;
+        &lt;span className="tl-year" /&gt;
+        &lt;div className="tl-track"&gt;&lt;i className="tl-line" /&gt;
+          &lt;ol className="sv-range sv-range-rise tl-items"&gt;
+            {steps.map((s) =&gt; (
+              &lt;li key={s.year} style={{ '--sv-from': s.range[0], '--sv-to': s.range[1] }}&gt;
+                &lt;b&gt;{s.year}&lt;/b&gt;&lt;p&gt;{s.text}&lt;/p&gt;
+              &lt;/li&gt;
+            ))}
+          &lt;/ol&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/Track&gt;
+  )
+}
+// npx scrollvars add timeline-scrub → components/fx/TimelineScrub.tsx (CSS included)</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

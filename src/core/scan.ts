@@ -10,7 +10,7 @@ import { split } from './split.js'
  *   <div data-sv data-sv-pin>…</div>
  *   <div data-sv data-sv-scenes="4">…</div>
  *
- * Per-element knobs are attributes too — no style attribute needed:
+ * Per-element knobs are attributes too. No style attribute needed:
  *
  *   <p class="sv-rise" data-sv-order="1" data-sv-distance="3rem">…</p>
  *   <h2 data-sv-from="0" data-sv-to=".4">…</h2>   (sv-range slices)
@@ -38,7 +38,7 @@ function optionsFrom(el: HTMLElement): TrackOptions {
   const scenes = Number(el.getAttribute('data-sv-scenes'))
   return {
     once: el.hasAttribute('data-sv-once'),
-    pin: el.hasAttribute('data-sv-pin'),
+    pin: el.getAttribute('data-sv-pin') || el.hasAttribute('data-sv-pin'),
     travel: el.hasAttribute('data-sv-travel'),
     scenes: scenes > 1 ? scenes : undefined,
     enter: band(el, 'data-sv-enter'),
@@ -71,6 +71,10 @@ export function scan(root?: ParentNode): () => void {
     tracked.get(el)?.()
     tracked.delete(el)
   }
+  const removeSplit = (el: HTMLElement) => {
+    splits.get(el)?.()
+    splits.delete(el)
+  }
   const sweep = (node: Node, fn: (el: HTMLElement) => void) => {
     if (!(node instanceof HTMLElement)) return
     if (node.hasAttribute('data-sv')) fn(node)
@@ -80,6 +84,10 @@ export function scan(root?: ParentNode): () => void {
       node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
       if (node.hasAttribute('data-sv-split')) addSplit(node)
       node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+    } else {
+      // removed subtrees release their split closures too (SPA route changes)
+      if (node.hasAttribute('data-sv-split')) removeSplit(node)
+      node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(removeSplit)
     }
   }
 

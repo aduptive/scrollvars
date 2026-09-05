@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Marquee — ScrollVars fx</title>
-<meta name="description" content="An infinite strip — logos, taglines — that pauses on hover. Copy-paste in Tailwind, CSS or React.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Marquee · ScrollVars fx</title>
+<meta name="description" content="An infinite strip (logos, taglines) that pauses on hover. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -129,12 +130,18 @@
         <a href="coverflow-slider.html">Coverflow slider</a>
         <a href="marquee.html" aria-current="page">Marquee</a>
       </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+      </details>
     </nav>
   </details>
 </div></aside>
 <main>
   <h1>Marquee</h1>
-  <p class="tag">An infinite strip — logos, taglines — that pauses on hover.</p>
+  <p class="tag">An infinite strip (logos, taglines) that pauses on hover.</p>
   <p class="meta"><b>Use it for:</b> Logo walls, ticker bands. The honest replacement for Swiper loop.<br><b>Knobs:</b> --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause</p>
   <div class="sv-marquee fxstage" style="padding:28px 0">
   <div class="sv-marquee-track fxmarq">
@@ -172,12 +179,12 @@
   {logos.map(l =&gt; &lt;img key={l.id} src={l.src} alt={l.name} className="h-8" /&gt;)}
 &lt;/Marquee&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

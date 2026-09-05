@@ -34,7 +34,10 @@ for (const alias of ALIASES) {
     const body = await res.text()
     if (res.status !== 200) throw new Error(`HTTP ${res.status}`)
     if (!body.includes('demo driver (page wiring only')) throw new Error('content marker missing')
-    console.log(`verified ${alias}: HTTP 200 + content marker`)
+    // secondary hosts must 308 to the primary (demo/vercel.json redirects)
+    if (alias !== ALIASES[0] && new URL(res.url).host !== ALIASES[0])
+      throw new Error(`${alias} did not redirect to ${ALIASES[0]} (landed on ${res.url})`)
+    console.log(`verified ${alias}: HTTP 200 + content marker${alias === ALIASES[0] ? '' : ' via redirect'}`)
   } catch (err) {
     if (alias === 'scrollvars.vercel.app') throw new Error(`alias check failed for ${alias}: ${err.message}`)
     console.warn(`warning: ${alias} not verifiable yet (${err.message}) — DNS may still be propagating`)

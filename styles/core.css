@@ -1,4 +1,4 @@
-/* ScrollVars — preset styles.
+/* ScrollVars: preset styles.
  *
  * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
  * variables the driver writes; any CSS of your own that reads them is an
@@ -14,14 +14,19 @@
  * JavaScript never runs the page stays fully visible.
  */
 
-.sv {
-  --sv-view: 0;
-  --sv-t: 0;
-  --sv-scene: 0;
+/* Knob defaults sit at zero specificity, so an author `:root { --sv-stagger: 120ms }`
+   wins whatever the import order. The driver outputs reset per tracked element. */
+:where(:root) {
   --sv-distance: 6rem;
   --sv-ease: cubic-bezier(0.28, 0.84, 0.42, 1);
   --sv-duration: 800ms;
   --sv-stagger: 90ms;
+}
+.sv {
+  --sv-view: 0;
+  --sv-t: 0;
+  --sv-scene: 0;
+  --sv-pin: initial; /* a nested .sv never reads an ancestor's pin clock */
 }
 
 /* ---- Entrance presets (binary: driven by .sv-live, with transition) ---- */
@@ -61,6 +66,10 @@
 .sv-on .sv .sv:not(.sv-live) .sv-rise {
   translate: 0 var(--sv-distance);
 }
+.sv-on .sv .sv:not(.sv-live) .sv-split-rise > span {
+  opacity: 0;
+  translate: 0 0.6em;
+}
 .sv-on .sv .sv:not(.sv-live) .sv-slide-l {
   translate: calc(var(--sv-distance) * -2) 0;
 }
@@ -69,7 +78,7 @@
 }
 
 /* ---- sv-split: text broken into word/char spans (split()/data-sv-split/
-   <Split>) — spans carry --sv-order, the container --sv-count, so every
+   <Split>). Spans carry --sv-order, the container --sv-count, so every
    order-driven preset works on text. sv-split-rise = staggered entrance. */
 .sv-split > span {
   display: inline-block;
@@ -110,9 +119,9 @@
 /* ---- Spread preset: a centered deck that fans out into its row ---- */
 /* Children start stacked at the container's center (slight fan) and spread
    into their natural flex slots. Two clocks drive it:
-     entrance — add .sv-spread-in: spreads (with transition + stagger) the
+     entrance: add .sv-spread-in: spreads (with transition + stagger) the
                 moment the tracked section goes live
-     scrub    — map --sv-spread from a driver variable yourself, e.g.
+     scrub. Map --sv-spread from a driver variable yourself, e.g.
                 .mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
    Index children with .sv-stagger (auto --sv-order) or set --sv-order by
    hand; set --sv-mid to (N−1)/2 on the container (default 1 = 3 cards). */
@@ -125,6 +134,11 @@
   --sv-d: calc(var(--sv-order, 0) - var(--sv-mid, 1));
   translate: calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + var(--sv-gap, 16px))) 0;
   rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg);
+}
+/* SSR markup carries .sv before any JS runs: without the driver the cards stay in flow */
+html:not(.sv-on) .sv-spread > * {
+  translate: none;
+  rotate: none;
 }
 .sv-on .sv .sv-spread.sv-spread-in > * {
   transition:
@@ -169,6 +183,8 @@
     transition: none;
   }
   .sv-on .sv .sv-split-rise > span,
+  .sv-on .sv .sv:not(.sv-live) .sv-split-rise > span,
+  .sv-on .sv .sv:not(.sv-live) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
   .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
   .sv-on .sv.sv-auto > *,
   .sv-view-fade,

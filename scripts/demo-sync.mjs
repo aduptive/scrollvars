@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Regenerates the verbatim-dist inline blocks in demo/index.html from the
- * built dist — the demo must never be hand-patched (that class of bug bit
+ * built dist. The demo must never be hand-patched (that class of bug bit
  * twice before this script existed). Run `npm run build` first, or use
  * `npm run demo:sync` / `npm run demo:deploy` which chain it.
  */
@@ -41,7 +41,7 @@ for (const block of BLOCKS) {
   if (/^export /m.test(dist)) {
     throw new Error(`${block.dist}: unexpected export left after stripping ${block.name}`)
   }
-  const marker = `/* ═══════ ${block.label} — inlined from the built dist, verbatim ═══════ */`
+  const marker = `/* ═══════ ${block.label}, inlined from the built dist, verbatim ═══════ */`
   const wrapped = `${marker}\n  var ${block.name} = (function () {\n${dist}\n  return ${block.name};\n  })();`
   const re = new RegExp(
     `${escapeRe(marker)}\\n  var ${block.name} = \\(function \\(\\) \\{[\\s\\S]*?\\n  return ${block.name};\\n  \\}\\)\\(\\);`
@@ -50,7 +50,7 @@ for (const block of BLOCKS) {
   html = html.replace(re, () => wrapped) // function replacer: dist code may contain $-patterns
 }
 
-// engine block: the whole built package as an IIFE (global `SV`) — the same
+// engine block: the whole built package as an IIFE (global `SV`). The same
 // esbuild invocation fx-build.mjs uses for the bench page
 {
   const { execSync } = await import('node:child_process')
@@ -59,7 +59,7 @@ for (const block of BLOCKS) {
     { maxBuffer: 1e7 }
   ).toString().trimEnd()
   new Function(iife) // throws on syntax errors
-  const start = '/* ═══════ scrollvars engine — inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */'
+  const start = '/* ═══════ scrollvars engine, inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */'
   const end = '/* ═══════ end scrollvars engine ═══════ */'
   const re = new RegExp(`${escapeRe(start)}\\n[\\s\\S]*?${escapeRe(end)}`)
   if (!re.test(html)) throw new Error('engine marker block not found')
@@ -67,7 +67,7 @@ for (const block of BLOCKS) {
   html = html.replace(re, () => `${start}\n${iife}\n${end}`)
 }
 
-// post-checks — the same ones this repo's history proved necessary
+// post-checks: the same ones this repo's history proved necessary
 const script = html.match(/<script>\n\s*\/\* ═+ demo driver[\s\S]*?<\/script>/)
 if (!script) throw new Error('main demo script block not found')
 new Function(script[0].replace(/<\/?script>/g, '')) // throws on syntax errors

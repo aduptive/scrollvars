@@ -1,20 +1,20 @@
 /**
  * A featherweight carousel on native rails: the browser does the scrolling
  * (momentum, touch, accessibility) and scroll-snap does the magnetism; this
- * module only adds what the platform lacks —
- *
+ * module only adds what the platform lacks,
+*
  *   - mouse drag-to-scroll on desktop (touch is already native)
  *   - the active-slide observer, exposed the ScrollVars way:
  *       container:  --sv-slide (active index) · --sv-progress (0..1)
  *       each slide: --sd        (signed distance from center, in slide sizes)
  *                   .sv-active  (nearest to center)
  *   - next / prev / goTo, glide with a soft exponential settle
- *   - full state (`state()` / `onScroll`) and `seek()` — enough to chain
+ *   - full state (`state()` / `onScroll`) and `seek()`. Enough to chain
  *     sliders: `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`
  *   - `axis: 'y'` for vertical sliders
  *
- * Any CSS reading `--sd` animates the slides: scale, fade, coverflow —
- * no per-frame JS, same philosophy as the scroll driver.
+ * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
+* no per-frame JS, same philosophy as the scroll driver.
  */
 
 export interface SliderState {
@@ -40,7 +40,7 @@ export interface SliderOptions {
   duration?: number
   /** Fires when the active slide changes. */
   onSlide?: (index: number) => void
-  /** Fires on every measured scroll frame with the full state — drive a
+  /** Fires on every measured scroll frame with the full state. Drive a
    * progress bar, or chain another slider through `seek`. Keep it cheap. */
   onScroll?: (state: SliderState) => void
 }
@@ -49,7 +49,7 @@ export interface SliderHandle {
   next: (smooth?: boolean) => void
   prev: (smooth?: boolean) => void
   goTo: (index: number, smooth?: boolean) => void
-  /** Jump to a fraction (0..1) of the scrollable range — no glide. Made for
+  /** Jump to a fraction (0..1) of the scrollable range. No glide. Made for
    * followers: suspends this instance's snap so the driver stays the single
    * writer of its position. */
   seek: (progress: number) => void
@@ -92,7 +92,7 @@ export function slider(
   if (typeof window === 'undefined') return noop
 
   const horizontal = axis === 'x'
-  // RTL: normalize to logical coordinates — pos() runs 0 → range() from the
+  // RTL: normalize to logical coordinates: pos() runs 0 → range() from the
   // start of content regardless of direction (raw scrollLeft is 0 → -range
   // in RTL per spec), and slideStart() mirrors offsets to match.
   const rtl =
@@ -100,11 +100,11 @@ export function slider(
     typeof getComputedStyle === 'function' &&
     getComputedStyle(container).direction === 'rtl'
   container.classList.add('sv-slider')
-  if (!horizontal) container.classList.add('sv-slider-y')
-  if (drag) container.classList.add('sv-draggable') // grab cursor only where dragging works
+  container.classList.toggle('sv-slider-y', !horizontal)
+  container.classList.toggle('sv-draggable', !!drag) // grab cursor only where dragging works
   container.style.setProperty('--sv-snap', snap)
 
-  // axis accessors — the only place the orientation matters
+  // axis accessors: the only place the orientation matters
   const pos = () =>
     horizontal ? (rtl ? -container.scrollLeft + 0 : container.scrollLeft) : container.scrollTop
   const setPos = (v: number) => {
@@ -114,15 +114,20 @@ export function slider(
   const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
   const range = () =>
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
-  const slideStart = (el: HTMLElement) =>
-    horizontal
-      ? rtl
-        ? container.scrollWidth - el.offsetLeft - el.offsetWidth
-        : el.offsetLeft
-      : el.offsetTop
+  // Container-local start of a slide in logical scroll units. Rect-based, so
+  // it does not depend on which ancestor happens to be the offsetParent, and
+  // RTL mirrors against the container's own right edge.
+  const slideStart = (el: HTMLElement) => {
+    const c = container.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    if (!horizontal) return r.top - c.top - container.clientTop + container.scrollTop
+    return rtl
+      ? c.right - r.right - container.clientLeft + pos()
+      : r.left - c.left - container.clientLeft + pos()
+  }
   const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
 
-  // Snap suspension via inline style — one source of truth. The authored
+  // Snap suspension via inline style. One source of truth. The authored
   // inline value (e.g. 'none' on scroll-driven instances) is preserved.
   const authoredSnap = container.style.scrollSnapType
   const suspendSnap = () => {
@@ -163,7 +168,10 @@ export function slider(
         best = i
       }
     })
-    position = Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0)
+    position = Math.min(
+      Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0),
+      Math.max(slides().length - 1, 0)
+    )
     const progress = range() > 0 ? pos() / range() : 0
     container.style.setProperty('--sv-progress', progress.toFixed(4))
     if (best !== active) {
@@ -184,7 +192,7 @@ export function slider(
   ro.observe(container)
   measure()
 
-  // pending glide destination — rapid next/prev clicks accumulate from here,
+  // pending glide destination: rapid next/prev clicks accumulate from here,
   // not from `active` (which lags mid-glide and would swallow the clicks)
   let target = -1
   const stopGlide = () => {
@@ -218,7 +226,7 @@ export function slider(
         setPos(to)
         stopGlide()
         target = -1
-        resumeSnap() // position is centered — safe to re-engage
+        resumeSnap() // position is centered. Safe to re-engage
       } else {
         setPos(current)
         anim = requestAnimationFrame(step)
@@ -238,6 +246,7 @@ export function slider(
       glide(to)
     } else {
       stopGlide()
+      resumeSnap() // a previous seek()/glide may have suspended it
       target = -1
       setPos(to)
     }
@@ -255,10 +264,10 @@ export function slider(
   const stepBase = () => (anim && target >= 0 ? target : active)
 
   // mouse drag: snap is suspended from grab until the release glide finishes.
-  // move/up listeners live on window WHILE dragging — pointer capture on a
+  // move/up listeners live on window WHILE dragging. Pointer capture on a
   // scrollable container is unreliable, and this way the gesture survives
   // leaving the element (release happens on the real pointerup, anywhere).
-  // ponytail: no momentum fling of our own — the release glide covers it.
+  // ponytail: no momentum fling of our own. The release glide covers it.
   let lastPointer = 0
   let startPoint = 0
   let pressed = false // mouse is down; becomes a drag only after real movement
@@ -282,7 +291,7 @@ export function slider(
     lastPointer = point
   }
   // the click that follows a real drag would activate whatever link the
-  // pointer happens to be over — swallow exactly that one
+  // pointer happens to be over. Swallow exactly that one
   const suppressClick = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
@@ -297,12 +306,13 @@ export function slider(
     pressed = false
     if (!dragging) {
       // ordinary click: preventDefault on pointerdown (below) killed the
-      // browser's native focus-on-mousedown along with text selection —
-      // restore it now that we know this press was never a drag. The click
+      // browser's native focus-on-mousedown along with text selection,
+// restore it now that we know this press was never a drag. The click
       // event itself was never suppressed, so link/button activation was
       // unaffected either way.
       const focusable = pressedTarget?.closest<HTMLElement>(FOCUSABLE)
       focusable?.focus({ preventScroll: true })
+      resumeSnap() // the press interrupted a glide that had suspended snap
       return
     }
     dragging = false
@@ -332,7 +342,7 @@ export function slider(
     // selection anchor exists, the browser auto-scrolls toward the pointer
     // on every native mousemove, fighting our own scrollLeft writes frame
     // by frame (the visible jitter). user-select:none alone doesn't reliably
-    // stop a selection from STARTING in every engine — preventDefault does.
+    // stop a selection from STARTING in every engine. PreventDefault does.
     // The one side effect (this also suppresses native focus-on-mousedown)
     // is repaired in endDrag for genuine clicks; the click event itself
     // still fires natively either way, so link/button activation is fine.
@@ -344,13 +354,13 @@ export function slider(
   container.addEventListener('pointerdown', onDown)
 
   // trackpad/wheel pan: native mandatory snap settles fast and can't be
-  // slowed, so replace it — suspend snap while wheeling, then glide to the
+  // slowed, so replace it. Suspend snap while wheeling, then glide to the
   // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
   // instances authored with snap none (scroll-driven ones own their position).
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
   const onWheel = (event: WheelEvent) => {
     if (authoredSnap === 'none') return
-    // only react when the gesture's dominant axis is OUR axis — otherwise
+    // only react when the gesture's dominant axis is OUR axis. Otherwise
     // this is the page scrolling past the carousel (trackpad gestures are
     // always slightly diagonal) and assisting would yank the slider around
     const along = horizontal ? event.deltaX : event.deltaY
@@ -368,7 +378,7 @@ export function slider(
   const prev = (smooth = true) => goTo(stepBase() - 1, smooth)
 
   // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
-  // hard after each — replace it with the same soft glide as everything else.
+  // hard after each. Replace it with the same soft glide as everything else.
   // The container is made focusable (Safari never focuses scrollers on its own).
   if (container.tabIndex === -1) container.tabIndex = 0
   const onKey = (event: KeyboardEvent) => {
@@ -394,6 +404,7 @@ export function slider(
     destroy: () => {
       stopGlide()
       resumeSnap()
+      container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging')
       clearTimeout(wheelTimer)
       container.removeEventListener('wheel', onWheel)
       container.removeEventListener('keydown', onKey)

@@ -22,7 +22,7 @@ export function easeOutCubic(t: number): number {
 
 /**
  * Map `t` through the `[from, to]` sub-range to 0..1 (clamped), optionally
- * eased — the JS twin of the `sv-range` CSS preset, for `onTravel`/`onPin`
+ * eased. The JS twin of the `sv-range` CSS preset, for `onTravel`/`onPin`
  * consumers (canvas scenes, WebGL uniforms).
  */
 export function mapRange(
