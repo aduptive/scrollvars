@@ -53,3 +53,17 @@ A site can only be broken by an update it never asked for. Therefore:
 If both halves are in place, the failure mode "colleague updates plugin,
 production breaks" is structurally impossible: the update sits in a PR
 until the consumer's own CI proves it harmless.
+
+## Generated files: never hand-patch
+
+`npm run demo:sync` rebuilds everything that is derived, and CI fails if the
+committed copy differs from what the build produces:
+
+- README.md and AGENTS.md: the blocks between `<!-- vars:start -->`,
+  `<!-- sizes:start -->` and `<!-- bench:start -->` markers, plus every line
+  that carries a measured size, come from `scripts/docs-data.mjs`
+  (`docs-stamp.mjs`, `bench-tables.mjs`). Edit the data, not the block.
+- demo/llms.txt is AGENTS.md with a machine-facing header. Edit AGENTS.md.
+- demo/fx/*, demo/docs/*, demo/bench/index.html tables, styles.css and the
+  inlined engine blocks in demo/index.html are outputs of the scripts in
+  `scripts/`. The gallery content lives in `scripts/fx-data.mjs`.
