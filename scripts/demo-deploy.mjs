@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const demoDir = join(root, 'demo')
 const SCOPE = 'aduptives-projects'
-const ALIASES = ['scrollvars.dev', 'scrollvars.vercel.app'] // primary first
+const ALIASES = ['scrollvars.dev', 'scrollvars.vercel.app', 'www.scrollvars.dev'] // primary first; the others 308 to it
 
 const run = (cmd) => execSync(cmd, { cwd: demoDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 
@@ -30,7 +30,19 @@ for (const alias of ALIASES) {
 // is the hard gate; the apex can lag on DNS in its first hours)
 for (const alias of ALIASES) {
   try {
-    const res = await fetch(`https://${alias}/?deploy=${process.pid}`, { redirect: 'follow' })
+    // the alias can take a few seconds to point at the new deployment
+    let res
+    for (let attempt = 1; ; attempt++) {
+      try {
+        res = await fetch(`https://${alias}/?deploy=${process.pid}-${attempt}`, { redirect: 'follow' })
+        const settled = alias === ALIASES[0] ? res.ok : new URL(res.url).host === ALIASES[0]
+        if (settled) break
+      } catch (fetchErr) {
+        if (attempt >= 6) throw fetchErr // transient TLS/DNS hiccups right after aliasing
+      }
+      if (attempt >= 6) break
+      await new Promise((r) => setTimeout(r, 3000))
+    }
     const body = await res.text()
     if (res.status !== 200) throw new Error(`HTTP ${res.status}`)
     if (!body.includes('demo driver (page wiring only')) throw new Error('content marker missing')

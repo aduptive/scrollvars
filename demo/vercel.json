@@ -1,15 +1,25 @@
 {
   "redirects": [
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "scrollvars.vercel.app" }],
-      "destination": "https://scrollvars.dev/:path*",
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "scrollvars.vercel.app"
+        }
+      ],
+      "destination": "https://scrollvars.dev/$1",
       "permanent": true
     },
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.scrollvars.dev" }],
-      "destination": "https://scrollvars.dev/:path*",
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.scrollvars.dev"
+        }
+      ],
+      "destination": "https://scrollvars.dev/$1",
       "permanent": true
     }
   ]

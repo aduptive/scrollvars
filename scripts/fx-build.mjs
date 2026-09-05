@@ -960,6 +960,19 @@ execSync(
 // boot: track every [data-sv] on fx pages
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
 const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toFixed(1)
+
+// sitemap: the hub, docs, bench and every fx page (robots.txt points here)
+{
+  const site = 'https://scrollvars.dev'
+  const urls = ['/', '/docs/', '/bench/', '/fx/', ...EFFECTS.map((e) => `/fx/${e.slug}.html`)]
+  const today = new Date().toISOString().slice(0, 10)
+  writeFileSync(
+    join(root, 'demo', 'sitemap.xml'),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.map((u) => `  <url><loc>${site}${u}</loc><lastmod>${today}</lastmod></url>`).join('\n') +
+      `\n</urlset>\n`
+  )
+}
 // what a bundler ships: the ESM core, tree-shaken from dist/index.js
 const CORE_KB = (gzipSync(execSync(`npx esbuild ${join(root, 'dist/index.js')} --bundle --minify --format=esm --log-level=silent`)).length / 1024).toFixed(1)
 execSync(
