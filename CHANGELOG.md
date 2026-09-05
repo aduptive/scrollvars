@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
+enhancement contract holds in every documented case.
+
+### Presets and no-JS
+- `.sv-split` word/char spans compute to `display: inline-block`, so
+  `sv-split-rise` can actually apply `translate` to them (non-replaced
+  inline boxes ignore it).
+- The reduced-motion override for `.sv-auto` now matches the same
+  `:not(.sv-skip)` compound as the normal entrance rule, so it wins on
+  specificity instead of losing to it.
+- The no-JS guards for curtain, rail, deck, reading, range and counter now
+  match `[data-sv]` as well as `.sv`: markup that has not been scanned yet
+  (data-sv only, no JS run) no longer leaves curtain panels as absolute
+  overlays over the revealed content.
+- `sv-spread` and `sv-acts` are driven from the inherited `--sv-live` flag,
+  like the entrance presets: a nested tracker that is not itself live no
+  longer inherits a live ancestor's spread or acts clock.
+- `.sv-auto > :nth-child(1)` (and `.sv-stagger`) resets `--sv-order` to 0,
+  so the first child never inherits an ancestor's order.
+- `.sv-slider.sv-cols` also matches `.sv-cols .sv-slider > *`, so a
+  `className="sv-cols"` on the Slider shell (one level up from
+  `.sv-slider`, where React's `className` prop lands) works too.
+
+### Click driver
+- `toggles()` marks `<html>` with a new `sv-ui` class. `sv-acts`'s no-JS
+  guard now exempts it, so a page that only calls `toggles()` (no scroll
+  driver running) can animate through its acts via clicks instead of
+  freezing at the finished state.
+
+### Compat
+- `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
+  rule for engines missing individual transform properties.
+- `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
+  61-68 and Safari 11, the floor compat claims).
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

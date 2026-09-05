@@ -68,6 +68,11 @@
 /* ---- sv-split: text broken into word/char spans (split()/data-sv-split/
    <Split>). Spans carry --sv-order, the container --sv-count, so every
    order-driven preset works on text. sv-split-rise = staggered entrance. */
+/* Non-replaced inline boxes ignore `translate`; the first child is the
+   screen-reader span (position absolute), left untouched. */
+.sv-split > span[aria-hidden] {
+  display: inline-block;
+}
 .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
   opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * 0.6em);
@@ -77,7 +82,9 @@
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
 
-/* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
+/* Automatic stagger order for sv-auto (and manual lists using sv-stagger).
+   :nth-child(1) resets first so it never inherits an ancestor's order. */
+.sv-auto > :nth-child(1),  .sv-stagger > :nth-child(1)  { --sv-order: 0; }
 .sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
 .sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
 .sv-auto > :nth-child(4),  .sv-stagger > :nth-child(4)  { --sv-order: 3; }
@@ -127,8 +134,11 @@ html:not(.sv-on) .sv-spread > * {
     rotate var(--sv-duration, 800ms) var(--sv-ease, ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv.sv-live .sv-spread.sv-spread-in > * {
-  --sv-spread: 1;
+/* Driven from the inherited --sv-live flag, like the entrance presets: the
+   nearest tracker (not just any live ancestor) decides whether this spread
+   is live, so a nested non-live tracker keeps its own spread stacked. */
+.sv-on :is(.sv, [data-sv]) .sv-spread.sv-spread-in > * {
+  --sv-spread: var(--sv-live);
 }
 
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
@@ -165,7 +175,7 @@ html:not(.sv-on) .sv-spread > * {
   }
   .sv-on :is(.sv, [data-sv]) .sv-split-rise > span,
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
-  .sv-on :is(.sv, [data-sv]).sv-auto > *,
+  .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
   .sv-view-fade,
   .sv-view-rise {
     transition: none;
@@ -298,31 +308,32 @@ html:not(.sv-on) .sv-stage {
   height: auto;
   overflow: visible;
 }
-/* SSR markup carries .sv before the driver runs: nothing may hide or fly off */
-html:not(.sv-on) .sv .sv-curtain-l,
-html:not(.sv-on) .sv .sv-curtain-r {
+/* Markup carries data-sv before the driver runs (scan() adds .sv with JS):
+   nothing may hide or fly off, or stay stacked over the revealed content */
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-l,
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-r {
   display: none;
 }
-html:not(.sv-on) .sv .sv-rail {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-rail {
   translate: none;
   width: auto;
   flex-wrap: wrap;
 }
-html:not(.sv-on) .sv .sv-deck {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck {
   display: block;
 }
-html:not(.sv-on) .sv .sv-deck > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck > * {
   translate: none;
   rotate: none;
   scale: none;
 }
-html:not(.sv-on) .sv .sv-reading > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-reading > * {
   opacity: 1;
 }
-html:not(.sv-on) .sv .sv-range > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-range > * {
   --sv-r: 1; /* the clock is 0 without the driver; the finished state, not opacity 0 */
 }
-html:not(.sv-on) .sv .sv-counter {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
@@ -398,8 +409,11 @@ html:not(.sv-on) .sv .sv-counter {
 /* Columns: set --sv-per-view (fractional = peek) and breakpoints ARE media
    queries. Override the var per breakpoint (or via Tailwind:
    "[--sv-per-view:1.2] md:[--sv-per-view:2.5]"). Slides can span columns
-   with --sv-span. Gate class sv-cols keeps natural sizing the default. */
-.sv-slider.sv-cols > * {
+   with --sv-span. Gate class sv-cols keeps natural sizing the default.
+   sv-cols also works from the Slider shell (React's className prop lands
+   on .sv-slider-shell, one level up from .sv-slider). */
+.sv-slider.sv-cols > *,
+.sv-cols .sv-slider > * {
   flex: 0 0
     calc(
       (100% - (var(--sv-per-view, 1) - 1) * var(--sv-gap, 16px)) / var(--sv-per-view, 1) *
@@ -606,13 +620,22 @@ dialog.sv-pop:not([open]) {
   --sv-act: 0;
   transition: --sv-act var(--sv-acts-duration, 2s) linear;
 }
-html:not(.sv-on) .sv-acts {
-  --sv-act: var(--sv-acts-count, 3); /* no JS: the finished state, not act zero */
+/* html.sv-ui (set by toggles(), src/core/toggles.ts) marks a page that has a
+   click driver running even though the scroll driver never boots: without
+   it this guard would outrank .sv-acts.sv-open below and freeze a
+   click-only acts clock at the finished state forever. */
+html:not(.sv-on):not(.sv-ui) .sv-acts {
+  --sv-act: var(--sv-acts-count, 3); /* no JS at all: the finished state, not act zero */
 }
-.sv-acts.sv-open,
-.sv-on .sv.sv-live.sv-acts,
-.sv-on .sv.sv-live .sv-acts {
+.sv-acts.sv-open {
   --sv-act: var(--sv-acts-count, 3);
+}
+/* Driven from the inherited --sv-live flag, like the entrance presets: the
+   nearest tracker (not just any live ancestor) decides whether this acts
+   clock is live, so a nested non-live tracker keeps its own clock at 0. */
+.sv-on :is(.sv, [data-sv]) .sv-acts,
+.sv-on :is(.sv, [data-sv]).sv-acts {
+  --sv-act: calc(var(--sv-live) * var(--sv-acts-count, 3));
 }
 
 @media (prefers-reduced-motion: reduce) {

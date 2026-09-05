@@ -7,6 +7,9 @@
  *   2. With JS → no fail-hidden flash: nothing is hidden until html.sv-on
  *      exists (the guard is the gate, not a race)
  *   3. Attribute knobs land: data-sv-order becomes --sv-order on mount
+ *   4. A pin stage never covers its own revealed text; reduced motion
+ *      settles sv-auto immediately; a nested non-live tracker keeps its
+ *      spread stacked under a live ancestor
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -18,6 +21,7 @@ import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
@@ -63,6 +67,27 @@ const HIDDEN_TEXT = () => {
   }).length
 }
 
+// shared: own-text elements inside a pin stage (curtain/rail/deck/reading/range/counter
+// all live in one) whose center point is covered by something else (elementFromPoint)
+const OCCLUDED_TEXT = () => {
+  const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+  const bad = []
+  for (const stage of document.querySelectorAll('.sv-stage')) {
+    for (const el of stage.querySelectorAll('*')) {
+      if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) continue
+      const cx = r.left + r.width / 2
+      const cy = r.top + r.height / 2
+      // off-viewport: elementFromPoint returns null there regardless of occlusion
+      if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) continue
+      const hit = document.elementFromPoint(cx, cy)
+      if (!hit || (hit !== el && !el.contains(hit))) bad.push(el.className || el.tagName)
+    }
+  }
+  return bad
+}
+
 // ── 0. Every fx page, no JS: no text hidden, no stage clipping content away ──
 {
   const pages = readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html')
@@ -70,10 +95,15 @@ const HIDDEN_TEXT = () => {
   await page.setJavaScriptEnabled(false)
   const bad = []
   const ssrBad = []
+  const occluded = []
   for (const f of pages) {
     await page.goto(`${base}/fx/${f}`, { waitUntil: 'load' })
     const hidden = await page.evaluate(HIDDEN_TEXT)
     if (hidden > 0) bad.push(`${f}:${hidden}`)
+    // markup carries data-sv only (scan() adds .sv with JS): a pin stage's
+    // panels (curtain, etc.) must not stay as overlays covering the content
+    const occ = await page.evaluate(OCCLUDED_TEXT)
+    if (occ.length > 0) occluded.push(`${f}:${occ.join(',')}`)
     // the SSR shape: .sv already on the markup, still no JS (a failed bundle on a Next.js page)
     await page.goto(`${base}/ssr/${f}`, { waitUntil: 'load' })
     const ssrHidden = await page.evaluate(HIDDEN_TEXT)
@@ -82,6 +112,7 @@ const HIDDEN_TEXT = () => {
   await page.close()
   check(`no-JS: ${pages.length} fx pages render every text node`, bad.length === 0, bad.join(' '))
   check(`no-JS + SSR markup (.sv present): ${pages.length} fx pages still render every text node`, ssrBad.length === 0, ssrBad.join(' '))
+  check(`no-JS: pin stages never cover their revealed text`, occluded.length === 0, occluded.join(' '))
 }
 
 // ── 0b. Reduced motion, JS on: nothing hidden after scrolling the whole page ──
@@ -101,6 +132,29 @@ const HIDDEN_TEXT = () => {
   }
   await page.close()
   check(`reduced motion: ${pages.length} fx pages keep every text node visible`, bad.length === 0, bad.join(' '))
+}
+
+// ── 0c. Reduced motion, dedicated fixture: .sv-auto (no fx page ships one) ──
+// The override selector must outrank the normal entrance rule on specificity,
+// not on timing, so this must hold immediately on load, with no scroll at all.
+{
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
+    <body><div class="sv sv-live sv-auto">
+      <p>one</p><p>two</p><p style="margin-top:150vh">three, below the fold</p>
+    </div></body></html>`)
+  const unsettled = await page.evaluate(() =>
+    [...document.querySelectorAll('.sv-auto > *')]
+      .map((el) => getComputedStyle(el))
+      .filter((cs) => cs.opacity !== '1' || cs.transitionProperty !== 'none').length
+  )
+  check(
+    'reduced motion: .sv-auto children are opacity 1 with no transition before any scroll, incl. below the fold',
+    unsettled === 0,
+    `${unsettled} unsettled`
+  )
+  await page.close()
 }
 
 // ── 1. No JS → fully visible ──
@@ -163,10 +217,39 @@ const HIDDEN_TEXT = () => {
       srText: (() => { const sr = split && split.querySelector('span:not([aria-hidden])'); return sr ? sr.textContent.trim() : '' })(),
       label: split && split.getAttribute('aria-label'),
       attrVar: attr && attr.style.getPropertyValue('--sv-order'),
+      spanDisplay: spans.length ? getComputedStyle(spans[0]).display : null,
     }
   })
   check('split: words wrapped in aria-hidden spans', r.spans > 2, `${r.spans} spans`)
   check('split: --sv-count set + sr-only text kept (no aria-label)', !!r.count && r.srText.length > 0 && !r.label, `count=${r.count} sr="${r.srText.slice(0, 20)}" label=${r.label}`)
+  check('split-rise: a split word span computes to display: inline-block (so translate applies)', r.spanDisplay === 'inline-block', `display=${r.spanDisplay}`)
+  await page.close()
+}
+
+// ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <div class="sv sv-live" id="direct">
+        <div class="sv-spread sv-spread-in">
+          <div style="--sv-order:0">a</div><div style="--sv-order:1">b</div><div style="--sv-order:2">c</div>
+        </div>
+      </div>
+      <div class="sv sv-live" id="outer">
+        <div class="sv" id="inner">
+          <div class="sv-spread sv-spread-in">
+            <div style="--sv-order:0">a</div><div style="--sv-order:1">b</div><div style="--sv-order:2">c</div>
+          </div>
+        </div>
+      </div>
+    </body></html>`)
+  const r = await page.evaluate(() => ({
+    direct: getComputedStyle(document.querySelector('#direct .sv-spread > *')).getPropertyValue('--sv-spread').trim(),
+    nested: getComputedStyle(document.querySelector('#inner .sv-spread > *')).getPropertyValue('--sv-spread').trim(),
+  }))
+  check('nested tracker: a live tracker spreads its own children (--sv-spread: 1)', r.direct === '1', `--sv-spread=${r.direct}`)
+  check('nested tracker: a non-live tracker inside a live one keeps its spread stacked (--sv-spread: 0)', r.nested === '0', `--sv-spread=${r.nested}`)
   await page.close()
 }
 

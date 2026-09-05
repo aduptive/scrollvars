@@ -84,13 +84,22 @@ dialog.sv-pop:not([open]) {
   --sv-act: 0;
   transition: --sv-act var(--sv-acts-duration, 2s) linear;
 }
-html:not(.sv-on) .sv-acts {
-  --sv-act: var(--sv-acts-count, 3); /* no JS: the finished state, not act zero */
+/* html.sv-ui (set by toggles(), src/core/toggles.ts) marks a page that has a
+   click driver running even though the scroll driver never boots: without
+   it this guard would outrank .sv-acts.sv-open below and freeze a
+   click-only acts clock at the finished state forever. */
+html:not(.sv-on):not(.sv-ui) .sv-acts {
+  --sv-act: var(--sv-acts-count, 3); /* no JS at all: the finished state, not act zero */
 }
-.sv-acts.sv-open,
-.sv-on .sv.sv-live.sv-acts,
-.sv-on .sv.sv-live .sv-acts {
+.sv-acts.sv-open {
   --sv-act: var(--sv-acts-count, 3);
+}
+/* Driven from the inherited --sv-live flag, like the entrance presets: the
+   nearest tracker (not just any live ancestor) decides whether this acts
+   clock is live, so a nested non-live tracker keeps its own clock at 0. */
+.sv-on :is(.sv, [data-sv]) .sv-acts,
+.sv-on :is(.sv, [data-sv]).sv-acts {
+  --sv-act: calc(var(--sv-live) * var(--sv-acts-count, 3));
 }
 
 @media (prefers-reduced-motion: reduce) {

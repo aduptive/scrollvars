@@ -97,3 +97,20 @@ test('toggles: aria-expanded reflects the target on boot and across every trigge
   assert.equal(b.attrs['aria-expanded'], 'false', 'the other trigger of the same target follows')
   stop()
 })
+
+test('toggles: marks <html> with sv-ui, so a click-only page (no scroll driver) is exempt from the no-JS sv-acts guard', async () => {
+  global.window = {}
+  const html = makeElement()
+  html.classList.add = (c) => html.classes.add(c)
+  global.document = { documentElement: html }
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui')
+
+  const root = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    querySelectorAll: () => [],
+  }
+  toggles(root)
+  assert.ok(html.classes.has('sv-ui'), 'html.sv-ui set even without scan()/track()')
+  delete global.document
+})

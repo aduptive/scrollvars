@@ -16,11 +16,17 @@
  * orchestrated multi-act sequences, use GSAP. That's its turf.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
+ *
+ * Marks <html> with `sv-ui`: a click driver is running even on a page that
+ * never calls scan()/track(), so CSS no-JS guards keyed on `html:not(.sv-on)`
+ * (sv-acts) must also exempt `.sv-ui`, or a click-only page stays stuck at
+ * the no-JS finished state forever.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
+  if (typeof document !== 'undefined') document.documentElement.classList.add('sv-ui')
 
   const resolve = (trigger: HTMLElement) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'

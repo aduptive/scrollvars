@@ -15,9 +15,10 @@
 *     the canvas harness simply never auto-pauses offscreen.
  *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
- *     re-expresses the presets with `transform:`. Written without :is(),
- *     clamp() or min() so the old parser accepts it. sv-reading falls back
- *     to fully-visible text; sv-counter and sv-view-* stay progressive.
+ *     re-expresses the presets (curtain, rail, deck) with `transform:`.
+ *     Written without :is(), clamp() or min() so the old parser accepts it.
+ *     sv-reading falls back to fully-visible text; sv-counter and
+ *     sv-view-* stay progressive.
  *
  * Syntax floor stays the consumer's job: the dist ships ES2020; if you must
  * PARSE on very old engines, let your bundler downlevel it (Next.js already
@@ -49,10 +50,20 @@ const FALLBACK_CSS = `
 .sv .sv-curtain-r { transform: translateX(calc(var(--sv-pin, 0) * 101%)); }
 .sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * (100vw - 100%))); }
 .sv .sv-reading > * { opacity: 1; }
+.sv .sv-deck > * {
+  /* Bounded to 0..1 with only max() (no min(), missing on the same floor):
+     max(0, -1 * max(-X, -1)) stays under 1 and never drops below 0. */
+  --sv-slice: max(0, calc(-1 * max(calc(var(--sv-order, 0) - var(--sv-pin, 0) * var(--sv-count, 4)), -1)));
+  transform:
+    translateY(calc(var(--sv-order, 0) * 14px - var(--sv-slice) * 130vh))
+    rotate(calc(var(--sv-slice) * -7deg))
+    scale(calc(1 - var(--sv-order, 0) * 0.045 + var(--sv-slice) * 0.045));
+}
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),
-  .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail {
+  .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail,
+  .sv .sv-deck > * {
     opacity: 1;
     transform: none;
     transition: none;
