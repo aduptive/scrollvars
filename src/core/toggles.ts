@@ -26,10 +26,15 @@
  * unrelated scroll-revealed widget elsewhere on the same page must still
  * fall back to the finished state when the scroll driver never boots.
  *
- * Marking a target at boot holds its inline `transition` at 'none' for two
- * frames: without that, a target closed by default settles from the no-JS
- * finished value down to 0 WITH the acts transition running, a visible
- * un-animation the instant the click driver takes over.
+ * Marking a target at boot holds its `--sv-acts-settle` (styles/state.css)
+ * at 0s for two frames: without that, a target closed by default settles
+ * from the no-JS finished value down to 0 WITH the acts transition
+ * running, a visible un-animation the instant the click driver takes over.
+ * Scoped to that one custom property, never the `transition` shorthand or
+ * a longhand: writing those would erase an author's own inline transition
+ * (an inline `transition-duration` reads back as '' through the shorthand
+ * getter, so a naive save/restore erases it for good) and would stop
+ * every OTHER transition running on the element too, not just the acts one.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
@@ -51,6 +56,10 @@ export function toggles(root?: Document | HTMLElement): () => void {
       : [target]
     triggers.forEach((t) => t.setAttribute('aria-expanded', String(on)))
   }
+  // targets currently inside their boot settle: cancellable by a click that
+  // lands inside the two-frame hold, so it still gets its transition
+  const settling = new WeakSet<HTMLElement>()
+
   scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
     const { className, selector, target } = resolve(trigger)
     if (!target) return
@@ -59,15 +68,20 @@ export function toggles(root?: Document | HTMLElement): () => void {
       // (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module comment):
       // marking it sv-ui alone stops that guard from matching, and --sv-act
       // would transition from the finished value down to 0, a visible
-      // un-animation right as the page becomes interactive. Hold the
-      // transition off for exactly the settle: two frames is enough for the
-      // cascade to apply the new --sv-act before transitions come back.
-      const prevTransition = target.style.transition
-      target.style.transition = 'none'
+      // un-animation right as the page becomes interactive. Hold the acts
+      // transition at zero duration for exactly the settle, scoped to
+      // --sv-acts-settle (styles/state.css): two frames is enough for the
+      // cascade to apply the new --sv-act before the acts transition comes
+      // back.
       target.classList.add('sv-ui')
+      target.style.setProperty('--sv-acts-settle', '0s')
+      settling.add(target)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          target.style.transition = prevTransition
+          if (settling.has(target)) {
+            settling.delete(target)
+            target.style.removeProperty('--sv-acts-settle')
+          }
         })
       })
     }
@@ -85,6 +99,13 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // instead: its first click shows the finished state with no transition,
     // since it was covered by the no-JS/no-boot fallback up to this instant
     target.classList.add('sv-ui')
+    // a click landing inside the boot settle must still animate: drop the
+    // hold before the class flips, and cancel the scheduled restore so it
+    // does not act on a target a fresh boot may have re-armed since
+    if (settling.has(target)) {
+      settling.delete(target)
+      target.style.removeProperty('--sv-acts-settle')
+    }
     const on = target.classList.toggle(className)
     target.style.setProperty('--sv-state', on ? '1' : '0')
     sync(selector, target, on)

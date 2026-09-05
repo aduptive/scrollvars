@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.9 KB, full core incl. the slider 5.3 KB, styles 7.7 KB for every preset or 2.2 KB for the core part. A typical page ships ~3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.9 KB, full core incl. the slider 5.3 KB, styles 7.8 KB for every preset or 2.2 KB for the core part. A typical page ships ~3 KB on the wire.
 
 ## Why
 
@@ -81,7 +81,7 @@ import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, nat
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 2.5 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
-import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 1.9 KB gz
+import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 2.0 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 ```
 
@@ -99,7 +99,7 @@ Per import, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzi
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 0.8 KB |
 | everything in `scrollvars` (the core entry) | 5.3 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 9.8 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 9.9 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

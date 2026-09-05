@@ -26,13 +26,27 @@
      (so /fx/sv.js below resolves to the built engine the fx-page sections
      already exercise) and drives toggles()'s boot timing itself, the
      realistic deferred-boot path (a setTimeout after first paint), so the
-     sampling window reliably straddles the moment it fires. -->
+     sampling window reliably straddles the moment it fires.
+
+     #longhand-target and #drift-target repro round 4 finding 2 (the hold
+     read/wrote the `transition` shorthand): #longhand-target's inline
+     transition-duration must survive being marked sv-ui untouched, and
+     #drift-target's own unrelated translate transition, already in flight
+     the instant the settle engages, must keep running instead of snapping. -->
 <button id="trigger" data-sv-toggle="sv-open" data-sv-target="#target">toggle</button>
 <div id="target" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
   <p>finished</p>
 </div>
 <div id="unrelated" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
   <p>no toggle controls this one</p>
+</div>
+<button id="trigger-longhand" data-sv-toggle="sv-open" data-sv-target="#longhand-target">toggle longhand</button>
+<div id="longhand-target" class="sv-acts" style="transition-duration: 400ms">
+  <p>inline transition-duration longhand must survive the settle</p>
+</div>
+<button id="trigger-drift" data-sv-toggle="sv-open" data-sv-target="#drift-target">toggle drift</button>
+<div id="drift-target" style="transition: translate 300ms linear; translate: 0px">
+  <p>unrelated in-flight transition must not be stopped by the settle</p>
 </div>
 <script src="/fx/sv.js"></script>
 </body>

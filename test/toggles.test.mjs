@@ -26,11 +26,19 @@ function makeElement(attrs = {}) {
       setProperty(k, v) {
         el.vars[k] = v
       },
+      removeProperty(k) {
+        delete el.vars[k]
+      },
     },
     getAttribute: (k) => el.attrs[k] ?? null,
     setAttribute: (k, v) => (el.attrs[k] = v),
     closest: (sel) => (sel === '[data-sv-toggle]' && 'data-sv-toggle' in el.attrs ? el : null),
   }
+  // style.transition (the shorthand) is frozen at undefined: the boot settle
+  // must never read or write it (ADU-104, round 4 finding 2). A regression
+  // that assigns to it throws here (strict mode, ES modules) instead of
+  // silently passing.
+  Object.defineProperty(el.style, 'transition', { value: undefined, writable: false })
   return el
 }
 
@@ -129,14 +137,13 @@ test('toggles: marks each resolved target with sv-ui at boot, document.documentE
   delete global.document
 })
 
-test('toggles: holds the target transition off across the boot settle, restores after two frames', async () => {
+test('toggles: sets --sv-acts-settle with the class at boot, removes it after two frames, never touches style.transition', async () => {
   global.window = {}
   const rafQueue = []
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
-  const { toggles } = await import('../dist/core/toggles.js?sv-ui-transition-hold')
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-settle')
 
   const menu = makeElement()
-  menu.style.transition = 'opacity 400ms' // a pre-existing inline transition, to prove it comes back unchanged
   const a = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' }) // shares the same target as a
   const root = {
@@ -148,15 +155,49 @@ test('toggles: holds the target transition off across the boot settle, restores 
 
   toggles(root)
   assert.ok(menu.classes.has('sv-ui'), 'marked at boot')
-  assert.equal(menu.style.transition, 'none', 'transition held off for the settle, immediately')
+  assert.equal(menu.vars['--sv-acts-settle'], '0s', 'the acts transition is held at zero duration for the settle')
+  assert.equal(menu.style.transition, undefined, 'style.transition is never written')
   assert.equal(rafQueue.length, 1, 'one restore scheduled, not two, even though two triggers share this target')
 
   rafQueue.shift()() // frame 1: still held
-  assert.equal(menu.style.transition, 'none', 'still held after only one frame')
+  assert.equal(menu.vars['--sv-acts-settle'], '0s', 'still held after only one frame')
   assert.equal(rafQueue.length, 1, 'the second frame is queued from inside the first')
 
   rafQueue.shift()() // frame 2: restored
-  assert.equal(menu.style.transition, 'opacity 400ms', 'restored to the original inline value')
+  assert.equal(menu.vars['--sv-acts-settle'], undefined, 'removed, back to the CSS-declared duration')
+  assert.equal(menu.style.transition, undefined, 'still never touched')
+})
+
+test('toggles: a click inside the boot settle window drops the hold immediately, so the toggle still animates', async () => {
+  global.window = {}
+  const rafQueue = []
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-settle-click')
+
+  const menu = makeElement()
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const listeners = {}
+  const root = {
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: (t) => delete listeners[t],
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [trigger] : []),
+  }
+
+  toggles(root)
+  assert.equal(menu.vars['--sv-acts-settle'], '0s', 'the settle is holding')
+  assert.equal(rafQueue.length, 1, 'one restore scheduled')
+
+  listeners.click({ target: trigger }) // lands inside the hold window, before either queued frame runs
+  assert.equal(menu.vars['--sv-acts-settle'], undefined, 'the click drops the hold immediately, so this toggle still transitions')
+  assert.ok(menu.classes.has('open'), 'the click still toggles the class as usual')
+
+  // the scheduled restore is cancelled: running the frames queued at boot
+  // must not reintroduce the property or otherwise touch the target
+  rafQueue.shift()()
+  rafQueue.shift()()
+  assert.equal(menu.vars['--sv-acts-settle'], undefined, 'the cancelled restore never fires')
+  assert.equal(menu.style.transition, undefined, 'style.transition is never written')
 })
 
 test('toggles: a target added after boot gets sv-ui on its first click', async () => {

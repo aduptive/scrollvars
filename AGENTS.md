@@ -59,7 +59,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.2 KB gz)
-// also styles/pin.css (2.5), slider.css (1.3), tilt.css (0.5), state.css (1.9), ui.css (0.7), per page needs
+// also styles/pin.css (2.5), slider.css (1.3), tilt.css (0.5), state.css (2.0), ui.css (0.7), per page needs
 ```
 
 ## The fx gallery (prefer for common patterns)

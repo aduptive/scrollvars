@@ -45,6 +45,17 @@ findings on the same round): three more defects fixed.
   closed by default (`.sv-acts` without `.sv-open`) settled from the no-JS
   finished value down to 0 with the acts transition still running, a
   visible un-animation the instant `toggles()` took over.
+- Fourth pass: that hold read and wrote the inline `transition` shorthand
+  (save, set to `none`, restore). Two defects, both reproduced in Chrome:
+  an inline transition longhand (e.g. `style="transition-duration: 400ms"`)
+  reads back as `''` through the shorthand getter, so the "restore" erased
+  it for good; and `transition: none` stopped every transition on the
+  element for the hold, not just the acts one, snapping an unrelated
+  in-flight transform transition. The hold now sets an internal
+  `--sv-acts-settle` custom property to `0s` instead, new and additive:
+  `.sv-acts`'s own transition reads its duration from it
+  (styles/state.css), and `toggles()` never touches `style.transition` or
+  any longhand.
 
 ### Compat
 - `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
@@ -59,6 +70,12 @@ findings on the same round): three more defects fixed.
   skipped. The sweep asserts and prints a minimum examined count per pin
   page, so a regression back to zero coverage fails it instead of passing
   by omission.
+- The boot-settle e2e fixture (toggles-boot-settle.html) gained two more
+  targets: one with an inline `transition-duration` longhand, one with an
+  unrelated in-flight `translate` transition, proving the settle hold
+  leaves both alone. Its post-click assertion now samples `--sv-act`
+  across frames instead of only the final value, so a transition silently
+  reduced to zero duration would fail it instead of passing by omission.
 
 ## 1.13.0 (2026-09-05)
 

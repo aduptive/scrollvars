@@ -320,33 +320,52 @@ const MIN_EXAMINED = 1
 // time. toggles() itself is booted from a setTimeout scheduled on the
 // first sampled frame, the realistic deferred-boot path (after first
 // paint, e.g. a dynamically-imported interactive layer), so the sampling
-// window reliably straddles the moment it fires ──
+// window reliably straddles the moment it fires. Round 4 finding 2: the
+// hold must never read or write the `transition` shorthand, so an inline
+// transition-duration longhand on a boot-marked target survives untouched,
+// and an unrelated in-flight transition on a boot-marked target is never
+// stopped mid-flight ──
 {
   const page = await browser.newPage()
   await page.goto(`${base}/bench/harness/fixtures/toggles-boot-settle.html`, { waitUntil: 'load' })
   await page.addStyleTag({ content: STYLES_CSS })
   const FINISHED = 4
-  const { samples, unrelated } = await page.evaluate(
+  const DRIFT_END = 90 // px, matches the translate this test sets below
+  const { samples, unrelated, longhandDuration, driftSamples } = await page.evaluate(
     () =>
       new Promise((resolve) => {
         const read = (el) => Number(getComputedStyle(el).getPropertyValue('--sv-act'))
         const target = document.querySelector('#target')
         const other = document.querySelector('#unrelated')
+        const drift = document.querySelector('#drift-target')
+        const driftX = () => parseFloat(getComputedStyle(drift).translate) || 0
         const samples = []
         const unrelated = []
+        const driftSamples = []
         let booted = false
         let frames = 0
         const FRAMES = 20
         const tick = () => {
           samples.push(read(target))
           unrelated.push(read(other))
+          driftSamples.push(driftX())
           if (!booted) {
             booted = true
+            // an unrelated transition, already committed at translate: 0px
+            // since page load, kicked off right as toggles() is scheduled
+            // to boot: it must keep animating straight through the settle
+            drift.style.translate = '90px'
             setTimeout(() => window.SV.toggles(), 0)
           }
           frames++
           if (frames < FRAMES) requestAnimationFrame(tick)
-          else resolve({ samples, unrelated })
+          else
+            resolve({
+              samples,
+              unrelated,
+              driftSamples,
+              longhandDuration: document.querySelector('#longhand-target').style.transitionDuration,
+            })
         }
         requestAnimationFrame(tick)
       })
@@ -368,20 +387,45 @@ const MIN_EXAMINED = 1
     unrelated.every((n) => n === FINISHED),
     unrelated.join(', ')
   )
+  check(
+    'toggles(): an inline transition-duration longhand on a boot-marked target survives the settle (ADU-104, round 4 finding 2)',
+    longhandDuration === '400ms',
+    `style.transitionDuration=${longhandDuration}`
+  )
+  check(
+    'toggles(): an unrelated in-flight transition on a boot-marked target is never stopped by the settle hold (ADU-104, round 4 finding 2)',
+    driftSamples.some((n) => n > 0 && n < DRIFT_END),
+    `sampled translate: ${driftSamples.join(', ')}`
+  )
 
   await page.click('#trigger')
-  await page.waitForFunction(
-    (finished) => getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act').trim() === String(finished),
-    { polling: 'raf', timeout: 2000 },
+  const afterClickSamples = await page.evaluate(
+    (finished) =>
+      new Promise((resolve) => {
+        const read = () => Number(getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act'))
+        const samples = []
+        let frames = 0
+        const FRAMES = 20
+        const tick = () => {
+          samples.push(read())
+          frames++
+          if (frames < FRAMES && samples[samples.length - 1] !== finished) requestAnimationFrame(tick)
+          else resolve(samples)
+        }
+        requestAnimationFrame(tick)
+      }),
     FINISHED
   )
-  const afterClick = await page.evaluate(() =>
-    Number(getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act'))
-  )
+  const afterClick = afterClickSamples[afterClickSamples.length - 1]
   check(
     'toggles(): clicking the trigger still reaches the finished value (transition allowed here, unlike the boot settle)',
     afterClick === FINISHED,
     `--sv-act=${afterClick}`
+  )
+  check(
+    'toggles(): the click transition actually animates through an intermediate value, proving the transition returned (ADU-104, round 4 finding 2)',
+    afterClickSamples.some((n) => n > 0 && n < FINISHED),
+    afterClickSamples.join(', ')
   )
   await page.close()
 }

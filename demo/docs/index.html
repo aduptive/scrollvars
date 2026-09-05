@@ -291,6 +291,22 @@ findings on the same round): three more defects fixed.
   <code>html:not(.sv-on) .sv-acts:not(.sv-ui)</code>: scoped to the widget itself. A
   target added to the DOM after boot gets <code>sv-ui</code> on its first click, so
   that first click shows the finished state with no visible transition.
+<ul><li>Third pass: marking a boot-present target <code>sv-ui</code> now holds its inline</li></ul>
+  <code>transition</code> at <code>none</code> for two animation frames. Without that, a target
+  closed by default (<code>.sv-acts</code> without <code>.sv-open</code>) settled from the no-JS
+  finished value down to 0 with the acts transition still running, a
+  visible un-animation the instant <code>toggles()</code> took over.
+<ul><li>Fourth pass: that hold read and wrote the inline <code>transition</code> shorthand</li></ul>
+  (save, set to <code>none</code>, restore). Two defects, both reproduced in Chrome:
+  an inline transition longhand (e.g. <code>style="transition-duration: 400ms"</code>)
+  reads back as <code>''</code> through the shorthand getter, so the "restore" erased
+  it for good; and <code>transition: none</code> stopped every transition on the
+  element for the hold, not just the acts one, snapping an unrelated
+  in-flight transform transition. The hold now sets an internal
+  <code>--sv-acts-settle</code> custom property to <code>0s</code> instead, new and additive:
+  <code>.sv-acts</code>'s own transition reads its duration from it
+  (styles/state.css), and <code>toggles()</code> never touches <code>style.transition</code> or
+  any longhand.
 
 ### Compat
 <ul><li><code>compat()</code>'s fallback stylesheet gets a <code>transform:</code>-based <code>sv-deck</code></li></ul>
@@ -305,6 +321,12 @@ findings on the same round): three more defects fixed.
   skipped. The sweep asserts and prints a minimum examined count per pin
   page, so a regression back to zero coverage fails it instead of passing
   by omission.
+<ul><li>The boot-settle e2e fixture (toggles-boot-settle.html) gained two more</li></ul>
+  targets: one with an inline <code>transition-duration</code> longhand, one with an
+  unrelated in-flight <code>translate</code> transition, proving the settle hold
+  leaves both alone. Its post-click assertion now samples <code>--sv-act</code>
+  across frames instead of only the final value, so a transition silently
+  reduced to zero duration would fail it instead of passing by omission.
 
 <h3>1.13.0 (2026-09-05)</h3>
 

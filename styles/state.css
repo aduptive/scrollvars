@@ -74,7 +74,10 @@ dialog.sv-pop:not([open]) {
    and every act rescales. Reversible and interruptible by nature: remove
    the class mid-flight and the transition RETARGETS instead of restarting.
    Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
-   straight to the finished state. Content never hidden. */
+   straight to the finished state. Content never hidden.
+   --sv-acts-settle is internal, set only by toggles() during its boot
+   settle (src/core/toggles.ts): an author who overrides the whole
+   `transition` shorthand on .sv-acts loses that settle guard. */
 @property --sv-act {
   syntax: '<number>';
   initial-value: 0;
@@ -82,7 +85,7 @@ dialog.sv-pop:not([open]) {
 }
 .sv-acts {
   --sv-act: 0;
-  transition: --sv-act var(--sv-acts-duration, 2s) linear;
+  transition: --sv-act var(--sv-acts-settle, var(--sv-acts-duration, 2s)) linear;
 }
 /* sv-ui (set by toggles(), src/core/toggles.ts) marks each toggle TARGET
    (the trigger itself when there is no separate target): without the
