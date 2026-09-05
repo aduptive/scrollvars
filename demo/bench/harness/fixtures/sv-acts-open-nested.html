@@ -1,0 +1,25 @@
+<!doctype html>
+<html class="sv-on">
+<head>
+<meta charset="utf-8">
+<title>fixture: .sv-acts.sv-open inside a non-live tracker</title>
+</head>
+<body>
+<!-- Regression fixture (ADU-104, verifier round 2, finding 1): an opened
+     acts widget must keep its finished --sv-act even when it sits inside
+     (or itself is) a tracker that is not live. The live-driven rule in
+     styles/state.css (`.sv-on :is(.sv, [data-sv]) .sv-acts`) multiplies by
+     --sv-live, which is 0 on a non-live tracker; without .sv-acts:not(.sv-open)
+     on that rule it outranks .sv-acts.sv-open on specificity and resets a
+     finished, opened widget back to 0.
+
+     Not shipped, not generated: loaded directly by
+     demo/bench/harness/e2e-invariants.mjs, which injects the built
+     styles.css itself (no <link> here on purpose). -->
+<div data-sv>
+  <div class="sv-acts sv-open" style="--sv-acts-count: 5">
+    <p>finished</p>
+  </div>
+</div>
+</body>
+</html>

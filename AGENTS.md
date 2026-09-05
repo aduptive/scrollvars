@@ -39,12 +39,15 @@ Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `-
 Guard: the driver sets `sv-on` on `<html>`. Entrance CSS must hide content
 only under `.sv-on`. Without JS everything stays visible (never fail hidden).
 The shipped `styles.css` already does this; follow the same pattern for
-custom presets. `toggles()` sets a second class, `sv-ui`, on `<html>`: a
-page that only wires up clicks (no `scan()`/`track()`) still needs its
-no-JS guards to back off once that click driver is running, or a
-click-driven `sv-acts` clock stays stuck at the finished state forever. Any
-custom guard keyed on `html:not(.sv-on)` for something clicks alone can
-finish should add `:not(.sv-ui)` too.
+custom presets. `toggles()` marks a second class, `sv-ui`, on each element it
+controls (the resolved `data-sv-target`, or the trigger itself when there is
+no target), not on `<html>`: a click-only widget on a page whose scroll
+driver never boots (no `scan()`/`track()`) still needs its own no-JS guard
+to back off, or a click-driven `sv-acts` clock stays stuck at the finished
+state forever, while an unrelated scroll-revealed widget elsewhere on the
+same page correctly keeps that finished-state fallback. Any custom guard
+keyed on `html:not(.sv-on)` for something clicks alone can finish should add
+`:not(.sv-ui)` on the element itself, not on `html`.
 
 ## Imports
 
@@ -56,7 +59,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.2 KB gz)
-// also styles/pin.css (2.5), slider.css (1.3), tilt.css (0.5), state.css (1.8), ui.css (0.7), per page needs
+// also styles/pin.css (2.5), slider.css (1.3), tilt.css (0.5), state.css (1.9), ui.css (0.7), per page needs
 ```
 
 ## The fx gallery (prefer for common patterns)

@@ -10,6 +10,8 @@
  *   4. A pin stage never covers its own revealed text; reduced motion
  *      settles sv-auto immediately; a nested non-live tracker keeps its
  *      spread stacked under a live ancestor
+ *   5. An opened sv-acts widget keeps its finished state even inside a
+ *      non-live tracker (the live-driven rule must not outrank .sv-open)
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -68,25 +70,47 @@ const HIDDEN_TEXT = () => {
 }
 
 // shared: own-text elements inside a pin stage (curtain/rail/deck/reading/range/counter
-// all live in one) whose center point is covered by something else (elementFromPoint)
+// all live in one) whose center point is covered by something else (elementFromPoint).
+// Scrolls each candidate into view first: at scroll position 0 a pin stage further
+// down the page is off-viewport, so elementFromPoint would always be skipped below
+// and the sweep would silently examine nothing. Returns how many it did examine, so
+// a regression back to zero coverage can be asserted instead of passing by omission.
 const OCCLUDED_TEXT = () => {
   const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
   const bad = []
+  let examined = 0
   for (const stage of document.querySelectorAll('.sv-stage')) {
     for (const el of stage.querySelectorAll('*')) {
       if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
+      el.scrollIntoView({ block: 'center', inline: 'center' })
       const r = el.getBoundingClientRect()
       if (r.width === 0 || r.height === 0) continue
       const cx = r.left + r.width / 2
       const cy = r.top + r.height / 2
       // off-viewport: elementFromPoint returns null there regardless of occlusion
       if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) continue
+      examined++
       const hit = document.elementFromPoint(cx, cy)
       if (!hit || (hit !== el && !el.contains(hit))) bad.push(el.className || el.tagName)
     }
   }
-  return bad
+  return { bad, examined }
 }
+// the fx pages that ship a .sv-stage pin preset with own-text content to
+// examine: a silent drop to 0 examined candidates on any of these is the
+// exact regression this sweep exists to catch. deck-spread.html has no
+// .sv-stage at all (its "deck" is the sv-spread entrance preset, not the
+// pin one); three-scene.html's .sv-stage holds only a <canvas>, so it
+// structurally examines 0 forever, not a coverage regression.
+const PIN_PAGES = [
+  'curtain.html',
+  'gsap-scrub.html',
+  'horizontal-rail.html',
+  'sequenced-scrub.html',
+  'sticky-steps.html',
+  'timeline-scrub.html',
+]
+const MIN_EXAMINED = 1
 
 // ── 0. Every fx page, no JS: no text hidden, no stage clipping content away ──
 {
@@ -96,14 +120,16 @@ const OCCLUDED_TEXT = () => {
   const bad = []
   const ssrBad = []
   const occluded = []
+  const examinedByPage = {}
   for (const f of pages) {
     await page.goto(`${base}/fx/${f}`, { waitUntil: 'load' })
     const hidden = await page.evaluate(HIDDEN_TEXT)
     if (hidden > 0) bad.push(`${f}:${hidden}`)
     // markup carries data-sv only (scan() adds .sv with JS): a pin stage's
     // panels (curtain, etc.) must not stay as overlays covering the content
-    const occ = await page.evaluate(OCCLUDED_TEXT)
+    const { bad: occ, examined } = await page.evaluate(OCCLUDED_TEXT)
     if (occ.length > 0) occluded.push(`${f}:${occ.join(',')}`)
+    if (PIN_PAGES.includes(f)) examinedByPage[f] = examined
     // the SSR shape: .sv already on the markup, still no JS (a failed bundle on a Next.js page)
     await page.goto(`${base}/ssr/${f}`, { waitUntil: 'load' })
     const ssrHidden = await page.evaluate(HIDDEN_TEXT)
@@ -113,6 +139,13 @@ const OCCLUDED_TEXT = () => {
   check(`no-JS: ${pages.length} fx pages render every text node`, bad.length === 0, bad.join(' '))
   check(`no-JS + SSR markup (.sv present): ${pages.length} fx pages still render every text node`, ssrBad.length === 0, ssrBad.join(' '))
   check(`no-JS: pin stages never cover their revealed text`, occluded.length === 0, occluded.join(' '))
+  console.log(`     examined pin candidates: ${PIN_PAGES.map((f) => `${f}=${examinedByPage[f] ?? 0}`).join(' ')}`)
+  const underExamined = PIN_PAGES.filter((f) => (examinedByPage[f] ?? 0) < MIN_EXAMINED)
+  check(
+    `no-JS: every pin page examines at least ${MIN_EXAMINED} candidate(s) (no silent regression to zero coverage)`,
+    underExamined.length === 0,
+    underExamined.map((f) => `${f}=${examinedByPage[f] ?? 0}`).join(' ')
+  )
 }
 
 // ── 0b. Reduced motion, JS on: nothing hidden after scrolling the whole page ──
@@ -250,6 +283,23 @@ const OCCLUDED_TEXT = () => {
   }))
   check('nested tracker: a live tracker spreads its own children (--sv-spread: 1)', r.direct === '1', `--sv-spread=${r.direct}`)
   check('nested tracker: a non-live tracker inside a live one keeps its spread stacked (--sv-spread: 0)', r.nested === '0', `--sv-spread=${r.nested}`)
+  await page.close()
+}
+
+// ── 5. Acts: an opened widget keeps its finished --sv-act even inside a
+// non-live tracker (the live-driven rule must not outrank .sv-acts.sv-open) ──
+{
+  const page = await browser.newPage()
+  await page.goto(`${base}/bench/harness/fixtures/sv-acts-open-nested.html`, { waitUntil: 'load' })
+  await page.addStyleTag({ content: STYLES_CSS })
+  const act = await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.sv-acts.sv-open')).getPropertyValue('--sv-act').trim()
+  )
+  check(
+    'sv-acts: .sv-acts.sv-open inside a non-live [data-sv] tracker keeps --sv-act at --sv-acts-count (5), not reset to 0',
+    Number(act) === 5,
+    `--sv-act=${act}`
+  )
   await page.close()
 }
 

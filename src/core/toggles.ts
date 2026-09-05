@@ -17,16 +17,19 @@
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  *
- * Marks <html> with `sv-ui`: a click driver is running even on a page that
- * never calls scan()/track(), so CSS no-JS guards keyed on `html:not(.sv-on)`
- * (sv-acts) must also exempt `.sv-ui`, or a click-only page stays stuck at
- * the no-JS finished state forever.
+ * Marks every target it controls with `sv-ui` (the resolved
+ * `data-sv-target` element, or the trigger itself when there is no target):
+ * a click driver is running on that element even on a page that never calls
+ * scan()/track(), so CSS no-JS guards keyed on `html:not(.sv-on)` (sv-acts)
+ * must also exempt `.sv-acts.sv-ui`, or a click-only widget stays stuck at
+ * the no-JS finished state forever. Scoped to the target, not <html>: an
+ * unrelated scroll-revealed widget elsewhere on the same page must still
+ * fall back to the finished state when the scroll driver never boots.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
-  if (typeof document !== 'undefined') document.documentElement.classList.add('sv-ui')
 
   const resolve = (trigger: HTMLElement) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
@@ -45,7 +48,9 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
   scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
     const { className, selector, target } = resolve(trigger)
-    if (target) sync(selector, target, target.classList.contains(className))
+    if (!target) return
+    target.classList.add('sv-ui')
+    sync(selector, target, target.classList.contains(className))
   })
 
   const onClick = (event: Event) => {
@@ -55,6 +60,10 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if (!trigger) return
     const { className, selector, target } = resolve(trigger)
     if (!target) return
+    // a target that appeared after boot (e.g. inserted later) is marked here
+    // instead: its first click shows the finished state with no transition,
+    // since it was covered by the no-JS/no-boot fallback up to this instant
+    target.classList.add('sv-ui')
     const on = target.classList.toggle(className)
     target.style.setProperty('--sv-state', on ? '1' : '0')
     sync(selector, target, on)

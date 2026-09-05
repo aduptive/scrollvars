@@ -3,7 +3,8 @@
 ## Unreleased
 
 Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
-enhancement contract holds in every documented case.
+enhancement contract holds in every documented case. Second pass (verifier
+findings on the same round): three more defects fixed.
 
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so
@@ -19,6 +20,10 @@ enhancement contract holds in every documented case.
 - `sv-spread` and `sv-acts` are driven from the inherited `--sv-live` flag,
   like the entrance presets: a nested tracker that is not itself live no
   longer inherits a live ancestor's spread or acts clock.
+- `.sv-acts.sv-open` now also outranks the live-driven rule
+  (`.sv-acts:not(.sv-open)` on both selectors): an opened widget sitting
+  inside, or itself, a tracker that is not live keeps its finished
+  `--sv-act` instead of being reset to 0.
 - `.sv-auto > :nth-child(1)` (and `.sv-stagger`) resets `--sv-order` to 0,
   so the first child never inherits an ancestor's order.
 - `.sv-slider.sv-cols` also matches `.sv-cols .sv-slider > *`, so a
@@ -26,16 +31,29 @@ enhancement contract holds in every documented case.
   `.sv-slider`, where React's `className` prop lands) works too.
 
 ### Click driver
-- `toggles()` marks `<html>` with a new `sv-ui` class. `sv-acts`'s no-JS
-  guard now exempts it, so a page that only calls `toggles()` (no scroll
-  driver running) can animate through its acts via clicks instead of
-  freezing at the finished state.
+- `toggles()` now marks `sv-ui` on the element it actually controls (the
+  resolved `data-sv-target`, or the trigger itself when there is no
+  target), not on `<html>`. Marking `<html>` unconditionally meant an
+  unrelated scroll-revealed `sv-acts` widget on a page without a booted
+  scroll driver was wrongly exempted from the no-JS finished-state guard
+  and stayed hidden at act zero forever. The guard is now
+  `html:not(.sv-on) .sv-acts:not(.sv-ui)`: scoped to the widget itself. A
+  target added to the DOM after boot gets `sv-ui` on its first click, so
+  that first click shows the finished state with no visible transition.
 
 ### Compat
 - `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
   rule for engines missing individual transform properties.
 - `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
   61-68 and Safari 11, the floor compat claims).
+
+### Testing
+- The no-JS "pin stages never cover their revealed text" e2e sweep now
+  scrolls each candidate into view before measuring: 6 of the 7 pin fx
+  pages were previously off-viewport at scroll position 0 and silently
+  skipped. The sweep asserts and prints a minimum examined count per pin
+  page, so a regression back to zero coverage fails it instead of passing
+  by omission.
 
 ## 1.13.0 (2026-09-05)
 

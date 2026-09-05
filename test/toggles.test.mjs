@@ -7,6 +7,12 @@ function makeElement(attrs = {}) {
     vars: {},
     classes: new Set(),
     classList: {
+      add(c) {
+        el.classes.add(c)
+      },
+      contains(c) {
+        return el.classes.has(c)
+      },
       toggle(c) {
         if (el.classes.has(c)) {
           el.classes.delete(c)
@@ -98,19 +104,45 @@ test('toggles: aria-expanded reflects the target on boot and across every trigge
   stop()
 })
 
-test('toggles: marks <html> with sv-ui, so a click-only page (no scroll driver) is exempt from the no-JS sv-acts guard', async () => {
+test('toggles: marks each resolved target with sv-ui at boot, document.documentElement never touched', async () => {
   global.window = {}
   const html = makeElement()
-  html.classList.add = (c) => html.classes.add(c)
   global.document = { documentElement: html }
-  const { toggles } = await import('../dist/core/toggles.js?sv-ui')
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-target')
 
+  const menu = makeElement()
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const solo = makeElement({ 'data-sv-toggle': '' }) // no data-sv-target: the trigger is its own target
   const root = {
     addEventListener: () => {},
     removeEventListener: () => {},
-    querySelectorAll: () => [],
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [trigger, solo] : []),
   }
   toggles(root)
-  assert.ok(html.classes.has('sv-ui'), 'html.sv-ui set even without scan()/track()')
+  assert.ok(menu.classes.has('sv-ui'), 'a data-sv-target element gets sv-ui at boot')
+  assert.ok(solo.classes.has('sv-ui'), 'a target-less trigger is its own target and gets sv-ui too')
+  assert.ok(!html.classes.has('sv-ui'), 'document.documentElement is never marked')
   delete global.document
+})
+
+test('toggles: a target added after boot gets sv-ui on its first click', async () => {
+  global.window = {}
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-late-target')
+
+  const late = makeElement() // inserted into the DOM only after boot runs
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#late' })
+  let inserted = false
+  const root = {
+    addEventListener: (t, fn) => (root.click = fn),
+    removeEventListener: () => {},
+    querySelector: (sel) => (sel === '#late' && inserted ? late : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [trigger] : []),
+  }
+  toggles(root) // boot: #late does not resolve yet, so it is skipped, unmarked
+  inserted = true
+  assert.ok(!late.classes.has('sv-ui'), 'not marked before it ever gets clicked')
+  root.click({ target: trigger })
+  assert.ok(late.classes.has('sv-ui'), 'marked on its first click')
+  assert.ok(late.classes.has('open'), 'the click still toggles the class as usual')
 })
