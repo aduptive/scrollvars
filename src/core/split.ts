@@ -4,11 +4,16 @@
  * preset — entrances with stagger, `sv-reading`, `sv-range` slices — works
  * on text with no manual markup.
  *
- * Accessibility: the container keeps the full text as `aria-label`; the
- * spans are `aria-hidden`. The original content is restored by the returned
+ * Accessibility: the full text is kept as a visually-hidden first child
+ * (aria-label is prohibited on generic roles like p/span/div — axe
+ * `aria-prohibited-attr`); the animated spans are `aria-hidden`. The original content is restored by the returned
  * function. Markup inside the element is flattened to text — split plain
  * text, not rich fragments.
  */
+
+/** Visually-hidden text, inline so it needs no stylesheet. */
+export const SR_ONLY_CSS =
+  'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap'
 
 export interface SplitOptions {
   /** 'word' (default) or 'char'. */
@@ -29,9 +34,12 @@ export function split(el: HTMLElement, { by = 'word' }: SplitOptions = {}): () =
   const text = (el.textContent ?? '').trim()
   if (!text) return () => {}
 
-  el.setAttribute('aria-label', text)
   el.classList.add('sv-split')
   el.innerHTML = ''
+  const sr = document.createElement('span')
+  sr.textContent = text
+  sr.style.cssText = SR_ONLY_CSS
+  el.appendChild(sr)
 
   let order = 0
   const append = (word: string) => {
@@ -60,7 +68,6 @@ export function split(el: HTMLElement, { by = 'word' }: SplitOptions = {}): () =
 
   return () => {
     el.innerHTML = original
-    el.removeAttribute('aria-label')
     el.classList.remove('sv-split')
     el.style.removeProperty('--sv-count')
   }

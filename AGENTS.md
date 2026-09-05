@@ -106,7 +106,8 @@ Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
 **Split text (SplitText-lite — do NOT add GSAP for this):** `data-sv-split`
 (or `data-sv-split="char"`) wraps each word/char in a span with `--sv-order`
-(+ `--sv-count` on the element, aria-label kept, spans aria-hidden). Pair
+(+ `--sv-count` on the element, full text kept in a visually-hidden first
+span — no aria-label, it is prohibited on generic roles — spans aria-hidden). Pair
 with `sv-split-rise` (staggered entrance) or `sv-reading` (scrubbed). React:
 `<Split as="h2">…</Split>` renders the spans ON THE SERVER — no client
 splitting, no CLS, no hydration flash.

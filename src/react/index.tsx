@@ -293,6 +293,17 @@ export interface SplitProps extends React.HTMLAttributes<HTMLElement>, VarProps 
   as?: React.ElementType
 }
 
+// aria-label is prohibited on generic roles (p/span/div) — axe
+// `aria-prohibited-attr` — so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
+
 /**
  * SplitText-lite, server-rendered: the text arrives as word/char spans with
  * `--sv-order` already in the HTML — no client-side splitting, no layout
@@ -316,7 +327,6 @@ export const Split: React.FC<SplitProps> = ({
   let index = 0
   return (
     <Tag
-      aria-label={children}
       className={className ? `sv-split ${className}` : 'sv-split'}
       style={{
         '--sv-count': splitParts(children, by).length,
@@ -324,6 +334,7 @@ export const Split: React.FC<SplitProps> = ({
       } as React.CSSProperties}
       {...rest}
     >
+      <span style={SR_ONLY}>{children}</span>
       {words.map((word, w) => (
         <React.Fragment key={w}>
           {w > 0 && ' '}
