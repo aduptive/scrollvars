@@ -44,6 +44,10 @@ interface Entry {
   near: boolean
   live: boolean
   scene: number
+  /** px the pinned stage sits below the viewport top (a sticky header): read once
+   * from the element's computed `--sv-pin-offset`, so one CSS declaration drives
+   * both the layout (.sv-stage) and the math. */
+  pinOffset: number
   written: Record<string, string>
 }
 
@@ -203,9 +207,15 @@ function computeTravel(geo: Geometry): number {
 }
 
 /** 0..1 across a sticky container's pinned stretch. */
-function computePin(geo: Geometry): number {
-  const span = Math.max(geo.height - geo.vp, 1)
-  return clamp(-geo.top / span, 0, 1)
+function computePin(geo: Geometry, offset = 0): number {
+  const span = Math.max(geo.height - geo.vp + offset, 1)
+  return clamp((offset - geo.top) / span, 0, 1)
+}
+
+/** `--sv-pin-offset` as a number of px (0 when unset or outside a browser). */
+function readPinOffset(el: HTMLElement): number {
+  if (typeof getComputedStyle !== 'function') return 0
+  return parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin-offset')) || 0
 }
 
 function computeScene(pin: number, count: number, snap: number | false): number {
@@ -268,13 +278,13 @@ function apply(entry: Entry, geo: Geometry) {
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(geo)
+    const p = computePin(geo, entry.pinOffset)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(geo)
+    const pin = computePin(geo, entry.pinOffset)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)
@@ -296,6 +306,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     near: true,
     live: false,
     scene: -1,
+    pinOffset: opts.pin ? readPinOffset(el) : 0,
     written: {},
   }
   entries.set(el, entry)
@@ -337,8 +348,9 @@ export function scrollToScene(
   if (typeof window === 'undefined' || count < 2) return
   const rect = el.getBoundingClientRect()
   const vp = root ? root.clientHeight : window.innerHeight
-  const span = Math.max(rect.height - vp, 1)
-  const offset = (clamp(index, 0, count - 1) / (count - 1)) * span
+  const pinOffset = readPinOffset(el)
+  const span = Math.max(rect.height - vp + pinOffset, 1)
+  const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
   const behavior: ScrollBehavior = smooth ? 'smooth' : 'instant'
   if (root) {
     root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior })

@@ -434,7 +434,7 @@
     text-wrap: balance;
   }
   .read-text span {
-    opacity: clamp(0.13, calc(var(--sv-pin, 0) * (var(--wn) + 3) - var(--wi)), 1);
+    opacity: clamp(var(--sv-reading-floor, 0.55), calc(var(--sv-pin, 0) * (var(--wn) + 3) - var(--wi)), 1);
   }
   @media (prefers-reduced-motion: reduce) {
     .read-outer { height: auto; padding: 40px 0; }
@@ -1484,6 +1484,7 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
     </a>
   </div>
 </header>
+<main>
 
 <!-- ══════════════ HERO ══════════════ -->
 <section class="hero" id="hero" data-sv data-hud="hero">
@@ -1799,7 +1800,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
 <span class="c">/* official preset since v0.7: sv-reading + --sv-count on the container,
    --sv-order per word span. One rule for every word: */</span>
 .sv-reading &gt; * {
-  opacity: <span class="k">clamp(0.13, calc(var(--sv-pin) * (var(--sv-count) + 3) - var(--sv-order)), 1)</span>;
+  opacity: <span class="k">clamp(var(--sv-reading-floor, 0.55), calc(var(--sv-pin) * (var(--sv-count) + 3) - var(--sv-order)), 1)</span>;
 }</code></pre>
   </div>
 </section>
@@ -2912,6 +2913,7 @@ the full API, recipes and performance rules, ready to ingest.
   </div>
 </section>
 
+</main>
 <footer>
   <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
@@ -3097,9 +3099,14 @@ var SV = (() => {
   function computeTravel(geo) {
     return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1);
   }
-  function computePin(geo) {
-    const span = Math.max(geo.height - geo.vp, 1);
-    return clamp(-geo.top / span, 0, 1);
+  function computePin(geo, offset = 0) {
+    const span = Math.max(geo.height - geo.vp + offset, 1);
+    return clamp((offset - geo.top) / span, 0, 1);
+  }
+  function readPinOffset(el) {
+    if (typeof getComputedStyle !== "function")
+      return 0;
+    return parseFloat(getComputedStyle(el).getPropertyValue("--sv-pin-offset")) || 0;
   }
   function computeScene(pin, count, snap) {
     const raw = pin * (count - 1);
@@ -3145,13 +3152,13 @@ var SV = (() => {
       opts.onTravel?.(t);
     }
     if (opts.pin || opts.onPin) {
-      const p = computePin(geo);
+      const p = computePin(geo, entry.pinOffset);
       if (opts.pin)
         setVar(entry, "--sv-pin", p);
       opts.onPin?.(p);
     }
     if (opts.scenes && opts.scenes > 1) {
-      const pin = computePin(geo);
+      const pin = computePin(geo, entry.pinOffset);
       const snap = opts.snap === false ? false : opts.snap ?? SCENE_SNAP;
       const scene = computeScene(pin, opts.scenes, snap);
       setVar(entry, "--sv-scene", scene);
@@ -3170,6 +3177,7 @@ var SV = (() => {
       near: true,
       live: false,
       scene: -1,
+      pinOffset: opts.pin ? readPinOffset(el) : 0,
       written: {}
     };
     entries.set(el, entry);
@@ -3199,8 +3207,9 @@ var SV = (() => {
       return;
     const rect = el.getBoundingClientRect();
     const vp = root ? root.clientHeight : window.innerHeight;
-    const span = Math.max(rect.height - vp, 1);
-    const offset = clamp(index, 0, count - 1) / (count - 1) * span;
+    const pinOffset = readPinOffset(el);
+    const span = Math.max(rect.height - vp + pinOffset, 1);
+    const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
     const behavior = smooth ? "smooth" : "instant";
     if (root) {
       root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior });

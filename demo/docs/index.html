@@ -317,6 +317,20 @@ said premium sections would need.
 <li>compat: the transform fallback honours <code>sv-skip</code>; the ResizeObserver shim</li></ul>
   delivers an initial observation, so legacy canvases start.
 
+### Sticky headers, knobs, interaction
+<ul><li><code>--sv-pin-offset</code> (one CSS declaration, e.g. <code>:root { --sv-pin-offset: 64px }</code>)</li></ul>
+  is read by both <code>.sv-stage</code> and the driver's pin math, so a sticky header no
+  longer breaks pinned sections; <code>scrollToScene</code> accounts for it too.
+<ul><li><code>--sv-rail-start</code> (rail inside a narrower stage), <code>--sv-reading-floor</code></li></ul>
+  (default .55 so unread words keep a 4.5:1 contrast; was .13), and the
+  sv-range clock now lives on the container at zero specificity, so
+  <code>.mine { --sv-clock: var(--sv-t) }</code> overrides it.
+<ul><li>StickySteps marks inactive shots <code>inert</code> + <code>aria-hidden</code> after mount, so a</li></ul>
+  crossfaded shot cannot keep focusable links.
+<ul><li>e2e invariants: an SSR-shaped sweep (<code>.sv</code> already on the markup, no JS) and</li></ul>
+  a reduced-motion sweep (JS on, whole page scrolled) over every fx page.
+<ul><li>Home page: <code>&lt;main></code> landmark; the guided-reading demo passes color-contrast.</li></ul>
+
 ### Canvas, debug, CLI, split
 <ul><li><code>setup()</code> may return a cleanup, called on <code>destroy()</code>; <code>resize()</code> also runs</li></ul>
   once after <code>setup()</code>. The three-scene component disposes its GPU resources.

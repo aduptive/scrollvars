@@ -279,3 +279,23 @@ test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', asyn
   assert.equal(pageVars['--sv-v'], '0', 'velocity decays to 0 at rest')
   untrack()
 })
+
+test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', async () => {
+  global.getComputedStyle = () => ({ getPropertyValue: (n) => (n === '--sv-pin-offset' ? '64px' : '') })
+  const { track } = await import('../dist/core/driver.js?pinoffset')
+  const el = makeElement(3000)
+  const untrack = track(el, { pin: true })
+  // stage sticks at 64px from the top: progress 0 there, 1 when the wrapper's
+  // bottom reaches the stage's bottom (vh - height)
+  place(el, 64)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '0.0000')
+  place(el, 1000 - 3000)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '1.0000')
+  place(el, 0)
+  pump()
+  assert.equal(el.vars['--sv-pin'], (64 / (3000 - 1000 + 64)).toFixed(4))
+  untrack()
+  delete global.getComputedStyle
+})

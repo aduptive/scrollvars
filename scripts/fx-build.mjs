@@ -267,7 +267,9 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   const tl = gsap.timeline({ paused: true })
     .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
-  SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
+  // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
+  else SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
 })</script>`,
     css: `<div class="outer">          <!-- height: 250vh; position: relative -->
   <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
@@ -794,6 +796,7 @@ function Timeline() {
 /* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
 .st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
@@ -839,6 +842,7 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
     tailwind: `<div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]">
@@ -1409,7 +1413,7 @@ export function TimelineScrub({
 // swapping, the crossfade is one max() per element. Without JS the shots stack in flow.
 'use client'
 import * as React from 'react'
-import { Track } from 'scrollvars/react'
+import { useScenes } from 'scrollvars/react'
 
 const css = \`
 .sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
@@ -1419,6 +1423,7 @@ const css = \`
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+@media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 .sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
 .sv-steps .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
 html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
@@ -1439,13 +1444,25 @@ export interface StickyStep {
 }
 
 export function StickySteps({ steps, className }: { steps: StickyStep[]; className?: string }) {
+  // the active index (integer changes only) makes the inactive shots inert, so a
+  // crossfaded shot cannot keep focusable links; applied after mount so the
+  // server markup stays fully usable without JS
+  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh' })
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
   return (
-    <Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+    <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style>{css}</style>
       <div className="sv-stage st-grid">
         <div className="st-media">
           {steps.map((s, i) => (
-            <figure key={i} className="st-shot" style={{ '--i': i } as React.CSSProperties}>
+            <figure
+              key={i}
+              className="st-shot"
+              style={{ '--i': i } as React.CSSProperties}
+              inert={mounted && i !== scene ? true : undefined}
+              aria-hidden={mounted && i !== scene ? true : undefined}
+            >
               {s.media}
             </figure>
           ))}
@@ -1465,7 +1482,7 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
           ))}
         </div>
       </div>
-    </Track>
+    </div>
   )
 }
 `,

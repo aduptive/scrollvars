@@ -119,17 +119,17 @@ Anything that reads them is a preset. The shipped ones:
 | Class | Effect |
 | --- | --- |
 | `sv-rise` / `sv-fade` / `sv-slide-l` / `sv-slide-r` | Entrance transitions, triggered by `.sv-live` |
-| `sv-auto` (on the container) | Every direct child rises in DOM order. No classes on children (`sv-skip` opts out) |
+| `sv-auto` (on the container) | Every direct child rises in DOM order, no classes on children (`sv-skip` opts out); the first 10 get their own beat, the rest share the tenth |
 | `sv-drift` | Continuous drift tied to `--sv-view`. Follows the finger, no transition |
 | `sv-spread` | Centered deck fans out into its flex row, `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
 | `sv-deck` | Pinned card pile: each child flies away across its slice of the pin (`--sv-count`) |
-| `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`) |
+| `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55, keeps 4.5:1 on dark themes; .13 for drama) |
 | `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the wrapper's height and `position: relative`; put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the wrapper's height and `position: relative`; put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
 
 ## React
 
@@ -441,6 +441,8 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Firefox | **74+** (Mar 2020) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
 | Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
+
+The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces open and static. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);

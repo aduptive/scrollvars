@@ -69,6 +69,20 @@ said premium sections would need.
 - compat: the transform fallback honours `sv-skip`; the ResizeObserver shim
   delivers an initial observation, so legacy canvases start.
 
+### Sticky headers, knobs, interaction
+- `--sv-pin-offset` (one CSS declaration, e.g. `:root { --sv-pin-offset: 64px }`)
+  is read by both `.sv-stage` and the driver's pin math, so a sticky header no
+  longer breaks pinned sections; `scrollToScene` accounts for it too.
+- `--sv-rail-start` (rail inside a narrower stage), `--sv-reading-floor`
+  (default .55 so unread words keep a 4.5:1 contrast; was .13), and the
+  sv-range clock now lives on the container at zero specificity, so
+  `.mine { --sv-clock: var(--sv-t) }` overrides it.
+- StickySteps marks inactive shots `inert` + `aria-hidden` after mount, so a
+  crossfaded shot cannot keep focusable links.
+- e2e invariants: an SSR-shaped sweep (`.sv` already on the markup, no JS) and
+  a reduced-motion sweep (JS on, whole page scrolled) over every fx page.
+- Home page: `<main>` landmark; the guided-reading demo passes color-contrast.
+
 ### Canvas, debug, CLI, split
 - `setup()` may return a cleanup, called on `destroy()`; `resize()` also runs
   once after `setup()`. The three-scene component disposes its GPU resources.

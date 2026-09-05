@@ -93,13 +93,13 @@ tied to `--sv-view` (flat inside the live band), no transition (transitions on c
 ```
 The container is N viewports tall, content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
-`sv-rail` (horizontal carousel: enters from offscreen right and still moves
+`sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-rail-start` = the stage width when it is not the viewport: enters from offscreen right and still moves
 when the track fits the viewport:
 `translate: calc((1 - var(--sv-pin)) * 100vw + var(--sv-pin) * min(100vw - 100%, 0px)) 0`).
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
-`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton. No client components
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton; a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math. No client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
@@ -109,7 +109,7 @@ scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
 Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
 
-**Split text (SplitText-lite: do NOT add GSAP for this):** `data-sv-split`
+**Split text (SplitText-lite: do NOT add GSAP for this; it flattens inline markup, so keep links and bold outside the split element):** `data-sv-split`
 (or `data-sv-split="char"`) wraps each word/char in a span with `--sv-order`
 (+ `--sv-count` on the element, full text kept in a visually-hidden first
 span (no aria-label, it is prohibited on generic roles) spans aria-hidden). Pair
@@ -120,7 +120,7 @@ splitting, no CLS, no hydration flash.
 **Sequenced scrub (choreography: do NOT add GSAP for this):** `sv-range`.
 Each child gets `--sv-r` (0..1) over its own slice of the pin: set
 `--sv-from`/`--sv-to` per child, add `sv-range-rise` for the ready-made
-flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`. The calc
+flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so unsupported math settles at the finished state; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }`. The calc
 division needs Chrome 112/Safari 16.4/FF 112 and the fallback settles old
 engines at the end state). JS twin: `mapRange(t, from, to, ease?)` inside
 `onPin`/`onTravel` for canvas/WebGL.
@@ -218,7 +218,7 @@ ambient canvas its own unmanaged `requestAnimationFrame` loop.
 ## SSR / Next.js
 
 All content renders on the server. The components are thin `'use client'`
-wrappers whose children stay RSC. `<ScrollVarsBoot />` (first child of `<body>`) sets
+wrappers whose children stay RSC (`<Scenes>` takes a render function, so what it renders is client-side; keep heavy content in RSC siblings). `<ScrollVarsBoot />` (first child of `<body>`) sets
 `sv-on` before first paint and removes it again if the driver never boots, so
 entrances neither flash nor fail hidden. Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.
@@ -240,7 +240,7 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 74+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
-static but 100% visible (`html.sv-on` guard). Animation is enhancement,
+static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces open and static. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler

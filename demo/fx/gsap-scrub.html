@@ -157,7 +157,9 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   const tl = gsap.timeline({ paused: true })
     .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
-  SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
+  // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
+  else SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
 })</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
@@ -198,7 +200,7 @@ useEffect(() =&gt; {
   &lt;div className="sticky top-0 h-screen"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.7 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

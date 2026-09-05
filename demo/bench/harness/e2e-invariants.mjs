@@ -23,8 +23,20 @@ const CHROME =
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
 const server = createServer((req, res) => {
   try {
-    const p = join(root, req.url.split('?')[0].replace(/\/$/, '/index.html'))
+    let url = req.url.split('?')[0].replace(/\/$/, '/index.html')
+    // /ssr/<fx page>: the fx page as a server renderer would emit it, with the
+    // driver's .sv class already on every tracked element (React <Track> does that)
+    const ssr = url.startsWith('/ssr/')
+    if (ssr) url = '/fx/' + url.slice(5)
+    const p = join(root, url)
     res.setHeader('content-type', MIME[extname(p)] || 'application/octet-stream')
+    if (ssr && p.endsWith('.html')) {
+      const html = readFileSync(p, 'utf8').replace(/<(\w+)([^>]*\sdata-sv(?=[\s>])[^>]*)>/g, (all, tag, attrs) =>
+        /\sclass="/.test(attrs) ? `<${tag}${attrs.replace(/\sclass="/, ' class="sv ')}>` : `<${tag} class="sv"${attrs}>`
+      )
+      res.end(html)
+      return
+    }
     res.end(readFileSync(p))
   } catch {
     res.statusCode = 404
@@ -41,26 +53,54 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures++
 }
 
+// shared: elements with their own text that are invisible (opacity 0, hidden, display none)
+const HIDDEN_TEXT = () => {
+  const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+  return [...document.body.querySelectorAll('*')].filter((el) => {
+    if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) return false
+    const cs = getComputedStyle(el)
+    return cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none'
+  }).length
+}
+
 // ── 0. Every fx page, no JS: no text hidden, no stage clipping content away ──
 {
   const pages = readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html')
   const page = await browser.newPage()
   await page.setJavaScriptEnabled(false)
   const bad = []
+  const ssrBad = []
   for (const f of pages) {
     await page.goto(`${base}/fx/${f}`, { waitUntil: 'load' })
-    const hidden = await page.evaluate(() => {
-      const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
-      return [...document.body.querySelectorAll('*')].filter((el) => {
-        if (!own(el) || el.closest('[aria-hidden="true"], script, style, template')) return false
-        const cs = getComputedStyle(el)
-        return cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none'
-      }).length
-    })
+    const hidden = await page.evaluate(HIDDEN_TEXT)
     if (hidden > 0) bad.push(`${f}:${hidden}`)
+    // the SSR shape: .sv already on the markup, still no JS (a failed bundle on a Next.js page)
+    await page.goto(`${base}/ssr/${f}`, { waitUntil: 'load' })
+    const ssrHidden = await page.evaluate(HIDDEN_TEXT)
+    if (ssrHidden > 0) ssrBad.push(`${f}:${ssrHidden}`) // pages without [data-sv] (slider, pointer, gsap, three) simply have nothing to inject
   }
   await page.close()
   check(`no-JS: ${pages.length} fx pages render every text node`, bad.length === 0, bad.join(' '))
+  check(`no-JS + SSR markup (.sv present): ${pages.length} fx pages still render every text node`, ssrBad.length === 0, ssrBad.join(' '))
+}
+
+// ── 0b. Reduced motion, JS on: nothing hidden after scrolling the whole page ──
+{
+  const pages = readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html')
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  const bad = []
+  for (const f of pages) {
+    await page.goto(`${base}/fx/${f}`, { waitUntil: 'load' })
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
+    await new Promise((r) => setTimeout(r, 300))
+    await page.evaluate(() => scrollTo(0, 0))
+    await new Promise((r) => setTimeout(r, 300))
+    const hidden = await page.evaluate(HIDDEN_TEXT)
+    if (hidden > 0) bad.push(`${f}:${hidden}`)
+  }
+  await page.close()
+  check(`reduced motion: ${pages.length} fx pages keep every text node visible`, bad.length === 0, bad.join(' '))
 }
 
 // ── 1. No JS → fully visible ──
