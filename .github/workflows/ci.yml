@@ -21,7 +21,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - run: npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/docs-build.mjs
+      - run: npm run demo:sync
+      - name: generated docs and pages are committed, not hand-patched
+        run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/fx demo/docs styles.css
       - run: npm run test:e2e
         env:
           CHROME: /usr/bin/google-chrome

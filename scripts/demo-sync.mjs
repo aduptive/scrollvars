@@ -76,16 +76,14 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
 // footer stamp: version + measured wire sizes (esbuild+gzip of the dist)
 {
   const { execSync } = await import('node:child_process')
-  const { gzipSync } = await import('node:zlib')
+  const { measureSizes } = await import('./docs-data.mjs')
+  const sizes = measureSizes(root)
   const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-  const gz = (entry) =>
-    (gzipSync(execSync(`npx esbuild ${join(root, entry)} --bundle --minify`, { maxBuffer: 1e7 })).length / 1024).toFixed(1)
-  const driverKB = gz('dist/core/driver.js')
-  const coreKB = gz('dist/index.js')
-  html = html.replace(
-    /<code>npm i scrollvars<\/code> · zero dependencies · driver [\d.]+ KB gzip · whole lib [^·]+·/,
-    `<code>npm i scrollvars</code> · zero dependencies · driver ${driverKB} KB gzip · full core ${coreKB} KB ·`
-  )
+  const driverKB = sizes.driver
+  const coreKB = sizes.everything
+  const footer = /<code>npm i scrollvars<\/code> · zero dependencies · driver [\d.]+ KB gzip · (?:whole lib|full core) [^·]+·/
+  if (!footer.test(html)) throw new Error('demo footer size marker not found (it drifted silently once; never again)')
+  html = html.replace(footer, `<code>npm i scrollvars</code> · zero dependencies · driver ${driverKB} KB gzip · full core ${coreKB} KB ·`)
   html = html.replace(/ · v[\d.]+ · MIT · /, ` · v${version} · MIT · `)
 }
 

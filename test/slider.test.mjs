@@ -349,3 +349,80 @@ test('slider: goTo(i, false) after seek() restores the authored snap; position c
   assert.equal(handle.state().count, 3)
   handle.destroy()
 })
+
+// shared for the two geometry tests below: a container whose rect starts away
+// from the viewport origin (the offsetParent case Codex flagged) and vertical slides
+function makeSlideBox({ x = 0, y = 0, w = 100, h = 100 }) {
+  return {
+    offsetLeft: x, offsetTop: y, offsetWidth: w, offsetHeight: h,
+    vars: {}, classes: new Set(),
+    style: { setProperty(k, v) { this._owner.vars[k] = v } },
+    classList: { toggle(name, on) { on ? this._owner.classes.add(name) : this._owner.classes.delete(name) } },
+    getBoundingClientRect() {
+      const c = this._c
+      const left = c.rect.left + c.clientLeft + this.offsetLeft - c.scrollLeft
+      const top = c.rect.top + c.clientTop + this.offsetTop - c.scrollTop
+      return { left, right: left + this.offsetWidth, top, bottom: top + this.offsetHeight, width: this.offsetWidth, height: this.offsetHeight }
+    },
+  }
+}
+function makeBox(slides, { rect, clientWidth, clientHeight, scrollWidth, scrollHeight, listeners, rafQueue }) {
+  const c = {
+    get children() { slides.forEach((s) => { s._c = c; s.style._owner = s; s.classList._owner = s }); return slides },
+    rect, clientLeft: 2, clientTop: 2, scrollLeft: 0, scrollTop: 0,
+    clientWidth, clientHeight, scrollWidth, scrollHeight,
+    vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { c.vars[k] = v } },
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: () => {},
+    scrollTo: () => {},
+    getBoundingClientRect() { return { ...rect, right: rect.left + clientWidth + 4, bottom: rect.top + clientHeight + 4, width: clientWidth + 4, height: clientHeight + 4 } },
+  }
+  return c
+}
+const pumpSlider = (listeners, rafQueue) => { listeners.scroll(); while (rafQueue.length) rafQueue.shift()(0) }
+
+test('slider: geometry is container-local even when the rail sits far from the viewport origin', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  // the rail is 250px from the left of a positioned ancestor and 900px down the page
+  const c = makeBox(slides, { rect: { left: 250, top: 900 }, clientWidth: 300, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?offset')
+  const handle = slider(c, { duration: 0 })
+  pumpSlider(listeners, rafQueue)
+  // viewport center at 150 in rail coordinates: slide 1 (100..200) is active, --sd 0
+  assert.equal(handle.active(), 1)
+  assert.equal(slides[1].vars['--sd'], '0.0000')
+  assert.equal(slides[0].vars['--sd'], '-1.0000')
+  handle.destroy()
+})
+
+test('slider: vertical rail (axis y) measures with tops and scrollTop', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+  const slides = [makeSlideBox({ y: 0, w: 300 }), makeSlideBox({ y: 100, w: 300 }), makeSlideBox({ y: 200, w: 300 }), makeSlideBox({ y: 300, w: 300 })]
+  const c = makeBox(slides, { rect: { left: 40, top: 500 }, clientWidth: 300, clientHeight: 200, scrollWidth: 300, scrollHeight: 400, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?vertical')
+  const handle = slider(c, { axis: 'y', duration: 0 })
+  pumpSlider(listeners, rafQueue)
+  // 200px viewport, center at 100: slides 0 and 1 tie, the first wins
+  assert.equal(handle.active(), 0)
+  c.scrollTop = 150 // center at 250: slide 2 (200..300) exactly
+  pumpSlider(listeners, rafQueue)
+  assert.equal(handle.active(), 2)
+  assert.equal(slides[2].vars['--sd'], '0.0000')
+  c.scrollTop = 200 // the end of the range (scrollHeight - clientHeight)
+  pumpSlider(listeners, rafQueue)
+  assert.equal(handle.state().progress, 1)
+  handle.destroy()
+})

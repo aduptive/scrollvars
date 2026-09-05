@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { varsHtml } from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'demo', 'docs')
@@ -32,7 +33,7 @@ const page = `<!doctype html>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars docs: the human reference</title>
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
+<meta name="description" content="Quickstart, the variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
   * { box-sizing: border-box; margin: 0; }
   :root { --ink:#121118; --line:rgba(230,228,240,.09); --text:#e6e4f0; --muted:#8f8ca6;
@@ -72,7 +73,7 @@ const page = `<!doctype html>
 <a href="../llms.txt">llms.txt</a>. Live patterns: <a href="../">the demo</a> (view-source is
 the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats each).</p>
 <nav class="toc">
-<a href="#quickstart">Quickstart</a> <a href="#vars">The six variables</a>
+<a href="#quickstart">Quickstart</a> <a href="#vars">The variables</a>
 <a href="#exports">Every export</a> <a href="#presets">Preset vocabulary</a>
 <a href="#knobs">One knob, four ways</a>
 <a href="#gsap">Coming from GSAP</a> <a href="#not">When NOT to use it</a>
@@ -104,16 +105,8 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <b>React components:</b> <code>&lt;Reveal auto&gt;</code>, <code>&lt;Track pin&gt;</code>,
 <code>&lt;Scenes count={4}&gt;</code> when you want props instead of attributes.</p>
 
-<h2 id="vars">The six variables (the entire API surface)</h2>
-<table>
-<tr><th>name</th><th>range</th><th>meaning</th></tr>
-<tr><td><code>--sv-view</code></td><td>−1 → 1</td><td>signed position vs the live band (0 while inside)</td></tr>
-<tr><td><code>--sv-t</code></td><td>0 → 1</td><td>travel through the viewport (native <code>view()</code> semantics)</td></tr>
-<tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>progress across a pinned (sticky) stretch</td></tr>
-<tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>eased, snapped scene index of a pinned section</td></tr>
-<tr><td><code>--sv-r</code></td><td>0 → 1</td><td>per-child slice of the clock (sv-range choreography)</td></tr>
-<tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>pointer offset from an element's center</td></tr>
-</table>
+<h2 id="vars">The variables (what the driver writes)</h2>
+${varsHtml()}
 <p>Plus the class <code>.sv-live</code> (inside the band; enter/exit lines default 75%/25%,
 tunable per element via <code>enter</code>/<code>exit</code> or
 <code>data-sv-enter</code>/<code>data-sv-exit</code>) and the no-JS guard: hiding styles apply

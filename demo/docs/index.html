@@ -3,7 +3,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars docs: the human reference</title>
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
+<meta name="description" content="Quickstart, the variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
   * { box-sizing: border-box; margin: 0; }
   :root { --ink:#121118; --line:rgba(230,228,240,.09); --text:#e6e4f0; --muted:#8f8ca6;
@@ -43,7 +43,7 @@
 <a href="../llms.txt">llms.txt</a>. Live patterns: <a href="../">the demo</a> (view-source is
 the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats each).</p>
 <nav class="toc">
-<a href="#quickstart">Quickstart</a> <a href="#vars">The six variables</a>
+<a href="#quickstart">Quickstart</a> <a href="#vars">The variables</a>
 <a href="#exports">Every export</a> <a href="#presets">Preset vocabulary</a>
 <a href="#knobs">One knob, four ways</a>
 <a href="#gsap">Coming from GSAP</a> <a href="#not">When NOT to use it</a>
@@ -75,16 +75,19 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <b>React components:</b> <code>&lt;Reveal auto&gt;</code>, <code>&lt;Track pin&gt;</code>,
 <code>&lt;Scenes count={4}&gt;</code> when you want props instead of attributes.</p>
 
-<h2 id="vars">The six variables (the entire API surface)</h2>
+<h2 id="vars">The variables (what the driver writes)</h2>
 <table>
-<tr><th>name</th><th>range</th><th>meaning</th></tr>
-<tr><td><code>--sv-view</code></td><td>−1 → 1</td><td>signed position vs the live band (0 while inside)</td></tr>
-<tr><td><code>--sv-t</code></td><td>0 → 1</td><td>travel through the viewport (native <code>view()</code> semantics)</td></tr>
-<tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>progress across a pinned (sticky) stretch</td></tr>
-<tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>eased, snapped scene index of a pinned section</td></tr>
-<tr><td><code>--sv-r</code></td><td>0 → 1</td><td>per-child slice of the clock (sv-range choreography)</td></tr>
-<tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>pointer offset from an element's center</td></tr>
+<tr><th>output</th><th>range</th><th>meaning</th></tr>
+<tr><td><code>--sv-view</code></td><td>−1 → 0 → 1</td><td>Below the live band → inside it (flat at 0) → gone above</td></tr>
+<tr><td><code>--sv-t</code></td><td>0 → 1</td><td>Travel through the viewport (same semantics as native <code>view()</code>)</td></tr>
+<tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>Progress across a pinned (sticky) stretch: curtains, rails, scrubbing</td></tr>
+<tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
+<tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±vh/s</td><td>On <code>&lt;html></code>: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest)</td></tr>
+<tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
+<tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
+<p>Derived by presets and components, not the driver: <code>--sv-r</code> (sv-range slice), <code>--sd</code> and <code>--sv-progress</code> (slider), <code>--sv-state</code> (toggles), <code>--sv-act</code> (sv-acts).</p>
 <p>Plus the class <code>.sv-live</code> (inside the band; enter/exit lines default 75%/25%,
 tunable per element via <code>enter</code>/<code>exit</code> or
 <code>data-sv-enter</code>/<code>data-sv-exit</code>) and the no-JS guard: hiding styles apply
@@ -341,6 +344,21 @@ said premium sections would need.
 <ul><li><code>split(…, { by: 'char' })</code> splits on grapheme clusters when</li></ul>
   <code>Intl.Segmenter</code> exists (emoji and combining marks stay whole).
 <ul><li><code>--mx</code>/<code>--my</code> are clamped to -1..1.</li></ul>
+
+### One source for the shared facts
+<ul><li><code>scripts/docs-data.mjs</code> holds the variables table and measures every size at</li></ul>
+  build; <code>docs-stamp.mjs</code> writes them into README and AGENTS between markers,
+  generates <code>demo/llms.txt</code> from AGENTS.md, and <code>bench-tables.mjs</code> stamps the
+  benchmark table into README, AGENTS and the bench page from the committed
+  results. CI fails if any of those files differ from what the build produces.
+<ul><li>The gallery data (<code>EFFECTS</code>, <code>COMPONENTS</code>) lives in <code>scripts/fx-data.mjs</code></li></ul>
+  with no side effects; <code>test/cli-components.test.mjs</code> compiles all 16 CLI
+  components with esbuild, renders the React ones with <code>react-dom/server</code>, and
+  checks that each uses the preset vocabulary its preview shows.
+<ul><li>Registry entries declare <code>requires</code> (stylesheets, peer deps, minimum</li></ul>
+  scrollvars); <code>npx scrollvars add</code> prints them and checks the installed
+  version.
+<ul><li>Slider tests for a rail inside a positioned ancestor and for a vertical rail.</li></ul>
 
 ### Docs and release
 <ul><li>Sizes re-measured and stated once: ESM core 4.3 KB gz, driver 1.4, slider</li></ul>

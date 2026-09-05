@@ -3,12 +3,13 @@
 > Tiny scroll/pointer/click/canvas animation engine: one rAF in, CSS
 > variables out. Zero dependencies. Live demo with view-source docs:
 > https://scrollvars.dev · Benchmarks: https://scrollvars.dev/bench/
+> Generated from the repository's AGENTS.md at build; same content, same version.
 
 ## Resources
 
 - [Live demo](https://scrollvars.dev), 28 patterns, view-source is the spec
 - [Human docs](https://scrollvars.dev/docs/). Quickstart, every export, de/para tables
-- [fx gallery](https://scrollvars.dev/fx/), copy-paste effects, its own [llms.txt](https://scrollvars.dev/fx/llms.txt)
+- [fx gallery](https://scrollvars.dev/fx/), copy-paste effects and sections, its own [llms.txt](https://scrollvars.dev/fx/llms.txt)
 - [Benchmark](https://scrollvars.dev/bench/). Reproducible, includes the scenario it loses
 - [npm package](https://www.npmjs.com/package/scrollvars) · [GitHub](https://github.com/aduptive/scrollvars)
 
@@ -33,18 +34,20 @@ scroll values into React state, you are doing it wrong.
 
 ## The variables (the API surface)
 
-| var | range | meaning |
-|---|---|---|
-| `--sv-view` | −1 → 0 → 1 | below the live band → inside it (flat at 0) → gone above |
-| `--sv-t` | 0 → 1 | travel through the viewport (same semantics as native `view()`) |
-| `--sv-pin` | 0 → 1 | progress across a pinned (sticky) stretch. Curtains, rails, scrubbing |
-| `--sv-scene` | 0 → n−1 | scene index of a pinned section, eased and snapped |
-| `--mx` / `--my` | −1 → 1 | pointer offset from the element's center, clamped (pointer module) |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | on `<html>`: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest) |
-| `--sv-scenes` | n | scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `.sv-live` | class | on while inside the activation band (enter 75%, exit 25% of viewport); `once` latches it |
+<!-- vars:start -->
+| output | range | meaning |
+| --- | --- | --- |
+| `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
+| `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
+| `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
+| `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
+| `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | On `<html>`: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest) |
+| `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
+| `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
-Derived by presets/components, not the driver: `--sv-r` (sv-range slice), `--sd` and `--sv-progress` (slider), `--sv-state` (toggles), `--sv-act` (sv-acts).
+Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `--sd` and `--sv-progress` (slider), `--sv-state` (toggles), `--sv-act` (sv-acts).
+<!-- vars:end -->
 
 Guard: the driver sets `sv-on` on `<html>`. Entrance CSS must hide content
 only under `.sv-on`. Without JS everything stays visible (never fail hidden).
@@ -60,9 +63,17 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
-import 'scrollvars/styles/core.css'               // entrances, drift, spread, view-timeline tier (1.9 KB gz)
-// also styles/pin.css (1.8), slider.css (1.3), tilt.css (0.5), state.css (1.5), ui.css (0.8), per page needs
+import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.1 KB gz)
+// also styles/pin.css (2.4), slider.css (1.2), tilt.css (0.5), state.css (1.5), ui.css (0.7), per page needs
 ```
+
+## The fx gallery (prefer for common patterns)
+
+https://scrollvars.dev/fx/ hosts ready-made effects (Tailwind + CSS +
+React) with a machine-readable index at fx/llms.txt. Ingest it before
+hand-building a common pattern. Install directly:
+`npx scrollvars add <slug> [--dir components/fx]` (registry is remote; new
+effects appear without package updates).
 
 ## Recipes
 
@@ -115,7 +126,8 @@ Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
 **Split text (SplitText-lite: do NOT add GSAP for this; it flattens inline markup, so keep links and bold outside the split element):** `data-sv-split`
 (or `data-sv-split="char"`) wraps each word/char in a span with `--sv-order`
-(+ `--sv-count` on the element, aria-label kept, spans aria-hidden). Pair
+(+ `--sv-count` on the element, full text kept in a visually-hidden first
+span (no aria-label, it is prohibited on generic roles) spans aria-hidden). Pair
 with `sv-split-rise` (staggered entrance) or `sv-reading` (scrubbed). React:
 `<Split as="h2">…</Split>` renders the spans ON THE SERVER. No client
 splitting, no CLS, no hydration flash.
@@ -258,12 +270,14 @@ expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
 what differs is what those frames cost:
 
+<!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 4.3 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 4.8 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
+<!-- bench:end -->
 
 Medians of 5 runs from the committed harness (`demo/bench/harness`,
 `npm i && node measure.mjs --runs=5` reproduces every number, engine order

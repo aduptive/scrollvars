@@ -56,7 +56,7 @@
     "test": "node --test test/",
     "test:e2e": "cd demo/bench/harness && npm i --silent && node e2e-invariants.mjs",
     "prepublishOnly": "npm run build && npm test",
-    "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/docs-build.mjs",
+    "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/bench-tables.mjs && node scripts/docs-stamp.mjs && node scripts/docs-build.mjs",
     "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"
   },
   "keywords": [
@@ -94,6 +94,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
+    "esbuild": "^0.25.12",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "^7.0.2"

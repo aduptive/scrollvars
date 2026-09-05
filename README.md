@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.4 KB, full core incl. the slider 4.3 KB, styles 6.2 KB for every preset or 1.8 KB for the core part. A typical page ships ~3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.7 KB, full core incl. the slider 4.8 KB, styles 7.1 KB for every preset or 2.1 KB for the core part. A typical page ships ~3 KB on the wire.
 
 ## Why
 
@@ -23,12 +23,14 @@ expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
 what differs is what those frames cost:
 
+<!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 4.3 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 4.8 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
+<!-- bench:end -->
 
 Medians of 5 runs from the committed harness (`demo/bench/harness`,
 `npm i && node measure.mjs --runs=5` reproduces every number, engine order
@@ -75,44 +77,51 @@ npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 // app/globals.css or layout. Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 1.9 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 1.8 KB gz
-import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.1 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 2.4 KB gz
+import 'scrollvars/styles/slider.css'  // carousel rails, 1.2 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 1.5 KB gz
-import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.8 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 ```
 
 ## Pay for what you use
 
 The package is fully tree-shakeable (ESM, side-effect-free JS); measured
-min+gzip per import:
+<!-- sizes:start -->
+min+gzip per import (measured from dist at build by `scripts/docs-stamp.mjs`):
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 1.4 KB |
-| `track` + `scan` (zero-wrapper mode) | 2.1 KB |
+| `track` (the driver) | 1.7 KB |
+| `track` + `scan` (zero-wrapper mode) | 2.7 KB |
 | `slider` | 1.8 KB |
-| `trackPointer` | 0.4 KB |
+| `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 0.8 KB |
-| everything | 4.3 KB |
+| everything | 4.8 KB |
+<!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~2.2 KB gzipped, total.**
+**~3.8 KB gzipped, total.**
 
 ## Mental model
 
-The driver **tracks** elements and writes three variables + one class:
+<!-- vars:start -->
+The driver **tracks** elements and writes these outputs (anything that reads them is a preset):
 
-| Output | Range | Meaning |
+| output | range | meaning |
 | --- | --- | --- |
-| `--sv-view` | −1 → 0 → 1 | Below the scene → in scene → gone above |
+| `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
 | `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
-| `--sv-pin` | 0 → 1 | Raw progress across a pinned (sticky) stretch. Curtains, horizontal carousels |
-| `--sv-scene` | 0 → N−1 | Scene index across a pinned section (eased + snapped) |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | On `<html>`: progress through the document, and signed scroll velocity in viewport-heights per second (decays to 0 at rest) |
-| `--sv-scenes` | N | Scene count, written next to `--sv-scene` |
-| `.sv-live` | class | On while the element is in the live band (75%/25%); `once` latches it |
+| `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
+| `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
+| `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | On `<html>`: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest) |
+| `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
+| `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
+
+Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `--sd` and `--sv-progress` (slider), `--sv-state` (toggles), `--sv-act` (sv-acts).
+<!-- vars:end -->
 
 Anything that reads them is a preset. The shipped ones:
 

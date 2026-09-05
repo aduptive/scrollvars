@@ -24,6 +24,20 @@ const dir = dirFlag >= 0 ? args[dirFlag + 1] : 'components/fx'
 const positional = args.filter((a, i) => !a.startsWith('--') && !(dirFlag >= 0 && i === dirFlag + 1))
 const [command, slug] = positional
 
+function installedVersion() {
+  try {
+    return JSON.parse(readFileSync(join(process.cwd(), 'node_modules', 'scrollvars', 'package.json'), 'utf8')).version
+  } catch {
+    return null
+  }
+}
+function olderThan(a, b) {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0)
+  return false
+}
+
 async function loadRegistry() {
   if (REGISTRY.startsWith('/') || REGISTRY.startsWith('.')) {
     return JSON.parse(readFileSync(REGISTRY, 'utf8'))
@@ -78,12 +92,21 @@ if (command === 'list') {
   }
   mkdirSync(join(process.cwd(), dir), { recursive: true })
   writeFileSync(target, effect.content)
+  const req = effect.requires || {}
+  const styles = (req.styles || []).map((n) => `import 'scrollvars/styles/${n}.css'`)
+  const deps = Object.entries(req.deps || {}).map(([name, range]) => `${name}@"${range}"`)
+  const installed = installedVersion()
+  const versionNote = !installed
+    ? `npm i scrollvars${req.min ? `@^${req.min}` : ''}`
+    : req.min && olderThan(installed, req.min)
+      ? `scrollvars ${installed} is installed; this effect needs ${req.min}+ (npm i scrollvars@latest)`
+      : `scrollvars ${installed} ok${req.min ? ` (needs ${req.min}+)` : ''}`
   console.log(`✓ ${join(dir, effect.file)}
 
-next steps:
-  1. npm i scrollvars            (if you haven't)
-  2. import the stylesheet noted at the top of the file (root layout)
-  3. add <ScrollVarsBoot /> once in your layout (scrollvars/react)
+requires:
+  ${versionNote}${deps.length ? `\n  npm i ${deps.join(' ')}` : ''}
+  ${styles.length ? styles.join('\n  ') : '(no stylesheet)'}   in the root layout
+  <ScrollVarsBoot /> once, first child of <body> (scrollvars/react)
 
 docs for this effect: ${effect.page}`)
 } else {

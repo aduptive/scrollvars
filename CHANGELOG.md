@@ -94,6 +94,21 @@ said premium sections would need.
   `Intl.Segmenter` exists (emoji and combining marks stay whole).
 - `--mx`/`--my` are clamped to -1..1.
 
+### One source for the shared facts
+- `scripts/docs-data.mjs` holds the variables table and measures every size at
+  build; `docs-stamp.mjs` writes them into README and AGENTS between markers,
+  generates `demo/llms.txt` from AGENTS.md, and `bench-tables.mjs` stamps the
+  benchmark table into README, AGENTS and the bench page from the committed
+  results. CI fails if any of those files differ from what the build produces.
+- The gallery data (`EFFECTS`, `COMPONENTS`) lives in `scripts/fx-data.mjs`
+  with no side effects; `test/cli-components.test.mjs` compiles all 16 CLI
+  components with esbuild, renders the React ones with `react-dom/server`, and
+  checks that each uses the preset vocabulary its preview shows.
+- Registry entries declare `requires` (stylesheets, peer deps, minimum
+  scrollvars); `npx scrollvars add` prints them and checks the installed
+  version.
+- Slider tests for a rail inside a positioned ancestor and for a vertical rail.
+
 ### Docs and release
 - Sizes re-measured and stated once: ESM core 4.3 KB gz, driver 1.4, slider
   1.8, stylesheets core 1.9 / pin 1.8 / slider 1.3 / tilt 0.5 / state 1.5 /

@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { measureSizes } from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
@@ -74,3 +75,23 @@ const re = /<!-- measured:start -->[\s\S]*?<!-- measured:end -->/
 if (!re.test(page)) throw new Error('measured markers not found in bench/index.html')
 writeFileSync(pagePath, page.replace(re, `<!-- measured:start -->\n${html}\n<!-- measured:end -->`))
 console.log('bench tables regenerated from results/latest.json')
+
+// ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
+const sizes = measureSizes(root)
+const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': '46.3 KB', 'gsap-batched.html': '46.3 KB', 'framer.html': '46.9 KB (+ React)' }
+const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
+const md = ['| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
+for (const [engine, m] of Object.entries(main.engines)) {
+  const sv = engine === 'scrollvars.html'
+  md.push(`| ${MD_LABEL[engine]} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${sv ? `**${m.heapMB} MB**` : `${m.heapMB} MB`} |`)
+}
+for (const file of ['README.md', 'AGENTS.md']) {
+  const path = join(root, file)
+  const text = readFileSync(path, 'utf8')
+  const mre = /<!-- bench:start -->[\s\S]*?<!-- bench:end -->/
+  if (!mre.test(text)) throw new Error(`bench markers not found in ${file}`)
+  writeFileSync(path, text.replace(mre, () => `<!-- bench:start -->\n${md.join('\n')}\n<!-- bench:end -->`))
+}
+// the bench page's runner config carries the same measured bundle size
+writeFileSync(pagePath, readFileSync(pagePath, 'utf8').replace(/(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/g, `$1${sizes.everything} KB'`))
+console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz)`)
