@@ -11,7 +11,10 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const demoDir = join(root, 'demo')
 const SCOPE = 'aduptives-projects'
-const ALIASES = ['scrollvars.dev', 'scrollvars.vercel.app', 'www.scrollvars.dev'] // primary first; the others 308 to it
+// primary first; scrollvars.vercel.app 308s to it via demo/vercel.json. NEVER alias www here:
+// aliasing www to a deployment makes Vercel flip the apex into a redirect to www (a loop with
+// the domain-level www → apex redirect). www is a domain redirect in Vercel, not an alias.
+const ALIASES = ['scrollvars.dev', 'scrollvars.vercel.app']
 
 const run = (cmd) => execSync(cmd, { cwd: demoDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 

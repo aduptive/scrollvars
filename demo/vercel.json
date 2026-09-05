@@ -10,17 +10,6 @@
       ],
       "destination": "https://scrollvars.dev/$1",
       "permanent": true
-    },
-    {
-      "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.scrollvars.dev"
-        }
-      ],
-      "destination": "https://scrollvars.dev/$1",
-      "permanent": true
     }
   ]
 }
