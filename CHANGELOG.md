@@ -40,6 +40,11 @@ findings on the same round): three more defects fixed.
   `html:not(.sv-on) .sv-acts:not(.sv-ui)`: scoped to the widget itself. A
   target added to the DOM after boot gets `sv-ui` on its first click, so
   that first click shows the finished state with no visible transition.
+- Third pass: marking a boot-present target `sv-ui` now holds its inline
+  `transition` at `none` for two animation frames. Without that, a target
+  closed by default (`.sv-acts` without `.sv-open`) settled from the no-JS
+  finished value down to 0 with the acts transition still running, a
+  visible un-animation the instant `toggles()` took over.
 
 ### Compat
 - `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`

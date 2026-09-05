@@ -36,6 +36,7 @@ function makeElement(attrs = {}) {
 
 test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async () => {
   global.window = {}
+  global.requestAnimationFrame = () => 1 // the boot-settle transition hold schedules these
   const { toggles } = await import('../dist/core/toggles.js')
 
   const menu = makeElement()
@@ -82,6 +83,7 @@ test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async
 
 test('toggles: aria-expanded reflects the target on boot and across every trigger of it', async () => {
   global.window = {}
+  global.requestAnimationFrame = () => 1
   const { toggles } = await import('../dist/core/toggles.js?sync')
   const menu = makeElement()
   menu.classes.add('open') // server-rendered already open
@@ -106,6 +108,7 @@ test('toggles: aria-expanded reflects the target on boot and across every trigge
 
 test('toggles: marks each resolved target with sv-ui at boot, document.documentElement never touched', async () => {
   global.window = {}
+  global.requestAnimationFrame = () => 1
   const html = makeElement()
   global.document = { documentElement: html }
   const { toggles } = await import('../dist/core/toggles.js?sv-ui-target')
@@ -124,6 +127,36 @@ test('toggles: marks each resolved target with sv-ui at boot, document.documentE
   assert.ok(solo.classes.has('sv-ui'), 'a target-less trigger is its own target and gets sv-ui too')
   assert.ok(!html.classes.has('sv-ui'), 'document.documentElement is never marked')
   delete global.document
+})
+
+test('toggles: holds the target transition off across the boot settle, restores after two frames', async () => {
+  global.window = {}
+  const rafQueue = []
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-transition-hold')
+
+  const menu = makeElement()
+  menu.style.transition = 'opacity 400ms' // a pre-existing inline transition, to prove it comes back unchanged
+  const a = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' }) // shares the same target as a
+  const root = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [a, b] : []),
+  }
+
+  toggles(root)
+  assert.ok(menu.classes.has('sv-ui'), 'marked at boot')
+  assert.equal(menu.style.transition, 'none', 'transition held off for the settle, immediately')
+  assert.equal(rafQueue.length, 1, 'one restore scheduled, not two, even though two triggers share this target')
+
+  rafQueue.shift()() // frame 1: still held
+  assert.equal(menu.style.transition, 'none', 'still held after only one frame')
+  assert.equal(rafQueue.length, 1, 'the second frame is queued from inside the first')
+
+  rafQueue.shift()() // frame 2: restored
+  assert.equal(menu.style.transition, 'opacity 400ms', 'restored to the original inline value')
 })
 
 test('toggles: a target added after boot gets sv-ui on its first click', async () => {

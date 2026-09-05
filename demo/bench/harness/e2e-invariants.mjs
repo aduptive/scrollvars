@@ -10,8 +10,10 @@
  *   4. A pin stage never covers its own revealed text; reduced motion
  *      settles sv-auto immediately; a nested non-live tracker keeps its
  *      spread stacked under a live ancestor
- *   5. An opened sv-acts widget keeps its finished state even inside a
- *      non-live tracker (the live-driven rule must not outrank .sv-open)
+ *   5. An opened sv-acts widget keeps its finished state even inside, or
+ *      as, a non-live tracker (the live-driven rule must not outrank .sv-open)
+ *   6. toggles() marking a boot-present target sv-ui settles it straight
+ *      from the no-JS finished value to 0, never mid-transition
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -286,19 +288,100 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
-// ── 5. Acts: an opened widget keeps its finished --sv-act even inside a
-// non-live tracker (the live-driven rule must not outrank .sv-acts.sv-open) ──
+// ── 5. Acts: an opened widget keeps its finished --sv-act even inside, or
+// as, a non-live tracker (the live-driven rule must not outrank
+// .sv-acts.sv-open, on either its descendant or its compound/self selector) ──
 {
   const page = await browser.newPage()
   await page.goto(`${base}/bench/harness/fixtures/sv-acts-open-nested.html`, { waitUntil: 'load' })
   await page.addStyleTag({ content: STYLES_CSS })
-  const act = await page.evaluate(() =>
-    getComputedStyle(document.querySelector('.sv-acts.sv-open')).getPropertyValue('--sv-act').trim()
-  )
+  const r = await page.evaluate(() => ({
+    descendant: getComputedStyle(document.querySelector('#descendant')).getPropertyValue('--sv-act').trim(),
+    self: getComputedStyle(document.querySelector('#self')).getPropertyValue('--sv-act').trim(),
+  }))
   check(
     'sv-acts: .sv-acts.sv-open inside a non-live [data-sv] tracker keeps --sv-act at --sv-acts-count (5), not reset to 0',
-    Number(act) === 5,
-    `--sv-act=${act}`
+    Number(r.descendant) === 5,
+    `--sv-act=${r.descendant}`
+  )
+  check(
+    'sv-acts: a [data-sv].sv-acts.sv-open element that is itself the non-live tracker keeps --sv-act at 5 too',
+    Number(r.self) === 5,
+    `--sv-act=${r.self}`
+  )
+  await page.close()
+}
+
+// ── 6. toggles(): a boot-present .sv-acts target, closed by default,
+// settles from the no-JS finished value straight to 0 with no transition
+// when it is marked sv-ui, instead of visibly counting back down (ADU-104,
+// round 3 finding 1). An unrelated .sv-acts that no toggle controls is
+// never marked sv-ui, so it must keep reading the finished value the whole
+// time. toggles() itself is booted from a setTimeout scheduled on the
+// first sampled frame, the realistic deferred-boot path (after first
+// paint, e.g. a dynamically-imported interactive layer), so the sampling
+// window reliably straddles the moment it fires ──
+{
+  const page = await browser.newPage()
+  await page.goto(`${base}/bench/harness/fixtures/toggles-boot-settle.html`, { waitUntil: 'load' })
+  await page.addStyleTag({ content: STYLES_CSS })
+  const FINISHED = 4
+  const { samples, unrelated } = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const read = (el) => Number(getComputedStyle(el).getPropertyValue('--sv-act'))
+        const target = document.querySelector('#target')
+        const other = document.querySelector('#unrelated')
+        const samples = []
+        const unrelated = []
+        let booted = false
+        let frames = 0
+        const FRAMES = 20
+        const tick = () => {
+          samples.push(read(target))
+          unrelated.push(read(other))
+          if (!booted) {
+            booted = true
+            setTimeout(() => window.SV.toggles(), 0)
+          }
+          frames++
+          if (frames < FRAMES) requestAnimationFrame(tick)
+          else resolve({ samples, unrelated })
+        }
+        requestAnimationFrame(tick)
+      })
+  )
+  console.log(`     sampled --sv-act on the boot-settle target: ${samples.join(', ')}`)
+  const intermediate = samples.filter((n) => n !== FINISHED && n !== 0)
+  check(
+    'toggles(): a boot-marked .sv-acts target only ever reads the finished value or 0, never mid-transition',
+    intermediate.length === 0,
+    `intermediate values seen: ${intermediate.join(', ')}`
+  )
+  check(
+    'toggles(): the boot-marked target settles to 0 within the sampled frames',
+    samples[samples.length - 1] === 0,
+    `last sample=${samples[samples.length - 1]}`
+  )
+  check(
+    'toggles(): an unrelated .sv-acts that no toggle controls stays at the finished value throughout',
+    unrelated.every((n) => n === FINISHED),
+    unrelated.join(', ')
+  )
+
+  await page.click('#trigger')
+  await page.waitForFunction(
+    (finished) => getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act').trim() === String(finished),
+    { polling: 'raf', timeout: 2000 },
+    FINISHED
+  )
+  const afterClick = await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act'))
+  )
+  check(
+    'toggles(): clicking the trigger still reaches the finished value (transition allowed here, unlike the boot settle)',
+    afterClick === FINISHED,
+    `--sv-act=${afterClick}`
   )
   await page.close()
 }

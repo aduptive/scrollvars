@@ -2,24 +2,34 @@
 <html class="sv-on">
 <head>
 <meta charset="utf-8">
-<title>fixture: .sv-acts.sv-open inside a non-live tracker</title>
+<title>fixture: .sv-acts.sv-open inside, or as, a non-live tracker</title>
 </head>
 <body>
-<!-- Regression fixture (ADU-104, verifier round 2, finding 1): an opened
-     acts widget must keep its finished --sv-act even when it sits inside
-     (or itself is) a tracker that is not live. The live-driven rule in
-     styles/state.css (`.sv-on :is(.sv, [data-sv]) .sv-acts`) multiplies by
-     --sv-live, which is 0 on a non-live tracker; without .sv-acts:not(.sv-open)
-     on that rule it outranks .sv-acts.sv-open on specificity and resets a
-     finished, opened widget back to 0.
+<!-- Regression fixture (ADU-104, verifier round 2 finding 1, plus round 3
+     finding 3's self case): an opened acts widget must keep its finished
+     --sv-act even when it sits inside (descendant, #descendant) or itself
+     is (self, #self) a tracker that is not live. The live-driven rule in
+     styles/state.css covers both shapes with one rule pair:
+
+       .sv-on :is(.sv, [data-sv]) .sv-acts:not(.sv-open),
+       .sv-on :is(.sv, [data-sv]).sv-acts:not(.sv-open) { ... }
+
+     Each multiplies by --sv-live, which is 0 on a non-live tracker; without
+     :not(.sv-open) on its own half, that half alone would outrank
+     .sv-acts.sv-open on specificity and reset a finished, opened widget
+     back to 0. The descendant case exercises the first selector
+     (combinator), the self case the second (compound, no combinator).
 
      Not shipped, not generated: loaded directly by
      demo/bench/harness/e2e-invariants.mjs, which injects the built
      styles.css itself (no <link> here on purpose). -->
 <div data-sv>
-  <div class="sv-acts sv-open" style="--sv-acts-count: 5">
+  <div class="sv-acts sv-open" id="descendant" style="--sv-acts-count: 5">
     <p>finished</p>
   </div>
+</div>
+<div data-sv class="sv-acts sv-open" id="self" style="--sv-acts-count: 5">
+  <p>finished</p>
 </div>
 </body>
 </html>

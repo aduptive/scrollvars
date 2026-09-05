@@ -25,6 +25,11 @@
  * the no-JS finished state forever. Scoped to the target, not <html>: an
  * unrelated scroll-revealed widget elsewhere on the same page must still
  * fall back to the finished state when the scroll driver never boots.
+ *
+ * Marking a target at boot holds its inline `transition` at 'none' for two
+ * frames: without that, a target closed by default settles from the no-JS
+ * finished value down to 0 WITH the acts transition running, a visible
+ * un-animation the instant the click driver takes over.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
@@ -49,7 +54,23 @@ export function toggles(root?: Document | HTMLElement): () => void {
   scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
     const { className, selector, target } = resolve(trigger)
     if (!target) return
-    target.classList.add('sv-ui')
+    if (!target.classList.contains('sv-ui')) {
+      // a target closed by default already painted the no-JS finished value
+      // (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module comment):
+      // marking it sv-ui alone stops that guard from matching, and --sv-act
+      // would transition from the finished value down to 0, a visible
+      // un-animation right as the page becomes interactive. Hold the
+      // transition off for exactly the settle: two frames is enough for the
+      // cascade to apply the new --sv-act before transitions come back.
+      const prevTransition = target.style.transition
+      target.style.transition = 'none'
+      target.classList.add('sv-ui')
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          target.style.transition = prevTransition
+        })
+      })
+    }
     sync(selector, target, target.classList.contains(className))
   })
 

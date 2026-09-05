@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>fixture: toggles() boot settle, no visible un-animation</title>
+</head>
+<body>
+<!-- Regression fixture (ADU-104, verifier round 3, finding 1): a .sv-acts
+     toggle target present at boot and closed by default paints the no-JS
+     finished value first (html:not(.sv-on) .sv-acts:not(.sv-ui)). Marking
+     it sv-ui without holding its transition off would then let --sv-act
+     transition from that finished value down to 0, a visible un-animation
+     the instant the click driver takes over. #target is that widget.
+     #unrelated is a second .sv-acts that no toggle controls: it must keep
+     reading the finished value throughout, since it is never marked sv-ui.
+
+     No [data-sv]/[data-sv] tracked markup on purpose: scan() (auto-run by
+     fx/sv.js) then finds nothing to track, so html never gains .sv-on, the
+     same "click driver only, scan() never called" page toggles() documents
+     for itself in src/core/toggles.ts. Short --sv-acts-duration so the test
+     that clicks the trigger afterward does not need to wait out the 2s
+     default.
+
+     Not shipped, not generated: loaded directly by
+     demo/bench/harness/e2e-invariants.mjs, which serves demo/ as the origin
+     (so /fx/sv.js below resolves to the built engine the fx-page sections
+     already exercise) and drives toggles()'s boot timing itself, the
+     realistic deferred-boot path (a setTimeout after first paint), so the
+     sampling window reliably straddles the moment it fires. -->
+<button id="trigger" data-sv-toggle="sv-open" data-sv-target="#target">toggle</button>
+<div id="target" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
+  <p>finished</p>
+</div>
+<div id="unrelated" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
+  <p>no toggle controls this one</p>
+</div>
+<script src="/fx/sv.js"></script>
+</body>
+</html>
