@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>scrollvars</title>
+<title>ScrollVars</title>
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
-<meta property="og:title" content="scrollvars — one rAF in, CSS variables out">
+<meta property="og:title" content="ScrollVars — one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta property="og:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Same frames as the 46 KB engines — measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="scrollvars — one rAF in, CSS variables out">
+<meta name="twitter:title" content="ScrollVars — one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:description" content="26 live scroll-animation patterns on a 1.2 KB driver. Lighthouse 100 on the PageSpeed profile. Run the benchmark yourself.">
@@ -2070,12 +2070,12 @@ path { stroke-dasharray: <span class="n">1</span>; stroke-dashoffset: <span clas
     <div class="stage3d">
       <div class="card3d">
         <div class="face front">
-          <span>scrollvars</span>
+          <span>ScrollVars</span>
           <span class="big">transform: rotateY(var(--sv-t))</span>
           <span class="c">front · CSS 3D</span>
         </div>
         <div class="face back">
-          <span>scrollvars</span>
+          <span>ScrollVars</span>
           <span class="big">no WebGL, no lib</span>
           <span class="c">back · backface-visibility</span>
         </div>
@@ -2536,7 +2536,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   <div class="pz-outer sv" id="pz-demo" data-hud="pizzeria">
     <div class="pz-sticky">
       <div class="pz-head">
-        <p class="kicker">scrollvars pizzeria</p>
+        <p class="kicker">ScrollVars pizzeria</p>
         <h3>I'm tempted by <b class="sv-words" id="pz-flavor">pepperoni</b></h3>
         <p id="pz-tag">spicy, loud and always hot</p>
       </div>
@@ -2741,7 +2741,7 @@ npm i scrollvars
       <h2 class="sv-rise" style="--sv-order: 1">The receipts</h2>
       <p class="sv-rise" style="--sv-order: 2">
         Every number below was measured, not quoted — competitors from their public
-        CDN builds, scrollvars via esbuild+gzip on its own source (it wasn't on a CDN
+        CDN builds, ScrollVars via esbuild+gzip on its own source (it wasn't on a CDN
         to be measured); workload and machine identical, methodology on the
         <a href="bench/" style="color: var(--accent)">benchmark page</a>, where you can
         run all of it on your own hardware.
@@ -2754,9 +2754,9 @@ npm i scrollvars
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>scrollvars — everything</b></td><td class="range"><b>15.8 KB / 6.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>scrollvars — typical page</b></td><td class="range"><b>~2.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>scrollvars driver alone</b></td><td class="range"><b>2.3 KB / 1.2 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars — everything</b></td><td class="range"><b>15.8 KB / 6.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars — typical page</b></td><td class="range"><b>~2.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>2.3 KB / 1.2 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2764,7 +2764,7 @@ npm i scrollvars
     <table class="sv-rise" style="--sv-order: 4">
       <thead><tr><th>engine</th><th>JS script</th><th>CPU total</th><th>JS heap</th></tr></thead>
       <tbody>
-        <tr><td><b>scrollvars</b></td><td class="range"><b>155 ms</b></td><td class="range"><b>421 ms</b></td><td class="range"><b>1.3 MB</b></td></tr>
+        <tr><td><b>ScrollVars</b></td><td class="range"><b>155 ms</b></td><td class="range"><b>421 ms</b></td><td class="range"><b>1.3 MB</b></td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">358 ms</td><td class="range">476 ms</td><td class="range">7.2 MB</td></tr>
         <tr><td>framer-motion</td><td class="range">854 ms</td><td class="range">918 ms</td><td class="range">10.8 MB</td></tr>
       </tbody>
@@ -2774,7 +2774,7 @@ npm i scrollvars
     <table class="sv-rise" style="--sv-order: 5">
       <thead><tr><th>page</th><th>score</th><th>LCP</th><th>TBT</th></tr></thead>
       <tbody>
-        <tr><td><b>scrollvars</b></td><td class="range"><b>100</b></td><td class="range"><b>1.0 s</b></td><td class="range"><b>0 ms</b></td></tr>
+        <tr><td><b>ScrollVars</b></td><td class="range"><b>100</b></td><td class="range"><b>1.0 s</b></td><td class="range"><b>0 ms</b></td></tr>
         <tr><td>framer-motion</td><td class="range">94</td><td class="range">2.8 s</td><td class="range">20 ms</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">88</td><td class="range">2.7 s</td><td class="range">230 ms</td></tr>
       </tbody>
@@ -2912,7 +2912,7 @@ npm i scrollvars
 </section>
 
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.12.3 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.3 KB gzip · full core 3.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.12.4 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS — any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos) — the library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3227,6 +3227,7 @@ var SV = (() => {
   }
 
   // dist/core/split.js
+  var SR_ONLY_CSS = "position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap";
   function splitParts(text, by = "word") {
     const words = text.split(/\s+/).filter(Boolean);
     if (by === "word")
@@ -3242,9 +3243,12 @@ var SV = (() => {
     if (!text)
       return () => {
       };
-    el.setAttribute("aria-label", text);
     el.classList.add("sv-split");
     el.innerHTML = "";
+    const sr = document.createElement("span");
+    sr.textContent = text;
+    sr.style.cssText = SR_ONLY_CSS;
+    el.appendChild(sr);
     let order = 0;
     const append = (word) => {
       if (by === "word") {
@@ -3272,7 +3276,6 @@ var SV = (() => {
     el.style.setProperty("--sv-count", String(order));
     return () => {
       el.innerHTML = original;
-      el.removeAttribute("aria-label");
       el.classList.remove("sv-split");
       el.style.removeProperty("--sv-count");
     };
@@ -4336,7 +4339,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
  * module only adds what the platform lacks —
  *
  *   - mouse drag-to-scroll on desktop (touch is already native)
- *   - the active-slide observer, exposed the scrollvars way:
+ *   - the active-slide observer, exposed the ScrollVars way:
  *       container:  --sv-slide (active index) · --sv-progress (0..1)
  *       each slide: --sd        (signed distance from center, in slide sizes)
  *                   .sv-active  (nearest to center)

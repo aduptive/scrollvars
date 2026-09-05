@@ -13,10 +13,10 @@ node measure.mjs --throttle=4      # 4x CPU throttle (calibration verified)
 CHROME=/path/to/chrome node measure.mjs
 ```
 
-Scenarios: `main-900` (60 sections x 15 boxes; scrollvars vs idiomatic GSAP
+Scenarios: `main-900` (60 sections x 15 boxes; ScrollVars vs idiomatic GSAP
 vs batched GSAP — one trigger per section, the expert version — vs
 framer-motion) and `deep-{5,20,50}` (a realistic subtree under every box:
-the style-recalc curve as DOM depth grows; scrollvars vs batched GSAP).
+the style-recalc curve as DOM depth grows; ScrollVars vs batched GSAP).
 
 Output: median-of-N tables on stdout + `../results/latest.json`. Engine
 order rotates every repetition; the throttle is verified with a spin-loop

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>scrollvars docs — the human reference</title>
+<title>ScrollVars docs — the human reference</title>
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <meta name="description" content="Quickstart, the six variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
@@ -34,8 +34,8 @@
   .toc { display:flex; flex-wrap:wrap; gap:8px 16px; margin:16px 0 0; font-size:14px; }
 </style>
 </head><body>
-<header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">scrollvars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.12.3</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
+<div><span class="v">v1.12.4</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -171,23 +171,23 @@ transform-fallback CSS.</p>
 <tr><td>timelines with springs/exits/SVG morph</td><td><b>keep GSAP</b></td><td>time-driven work is out of scope here — honestly</td></tr>
 </table>
 
-<h2 id="not">When NOT to use scrollvars</h2>
+<h2 id="not">When NOT to use ScrollVars</h2>
 <ul>
 <li><b>Time-driven orchestration</b> — interruptible springs, layout/exit transitions, SVG
 morphing, choreographed intros on a clock: GSAP or Motion are the right tools.</li>
 <li><b>One load-in animation</b> — plain CSS keyframes; no library at all.</li>
 <li><b>App-like gesture physics</b> (drag with momentum between arbitrary states) — Motion.</li>
 <li>Chromium-only projects that can require the native tier — pure CSS scroll-driven
-animations, no JS; scrollvars' <code>sv-view-*</code> tier is exactly that where supported.</li>
+animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where supported.</li>
 </ul>
 
-<h2 id="interop">Interop: scrollvars alongside GSAP on one page</h2>
+<h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict — different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre><code>// GSAP reading scrollvars' clock (no second scroll listener):
+<pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
-  heavyTimeline.progress(t)   // scrollvars steers, GSAP renders
+  heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
 })</code></pre>
 <p>The page pays GSAP's bundle then — do it for the page that needs it, not globally.
 Both patterns exist as official fx recipes with live previews:

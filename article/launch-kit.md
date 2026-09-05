@@ -40,7 +40,7 @@ where each wins.
 ## X/Twitter thread
 
 1/ I kept seeing the same thing in client-site audits: 46 KB of animation
-engine to make sections fade in. So I built scrollvars — scroll animation
+engine to make sections fade in. So I built ScrollVars — scroll animation
 via CSS variables. 3.9 KB, zero deps, and the browser does the animating.
 https://scrollvars.dev
 
@@ -67,9 +67,9 @@ https://scrollvars.dev/fx/
 
 ## JavaScript Weekly / Frontend Focus pitch (email)
 
-Subject: scrollvars — scroll animation via CSS variables (3.9 KB, honestly benchmarked)
+Subject: ScrollVars — scroll animation via CSS variables (3.9 KB, honestly benchmarked)
 
-Hi — I just released scrollvars (https://scrollvars.dev), an MIT scroll-
+Hi — I just released ScrollVars (https://scrollvars.dev), an MIT scroll-
 animation engine with an unusual design: the only output is CSS custom
 properties, so the browser animates and React never re-renders on scroll.
 3.9 KB gzip vs ~46 KB for the incumbents, Next.js RSC-first, and the page

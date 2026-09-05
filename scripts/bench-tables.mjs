@@ -33,10 +33,10 @@ html += `  </tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
-selectors); vars written on the section invalidate it all. scrollvars vs the batched GSAP
+selectors); vars written on the section invalidate it all. ScrollVars vs the batched GSAP
 build, 150 boxes, medians:</p>
 <table>
-  <thead><tr><th>subtree size</th><th>scrollvars recalc</th><th>gsap-batched recalc</th><th>scrollvars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
+  <thead><tr><th>subtree size</th><th>ScrollVars recalc</th><th>gsap-batched recalc</th><th>ScrollVars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
   <tbody>
 `
 for (const sc of deeps) {

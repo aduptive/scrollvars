@@ -250,9 +250,9 @@ const EFFECTS = [
     slug: 'gsap-scrub',
     category: 'Interop',
     title: 'GSAP timeline under scrub',
-    tagline: 'Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.',
+    tagline: 'Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.',
     when: 'The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.',
-    knobs: 'the timeline is yours; scrollvars owns scroll (pin/onPin) — never let GSAP add its own scroll listener',
+    knobs: 'the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let GSAP add its own scroll listener',
     preview: `<div class="fxouter" id="fxgsap-outer">
   <div class="fxsticky" style="display:grid;place-items:center;overflow:hidden">
     <div id="fxgsap" style="display:flex;gap:14px">
@@ -280,7 +280,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 
   track(document.querySelector('.outer'), {
     pin: true,
-    onPin: (p) => tl.progress(p), // scrollvars steers, GSAP renders
+    onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
 </script>`,
@@ -555,9 +555,9 @@ el.style.setProperty('--sv-word', nextIndex)`,
     knobs: '--sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause',
     preview: `<div class="sv-marquee fxstage" style="padding:28px 0">
   <div class="sv-marquee-track fxmarq">
-    <span>scrollvars</span><span>·</span><span>one rAF in</span><span>·</span>
+    <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
     <span>CSS variables out</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>scrollvars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
+    <span aria-hidden="true" style="display:contents"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
   </div>
 </div>`,
     css: `<div class="sv-marquee">
@@ -599,7 +599,7 @@ execSync(
 )
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
-// bench: the scrollvars workload page inlines the engine — resync it from
+// bench: the ScrollVars workload page inlines the engine — resync it from
 // the same fresh IIFE so the bench never runs a stale driver
 {
   const benchPage = join(root, 'demo', 'bench', 'scrollvars.html')
@@ -711,7 +711,7 @@ const SHELL_CSS = `
 `
 
 const header = (sub) => `<header class="fx">
-  <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>scrollvars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
+  <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>ScrollVars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
   <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>`
 
@@ -737,14 +737,14 @@ const NAV_COLLAPSE = `<script>(()=>{const q=matchMedia('(max-width:919px)'),n=do
 const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
 
 const footer = `<footer class="fx">
-  <div><b>scrollvars</b> v${VERSION} — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v${VERSION} — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>`
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${fx.title} — scrollvars fx</title>
+<title>${fx.title} — ScrollVars fx</title>
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
@@ -795,7 +795,7 @@ ${NAV_COLLAPSE}
 /* hub */
 const hub = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>scrollvars fx — copy-paste scroll effects</title>
+<title>ScrollVars fx — copy-paste scroll effects</title>
 <meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS — powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">
 <style>${SHELL_CSS}</style>
 </head><body>
@@ -824,9 +824,9 @@ ${NAV_COLLAPSE}
 writeFileSync(join(out, 'index.html'), hub)
 
 /* llms.txt for the gallery */
-const llms = `# scrollvars fx — llms.txt (copy-paste effects)
+const llms = `# ScrollVars fx — llms.txt (copy-paste effects)
 
-> A growing library of scroll/pointer/state effects on the scrollvars engine
+> A growing library of scroll/pointer/state effects on the ScrollVars engine
 > (npm i scrollvars — full core ${ENGINE_KB} KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -863,7 +863,7 @@ writeFileSync(join(out, 'llms.txt'), llms)
 const COMPONENTS = {
   'sequenced-scrub': {
     file: 'SequencedScrub.tsx',
-    content: `// scrollvars fx · sequenced-scrub
+    content: `// ScrollVars fx · sequenced-scrub
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)
 // Each child animates over its own slice of the pin: pass ranges as
 // [from, to] pairs (0..1); overlapping ranges are fine — that's the point.
@@ -903,9 +903,9 @@ export function SequencedScrub({
   },
   'gsap-scrub': {
     file: 'GsapScrub.tsx',
-    content: `// scrollvars fx · gsap-scrub
+    content: `// ScrollVars fx · gsap-scrub
 // Requires: npm i scrollvars gsap · import 'scrollvars/styles/pin.css'
-// Author choreography in GSAP, let scrollvars drive it: one scroll
+// Author choreography in GSAP, let ScrollVars drive it: one scroll
 // listener, one writer. Never ALSO create a ScrollTrigger for it.
 // Honesty: this page pays GSAP's bundle — adopt per page, not globally.
 'use client'
@@ -943,7 +943,7 @@ export function GsapScrub({
   },
   'three-scene': {
     file: 'ThreeScene.tsx',
-    content: `// scrollvars fx · three-scene
+    content: `// ScrollVars fx · three-scene
 // Requires: npm i scrollvars three · import 'scrollvars/styles/pin.css'
 // The canvas harness owns the lifecycle (DPR, resize, pause offscreen,
 // reduced motion, cleanup); Three owns the rendering; scroll feeds progress.
@@ -999,7 +999,7 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
   },
   'split-reveal': {
     file: 'SplitReveal.tsx',
-    content: `// scrollvars fx · split-reveal
+    content: `// ScrollVars fx · split-reveal
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)
 // <Split> renders word/char spans on the server: no client splitting,
 // no CLS, no hydration flash. aria-label carries the full text.
@@ -1030,7 +1030,7 @@ export function SplitReveal({
   },
   'staggered-reveal': {
     file: 'StaggeredReveal.tsx',
-    content: `// scrollvars fx · staggered-reveal
+    content: `// ScrollVars fx · staggered-reveal
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)
 'use client'
 import * as React from 'react'
@@ -1047,7 +1047,7 @@ export function StaggeredReveal({ children, ...rest }: React.ComponentProps<type
   },
   'deck-spread': {
     file: 'DeckSpread.tsx',
-    content: `// scrollvars fx · deck-spread
+    content: `// ScrollVars fx · deck-spread
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' (layout)
 // Knobs: gap, --sv-mid = (children-1)/2 is set for you.
 'use client'
@@ -1081,7 +1081,7 @@ export function DeckSpread({
   },
   curtain: {
     file: 'Curtain.tsx',
-    content: `// scrollvars fx · curtain
+    content: `// ScrollVars fx · curtain
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)
 'use client'
 import * as React from 'react'
@@ -1110,7 +1110,7 @@ export function Curtain({
   },
   'horizontal-rail': {
     file: 'HorizontalRail.tsx',
-    content: `// scrollvars fx · horizontal-rail
+    content: `// ScrollVars fx · horizontal-rail
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (layout)
 'use client'
 import * as React from 'react'
@@ -1135,7 +1135,7 @@ export function HorizontalRail({
   },
   'rotating-words': {
     file: 'RotatingWords.tsx',
-    content: `// scrollvars fx · rotating-words
+    content: `// ScrollVars fx · rotating-words
 // Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (layout)
 'use client'
 import * as React from 'react'
@@ -1167,7 +1167,7 @@ export function RotatingWords({
   },
   'pointer-tilt': {
     file: 'PointerTiltGrid.tsx',
-    content: `// scrollvars fx · pointer-tilt
+    content: `// ScrollVars fx · pointer-tilt
 // Requires: npm i scrollvars · import 'scrollvars/styles/tilt.css' (layout)
 // Give each card the sv-tilt class; one delegated listener covers the grid.
 'use client'
@@ -1192,7 +1192,7 @@ export function PointerTiltGrid({
   },
   'coverflow-slider': {
     file: 'CoverflowSlider.tsx',
-    content: `// scrollvars fx · coverflow-slider
+    content: `// ScrollVars fx · coverflow-slider
 // Requires: npm i scrollvars · import 'scrollvars/styles/slider.css' (layout)
 // Chrome knobs: --sv-arrow-* / --sv-dot-* on this element or :root.
 'use client'
@@ -1222,7 +1222,7 @@ export function CoverflowSlider({
   },
   marquee: {
     file: 'LogoMarquee.tsx',
-    content: `// scrollvars fx · marquee
+    content: `// ScrollVars fx · marquee
 // Requires: npm i scrollvars · import 'scrollvars/styles/ui.css' (layout)
 'use client'
 import * as React from 'react'

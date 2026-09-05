@@ -1,7 +1,7 @@
-# scrollvars fx — llms.txt (copy-paste effects)
+# ScrollVars fx — llms.txt (copy-paste effects)
 
-> A growing library of scroll/pointer/state effects on the scrollvars engine
-> (npm i scrollvars — full core 4.5 KB gzip). Each effect below includes when to
+> A growing library of scroll/pointer/state effects on the ScrollVars engine
+> (npm i scrollvars — full core 4.6 KB gzip). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -251,10 +251,10 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 
 ## GSAP timeline under scrub (gsap-scrub)
 
-Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.
+Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.
 Category: Interop
 Use for: The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.
-Knobs: the timeline is yours; scrollvars owns scroll (pin/onPin) — never let GSAP add its own scroll listener
+Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let GSAP add its own scroll listener
 
 ### Tailwind
 ```html
@@ -279,7 +279,7 @@ Knobs: the timeline is yours; scrollvars owns scroll (pin/onPin) — never let G
 
   track(document.querySelector('.outer'), {
     pin: true,
-    onPin: (p) => tl.progress(p), // scrollvars steers, GSAP renders
+    onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
 </script>

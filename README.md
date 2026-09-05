@@ -1,4 +1,4 @@
-# scrollvars
+# ScrollVars
 
 ![scrollvars — words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
@@ -7,7 +7,7 @@ Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variable
 
 ## Why
 
-Most scroll-animation setups pipe scroll values through framework state (a re-render per frame per element) and interleave layout reads with style writes (layout thrashing). scrollvars fixes the transport:
+Most scroll-animation setups pipe scroll values through framework state (a re-render per frame per element) and interleave layout reads with style writes (layout thrashing). ScrollVars fixes the transport:
 
 - **One global driver** — a single passive scroll listener + a single `requestAnimationFrame` for the whole page.
 - **Batched read → write phases** — all rects first, all CSS variables after.
@@ -19,13 +19,13 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 
 Public, reproducible benchmark: https://scrollvars.dev/bench/ —
 identical DOM and animations, four engine builds (including the batched
-expert GSAP variant, symmetric to scrollvars' one-tracker-per-section).
+expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
 what differs is what those frames cost:
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| scrollvars | 3.9 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 3.9 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -34,7 +34,7 @@ Medians of 5 runs from the committed harness (`demo/bench/harness` —
 `npm i && npm run measure` reproduces every number, engine order rotated,
 throttle calibrated). Frame delivery ties at 60 fps in every row. The
 precise claim: not faster frames — the same frames for ~12× less bundle
-and a fraction of the heap; total CPU trades blows (scrollvars wins
+and a fraction of the heap; total CPU trades blows (ScrollVars wins
 shallow, batched GSAP wins deep subtrees — the published curve).
 
 Why the numbers come out this way — each is a design decision, not tuning:
@@ -51,7 +51,7 @@ Why the numbers come out this way — each is a design decision, not tuning:
   driver), so without JS the page is a complete static page — SSR, SEO and
   the Lighthouse load profile stay untouched.
 - **Cheap, not free — and measured where it loses.** An inherited var pays
-  per-descendant, a direct transform pays per-element: scrollvars posts the
+  per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
   (`/bench/`, ?deep=N) shows batched GSAP winning total CPU once every
   animated box carries a 50-node subtree. The authoring rule that keeps you
@@ -401,24 +401,24 @@ in zero-wrapper mode and as props on `<Track>`/`<Reveal>`.
 
 ## When to use what
 
-The honest boundary: scrollvars maps **inputs to values** — if the animation
+The honest boundary: ScrollVars maps **inputs to values** — if the animation
 happens because the *user did something* (scroll, pointer, gesture), it does
 the job at a fraction of the cost. If it happens because *time passes*, use
 the tools built for that.
 
 | You need | Use |
 | --- | --- |
-| Reveals, parallax, pinned stories, scrubbing, carousels, tilt, camera paths | **scrollvars** |
+| Reveals, parallax, pinned stories, scrubbing, carousels, tilt, camera paths | **ScrollVars** |
 | Orchestrated timelines (`tl.to(a).to(b, "-=0.2")`), elastic/bounce easings, SVG morphing, animating arbitrary JS values | **GSAP** |
 | Interruptible spring physics, layout/`layoutId` "magic motion", exit animations on React unmount, `whileDrag` gestures | **Framer Motion** |
 | A one-shot intro that plays on load | plain **CSS keyframes** (before reaching for a library) |
 
-Known gaps inside scrollvars' own territory (candidates for 1.x, tell us if
+Known gaps inside ScrollVars' own territory (candidates for 1.x, tell us if
 you hit them): automatic pinning (the sticky skeleton is hand-written),
 declared smooth-scroll (Lenis) interop, and a SplitText-style text splitter.
 (Nested scrollers work since 1.7 — the driver listens in the capture phase.)
 
-Mixing is fine: GSAP for one intro timeline + scrollvars for everything
+Mixing is fine: GSAP for one intro timeline + ScrollVars for everything
 scroll-driven coexist without conflict — that page just gives up the bundle
 argument.
 

@@ -1,8 +1,8 @@
-/* scrollvars — AGGREGATE stylesheet (generated from styles/*.css by
+/* ScrollVars — AGGREGATE stylesheet (generated from styles/*.css by
  * scripts/build-styles.mjs — edit the parts, not this file).
  * Modular imports ship less: styles/core.css alone covers entrances. */
 
-/* scrollvars — preset styles.
+/* ScrollVars — preset styles.
  *
  * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
  * variables the driver writes; any CSS of your own that reads them is an
@@ -184,7 +184,7 @@
   }
 }
 
-/* scrollvars — pinned presets (curtain, rail, deck, reading, counter).
+/* ScrollVars — pinned presets (curtain, rail, deck, reading, counter).
  * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
 
 /* ---- Pin presets (continuous: track with { pin: true }) ---- */
@@ -303,7 +303,7 @@
   }
 }
 
-/* scrollvars — slider styles (the class is added by slider()). */
+/* ScrollVars — slider styles (the class is added by slider()). */
 
 /* Slider: native rails + snap magnetism; the class is added by slider().
    Slides get --sd (signed distance from center, in slide widths) and
@@ -425,7 +425,7 @@
   scale: 1.25;
 }
 
-/* scrollvars — pointer tilt preset (use with trackPointer / usePointer). */
+/* ScrollVars — pointer tilt preset (use with trackPointer / usePointer). */
 
 /* ---- Pointer preset (use with trackPointer / usePointer) ---- */
 
@@ -464,7 +464,7 @@
   }
 }
 
-/* scrollvars — interaction-state presets (use with toggles(), the Popover
+/* ScrollVars — interaction-state presets (use with toggles(), the Popover
  * API, or any class you flip yourself — including sv-live by hand, which
  * replays the whole entrance system on demand). */
 
@@ -564,7 +564,7 @@ dialog.sv-pop:not([open]) {
   }
 }
 
-/* scrollvars — UI presets (marquee, accordion) for the React kit and
+/* ScrollVars — UI presets (marquee, accordion) for the React kit and
  * vanilla markup alike. */
 
 /* Marquee: an infinite strip (logos, taglines). The track holds TWO copies

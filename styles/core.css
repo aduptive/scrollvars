@@ -1,4 +1,4 @@
-/* scrollvars — preset styles.
+/* ScrollVars — preset styles.
  *
  * Naming: everything is namespaced `sv-` (scrollvars). Presets read the
  * variables the driver writes; any CSS of your own that reads them is an

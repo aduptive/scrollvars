@@ -1,4 +1,4 @@
-# One rAF in, CSS variables out: why I built scrollvars
+# One rAF in, CSS variables out: why I built ScrollVars
 
 *A 2 KB scroll-animation engine, a 26-pattern public demo, and the five
 hard-won lessons that shaped it.*
@@ -25,7 +25,7 @@ render loop was never meant to run at 120 Hz.
 
 ## The one rule
 
-scrollvars is the result of asking: what's the *minimum* transport between
+ScrollVars is the result of asking: what's the *minimum* transport between
 scroll position and animated pixels?
 
 The answer fits in a sentence: **one passive scroll listener and one
@@ -101,8 +101,8 @@ For scale, measured from the same CDN (min / gzip):
 | framer-motion 11 | 144 KB | 46.9 KB |
 | GSAP core + ScrollTrigger | 117 KB | 46.3 KB |
 | Swiper 11 bundle | 151 KB | 42 KB |
-| **scrollvars, everything** (core + slider + presets CSS) | 15.8 KB | **5.9 KB** |
-| **scrollvars driver alone** | 2.3 KB | **1.2 KB** |
+| **ScrollVars, everything** (core + slider + presets CSS) | 15.8 KB | **5.9 KB** |
+| **ScrollVars driver alone** | 2.3 KB | **1.2 KB** |
 
 And because a size table invites the obvious question, there is a
 [public benchmark](https://scrollvars.dev/bench/) — identical DOM,
@@ -112,13 +112,13 @@ hardware all three deliver the same 60 fps** — every competent engine
 animates only the viewport, so frame parity in scrubbing is structural.
 Second, and this is where they separate: **what those frames cost.**
 Measured over the identical run via CDP (script + style recalc + layout):
-scrollvars 421 ms of CPU and 1.3 MB of JS heap; GSAP 476 ms and 7.2 MB;
+ScrollVars 421 ms of CPU and 1.3 MB of JS heap; GSAP 476 ms and 7.2 MB;
 framer-motion 918 ms and 10.8 MB. Same frames at 2.2× less CPU and 8× less
 memory than Framer — on phones that's battery and headroom for your own
 code, and it's why stacked Framer pages fold on weak devices first. GSAP
 is genuinely efficient; against it the difference is the 15× bundle, the
 heap, and the no-JS/SSR story. And on Google's own ruler — Lighthouse
-mobile, the PageSpeed profile — the load cost decides it: scrollvars 100,
+mobile, the PageSpeed profile — the load cost decides it: ScrollVars 100,
 framer-motion 94, GSAP + ScrollTrigger 88, the latter losing 230 ms of
 Total Blocking Time just building its 900 triggers on a throttled main
 thread. Run it all on your own machine; that's what it's for.
@@ -167,11 +167,11 @@ distance; every travel equally soft; retargets free.
 
 ## When you should not use it
 
-scrollvars maps *inputs to values*. If your animation is driven by time
+ScrollVars maps *inputs to values*. If your animation is driven by time
 rather than input — orchestrated timelines, spring physics, staggered
 sequences that play on their own — that's GSAP's turf and GSAP is excellent
 at it. Likewise, ambient canvas simulations (particles, generative heroes)
-are their own paradigm; scrollvars only offers them a lifecycle harness
+are their own paradigm; ScrollVars only offers them a lifecycle harness
 (resize, DPR cap, pause-when-offscreen) and hands your simulation the loop.
 
 ## Try it

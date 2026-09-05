@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GSAP timeline under scrub — scrollvars fx</title>
-<meta name="description" content="Author the choreography in GSAP, let scrollvars drive it — one listener, one writer. Copy-paste in Tailwind, CSS or React.">
+<title>GSAP timeline under scrub — ScrollVars fx</title>
+<meta name="description" content="Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -97,7 +97,7 @@
 </style>
 </head><body>
 <header class="fx">
-  <div><a href="." style="text-decoration:none"><b>scrollvars</b> <span style="color:var(--muted)">/ fx</span></a></div>
+  <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
   <div><a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>
 <div class="fxwrap">
@@ -134,8 +134,8 @@
 </div></aside>
 <main>
   <h1>GSAP timeline under scrub</h1>
-  <p class="tag">Author the choreography in GSAP, let scrollvars drive it — one listener, one writer.</p>
-  <p class="meta"><b>Use it for:</b> The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.<br><b>Knobs:</b> the timeline is yours; scrollvars owns scroll (pin/onPin) — never let GSAP add its own scroll listener</p>
+  <p class="tag">Author the choreography in GSAP, let ScrollVars drive it — one listener, one writer.</p>
+  <p class="meta"><b>Use it for:</b> The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.<br><b>Knobs:</b> the timeline is yours; ScrollVars owns scroll (pin/onPin) — never let GSAP add its own scroll listener</p>
   <div class="fxouter" id="fxgsap-outer">
   <div class="fxsticky" style="display:grid;place-items:center;overflow:hidden">
     <div id="fxgsap" style="display:flex;gap:14px">
@@ -176,7 +176,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 
   track(document.querySelector('.outer'), {
     pin: true,
-    onPin: (p) =&gt; tl.progress(p), // scrollvars steers, GSAP renders
+    onPin: (p) =&gt; tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger — one scroll listener, one writer.
 &lt;/script&gt;</code></pre>
@@ -191,12 +191,12 @@ useEffect(() =&gt; {
   &lt;div className="sticky top-0 h-screen"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.5 KB gzip.
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code> — full core 4.6 KB gzip.
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>scrollvars</b> v1.12.3 — one scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.12.4 — one scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

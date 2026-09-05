@@ -21,7 +21,7 @@ export function debug({ outlines = true }: DebugOptions = {}): () => void {
     'overflow:auto;background:rgba(10,9,14,.92);color:#e6e4f0;border:1px solid ' +
     'rgba(167,139,250,.4);border-radius:10px;padding:10px 12px;font:11px/1.5 ' +
     'ui-monospace,Menlo,monospace;min-width:260px;backdrop-filter:blur(6px)'
-  panel.innerHTML = '<b style="color:#a78bfa">scrollvars debug</b><div></div>'
+  panel.innerHTML = '<b style="color:#a78bfa">ScrollVars debug</b><div></div>'
   const list = panel.lastElementChild as HTMLElement
   document.body.appendChild(panel)
 

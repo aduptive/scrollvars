@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import duckBytes from './Duck.glb';
 
-// The classic Khronos rubber duck, driven entirely by the scrollvars pin.
+// The classic Khronos rubber duck, driven entirely by the ScrollVars pin.
 // No internal rAF: the driver calls setPin() and we render on demand.
 let renderer, scene, camera, duck, inited = false, canvas;
 let lastPin = 0, lastW = 0, lastH = 0;

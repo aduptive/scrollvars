@@ -4,7 +4,7 @@
  * module only adds what the platform lacks —
  *
  *   - mouse drag-to-scroll on desktop (touch is already native)
- *   - the active-slide observer, exposed the scrollvars way:
+ *   - the active-slide observer, exposed the ScrollVars way:
  *       container:  --sv-slide (active index) · --sv-progress (0..1)
  *       each slide: --sd        (signed distance from center, in slide sizes)
  *                   .sv-active  (nearest to center)

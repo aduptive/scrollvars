@@ -1,4 +1,4 @@
-# scrollvars demo
+# ScrollVars demo
 
 `index.html` is the self-contained showcase (16 scroll/pointer patterns, driver
 inlined, assets embedded). Published as a private artifact; open locally with

@@ -1,6 +1,6 @@
-# scrollvars — Client Project Integration Kit
+# ScrollVars — Client Project Integration Kit
 
-The checklist for wiring scrollvars into a real (typically Next.js) project.
+The checklist for wiring ScrollVars into a real (typically Next.js) project.
 Full API reference: [AGENTS.md](../AGENTS.md) · live patterns with source:
 https://scrollvars.dev
 
@@ -80,7 +80,7 @@ useTrack({ scenes: 4, onScene: setIndex })
 | Rotating hero words | `sv-words` + `--sv-word: n` |
 | Legacy browser contract | `import { compat } from 'scrollvars/compat'; compat()` once at boot |
 
-## 3b · When NOT to use scrollvars (say this to the client too)
+## 3b · When NOT to use ScrollVars (say this to the client too)
 
 - Animation driven by **time**, not input — orchestrated intro timelines,
   elastic/bounce easings, SVG morphing → GSAP.
