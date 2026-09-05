@@ -98,12 +98,13 @@ const check = (name, ok, detail = '') => {
     return {
       spans: spans.length,
       count: split && split.style.getPropertyValue('--sv-count'),
+      srText: (() => { const sr = split && split.querySelector('span:not([aria-hidden])'); return sr ? sr.textContent.trim() : '' })(),
       label: split && split.getAttribute('aria-label'),
       attrVar: attr && attr.style.getPropertyValue('--sv-order'),
     }
   })
   check('split: words wrapped in aria-hidden spans', r.spans > 2, `${r.spans} spans`)
-  check('split: --sv-count set + aria-label kept', !!r.count && !!r.label)
+  check('split: --sv-count set + sr-only text kept (no aria-label)', !!r.count && r.srText.length > 0 && !r.label, `count=${r.count} sr="${r.srText.slice(0, 20)}" label=${r.label}`)
   await page.close()
 }
 
