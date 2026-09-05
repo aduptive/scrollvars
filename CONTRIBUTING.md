@@ -1,28 +1,28 @@
 # Contributing & releasing
 
 The rules exist for one reason: **a library update must never be able to
-break a production site.** Two halves make that true — gates on this repo,
+break a production site.** Two halves make that true. Gates on this repo,
 and pinning on the consumer side. Both are written down here.
 
 ## Day-to-day changes
 
 1. Branch from `main`; open a PR (no direct pushes to `main`).
 2. CI must be green: build, 22 unit tests (including the **API-surface
-   snapshot** — if it trips, you made a breaking change), and the
+   snapshot**. If it trips, you made a breaking change), and the
    progressive-enhancement invariants (no-JS renders complete, nothing
    hidden before `html.sv-on`).
 3. At least **one approving review** from a code owner (see
    `.github/CODEOWNERS`).
 4. Every PR states in its description whether the public surface changed
-   (exports, options, CSS class names, CSS variables — class names and
+   (exports, options, CSS class names, CSS variables. Class names and
    variables ARE public API here).
 
 ## Versioning (semver, taken literally)
 
-- **patch** — fixes, no observable behavior change for correct usage.
-- **minor** — new exports/presets/options; the API-surface test gains
+- **patch**: fixes, no observable behavior change for correct usage.
+- **minor**: new exports/presets/options; the API-surface test gains
   lines, never loses them.
-- **major** — anything removed or renamed, any default changed, any CSS
+- **major**: anything removed or renamed, any default changed, any CSS
   class/variable renamed. CHANGELOG carries a **BREAKING** section with the
   migration. Majors are rare and deliberate.
 
@@ -36,7 +36,7 @@ git push --follow-tags
 The tag triggers `.github/workflows/release.yml`, which republishes ONLY if
 every gate passes: unit + e2e + tag-matches-version + a pack-smoke that
 installs the actual tarball into a throwaway consumer and imports it. The
-npm publish carries provenance. No green, no release — there is no manual
+npm publish carries provenance. No green, no release: there is no manual
 path to npm.
 
 ## The other half: how consumers must depend on this

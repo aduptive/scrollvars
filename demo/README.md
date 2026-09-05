@@ -13,6 +13,6 @@ the page (duck product tour). Rebuild with:
 (needs `npm i three` and the Khronos Duck.glb next to it), then replace the
 last <script> block of index.html.
 
-Note to future self: the page's inline driver is a hand-maintained copy — if
+Note to future self: the page's inline driver is a hand-maintained copy. If
 the demo keeps growing, split sections into sources and inline `dist/` at
 build time instead of patching strings.

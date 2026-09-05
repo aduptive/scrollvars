@@ -1,23 +1,23 @@
 # ScrollVars
 
-![scrollvars — words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
+![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.4 KB, full core incl. the slider 3.9 KB, styles 6.2 KB for every preset or 1.8 KB for the core part — a typical page ships ~3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.4 KB, full core incl. the slider 4.3 KB, styles 6.2 KB for every preset or 1.8 KB for the core part. A typical page ships ~3 KB on the wire.
 
 ## Why
 
 Most scroll-animation setups pipe scroll values through framework state (a re-render per frame per element) and interleave layout reads with style writes (layout thrashing). ScrollVars fixes the transport:
 
-- **One global driver** — a single passive scroll listener + a single `requestAnimationFrame` for the whole page.
-- **Batched read → write phases** — all rects first, all CSS variables after.
-- **No framework in the hot path** — React renders zero times during scroll.
-- **Fails visible** — hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
+- **One global driver**: a single passive scroll listener + a single `requestAnimationFrame` for the whole page.
+- **Batched read → write phases**. All rects first, all CSS variables after.
+- **No framework in the hot path**, React renders zero times during scroll.
+- **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
 - **`prefers-reduced-motion`** respected by driver and presets.
 
-## The receipts (measured — why the design holds up)
+## The receipts (measured: why the design holds up)
 
-Public, reproducible benchmark: https://scrollvars.dev/bench/ —
+Public, reproducible benchmark: https://scrollvars.dev/bench/:
 identical DOM and animations, four engine builds (including the batched
 expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
@@ -25,37 +25,38 @@ what differs is what those frames cost:
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 3.9 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 4.3 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
 
-Medians of 5 runs from the committed harness (`demo/bench/harness` —
-`npm i && npm run measure` reproduces every number, engine order rotated,
-throttle calibrated). Frame delivery ties at 60 fps in every row. The
-precise claim: not faster frames — the same frames for ~12× less bundle
+Medians of 5 runs from the committed harness (`demo/bench/harness`,
+`npm i && node measure.mjs --runs=5` reproduces every number, engine order
+rotated, the CPU throttle verified by timing a fixed spin). Frame delivery ties at 60 fps in every row. The
+precise claim: not faster frames, the same frames for ~12× less bundle
 and a fraction of the heap; total CPU trades blows (ScrollVars wins
-shallow, batched GSAP wins deep subtrees — the published curve).
+shallow, batched GSAP wins deep subtrees. The published curve).
 
-Why the numbers come out this way — each is a design decision, not tuning:
+Why the numbers come out this way. Each is a design decision, not tuning:
 
 - **The hot path writes CSS variables and nothing else.** The browser's own
   transition/animation machinery does the animating; JS only steers. That is
-  why 900 animated elements cost 155 ms of script in 12 s.
+  why 900 animated elements cost so little script time in the table above.
 - **One passive scroll listener + one rAF for the whole page**, strict
-  read-phase-then-write-phase. Layout thrashing is impossible by
-  construction, not by discipline.
+  read-phase-then-write-phase. Inside the driver, layout thrashing is
+  impossible by construction, not by discipline (your own callbacks are yours).
 - **Scroll state never enters the framework.** React renders zero times
-  during scroll — the per-frame framework bill is never paid.
+  per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
+  index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
-  driver), so without JS the page is a complete static page — SSR, SEO and
+  driver), so without JS the page is a complete static page, SSR, SEO and
   the Lighthouse load profile stay untouched.
-- **Cheap, not free — and measured where it loses.** An inherited var pays
+- **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
   (`/bench/`, ?deep=N) shows batched GSAP winning total CPU once every
   animated box carries a 50-node subtree. The authoring rule that keeps you
-  on the cheap side: keep tracked elements thin — big static content lives
+  on the cheap side: keep tracked elements thin: big static content lives
   next to, not inside, the animated elements. Read the bench sources before
   quoting it.
 - **Honest scope.** Input-driven animation (scroll/pointer/gesture) is this
@@ -67,17 +68,19 @@ Why the numbers come out this way — each is a design decision, not tuning:
 ```bash
 npm i scrollvars
 # or pin to a git ref (the `prepare` script builds on install):
-npm i github:aduptive/scrollvars
+npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 ```
 
 ```ts
-// app/globals.css or layout — everything:
+// app/globals.css or layout. Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, native view()-tier — 1.8 KB gz
-import 'scrollvars/styles/pin.css'     // curtain, rail, deck, reading, counter — 1.3 KB gz
-import 'scrollvars/styles/slider.css'  // carousel rails — 0.4 KB gz
-import 'scrollvars/styles/tilt.css'    // pointer tilt — 0.5 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 1.9 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 1.8 KB gz
+import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
+import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
+import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 1.5 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.8 KB gz
 ```
 
 ## Pay for what you use
@@ -87,12 +90,12 @@ min+gzip per import:
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 1.0 KB |
-| `track` + `scan` (zero-wrapper mode) | 1.3 KB |
-| `slider` | 1.5 KB |
+| `track` (the driver) | 1.4 KB |
+| `track` + `scan` (zero-wrapper mode) | 2.1 KB |
+| `slider` | 1.8 KB |
 | `trackPointer` | 0.4 KB |
-| `mountEffect` (canvas) | 0.7 KB |
-| everything | 3.9 KB |
+| `mountEffect` (canvas) | 0.8 KB |
+| everything | 4.3 KB |
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
 **~2.2 KB gzipped, total.**
@@ -105,31 +108,35 @@ The driver **tracks** elements and writes three variables + one class:
 | --- | --- | --- |
 | `--sv-view` | −1 → 0 → 1 | Below the scene → in scene → gone above |
 | `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
-| `--sv-pin` | 0 → 1 | Raw progress across a pinned (sticky) stretch — curtains, horizontal carousels |
+| `--sv-pin` | 0 → 1 | Raw progress across a pinned (sticky) stretch. Curtains, horizontal carousels |
 | `--sv-scene` | 0 → N−1 | Scene index across a pinned section (eased + snapped) |
-| `.sv-live` | class | On while the element is in the live band (75%/25%) |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | On `<html>`: progress through the document, and signed scroll velocity in viewport-heights per second (decays to 0 at rest) |
+| `--sv-scenes` | N | Scene count, written next to `--sv-scene` |
+| `.sv-live` | class | On while the element is in the live band (75%/25%); `once` latches it |
 
 Anything that reads them is a preset. The shipped ones:
 
 | Class | Effect |
 | --- | --- |
 | `sv-rise` / `sv-fade` / `sv-slide-l` / `sv-slide-r` | Entrance transitions, triggered by `.sv-live` |
-| `sv-auto` (on the container) | Every direct child rises in DOM order — no classes on children (`sv-skip` opts out) |
-| `sv-drift` | Continuous drift tied to `--sv-view` — follows the finger, no transition |
-| `sv-spread` | Centered deck fans out into its flex row — `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
+| `sv-auto` (on the container) | Every direct child rises in DOM order. No classes on children (`sv-skip` opts out) |
+| `sv-drift` | Continuous drift tied to `--sv-view`. Follows the finger, no transition |
+| `sv-spread` | Centered deck fans out into its flex row, `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
-| `sv-deck` | Pinned card pile — each child flies away across its slice of the pin (`--sv-count`) |
+| `sv-deck` | Pinned card pile: each child flies away across its slice of the pin (`--sv-count`) |
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`) |
-| `sv-counter` | Integer counted up by the scroll via `@property` + `counter()` — set `--sv-max` |
+| `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
 
-Knobs (set anywhere in CSS or inline): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
+Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
+
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the wrapper's height and `position: relative`; put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion.
 
 ## React
 
 ```tsx
 import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
 
-// Entrance — children stagger automatically
+// Entrance: children stagger automatically
 <Reveal as="section" auto>
   <h2>Title</h2>
   <p>Copy</p>
@@ -141,7 +148,7 @@ import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
   <img src="…" alt="" />
 </Parallax>
 
-// Knobs are attributes — sugar for the CSS variables (no style ceremony)
+// Knobs are attributes: sugar for the CSS variables (no style ceremony)
 <Reveal stagger={140} duration={900}>
   <Item order={0}>first</Item>
   <Item order={1} effect="slide-l" distance="4rem">second</Item>
@@ -162,13 +169,13 @@ import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
 Lower level: `<Track>` (the base component) and `useTrack(options)` / `useScenes(count)`.
 
 **Zero-wrapper mode:** drop one `<ScrollVarsBoot />` in the root layout and write
-plain server components with `data-sv` attributes — no client wrappers anywhere:
+plain server components with `data-sv` attributes. No client wrappers anywhere:
 
 ```tsx
 // app/layout.tsx
 <body><ScrollVarsBoot />{children}</body>
 
-// any RSC — stays on the server
+// any RSC: stays on the server
 <section data-sv data-sv-once>
   <h2 className="sv-rise">Title</h2>
 </section>
@@ -178,9 +185,9 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 `data-sv-scenes="4"`. New nodes from route changes are picked up automatically
 (vanilla: `scan()`).
 
-## The fx gallery — copy-paste effects (+ shadcn-style CLI)
+## The fx gallery: copy-paste effects (+ shadcn-style CLI)
 
-A growing library of effects at **https://scrollvars.dev/fx/** — each
+A growing library of effects at **https://scrollvars.dev/fx/**. Each
 one live, with Tailwind, CSS and React formats, knobs documented, and a
 machine-readable [fx/llms.txt](https://scrollvars.dev/fx/llms.txt)
 so AI assistants can ingest the whole collection in one request. Install an
@@ -197,13 +204,13 @@ releases.
 
 ## The component kit (React)
 
-Batteries-included wrappers over the same engine — less React, less JS,
+Batteries-included wrappers over the same engine. Less React, less JS,
 less CSS than the usual suspects:
 
 ```tsx
 import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
 
-// the Swiper replacement — breakpoints ARE media queries (or a familiar map):
+// the Swiper replacement: breakpoints ARE media queries (or a familiar map):
 <Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}>
   {cards.map(c => <Slide key={c.id}><Card {...c} /></Slide>)}
   <Slide span={2}>a wide feature slide</Slide>   {/* per-slide override */}
@@ -214,27 +221,28 @@ import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
 <Modal open={open} onClose={…}>…</Modal>         // native <dialog> + sv-pop
 ```
 
-**Customizing the Slider chrome** — three layers, pick your depth:
+**Customizing the Slider chrome**: three layers, pick your depth:
 1. **Var knobs** (`--sv-arrow-size/-inset/-bg/-color/-radius`, `--sv-dot-size/
-   -gap/-color/-active`, `--sv-dots-justify/-offset`) — set on `:root` for the
+   -gap/-color/-active`, `--sv-dots-justify/-offset`). Set on `:root` for the
    whole project, or on one slider via className/style.
 2. **Stable classes** (`sv-slider-shell`, `sv-arrow[-prev/-next]`, `sv-dots`,
-   `sv-dot.on`) — restyle or reposition freely in project CSS.
-3. **Full control** — `prevIcon`/`nextIcon`, `renderDot(i, active)`, or turn the
+   `sv-dot.on`). Restyle or reposition freely in project CSS.
+3. **Full control**: `prevIcon`/`nextIcon`, `renderDot(i, active)`, or turn the
    chrome off and drive an external UI through the ref (`SliderHandle`:
    next/prev/goTo/seek/state) placed anywhere in the page.
 
 `perView` fractional gives the peek (`1.2`); responsive via the map above,
-media queries, or Tailwind: `className="[--sv-per-view:1.2] md:[--sv-per-view:2.5]"`.
+media queries, or Tailwind: `className="sv-cols [--sv-per-view:1.2] md:[--sv-per-view:2.5]"`
+(`sv-cols` does the column math; `perView` adds it for you).
 Vars cascade, so every knob has a global default and a per-instance (or
-per-slide) override. No `loop` in v1 — where Swiper's loop is used, a
+per-slide) override. No `loop` in v1: where Swiper's loop is used, a
 `<Marquee>` is usually the honest fit.
 
 ## Slider (Swiper, featherweight)
 
 Native scroll + scroll-snap do the carousel; the module adds mouse drag,
 the active-slide observer and controls. Slides get `--sd` (signed distance
-from center, in slide widths) and `.sv-active` — any CSS reading them
+from center, in slide widths) and `.sv-active`. Any CSS reading them
 animates the carousel with zero per-frame JS:
 
 ```tsx
@@ -246,9 +254,9 @@ const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
 ```
 
 Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
-settle ms; default 600 — raise for softer), `axis: 'y'` (vertical),
+settle ms; default 600: raise for softer), `axis: 'y'` (vertical),
 `onScroll(state)` (full state per frame: active/count/position/progress/
-dragging/gliding — also on the container as `--sv-progress`). Handle:
+dragging/gliding. Also on the container as `--sv-progress`). Handle:
 `next/prev/goTo/seek/active/state/destroy`.
 
 Chain two sliders (Swiper's controller/thumbs, one line, unidirectional):
@@ -258,34 +266,34 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 1.7 KB gzip; Swiper 11 bundle
+Size, measured: this module 1.8 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
 
 The third input. One delegated listener turns clicks into classes and
-variables; CSS animates — same contract as scroll:
+variables; CSS animates: same contract as scroll:
 
 ```html
-<button data-sv-toggle="open" data-sv-target="#menu">menu</button>
+<button data-sv-toggle="sv-open" data-sv-target="#menu">menu</button>
 <nav id="menu" class="sv-pop">…</nav>   <!-- animated show/hide, aria-expanded synced -->
 ```
 
 `<ScrollVarsBoot />` wires it automatically (vanilla: `toggles()`). Presets in
 `styles/state.css`:
 
-- `sv-pop` — entry/exit for `[popover]`, `<dialog>` and class-toggled panels
+- `sv-pop`: entry/exit for `[popover]`, `<dialog>` and class-toggled panels
   via `@starting-style` + `allow-discrete` (the modern replacement for the
-  checkbox hack — with accessibility the hack never had)
-- `sv-words` — rotating words: a clipped column, slide with `--sv-word: n`
+  checkbox hack. With accessibility the hack never had)
+- `sv-words`. Rotating words: a clipped column, slide with `--sv-word: n`
 
-**Multi-act sequences** — `sv-acts` is a time-driven master clock in pure
+**Multi-act sequences**: `sv-acts` is a time-driven master clock in pure
 CSS: a registered custom property transitions 0 → N when the class arrives
-(`sv-open` from a click, or `sv-live` from the scroll — timed choreography
+(`sv-open` from a click, or `sv-live` from the scroll. Timed choreography
 with zero JS). Acts are the same `clamp()` slices the scroll scenes use, so
 one idiom drives every timeline; the clock is reversible and interruptible
 (class removed mid-flight = the transition retargets, no restart). What it
-deliberately doesn't do: branching, per-act JS callbacks, physics — that's
+deliberately doesn't do: branching, per-act JS callbacks, physics. That's
 GSAP.
 
 ```css
@@ -294,15 +302,15 @@ GSAP.
 .hero .cards { scale: calc(0.9 + var(--a2) * 0.1); }
 ```
 
-Three tricks worth knowing before writing any JS: toggling `sv-live` by hand
+Three tricks worth knowing before writing any JS: removing `sv-live` and adding it back on the next frame
 replays the whole entrance system on demand; `:has()` puts state anywhere
 (`body:has(#tab-2:checked) .panel-2`); the Popover API opens/closes with zero
-JS. One-shot intros on load are plain CSS keyframes. Orchestrated multi-act
-timelines remain GSAP's turf — this module is one click, one state change.
+JS. One-shot intros on load are plain CSS keyframes. Timed multi-act sequences are
+`sv-acts` (above); branching, physics or callback-heavy timelines remain GSAP's turf.
 
 ## Pointer tilt
 
-Same philosophy, different input — the pointer becomes `--mx`/`--my` (−1..1 from each card's center):
+Same philosophy, different input: the pointer becomes `--mx`/`--my` (−1..1 from each card's center):
 
 ```tsx
 const ref = usePointer()          // or trackPointer(container) in vanilla
@@ -313,17 +321,17 @@ const ref = usePointer()          // or trackPointer(container) in vanilla
 
 ## Video scrub & WebGL
 
-`onTravel` fires every frame with the raw 0..1 value — feed it to whatever JS needs to follow the scroll:
+`onTravel` fires on every driver frame while the element is near the viewport, with the raw 0..1 value. Feed it to whatever JS needs to follow the scroll:
 
 ```tsx
-useTrack({ onTravel: (t) => { video.currentTime = t * video.duration } })
+useTrack({ onTravel: (t) => drawFrame(Math.round(t * (frames.length - 1))) }) // frame sequence, never video.currentTime
 useScenes(4, {})            // or drive an R3F camera from onScene / onTravel
 ```
 
 ## Canvas effects (`scrollvars/canvas`)
 
 For ambient canvas work (particle spheres, generative heroes) the simulation is
-yours — the harness handles the lifecycle everyone rewrites badly: resize, DPR
+yours. The harness handles the lifecycle everyone rewrites badly: resize, DPR
 cap, delta-time loop, **pause when offscreen or the tab is hidden**,
 `prefers-reduced-motion`, cleanup. Drawing space is CSS pixels.
 
@@ -341,7 +349,7 @@ const ref = useCanvasEffect({
 
 Vanilla: `mountEffect(canvas, { setup, frame })` returns
 `{ pause, resume, destroy }`. Feed it scroll/pointer inputs from the driver
-(`onTravel`, `--mx`) through your own closure — the modules stay decoupled.
+(`onTravel`, `--mx`) through your own closure. The modules stay decoupled.
 
 ## Vanilla
 
@@ -364,10 +372,10 @@ const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) }
 | Slider wheel-quiet window | 200 ms | slider |
 | Canvas DPR cap | 2 (`dprCap`) | canvas harness |
 
-## Sequenced scrub (`sv-range`) — choreography without a timeline
+## Sequenced scrub (`sv-range`): choreography without a timeline
 
 The routine reason a timeline library gets pulled into a scroll page is not
-springs — it is "A animates over 0–40% of the pin, B over 30–70%, C over
+springs. It is "A animates over 0–40% of the pin, B over 30–70%, C over
 60–100%". `sv-range` derives a per-child `--sv-r` (0..1) from a slice of the
 parent clock (`--sv-pin` when pinned, else `--sv-t`):
 
@@ -384,24 +392,24 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 ```
 
 `sv-range-rise` is the ready-made flavor (rise + fade per range); or consume
-`--sv-r` yourself — always as `var(--sv-r, 1)`: the derivation needs calc()
+`--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
 division by a variable (Chrome 112 / Safari 16.4 / FF 112), and the fallback
 makes older engines settle at the end state. The JS twin is
 `mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
-WebGL uniforms). Overlapping ranges are fine — that is the point.
+WebGL uniforms). Overlapping ranges are fine: that is the point.
 
 ## Nested scrollers & custom live band
 
 `track(el, { root: scrollerEl })` measures against an inner scroll container
-instead of the window — brand-center layouts with inner panels stop being a
+instead of the window, brand-center layouts with inner panels stop being a
 disqualifier (the capture-phase listener already hears those scrolls; `root`
 makes the geometry agree). `enter`/`exit` (fractions, defaults 0.75/0.25) tune
-the live band per element — also as `data-sv-enter="0.6"` / `data-sv-exit="0.2"`
+the live band per element. Also as `data-sv-enter="0.6"` / `data-sv-exit="0.2"`
 in zero-wrapper mode and as props on `<Track>`/`<Reveal>`.
 
 ## When to use what
 
-The honest boundary: ScrollVars maps **inputs to values** — if the animation
+The honest boundary: ScrollVars maps **inputs to values**. If the animation
 happens because the *user did something* (scroll, pointer, gesture), it does
 the job at a fraction of the cost. If it happens because *time passes*, use
 the tools built for that.
@@ -414,12 +422,12 @@ the tools built for that.
 | A one-shot intro that plays on load | plain **CSS keyframes** (before reaching for a library) |
 
 Known gaps inside ScrollVars' own territory (candidates for 1.x, tell us if
-you hit them): automatic pinning (the sticky skeleton is hand-written),
-declared smooth-scroll (Lenis) interop, and a SplitText-style text splitter.
-(Nested scrollers work since 1.7 — the driver listens in the capture phase.)
+you hit them): declared smooth-scroll (Lenis) interop and a `loop` mode for
+the slider. (Pinning got its helper in 1.13, text splitting shipped in 1.12.)
+(Nested scrollers work since 1.7. The driver listens in the capture phase.)
 
 Mixing is fine: GSAP for one intro timeline + ScrollVars for everything
-scroll-driven coexist without conflict — that page just gives up the bundle
+scroll-driven coexist without conflict. That page just gives up the bundle
 argument.
 
 ## Browser support
@@ -434,8 +442,8 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
 | Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
 
-**Extended floor** — `scrollvars/compat`, an opt-in module for legacy
-targets. On modern browsers it runs two feature checks and exits (free);
+**Extended floor**: `scrollvars/compat`, an opt-in module for legacy
+targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
 on old ones it installs a ResizeObserver stub (viewport-resize backed), an
 always-visible IntersectionObserver stub, and a `transform:`-based fallback
 stylesheet for the presets (written without `:is()`/`clamp()`/`min()`).
@@ -453,8 +461,8 @@ Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
 (Safari 13.1); presets = individual transform properties (Chrome 104 /
 Firefox 72 / Safari 14.1); canvas harness adds IntersectionObserver
 (Safari 12.1); slider/pointer = Pointer Events (Safari 13). The design rule
-that makes the table safe for companies: **below the floor nothing breaks —
-the page renders complete and static.** Animation is progressive enhancement,
+that makes the table safe for companies: **below the floor nothing breaks.
+The page renders complete and static.** Animation is progressive enhancement,
 never a dependency.
 
 ## License
