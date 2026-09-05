@@ -39,7 +39,9 @@ test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: (t) => delete listeners[t],
     querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: () => [trigger],
   }
+  menu.classList.contains = (c) => menu.classes.has(c)
 
   const stop = toggles(root)
   const click = (target) => listeners.click({ target })
@@ -69,4 +71,29 @@ test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async
 
   stop()
   assert.ok(!listeners.click, 'listener removed')
+})
+
+
+test('toggles: aria-expanded reflects the target on boot and across every trigger of it', async () => {
+  global.window = {}
+  const { toggles } = await import('../dist/core/toggles.js?sync')
+  const menu = makeElement()
+  menu.classes.add('open') // server-rendered already open
+  menu.classList.contains = (c) => menu.classes.has(c)
+  const a = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const listeners = {}
+  const root = {
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: (t) => delete listeners[t],
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [a, b] : []),
+  }
+  const stop = toggles(root)
+  assert.equal(a.attrs['aria-expanded'], 'true', 'boot syncs to the current state')
+  assert.equal(b.attrs['aria-expanded'], 'true')
+  listeners.click({ target: a })
+  assert.equal(a.attrs['aria-expanded'], 'false')
+  assert.equal(b.attrs['aria-expanded'], 'false', 'the other trigger of the same target follows')
+  stop()
 })

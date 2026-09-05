@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.7 KB gzip · full core 4.8 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.9 KB gzip · full core 5.2 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3012,12 +3012,13 @@ var SV = (() => {
     window.addEventListener("scroll", schedule, { passive: true, capture: true });
     window.addEventListener("resize", () => {
       vh = window.innerHeight;
-      schedule();
+      refresh();
     });
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     reducedMotion = media.matches;
     media.addEventListener?.("change", (event) => {
       reducedMotion = event.matches;
+      entries.forEach(applyPinHelper);
       schedule();
     });
     try {
@@ -3042,8 +3043,9 @@ var SV = (() => {
   var lastY = -1;
   var lastT = 0;
   var velTimer;
+  var pageOutputs = false;
   function schedule() {
-    if (!raf && entries.size > 0)
+    if (!raf && (entries.size > 0 || pageOutputs))
       raf = requestAnimationFrame(update);
   }
   function update() {
@@ -3136,6 +3138,8 @@ var SV = (() => {
       entry.el.classList.toggle("sv-live", isLive);
       opts.onLive?.(isLive);
       if (isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene) {
+        if (opts.view !== false)
+          setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
         entries.delete(entry.el);
         resizeObserver?.unobserve(entry.el);
         culler?.unobserve(entry.el);
@@ -3177,18 +3181,18 @@ var SV = (() => {
       near: true,
       live: false,
       scene: -1,
-      pinOffset: opts.pin ? readPinOffset(el) : 0,
+      pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
       written: {}
     };
     entries.set(el, entry);
     el.classList.add("sv");
     if (opts.scenes && opts.scenes > 1)
       el.style.setProperty("--sv-scenes", String(opts.scenes));
-    if (typeof opts.pin === "string" && !reducedMotion) {
-      el.style.height = opts.pin;
-      if (!el.style.position)
-        el.style.position = "relative";
+    if (typeof opts.pin === "string") {
+      entry.authored = { height: el.style.height, position: el.style.position };
+      applyPinHelper(entry);
     }
+    pageOutputs = true;
     resizeObserver?.observe(el);
     if (!opts.root)
       culler?.observe(el);
@@ -3197,9 +3201,33 @@ var SV = (() => {
       entries.delete(el);
       resizeObserver?.unobserve(el);
       culler?.unobserve(el);
+      restorePinHelper(entry);
     };
   }
+  function applyPinHelper(entry) {
+    const { el, opts, authored } = entry;
+    if (typeof opts.pin !== "string" || !authored)
+      return;
+    if (reducedMotion) {
+      el.style.height = authored.height;
+      el.style.position = authored.position;
+    } else {
+      el.style.height = opts.pin;
+      const computed = typeof getComputedStyle === "function" ? getComputedStyle(el).position : void 0;
+      el.style.position = authored.position || (!computed || computed === "static" ? "relative" : "");
+    }
+  }
+  function restorePinHelper(entry) {
+    if (!entry.authored)
+      return;
+    entry.el.style.height = entry.authored.height;
+    entry.el.style.position = entry.authored.position;
+  }
   function refresh() {
+    entries.forEach((entry) => {
+      if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin)
+        entry.pinOffset = readPinOffset(entry.el);
+    });
     schedule();
   }
   function scrollToScene(el, index, count, smooth = true, root) {
@@ -3407,7 +3435,7 @@ var SV = (() => {
         mutation.removedNodes.forEach((node) => sweep(node, remove));
       }
     });
-    observer.observe(scope === document ? document.body : scope, {
+    observer.observe(scope === document ? document.documentElement : scope, {
       childList: true,
       subtree: true
     });
@@ -3426,18 +3454,31 @@ var SV = (() => {
       return () => {
       };
     const scope = root ?? document;
+    const resolve = (trigger) => {
+      const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
+      const selector = trigger.getAttribute("data-sv-target");
+      const target = selector ? scope.querySelector(selector) : trigger;
+      return { className, selector, target };
+    };
+    const sync = (selector, target, on) => {
+      const triggers = selector ? [...scope.querySelectorAll("[data-sv-toggle]")].filter((t) => t.getAttribute("data-sv-target") === selector) : [target];
+      triggers.forEach((t) => t.setAttribute("aria-expanded", String(on)));
+    };
+    scope.querySelectorAll("[data-sv-toggle]").forEach((trigger) => {
+      const { className, selector, target } = resolve(trigger);
+      if (target)
+        sync(selector, target, target.classList.contains(className));
+    });
     const onClick = (event) => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
       if (!trigger)
         return;
-      const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
-      const selector = trigger.getAttribute("data-sv-target");
-      const target = selector ? scope.querySelector(selector) : trigger;
+      const { className, selector, target } = resolve(trigger);
       if (!target)
         return;
       const on = target.classList.toggle(className);
       target.style.setProperty("--sv-state", on ? "1" : "0");
-      trigger.setAttribute("aria-expanded", String(on));
+      sync(selector, target, on);
     };
     scope.addEventListener("click", onClick);
     return () => scope.removeEventListener("click", onClick);
@@ -3484,12 +3525,19 @@ var SV = (() => {
     };
     const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
+    const chain = (el, x) => {
+      let v = 0;
+      while (el) {
+        v += x ? el.offsetLeft : el.offsetTop;
+        el = el.offsetParent;
+      }
+      return v;
+    };
     const slideStart = (el) => {
-      const c = container.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
       if (!horizontal)
-        return r.top - c.top - container.clientTop + container.scrollTop;
-      return rtl ? c.right - r.right - container.clientLeft + pos() : r.left - c.left - container.clientLeft + pos();
+        return chain(el, false) - chain(container, false) - container.clientTop;
+      const local = chain(el, true) - chain(container, true) - container.clientLeft;
+      return rtl ? container.scrollWidth - local - el.offsetWidth : local;
     };
     const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
     const authoredSnap = container.style.scrollSnapType;
@@ -3518,9 +3566,13 @@ var SV = (() => {
       const center = pos() + viewport() / 2;
       let best = 0;
       let bestSd = Infinity;
-      slides().forEach((slide, i) => {
-        const mid = slideStart(slide) + slideSize(slide) / 2;
-        const sd = (mid - center) / Math.max(slideSize(slide), 1);
+      const list = slides();
+      const sds = list.map((slide) => {
+        const size = Math.max(slideSize(slide), 1);
+        return (slideStart(slide) + size / 2 - center) / size;
+      });
+      list.forEach((slide, i) => {
+        const sd = sds[i];
         slide.style.setProperty("--sd", sd.toFixed(4));
         if (Math.abs(sd) < Math.abs(bestSd)) {
           bestSd = sd;
@@ -3543,8 +3595,19 @@ var SV = (() => {
         raf2 = requestAnimationFrame(measure);
     };
     container.addEventListener("scroll", schedule2, { passive: true });
-    const ro = new ResizeObserver(schedule2);
-    ro.observe(container);
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(schedule2) : null;
+    ro?.observe(container);
+    const watchSlides = () => {
+      ro?.disconnect();
+      ro?.observe(container);
+      slides().forEach((slide) => ro?.observe(slide));
+    };
+    watchSlides();
+    const mo = typeof MutationObserver === "function" ? new MutationObserver(() => {
+      watchSlides();
+      schedule2();
+    }) : null;
+    mo?.observe(container, { childList: true });
     measure();
     let target = -1;
     const stopGlide = () => {
@@ -3659,7 +3722,8 @@ var SV = (() => {
       const wasGliding = anim !== 0;
       stopGlide();
       target = -1;
-      if (!drag || event.pointerType !== "mouse") {
+      const native = event.target.closest?.("input, textarea, select, [contenteditable]");
+      if (!drag || event.pointerType !== "mouse" || (event.button ?? 0) !== 0 || native) {
         if (wasGliding)
           resumeSnap();
         return;
@@ -3731,7 +3795,8 @@ var SV = (() => {
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", endDrag);
         window.removeEventListener("pointercancel", endDrag);
-        ro.disconnect();
+        ro?.disconnect();
+        mo?.disconnect();
         if (raf2)
           cancelAnimationFrame(raf2);
       }
@@ -4460,17 +4525,24 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     const viewport = () => (horizontal ? container.clientWidth : container.clientHeight);
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    // Container-local start of a slide in logical scroll units. Rect-based, so
-    // it does not depend on which ancestor happens to be the offsetParent, and
-    // RTL mirrors against the container's own right edge.
+    // Container-local start of a slide in logical scroll units, from offset
+    // chains: layout positions, so the coverflow transforms a slide carries
+    // (scale/rotate from --sd) never feed back into its own measurement, and the
+    // sums make it independent of which ancestor is the offsetParent. RTL mirrors
+    // against the container's own content width.
+    const chain = (el, x) => {
+        let v = 0;
+        while (el) {
+            v += x ? el.offsetLeft : el.offsetTop;
+            el = el.offsetParent;
+        }
+        return v;
+    };
     const slideStart = (el) => {
-        const c = container.getBoundingClientRect();
-        const r = el.getBoundingClientRect();
         if (!horizontal)
-            return r.top - c.top - container.clientTop + container.scrollTop;
-        return rtl
-            ? c.right - r.right - container.clientLeft + pos()
-            : r.left - c.left - container.clientLeft + pos();
+            return chain(el, false) - chain(container, false) - container.clientTop;
+        const local = chain(el, true) - chain(container, true) - container.clientLeft;
+        return rtl ? container.scrollWidth - local - el.offsetWidth : local;
     };
     const slideSize = (el) => (horizontal ? el.offsetWidth : el.offsetHeight);
     // Snap suspension via inline style. One source of truth. The authored
@@ -4501,9 +4573,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         const center = pos() + viewport() / 2;
         let best = 0;
         let bestSd = Infinity;
-        slides().forEach((slide, i) => {
-            const mid = slideStart(slide) + slideSize(slide) / 2;
-            const sd = (mid - center) / Math.max(slideSize(slide), 1);
+        const list = slides();
+        // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
+        const sds = list.map((slide) => {
+            const size = Math.max(slideSize(slide), 1);
+            return (slideStart(slide) + size / 2 - center) / size;
+        });
+        list.forEach((slide, i) => {
+            const sd = sds[i];
             slide.style.setProperty('--sd', sd.toFixed(4));
             if (Math.abs(sd) < Math.abs(bestSd)) {
                 bestSd = sd;
@@ -4526,8 +4603,22 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             raf = requestAnimationFrame(measure);
     };
     container.addEventListener('scroll', schedule, { passive: true });
-    const ro = new ResizeObserver(schedule);
-    ro.observe(container);
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
+    ro?.observe(container);
+    const watchSlides = () => {
+        ro?.disconnect();
+        ro?.observe(container);
+        slides().forEach((slide) => ro?.observe(slide));
+    };
+    watchSlides();
+    // replaced or added children re-measure even when the container box stays the same
+    const mo = typeof MutationObserver === 'function'
+        ? new MutationObserver(() => {
+            watchSlides();
+            schedule();
+        })
+        : null;
+    mo?.observe(container, { childList: true });
     measure();
     // pending glide destination: rapid next/prev clicks accumulate from here,
     // not from `active` (which lags mid-glide and would swallow the clicks)
@@ -4668,8 +4759,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         const wasGliding = anim !== 0;
         stopGlide(); // the user takes over
         target = -1;
-        if (!drag || event.pointerType !== 'mouse') {
-            // an interrupted glide must not leave snap suspended forever
+        const native = event.target.closest?.('input, textarea, select, [contenteditable]');
+        if (!drag || event.pointerType !== 'mouse' || (event.button ?? 0) !== 0 || native) {
+            // an interrupted glide must not leave snap suspended forever; a range
+            // input, a text field or a right click keep their native gesture
             if (wasGliding)
                 resumeSnap();
             return;
@@ -4759,7 +4852,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', endDrag);
             window.removeEventListener('pointercancel', endDrag);
-            ro.disconnect();
+            ro?.disconnect();
+            mo?.disconnect();
             if (raf)
                 cancelAnimationFrame(raf);
         },
@@ -4794,20 +4888,34 @@ function toggles(root) {
     if (typeof window === 'undefined')
         return () => { };
     const scope = root ?? document;
+    const resolve = (trigger) => {
+        const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
+        const selector = trigger.getAttribute('data-sv-target');
+        const target = selector ? scope.querySelector(selector) : trigger;
+        return { className, selector, target };
+    };
+    // every trigger of a target reflects its state: on boot, and after any click
+    const sync = (selector, target, on) => {
+        const triggers = selector
+            ? [...scope.querySelectorAll('[data-sv-toggle]')].filter((t) => t.getAttribute('data-sv-target') === selector)
+            : [target];
+        triggers.forEach((t) => t.setAttribute('aria-expanded', String(on)));
+    };
+    scope.querySelectorAll('[data-sv-toggle]').forEach((trigger) => {
+        const { className, selector, target } = resolve(trigger);
+        if (target)
+            sync(selector, target, target.classList.contains(className));
+    });
     const onClick = (event) => {
         const trigger = event.target.closest?.('[data-sv-toggle]');
         if (!trigger)
             return;
-        const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
-        const selector = trigger.getAttribute('data-sv-target');
-        const target = selector
-            ? scope.querySelector(selector)
-            : trigger;
+        const { className, selector, target } = resolve(trigger);
         if (!target)
             return;
         const on = target.classList.toggle(className);
         target.style.setProperty('--sv-state', on ? '1' : '0');
-        trigger.setAttribute('aria-expanded', String(on));
+        sync(selector, target, on);
     };
     scope.addEventListener('click', onClick);
     return () => scope.removeEventListener('click', onClick);

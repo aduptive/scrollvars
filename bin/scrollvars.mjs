@@ -14,12 +14,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const REGISTRY = process.env.SCROLLVARS_REGISTRY || 'https://scrollvars.dev/fx/registry.json'
-const REGISTRY_FALLBACK = 'https://scrollvars.vercel.app/fx/registry.json' // same deploy, second host
+// an independent host: the committed copy on GitHub (scrollvars.vercel.app only redirects to scrollvars.dev)
+const REGISTRY_FALLBACK = 'https://raw.githubusercontent.com/aduptive/scrollvars/main/demo/fx/registry.json'
 
 const args = process.argv.slice(2)
 const flags = new Set(args.filter((a) => a.startsWith('--')))
 const dirFlag = args.indexOf('--dir')
 const dir = dirFlag >= 0 ? args[dirFlag + 1] : 'components/fx'
+if (dirFlag >= 0 && (!dir || dir.startsWith('--'))) {
+  console.error('--dir needs a folder, e.g. --dir src/components/fx')
+  process.exit(1)
+}
 // a flag's value (`--dir src/ui`) is not a positional: `add --dir src/ui marquee` works
 const positional = args.filter((a, i) => !a.startsWith('--') && !(dirFlag >= 0 && i === dirFlag + 1))
 const [command, slug] = positional
@@ -48,7 +53,7 @@ async function loadRegistry() {
     return await res.json()
   } catch (err) {
     if (REGISTRY === REGISTRY_FALLBACK) throw err
-    const res = await fetch(REGISTRY_FALLBACK) // .vercel.app mirror of the same deploy
+    const res = await fetch(REGISTRY_FALLBACK)
     if (!res.ok) throw new Error(`registry fetch failed on both hosts: ${err.message} / HTTP ${res.status}`)
     return res.json()
   }
@@ -63,7 +68,8 @@ function usage() {
 Gallery: https://scrollvars.dev/fx/`)
 }
 
-const registry = await loadRegistry().catch((e) => {
+// only the commands that need the registry pay for the network round trip
+const registry = command !== 'list' && command !== 'add' ? null : await loadRegistry().catch((e) => {
   console.error('could not load the effect registry:', e.message)
   process.exit(1)
 })

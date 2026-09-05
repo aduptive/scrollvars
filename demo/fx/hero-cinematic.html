@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -150,6 +150,7 @@
 .hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
 .hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
 .hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
 .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
@@ -178,7 +179,7 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]"&gt;
   &lt;div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
     [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"&gt;&lt;/div&gt;
@@ -213,6 +214,7 @@
 .hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
 .hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
   opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
 .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */</code></pre>
     <pre data-pane="react"><code>import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -235,7 +237,7 @@ function Hero() {
 }
 // npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

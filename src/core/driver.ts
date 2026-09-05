@@ -48,6 +48,8 @@ interface Entry {
    * from the element's computed `--sv-pin-offset`, so one CSS declaration drives
    * both the layout (.sv-stage) and the math. */
   pinOffset: number
+  /** inline height/position the pin helper replaced, restored on untrack */
+  authored?: { height: string; position: string }
   written: Record<string, string>
 }
 
@@ -75,13 +77,14 @@ function init() {
   window.addEventListener('scroll', schedule, { passive: true, capture: true })
   window.addEventListener('resize', () => {
     vh = window.innerHeight
-    schedule()
+    refresh() // a responsive sticky header changes every pin offset too
   })
 
   const media = window.matchMedia('(prefers-reduced-motion: reduce)')
   reducedMotion = media.matches
   media.addEventListener?.('change', (event) => {
     reducedMotion = event.matches
+    entries.forEach(applyPinHelper)
     schedule()
   })
 
@@ -122,8 +125,10 @@ let lastY = -1
 let lastT = 0
 let velTimer: ReturnType<typeof setTimeout> | undefined
 
+let pageOutputs = false // true once anything was ever tracked: --sv-page/--sv-v then follow every scroll
+
 function schedule() {
-  if (!raf && entries.size > 0) raf = requestAnimationFrame(update)
+  if (!raf && (entries.size > 0 || pageOutputs)) raf = requestAnimationFrame(update)
 }
 
 function update() {
@@ -260,6 +265,9 @@ function apply(entry: Entry, geo: Geometry) {
       !opts.onPin &&
       !opts.onScene
     ) {
+      // settle the outputs first: a child measured below the screen must not keep
+      // --sv-view at -1 forever (sv-drift would stay invisible)
+      if (opts.view !== false) setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
       entries.delete(entry.el)
       resizeObserver?.unobserve(entry.el)
       culler?.unobserve(entry.el)
@@ -306,7 +314,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     near: true,
     live: false,
     scene: -1,
-    pinOffset: opts.pin ? readPinOffset(el) : 0,
+    pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
     written: {},
   }
   entries.set(el, entry)
@@ -315,10 +323,11 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
   // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
   // under reduced motion the wrapper stays in flow instead of an empty scroll
-  if (typeof opts.pin === 'string' && !reducedMotion) {
-    el.style.height = opts.pin
-    if (!el.style.position) el.style.position = 'relative'
+  if (typeof opts.pin === 'string') {
+    entry.authored = { height: el.style.height, position: el.style.position }
+    applyPinHelper(entry)
   }
+  pageOutputs = true
   resizeObserver?.observe(el)
   if (!opts.root) culler?.observe(el)
   schedule()
@@ -327,11 +336,36 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     entries.delete(el)
     resizeObserver?.unobserve(el)
     culler?.unobserve(el)
+    restorePinHelper(entry)
   }
+}
+
+function applyPinHelper(entry: Entry) {
+  const { el, opts, authored } = entry
+  if (typeof opts.pin !== 'string' || !authored) return
+  if (reducedMotion) {
+    el.style.height = authored.height
+    el.style.position = authored.position
+  } else {
+    el.style.height = opts.pin
+    // only a static element needs the positioning context; one positioned by a
+    // stylesheet (absolute, fixed, sticky) keeps it
+    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
+    el.style.position = authored.position || (!computed || computed === 'static' ? 'relative' : '')
+  }
+}
+function restorePinHelper(entry: Entry) {
+  if (!entry.authored) return
+  entry.el.style.height = entry.authored.height
+  entry.el.style.position = entry.authored.position
 }
 
 /** Force a recompute (e.g. after content changes outside a resize). */
 export function refresh() {
+  // a sticky header that changed size changes every pin consumer's offset
+  entries.forEach((entry) => {
+    if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin) entry.pinOffset = readPinOffset(entry.el)
+  })
   schedule()
 }
 

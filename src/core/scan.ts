@@ -101,7 +101,8 @@ export function scan(root?: ParentNode): () => void {
       mutation.removedNodes.forEach((node) => sweep(node, remove))
     }
   })
-  observer.observe(scope === document ? document.body : (scope as Node), {
+  // documentElement, not body: scan() may run from <head> before <body> exists
+  observer.observe(scope === document ? document.documentElement : (scope as Node), {
     childList: true,
     subtree: true,
   })

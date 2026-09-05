@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -144,7 +144,7 @@
   <p class="tag">A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.</p>
   <p class="meta"><b>Use it for:</b> Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.<br><b>Knobs:</b> mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures</p>
   <div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
+  <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
   </div>
 </div>
@@ -178,7 +178,7 @@
       renderer.render(scene, camera)
     },
   })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
+  SV.track(document.getElementById('fxthree-outer'), { pin: '240vh', onPin: (p) => (progress = p) })
 })</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
@@ -187,8 +187,8 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div&gt;   &lt;!-- tracked in JS with pin: '250vh' --&gt;
+  &lt;div class="sv-stage grid place-items-center"&gt;
     &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
   &lt;/div&gt;
 &lt;/div&gt;
@@ -209,7 +209,7 @@
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: true, onPin: (p) =&gt; (progress = p) })
+  track(outer, { pin: '250vh', onPin: (p) =&gt; (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 &lt;/script&gt;</code></pre>
@@ -222,13 +222,13 @@ const canvasRef = useCanvasEffect({
   frame(fx, dt) { /* render with progress.current */ },
 })
 
-&lt;Track pin onPin={(p) =&gt; (progress.current = p)} className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
+&lt;Track pin="250vh" onPin={(p) =&gt; (progress.current = p)}&gt;
+  &lt;div className="sv-stage grid place-items-center"&gt;
     &lt;canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" /&gt;
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

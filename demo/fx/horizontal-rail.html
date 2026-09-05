@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -143,8 +143,8 @@
   <h1>Horizontal rail</h1>
   <p class="tag">Vertical scroll travels a horizontal track through a pinned stage.</p>
   <p class="meta"><b>Use it for:</b> Process steps, timelines, galleries that read left-to-right.<br><b>Knobs:</b> outer height = scroll length; works at any viewport width (min() keeps it moving)</p>
-  <div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky" style="display:flex;align-items:center">
+  <div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky" style="display:flex;align-items:center">
     <div class="sv-rail" style="display:flex;gap:14px;padding:0 8vw">
       <div class="fxcard">01</div><div class="fxcard">02</div><div class="fxcard">03</div>
       <div class="fxcard">04</div><div class="fxcard">05</div>
@@ -158,8 +158,8 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[300vh]"&gt;
-  &lt;div class="sticky top-0 flex h-screen items-center overflow-hidden"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="300vh"&gt;
+  &lt;div class="sv-stage flex items-center"&gt;
     &lt;div class="sv-rail flex gap-4 px-[10vw]"&gt;
       {cards.map(c =&gt; &lt;Card key={c.id} class="w-80 shrink-0" /&gt;)}
     &lt;/div&gt;
@@ -174,13 +174,13 @@
 /* the preset (styles/pin.css): */
 .sv .sv-rail { width: max-content;
   translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin className="relative h-[300vh]"&gt;
-  &lt;div className="sticky top-0 flex h-screen items-center overflow-hidden"&gt;
+    <pre data-pane="react"><code>&lt;Track pin="300vh"&gt;
+  &lt;div className="sv-stage flex items-center"&gt;
     &lt;div className="sv-rail flex gap-4 px-[10vw]"&gt;{cards}&lt;/div&gt;
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

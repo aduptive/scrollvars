@@ -51,7 +51,9 @@ export function debug({ outlines = true }: DebugOptions = {}): () => void {
         list.appendChild(row)
       }
       const cs = getComputedStyle(el)
-      const vals = VARS.map((v) => {
+      // --sv-r is a registered inherited property (initial 1): only meaningful on sv-range children
+      const shown = el.parentElement?.classList.contains('sv-range') ? VARS : VARS.filter((v) => v !== '--sv-r')
+      const vals = shown.map((v) => {
         const raw = cs.getPropertyValue(v).trim()
         return raw ? `${v.slice(5)} ${(+raw).toFixed(2)}` : ''
       })

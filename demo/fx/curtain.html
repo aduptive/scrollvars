@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -143,8 +143,8 @@
   <h1>Curtain</h1>
   <p class="tag">Two panels slide apart as you scroll through a pinned stretch.</p>
   <p class="meta"><b>Use it for:</b> Chapter breaks, big reveals, section transitions.<br><b>Knobs:</b> outer height = scroll length; panel content/colors are yours</p>
-  <div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky">
+  <div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky">
     <div class="fxreveal">revealed</div>
     <div class="fxpanel sv-curtain-l">scroll</div>
     <div class="fxpanel sv-curtain-r" style="left:50%">vars</div>
@@ -157,8 +157,8 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 h-screen overflow-hidden"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
+  &lt;div class="sv-stage"&gt;
     &lt;div class="grid h-full place-items-center"&gt;revealed content&lt;/div&gt;
     &lt;div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
     &lt;div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
@@ -175,15 +175,15 @@
 /* the preset (styles/pin.css): */
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
 .sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 h-screen overflow-hidden"&gt;
+    <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
+  &lt;div className="sv-stage"&gt;
     &lt;Revealed /&gt;
     &lt;div className="sv-curtain-l …" /&gt;
     &lt;div className="sv-curtain-r …" /&gt;
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

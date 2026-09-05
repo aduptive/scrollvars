@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 4.8 KB gzip as ESM; the fx/sv.js IIFE on these pages is 5.0 KB). Each effect below includes when to
+> (npm i scrollvars, 5.2 KB gzip as ESM; the fx/sv.js IIFE on these pages is 5.5 KB). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -114,8 +114,8 @@ Knobs: outer height = scroll length; panel content/colors are yours
 
 ### Tailwind
 ```html
-<div data-sv data-sv-pin class="relative h-[250vh]">
-  <div class="sticky top-0 h-screen overflow-hidden">
+<div data-sv data-sv-pin="250vh">
+  <div class="sv-stage">
     <div class="grid h-full place-items-center">revealed content</div>
     <div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"></div>
     <div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"></div>
@@ -140,8 +140,8 @@ Knobs: outer height = scroll length; panel content/colors are yours
 
 ### React
 ```tsx
-<Track pin className="relative h-[250vh]">
-  <div className="sticky top-0 h-screen overflow-hidden">
+<Track pin="250vh">
+  <div className="sv-stage">
     <Revealed />
     <div className="sv-curtain-l …" />
     <div className="sv-curtain-r …" />
@@ -158,8 +158,8 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 
 ### Tailwind
 ```html
-<div data-sv data-sv-pin class="relative h-[300vh]">
-  <div class="sticky top-0 flex h-screen items-center overflow-hidden">
+<div data-sv data-sv-pin="300vh">
+  <div class="sv-stage flex items-center">
     <div class="sv-rail flex gap-4 px-[10vw]">
       {cards.map(c => <Card key={c.id} class="w-80 shrink-0" />)}
     </div>
@@ -182,8 +182,8 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 
 ### React
 ```tsx
-<Track pin className="relative h-[300vh]">
-  <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+<Track pin="300vh">
+  <div className="sv-stage flex items-center">
     <div className="sv-rail flex gap-4 px-[10vw]">{cards}</div>
   </div>
 </Track>
@@ -198,8 +198,8 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 
 ### Tailwind
 ```html
-<div data-sv data-sv-pin class="relative h-[250vh]">
-  <div class="sticky top-0 grid h-screen place-items-center">
+<div data-sv data-sv-pin="250vh">
+  <div class="sv-stage grid place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
       <h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold">First</h2>
       <p data-sv-from=".3" data-sv-to=".7">Second</p>
@@ -235,8 +235,8 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 
 ### React
 ```tsx
-<Track pin className="relative h-[250vh]">
-  <div className="sticky top-0 grid h-screen place-items-center">
+<Track pin="250vh">
+  <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">
       {steps.map((s, i, all) => (
         <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} />
@@ -246,7 +246,7 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 </Track>
 
 // JS twin for canvas/WebGL consumers:
-// track(el, { pin: true, onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })
+// track(el, { pin: '250vh', onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })
 ```
 
 ## GSAP timeline under scrub (gsap-scrub)
@@ -258,8 +258,8 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP
 
 ### Tailwind
 ```html
-<div data-x class="relative h-[250vh]">   <!-- no data-sv: this one is tracked in JS -->
-  <div class="sticky top-0 grid h-screen place-items-center">…</div>
+<div data-x>   <!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) -->
+  <div class="sv-stage grid place-items-center">…</div>
 </div>
 <!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() => tl.progress(
@@ -294,8 +294,8 @@ useEffect(() => {
   return () => tl.current?.kill()
 }, [])
 
-<Track pin onPin={(p) => tl.current?.progress(p)} className="relative h-[250vh]">
-  <div className="sticky top-0 h-screen">…</div>
+<Track pin="250vh" onPin={(p) => tl.current?.progress(p)}>
+  <div className="sv-stage">…</div>
 </Track>
 ```
 
@@ -308,8 +308,8 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
 
 ### Tailwind
 ```html
-<div class="relative h-[250vh]">
-  <div class="sticky top-0 grid h-screen place-items-center">
+<div>   <!-- tracked in JS with pin: '250vh' -->
+  <div class="sv-stage grid place-items-center">
     <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
   </div>
 </div>
@@ -334,7 +334,7 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: true, onPin: (p) => (progress = p) })
+  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>
@@ -351,8 +351,8 @@ const canvasRef = useCanvasEffect({
   frame(fx, dt) { /* render with progress.current */ },
 })
 
-<Track pin onPin={(p) => (progress.current = p)} className="relative h-[250vh]">
-  <div className="sticky top-0 grid h-screen place-items-center">
+<Track pin="250vh" onPin={(p) => (progress.current = p)}>
+  <div className="sv-stage grid place-items-center">
     <canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" />
   </div>
 </Track>
@@ -589,7 +589,7 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
 
 ### Tailwind
 ```html
-<section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
     [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
@@ -628,6 +628,7 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
 .hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
 .hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
   opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
 .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */
 ```
@@ -664,8 +665,8 @@ Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its sl
 
 ### Tailwind
 ```html
-<div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]">
-  <div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
+<div data-sv data-sv-pin="320vh" class="[--tl-from:2019] [--tl-span:7]">
+  <div class="sv-stage grid grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
     <span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
       [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"></span>
     <ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8">
@@ -745,14 +746,14 @@ Knobs: data-sv-scenes (step count), wrapper height (scroll per step), --i on eac
 
 ### Tailwind
 ```html
-<div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]">
-  <div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
+<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
+  <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
     <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
       <img class="st-shot [--i:0]" src="shot-1.jpg" alt="">
       <img class="st-shot [--i:1]" src="shot-2.jpg" alt="">
       <img class="st-shot [--i:2]" src="shot-3.jpg" alt="">
     </div>
-    <ol class="grid gap-10">
+    <ol class="st-steps grid gap-10">
       <li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Track the section</h3></li>
       <li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Give each piece an index</h3></li>
       <li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Ship it</h3></li>
@@ -825,7 +826,7 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
 ### Tailwind
 ```html
 <section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
-  <dl class="grid grid-cols-3 gap-6 text-center">
+  <dl class="stats grid grid-cols-3 gap-6 text-center">
     <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
     <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
   </dl>

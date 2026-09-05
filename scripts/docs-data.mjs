@@ -15,7 +15,7 @@ export const VARS = [
   ['`--sv-pin`', '0 → 1', 'Progress across a pinned (sticky) stretch: curtains, rails, scrubbing'],
   ['`--sv-scene`', '0 → n−1', 'Scene index of a pinned section, eased and snapped'],
   ['`--sv-scenes`', 'n', 'Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)`'],
-  ['`--sv-page` / `--sv-v`', '0 → 1 / ±vh/s', 'On `<html>`: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest)'],
+  ['`--sv-page` / `--sv-v`', '0 → 1 / ±20 vh/s', 'On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event'],
   ['`--mx` / `--my`', '−1 → 1', "Pointer offset from the element's center, clamped (pointer module)"],
   ['`.sv-live`', 'class', 'On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it'],
 ]
@@ -49,6 +49,7 @@ export function measureSizes(root) {
     pointer: kb(entry('core/pointer.js')),
     canvas: kb(entry('canvas/index.js')),
     everything: kb(entry('index.js')),
+    react: kb(entry('react/index.js')),
     typical: kb(driver + cssKb('core')),
     stylesAll: kb(gzipSync(readFileSync(join(root, 'styles.css'))).length / 1024),
     css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui'].map((n) => [n, kb(cssKb(n))])),

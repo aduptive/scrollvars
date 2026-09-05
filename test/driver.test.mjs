@@ -299,3 +299,49 @@ test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', 
   untrack()
   delete global.getComputedStyle
 })
+
+
+test('driver: a once entry settles --sv-view before releasing, and page outputs keep following the scroll', async () => {
+  const pageVars = {}
+  global.document = {
+    documentElement: { classList: { add: () => {} }, style: { setProperty: (k, v) => (pageVars[k] = v) }, scrollHeight: 6000 },
+  }
+  window.scrollY = 0
+  const { track } = await import('../dist/core/driver.js?oncesettle')
+  const el = makeElement(200)
+  place(el, 1500) // below the viewport: measured at -1
+  const untrack = track(el, { once: true })
+  pump()
+  assert.equal(el.vars['--sv-view'], '-1.0000')
+  place(el, 300) // inside the band: goes live and is released
+  pump()
+  assert.ok(el.classes.has('sv-live'))
+  assert.equal(el.vars['--sv-view'], '0.0000', 'released with the settled value, not the stale -1')
+  // nothing tracked any more, yet the page keeps its outputs
+  window.scrollY = 2500
+  pump()
+  assert.equal(pageVars['--sv-page'], (2500 / 5000).toFixed(4))
+  untrack()
+})
+
+test('driver: --sv-pin-offset applies to onPin consumers, and the pin helper restores what it replaced', async () => {
+  global.getComputedStyle = () => ({ getPropertyValue: (n) => (n === '--sv-pin-offset' ? '64px' : '') })
+  const { track } = await import('../dist/core/driver.js?pinconsumers')
+  const el = makeElement(3000)
+  const pins = []
+  const untrack = track(el, { onPin: (p) => pins.push(p) })
+  place(el, 64)
+  pump()
+  assert.equal(pins[pins.length - 1], 0, 'onPin without pin:true still starts at the header line')
+  untrack()
+
+  const wrapper = makeElement(100)
+  wrapper.style.height = '10px'
+  wrapper.style.position = 'sticky'
+  const stop = track(wrapper, { pin: '300vh' })
+  assert.equal(wrapper.style.height, '300vh')
+  assert.equal(wrapper.style.position, 'sticky', 'an authored position is kept')
+  stop()
+  assert.equal(wrapper.style.height, '10px', 'untrack restores the authored height')
+  delete global.getComputedStyle
+})

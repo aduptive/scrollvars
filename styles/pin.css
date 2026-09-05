@@ -113,7 +113,7 @@
 .sv-stage {
   position: sticky;
   top: var(--sv-pin-offset, 0px); /* a sticky header: `:root { --sv-pin-offset: 64px }` */
-  height: calc(100vh - var(--sv-pin-offset, 0px));
+  height: calc(var(--sv-stage-height, 100vh) - var(--sv-pin-offset, 0px)); /* --sv-stage-height: an inner scroller's height when tracking with root */
   overflow: hidden;
 }
 html:not(.sv-on) .sv-stage {
@@ -163,6 +163,8 @@ html:not(.sv-on) .sv .sv-counter {
   }
   .sv .sv-rail {
     translate: none;
+    width: auto;
+    flex-wrap: wrap;
   }
   .sv .sv-deck {
     display: block; /* stacked grid cells would overlap without the motion */

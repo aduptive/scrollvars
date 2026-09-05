@@ -83,7 +83,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>Progress across a pinned (sticky) stretch: curtains, rails, scrubbing</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
-<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±vh/s</td><td>On <code>&lt;html></code>: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest)</td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 vh/s</td><td>On <code>&lt;html></code> once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
 <tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
 <tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
@@ -345,6 +345,41 @@ said premium sections would need.
   <code>Intl.Segmenter</code> exists (emoji and combining marks stay whole).
 <ul><li><code>--mx</code>/<code>--my</code> are clamped to -1..1.</li></ul>
 
+### Review round 2 (Codex gpt-6-astra, 17 findings, all fixed)
+<ul><li>Entrance presets now animate from an inherited <code>--sv-live</code> flag (0/1) owned</li></ul>
+  by the nearest tracker: nesting can no longer leak a parent's state, server
+  markup with <code>data-sv</code> hides before <code>scan()</code> runs, and the reduced-motion
+  override always wins. The compat fallback uses the same flag.
+<ul><li>Pinning: <code>--sv-pin-offset</code> is read for every pin consumer (<code>scenes</code>, <code>onPin</code></li></ul>
+  too) and re-read on <code>refresh()</code>; the pin helper remembers the inline styles
+  it replaced, restores them on untrack, and follows live reduced-motion
+  changes. <code>&lt;Scenes></code> no longer writes inline stage geometry: it uses the pin
+  helper and <code>.sv-stage</code> (needs <code>styles/pin.css</code>). <code>.sv-stage</code> gets
+  <code>--sv-stage-height</code> for inner scrollers; rails wrap under reduced motion.
+<ul><li><code>once</code> entries settle <code>--sv-view</code> before releasing (a drift child measured</li></ul>
+  below the screen stayed invisible); <code>--sv-page</code>/<code>--sv-v</code> keep following the
+  scroll after the last entry released itself.
+<ul><li>Slider: geometry from offset chains again (transform-immune, container-local,</li></ul>
+  RTL against the content width), reads batched before writes, slides observed
+  for size and childList changes, drag only on the primary button and never on
+  native controls (inputs, textareas, selects, contenteditable).
+<ul><li>React: <code>onScene</code> added later now re-tracks; <code>&lt;Split by="char"></code> renders the</li></ul>
+  graphemes it counts; <code>inert</code> is rendered as <code>inert=""</code> so React 18 keeps it;
+  Modal falls back to an open static panel without <code>showModal</code>.
+<ul><li>Toggles: <code>aria-expanded</code> synced on boot and across every trigger of a target.</li>
+<li>Gallery: every pinned preview and installed component uses the pin helper and</li></ul>
+  <code>.sv-stage</code> (no hand-written sticky skeleton anywhere); the hero stops its
+  pointer drift and exit scaling under reduced motion; StickySteps drops
+  <code>inert</code> when it stacks the shots; Tailwind tabs carry the selector classes
+  their JS/CSS needs; minimum versions bumped for the migrated components.
+<ul><li>CLI: the registry fallback is the committed copy on GitHub (an independent</li></ul>
+  host), <code>--dir</code> without a value is rejected, the registry is only fetched for
+  <code>list</code>/<code>add</code>.
+<ul><li>Docs: Firefox floor is 78 (<code>:is()</code>), the bundle ratio is computed from the</li></ul>
+  stamped sizes, throttle wording is honest (set through CDP, nominal), the
+  scroll-tracking rAF claim is scoped, pointer has two listeners, page
+  variables document their clamp and decay, the canvas example guards <code>ctx</code>.
+
 ### One source for the shared facts
 <ul><li><code>scripts/docs-data.mjs</code> holds the variables table and measures every size at</li></ul>
   build; <code>docs-stamp.mjs</code> writes them into README and AGENTS between markers,
@@ -361,9 +396,9 @@ said premium sections would need.
 <ul><li>Slider tests for a rail inside a positioned ancestor and for a vertical rail.</li></ul>
 
 ### Docs and release
-<ul><li>Sizes re-measured and stated once: ESM core 4.3 KB gz, driver 1.4, slider</li></ul>
-  1.8, stylesheets core 1.9 / pin 1.8 / slider 1.3 / tilt 0.5 / state 1.5 /
-  ui 0.8. Stale claims fixed across README, AGENTS, llms.txt, docs, fx
+<ul><li>Sizes are measured at build and stamped into every document (see README for</li></ul>
+  the current numbers; nothing is typed by hand any more). Stale claims fixed
+  across README, AGENTS, llms.txt, docs, fx
   recipes (rotating-words <code>vertical-align</code>, split's sr-only span, "SplitText
   gap", <code>.sv-open</code> toggle example, Parallax reads <code>--sv-view</code>, and more).
 <ul><li>e2e invariants: every fx page must render every text node without JS; the</li></ul>

@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -144,7 +144,7 @@
   <p class="tag">Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.</p>
   <p class="meta"><b>Use it for:</b> Company history, case-study process, roadmap, "how we got here". Any ordered story.<br><b>Knobs:</b> --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)</p>
   <style>
-.tl { --tl-from: 2019; --tl-span: 7; height: 320vh; }
+.tl { --tl-from: 2019; --tl-span: 7; }
 .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
 .tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
@@ -161,8 +161,8 @@
 .tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
 @media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
 </style>
-<div data-sv data-sv-pin class="fxouter tl">
-  <div class="fxsticky tl-sticky">
+<div data-sv data-sv-pin="320vh" class="fxouter tl">
+  <div class="sv-stage fxsticky tl-sticky">
     <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
     <div class="tl-track"><i class="tl-line"></i>
       <ol class="sv-range sv-range-rise tl-items">
@@ -181,8 +181,8 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]"&gt;
-  &lt;div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="320vh" class="[--tl-from:2019] [--tl-span:7]"&gt;
+  &lt;div class="sv-stage grid grid-cols-[1fr_1.2fr] items-center gap-10 px-12"&gt;
     &lt;span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
       [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"&gt;&lt;/span&gt;
     &lt;ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8"&gt;
@@ -244,7 +244,7 @@ function Timeline() {
 }
 // npx scrollvars add timeline-scrub → components/fx/TimelineScrub.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

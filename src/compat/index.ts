@@ -5,7 +5,7 @@
  *   import { compat } from 'scrollvars/compat'
  *   compat()
  *
- * On a modern browser it runs two feature checks and returns false. No
+ * On a modern browser it runs three feature checks and returns false. No
  * stubs, no styles, effectively free. On an old one it patches the gaps:
  *
  *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub:
@@ -25,25 +25,21 @@
  */
 
 const FALLBACK_CSS = `
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
 .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip) {
-  opacity: 0;
+  opacity: var(--sv-live, 0);
   transition:
     opacity var(--sv-duration, 800ms) var(--sv-ease, ease-out),
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 110ms));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
 .sv-on .sv .sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
-  transform: translateY(var(--sv-distance, 6rem));
+  transform: translateY(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem)));
 }
-.sv-on .sv .sv-slide-l { transform: translateX(calc(var(--sv-distance, 6rem) * -2)); }
-.sv-on .sv .sv-slide-r { transform: translateX(calc(var(--sv-distance, 6rem) * 2)); }
-.sv-on .sv.sv-live .sv-rise, .sv-on .sv.sv-live .sv-fade,
-.sv-on .sv.sv-live .sv-slide-l, .sv-on .sv.sv-live .sv-slide-r,
-.sv-on .sv.sv-live.sv-auto > * {
-  opacity: 1;
-  transform: none;
-}
+.sv-on .sv .sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
+.sv-on .sv .sv-slide-r { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * 2)); }
 .sv .sv-drift {
   opacity: 1; /* fallback: max() postdates the floor: old engines keep this */
   opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));

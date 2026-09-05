@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -144,7 +144,6 @@
   <p class="tag">Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.</p>
   <p class="meta"><b>Use it for:</b> Product features, "how it works", case-study walkthroughs, onboarding explainers.<br><b>Knobs:</b> data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)</p>
   <style>
-.st { height: 300vh; }
 .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
 .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
 .st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
@@ -164,8 +163,8 @@
 html:not(.sv-on) .st-steps > li { opacity: 1; }
 @media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
 </style>
-<div data-sv data-sv-pin data-sv-scenes="3" class="fxouter st">
-  <div class="fxsticky st-grid">
+<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="fxouter st">
+  <div class="sv-stage fxsticky st-grid">
     <div class="st-media">
       <figure class="st-shot" style="--i: 0">01</figure>
       <figure class="st-shot" style="--i: 1">02</figure>
@@ -186,14 +185,14 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="300vh" data-sv-scenes="3"&gt;
+  &lt;div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12"&gt;
     &lt;div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl"&gt;
       &lt;img class="st-shot [--i:0]" src="shot-1.jpg" alt=""&gt;
       &lt;img class="st-shot [--i:1]" src="shot-2.jpg" alt=""&gt;
       &lt;img class="st-shot [--i:2]" src="shot-3.jpg" alt=""&gt;
     &lt;/div&gt;
-    &lt;ol class="grid gap-10"&gt;
+    &lt;ol class="st-steps grid gap-10"&gt;
       &lt;li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Track the section&lt;/h3&gt;&lt;/li&gt;
       &lt;li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Give each piece an index&lt;/h3&gt;&lt;/li&gt;
       &lt;li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"&gt;&lt;h3&gt;Ship it&lt;/h3&gt;&lt;/li&gt;
@@ -247,7 +246,7 @@ function StickySteps() {
 }
 // npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

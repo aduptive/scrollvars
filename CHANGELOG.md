@@ -94,6 +94,41 @@ said premium sections would need.
   `Intl.Segmenter` exists (emoji and combining marks stay whole).
 - `--mx`/`--my` are clamped to -1..1.
 
+### Review round 2 (Codex gpt-6-astra, 17 findings, all fixed)
+- Entrance presets now animate from an inherited `--sv-live` flag (0/1) owned
+  by the nearest tracker: nesting can no longer leak a parent's state, server
+  markup with `data-sv` hides before `scan()` runs, and the reduced-motion
+  override always wins. The compat fallback uses the same flag.
+- Pinning: `--sv-pin-offset` is read for every pin consumer (`scenes`, `onPin`
+  too) and re-read on `refresh()`; the pin helper remembers the inline styles
+  it replaced, restores them on untrack, and follows live reduced-motion
+  changes. `<Scenes>` no longer writes inline stage geometry: it uses the pin
+  helper and `.sv-stage` (needs `styles/pin.css`). `.sv-stage` gets
+  `--sv-stage-height` for inner scrollers; rails wrap under reduced motion.
+- `once` entries settle `--sv-view` before releasing (a drift child measured
+  below the screen stayed invisible); `--sv-page`/`--sv-v` keep following the
+  scroll after the last entry released itself.
+- Slider: geometry from offset chains again (transform-immune, container-local,
+  RTL against the content width), reads batched before writes, slides observed
+  for size and childList changes, drag only on the primary button and never on
+  native controls (inputs, textareas, selects, contenteditable).
+- React: `onScene` added later now re-tracks; `<Split by="char">` renders the
+  graphemes it counts; `inert` is rendered as `inert=""` so React 18 keeps it;
+  Modal falls back to an open static panel without `showModal`.
+- Toggles: `aria-expanded` synced on boot and across every trigger of a target.
+- Gallery: every pinned preview and installed component uses the pin helper and
+  `.sv-stage` (no hand-written sticky skeleton anywhere); the hero stops its
+  pointer drift and exit scaling under reduced motion; StickySteps drops
+  `inert` when it stacks the shots; Tailwind tabs carry the selector classes
+  their JS/CSS needs; minimum versions bumped for the migrated components.
+- CLI: the registry fallback is the committed copy on GitHub (an independent
+  host), `--dir` without a value is rejected, the registry is only fetched for
+  `list`/`add`.
+- Docs: Firefox floor is 78 (`:is()`), the bundle ratio is computed from the
+  stamped sizes, throttle wording is honest (set through CDP, nominal), the
+  scroll-tracking rAF claim is scoped, pointer has two listeners, page
+  variables document their clamp and decay, the canvas example guards `ctx`.
+
 ### One source for the shared facts
 - `scripts/docs-data.mjs` holds the variables table and measures every size at
   build; `docs-stamp.mjs` writes them into README and AGENTS between markers,
@@ -110,9 +145,9 @@ said premium sections would need.
 - Slider tests for a rail inside a positioned ancestor and for a vertical rail.
 
 ### Docs and release
-- Sizes re-measured and stated once: ESM core 4.3 KB gz, driver 1.4, slider
-  1.8, stylesheets core 1.9 / pin 1.8 / slider 1.3 / tilt 0.5 / state 1.5 /
-  ui 0.8. Stale claims fixed across README, AGENTS, llms.txt, docs, fx
+- Sizes are measured at build and stamped into every document (see README for
+  the current numbers; nothing is typed by hand any more). Stale claims fixed
+  across README, AGENTS, llms.txt, docs, fx
   recipes (rotating-words `vertical-align`, split's sr-only span, "SplitText
   gap", `.sv-open` toggle example, Parallax reads `--sv-view`, and more).
 - e2e invariants: every fx page must render every text node without JS; the

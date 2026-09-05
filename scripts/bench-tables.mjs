@@ -21,7 +21,7 @@ const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
 
 let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
 <code>npm i && npm run measure</code>): headless Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
-median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle (calibration verified)` : ''}.
+median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle set through CDP, nominal` : ''}.
 Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
@@ -56,7 +56,7 @@ if (existsSync(throttledPath)) {
   const main4 = th.scenarios.find((s) => s.name === 'main-900')
   if (main4) {
     html += `
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle, calibration verified. The phone your client actually has)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle set through CDP, nominal. The phone your client actually has)</span></h2>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
@@ -94,4 +94,10 @@ for (const file of ['README.md', 'AGENTS.md']) {
 }
 // the bench page's runner config carries the same measured bundle size
 writeFileSync(pagePath, readFileSync(pagePath, 'utf8').replace(/(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/g, `$1${sizes.everything} KB'`))
-console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz)`)
+// the bundle ratio in the prose is arithmetic on the same numbers
+const ratio = Math.round(46.3 / parseFloat(sizes.everything))
+for (const file of ['README.md', 'AGENTS.md']) {
+  const path = join(root, file)
+  writeFileSync(path, readFileSync(path, 'utf8').replace(/~\d+× less bundle/g, `~${ratio}× less bundle`))
+}
+console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)

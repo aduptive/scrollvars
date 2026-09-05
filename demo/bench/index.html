@@ -79,7 +79,7 @@ build, 150 boxes, medians:</p>
     <tr><td>50 nodes/box</td><td class="n">769 ms</td><td class="n">96 ms</td><td class="n">87 ms</td><td class="n">192 ms</td><td class="n">1.1 MB</td><td class="n">3.4 MB</td></tr>
   </tbody>
 </table>
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle, calibration verified. The phone your client actually has)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle set through CDP, nominal. The phone your client actually has)</span></h2>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
@@ -115,13 +115,13 @@ Sources: <a href="scrollvars.html" style="color:#a78bfa">ScrollVars</a> ·
 <a href="framer.html" style="color:#a78bfa">framer-motion</a></small>
 <script>
   var ENGINES = [
-    { page: 'scrollvars.html', bundle: '4.8 KB', q: '', n: 150 },
+    { page: 'scrollvars.html', bundle: '5.2 KB', q: '', n: 150 },
     { page: 'gsap.html', bundle: '46.3 KB', q: '', n: 150 },
     { page: 'framer.html', bundle: '46.9 KB', q: '', n: 150 },
-    { page: 'scrollvars.html', bundle: '4.8 KB', q: '?s=60&p=15', n: 900 },
+    { page: 'scrollvars.html', bundle: '5.2 KB', q: '?s=60&p=15', n: 900 },
     { page: 'gsap.html', bundle: '46.3 KB', q: '?s=60&p=15', n: 900 },
     { page: 'framer.html', bundle: '46.9 KB', q: '?s=60&p=15', n: 900 },
-    { page: 'scrollvars.html', bundle: '4.8 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
+    { page: 'scrollvars.html', bundle: '5.2 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
     { page: 'gsap.html', bundle: '46.3 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
     { page: 'framer.html', bundle: '46.9 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
   ];

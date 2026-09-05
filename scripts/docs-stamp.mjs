@@ -31,14 +31,15 @@ const stamp = (text, name, body) => {
 let readme = readFileSync(join(root, 'README.md'), 'utf8')
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
 readme = stamp(readme, 'sizes', [
-  `min+gzip per import (measured from dist at build by \`scripts/docs-stamp.mjs\`):`, '',
+  `Per import, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
   '| you import | JS on the wire |', '| --- | --- |',
   `| \`track\` (the driver) | ${sizes.driver} KB |`,
   `| \`track\` + \`scan\` (zero-wrapper mode) | ${sizes.driverScan} KB |`,
   `| \`slider\` | ${sizes.slider} KB |`,
   `| \`trackPointer\` | ${sizes.pointer} KB |`,
   `| \`mountEffect\` (canvas) | ${sizes.canvas} KB |`,
-  `| everything | ${sizes.everything} KB |`,
+  `| everything in \`scrollvars\` (the core entry) | ${sizes.everything} KB |`,
+  `| \`scrollvars/react\` (wrappers + kit, React external) | ${sizes.react} KB |`,
 ].join('\n'))
 readme = readme.replace(/\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`)
 for (const [name, note] of Object.entries(STYLE_NOTES)) {
@@ -68,7 +69,7 @@ const header = `# ScrollVars: llms.txt (guide for AI coding agents)
 > Tiny scroll/pointer/click/canvas animation engine: one rAF in, CSS
 > variables out. Zero dependencies. Live demo with view-source docs:
 > https://scrollvars.dev · Benchmarks: https://scrollvars.dev/bench/
-> Generated from the repository's AGENTS.md at build; same content, same version.
+> Generated from the repository's AGENTS.md by \`npm run demo:sync\`; same content, same version.
 
 ## Resources
 

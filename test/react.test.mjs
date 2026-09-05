@@ -78,3 +78,14 @@ test('react: Marquee duplicate is aria-hidden and inert', async () => {
   )
   assert.match(html, /aria-hidden="true"[^>]*inert/)
 })
+
+
+test('<Split by="char"> renders one span per grapheme, matching --sv-count', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Split } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(React.createElement(Split, { by: 'char' }, 'a👨‍👩‍👧'))
+  const spans = (html.match(/aria-hidden="true"/g) || []).length
+  assert.equal(spans, 2, 'a + one family emoji (a ZWJ sequence), not five code points')
+  assert.ok(html.includes('--sv-count:2'))
+})

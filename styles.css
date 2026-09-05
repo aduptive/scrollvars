@@ -33,71 +33,48 @@
   --sv-pin: initial; /* a nested .sv never reads an ancestor's pin clock */
 }
 
-/* ---- Entrance presets (binary: driven by .sv-live, with transition) ---- */
+/* ---- Entrance presets (binary). The nearest tracker owns --sv-live (0 or 1)
+   and every entrance child animates from it, so a live ancestor can never
+   reveal a child of a nested tracker that is not live yet, and server markup
+   that carries data-sv hides before scan() has run. ---- */
 
-.sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
-.sv-on .sv.sv-auto > :not(.sv-skip) {
-  opacity: 0;
+.sv,
+[data-sv] {
+  --sv-live: 0;
+}
+.sv.sv-live {
+  --sv-live: 1;
+}
+
+.sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
+  opacity: var(--sv-live);
   transition:
     opacity var(--sv-duration) var(--sv-ease),
     translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
-
-.sv-on .sv :is(.sv-rise),
-.sv-on .sv.sv-auto > :not(.sv-skip) {
-  translate: 0 var(--sv-distance);
+.sv-on :is(.sv, [data-sv]) .sv-rise,
+.sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
+  translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance));
 }
-.sv-on .sv .sv-slide-l {
-  translate: calc(var(--sv-distance) * -2) 0;
+.sv-on :is(.sv, [data-sv]) .sv-slide-l {
+  translate: calc((1 - var(--sv-live)) * var(--sv-distance) * -2) 0;
 }
-.sv-on .sv .sv-slide-r {
-  translate: calc(var(--sv-distance) * 2) 0;
-}
-
-.sv-on .sv.sv-live :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
-.sv-on .sv.sv-live.sv-auto > :not(.sv-skip) {
-  opacity: 1;
-  translate: 0 0;
-}
-
-/* Nested tracked sections: a live ancestor must not reveal entrance children
-   that belong to an inner .sv which hasn't gone live itself yet. Higher
-   specificity than the reveal above; plain CSS3 selectors only. */
-.sv-on .sv .sv:not(.sv-live) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r) {
-  opacity: 0;
-}
-.sv-on .sv .sv:not(.sv-live) .sv-rise {
-  translate: 0 var(--sv-distance);
-}
-.sv-on .sv .sv:not(.sv-live) .sv-split-rise > span {
-  opacity: 0;
-  translate: 0 0.6em;
-}
-.sv-on .sv .sv:not(.sv-live) .sv-slide-l {
-  translate: calc(var(--sv-distance) * -2) 0;
-}
-.sv-on .sv .sv:not(.sv-live) .sv-slide-r {
-  translate: calc(var(--sv-distance) * 2) 0;
+.sv-on :is(.sv, [data-sv]) .sv-slide-r {
+  translate: calc((1 - var(--sv-live)) * var(--sv-distance) * 2) 0;
 }
 
 /* ---- sv-split: text broken into word/char spans (split()/data-sv-split/
    <Split>). Spans carry --sv-order, the container --sv-count, so every
    order-driven preset works on text. sv-split-rise = staggered entrance. */
-.sv-split > span {
-  display: inline-block;
-}
-.sv-on .sv .sv-split-rise > span {
-  opacity: 0;
-  translate: 0 0.6em;
+.sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+  opacity: var(--sv-live);
+  translate: 0 calc((1 - var(--sv-live)) * 0.6em);
   transition:
     opacity var(--sv-duration) var(--sv-ease),
     translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
-}
-.sv-on .sv.sv-live .sv-split-rise > span {
-  opacity: 1;
-  translate: 0 0;
 }
 
 /* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
@@ -186,11 +163,9 @@ html:not(.sv-on) .sv-spread > * {
     rotate: none;
     transition: none;
   }
-  .sv-on .sv .sv-split-rise > span,
-  .sv-on .sv .sv:not(.sv-live) .sv-split-rise > span,
-  .sv-on .sv .sv:not(.sv-live) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
-  .sv-on .sv :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
-  .sv-on .sv.sv-auto > *,
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise > span,
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+  .sv-on :is(.sv, [data-sv]).sv-auto > *,
   .sv-view-fade,
   .sv-view-rise {
     transition: none;
@@ -315,7 +290,7 @@ html:not(.sv-on) .sv-spread > * {
 .sv-stage {
   position: sticky;
   top: var(--sv-pin-offset, 0px); /* a sticky header: `:root { --sv-pin-offset: 64px }` */
-  height: calc(100vh - var(--sv-pin-offset, 0px));
+  height: calc(var(--sv-stage-height, 100vh) - var(--sv-pin-offset, 0px)); /* --sv-stage-height: an inner scroller's height when tracking with root */
   overflow: hidden;
 }
 html:not(.sv-on) .sv-stage {
@@ -365,6 +340,8 @@ html:not(.sv-on) .sv .sv-counter {
   }
   .sv .sv-rail {
     translate: none;
+    width: auto;
+    flex-wrap: wrap;
   }
   .sv .sv-deck {
     display: block; /* stacked grid cells would overlap without the motion */

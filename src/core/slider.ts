@@ -114,16 +114,23 @@ export function slider(
   const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
   const range = () =>
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
-  // Container-local start of a slide in logical scroll units. Rect-based, so
-  // it does not depend on which ancestor happens to be the offsetParent, and
-  // RTL mirrors against the container's own right edge.
+  // Container-local start of a slide in logical scroll units, from offset
+  // chains: layout positions, so the coverflow transforms a slide carries
+  // (scale/rotate from --sd) never feed back into its own measurement, and the
+  // sums make it independent of which ancestor is the offsetParent. RTL mirrors
+  // against the container's own content width.
+  const chain = (el: HTMLElement | null, x: boolean) => {
+    let v = 0
+    while (el) {
+      v += x ? el.offsetLeft : el.offsetTop
+      el = el.offsetParent as HTMLElement | null
+    }
+    return v
+  }
   const slideStart = (el: HTMLElement) => {
-    const c = container.getBoundingClientRect()
-    const r = el.getBoundingClientRect()
-    if (!horizontal) return r.top - c.top - container.clientTop + container.scrollTop
-    return rtl
-      ? c.right - r.right - container.clientLeft + pos()
-      : r.left - c.left - container.clientLeft + pos()
+    if (!horizontal) return chain(el, false) - chain(container, false) - container.clientTop
+    const local = chain(el, true) - chain(container, true) - container.clientLeft
+    return rtl ? container.scrollWidth - local - el.offsetWidth : local
   }
   const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
 
@@ -159,9 +166,14 @@ export function slider(
     const center = pos() + viewport() / 2
     let best = 0
     let bestSd = Infinity
-    slides().forEach((slide, i) => {
-      const mid = slideStart(slide) + slideSize(slide) / 2
-      const sd = (mid - center) / Math.max(slideSize(slide), 1)
+    const list = slides()
+    // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
+    const sds = list.map((slide) => {
+      const size = Math.max(slideSize(slide), 1)
+      return (slideStart(slide) + size / 2 - center) / size
+    })
+    list.forEach((slide, i) => {
+      const sd = sds[i]
       slide.style.setProperty('--sd', sd.toFixed(4))
       if (Math.abs(sd) < Math.abs(bestSd)) {
         bestSd = sd
@@ -188,8 +200,23 @@ export function slider(
   }
 
   container.addEventListener('scroll', schedule, { passive: true })
-  const ro = new ResizeObserver(schedule)
-  ro.observe(container)
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null
+  ro?.observe(container)
+  const watchSlides = () => {
+    ro?.disconnect()
+    ro?.observe(container)
+    slides().forEach((slide) => ro?.observe(slide))
+  }
+  watchSlides()
+  // replaced or added children re-measure even when the container box stays the same
+  const mo =
+    typeof MutationObserver === 'function'
+      ? new MutationObserver(() => {
+          watchSlides()
+          schedule()
+        })
+      : null
+  mo?.observe(container, { childList: true })
   measure()
 
   // pending glide destination: rapid next/prev clicks accumulate from here,
@@ -330,8 +357,10 @@ export function slider(
     const wasGliding = anim !== 0
     stopGlide() // the user takes over
     target = -1
-    if (!drag || event.pointerType !== 'mouse') {
-      // an interrupted glide must not leave snap suspended forever
+    const native = (event.target as Element).closest?.('input, textarea, select, [contenteditable]')
+    if (!drag || event.pointerType !== 'mouse' || (event.button ?? 0) !== 0 || native) {
+      // an interrupted glide must not leave snap suspended forever; a range
+      // input, a text field or a right click keep their native gesture
       if (wasGliding) resumeSnap()
       return
     }
@@ -415,7 +444,8 @@ export function slider(
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', endDrag)
       window.removeEventListener('pointercancel', endDrag)
-      ro.disconnect()
+      ro?.disconnect()
+      mo?.disconnect()
       if (raf) cancelAnimationFrame(raf)
     },
   }

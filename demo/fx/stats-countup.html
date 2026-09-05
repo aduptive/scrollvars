@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -169,7 +169,7 @@ html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
   <div class="code">
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]"&gt;
-  &lt;dl class="grid grid-cols-3 gap-6 text-center"&gt;
+  &lt;dl class="stats grid grid-cols-3 gap-6 text-center"&gt;
     &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;/div&gt;
     &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;/div&gt;
   &lt;/dl&gt;
@@ -212,7 +212,7 @@ function Stats() {
 }
 // npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

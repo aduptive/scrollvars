@@ -32,9 +32,9 @@
   .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
     text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
     text-transform:uppercase; color:var(--muted); }
-  .fxouter { height: 240vh; position: relative; border-radius:16px; margin:18px 0; }
-  .fxsticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
-    background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -143,8 +143,8 @@
   <h1>Sequenced scrub</h1>
   <p class="tag">Each child animates over its own slice of the pin. Choreography without a timeline.</p>
   <p class="meta"><b>Use it for:</b> Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.<br><b>Knobs:</b> --sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock</p>
-  <div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky" style="display:grid;place-items:center">
+  <div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
       <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
@@ -159,8 +159,8 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin class="relative h-[250vh]"&gt;
-  &lt;div class="sticky top-0 grid h-screen place-items-center"&gt;
+    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
+  &lt;div class="sv-stage grid place-items-center"&gt;
     &lt;div class="sv-range sv-range-rise grid gap-3"&gt;
       &lt;h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold"&gt;First&lt;/h2&gt;
       &lt;p data-sv-from=".3" data-sv-to=".7"&gt;Second&lt;/p&gt;
@@ -188,8 +188,8 @@
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin className="relative h-[250vh]"&gt;
-  &lt;div className="sticky top-0 grid h-screen place-items-center"&gt;
+    <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
+  &lt;div className="sv-stage grid place-items-center"&gt;
     &lt;div className="sv-range sv-range-rise grid gap-3"&gt;
       {steps.map((s, i, all) =&gt; (
         &lt;Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} /&gt;
@@ -199,9 +199,9 @@
 &lt;/Track&gt;
 
 // JS twin for canvas/WebGL consumers:
-// track(el, { pin: true, onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
+// track(el, { pin: '250vh', onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 4.8 KB gzip as ESM (this page's fx/sv.js IIFE: 5.0 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

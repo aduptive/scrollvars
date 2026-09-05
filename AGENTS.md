@@ -29,7 +29,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±vh/s | On `<html>`: progress through the document, and signed velocity in viewport-heights per second (decays to 0 at rest) |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 vh/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -50,7 +50,7 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
-import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.1 KB gz)
+import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.0 KB gz)
 // also styles/pin.css (2.4), slider.css (1.2), tilt.css (0.5), state.css (1.5), ui.css (0.7), per page needs
 ```
 
@@ -91,7 +91,7 @@ tied to `--sv-view` (flat inside the live band), no transition (transitions on c
 
 **Pinned scenes (storytelling / horizontal rail / curtain):**
 ```tsx
-<Scenes count={4}>{({ scene, goTo }) => <Slide index={scene} />}</Scenes>
+<Scenes count={4}>{({ scene, goTo }) => <Shot index={scene} />}</Scenes>   // Shot: your component
 ```
 The container is N viewports tall, content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
@@ -150,7 +150,7 @@ the ref (full SliderHandle). Also `<Marquee>` (use it where Swiper loop
 would be), `<Accordion>` (native details), `<Modal>` (dialog + sv-pop).
 Lower level: `useSlider()` / `slider(el)`:
 native scroll + snap; slides get `--sd` (signed distance from center) and
-`.sv-active`, so slide animations are pure CSS (`scale: calc(1 - abs(var(--sd)) * .1)`).
+`.sv-active`, so slide animations are pure CSS (`scale: calc(1 - max(var(--sd), -1 * var(--sd)) * .1)`).
 Handle: `next/prev/goTo/seek/active/state`. Options: `snap`, `drag`,
 `duration` (glide settle ms), `axis: 'y'`, `onScroll(state)`. State has
 active/count/position/progress/dragging/gliding; container also gets
@@ -192,7 +192,7 @@ per-act callbacks. Do NOT add Framer for a modal; do NOT use checkbox hacks (wro
 a11y semantics. Use toggles(), Popover API or `:has()` + radios).
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
-cards. One delegated listener; CSS does tilt + glare from `--mx`/`--my`.
+cards. Two delegated listeners (pointermove, pointerout); CSS does tilt + glare from `--mx`/`--my`.
 
 **Scroll-scrubbed media / WebGL:** `onTravel` (viewport travel) and `onPin`
 (progress across a pinned stretch) fire on every driver frame, while near the viewport, with raw 0..1:
@@ -236,13 +236,14 @@ animations where supported.
 4. Never put `mask-image` or `backdrop-filter` over content that moves every frame (forces re-raster).
 5. Throttle text/HUD updates driven by scroll (~100ms); text layout every frame janks.
 6. `will-change: translate` on elements moved every frame; remove it elsewhere.
+7. Deliberate exceptions inside the kit: `sv-tilt` transitions a pointer-driven transform (small, damped), `sv-counter` rewrites generated text, Accordion animates block-size. Each is local and opt-in; do not generalize them.
 
 ## Browser support (tell clients this)
 
-Fully animated: Chrome/Edge 104+, Firefox 74+, Safari/iOS 14.1+ (gates: ES2020
+Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
-static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces open and static. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler
@@ -260,7 +261,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 4.8 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 5.2 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -268,8 +269,8 @@ what differs is what those frames cost:
 
 Medians of 5 runs from the committed harness (`demo/bench/harness`,
 `npm i && node measure.mjs --runs=5` reproduces every number, engine order
-rotated, the CPU throttle verified by timing a fixed spin). Frame delivery ties at 60 fps in every row. The
-precise claim: not faster frames, the same frames for ~12× less bundle
+rotated; the low-end profile's 4× CPU throttle is set through CDP, nominal, not independently calibrated). Frame delivery ties at 60 fps in every row. The
+precise claim: not faster frames, the same frames for ~9× less bundle
 and a fraction of the heap; total CPU trades blows (ScrollVars wins
 shallow, batched GSAP wins deep subtrees. The published curve).
 
@@ -278,7 +279,7 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 - **The hot path writes CSS variables and nothing else.** The browser's own
   transition/animation machinery does the animating; JS only steers. That is
   why 900 animated elements cost so little script time in the table above.
-- **One passive scroll listener + one rAF for the whole page**, strict
+- **One passive scroll listener + one rAF for all scroll tracking** (the slider, pointer and canvas modules schedule their own frames), strict
   read-phase-then-write-phase. Inside the driver, layout thrashing is
   impossible by construction, not by discipline (your own callbacks are yours).
 - **Scroll state never enters the framework.** React renders zero times

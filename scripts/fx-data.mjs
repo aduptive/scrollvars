@@ -105,14 +105,14 @@ export const EFFECTS = [
   {
     slug: 'curtain',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.9.0' },
+    requires: { styles: ['pin'], min: '1.13.0' },
     category: 'Pinned scenes',
     title: 'Curtain',
     tagline: 'Two panels slide apart as you scroll through a pinned stretch.',
     when: 'Chapter breaks, big reveals, section transitions.',
     knobs: 'outer height = scroll length; panel content/colors are yours',
-    preview: `<div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky">
+    preview: `<div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky">
     <div class="fxreveal">revealed</div>
     <div class="fxpanel sv-curtain-l">scroll</div>
     <div class="fxpanel sv-curtain-r" style="left:50%">vars</div>
@@ -129,15 +129,15 @@ export const EFFECTS = [
 /* the preset (styles/pin.css): */
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
 .sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }`,
-    tailwind: `<div data-sv data-sv-pin class="relative h-[250vh]">
-  <div class="sticky top-0 h-screen overflow-hidden">
+    tailwind: `<div data-sv data-sv-pin="250vh">
+  <div class="sv-stage">
     <div class="grid h-full place-items-center">revealed content</div>
     <div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"></div>
     <div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"></div>
   </div>
 </div>`,
-    react: `<Track pin className="relative h-[250vh]">
-  <div className="sticky top-0 h-screen overflow-hidden">
+    react: `<Track pin="250vh">
+  <div className="sv-stage">
     <Revealed />
     <div className="sv-curtain-l …" />
     <div className="sv-curtain-r …" />
@@ -147,14 +147,14 @@ export const EFFECTS = [
   {
     slug: 'horizontal-rail',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.9.0' },
+    requires: { styles: ['pin'], min: '1.13.0' },
     category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
     when: 'Process steps, timelines, galleries that read left-to-right.',
     knobs: 'outer height = scroll length; works at any viewport width (min() keeps it moving)',
-    preview: `<div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky" style="display:flex;align-items:center">
+    preview: `<div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky" style="display:flex;align-items:center">
     <div class="sv-rail" style="display:flex;gap:14px;padding:0 8vw">
       <div class="fxcard">01</div><div class="fxcard">02</div><div class="fxcard">03</div>
       <div class="fxcard">04</div><div class="fxcard">05</div>
@@ -170,15 +170,15 @@ export const EFFECTS = [
 /* the preset (styles/pin.css): */
 .sv .sv-rail { width: max-content;
   translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }`,
-    tailwind: `<div data-sv data-sv-pin class="relative h-[300vh]">
-  <div class="sticky top-0 flex h-screen items-center overflow-hidden">
+    tailwind: `<div data-sv data-sv-pin="300vh">
+  <div class="sv-stage flex items-center">
     <div class="sv-rail flex gap-4 px-[10vw]">
       {cards.map(c => <Card key={c.id} class="w-80 shrink-0" />)}
     </div>
   </div>
 </div>`,
-    react: `<Track pin className="relative h-[300vh]">
-  <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+    react: `<Track pin="300vh">
+  <div className="sv-stage flex items-center">
     <div className="sv-rail flex gap-4 px-[10vw]">{cards}</div>
   </div>
 </Track>`,
@@ -186,14 +186,14 @@ export const EFFECTS = [
   {
     slug: 'sequenced-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.9.0' },
+    requires: { styles: ['pin'], min: '1.13.0' },
     category: 'Pinned scenes',
     title: 'Sequenced scrub',
     tagline: 'Each child animates over its own slice of the pin. Choreography without a timeline.',
     when: 'Pinned stories where A plays over 0–40%, B over 30–70%, C over 60–100%.',
     knobs: '--sv-from / --sv-to per child (slice of the clock), --sv-distance; override --sv-clock to pick the clock',
-    preview: `<div data-sv data-sv-pin class="fxouter">
-  <div class="fxsticky" style="display:grid;place-items:center">
+    preview: `<div data-sv data-sv-pin="240vh" class="fxouter">
+  <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
       <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
@@ -219,8 +219,8 @@ export const EFFECTS = [
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }`,
-    tailwind: `<div data-sv data-sv-pin class="relative h-[250vh]">
-  <div class="sticky top-0 grid h-screen place-items-center">
+    tailwind: `<div data-sv data-sv-pin="250vh">
+  <div class="sv-stage grid place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
       <h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold">First</h2>
       <p data-sv-from=".3" data-sv-to=".7">Second</p>
@@ -230,8 +230,8 @@ export const EFFECTS = [
 </div>
 <!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
      Older engines settle at the end state (consume as var(--sv-r, 1)). -->`,
-    react: `<Track pin className="relative h-[250vh]">
-  <div className="sticky top-0 grid h-screen place-items-center">
+    react: `<Track pin="250vh">
+  <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">
       {steps.map((s, i, all) => (
         <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} />
@@ -241,7 +241,7 @@ export const EFFECTS = [
 </Track>
 
 // JS twin for canvas/WebGL consumers:
-// track(el, { pin: true, onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
+// track(el, { pin: '250vh', onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
   },
   {
     slug: 'gsap-scrub',
@@ -253,7 +253,7 @@ export const EFFECTS = [
     when: 'The page that genuinely needs timeline authoring. You keep the driver; GSAP renders.',
     knobs: 'the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP add its own scroll listener',
     preview: `<div class="fxouter" id="fxgsap-outer">
-  <div class="fxsticky" style="display:grid;place-items:center;overflow:hidden">
+  <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div id="fxgsap" style="display:flex;gap:14px">
       <div class="fxcard">sv</div><div class="fxcard">drives</div><div class="fxcard">gsap</div>
     </div>
@@ -268,7 +268,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
   // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
-  else SV.track(document.getElementById('fxgsap-outer'), { pin: true, onPin: (p) => tl.progress(p) })
+  else SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => tl.progress(p) })
 })</script>`,
     css: `<div class="outer">          <!-- height: 250vh; position: relative -->
   <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
@@ -285,8 +285,8 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 </script>`,
-    tailwind: `<div data-x class="relative h-[250vh]">   <!-- no data-sv: this one is tracked in JS -->
-  <div class="sticky top-0 grid h-screen place-items-center">…</div>
+    tailwind: `<div data-x>   <!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) -->
+  <div class="sv-stage grid place-items-center">…</div>
 </div>
 <!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() => tl.progress(
@@ -298,8 +298,8 @@ useEffect(() => {
   return () => tl.current?.kill()
 }, [])
 
-<Track pin onPin={(p) => tl.current?.progress(p)} className="relative h-[250vh]">
-  <div className="sticky top-0 h-screen">…</div>
+<Track pin="250vh" onPin={(p) => tl.current?.progress(p)}>
+  <div className="sv-stage">…</div>
 </Track>`,
   },
   {
@@ -312,7 +312,7 @@ useEffect(() => {
     when: 'Hero 3D moments, product tours, camera paths, WebGL driven by the same variables.',
     knobs: "mountEffect({ context: null }) hands you the raw canvas; feed progress via onPin/onTravel closures",
     preview: `<div class="fxouter" id="fxthree-outer">
-  <div class="fxsticky" style="display:grid;place-items:center">
+  <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <canvas id="fxthree" style="width:min(90%,560px);height:60vh"></canvas>
   </div>
 </div>
@@ -346,7 +346,7 @@ useEffect(() => {
       renderer.render(scene, camera)
     },
   })
-  SV.track(document.getElementById('fxthree-outer'), { pin: true, onPin: (p) => (progress = p) })
+  SV.track(document.getElementById('fxthree-outer'), { pin: '240vh', onPin: (p) => (progress = p) })
 })</script>`,
     css: `<div class="outer">              <!-- height: 250vh -->
   <div class="sticky"><canvas id="scene"></canvas></div>
@@ -364,12 +364,12 @@ useEffect(() => {
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: true, onPin: (p) => (progress = p) })
+  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>`,
-    tailwind: `<div class="relative h-[250vh]">
-  <div class="sticky top-0 grid h-screen place-items-center">
+    tailwind: `<div>   <!-- tracked in JS with pin: '250vh' -->
+  <div class="sv-stage grid place-items-center">
     <canvas id="scene" class="h-[60vh] w-full max-w-xl"></canvas>
   </div>
 </div>
@@ -383,8 +383,8 @@ const canvasRef = useCanvasEffect({
   frame(fx, dt) { /* render with progress.current */ },
 })
 
-<Track pin onPin={(p) => (progress.current = p)} className="relative h-[250vh]">
-  <div className="sticky top-0 grid h-screen place-items-center">
+<Track pin="250vh" onPin={(p) => (progress.current = p)}>
+  <div className="sv-stage grid place-items-center">
     <canvas ref={canvasRef} className="h-[60vh] w-full max-w-xl" />
   </div>
 </Track>`,
@@ -392,7 +392,7 @@ const canvasRef = useCanvasEffect({
   {
     slug: 'split-reveal',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['core'], min: '1.12.4' },
+    requires: { styles: ['core'], min: '1.13.0' },
     category: 'Text',
     title: 'Split reveal',
     tagline: 'A headline broken into words, each rising on its own beat, SplitText without the engine.',
@@ -613,6 +613,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
 .hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
 .hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
 .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
@@ -657,9 +658,10 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
 .hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
   opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
 .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
-    tailwind: `<section data-sv data-sv-travel id="hero" class="relative grid min-h-svh place-items-center overflow-hidden isolate
+    tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
     [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
@@ -701,7 +703,7 @@ function Hero() {
     when: 'Company history, case-study process, roadmap, "how we got here". Any ordered story.',
     knobs: '--tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)',
     preview: `<style>
-.tl { --tl-from: 2019; --tl-span: 7; height: 320vh; }
+.tl { --tl-from: 2019; --tl-span: 7; }
 .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
 .tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
@@ -718,8 +720,8 @@ function Hero() {
 .tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
 @media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
 </style>
-<div data-sv data-sv-pin class="fxouter tl">
-  <div class="fxsticky tl-sticky">
+<div data-sv data-sv-pin="320vh" class="fxouter tl">
+  <div class="sv-stage fxsticky tl-sticky">
     <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
     <div class="tl-track"><i class="tl-line"></i>
       <ol class="sv-range sv-range-rise tl-items">
@@ -755,8 +757,8 @@ function Hero() {
 .tl-items > li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; position: absolute; left: -32px;
   background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); }
 /* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */`,
-    tailwind: `<div data-sv data-sv-pin class="relative h-[320vh] [--tl-from:2019] [--tl-span:7]">
-  <div class="sticky top-0 grid h-screen grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
+    tailwind: `<div data-sv data-sv-pin="320vh" class="[--tl-from:2019] [--tl-span:7]">
+  <div class="sv-stage grid grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
     <span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
       [counter-reset:tl-year_calc(var(--tl-from)+var(--sv-pin,1)*var(--tl-span))] after:content-[counter(tl-year)]"></span>
     <ol class="sv-range sv-range-rise relative grid gap-8 border-l-2 border-white/10 pl-8">
@@ -804,7 +806,6 @@ function Timeline() {
     when: 'Product features, "how it works", case-study walkthroughs, onboarding explainers.',
     knobs: 'data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)',
     preview: `<style>
-.st { height: 300vh; }
 .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
 .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
 .st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
@@ -824,8 +825,8 @@ function Timeline() {
 html:not(.sv-on) .st-steps > li { opacity: 1; }
 @media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
 </style>
-<div data-sv data-sv-pin data-sv-scenes="3" class="fxouter st">
-  <div class="fxsticky st-grid">
+<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="fxouter st">
+  <div class="sv-stage fxsticky st-grid">
     <div class="st-media">
       <figure class="st-shot" style="--i: 0">01</figure>
       <figure class="st-shot" style="--i: 1">02</figure>
@@ -862,14 +863,14 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
-    tailwind: `<div data-sv data-sv-pin data-sv-scenes="3" class="relative h-[300vh]">
-  <div class="sticky top-0 grid h-screen grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
+    tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
+  <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
     <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
       <img class="st-shot [--i:0]" src="shot-1.jpg" alt="">
       <img class="st-shot [--i:1]" src="shot-2.jpg" alt="">
       <img class="st-shot [--i:2]" src="shot-3.jpg" alt="">
     </div>
-    <ol class="grid gap-10">
+    <ol class="st-steps grid gap-10">
       <li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Track the section</h3></li>
       <li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Give each piece an index</h3></li>
       <li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Ship it</h3></li>
@@ -943,7 +944,7 @@ html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: fi
 /* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */`,
     tailwind: `<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
-  <dl class="grid grid-cols-3 gap-6 text-center">
+  <dl class="stats grid grid-cols-3 gap-6 text-center">
     <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
     <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
   </dl>
@@ -992,6 +993,7 @@ const css = \`
 .sv-hero .hero-orb.a { background: var(--hero-glow, #a78bfa); top: -14%; left: -8%; }
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
@@ -1174,8 +1176,10 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh' })
-  const [mounted, setMounted] = React.useState(false)
-  React.useEffect(() => setMounted(true), [])
+  // after mount only (server markup stays fully usable), and never under reduced
+  // motion, where the shots stack in flow and must all stay reachable
+  const [interactive, setInteractive] = React.useState(false)
+  React.useEffect(() => setInteractive(!matchMedia('(prefers-reduced-motion: reduce)').matches), [])
   return (
     <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style>{css}</style>
@@ -1186,8 +1190,8 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              inert={mounted && i !== scene ? true : undefined}
-              aria-hidden={mounted && i !== scene ? true : undefined}
+              {...(interactive && i !== scene ? (React.version.startsWith('18') ? { inert: '' } : { inert: true }) : {})}
+              aria-hidden={interactive && i !== scene ? true : undefined}
             >
               {s.media}
             </figure>
@@ -1299,8 +1303,8 @@ export function SequencedScrub({
 }) {
   const count = React.Children.count(children)
   return (
-    <Track pin className={className} style={{ position: 'relative', height }}>
-      <div style={{ position: 'sticky', top: 0, height: '100vh', display: 'grid', placeItems: 'center' }}>
+    <Track pin={height} className={className}>
+      <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="sv-range sv-range-rise" style={{ display: 'grid', gap: 12 }}>
           {React.Children.map(children, (child, i) => {
             const [from, to] = ranges?.[i] ?? [i / count, Math.min((i + 1.6) / count, 1)]
@@ -1346,8 +1350,8 @@ export function GsapScrub({
     return () => { tl.current?.kill() }
   }, [buildTimeline])
   return (
-    <Track pin onPin={(p) => tl.current?.progress(p)} className={className} style={{ position: 'relative', height }}>
-      <div ref={stage} style={{ position: 'sticky', top: 0, height: '100vh', display: 'grid', placeItems: 'center' }}>
+    <Track pin={height} onPin={(p) => tl.current?.progress(p)} className={className}>
+      <div ref={stage} className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         {children}
       </div>
     </Track>
@@ -1408,8 +1412,8 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
   })
 
   return (
-    <Track pin onPin={(p) => (progress.current = p)} className={className} style={{ position: 'relative', height }}>
-      <div style={{ position: 'sticky', top: 0, display: 'grid', placeItems: 'center', height: '100vh' }}>
+    <Track pin={height} onPin={(p) => (progress.current = p)} className={className}>
+      <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
@@ -1517,8 +1521,8 @@ export function Curtain({
   height?: string
 }) {
   return (
-    <Track pin className="relative" style={{ height }}>
-      <div className="sticky top-0 h-screen overflow-hidden">
+    <Track pin={height}>
+      <div className="sv-stage">
         <div className="grid h-full place-items-center">{children}</div>
         <div className={\`sv-curtain-l absolute inset-y-0 left-0 w-1/2 \${panelClassName}\`} />
         <div className={\`sv-curtain-r absolute inset-y-0 right-0 w-1/2 \${panelClassName}\`} />
@@ -1544,8 +1548,8 @@ export function HorizontalRail({
   height?: string
 }) {
   return (
-    <Track pin className="relative" style={{ height }}>
-      <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+    <Track pin={height}>
+      <div className="sv-stage flex items-center">
         <div className="sv-rail flex gap-4 px-[10vw]">{children}</div>
       </div>
     </Track>

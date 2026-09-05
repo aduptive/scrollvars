@@ -57,6 +57,10 @@ export const ScrollVarsBoot: React.FC = () => {
   return <script dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
+/** React 19 knows `inert` as a boolean attribute (a string would be dropped as falsy); React 18
+ * does not know it and drops booleans, so it gets the empty string instead. Both render inert="". */
+const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
+
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
 
 /**
@@ -103,7 +107,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
         ? (p) => callbacksRef.current.onPin?.(p)
         : undefined,
     })
-  }, [view, travel, scenes, snap, once, pin, root, enter, exit, hasTravelCb, hasPinCb])
+  }, [view, travel, scenes, snap, once, pin, root, enter, exit, hasSceneCb, hasTravelCb, hasPinCb])
 
   return ref
 }
@@ -352,7 +356,7 @@ export const Split: React.FC<SplitProps> = ({
               {word}
             </span>
           ) : (
-            Array.from(word).map((ch, c) => (
+            splitParts(word, 'char').map((ch, c) => (
               <span
                 key={c}
                 aria-hidden="true"
@@ -366,18 +370,6 @@ export const Split: React.FC<SplitProps> = ({
       ))}
     </Tag>
   )
-}
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches)
-    mq.addEventListener?.('change', onChange)
-    return () => mq.removeEventListener?.('change', onChange)
-  }, [])
-  return reduced
 }
 
 export const Scenes: React.FC<ScenesProps> = ({
@@ -406,8 +398,8 @@ export const Scenes: React.FC<ScenesProps> = ({
   ease,
   ...rest
 }) => {
-  const reduced = useReducedMotion()
   const { ref, scene, goTo } = useScenes(count, {
+    pin: pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
     enter,
     exit,
@@ -415,7 +407,6 @@ export const Scenes: React.FC<ScenesProps> = ({
     travel,
     snap,
     once,
-    pin,
     onLive,
     onTravel,
     onPin,
@@ -430,17 +421,10 @@ export const Scenes: React.FC<ScenesProps> = ({
     <Tag
       ref={ref}
       className={className ? `sv ${className}` : 'sv'}
-      style={{
-        height: reduced ? undefined : (height ?? `${count * 100}vh`),
-        position: 'relative',
-        ...varStyle({ order, distance, stagger, duration, ease }, style),
-      }}
+      style={varStyle({ order, distance, stagger, duration, ease }, style)}
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
-      <div
-        className="sv-stage"
-        style={reduced ? undefined : { position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}
-      >
+      <div className="sv-stage">
         {children({ scene, goTo })}
       </div>
     </Tag>
@@ -806,7 +790,7 @@ export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, child
   >
     <div className="sv-marquee-track">
       {children}
-      <span aria-hidden="true" inert style={{ display: 'contents' }}>
+      <span aria-hidden="true" {...INERT} style={{ display: 'contents' }}>
         {children}
       </span>
     </div>
@@ -852,7 +836,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
+    if (open && !dialog.open) typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', '')
     else if (!open && dialog.open) dialog.close()
   }, [open])
 
