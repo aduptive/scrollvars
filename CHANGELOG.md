@@ -458,6 +458,18 @@ from the code it describes.
   dropping every continuation line from the rendered list. Rewritten line
   by line instead of by regex backtracking: `### ` now renders as `<h4>`,
   and a bullet's indented continuation lines join into the same `<li>`.
+- Second pass (verifier finding on 31ee8af): `scripts/docs-build.mjs`'s
+  generated browser-support table hardcoded Firefox at 74+ (Mar 2020),
+  contradicting README's and AGENTS's 78+ (Jun 2020, `:is()`/`:where()`),
+  the version core.css actually needs. Fixed to 78+ (Jun 2020). The same
+  sweep found the table's per-part CSS sizes (core, pin, slider, tilt,
+  state, ui) hand-typed and stale against what `docs-stamp.mjs` measures
+  and stamps into README (core read 1.9 KB against a measured 2.2, pin 1.8
+  against 2.5, state 1.5 against 2.1, ui 0.8 against 0.7; slider and tilt
+  happened to still match). `scripts/docs-build.mjs` now imports
+  `measureSizes` from `docs-data.mjs`, the same source `docs-stamp.mjs`
+  reads, so the generated docs page and README render the same measured
+  numbers instead of two hand-typed copies that can drift apart.
 
 ## 1.13.0 (2026-09-05)
 

@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
+(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 2.5 · slider 1.3 · tilt 0.5 · state 2.1 · ui 0.7).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -220,7 +220,7 @@ plug in what's missing.</p>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
-<tr><td>Firefox</td><td><b>74+</b> (Mar 2020)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
 </table>
@@ -386,6 +386,7 @@ from the code it describes.
 <li>The no-JS "complete static page" claim lists its two exceptions by design (class-toggled panels stay closed, native <code>sv-view-*</code> still runs), and that a click-driven <code>sv-acts</code> target needs <code>toggles()</code> to start at zero. Nested scrollers documents <code>--sv-stage-height</code> and that a bordered root is measured from its client box. <code>Split</code>'s char mode documents its <code>Intl.Segmenter</code> requirement on both server and client render (Firefox 125+), or emoji and combining marks can split differently across hydration.</li>
 <li><code>&lt;Scenes></code>'s render function is documented as server-rendered inside a client component boundary, not "client-side"; and a string <code>pin</code> wins over <code>height</code>. <code>&lt;ScrollVarsBoot></code>'s pre-paint hiding is documented as gated on <code>IntersectionObserver</code> and <code>ResizeObserver</code>. The compat floor explicitly covers <code>sv-deck</code> and no longer depends on <code>Array.prototype.flatMap</code>. AGENTS.md's build line now names <code>scripts/build-styles.mjs</code>.</li>
 <li><code>scripts/docs-build.mjs</code>'s CHANGELOG-to-HTML renderer (<code>mdLite</code>) fixed two bugs: a <code>### </code> sub-heading rendered as literal text instead of a heading, and a multi-line bullet only wrapped its first line in <code>&lt;li></code>, dropping every continuation line from the rendered list. Rewritten line by line instead of by regex backtracking: <code>### </code> now renders as <code>&lt;h4></code>, and a bullet's indented continuation lines join into the same <code>&lt;li></code>.</li>
+<li>Second pass (verifier finding on 31ee8af): <code>scripts/docs-build.mjs</code>'s generated browser-support table hardcoded Firefox at 74+ (Mar 2020), contradicting README's and AGENTS's 78+ (Jun 2020, <code>:is()</code>/<code>:where()</code>), the version core.css actually needs. Fixed to 78+ (Jun 2020). The same sweep found the table's per-part CSS sizes (core, pin, slider, tilt, state, ui) hand-typed and stale against what <code>docs-stamp.mjs</code> measures and stamps into README (core read 1.9 KB against a measured 2.2, pin 1.8 against 2.5, state 1.5 against 2.1, ui 0.8 against 0.7; slider and tilt happened to still match). <code>scripts/docs-build.mjs</code> now imports <code>measureSizes</code> from <code>docs-data.mjs</code>, the same source <code>docs-stamp.mjs</code> reads, so the generated docs page and README render the same measured numbers instead of two hand-typed copies that can drift apart.</li>
 </ul>
 
 <h3>1.13.0 (2026-09-05)</h3>
