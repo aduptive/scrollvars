@@ -92,6 +92,9 @@ window.driveToFixedPoint = function driveToFixedPoint(log, maxPasses) {
   })()
 }
 `
+// The fx pages' IIFE bundle minus the auto-scan fx-build appends to it, so a
+// fixture can call SV.scan() itself and keep the stop handle it returns.
+const SV_IIFE_JS = readFileSync(join(root, 'fx', 'sv.js'), 'utf8').replace(/\nSV\.scan\(\);\n$/, '')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
@@ -340,6 +343,49 @@ const MIN_EXAMINED = 1
   check('split: words wrapped in aria-hidden spans', r.spans > 2, `${r.spans} spans`)
   check('split: --sv-count set + sr-only text kept (no aria-label)', !!r.count && r.srText.length > 0 && !r.label, `count=${r.count} sr="${r.srText.slice(0, 20)}" label=${r.label}`)
   check('split-rise: a split word span computes to display: inline-block (so translate applies)', r.spanDisplay === 'inline-block', `display=${r.spanDisplay}`)
+  await page.close()
+}
+
+// ── 3b. stopScan(): releasing a tracked element leaves it VISIBLE (ADU-130) ──
+// `.sv` and `[data-sv]` both declare --sv-live: 0, only .sv.sv-live lifts it,
+// and html.sv-on is never taken back off: a scan() that stops (a React
+// ScrollVarsBoot unmount, a route teardown) used to strand every section that
+// had not gone live yet at opacity 0 forever.
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <section data-sv><p class="sv-rise">above the fold</p></section>
+      <section data-sv style="margin-top:250vh"><p class="sv-rise">below the fold, never live</p></section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const stop = SV.scan()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const hiddenWhileScanning = [...document.querySelectorAll('.sv-rise')].filter(
+      (el) => getComputedStyle(el).opacity !== '1'
+    ).length
+    stop()
+    // --sv-duration is 800ms: let the entrance transition finish before reading
+    await new Promise((done) => setTimeout(done, 1200))
+    return {
+      hiddenWhileScanning,
+      total: document.querySelectorAll('.sv-rise').length,
+      svOn: document.documentElement.classList.contains('sv-on'),
+      hidden: [...document.querySelectorAll('.sv-rise')].filter((el) => getComputedStyle(el).opacity !== '1').length,
+    }
+  })
+  // the fixture only proves anything if something really was hidden first
+  check(
+    'stopScan(): the fixture starts with a section hidden below the fold',
+    r.hiddenWhileScanning > 0 && r.svOn,
+    `${r.hiddenWhileScanning}/${r.total} hidden while scanning, sv-on=${r.svOn}`
+  )
+  check(
+    `stopScan(): 0/${r.total} entrance elements left hidden after the scan stops`,
+    r.hidden === 0,
+    `${r.hidden} still hidden`
+  )
   await page.close()
 }
 
