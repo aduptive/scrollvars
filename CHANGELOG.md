@@ -279,15 +279,64 @@ findings on the same round): three more defects fixed.
   exactly one `resize()` callback for most size/DPR pairs, the pin running
   synchronously inside the same callback that delivered the entry, before
   the browser ever renders the unpinned intermediate box.
-  Two remaining trade-offs, both documented in the module doc: a canvas
-  with no CSS size on either axis still gets its width pinned inline by the
-  harness (give it real CSS dimensions to keep control of its own size);
-  and, because this harness rounds each backing-store axis independently
-  (correct in general: two CSS-sized axes share no ratio), a non-square
-  canvas at a DPR where that rounding is asymmetric (300x150 at dpr 1.25,
-  verified in Chrome) costs one further, still-bounded resize pass while
-  the free height axis settles an imperceptible sub-pixel residual, the
-  same class the fourth pass already documented for fractional padding.
+  One remaining trade-off, documented in the module doc: a canvas with no
+  CSS size on either axis still gets its width pinned inline by the harness
+  (give it real CSS dimensions to keep control of its own size).
+  Eleventh pass, two more verifier findings on the tenth pass, both
+  reproduced in real Chrome. Finding 1: the tenth pass's probe ran AFTER
+  the backing-store write and rounded width and height independently every
+  pass, each from whatever the LAST pass had already produced; a
+  mirror-case canvas (fixed CSS height, auto width) has its free width
+  computed by the CSS engine through the intrinsic ratio, which IS this
+  harness's own backing-store attributes, so independent rounding nudged
+  that ratio a fraction every pass and the error compounded instead of
+  settling: swept at dpr 0.5 this took 51 to 77 ResizeObserver passes to
+  reach a WRONG fixed point (a square box instead of the true 2:1 one), and
+  at dpr 0.8 it never reached one at all (a 103px fixed height diverged to
+  a 422 backing height instead of the true 206). Finding 2: the same
+  post-write probe timing perturbed the just-written, DPR-scaled attribute,
+  so at a DPR that does not divide evenly (roughly 1.2 to 1.9) a first pass
+  could already write a backing store past a `max-width` cap before the
+  probe ever ran against the canvas's true, natural size, and a second
+  pass's probe then perturbed that already-inflated value and pinned at the
+  inflated number instead of the true one (`max-width: 100px` false-pinned
+  across that range; a bare `max-width: 400px`, natural size 300x150,
+  pinned at an inflated 450x225 at dpr 1.5 instead of the true 300x150).
+  The design anchors every pin, and every free-axis derivation, to values
+  captured on the very first `applySize()` call (mount), before this
+  harness ever writes anything: the CSS content size the author's own CSS
+  and attributes already produced (`anchor`), and the ORIGINAL width/height
+  attribute ratio (`ratio0`, from `w0`/`h0`). The causal probe now runs
+  BEFORE this pass's own write, on `w0`/`h0` specifically, never on this
+  harness's own evolving backing store, and never runs again once a canvas
+  is pinned; when width follows, `style.width` is set to `anchor.width` and
+  `style.aspectRatio` to `w0 / h0`, so the CSS engine derives height
+  directly from the ORIGINAL attribute ratio from then on, never through
+  this harness's own rounded backing-store attributes again (this also
+  fixes the tenth pass's own documented sub-pixel residual on the free
+  height axis: CSS `aspect-ratio` is computed exactly, not through a
+  rounded attribute ratio). For a canvas that stays unpinned, a second kind
+  of probe, two single-axis perturbations (width alone, height alone),
+  decides which axis, if either, is ratio-derived from the other (the
+  proportional, both-together probe cannot answer this on purpose: it never
+  perturbs a ratio-tracking axis, which is what keeps it immune to the
+  eighth pass's false-positive bug). That free axis is always computed from
+  the OTHER, just-rounded axis and `ratio0`, never independently rounded
+  from its own, possibly-drifted measurement, which is what stops Finding
+  1's error from compounding. A dead band skips the whole pass, probe
+  included, when the measured content size moved by less than 0.5 CSS
+  pixels on both axes since the last write, unless the DPR itself changed;
+  it absorbs the one small, self-induced residual the free axis's own write
+  can still cause on its very next entry. Probing `w0`/`h0` instead of a
+  DPR-scaled write also removes the tenth pass's dpr-dependent cap special
+  case entirely (Finding 2): a `max-width` cap at or below the natural size
+  is never pinned at any DPR now, not only above 1; a cap above the natural
+  size still only starts to bind once doubling `w0`/`h0` pushes past it,
+  and pins at the anchor, never an already-inflated write. One narrow
+  limitation remains, inherited from the halving probe's own exactness
+  requirement: a cap strictly between half the natural size and the natural
+  size itself can still read as a false follow if it changes AFTER this
+  canvas was already found sized; documented, not fixed in this pass.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
