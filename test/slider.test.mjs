@@ -183,10 +183,13 @@ test('slider: RTL normalizes to logical coordinates', async () => {
     observe() {}
     disconnect() {}
   }
-  // direction: rtl — slides laid out right-to-left; raw scrollLeft is 0..-range
+  // direction: rtl — slides laid out right-to-left; raw scrollLeft is 0..-range.
+  // offsetLeft values measured in real Chrome (container position:relative,
+  // so offsetParent = container): 200, 100, 0, -100, -200 for a 300px client
+  // box holding 5 slides of 100px (scrollWidth 500).
   global.getComputedStyle = () => ({ direction: 'rtl' })
 
-  const slides = [makeSlide(400), makeSlide(300), makeSlide(200), makeSlide(100), makeSlide(0)]
+  const slides = [makeSlide(200), makeSlide(100), makeSlide(0), makeSlide(-100), makeSlide(-200)]
   slides.forEach((s) => {
     s.style._owner = s
     s.classList._owner = s
@@ -230,6 +233,14 @@ test('slider: RTL normalizes to logical coordinates', async () => {
   // nearest the 300px viewport's center is index 1, same as the LTR case
   assert.equal(handle.state().progress, 0)
   assert.equal(handle.active(), 1)
+
+  // the mirrored starts are 0, 100, 200, 300, 400: --sd confirms every one
+  // of them (size 100, center 150 at rest)
+  assert.equal(slides[0].vars['--sd'], '-1.0000')
+  assert.equal(slides[1].vars['--sd'], '0.0000')
+  assert.equal(slides[2].vars['--sd'], '1.0000')
+  assert.equal(slides[3].vars['--sd'], '2.0000')
+  assert.equal(slides[4].vars['--sd'], '3.0000')
 
   // goTo the last slide: its logical start is 500-0-100=400 → centered target
   // logical 300 → raw scrollLeft must be -300 (spec RTL negative domain)
@@ -503,4 +514,126 @@ test('slider: native controls and non-primary buttons keep their gesture (no pre
   down({})
   assert.equal(prevented, 1, 'a primary-button press on plain content still kills native selection-drag')
   handle.destroy()
+})
+
+test('slider: a bordered positioned container (offsetParent = container) does not double-subtract its own border', async () => {
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  // offsetLeft is already measured against the offsetParent's PADDING edge
+  // (spec), so when the container itself is that offsetParent, its 10px
+  // border must not be subtracted a second time: the first slide's start
+  // stays 0, same as an unbordered container.
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+  const container = {
+    get children() { slides.forEach((sl) => { sl._c = this; sl.offsetParent = this }); return slides },
+    clientLeft: 10, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0, clientWidth: 300, vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?bordered-relative')
+  const handle = slider(container, { duration: 0 })
+  assert.equal(slides[0].vars['--sd'], '-1.0000')
+  assert.equal(slides[1].vars['--sd'], '0.0000')
+  assert.equal(handle.active(), 1)
+  handle.destroy()
+})
+
+test('slider: a statically positioned container falls back to absolute offsets when it is skipped as offsetParent', async () => {
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  // container is static: neither it nor its slide is positioned, so both are
+  // measured by the browser against the same real offsetParent (a stand-in
+  // for body here) instead of against each other. offsetLeft 18 for the
+  // slide, 8 for the container, clientLeft 10: local = 18 - 8 - 10 = 0.
+  const stubParent = { offsetLeft: 0, offsetTop: 0, offsetParent: null }
+  const slide = {
+    offsetLeft: 18, offsetTop: 0, offsetWidth: 100, offsetHeight: 100, offsetParent: stubParent,
+    vars: {},
+    classes: new Set(),
+    style: { setProperty(k, v) { this._owner.vars[k] = v } },
+    classList: { toggle(name, on) { on ? this._owner.classes.add(name) : this._owner.classes.delete(name) } },
+  }
+  slide.style._owner = slide
+  slide.classList._owner = slide
+  const container = {
+    children: [slide],
+    clientLeft: 10, clientTop: 0, scrollTop: 0, offsetLeft: 8, offsetTop: 0, offsetParent: stubParent,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0, clientWidth: 100, vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?static-bordered')
+  const handle = slider(container, { duration: 0 })
+  assert.equal(slide.vars['--sd'], '0.0000')
+  assert.equal(handle.active(), 0)
+  handle.destroy()
+})
+
+test('slider: a replaced active slide node (same index, new element) carries sv-active without re-firing onSlide', async () => {
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+  let moCallback
+  global.MutationObserver = class {
+    constructor(cb) { moCallback = cb }
+    observe() {}
+    disconnect() {}
+  }
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+  const container = {
+    get children() { slides.forEach((sl) => { sl._c = this; sl.offsetParent = this }); return slides },
+    clientLeft: 0, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0, clientWidth: 300, vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?replace')
+  const onSlideCalls = []
+  const handle = slider(container, { duration: 0, onSlide: (i) => onSlideCalls.push(i) })
+  assert.equal(handle.active(), 1)
+  assert.deepEqual(onSlideCalls, [1])
+
+  // swap the active element for a fresh node at the same offset/index: this
+  // is what a framework re-render (key churn, innerHTML replace) does. The
+  // MutationObserver path must move sv-active onto the new node, but the
+  // active index itself never changed, so onSlide must not fire again.
+  const replacement = makeSlide(100)
+  replacement.style._owner = replacement
+  replacement.classList._owner = replacement
+  slides[1] = replacement
+
+  moCallback() // simulate the MutationObserver firing on the childList change
+  while (rafQueue.length) rafQueue.shift()(0)
+
+  assert.ok(replacement.classes.has('sv-active'), 'the new node at the active index carries sv-active')
+  assert.equal(container.vars['--sv-slide'], '1')
+  assert.deepEqual(onSlideCalls, [1], 'the index did not change: onSlide must not fire again')
+  handle.destroy()
+  delete global.MutationObserver
 })
