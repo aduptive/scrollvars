@@ -27,6 +27,16 @@
      panel finding. */
   #css-sized-scaled { width: 200px; height: 100px; transform: scale(1.3); }
   #css-sized-scaled.grown { width: 250px; height: 120px; }
+
+  /* CSS-sized, doubled by a class one requestAnimationFrame after mount:
+     the exact verifier scenario, eighth pass. At devicePixelRatio 2 the
+     harness writes the backing store to 600x300 (300x150 CSS px * 2) right
+     at mount; this class then lands the CSS size on exactly that same
+     number, one frame later, an ordinary responsive breakpoint pattern. A
+     value- or timing-based echo check (sixth/seventh pass) cannot tell
+     that coincidence apart from its own echo; see src/canvas/index.ts. */
+  #css-sized-rebound { width: 300px; height: 150px; }
+  #css-sized-rebound.doubled { width: 600px; height: 300px; }
 </style>
 </head>
 <body>
@@ -111,7 +121,15 @@
      longer mis-sizing itself on a real DPR change, see src/canvas/index.ts
      and test/canvas.test.mjs) has no fixture here: Puppeteer's
      page.setViewport() cannot trigger it (see the note in
-     e2e-invariants.mjs), so it is unit-tested only. -->
+     e2e-invariants.mjs), so it is unit-tested only.
+
+     #css-sized-rebound: eighth pass (final design, verifier finding). A
+     genuine CSS resize landing exactly on the backing size the harness
+     itself last wrote, one frame after mount: the sixth/seventh pass's
+     value- and timing-based echo check took that for its own echo and
+     pinned this canvas at 300x150 forever, never following the resize to
+     600x300. See src/canvas/index.ts for the causal-probe design that
+     replaces it. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
@@ -122,5 +140,6 @@
 <canvas id="unsized-tiny" width="4" height="4"></canvas>
 <canvas id="unsized-tiny-20" width="20" height="20"></canvas>
 <canvas id="unsized-padded-scaled" style="padding: 350px; transform: scale(2)"></canvas>
+<canvas id="css-sized-rebound"></canvas>
 </body>
 </html>

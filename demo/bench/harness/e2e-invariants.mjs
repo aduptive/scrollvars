@@ -21,7 +21,8 @@
  *      never runs away whatever direction the device pixel ratio moves the
  *      backing store (above 1, or a zoomed-out page's dpr below 1), and
  *      never mistakes a CSS-sized canvas (padding, a transform, or both
- *      together) for one that moved
+ *      together, or a genuine resize landing exactly on the size the
+ *      harness itself just wrote) for one that moved
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -584,41 +585,43 @@ const MIN_EXAMINED = 1
 }
 
 // ── 8. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
-// feedback loop (ADU-107). First through sixth pass, each one a verifier or
-// panel finding reproduced in real Chrome, are in CHANGELOG.md's Canvas
+// feedback loop (ADU-107). First through seventh pass, each one a verifier
+// or panel finding reproduced in real Chrome, are in CHANGELOG.md's Canvas
 // section: a border-box-rect-vs-content-box-attribute equality guard that
 // both missed a bordered unsized canvas and mispinned a legitimately
 // CSS-sized one; a padding-inflated read; a fractional-padding rounding
 // residual; a fallback re-measure that disagreed with a bit-exact
 // ResizeObserverEntry for reasons that had nothing to do with feedback
 // (fractional padding, a transform); a flat 1px tolerance that took dozens
-// of passes to notice a small canvas's small move.
+// of passes to notice a small canvas's small move; and a value- and
+// timing-based "echo window" (matching a later ResizeObserverEntry's
+// contentRect against the exact W/H just written) that could not tell a
+// coincidental real resize landing on that same number apart from its own
+// echo (the eighth pass's regression, see 8f below).
 //
-// Seventh pass (design change): the sixth pass's ratio check
-// (`after / before >= 1 + (dpr - 1) / 2`, guarded by `dpr > 1`) still had
-// two regressions, both reproduced in real Chrome: the `dpr > 1` guard
-// disabled detection entirely on a page zoomed out to a DPR below 1 (0.8,
-// 0.5), so an unsized canvas there shrank a little further every pass,
-// unbounded; and an unsized canvas with padding AND its own transform read
-// through getBoundingClientRect() (inflated by the transform, deflated back
-// down by the padding subtraction) dampened the ratio below what the check
-// needed, pinning it inflated instead of at its true content box. Every
-// measurement heuristic (ratio, tolerance, the dpr guard) is gone. Instead:
-// after applySize() writes the backing store, an unsized canvas's own
-// layout content box becomes exactly that write (W by H CSS px), so the
-// ResizeObserver delivers another entry reporting it, in the same frame,
-// the echo of the harness's own write; a CSS-sized canvas's box never
-// moves this way, so no such entry ever comes. applySize() remembers what
-// it wrote and the CSS size it measured right before writing, clears that
-// on the next animation frame (the echo has to land within the same
-// frame), and on a match pins the pre-write CSS size. See the module doc
-// in src/canvas/index.ts for the full reasoning. A settle now takes one
-// extra ResizeObserver round trip compared to the sixth pass's fully
-// synchronous check (the initial entry's `resize()` callback fires once
-// with the correct, non-inflated size; the echo pins with no callback; a
-// third, post-pin entry confirms with the same size again), so `log.length`
-// below is 2 for a case that settles, not 1 — the consumer only ever sees
-// the correct size, twice, never an inflated one. ──
+// Eighth pass (final design change): every earlier pass tried to catch the
+// loop by MEASURING, comparing two numbers (or a number against a
+// deadline). applySize() now asks the browser directly instead: right
+// after writing the backing store, it bumps `canvas.width`/`height` up by
+// one and reads `canvas.clientWidth`/`clientHeight` (a forced layout), then
+// puts the attribute back and reads again. An axis with no CSS size of its
+// own has its layout size driven directly by that attribute, so the two
+// readings differ by exactly 1; an axis with a real CSS size never
+// responds to the attribute at all, so they are identical. This is causal,
+// not a value comparison: the probe supplies its own known cause (the
+// bump) and reads only the response that can follow from THAT write, so a
+// real resize landing on any size, at any time, including the exact size
+// the harness itself just wrote, produces no response and is never
+// mistaken for anything. See the module doc in src/canvas/index.ts for the
+// full reasoning. A settle takes no extra ResizeObserver round trip at all,
+// measured against real Chrome: the pin runs synchronously inside the same
+// callback that delivered the entry, before the browser ever gets a chance
+// to render the intermediate (unpinned) box the backing-store write alone
+// would have produced, so from the ResizeObserver's own perspective the
+// canvas's box started this callback at its intrinsic size and ends it at
+// that same pinned size, no observable change, no further entry. `log.length`
+// below is 1 for a case that settles, the consumer sees the correct size
+// exactly once, never an inflated one and never a second confirmation. ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -642,7 +645,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: an unsized bordered canvas settles at its intrinsic size instead of running away',
-    border.log.length === 2 && border.width === 600 && border.height === 300,
+    border.log.length === 1 && border.width === 600 && border.height === 300,
     `resize() calls: ${border.log.length}, canvas.width=${border.width}, canvas.height=${border.height}`
   )
   check(
@@ -694,7 +697,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: an unsized padded canvas settles at its intrinsic size, the padding never enters the pin',
-    padded.log.length === 2 && padded.width === 600 && padded.height === 300,
+    padded.log.length === 1 && padded.width === 600 && padded.height === 300,
     `resize() calls: ${padded.log.length}, canvas.width=${padded.width}, canvas.height=${padded.height}`
   )
   check(
@@ -720,7 +723,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: an unsized bordered, padded, border-box canvas also settles at its intrinsic size',
-    borderBox.log.length === 2 && borderBox.width === 600 && borderBox.height === 300,
+    borderBox.log.length === 1 && borderBox.width === 600 && borderBox.height === 300,
     `resize() calls: ${borderBox.log.length}, canvas.width=${borderBox.width}, canvas.height=${borderBox.height}`
   )
   check(
@@ -748,7 +751,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: an unsized canvas with fractional (0.3px) padding settles at its exact intrinsic size',
-    fractional.log.length === 2 && fractional.width === 600 && fractional.height === 300,
+    fractional.log.length === 1 && fractional.width === 600 && fractional.height === 300,
     `resize() calls: ${fractional.log.length}, canvas.width=${fractional.width}, canvas.height=${fractional.height}`
   )
   check(
@@ -826,7 +829,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: an unsized canvas with padding AND its own transform still settles at its true 300x150 content box (ADU-107, seventh pass)',
-    paddedScaled.log.length === 2 && paddedScaled.width === 600 && paddedScaled.height === 300,
+    paddedScaled.log.length === 1 && paddedScaled.width === 600 && paddedScaled.height === 300,
     `resize() calls: ${paddedScaled.log.length}, canvas.width=${paddedScaled.width}, canvas.height=${paddedScaled.height}`
   )
   check(
@@ -867,7 +870,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: a 4x4 unsized canvas at deviceScaleFactor 1.25 settles at its intrinsic size, not several passes inflated (ADU-107, sixth pass)',
-    tiny.log.length === 2 && tiny.width === 5 && tiny.height === 5,
+    tiny.log.length === 1 && tiny.width === 5 && tiny.height === 5,
     `resize() calls: ${tiny.log.length}, canvas.width=${tiny.width}, canvas.height=${tiny.height}`
   )
   check(
@@ -904,7 +907,7 @@ const MIN_EXAMINED = 1
   )
   check(
     'canvas: a 20x20 unsized canvas at deviceScaleFactor 1.05 settles at its intrinsic size, not several passes inflated (ADU-107, sixth pass)',
-    tiny20.log.length === 2 && tiny20.width === 21 && tiny20.height === 21,
+    tiny20.log.length === 1 && tiny20.width === 21 && tiny20.height === 21,
     `resize() calls: ${tiny20.log.length}, canvas.width=${tiny20.width}, canvas.height=${tiny20.height}`
   )
   check(
@@ -998,20 +1001,22 @@ const MIN_EXAMINED = 1
       const r = result.canvases[id]
       const bw = Math.round(w * result.dpr)
       const bh = Math.round(h * result.dpr)
-      // A backing store that rounds back to the exact same integer as the
-      // canvas's own intrinsic size (a coincidence at some size/DPR pairs,
-      // e.g. a 4x4 canvas at ~1.05) never moves the canvas's own layout box
-      // in the first place: there is no echo to catch because nothing
-      // changed, and nothing needed pinning either, since the size was
-      // already correct. Only assert the echo/pin cascade (log.length 2)
-      // when the write actually would have moved the box.
-      const moves = bw !== w || bh !== h
+      // The causal probe perturbs the CURRENT attribute value by one and
+      // reads how layout responds: that response is independent of whether
+      // the backing-store write this pass happened to change the numeric
+      // value at all (a coincidence at some size/DPR pairs, e.g. a 4x4
+      // canvas at ~1.05 rounding back to 4), so every genuinely unsized
+      // canvas gets pinned here regardless. And the pin runs synchronously
+      // inside the very callback that delivered the entry, before the
+      // browser ever renders the unpinned intermediate box, so there is
+      // never a second, confirming entry either: log.length is 1 always.
       check(
         `canvas: #${id} settles at its intrinsic ${w}x${h} at deviceScaleFactor ${dpr} (actual dpr ${result.dpr}), backing store ${bw}x${bh}`,
-        r.log.length === (moves ? 2 : 1) &&
+        r.log.length === 1 &&
           r.width === bw &&
           r.height === bh &&
-          (!moves || (r.style.includes(`width: ${w}px`) && r.style.includes(`height: ${h}px`))),
+          r.style.includes(`width: ${w}px`) &&
+          r.style.includes(`height: ${h}px`),
         `resize() calls: ${r.log.length}, canvas.width=${r.width} (want ${bw}), canvas.height=${r.height} (want ${bh}), style=${r.style}`
       )
     }
@@ -1022,6 +1027,62 @@ const MIN_EXAMINED = 1
 
     await page.close()
   }
+}
+
+// ── 8f. The verifier's exact eighth-pass scenario: a CSS-sized 300x150
+// canvas at devicePixelRatio 2 (backing store written to 600x300 on the
+// canvas's first settle) resized by a class to exactly 600x300, one
+// requestAnimationFrame after that first settle (not one frame after
+// mountEffect() itself returns, which runs before the canvas's very first
+// ResizeObserver delivery ever fires and so is too early to land inside the
+// window the bug needs), an ordinary responsive breakpoint pattern. That
+// lands on the exact number the harness itself just wrote one frame
+// earlier: the sixth/seventh pass's value- and timing-based echo check
+// could not tell that apart from its own echo and pinned this canvas at
+// 300x150 forever, dropping the resize to 600x300 on the floor. The causal
+// probe (see src/canvas/index.ts) never compares values, only whether
+// clientWidth/clientHeight respond to the harness's own attribute write, so
+// the coincidence changes nothing ──
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
+  await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+  await page.addScriptTag({ content: CANVAS_JS })
+
+  const rebound = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#css-sized-rebound')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => {
+            log.push({ w: fx.width, h: fx.height, cw: canvas.width, ch: canvas.height })
+            if (log.length === 1) {
+              requestAnimationFrame(() => {
+                canvas.classList.add('doubled')
+                setTimeout(
+                  () =>
+                    resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+                  200
+                )
+              })
+            }
+          },
+        })
+      })
+  )
+  check(
+    "canvas: a CSS-sized canvas resized to exactly its own backing size one frame after its first settle is never mistaken for the harness's own write (ADU-107, eighth pass)",
+    rebound.style === '',
+    rebound.style
+  )
+  check(
+    'canvas: that same canvas follows the one-frame-later resize to 600x300, not frozen at 300x150',
+    rebound.width === 1200 && rebound.height === 600,
+    `canvas.width=${rebound.width} (want 1200), canvas.height=${rebound.height} (want 600), log: ${JSON.stringify(rebound.log)}`
+  )
+  await page.close()
 }
 
 // ── 9. Occlusion sweep negative cases: a decorative clip-path mask is not

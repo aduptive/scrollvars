@@ -87,6 +87,15 @@ function makeEnv() {
     },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect: () => ({ width: 400, height: 300 }),
+    // clientWidth/clientHeight: what the causal probe in applySize() reads
+    // directly (see src/canvas/index.ts). CSS-sized, so fixed at 400x300
+    // regardless of canvas.width/height, matching a real browser exactly.
+    get clientWidth() {
+      return this.style.width ? parseFloat(this.style.width) : this.width
+    },
+    get clientHeight() {
+      return this.style.height ? parseFloat(this.style.height) : this.height
+    },
   }
 
   return {
@@ -98,13 +107,15 @@ function makeEnv() {
     // none, the entry is derived from the observed canvas's OWN current
     // content box and redelivered for as long as that box keeps changing
     // as a result of the harness's last write (mirroring a real browser's
-    // same-frame recursive ResizeObserver redelivery, the "echo" this
-    // design detects, see src/canvas/index.ts): an unsized canvas's box
-    // follows its own backing store and keeps producing new entries until
-    // the harness pins it; a CSS-sized canvas's box never moves this way,
-    // so this always stops after exactly one delivery for it. A capped
-    // loop (not an unbounded one) so a bug that never converges fails the
-    // test instead of hanging it.
+    // same-frame recursive ResizeObserver redelivery): an unsized canvas's
+    // box follows its own backing store and would keep producing new
+    // entries forever if the harness never pinned it; a CSS-sized canvas's
+    // box never moves this way, so this always stops after exactly one
+    // delivery for it. The causal probe (see src/canvas/index.ts) pins an
+    // unsized canvas synchronously, inside the very first delivery, so
+    // this cascade settles in one iteration there too; it stays as a
+    // safety net, a capped loop (not an unbounded one), so a bug that never
+    // converges fails the test instead of hanging it.
     resize: (contentRect) => {
       if (contentRect) {
         roCallback([{ contentRect }])
@@ -162,11 +173,9 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
 
   env.resize()
   assert.equal(env.canvas.width, 800) // 400 CSS px × dpr capped at 2
-  // Two rAFs queued: the pending-echo-window clearer every write schedules
-  // (harmless here, this CSS-sized canvas never echoes) plus the tick
-  // loop's own start. Both fire in the same pump() batch below, same as a
-  // real frame firing every callback registered before it.
-  assert.equal(env.pending(), 2)
+  // One rAF queued: the tick loop's own start. The causal probe that just
+  // ran inside applySize() above is fully synchronous, no rAF of its own.
+  assert.equal(env.pending(), 1)
 
   env.pump(16)
   env.pump(16)
@@ -221,20 +230,32 @@ function makeStyle(initial = {}) {
 
 // `width`/`height` are the canvas's own content-box attribute values (what
 // an unsized canvas lays out at, in CSS pixels, per the platform's replaced-
-// element sizing rules — the whole feedback loop this harness stops).
-// `border`/`padding`/`scale` only feed getBoundingClientRect() below, the
+// element sizing rules: the whole feedback loop this harness stops).
+// `border`/`padding`/`scale` feed getBoundingClientRect() below, the
 // fallback measureLayout() uses when applySize() runs with no
 // ResizeObserverEntry at all (onDprChange() before its first entry ever
-// arrives); they never touch a real entry's contentRect, and the seventh-
-// pass echo check reads only that, so a bordered/padded/scaled unsized
-// canvas pins exactly the same as a plain one — these fixtures exist to
-// prove that, not because the mechanism still needs to account for them.
+// arrives); they never touch a real entry's contentRect either.
+// `clientWidth`/`clientHeight` are what the causal probe in applySize()
+// reads directly (see src/canvas/index.ts): CSS-sized (`style.width`/
+// `height` authored) stays fixed at that value no matter what
+// `width`/`height` (the attribute) is; unsized follows `width`/`height`
+// exactly, matching a real browser's replaced-element sizing. Padding is
+// included (a real clientWidth/clientHeight does too) but only ever as a
+// constant that cancels out of the probe's own before/after delta; border
+// and `scale` never enter it at all (a real one excludes border and is
+// never touched by a transform), so a bordered/padded/scaled/transformed
+// canvas, sized or unsized, still probes exactly the same as a plain one:
+// these fixtures exist to prove that, not because the mechanism still
+// needs to account for them. `clientReads` counts every
+// clientWidth/clientHeight read, so a test can assert the probe ran
+// exactly when expected (once per applySize() call, never per frame).
 function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, residual = 0 }) {
   const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
   return {
     width,
     height,
     style,
+    clientReads: 0,
     computedStyle: {
       paddingLeft: `${pad.left}px`,
       paddingRight: `${pad.right}px`,
@@ -254,6 +275,16 @@ function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, 
         height: (contentH + pad.top + pad.bottom + border) * scale - residual,
       }
     },
+    get clientWidth() {
+      this.clientReads++
+      const contentW = this.style.width ? parseFloat(this.style.width) : this.width
+      return contentW + pad.left + pad.right
+    },
+    get clientHeight() {
+      this.clientReads++
+      const contentH = this.style.height ? parseFloat(this.style.height) : this.height
+      return contentH + pad.top + pad.bottom
+    },
   }
 }
 
@@ -267,9 +298,9 @@ test('canvas harness: an unsized canvas stabilizes after one pass (dpr 2)', asyn
 
   mountEffect(canvas, { frame: () => {} })
 
-  // One pass: the write's echo arrives and gets pinned within this SAME
-  // env.resize() call (the auto-cascade above simulates the real,
-  // same-frame recursive ResizeObserver redelivery).
+  // One pass: the causal probe runs synchronously right after the backing
+  // store write, within this SAME env.resize() call, so the pin lands on
+  // the very first delivery, no cascade needed.
   env.resize()
   assert.equal(canvas.style.width, '300px')
   assert.equal(canvas.style.height, '150px')
@@ -319,8 +350,9 @@ test('canvas harness: a bordered unsized canvas still stabilizes', async () => {
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
 
-  // A real ResizeObserverEntry's contentRect excludes border already: the
-  // echo check reads it directly, so a border changes nothing here.
+  // A real ResizeObserverEntry's contentRect excludes border already, and
+  // the causal probe reads clientWidth/clientHeight, which exclude border
+  // the same way: a border changes nothing here.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, border: 2 })
 
@@ -343,9 +375,12 @@ test('canvas harness: an unsized padded canvas pins its true content box, not th
   const { mountEffect } = await import('../dist/canvas/index.js')
 
   // 10px padding on every side. A real ResizeObserverEntry's contentRect
-  // excludes padding already, and the seventh-pass echo check never derives
-  // a size from clientWidth or getBoundingClientRect at all, so there is no
-  // padding-inflated box to land on in the first place.
+  // excludes padding already, so the size the harness pins has no
+  // padding-inflated box to land on in the first place. The causal probe
+  // separately reads clientWidth, which DOES include padding, but only to
+  // compare two readings of it: padding is constant across both, so it
+  // cancels out of the delta and never affects the follows/doesn't-follow
+  // result.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, padding: 10 })
 
@@ -369,8 +404,10 @@ test('canvas harness: a bordered, padded, border-box unsized canvas still pins i
   const { mountEffect } = await import('../dist/canvas/index.js')
 
   // border:4px, padding:6px, box-sizing:border-box. None of that touches a
-  // real contentRect, which is why forcing box-sizing:content-box on the
-  // pin is still what stops the author's own border-box declaration from
+  // real contentRect, and border doesn't enter clientWidth either (padding
+  // does, but cancels out of the probe's delta, same as the padding-only
+  // case above), which is why forcing box-sizing:content-box on the pin is
+  // still what stops the author's own border-box declaration from
   // reinterpreting the pinned width as a border box and shrinking the
   // content back down.
   const { style } = makeStyle()
@@ -397,8 +434,9 @@ test('canvas harness: an unsized canvas with fractional padding settles in one p
 
   // padding: 0.3px, common from a percentage or calc() padding, or a
   // non-100% zoom. A real contentRect excludes padding regardless of
-  // whether it is a whole or fractional value, and the seventh-pass echo
-  // check never subtracts padding from anything, so there is no residual
+  // whether it is a whole or fractional value, and the causal probe never
+  // subtracts padding from anything (it only diffs two clientWidth
+  // readings, and padding is identical in both), so there is no residual
   // to land a fraction of a pixel off of.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, padding: 0.3 })
@@ -426,10 +464,13 @@ test('canvas harness: an unsized canvas with padding AND its own transform still
   // transform) minus computed padding, which dampens the before/after
   // ratio below the threshold the feedback check needed: the panel's
   // sixth-pass regression finding, reproduced in Chrome, pinned this
-  // canvas at an inflated size instead of its true 300x150. A real
-  // ResizeObserverEntry's contentRect is layout size: it excludes padding
-  // and ignores transform (which never touches layout) in one bit-exact
-  // read, so the seventh-pass echo check never sees the inflation at all.
+  // canvas at an inflated size instead of its true 300x150. The causal
+  // probe (eighth pass) reads clientWidth/clientHeight instead, which
+  // include padding (constant across both readings, cancels out of the
+  // delta) and are never touched by a transform (applied after layout), so
+  // it never sees any inflation at all; the size that gets pinned still
+  // comes from the ResizeObserverEntry's own bit-exact contentRect, which
+  // excludes padding and ignores transform outright.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, padding: 10, scale: 2 })
 
@@ -568,10 +609,10 @@ test('canvas harness: a small unsized canvas is pinned on the very first pass at
   const { mountEffect } = await import('../dist/canvas/index.js')
 
   // 4x4, dpr 1.25: the backing-store write rounds to 5x5, one CSS pixel
-  // more than the canvas's true 4x4. The echo check is a plain integer
-  // equality against that exact write, whatever the gap: it needs no
-  // ratio, no tolerance, and no dpr-direction guard to catch a 1px move on
-  // a 4x4 canvas.
+  // more than the canvas's true 4x4. The causal probe is a plain 1-or-0
+  // delta check independent of the write's value or the canvas's size: it
+  // needs no ratio, no tolerance, and no dpr-direction guard to catch a
+  // 1px move on a 4x4 canvas.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 4, height: 4, style })
 
@@ -594,7 +635,10 @@ test('canvas harness: a small unsized canvas is pinned on the very first pass at
   const { mountEffect } = await import('../dist/canvas/index.js')
 
   // 20x20, dpr 1.05: also moves by exactly 1 CSS pixel, same edge case as
-  // the 4x4/1.25 test above at a different size and DPR.
+  // the 4x4/1.25 test above at a different size and DPR. The causal probe
+  // catches this the same way it catches every other gap: the delta of
+  // two clientWidth readings is 1, nothing else about the size or DPR
+  // enters the check.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 20, height: 20, style })
 
@@ -620,10 +664,10 @@ test('canvas harness: an unsized canvas settles in one pass at devicePixelRatio 
   // 0.8 (a page zoomed out, or a display below 100% scaling) it never even
   // looked, so an unsized canvas shrank a little further on every pass,
   // unbounded, never stabilizing (the seventh-pass regression this design
-  // exists to fix). The echo check has no such guard: a DPR below 1
+  // exists to fix). The causal probe has no such guard: a DPR below 1
   // shrinks the backing store exactly as reliably as one above 1 grows
-  // it, and the echo, a plain equality against the exact write, is the
-  // same signal either way.
+  // it, and the probe's before/after delta on `canvas.width`/`height`
+  // (always exactly 1 or exactly 0) is the same signal either way.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style })
 
@@ -680,40 +724,109 @@ test('canvas harness: a small CSS-sized canvas with fractional padding is never 
   assert.equal(canvas.width, 5)
 })
 
-test('canvas harness: a resize landing on exactly the backing size, after the clearing rAF has already fired, is not treated as an echo (ADU-107, seventh pass)', async () => {
+test('canvas harness: a CSS-sized canvas with width/height in percent is never pinned', async () => {
   const env = makeEnv()
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
 
-  // `pending` (the echo window) is cleared two animation frames after a
-  // write, on purpose (see the module doc for why one frame fires too
-  // early against real Chrome's rAF-then-ResizeObserver ordering): the
-  // echo has to land within that window. A user resize that happens to
-  // equal the backing size, once the window has closed, is a coincidence,
-  // not an echo, and must be followed like any other resize instead of
-  // being read as "no CSS size" and pinned.
-  const { style, writes } = makeStyle()
+  // width/height authored as %, not px: the causal probe never inspects
+  // the style string or its unit, only whether clientWidth/clientHeight
+  // respond to the harness's own width/height attribute, so a
+  // percentage-sized canvas is detected exactly the same as a pixel-sized
+  // one. Fed here as an explicit entry (300x150, whatever the % resolved
+  // to against its parent), same pattern as the fractional-padding and
+  // transform cases above.
+  const { style, writes } = makeStyle({ width: '100%', height: '50%' })
   const canvas = makeCanvas({ width: 300, height: 150, style })
 
-  mountEffect(canvas, { frame: () => {} })
+  const sizes = []
+  mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
 
-  // One explicit entry, matching the canvas's own attribute size: writes
-  // the backing store (600x300) and schedules the clearing rAFs, but does
-  // NOT itself simulate the echo (a single, isolated delivery).
   env.resize({ width: 300, height: 150 })
+  assert.equal(writes.length, 0) // never pinned
+  assert.equal(canvas.width, 600) // 300 CSS px * dpr 2
+  assert.equal(canvas.height, 300)
+  assert.deepEqual(sizes.at(-1), { w: 300, h: 150 })
+
+  env.resize({ width: 300, height: 150 }) // a second delivery, same size
+  assert.equal(writes.length, 0) // still never pinned
   assert.equal(canvas.width, 600)
-  assert.equal(writes.length, 0) // no echo has arrived yet: not pinned
-
-  env.pump(16) // frame N+1: the outer rAF fires, schedules the inner one
-  env.pump(16) // frame N+2: the inner rAF fires, clears `pending`
-
-  // A resize that happens to land on exactly 600x300 (the backing store),
-  // a frame later.
-  env.resize({ width: 600, height: 300 })
-  assert.equal(writes.length, 0) // still never pinned...
-  assert.equal(canvas.width, 1200) // ...instead followed like a real resize (600 * dpr 2)
-  assert.equal(canvas.height, 600)
+  assert.equal(canvas.height, 300)
 })
+
+test(
+  "canvas harness: a CSS-sized canvas resized to exactly the size the harness itself just wrote to the backing store is never mistaken for its own write, in the same tick (ADU-107, eighth pass)",
+  async () => {
+    const env = makeEnv()
+    global.window.devicePixelRatio = 2
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    // 300x150 CSS size, dpr 2: mounting writes the backing store to
+    // 600x300. A genuine CSS resize that then doubles the canvas's CSS
+    // size to exactly 600x300 (an ordinary responsive pattern: a class
+    // applied a frame after mount) lands on the exact number the harness
+    // itself just wrote, the coincidence a value- or timing-based echo
+    // check (sixth/seventh pass) could not tell apart from its own echo.
+    // The causal probe never compares values at all: this canvas has a
+    // real CSS size before AND after the resize, so it is never pinned,
+    // on either delivery, regardless of the coincidence.
+    const { style, state, writes } = makeStyle({ width: '300px', height: '150px' })
+    const canvas = makeCanvas({ width: 300, height: 150, style })
+
+    const sizes = []
+    mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+    env.resize({ width: 300, height: 150 }) // mount: writes the backing store to 600x300
+    assert.equal(writes.length, 0)
+    assert.equal(canvas.width, 600)
+    assert.equal(canvas.height, 300)
+
+    // The coincidental resize, delivered in the very same tick, no frame
+    // in between.
+    state.width = '600px'
+    state.height = '300px'
+    env.resize({ width: 600, height: 300 })
+    assert.equal(writes.length, 0) // never pinned
+    assert.equal(canvas.width, 1200) // follows the real resize: 600 CSS px * dpr 2
+    assert.equal(canvas.height, 600)
+    assert.deepEqual(sizes.at(-1), { w: 600, h: 300 })
+  }
+)
+
+test(
+  "canvas harness: the same coincidental resize, a frame later, is also never mistaken for the harness's own write (ADU-107, eighth pass)",
+  async () => {
+    const env = makeEnv()
+    global.window.devicePixelRatio = 2
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    // Same setup as the same-tick case above, but the coincidental resize
+    // arrives after a couple of frames instead of immediately: the
+    // seventh pass's echo window closed after two frames, so a later
+    // arrival fell outside it and was (correctly, by luck of the window)
+    // followed as a real resize; the causal probe has no window to fall
+    // outside of in the first place, so the timing changes nothing.
+    const { style, state, writes } = makeStyle({ width: '300px', height: '150px' })
+    const canvas = makeCanvas({ width: 300, height: 150, style })
+
+    const sizes = []
+    mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+    env.resize({ width: 300, height: 150 })
+    assert.equal(canvas.width, 600)
+
+    env.pump(16)
+    env.pump(16)
+
+    state.width = '600px'
+    state.height = '300px'
+    env.resize({ width: 600, height: 300 })
+    assert.equal(writes.length, 0) // never pinned, same as the same-tick case
+    assert.equal(canvas.width, 1200)
+    assert.equal(canvas.height, 600)
+    assert.deepEqual(sizes.at(-1), { w: 600, h: 300 })
+  }
+)
 
 test("canvas harness: onDprChange() reuses the last ResizeObserver-measured content size instead of a transform-inflated rect", async () => {
   const env = makeEnv()
@@ -740,5 +853,41 @@ test("canvas harness: onDprChange() reuses the last ResizeObserver-measured cont
   env.changeDpr(2) // a real DPR change: no ResizeObserver entry involved
   assert.deepEqual(sizes.at(-1), { w: 200, h: 100 }) // unchanged, not 300 (200 * 1.5 rect inflation)
   assert.equal(canvas.width, 400) // 200 CSS px * new dpr 2, not 600 (300 inflated * 2)
+  assert.equal(canvas.height, 200)
+})
+
+test('canvas harness: the causal probe restores the attribute exactly and runs only inside applySize, never per frame (ADU-107, eighth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // CSS-sized so the box never moves and applySize() runs exactly once per
+  // env.resize() call (no pin cascade to account for): isolates the probe
+  // itself, not the pin/no-pin decision the other tests already cover.
+  const { style } = makeStyle({ width: '200px', height: '100px' })
+  const canvas = makeCanvas({ width: 200, height: 100, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  // 200 CSS px * dpr 2: the probe bumped canvas.width/height by one on
+  // each axis and put them back, landing on the exact value applySize()
+  // itself wrote, not one off it either way.
+  assert.equal(canvas.width, 400)
+  assert.equal(canvas.height, 200)
+  const readsAfterMount = canvas.clientReads
+  // One resize event, both axes probed together: clientWidth + clientHeight
+  // read once after the bump, once after the reset, 4 reads total, not 8
+  // (see the module doc: two forced layouts, not four).
+  assert.equal(readsAfterMount, 4)
+
+  env.pump(16)
+  env.pump(16)
+  env.pump(16)
+  assert.equal(canvas.clientReads, readsAfterMount) // no reads from the frame loop itself
+
+  env.resize() // a second resize event: the probe runs again, reads again
+  assert.equal(canvas.clientReads, readsAfterMount + 4)
+  assert.equal(canvas.width, 400) // still restored correctly
   assert.equal(canvas.height, 200)
 })
