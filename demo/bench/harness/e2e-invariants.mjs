@@ -33,10 +33,15 @@
  *      the natural size and the natural size) is pinned at the natural
  *      attribute size, not the measured, capped value, so it tracks the
  *      cap later widening or narrowing instead of freezing; an author's
- *      own aspect-ratio on an unsized canvas is kept, not overwritten
+ *      own aspect-ratio on an unsized canvas is kept, not overwritten, and
+ *      an unauthored one is actually set (real Chrome reports 'auto W / H',
+ *      never bare 'auto', so a strict equality guard never fires), keeping
+ *      a pinned canvas's height stable even at a non-integer w0 * dpr
+ *      instead of drifting through the harness's own rounded attributes
  *      (ADU-107, ninth pass, three verifier findings on the eighth; tenth
  *      pass, two more on the ninth; eleventh pass, two more on the tenth;
- *      twelfth pass, two more on the eleventh)
+ *      twelfth pass, two more on the eleventh; thirteenth pass, one more
+ *      on the twelfth)
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -1759,6 +1764,56 @@ const MIN_EXAMINED = 1
       `canvas: and the box actually renders square (the authored ratio), not 2:1 (the attribute ratio) at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
       Math.abs(result.clientWidth - result.clientHeight) < 1,
       `clientWidth=${result.clientWidth}, clientHeight=${result.clientHeight}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8q. Thirteenth pass, the verifier's finding, live in Chrome: the
+// twelfth pass's own `aspectRatio === 'auto'` guard, right above, never
+// actually fired for an UNAUTHORED canvas either. Chrome always reports
+// getComputedStyle(canvas).aspectRatio as 'auto W / H', the intrinsic
+// ratio appended to the keyword, never the bare 'auto' string, so
+// style.aspectRatio was never written at all, for any canvas; height then
+// kept deriving from this harness's own rounded, DPR-scaled attributes,
+// drifting on every later pass whenever w0 * dpr was not already an
+// integer. #unsized-fractional-dpr (30x61, portrait) at 0.51, 1.9 and
+// 1.15: every other w0/DPR pair on this page lands on an exact integer
+// product and could not see this ──
+{
+  for (const dpr of [0.51, 1.9, 1.15]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+    await page.addScriptTag({ content: DRIVE_TO_FIXED_POINT_JS })
+
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector('#unsized-fractional-dpr')
+      const log = []
+      window.mountEffect(canvas, {
+        frame: () => {},
+        resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+      })
+      await window.driveToFixedPoint(log)
+      return {
+        style: canvas.style.cssText,
+        dpr: window.devicePixelRatio,
+        width: canvas.width,
+        height: canvas.height,
+      }
+    })
+    const bw = Math.round(30 * result.dpr)
+    const bh = Math.round(61 * result.dpr)
+    check(
+      `canvas: #unsized-fractional-dpr's aspect-ratio is actually set to 30 / 61 at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style.includes('aspect-ratio: 30 / 61'),
+      `style=${result.style}`
+    )
+    check(
+      `canvas: #unsized-fractional-dpr converges to the exact backing store ${bw}x${bh} at deviceScaleFactor ${dpr} (actual dpr ${result.dpr}), never drifting`,
+      result.width === bw && result.height === bh,
+      `canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh})`
     )
     await page.close()
   }

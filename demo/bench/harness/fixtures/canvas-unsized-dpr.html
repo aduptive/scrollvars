@@ -118,6 +118,18 @@
      eleventh pass set style.aspectRatio to w0/h0 unconditionally, which
      would render this SQUARE authored ratio as 2:1 instead. */
   #authored-aspect-ratio { aspect-ratio: 1; }
+
+  /* Thirteenth pass, the verifier's finding: pinAtW0() only wrote
+     style.aspectRatio when getComputedStyle(canvas).aspectRatio was
+     exactly 'auto'. A real browser always reports it as 'auto W / H' (the
+     intrinsic ratio appended), never the bare keyword, so that guard never
+     fired for ANY canvas, authored or not; height then kept deriving from
+     this harness's own rounded, DPR-scaled attributes, drifting further on
+     every later ResizeObserver pass whenever w0 * dpr was not already an
+     integer. Portrait, 30x61 (no CSS at all, purely unsized): every
+     fixture on this page before it used a w0 whose product with the
+     tested DPRs was always an exact integer, so nothing here could see
+     it. */
 </style>
 </head>
 <body>
@@ -245,7 +257,17 @@
      unconditionally, silently overriding an author's own aspect-ratio;
      this canvas's attributes (300x150, a 2:1 ratio) would render as 2:1
      under that bug even though its own CSS asks for a perfect square. See
-     src/canvas/index.ts for the fix. -->
+     src/canvas/index.ts for the fix.
+
+     #unsized-fractional-dpr: thirteenth pass, the verifier's finding. The
+     twelfth pass's own fix for the case right above never actually fired:
+     getComputedStyle(canvas).aspectRatio is 'auto W / H' in real Chrome,
+     never the bare 'auto' the guard checked for, so style.aspectRatio was
+     never written for any canvas, authored or not. Height then kept
+     deriving from this harness's own rounded, DPR-scaled attributes,
+     drifting further on every later ResizeObserver pass whenever
+     w0 * dpr was not already an integer, unlike every w0/DPR pair used
+     anywhere else on this page. See src/canvas/index.ts for the fix. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
@@ -266,5 +288,6 @@
 <canvas id="gap-cap-loosened" width="300" height="150"></canvas>
 <div id="percent-cap-container"><canvas id="percent-cap-canvas" width="200" height="100"></canvas></div>
 <canvas id="authored-aspect-ratio" width="300" height="150"></canvas>
+<canvas id="unsized-fractional-dpr" width="30" height="61"></canvas>
 </body>
 </html>
