@@ -365,7 +365,8 @@ findings on the same round): three more defects fixed.
   always clamp an intrinsic size, LIVE, at mount and on every later change,
   no different from an ordinary CSS-sized element under the same cap;
   `style.aspectRatio` is set to `w0 / h0` only when `getComputedStyle`
-  reports `'auto'`, so an authored ratio is kept. This removes the
+  reports a ratio that still starts with the `auto` keyword, so an
+  authored ratio is kept. This removes the
   eleventh pass's "gap" limitation outright: it existed only because the
   pin froze at a measured value a cap could later escape, and pinned at
   `w0` there is no stale value to escape from. It does not remove the
@@ -382,7 +383,20 @@ findings on the same round): three more defects fixed.
   CSS pixels, with a device-pixel backing store for a crisp bitmap; CSS
   caps and percentages still apply on top of that size, exactly as they
   would on any other element; give a canvas real CSS dimensions to size it
-  any other way.
+  any other way. Thirteenth pass, one verifier finding on the twelfth
+  pass's own fix, live in Chrome: the `aspectRatio === 'auto'` guard never
+  fired, for any canvas, authored or not. Chrome always reports a canvas's
+  computed `aspectRatio` as `auto W / H`, the intrinsic width/height
+  attributes appended to the keyword, never the bare `auto` string, so
+  `style.aspectRatio` was never written and height kept deriving from this
+  harness's own DPR-scaled attributes instead; whenever `w0 * dpr` was not
+  already an integer, the rounding remainder reapplied to the current
+  height on every later pass (`<canvas width="30" height="61">` at dpr 0.51
+  reached a 33-million-pixel backing height after 668 passes). Fixed by
+  testing `startsWith('auto')` instead of exact equality: an authored
+  `aspect-ratio` computes to a bare number pair with no `auto` keyword at
+  all, so the new check still fires only when the author left the ratio
+  alone, and now actually fires.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
