@@ -29,8 +29,14 @@
  *      height) on a max-width cap that only engages later, never settles a
  *      bare max-width canvas inflated past its cap, and never pins a cap
  *      that already binds at the canvas's natural size (rendered crisp at
- *      the cap, not inflation) (ADU-107, ninth pass, three verifier
- *      findings on the eighth; tenth pass, two more on the ninth)
+ *      the cap, not inflation). A cap "in the gap" (strictly between half
+ *      the natural size and the natural size) is pinned at the natural
+ *      attribute size, not the measured, capped value, so it tracks the
+ *      cap later widening or narrowing instead of freezing; an author's
+ *      own aspect-ratio on an unsized canvas is kept, not overwritten
+ *      (ADU-107, ninth pass, three verifier findings on the eighth; tenth
+ *      pass, two more on the ninth; eleventh pass, two more on the tenth;
+ *      twelfth pass, two more on the eleventh)
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -1509,8 +1515,11 @@ const MIN_EXAMINED = 1
     const bw = Math.round(100 * result.dpr)
     const bh = Math.round(50 * result.dpr)
     check(
-      `canvas: the same cap IS pinned below dpr 1, at the cap's own crisp size, instead of shrinking away (the escape check) at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
-      result.style.includes('width: 100px') &&
+      // Twelfth pass: the escape check still pins (the crisp backing store
+      // is unchanged, still round(100 * dpr)), but now at w0 (300), never
+      // the cap's own rendered size (100): see src/canvas/index.ts.
+      `canvas: the same cap IS pinned below dpr 1, at w0 (300), instead of shrinking away (the escape check) at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style.includes('width: 300px') &&
         result.passes <= 3 &&
         result.width === bw &&
         result.height === bh,
@@ -1553,6 +1562,206 @@ const MIN_EXAMINED = 1
     `style=${result.style}, passes=${result.passes}, canvas.width=${result.width} (want ${bw}, not 450), canvas.height=${result.height} (want ${bh}, not 225), log=${JSON.stringify(result.log)}`
   )
   await page.close()
+}
+
+// ── 8m. Twelfth pass, the verifier's finding 1: the eleventh pass's pin
+// used the MEASURED, capped content size (`anchor.width`), not the natural
+// attribute size, so a cap "in the gap" (strictly between half w0 and w0,
+// the range the mount-time shrink probe DOES detect and pin) froze there
+// even once the cap later widened past the natural size and stopped
+// binding at all. #gap-cap-removed (w0=160, h0=80, max-width:100px,
+// .widened lifts the cap to 200, past w0) must grow back to its natural
+// 160x80, not stay frozen at 100x50, at every DPR ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.2, 1.5, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+    await page.addScriptTag({ content: DRIVE_TO_FIXED_POINT_JS })
+
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector('#gap-cap-removed')
+      const log = []
+      window.mountEffect(canvas, {
+        frame: () => {},
+        resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+      })
+      const mountPasses = await window.driveToFixedPoint(log)
+      const mounted = { style: canvas.style.cssText, width: canvas.width, height: canvas.height }
+      canvas.classList.add('widened')
+      const widenPasses = await window.driveToFixedPoint(log)
+      return {
+        mounted,
+        mountPasses,
+        widenPasses,
+        log,
+        style: canvas.style.cssText,
+        dpr: window.devicePixelRatio,
+        width: canvas.width,
+        height: canvas.height,
+      }
+    })
+    check(
+      `canvas: a cap in the gap is pinned at w0 (160), not the capped 100, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.mounted.style.includes('width: 160px') &&
+        result.mounted.width === Math.round(100 * result.dpr) &&
+        result.mounted.height === Math.round(50 * result.dpr),
+      `style=${result.mounted.style}, canvas.width=${result.mounted.width}, canvas.height=${result.mounted.height}, passes=${result.mountPasses}`
+    )
+    const bw = Math.round(160 * result.dpr)
+    const bh = Math.round(80 * result.dpr)
+    check(
+      `canvas: widened past the natural size, it grows back to 160x80 instead of freezing at the old pin, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style.includes('width: 160px') && result.width === bw && result.height === bh,
+      `style=${result.style}, widenPasses=${result.widenPasses}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh}), log=${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8n. Same finding, a cap widened but still binding: #gap-cap-loosened
+// (the HTML default 300x150, max-width:220px, .widened loosens it to 260,
+// still under 300) must track the wider cap, not stay frozen at 220 ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.2, 1.5, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+    await page.addScriptTag({ content: DRIVE_TO_FIXED_POINT_JS })
+
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector('#gap-cap-loosened')
+      const log = []
+      window.mountEffect(canvas, {
+        frame: () => {},
+        resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+      })
+      await window.driveToFixedPoint(log)
+      const mounted = { style: canvas.style.cssText, width: canvas.width, height: canvas.height }
+      canvas.classList.add('widened')
+      const widenPasses = await window.driveToFixedPoint(log)
+      return {
+        mounted,
+        widenPasses,
+        log,
+        style: canvas.style.cssText,
+        dpr: window.devicePixelRatio,
+        width: canvas.width,
+        height: canvas.height,
+      }
+    })
+    check(
+      `canvas: a cap in the gap is pinned at w0 (300), not the capped 220, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.mounted.style.includes('width: 300px') &&
+        result.mounted.width === Math.round(220 * result.dpr) &&
+        result.mounted.height === Math.round(110 * result.dpr),
+      `style=${result.mounted.style}, canvas.width=${result.mounted.width}, canvas.height=${result.mounted.height}`
+    )
+    const bw = Math.round(260 * result.dpr)
+    const bh = Math.round(130 * result.dpr)
+    check(
+      `canvas: loosened to 260, it follows the new cap instead of freezing at 220, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style.includes('width: 300px') && result.width === bw && result.height === bh,
+      `style=${result.style}, widenPasses=${result.widenPasses}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh}), log=${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8o. Same finding, a percentage cap tracking a growing container:
+// #percent-cap-canvas (w0=200, h0=100, max-width:60% inside a 200px
+// #percent-cap-container, .grown widens the container to 400px) must
+// follow the container growing, not stay frozen at the old 120 ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.2, 1.5, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+    await page.addScriptTag({ content: DRIVE_TO_FIXED_POINT_JS })
+
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector('#percent-cap-canvas')
+      const log = []
+      window.mountEffect(canvas, {
+        frame: () => {},
+        resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+      })
+      await window.driveToFixedPoint(log)
+      const mounted = { style: canvas.style.cssText, width: canvas.width, height: canvas.height }
+      document.querySelector('#percent-cap-container').classList.add('grown')
+      const growPasses = await window.driveToFixedPoint(log)
+      return {
+        mounted,
+        growPasses,
+        log,
+        style: canvas.style.cssText,
+        dpr: window.devicePixelRatio,
+        width: canvas.width,
+        height: canvas.height,
+      }
+    })
+    check(
+      `canvas: a 60% cap is pinned at w0 (200), not the capped 120, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.mounted.style.includes('width: 200px') &&
+        result.mounted.width === Math.round(120 * result.dpr) &&
+        result.mounted.height === Math.round(60 * result.dpr),
+      `style=${result.mounted.style}, canvas.width=${result.mounted.width}, canvas.height=${result.mounted.height}`
+    )
+    const bw = Math.round(200 * result.dpr)
+    const bh = Math.round(100 * result.dpr)
+    check(
+      `canvas: the container growing to 400 (60% = 240, past w0) lets it reach its natural 200x100, at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style.includes('width: 200px') && result.width === bw && result.height === bh,
+      `style=${result.style}, growPasses=${result.growPasses}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh}), log=${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8p. Twelfth pass, the verifier's finding 2: an author's own
+// aspect-ratio on an unsized canvas is kept, not overridden. Attributes
+// 300x150 (a 2:1 intrinsic ratio); #authored-aspect-ratio's own CSS asks
+// for a perfect square (aspect-ratio: 1). The eleventh pass set
+// style.aspectRatio to w0/h0 unconditionally: this canvas would render
+// 2:1, not square, under that bug ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.2, 1.5, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+    await page.addScriptTag({ content: DRIVE_TO_FIXED_POINT_JS })
+
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector('#authored-aspect-ratio')
+      const log = []
+      window.mountEffect(canvas, {
+        frame: () => {},
+        resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+      })
+      await window.driveToFixedPoint(log)
+      return {
+        style: canvas.style.cssText,
+        dpr: window.devicePixelRatio,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+      }
+    })
+    check(
+      `canvas: an authored aspect-ratio is never overwritten by the harness at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      !result.style.includes('aspect-ratio'),
+      `style=${result.style}`
+    )
+    check(
+      `canvas: and the box actually renders square (the authored ratio), not 2:1 (the attribute ratio) at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      Math.abs(result.clientWidth - result.clientHeight) < 1,
+      `clientWidth=${result.clientWidth}, clientHeight=${result.clientHeight}`
+    )
+    await page.close()
+  }
 }
 
 // ── 9. Occlusion sweep negative cases: a decorative clip-path mask is not

@@ -86,6 +86,38 @@
      cap scaled by dpr, and must never be pinned: pinning it would freeze it
      away from the cap it is correctly, permanently bound to. */
   #maxwidth-binding { max-width: 100px; }
+
+  /* Twelfth pass, the verifier's finding 1: a max-width cap "in the gap"
+     (strictly between half w0 and w0, the range the mount-time shrink
+     probe DOES detect and pin) used to pin at the MEASURED, capped value,
+     freezing there even once the cap widened past the natural size and
+     stopped binding at all. w0=160, h0=80 (both even: the shrink probe's
+     halving stays exact); max-width:100px sits between half (80) and w0
+     (160). .widened removes the cap's own bind entirely (200 > 160). */
+  #gap-cap-removed { max-width: 100px; }
+  #gap-cap-removed.widened { max-width: 200px; }
+
+  /* Same shape, the HTML default 300x150 attributes: max-width:220px sits
+     between half (150) and w0 (300). .widened loosens the cap but keeps it
+     binding (260 < 300): the box must FOLLOW the new cap, not stay frozen
+     at 220. */
+  #gap-cap-loosened { max-width: 220px; }
+  #gap-cap-loosened.widened { max-width: 260px; }
+
+  /* A percentage cap, the same shape modeled with a real percentage
+     instead of a fixed px cap: w0=200, h0=100 (both even). max-width:60%
+     inside a 200px container resolves to 120 (in the gap, half 100, w0
+     200); .grown widens the container to 400px, so the SAME 60% now
+     resolves to 240, past w0, no longer binding at all. */
+  #percent-cap-container { width: 200px; }
+  #percent-cap-container.grown { width: 400px; }
+  #percent-cap-canvas { max-width: 60%; }
+
+  /* Twelfth pass, the verifier's finding 2: an author's own aspect-ratio on
+     an unsized canvas. Attributes are 300x150 (a 2:1 intrinsic ratio); the
+     eleventh pass set style.aspectRatio to w0/h0 unconditionally, which
+     would render this SQUARE authored ratio as 2:1 instead. */
+  #authored-aspect-ratio { aspect-ratio: 1; }
 </style>
 </head>
 <body>
@@ -199,7 +231,21 @@
      crisp cap semantics documented in CHANGELOG.md and src/canvas/index.ts,
      not inflation, and must never be pinned. See src/canvas/index.ts for
      the doubling probe (with an exact-halving fallback for a cap already
-     binding on the just-written attribute) that fixes both. -->
+     binding on the just-written attribute) that fixes both.
+
+     #gap-cap-removed, #gap-cap-loosened, #percent-cap-canvas: twelfth
+     pass, verifier finding 1. The eleventh pass's pin used the MEASURED,
+     capped content size (`anchor.width`), not the natural attribute size:
+     a cap that widens later, or a percentage cap whose container grows,
+     left the box frozen at that stale, capped number forever. Pinned at
+     w0 (the attribute width) instead, CSS keeps clamping it live, at
+     mount and on every later cap change, the same as any ordinary
+     CSS-sized element under the same cap. #authored-aspect-ratio:
+     verifier finding 2. The eleventh pass set style.aspectRatio to w0/h0
+     unconditionally, silently overriding an author's own aspect-ratio;
+     this canvas's attributes (300x150, a 2:1 ratio) would render as 2:1
+     under that bug even though its own CSS asks for a perfect square. See
+     src/canvas/index.ts for the fix. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
@@ -216,5 +262,9 @@
 <canvas id="maxwidth-bare" width="300" height="150"></canvas>
 <canvas id="height-fixed-odd-width-auto" width="300" height="150"></canvas>
 <canvas id="maxwidth-binding" width="300" height="150"></canvas>
+<canvas id="gap-cap-removed" width="160" height="80"></canvas>
+<canvas id="gap-cap-loosened" width="300" height="150"></canvas>
+<div id="percent-cap-container"><canvas id="percent-cap-canvas" width="200" height="100"></canvas></div>
+<canvas id="authored-aspect-ratio" width="300" height="150"></canvas>
 </body>
 </html>
