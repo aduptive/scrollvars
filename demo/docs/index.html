@@ -257,6 +257,40 @@ Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
 enhancement contract holds in every documented case. Second pass (verifier
 findings on the same round): three more defects fixed.
 
+### Driver
+<ul><li><code>track()</code>'s returned untrack is identity-guarded: it deletes and unobserves</li></ul>
+  only if it is still the current entry for that element
+  (<code>entries.get(el) === entry</code>), so tracking the same element twice and
+  calling the first untrack no longer deletes the replacement. An explicit
+  untrack now also removes <code>sv-live</code> and every variable that entry wrote
+  (plus <code>--sv-scenes</code>); <code>.sv</code> stays, and the <code>once</code> fire-and-forget path
+  keeps <code>sv-live</code> (its self-delete already left the entry map, so the guard
+  makes the later untrack call a no-op there, which is the intended
+  behavior).
+<ul><li><code>init()</code> is transactional: it constructs the <code>ResizeObserver</code> before</li></ul>
+  installing any listener, so a throwing constructor leaves nothing to undo.
+  <code>track()</code> checks <code>initialized</code> after calling <code>init()</code> and returns a no-op
+  (no entry, no pin helper, no schedule, no <code>.sv</code> class) when it failed,
+  so the page stays static until <code>compat()</code> shims a <code>ResizeObserver</code> in and
+  a later <code>track()</code> call retries <code>init()</code> clean.
+<ul><li><code>refresh()</code> now forces one geometry pass through every entry on the very</li></ul>
+  next frame, including culled ones (<code>near === false</code>): content changes that
+  do not fire a resize (an accordion opening, an image swapped for a taller
+  one) previously left offscreen trackers stale until they scrolled back
+  into the culling margin.
+<ul><li>A tracked element with a <code>root</code> now measures against <code>root.clientTop</code> and</li></ul>
+  <code>root.clientHeight</code> instead of the root's bounding rect, so a bordered
+  scroll container shares one origin between <code>track()</code>'s pin math and
+  <code>scrollToScene()</code>'s scroll target. <code>track()</code> also observes the <code>root</code>
+  with the <code>ResizeObserver</code> (kept observed for the driver's lifetime rather
+  than refcounted per entry), so a resize of the scroller itself
+  reschedules a measure.
+<ul><li><code>--sv-pin-offset</code> now resolves <code>rem</code> (root font-size), <code>em</code> (the</li></ul>
+  element's own font-size), <code>vh</code>/<code>svh</code>/<code>lvh</code>/<code>dvh</code> (<code>window.innerHeight</code>)
+  and <code>vw</code> (<code>window.innerWidth</code>) to pixels; a bare number still reads as px.
+<ul><li><code>--sv-page</code> and <code>--sv-v</code> skip the style write when the serialized value</li></ul>
+  did not change from the previous frame.
+
 ### Presets and no-JS
 <ul><li><code>.sv-split</code> word/char spans compute to <code>display: inline-block</code>, so</li></ul>
   <code>sv-split-rise</code> can actually apply <code>translate</code> to them (non-replaced

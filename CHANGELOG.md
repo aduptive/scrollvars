@@ -6,6 +6,40 @@ Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
 enhancement contract holds in every documented case. Second pass (verifier
 findings on the same round): three more defects fixed.
 
+### Driver
+- `track()`'s returned untrack is identity-guarded: it deletes and unobserves
+  only if it is still the current entry for that element
+  (`entries.get(el) === entry`), so tracking the same element twice and
+  calling the first untrack no longer deletes the replacement. An explicit
+  untrack now also removes `sv-live` and every variable that entry wrote
+  (plus `--sv-scenes`); `.sv` stays, and the `once` fire-and-forget path
+  keeps `sv-live` (its self-delete already left the entry map, so the guard
+  makes the later untrack call a no-op there, which is the intended
+  behavior).
+- `init()` is transactional: it constructs the `ResizeObserver` before
+  installing any listener, so a throwing constructor leaves nothing to undo.
+  `track()` checks `initialized` after calling `init()` and returns a no-op
+  (no entry, no pin helper, no schedule, no `.sv` class) when it failed,
+  so the page stays static until `compat()` shims a `ResizeObserver` in and
+  a later `track()` call retries `init()` clean.
+- `refresh()` now forces one geometry pass through every entry on the very
+  next frame, including culled ones (`near === false`): content changes that
+  do not fire a resize (an accordion opening, an image swapped for a taller
+  one) previously left offscreen trackers stale until they scrolled back
+  into the culling margin.
+- A tracked element with a `root` now measures against `root.clientTop` and
+  `root.clientHeight` instead of the root's bounding rect, so a bordered
+  scroll container shares one origin between `track()`'s pin math and
+  `scrollToScene()`'s scroll target. `track()` also observes the `root`
+  with the `ResizeObserver` (kept observed for the driver's lifetime rather
+  than refcounted per entry), so a resize of the scroller itself
+  reschedules a measure.
+- `--sv-pin-offset` now resolves `rem` (root font-size), `em` (the
+  element's own font-size), `vh`/`svh`/`lvh`/`dvh` (`window.innerHeight`)
+  and `vw` (`window.innerWidth`) to pixels; a bare number still reads as px.
+- `--sv-page` and `--sv-v` skip the style write when the serialized value
+  did not change from the previous frame.
+
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so
   `sv-split-rise` can actually apply `translate` to them (non-replaced

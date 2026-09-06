@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 1.9 KB, full core incl. the slider 5.4 KB, styles 7.9 KB for every preset or 2.2 KB for the core part. A typical page ships ~3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 2.2 KB, full core incl. the slider 5.7 KB, styles 7.9 KB for every preset or 2.2 KB for the core part. A typical page ships ~3 KB on the wire.
 
 ## Why
 
@@ -26,7 +26,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 5.4 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 5.7 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -35,7 +35,7 @@ what differs is what those frames cost:
 Medians of 5 runs from the committed harness (`demo/bench/harness`,
 `npm i && node measure.mjs --runs=5` reproduces every number, engine order
 rotated; the low-end profile's 4× CPU throttle is set through CDP, nominal, not independently calibrated). Frame delivery ties at 60 fps in every row. The
-precise claim: not faster frames, the same frames for ~9× less bundle
+precise claim: not faster frames, the same frames for ~8× less bundle
 and a fraction of the heap; total CPU trades blows (ScrollVars wins
 shallow, batched GSAP wins deep subtrees. The published curve).
 
@@ -93,17 +93,17 @@ Per import, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzi
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 1.9 KB |
-| `track` + `scan` (zero-wrapper mode) | 2.9 KB |
+| `track` (the driver) | 2.2 KB |
+| `track` + `scan` (zero-wrapper mode) | 3.2 KB |
 | `slider` | 2.0 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 0.8 KB |
-| everything in `scrollvars` (the core entry) | 5.4 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 10.0 KB |
+| everything in `scrollvars` (the core entry) | 5.7 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 10.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~4.2 KB gzipped, total.**
+**~4.5 KB gzipped, total.**
 
 ## Mental model
 
