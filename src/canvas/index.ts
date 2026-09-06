@@ -508,8 +508,16 @@ export function mountEffect(
     // both together, only when both are even, so the halving stays exact)
     // is the fallback that also catches a cap already binding on `w0`/`h0`.
     // The canvas's REAL current attributes are restored once, after every
-    // perturbation below is done, never left at `w0`/`h0`.
-    if (!pinned) {
+    // perturbation below is done, never left at `w0`/`h0`. Guarded on
+    // `w0`/`h0` both being positive: a `width="0"` or `height="0"`
+    // attribute makes `ratio0` 0, Infinity or NaN, and every consumer below
+    // (this probe's own doubling/halving, and the free-axis division in the
+    // backing-store write further down) divides or multiplies by it. Skip
+    // the probe and the free-axis derivation entirely instead: `freeAxis`
+    // stays `undefined`, so this canvas is treated as CSS-sized, both axes
+    // rounded independently from the measured size, same as any canvas the
+    // probe cannot safely reason about.
+    if (!pinned && w0 > 0 && h0 > 0) {
       const current = { width: canvas.width, height: canvas.height }
       canvas.width = w0
       canvas.height = h0
