@@ -175,7 +175,8 @@
 .sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise { opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }</code></pre>
     <pre data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
   &lt;h2&gt;Title&lt;/h2&gt;

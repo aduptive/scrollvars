@@ -421,6 +421,41 @@ for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.r
   })
 }
 
+// ---- ADU-144: a "paste the preset" block is copied by a reader with no
+// core.css installed: every var(--sv-*) it reads needs its own fallback, or
+// the whole declaration (or, worse, the transition shorthand around it) is
+// invalid and the entrance never runs. Driver outputs a preset legitimately
+// reads bare (--sv-pin, --sv-word, --sv-live) already carry one in every
+// current block; this gate keeps that true instead of letting it drift back
+// (staggered-reveal's --sv-ease and split-reveal's --sv-duration/--sv-ease
+// shipped with no fallback, ADU-144).
+const PRESET_MARKER = /\/\*\s*(?:needs [\w./-]+\.css \(or paste the preset\)|the preset \([\w./-]+\.css\))\s*:\s*\*\//
+test('gallery snippets: every var(--sv-*) inside a paste-the-preset block carries a fallback', () => {
+  const missing = []
+  for (const fx of EFFECTS) {
+    if (!fx.css) continue
+    const marker = PRESET_MARKER.exec(fx.css)
+    if (!marker) continue
+    const block = stripComments(fx.css.slice(marker.index))
+    // a var the block declares itself (--sv-live: 0, say) is not a missing
+    // import: the pasted block is self-sufficient for it
+    const own = new Set([...block.matchAll(/(--sv-[\w-]+)\s*:/g)].map((m) => m[1]))
+    for (const v of [...block.matchAll(/var\(\s*(--sv-[\w-]+)\s*\)/g)].map((m) => m[1])) {
+      if (own.has(v)) continue
+      missing.push(`${fx.slug}: paste-the-preset block reads var(${v}) with no fallback`)
+    }
+  }
+  assert.deepEqual(missing, [], missing.join('\n'))
+})
+
+test('gallery split-reveal snippet: the pasted preset keeps the inline-block rule for aria-hidden spans', () => {
+  // non-replaced inline boxes (a bare <span>) ignore `translate`: without
+  // this rule the pasted preset compiles but every word sits still
+  // (styles/core.css 69-71 is the installed twin, ADU-144).
+  const fx = EFFECTS.find((e) => e.slug === 'split-reveal')
+  assert.match(fx.css, /\.sv-split\s*>\s*span\[aria-hidden\]\s*\{\s*display:\s*inline-block/)
+})
+
 test('consumer-idiom hook refs (no cast) type-check under the installed React major', () => {
   const errors = tscErrorsByFile.get(HOOK_REF_IDIOMS_FILE) ?? []
   assert.deepEqual(errors, [], `${HOOK_REF_IDIOMS_FILE} fails to type-check:\n${errors.join('\n')}`)
@@ -483,3 +518,134 @@ for (const fx of EFFECTS) {
     assert.deepEqual(missing, [], `preview uses ${missing.join(', ')} but the installed component does not`)
   })
 }
+
+// ---- ADU-144: RotatingWords must survive an empty word list (no interval
+// dividing by zero, no NaN --sv-word) and a shrinking one (no stranded
+// index). Neither bug is reachable from a single renderToStaticMarkup call:
+// effects never run there, and the bug only fires once the interval ticks.
+// This mounts the compiled component through react-dom/client against a
+// hand-rolled DOM, the same recipe test/react.test.mjs uses for ref-attach
+// tests (a container needs tagName and ownerDocument.defaultView.HTMLIFrameElement,
+// or react-dom's commit phase throws before anything mounts; style needs a
+// setProperty, since CSS custom properties are set that way, not as a plain
+// attribute). setInterval/clearInterval are stubbed so ticks are driven by
+// hand, not real time.
+function makeLiveNode(tag) {
+  const node = {
+    tagName: tag.toUpperCase(),
+    nodeType: 1,
+    childNodes: [],
+    attrs: {},
+    style: { setProperty(name, value) { node.style[name] = value } },
+    appendChild(child) { node.childNodes.push(child); child.parentNode = node; return child },
+    insertBefore(child, ref) {
+      const i = ref ? node.childNodes.indexOf(ref) : -1
+      if (i === -1) node.childNodes.push(child)
+      else node.childNodes.splice(i, 0, child)
+      child.parentNode = node
+      return child
+    },
+    removeChild(child) {
+      const i = node.childNodes.indexOf(child)
+      if (i !== -1) node.childNodes.splice(i, 1)
+      child.parentNode = null
+      return child
+    },
+    setAttribute(k, v) { node.attrs[k] = v },
+    removeAttribute(k) { delete node.attrs[k] },
+    getAttribute(k) { return node.attrs[k] ?? null },
+    addEventListener() {},
+    removeEventListener() {},
+    get textContent() { return node.childNodes.map((c) => c.textContent ?? '').join('') },
+    set textContent(v) { node.childNodes = v ? [{ nodeType: 3, textContent: v, parentNode: node }] : [] },
+  }
+  return node
+}
+
+test('cli component rotating-words: an empty list schedules no interval, a late list renders, a shrinking list clamps', async () => {
+  const { content } = COMPONENTS['rotating-words']
+  const src = join(dir, 'RotatingWordsLive.tsx')
+  writeFileSync(src, content)
+  const out = join(outDir, 'rotating-words-live.mjs')
+  await build({
+    entryPoints: [src], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const { RotatingWords } = await import(pathToFileURL(out).href)
+
+  const doc = makeLiveNode('#document')
+  doc.nodeType = 9
+  doc.createElement = (tag) => { const el = makeLiveNode(tag); el.ownerDocument = doc; return el }
+  doc.createTextNode = (text) => ({ nodeType: 3, textContent: text, parentNode: null })
+  doc.createComment = (text) => ({ nodeType: 8, textContent: text, parentNode: null })
+  doc.body = makeLiveNode('body')
+  doc.body.ownerDocument = doc
+  doc.documentElement = makeLiveNode('html')
+  doc.addEventListener = () => {}
+  doc.removeEventListener = () => {}
+  doc.activeElement = null
+  doc.HTMLIFrameElement = class HTMLIFrameElement {}
+  global.window = {
+    document: doc,
+    addEventListener() {},
+    removeEventListener() {},
+    HTMLIFrameElement: doc.HTMLIFrameElement,
+  }
+  doc.defaultView = global.window
+  global.document = doc
+  global.HTMLIFrameElement = doc.HTMLIFrameElement
+  global.HTMLElement = Object
+  global.navigator = { userAgent: 'node' }
+  global.IS_REACT_ACT_ENVIRONMENT = true
+
+  const timers = []
+  const realSetInterval = global.setInterval
+  const realClearInterval = global.clearInterval
+  global.setInterval = (fn) => { timers.push({ fn, live: true }); return timers.length }
+  global.clearInterval = (id) => { const t = timers[id - 1]; if (t) t.live = false }
+
+  try {
+    const React = (await import('react')).default
+    const { createRoot } = await import('react-dom/client')
+    const { act } = React
+
+    const container = doc.createElement('div')
+    const root = createRoot(container)
+    // React 18 and 19 pass this through style.setProperty differently (one
+    // stringifies the numeric value first): compare numerically, not by type
+    const wordVar = () => Number(container.childNodes[0].style['--sv-word'])
+
+    await act(async () => { root.render(React.createElement(RotatingWords, { words: [] })) })
+    assert.equal(wordVar(), 0, 'an empty list renders a valid index, not NaN')
+    assert.ok(!timers.some((t) => t.live), 'an empty list schedules no interval (the root-cause guard)')
+
+    // the list arrives late, after mount (the common case: fetched data)
+    await act(async () => {
+      root.render(React.createElement(RotatingWords, { words: ['fast', 'light', 'honest'] }))
+    })
+    assert.equal(wordVar(), 0)
+    assert.match(container.childNodes[0].textContent, /fast/, 'a late list renders')
+    const live = timers.find((t) => t.live)
+    assert.ok(live, 'a populated list schedules an interval')
+
+    // walk the index to the end of the list, then shrink the list under it
+    await act(async () => { live.fn() })
+    await act(async () => { live.fn() })
+    assert.equal(wordVar(), 2, 'index walked to the last word')
+    await act(async () => {
+      root.render(React.createElement(RotatingWords, { words: ['fast', 'light'] }))
+    })
+    assert.equal(wordVar(), 1, '--sv-word clamps to the shrunk list, not a stranded index')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.setInterval = realSetInterval
+    global.clearInterval = realClearInterval
+    delete global.window
+    delete global.document
+    delete global.HTMLIFrameElement
+    delete global.HTMLElement
+    delete global.navigator
+    delete global.IS_REACT_ACT_ENVIRONMENT
+  }
+})
