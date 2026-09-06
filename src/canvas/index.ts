@@ -152,7 +152,12 @@
  * set to `w0` (never a measurement, see the twelfth pass below) and
  * `style.aspectRatio` to `w0 / h0`, so the CSS engine derives height
  * directly from the ORIGINAL attribute ratio from then on, never through
- * this harness's own rounded backing-store attributes again.
+ * this harness's own rounded backing-store attributes again. An engine
+ * below the CSS `aspect-ratio` floor (inside the README's Safari 12.1
+ * canvas gate) cannot take that half: it keeps the width pin, writes no
+ * ratio, and stays UNPINNED (ADU-158), because "pinned" means the CSS
+ * engine now owns height. Unpinned, the free-axis derivation below keeps
+ * anchoring height to `ratio0` instead, which is what it is for.
  *
  * For a canvas that stays unpinned (CSS-sized, or a cap already binding), a
  * SECOND kind of probe, two single-axis perturbations (width alone, then
@@ -538,10 +543,18 @@ export function mountEffect(
       // canvas gate) reports it as `undefined`, not `''`: the DOM lib
       // types the property as always a `string`, so `typeof` is what
       // actually narrows it, a `??` fallback here is flagged unreachable.
+      // That engine cannot take the write either, and a canvas marked
+      // `pinned` on a property that never lands is the runaway all over
+      // again (ADU-158): `pinned` rounds both axes independently, which is
+      // only safe once the CSS engine, not this harness's own rewritten
+      // attribute ratio, owns the height. So below the floor: keep the
+      // width pin (that part does land, and it is what stops the width
+      // axis from following), write nothing that cannot take effect, and
+      // stay unpinned, so the probe keeps running and the free-axis
+      // derivation below anchors height to `ratio0` instead.
       const aspectRatio = window.getComputedStyle(canvas).aspectRatio
-      if (typeof aspectRatio !== 'string' || aspectRatio.startsWith('auto')) {
-        canvas.style.aspectRatio = `${w0} / ${h0}`
-      }
+      if (typeof aspectRatio !== 'string') return
+      if (aspectRatio.startsWith('auto')) canvas.style.aspectRatio = `${w0} / ${h0}`
       pinned = true
     }
 
