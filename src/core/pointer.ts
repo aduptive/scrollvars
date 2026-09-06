@@ -23,11 +23,16 @@ export function trackPointer(
   let raf = 0
   let last: HTMLElement | null = null
 
-  // any DESCENDANT matching selector, never the container itself and never
-  // an ancestor closest() walked past the container to find
+  // the container itself or any descendant matching selector, never an
+  // ancestor closest() walked past the container to find. container.contains
+  // is true for the container itself as well as for a descendant, and false
+  // for anything outside the container, so it alone tells the two apart:
+  // no separate `el !== container` check is needed (that check rejected the
+  // container itself too, which is how the gallery's hero is wired,
+  // `trackPointer(hero, { selector: '.sv-hero' })`, and dropped every move).
   const matchIn = (target: EventTarget | null): HTMLElement | null => {
     const el = (target as HTMLElement)?.closest?.(selector) as HTMLElement | null
-    return el && el !== container && container.contains(el) ? el : null
+    return el && container.contains(el) ? el : null
   }
 
   const flush = () => {

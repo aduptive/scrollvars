@@ -568,6 +568,18 @@ Docs read against the code merged by the five round-5 code tickets.
 <li>README's compat paragraph and <code>src/compat/index.ts</code>'s header comment (the two hand-kept copies) stay in agreement; this pass added text next to them without touching that pairing.</li>
 </ul>
 
+<h4>Pointer (blind review round 6, ADU-152, live regression)</h4>
+<ul>
+<li><code>trackPointer()</code> accepts a container that matches its own selector again. Round 5's ancestor fix (<code>container.contains(match) &amp;&amp; match !== container</code>) closed the ancestor case it was written for but also closed the SELF case, which is how the gallery's flagship hero is wired (<code>trackPointer(hero, { selector: '.sv-hero' })</code> on the hero itself): every pointermove was silently dropped, <code>--mx</code>/<code>--my</code> never wrote, and the orb parallax was dead. <code>container.contains(match)</code> alone still rejects an ancestor (an ancestor is never inside its own descendant) while allowing the container itself (<code>Node.contains()</code> is true for the node itself), so the extra <code>match !== container</code> was never needed.</li>
+</ul>
+
+<h4>Testing (round 6, ADU-152 fix pass)</h4>
+<ul>
+<li>The gallery regression guard's own selector match was a false negative: its <code>\b${cls}\b</code> boundaries treat a hyphen as a word edge, so a selector reading <code>.hero</code> passed as long as ANY sibling class started with <code>hero-</code> (<code>hero-orb</code>, <code>hero-inner</code>), even though no element carries the exact class <code>hero</code>. It now splits each <code>class</code>/<code>className</code> attribute on whitespace and compares tokens exactly, and requires the CSS-side match to not be followed by a further word character or hyphen either. Proved red by mutating <code>hero-cinematic</code>'s React selector to <code>.hero</code>, proved green again on revert.</li>
+<li>The same guard now also scans <code>previewScript</code>, the field <code>hero-cinematic</code> actually renders through in the gallery (the exact path ADU-152 broke in production); it previously scanned only <code>preview</code>, <code>css</code>, <code>tailwind</code> and <code>react</code>.</li>
+<li><code>trackPointer()</code> teardown while the last hovered element IS the self-matched container (the hero's own wiring) is now a locked-in test: the runtime already cleared <code>--mx</code>, <code>--my</code> and <code>sv-pointer-leave</code> correctly there, this closes the coverage gap.</li>
+</ul>
+
 <h4>Slider (blind review round 6)</h4>
 <ul>
 <li>The slider re-asserts the classes it owns on every measure, the way the driver does for its live flag: <code>sv-slider</code>, <code>sv-slider-y</code> and <code>sv-draggable</code> on the rail, <code>sv-active</code> on the slide nearest the centre. A framework that owns the rail's <code>className</code> (React re-rendering it when a prop like <code>perView</code> changes, with no retrack behind it) used to drop the first three, and a consumer restyling a slide dropped <code>sv-active</code> until the active index happened to change. Each is one <code>classList</code> read per measure, with a write only when the DOM disagrees.</li>

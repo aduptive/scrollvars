@@ -3,7 +3,10 @@ import { test } from 'node:test'
 
 // Minimal element stub: a manual `.parent` chain drives closest()/contains(),
 // a classList backed by a Set, inline vars go through style.setProperty.
-function makeEl({ isTilt = false, parent = null } = {}) {
+// `matchSelector`, when given, is the ONE selector this element answers to
+// (any string), covering a self-targeting container (e.g. '.sv-hero'). The
+// older `isTilt` flag is kept as shorthand for the default '.sv-tilt'.
+function makeEl({ isTilt = false, matchSelector = null, parent = null } = {}) {
   const vars = {}
   const classes = new Set()
   const el = {
@@ -34,6 +37,7 @@ function makeEl({ isTilt = false, parent = null } = {}) {
       return false
     },
     matches(sel) {
+      if (matchSelector !== null) return sel === matchSelector
       return sel === '.sv-tilt' && el.isTilt
     },
     closest(sel) {
@@ -48,8 +52,10 @@ function makeEl({ isTilt = false, parent = null } = {}) {
   return el
 }
 
-function makeContainer(parent = null) {
-  const el = makeEl({ parent })
+// gives any element a fireable addEventListener/removeEventListener pair,
+// so a self-targeting container built with matchSelector can be wired up
+// the same way makeContainer() wires up a plain one
+function withListeners(el) {
   const listeners = {}
   el.addEventListener = (type, fn) => {
     listeners[type] = fn
@@ -59,6 +65,10 @@ function makeContainer(parent = null) {
   }
   el.fire = (type, event) => listeners[type]?.(event)
   return el
+}
+
+function makeContainer(parent = null) {
+  return withListeners(makeEl({ parent }))
 }
 
 function stubFrame() {
@@ -95,6 +105,32 @@ test('trackPointer ignores a .sv-tilt ancestor of the container: match must be i
   stop()
 })
 
+test('trackPointer accepts a container that matches its own selector: self-match works (ADU-152)', async () => {
+  const rafCb = stubFrame()
+
+  // this is how the gallery's flagship hero is wired: the container IS the
+  // target (usePointer({ selector: '.sv-hero' }) on the hero itself).
+  // container.contains(container) is true (Node.contains includes the node
+  // itself), so a move over a plain child must still resolve, through
+  // closest(), all the way up to the container and be accepted.
+  const container = withListeners(makeEl({ matchSelector: '.sv-hero' }))
+  const child = makeEl({ parent: container })
+
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container, { selector: '.sv-hero' })
+
+  container.fire('pointermove', { target: child, clientX: 75, clientY: 25 })
+
+  const cb = rafCb()
+  assert.ok(cb, 'a frame is scheduled: closest(.sv-hero) from the child bubbles up to the container itself')
+  cb()
+
+  assert.notEqual(container.vars['--mx'], undefined, 'the container receives --mx from its own selector match')
+  assert.notEqual(container.vars['--my'], undefined, 'the container receives --my from its own selector match')
+
+  stop()
+})
+
 test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last hovered element', async () => {
   const rafCb = stubFrame()
 
@@ -115,4 +151,83 @@ test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last 
   assert.equal(card.vars['--mx'], undefined, 'teardown clears --mx')
   assert.equal(card.vars['--my'], undefined, 'teardown clears --my')
   assert.equal(card.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave')
+})
+
+test('trackPointer teardown clears --mx/--my when the last hovered element IS the container (self-match, ADU-152)', async () => {
+  const rafCb = stubFrame()
+
+  // same self-targeting shape as the hero-cinematic wiring above, but here
+  // the teardown races the pointer still being "over" the container itself,
+  // so `last` and the container are the same node.
+  const container = withListeners(makeEl({ matchSelector: '.sv-hero' }))
+  const child = makeEl({ parent: container })
+
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container, { selector: '.sv-hero' })
+
+  container.fire('pointermove', { target: child, clientX: 75, clientY: 25 })
+  assert.ok(rafCb(), 'a frame was scheduled for the self-match')
+  rafCb()()
+  assert.notEqual(container.vars['--mx'], undefined, 'flushed: container mid-tilt on its own selector')
+
+  // teardown while the container is its own last hovered element
+  stop()
+
+  assert.equal(container.vars['--mx'], undefined, 'teardown clears --mx from the self-matched container')
+  assert.equal(container.vars['--my'], undefined, 'teardown clears --my from the self-matched container')
+  assert.equal(container.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave on the self-matched container')
+})
+
+// gallery regression guard (ADU-152): every explicit `selector: '...'` an
+// effect or installed component passes to trackPointer()/usePointer() must
+// resolve inside its own container, not to something outside it. Each of
+// these blocks is a self-contained snippet (the whole markup the call
+// attaches to, plus, for a JSX/TSX block, its own CSS), so the selector's
+// class appearing anywhere else in the SAME block, as a class attribute or
+// a CSS rule, is proof it targets the container itself or a descendant:
+// there is no ancestor markup described in these strings for it to hit.
+// Scans preview/css/tailwind/react/previewScript on EFFECTS and content on
+// COMPONENTS: previewScript is the exact field hero-cinematic's live-rendered
+// attach script uses (fx-data.mjs), the path that shipped the ADU-152 bug.
+test('gallery: every explicit usePointer/trackPointer selector in fx-data.mjs resolves inside its own container markup', async () => {
+  const { EFFECTS, COMPONENTS } = await import('../scripts/fx-data.mjs')
+
+  const blocks = []
+  for (const effect of EFFECTS) {
+    for (const key of ['preview', 'css', 'tailwind', 'react', 'previewScript']) {
+      if (typeof effect[key] === 'string') blocks.push([`EFFECTS.${effect.slug}.${key}`, effect[key]])
+    }
+  }
+  for (const [slug, component] of Object.entries(COMPONENTS)) {
+    if (typeof component.content === 'string') blocks.push([`COMPONENTS.${slug}`, component.content])
+  }
+
+  let checked = 0
+  for (const [label, text] of blocks) {
+    for (const m of text.matchAll(/selector:\s*'([^']+)'/g)) {
+      const cls = m[1].replace(/^\./, '')
+      // strip the option itself first: it is written as '.cls' too, and
+      // would otherwise "prove" its own claim
+      const rest = text.replace(/selector:\s*'[^']+'/g, '')
+
+      // exact token match, not a substring: a plain \bcls\b regex reads a
+      // hyphen as a word boundary too, so '.hero' would "resolve" against
+      // class="hero-orb" even though the exact class hero never appears.
+      // Split every class/className attribute value on whitespace and
+      // compare tokens instead.
+      const inMarkup = [...rest.matchAll(/class(?:Name)?=["']([^"']*)["']/g)].some((attr) =>
+        attr[1].split(/\s+/).includes(cls)
+      )
+      // same trap on the CSS side (`.hero-orb` matching a `.hero` selector):
+      // the boundary after cls must also reject a following hyphen.
+      const inCss = new RegExp(`\\.${cls}(?![\\w-])`).test(rest)
+
+      checked++
+      assert.ok(
+        inMarkup || inCss,
+        `${label}: selector '${m[1]}' has no class attribute or CSS rule anywhere else in this block, so it cannot resolve to the container or a descendant`
+      )
+    }
+  }
+  assert.ok(checked > 0, 'sanity: at least one explicit pointer selector was actually checked')
 })
