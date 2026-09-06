@@ -38,7 +38,8 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
 .sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise { opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
 ```
 
@@ -289,7 +290,7 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP
 
 ### React
 ```tsx
-const tl = useRef<gsap.core.Timeline>(null)
+const tl = useRef<gsap.core.Timeline | null>(null)
 useEffect(() => {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -389,11 +390,13 @@ Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-d
 /* the preset (styles/core.css): */
 .sv, [data-sv] { --sv-live: 0; }
 .sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split > span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise > span {
   opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
 
 /* scrub instead of play: the same spans feed sv-reading directly */

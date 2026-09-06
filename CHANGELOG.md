@@ -970,6 +970,31 @@ against the code ADU-129 to ADU-132 shipped.
   script hide entrances before paint and the pin helper write heights on
   attach.
 
+### Gallery (blind review round 5)
+Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.
+- `StickySteps`'s reduced-motion block now resets `.st-steps > li` and
+  `.st-dots i` too (opacity 1, no translate, no scale), not only `.st-shot`:
+  the pinned stage unpins under reduced motion by design, so `--sv-scene`
+  keeps advancing, and every step not at the current scene stayed at 30%
+  opacity and slid with the raw scroll forever. The installed gate's
+  reduced-motion pass asserts every step and dot resets, for `sticky-steps`.
+- `RotatingWords` guards an empty word list (no interval scheduled, so
+  `(i + 1) % 0` never runs and `--sv-word` never goes `NaN`) and clamps the
+  index on the render that sees a shrunk list, same shape as `useScenes`.
+  Previously a late word list (fetched after mount) could tick once against
+  an empty array, poison the index to `NaN`, and never recover once real
+  words arrived; a shrinking list stranded the index past the end.
+- The staggered-reveal and split-reveal "paste the preset" snippets carry a
+  fallback on every `var(--sv-*)` they read (`--sv-ease`, split-reveal's
+  `--sv-duration` and `--sv-stagger` too): without `core.css` the bare vars
+  made the `transition` shorthand invalid and the entrance snapped instead
+  of animating. split-reveal's snippet also regained
+  `.sv-split > span[aria-hidden] { display: inline-block }`
+  (`styles/core.css`'s own rule): without it `translate` does nothing on
+  the non-replaced inline spans. The GSAP React snippet's `useRef` is typed
+  `gsap.core.Timeline | null`, matching the installed `GsapScrub` twin,
+  instead of a type that never allows the `null` the ref is assigned.
+
 ### Scanner (blind review round 5)
 - `scan()`'s `MutationObserver` callback no longer untracks a node that is
   still connected. A DOM "replace all" (`parent.replaceChildren(...)`,

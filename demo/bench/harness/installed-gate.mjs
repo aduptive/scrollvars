@@ -178,6 +178,44 @@ const BEHAVIOR = {
   },
 }
 
+// ---- the key behavior of each Section UNDER prefers-reduced-motion, where
+// it differs from the plain no-JS check above. One entry per effect that
+// needs one: sticky-steps unpins its stage there (pin.css), so --sv-scene
+// keeps advancing (the driver never stops writing it) while the CSS must
+// reset every step and dot to fully opaque and unmoved, or the ones not at
+// the current scene stay dimmed forever and the copy slides with the raw
+// scroll (ADU-144). Read at whatever scroll position the reduced-motion
+// sweep below already left the page at: only the step whose --i equals the
+// current scene has st-d=0, so any other step still animated by st-d fails
+// this the moment more than one step exists.
+const REDUCED_BEHAVIOR = {
+  'sticky-steps': {
+    what: 'every step and dot resets to fully opaque and unmoved',
+    async run(page) {
+      // the stage unpins under reduced motion (pin.css restores its authored,
+      // natural height): the generic sweep above (scroll to document bottom,
+      // back to one viewport down) can leave a short, unpinned block already
+      // scrolled fully past, --sv-scene pinned at 0. Scroll by the element's
+      // own geometry instead, same approach as the BEHAVIOR check above.
+      await page.evaluate(() => {
+        const el = document.querySelector('.sv-steps')
+        scrollTo(0, el.getBoundingClientRect().top + scrollY + el.offsetHeight * 0.9)
+      })
+      await sleep(300)
+      return page.evaluate(() => {
+        const scene = getComputedStyle(document.querySelector('.sv-steps')).getPropertyValue('--sv-scene').trim()
+        const read = (el, prop) => `${getComputedStyle(el).opacity}/${getComputedStyle(el)[prop]}`
+        const steps = [...document.querySelectorAll('.st-steps > li')].map((el) => read(el, 'translate'))
+        const dots = [...document.querySelectorAll('.st-dots i')].map((el) => read(el, 'scale'))
+        return {
+          ok: steps.every((s) => s === '1/none') && dots.every((d) => d === '1/none'),
+          detail: `--sv-scene=${scene} steps=[${steps.join(', ')}] dots=[${dots.join(', ')}]`,
+        }
+      })
+    },
+  },
+}
+
 // ---- the page: only what the registry told the consumer to import ---------
 const page = ({ css, markup, engine, script }) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>installed</title>
@@ -309,6 +347,11 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
           reducedInert.length === inertNoJs.length,
           `${inertNoJs.length} → ${reducedInert.length}: ${reducedInert.join(' ')}`
         )
+        const reducedBehavior = REDUCED_BEHAVIOR[fx.slug]
+        if (reducedBehavior) {
+          const result = await reducedBehavior.run(r)
+          check(`installed(${tag}) ${fx.slug}: reduced motion, ${reducedBehavior.what}`, result.ok, result.detail)
+        }
         await r.close()
       }
     }

@@ -31,7 +31,8 @@ export const EFFECTS = [
 .sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise { opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
@@ -293,7 +294,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 <!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() => tl.progress(
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
-    react: `const tl = useRef<gsap.core.Timeline>(null)
+    react: `const tl = useRef<gsap.core.Timeline | null>(null)
 useEffect(() => {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -415,11 +416,13 @@ const canvasRef = useCanvasEffect({
 /* the preset (styles/core.css): */
 .sv, [data-sv] { --sv-live: 0; }
 .sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split > span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise > span {
   opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
@@ -1161,6 +1164,11 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 .sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+/* Placed after the rules above (same specificity, later wins): the stage is
+   unpinned under reduced motion, so --sv-scene keeps writing but every
+   non-active step would otherwise sit at 30% opacity forever and the copy
+   would slide with the raw scroll. Reset both the steps and the dots. */
+@media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 \`
 
@@ -1616,13 +1624,23 @@ export function RotatingWords({
   className?: string
 }) {
   const [index, setIndex] = React.useState(0)
+  // A shrinking list strands the last index, same shape as useScenes: clamp
+  // here, on the render that sees the new length, instead of waiting for the
+  // next tick. An empty list schedules no interval at all: (i + 1) % 0 is
+  // NaN, and NaN never recovers ((NaN + 1) % n is NaN for any n), so a list
+  // that arrives late, after a tick already fired on an empty one, would
+  // stay NaN forever.
+  const last = Math.max(words.length - 1, 0)
+  if (index > last) setIndex(last)
+  const current = Math.min(index, last)
   React.useEffect(() => {
+    if (words.length === 0) return
     const t = setInterval(() => setIndex((i) => (i + 1) % words.length), interval)
     return () => clearInterval(t)
   }, [words.length, interval])
   return (
     <span className={className ? \`sv-words \${className}\` : 'sv-words'}
-      style={{ '--sv-word': index } as React.CSSProperties}>
+      style={{ '--sv-word': current } as React.CSSProperties}>
       {words.map((w) => (
         <span key={w}>{w}</span>
       ))}
