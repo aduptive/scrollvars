@@ -479,6 +479,17 @@ against the code ADU-129 to ADU-132 shipped.
 <li>The "SSR, SEO and the Lighthouse load profile stay untouched" claim is scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint script hide entrances before paint and the pin helper write heights on attach.</li>
 </ul>
 
+<h4>React (blind review round 5)</h4>
+<ul>
+<li><code>&lt;Slider></code> composes a consumer <code>onPointerEnter</code> / <code>onPointerLeave</code> with autoplay's hover pause instead of letting the props spread replace it. Both are public props (the component extends <code>HTMLAttributes</code>), so a consumer <code>onPointerEnter</code> used to silence the pause entirely, and a lone consumer <code>onPointerLeave</code> left the slider hovering forever, autoplay never resuming after the first hover.</li>
+<li><code>&lt;Slider></code>'s responsive <code>perView</code> stylesheet is rendered as raw text (<code>dangerouslySetInnerHTML</code>) instead of a <code>&lt;style></code> child. react-dom 18.3.1 escapes <code>"</code> to <code>&amp;quot;</code> inside a <code>&lt;style></code>, 19 does not, and <code>&lt;style></code> is raw text so the entity never decodes: on React 18 the server dropped every <code>[data-sv-uid="..."]</code> rule the responsive map emits, and hydration did not repair it. Same root as the gallery sections, which already render their CSS this way. The raw sink also drops React's <code>&lt;/style</code> escaping, which is what kept an interpolated value inert, so <code>perViewCss</code> coerces every part it interpolates with <code>Number()</code>: a <code>perView</code> off untyped data (a CMS) renders <code>--sv-per-view:NaN</code>, a declaration the CSS parser drops, and can neither close the element nor emit a tag. No CSP change, the sheet is still one inline <code>&lt;style></code>.</li>
+</ul>
+
+<h4>Testing (blind review round 5)</h4>
+<ul>
+<li><code>test/react.test.mjs</code>'s <code>flushFrames</code> rethrows what a frame scheduled by the running test throws, and keeps swallowing only frames left pending by earlier tests (queued callbacks carry the test that scheduled them). A driver or canvas frame that blew up could not fail a React test before. A frame scheduled from inside a running frame inherits that frame's test, not the flushing one, so a leftover canvas loop rescheduling itself does not blow up whichever later test happens to flush it twice. Two harness tests pin both halves.</li>
+</ul>
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

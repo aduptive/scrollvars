@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { beforeEach, test } from 'node:test'
 
 // Server-render the React layer with renderToStaticMarkup: no DOM, no
 // jsdom: exactly what Next.js does on the server, so this also guards SSR.
@@ -49,6 +49,66 @@ test('react: Slider without autoplay has no pause control and is polite', async 
   )
   assert.doesNotMatch(html, /sv-pause/)
   assert.match(html, /aria-live="polite"/)
+})
+
+test('react: Slider responsive perView survives SSR under both React majors', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: 1.2, md: 2.5 } },
+      React.createElement('div', null, 'one')
+    )
+  )
+  // react-dom 18.3.1 escapes `"` to `&quot;` inside a <style> child (19 does
+  // not), and <style> is raw text: the entity never decodes, so every scoped
+  // rule would be dropped on the server and hydration never repairs it
+  assert.match(html, /\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:1\.2\}/)
+  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="/)
+  assert.doesNotMatch(html, /&quot;/)
+})
+
+test('react: a perView value cannot break out of the Slider <style>', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // that sheet goes through dangerouslySetInnerHTML, so React's `</style`
+  // escaping is gone: a perView off a CMS is untyped data, and only the
+  // Number() coercion in perViewCss keeps this inert
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: '1}</style><script>window.__pwned=1</script><style>a{b:c', md: 2 } },
+      React.createElement('div', null, 'one')
+    )
+  )
+  // one <style>, closed once: the value could not end the element. Before the
+  // coercion this rendered a literal </style> and a live <script> in Chrome
+  assert.equal(html.match(/<style>/g).length, 1)
+  assert.equal(html.match(/<\/style>/g).length, 1)
+  assert.doesNotMatch(html, /<script/)
+  // the declaration still renders, invalid so the parser drops it
+  assert.match(html, /--sv-per-view:NaN\}/)
+})
+
+test('react: numeric perView renders its rules unchanged, keys and values', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: 1.5, md: 3, 900: 4 } },
+      React.createElement('div', null, 'one')
+    )
+  )
+  assert.match(html, /\.sv-slider\{--sv-per-view:1\.5\}/)
+  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:3\}\}/)
+  // a raw min-width key stays that number
+  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:4\}\}/)
+  assert.doesNotMatch(html, /NaN/)
 })
 
 test('react: Scenes forwards options without leaking props to the DOM', async () => {
@@ -196,18 +256,36 @@ let domReady = false
 // later schedule() in the process.
 const rafQueue = []
 let rafSeq = 0
+// which test scheduled a frame: a throwing frame from the test running now
+// has to fail it, one left pending by an earlier test must not
+let rafEpoch = 0
+// the epoch of the frame flushFrames is running, if any. A frame scheduled
+// from inside another frame inherits its scheduler's epoch instead of the
+// flushing test's: a self-rescheduling leftover (a canvas loop) would
+// otherwise be adopted by whichever later test flushes it twice, and blow up
+// a test that never scheduled it.
+let runningEpoch = null
+beforeEach(() => {
+  rafEpoch++
+})
 function flushFrames() {
   // one flush runs exactly the frames pending when it started. Draining
   // until the queue empties would never return for a self-rescheduling
   // frame (a canvas loop, a slider glide), which queues its next frame
   // from inside this one.
   const batch = rafQueue.splice(0)
-  for (const { fn } of batch) {
-    // frames left behind by earlier tests' torn-down widgets (a destroyed
-    // slider's measure, a canvas loop) are not the flushing test's business
+  for (const { fn, epoch } of batch) {
+    const outer = runningEpoch
+    runningEpoch = epoch
     try {
       fn(0)
-    } catch {}
+    } catch (error) {
+      // frames left behind by earlier tests' torn-down widgets (a destroyed
+      // slider's measure, a canvas loop) are not the flushing test's business
+      if (epoch === rafEpoch) throw error
+    } finally {
+      runningEpoch = outer
+    }
   }
 }
 
@@ -262,7 +340,7 @@ function ensureDom() {
   // next flush
   global.requestAnimationFrame = (fn) => {
     const id = ++rafSeq
-    rafQueue.push({ id, fn })
+    rafQueue.push({ id, fn, epoch: runningEpoch ?? rafEpoch })
     return id
   }
   global.cancelAnimationFrame = (id) => {
@@ -424,6 +502,97 @@ test('react: useSlider does not drive a destroyed handle after the tracked node 
   assert.equal(rafCalls.length, 0, 'no glide starts against a destroyed handle')
 
   await act(async () => { root.unmount() })
+})
+
+// react-dom commits host props onto the DOM node under an internal key. The
+// fake DOM has no event system (nothing delegates pointerover into React) and
+// renderToStaticMarkup never renders handlers at all, so calling the props
+// react-dom committed is the closest thing to a real hover here.
+function hostProps(node) {
+  const key = Object.keys(node).find((k) => k.startsWith('__reactProps$'))
+  assert.ok(key, 'react-dom committed props onto the host node')
+  return node[key]
+}
+
+test('react: Slider composes consumer pointer handlers with the autoplay hover pause', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  // the autoplay interval callback, captured: firing it by hand keeps the
+  // test off the clock. A tick that reaches the handle starts a glide, which
+  // schedules a frame; a paused one returns before it ever touches the handle
+  const realSetInterval = global.setInterval
+  let tick = () => {}
+  global.setInterval = (fn) => {
+    tick = fn
+    return 0
+  }
+
+  const render = async (props) => {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(
+        React.createElement(
+          Slider,
+          { autoplay: 4000, ...props },
+          React.createElement('div', null, 'one'),
+          React.createElement('div', null, 'two')
+        )
+      )
+    })
+    const shell = container.firstChild
+    return {
+      root,
+      props: hostProps(shell),
+      advanced: () => {
+        const frames = []
+        const realRaf = global.requestAnimationFrame
+        global.requestAnimationFrame = (fn) => {
+          frames.push(fn)
+          return realRaf(fn)
+        }
+        try {
+          tick()
+        } finally {
+          global.requestAnimationFrame = realRaf
+        }
+        return frames.length > 0
+      },
+    }
+  }
+
+  try {
+    const seen = []
+    const both = await render({
+      onPointerEnter: (e) => seen.push(['enter', e]),
+      onPointerLeave: (e) => seen.push(['leave', e]),
+    })
+    assert.equal(both.advanced(), true, 'autoplay rotates while nothing hovers')
+
+    both.props.onPointerEnter({ type: 'pointerenter' })
+    assert.equal(seen.length, 1, "the consumer's onPointerEnter still runs")
+    assert.equal(both.advanced(), false, 'hovering pauses the rotation')
+
+    both.props.onPointerLeave({ type: 'pointerleave' })
+    assert.equal(seen.length, 2, "the consumer's onPointerLeave still runs")
+    assert.equal(both.advanced(), true, 'leaving resumes it')
+    await act(async () => { both.root.unmount() })
+
+    // a lone consumer onPointerLeave used to replace the internal one and
+    // strand hovering: paused forever after the first hover
+    const leaveOnly = await render({ onPointerLeave: () => {} })
+    leaveOnly.props.onPointerEnter({ type: 'pointerenter' })
+    assert.equal(leaveOnly.advanced(), false, 'hovering pauses')
+    leaveOnly.props.onPointerLeave({ type: 'pointerleave' })
+    assert.equal(leaveOnly.advanced(), true, 'a lone consumer onPointerLeave does not strand hovering')
+    await act(async () => { leaveOnly.root.unmount() })
+  } finally {
+    global.setInterval = realSetInterval
+  }
 })
 
 test('react: useTrack settles to one tracked node under StrictMode double-invocation, no leak on unmount', async () => {
@@ -690,4 +859,31 @@ test('harness: one flush runs one batch of frames, and cancel drops a pending on
   global.cancelAnimationFrame(pending)
   flushFrames()
   assert.equal(runs, 2, 'a cancelled frame never runs')
+})
+
+test('harness: a frame this test scheduled fails it when it throws', async () => {
+  await ensureDomAndWarmDriver()
+  flushFrames() // clear whatever earlier tests left pending
+
+  global.requestAnimationFrame(() => {
+    throw new Error('a driver frame blew up')
+  })
+  assert.throws(() => flushFrames(), /a driver frame blew up/)
+
+  // left pending on purpose: the next test proves a leftover stays swallowed,
+  // and so does the successor it reschedules from inside that later flush
+  global.requestAnimationFrame(() => {
+    global.requestAnimationFrame(() => {
+      throw new Error('a torn-down widget blew up')
+    })
+  })
+})
+
+test('harness: a frame left pending by an earlier test is still swallowed', async () => {
+  await ensureDomAndWarmDriver()
+  assert.doesNotThrow(() => flushFrames())
+  // the leftover rescheduled itself from inside that flush, the way a canvas
+  // loop does: the successor belongs to the test that scheduled its parent,
+  // not to whichever test happens to be flushing
+  assert.doesNotThrow(() => flushFrames())
 })
