@@ -17,7 +17,9 @@ const STYLE_NOTES = {
   pin: 'sv-stage, curtain, rail, deck, reading, counter, range',
   slider: 'carousel rails',
   tilt: 'pointer tilt',
-  state: 'toggles, popover/dialog, rotating words, acts',
+  // an acts clock driven by the scroll reads --sv-live, and core.css is the
+  // only stylesheet that declares it: state.css alone leaves it at act zero
+  state: 'toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too)',
   ui: 'marquee, accordion',
 }
 
@@ -59,7 +61,7 @@ let agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
 agents = stamp(agents, 'vars', varsMarkdown())
 agents = agents.replace(/^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`)
 agents = agents.replace(/^\/\/ also styles\/pin\.css[^\n]*$/m,
-  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}), ui.css (${sizes.css.ui}), per page needs`)
+  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`)
 writeFileSync(join(root, 'AGENTS.md'), agents)
 
 // llms.txt = AGENTS.md with the machine-facing header

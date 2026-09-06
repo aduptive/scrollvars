@@ -555,6 +555,94 @@ findings on the same round): three more defects fixed.
   now casts the ref to `React.RefObject<T>` at the JSX call site, the same
   shape `GsapScrub` already needed for its own mutable `useRef`.
 
+### Installed components (blind review round 4)
+- `stats-countup` declares `core.css` as well as `state.css`. The acts clock
+  is `calc(var(--sv-live) * var(--sv-acts-count))` and `--sv-live` is
+  declared in `core.css` alone, so a consumer who imported exactly what the
+  registry asked for got `--sv-act: 0` the moment the driver booted, and
+  every number rendered as 0. Without JS the numbers were correct, which is
+  why nothing caught it: the gallery page loads the whole `styles.css`.
+- `StatsCountup`'s markup is valid again: the screen-reader value and the
+  `aria-hidden` counter both sit inside the `<dd>` (`.count`). The readable
+  value used to be a `<span>` sibling of the `<dd>` inside `<dl><div>`, which
+  is outside the definition-list content model, and the only `<dd>` was
+  `aria-hidden`, so every term reached assistive tech with no definition.
+- Every installed component renders its constant CSS with
+  `dangerouslySetInnerHTML` instead of a `<style>` text child. React 18's
+  `renderToStaticMarkup` escapes `>` inside `<style>` (React 19 does not),
+  and `<style>` is a raw-text element, so the entity never decodes and every
+  child-combinator rule was dropped: under React 18 SSR, `sticky-steps` lost
+  the whole `--st-d` rule and its shots stopped crossfading. CSP is unchanged
+  from any other inline `<style>`: a `style-src` nonce or hash.
+- `test/cli-components.test.mjs` compares the React 18 render with the React
+  19 one instead of returning early: that skip is what let the corrupted
+  React 18 markup ship unseen.
+- New unit gate: an effect must declare the stylesheets the presets it uses
+  read variables from, so a rule reading `var(--x)` with no fallback can
+  never again be one undeclared import away from computing to nothing.
+- Second pass (verifier findings on 91e2b9c): the gallery's CSS tab for
+  `stats-countup` still generated the number on the `<dd>` itself
+  (`.stats .stat::after`), while its React tab had moved `data-suffix` onto a
+  `.count` span inside that `<dd>`. Copy both tabs, which is what the page
+  invites, and `::after` resolved `counter(n) ""`: the number rendered on the
+  `<dd>` without its suffix, on top of the readable value in the span, so the
+  block announced "248+" and then "248". The double announcement this fix
+  removed, reintroduced in the documented snippet. The CSS tab, the Tailwind
+  tab and the React tab now all carry the `.count` span, the rule is
+  `.stats .stat .count::after`, and no `.stat::after` is left.
+  `timeline-scrub` shipped the same split (`.tl-year::after` against a React
+  tab with a `.tl-count` span) and is fixed the same way.
+- The requires closure gate iterated `requires.styles` itself, so it could
+  only ever check stylesheets an effect had already declared: a component
+  using a preset from a stylesheet named nowhere had no rule to read and
+  stayed green, and `sticky-steps` on `styles: ['core']`, with `.sv-stage`
+  and the `pin.css` that owns it dropped, passed. Class and variable
+  ownership is now mapped over all six stylesheets, and an effect must
+  declare whichever one owns each class it renders, whichever one those
+  rules read their variables from, and whichever one declares a variable its
+  own embedded CSS reads without a fallback.
+
+### Testing (blind review round 4)
+- New harness step, the isolated installation gate
+  (`demo/bench/harness/installed-gate.mjs`, `render-installed.mjs`, wired
+  into `npm run test:e2e`): per effect in `demo/fx/registry.json` it installs
+  the component into a temp dir with the real CLI, renders it with its
+  `previewProps` under React 18 and React 19, and loads it into headless
+  Chrome with ONLY the stylesheets `requires.styles` names, plus the engine.
+  It asserts the page renders complete with no engine at all, that the
+  effect's key behavior happens with the engine (the counters resolve above
+  zero, the pin clock scrubs the year counter, the shots crossfade, the hero
+  is split and live), that reduced motion hides nothing and adds no inert
+  content, that a `<dl>`'s content model and terms hold, and it counts the
+  focusable elements and fails if any is unreachable: the four Sections ship
+  none with their preview props, so that last one is a guard, not a claim.
+  Proved red on the three defects above before they were fixed.
+- `npm run test:e2e` installs the isolated React 18 first
+  (`scripts/react18-install.mjs`, the same one `test:react18` uses): the gate
+  renders under both majors and fails loudly rather than silently halving
+  its coverage.
+- New unit gate on the gallery tabs of a Section: every class the React tab
+  renders is shown or styled in the CSS tab, and every `content:`
+  pseudo-element the CSS tab generates hangs off a class the React tab
+  renders. The two tabs are one block spelled twice, and a reader pastes
+  both. Proved red on both pane splits above.
+- Second pass (verifier finding on fe4d844): that gallery gate compared two
+  flat SETS of class names, so either half of the pane split it repaired
+  stayed green on its own. The rule back on `.stats .stat::after` with the
+  `.count` span still in the CSS-tab markup announces "248+" then "248"
+  (`content` computing `counter(n) ""`), the original defect verbatim; the
+  mirror, the rule on `.count` with the span dropped from the markup, ships a
+  snippet that renders no number at all. Every `content:` rule in the CSS pane
+  whose value uses `counter()` is now checked against the element it prints
+  on: the class must appear in that pane's own markup, and it must be the
+  class the React pane hides from assistive tech when the React pane hides
+  one. Proved red on both mutations. `cssPaneClasses()` strips comments as
+  `classesIn()` already did, so a class named only in prose no longer counts
+  as documented.
+- `installed-gate.mjs` closes its HTTP server and every page it opened in a
+  `finally`: a throw in the render path no longer leaves a listening socket
+  and a pile of tabs behind for the rest of the run.
+
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
   marker was lazy on the content but only matched a fixed 3-newline gap

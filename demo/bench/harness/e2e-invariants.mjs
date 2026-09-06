@@ -47,6 +47,10 @@
  *      normal-sized element that only has clip-path (a decorative reveal
  *      mask) is still a candidate, and gets reported if a panel covers it
  *      (ADU-102, second pass finding)
+ *  10. Every Section `npx scrollvars add` installs works on ONLY the
+ *      stylesheets its registry entry declares, under React 18 and 19, with
+ *      and without the engine and under reduced motion (installed-gate.mjs,
+ *      ADU-129)
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -56,6 +60,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { installedGate } from './installed-gate.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
@@ -1923,6 +1928,12 @@ const MIN_EXAMINED = 1
   )
   await page.close()
 }
+
+// ── 10. The isolated installation gate: every Section the CLI installs,
+// rendered under React 18 and 19, on ONLY the stylesheets its registry entry
+// declares. A gallery page proves nothing about a consumer who imported
+// exactly what `npx scrollvars add` told them to import (ADU-129) ──
+await installedGate({ browser, check, HIDDEN_TEXT })
 
 await browser.close()
 server.close()

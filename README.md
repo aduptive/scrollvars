@@ -87,7 +87,7 @@ import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, nat
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 2.6 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
-import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 2.2 KB gz
+import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.2 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 ```
 
