@@ -21,16 +21,18 @@ export const EFFECTS = [
   <p class="sv-rise fxp" style="--sv-order: 1">Rises second.</p>
   <p class="sv-rise fxp" style="--sv-order: 2">Rises third.</p>
 </section>`,
-    css: `<section data-sv>            <!-- tracked; gets .sv-live in the band -->
+    css: `<section data-sv>            <!-- tracked; sets --sv-live in the band -->
   <h2 class="sv-rise">Title</h2>
   <p class="sv-rise" style="--sv-order: 1">Copy</p>
 </section>
 
 /* needs styles/core.css (or paste the preset): */
-.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+.sv-on .sv .sv-rise { opacity: var(--sv-live);
+  translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
   transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
-.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }`,
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
   <p class="sv-rise" data-sv-order="1">Copy</p>
@@ -411,13 +413,14 @@ const canvasRef = useCanvasEffect({
      aria-hidden. char mode: data-sv-split="char". -->
 
 /* the preset (styles/core.css): */
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-split-rise > span {
-  opacity: 0; translate: 0 .6em;
+  opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
   transition: opacity var(--sv-duration) var(--sv-ease),
               translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
-.sv-on .sv.sv-live .sv-split-rise > span { opacity: 1; translate: 0 0; }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,

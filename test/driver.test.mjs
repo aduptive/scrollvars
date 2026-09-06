@@ -661,6 +661,40 @@ test('driver: an untrack from one callback cancels the same frame\'s write to th
   untrackFirst()
 })
 
+test('driver: an onLive that untracks itself gets no write after the callback returns', async () => {
+  const { track } = await import('../dist/core/driver.js?selfuntrack')
+  const el = makeElement(400)
+  place(el, 2000) // outside the live band
+  let untrackSelf = () => {}
+  untrackSelf = track(el, { travel: true, onLive: (live) => { if (live) untrackSelf() } })
+  pump() // an off-band frame, so --sv-view/--sv-t get their first write
+
+  place(el, 300) // into the band: isLive flips, onLive fires and self-untracks
+  pump()
+  assert.ok(!('--sv-view' in el.vars), 'no --sv-view write survives the self-untrack')
+  assert.ok(!('--sv-t' in el.vars), 'no --sv-t write survives the self-untrack')
+  assert.equal(el.vars['--sv-live'], '1', 'the release still settled the element visible')
+})
+
+test('driver: an onLive that re-tracks itself without travel leaves no --sv-t from the old entry', async () => {
+  const { track } = await import('../dist/core/driver.js?selfreplace')
+  const el = makeElement(400)
+  place(el, 2000) // outside the live band
+  let untrackCurrent = () => {}
+  untrackCurrent = track(el, {
+    travel: true,
+    onLive: (live) => {
+      if (live) untrackCurrent = track(el, {}) // the replacement declares no travel
+    },
+  })
+  pump() // an off-band frame, so the old entry's --sv-t gets its first write
+
+  place(el, 300) // into the band: isLive flips, onLive replaces this entry mid-apply
+  pump()
+  assert.ok(!('--sv-t' in el.vars), 'the old, released entry must not write --sv-t for its replacement')
+  untrackCurrent()
+})
+
 test('driver: scrollToScene jumps instead of gliding under reduced motion', async () => {
   const realMatchMedia = window.matchMedia
   window.matchMedia = () => ({ matches: true, addEventListener: () => {} })

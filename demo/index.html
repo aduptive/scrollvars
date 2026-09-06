@@ -3184,6 +3184,8 @@ var SV = (() => {
       opts.onLive?.(isLive);
       if (settle)
         return;
+      if (entries.get(entry.el) !== entry)
+        return;
     }
     if (opts.view !== false) {
       setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
