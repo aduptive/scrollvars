@@ -31,14 +31,26 @@ findings on the same round): three more defects fixed.
   `root.clientHeight` instead of the root's bounding rect, so a bordered
   scroll container shares one origin between `track()`'s pin math and
   `scrollToScene()`'s scroll target. `track()` also observes the `root`
-  with the `ResizeObserver` (kept observed for the driver's lifetime rather
-  than refcounted per entry), so a resize of the scroller itself
+  with the `ResizeObserver`, so a resize of the scroller itself
   reschedules a measure.
 - `--sv-pin-offset` now resolves `rem` (root font-size), `em` (the
   element's own font-size), `vh`/`svh`/`lvh`/`dvh` (`window.innerHeight`)
   and `vw` (`window.innerWidth`) to pixels; a bare number still reads as px.
 - `--sv-page` and `--sv-v` skip the style write when the serialized value
   did not change from the previous frame.
+- Second pass (verifier findings on 00436db): `track()` on an element that
+  is already tracked replaced its entry in place, which left the identity
+  guard on the first entry's untrack blocking forever, so a variable only
+  the first entry ever wrote (`--sv-t` from `{travel: true}` followed by
+  `{}`) stayed inline. A replacing `track()` now releases the previous
+  entry's outputs first (its written vars, `--sv-scenes`, its pin helper,
+  both observers), so it is exactly untrack then track. A root element
+  that is also tracked standalone lost its `ResizeObserver` watch the
+  moment the standalone entry was untracked, because `unobserve(el)` fired
+  for the shared element with no regard for the entries still using it as
+  their `root`. `untrack()` now checks whether any other live entry still
+  needs that element watched, either as its own tracked element or as its
+  `root`, before unobserving it.
 
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so

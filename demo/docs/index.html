@@ -282,14 +282,26 @@ findings on the same round): three more defects fixed.
   <code>root.clientHeight</code> instead of the root's bounding rect, so a bordered
   scroll container shares one origin between <code>track()</code>'s pin math and
   <code>scrollToScene()</code>'s scroll target. <code>track()</code> also observes the <code>root</code>
-  with the <code>ResizeObserver</code> (kept observed for the driver's lifetime rather
-  than refcounted per entry), so a resize of the scroller itself
+  with the <code>ResizeObserver</code>, so a resize of the scroller itself
   reschedules a measure.
 <ul><li><code>--sv-pin-offset</code> now resolves <code>rem</code> (root font-size), <code>em</code> (the</li></ul>
   element's own font-size), <code>vh</code>/<code>svh</code>/<code>lvh</code>/<code>dvh</code> (<code>window.innerHeight</code>)
   and <code>vw</code> (<code>window.innerWidth</code>) to pixels; a bare number still reads as px.
 <ul><li><code>--sv-page</code> and <code>--sv-v</code> skip the style write when the serialized value</li></ul>
   did not change from the previous frame.
+<ul><li>Second pass (verifier findings on 00436db): <code>track()</code> on an element that</li></ul>
+  is already tracked replaced its entry in place, which left the identity
+  guard on the first entry's untrack blocking forever, so a variable only
+  the first entry ever wrote (<code>--sv-t</code> from <code>{travel: true}</code> followed by
+  <code>{}</code>) stayed inline. A replacing <code>track()</code> now releases the previous
+  entry's outputs first (its written vars, <code>--sv-scenes</code>, its pin helper,
+  both observers), so it is exactly untrack then track. A root element
+  that is also tracked standalone lost its <code>ResizeObserver</code> watch the
+  moment the standalone entry was untracked, because <code>unobserve(el)</code> fired
+  for the shared element with no regard for the entries still using it as
+  their <code>root</code>. <code>untrack()</code> now checks whether any other live entry still
+  needs that element watched, either as its own tracked element or as its
+  <code>root</code>, before unobserving it.
 
 ### Presets and no-JS
 <ul><li><code>.sv-split</code> word/char spans compute to <code>display: inline-block</code>, so</li></ul>

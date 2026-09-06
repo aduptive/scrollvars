@@ -235,7 +235,9 @@ function computePin(geo: Geometry, offset = 0): number {
 /** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
  * Resolves rem (root font-size), em (the element's own font-size), vh/svh/lvh/dvh
  * (window.innerHeight) and vw (window.innerWidth); anything else, including a
- * bare number, falls back to parseFloat as px. */
+ * bare number, falls back to parseFloat as px. svh/lvh/dvh resolve like vh:
+ * there is no JS API for the small/large viewport height without an actual
+ * probe element, so all three read window.innerHeight like vh does. */
 function readPinOffset(el: HTMLElement): number {
   if (typeof getComputedStyle !== 'function') return 0
   const raw = getComputedStyle(el).getPropertyValue('--sv-pin-offset').trim()
@@ -341,6 +343,34 @@ function apply(entry: Entry, geo: Geometry) {
   }
 }
 
+/** True if some OTHER live entry still needs `target` watched: either as its
+ * own tracked element, or as its `root`. A root can be shared (a standalone
+ * tracked element that is also another entry's scroll container), so release
+ * must never unobserve a target another live entry still depends on. */
+function stillNeeded(target: HTMLElement): boolean {
+  for (const other of entries.values()) {
+    if (other.el === target || other.opts.root === target) return true
+  }
+  return false
+}
+
+/** Undo everything a track() call installed for one entry: written vars,
+ * `--sv-scenes`, the pin helper, both observers (respecting shared roots).
+ * Shared by the identity-guarded untrack and by track() replacing an
+ * already-tracked element, so a replacing track() is exactly untrack then
+ * track. */
+function releaseEntry(entry: Entry) {
+  const { el } = entry
+  entries.delete(el)
+  culler?.unobserve(el)
+  if (!stillNeeded(el)) resizeObserver?.unobserve(el)
+  if (entry.opts.root && !stillNeeded(entry.opts.root)) resizeObserver?.unobserve(entry.opts.root)
+  restorePinHelper(entry)
+  el.classList.toggle('sv-live', false)
+  for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
+  el.style.removeProperty?.('--sv-scenes')
+}
+
 /** Track an element. Returns an untrack function. */
 export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   init()
@@ -348,6 +378,12 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // a no-op so the page stays static until compat() shims one in and a later
   // track() call retries init() clean.
   if (!initialized) return () => {}
+  // re-tracking an already-tracked element must behave like untrack then
+  // track: release the previous entry's outputs first, or a variable only it
+  // ever wrote (e.g. --sv-t from a first call with travel:true) stays inline
+  // forever once the identity guard blocks its own untrack.
+  const existing = entries.get(el)
+  if (existing) releaseEntry(existing)
   const entry: Entry = {
     el,
     opts,
@@ -370,24 +406,19 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   pageOutputs = true
   resizeObserver?.observe(el)
   // a root scrolls its own content; watch it too so a resize of the scroller
-  // itself (not just the tracked element) reschedules a measure. Kept
-  // observed for the driver's lifetime rather than refcounted per entry.
+  // itself (not just the tracked element) reschedules a measure. A root can
+  // be shared by several entries (or be a standalone tracked element too),
+  // so release() only unobserves it once no live entry needs it any more.
   if (opts.root) resizeObserver?.observe(opts.root)
   if (!opts.root) culler?.observe(el)
   schedule()
 
   return () => {
     // a second track() on the same element replaces this entry in the map;
-    // an untrack from the first call must not delete or unobserve the
+    // an untrack from the first call must not release or unobserve the
     // replacement, only its own bookkeeping.
     if (entries.get(el) !== entry) return
-    entries.delete(el)
-    resizeObserver?.unobserve(el)
-    culler?.unobserve(el)
-    restorePinHelper(entry)
-    el.classList.toggle('sv-live', false)
-    for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
-    el.style.removeProperty?.('--sv-scenes')
+    releaseEntry(entry)
   }
 }
 

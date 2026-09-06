@@ -376,6 +376,43 @@ test('driver: untrack is identity-guarded, a stale untrack cannot delete a repla
   assert.ok(el.classes.has('sv'), '.sv stays')
 })
 
+test('driver: re-tracking an element releases the previous entry, so a var only it wrote does not stay inline', async () => {
+  const { track } = await import('../dist/core/driver.js?releaseonreplace')
+  const el = makeElement(400)
+  place(el, 300) // inside the live band from the start
+  const untrackFirst = track(el, { travel: true })
+  pump()
+  assert.ok('--sv-t' in el.vars, 'the first entry wrote --sv-t')
+
+  const untrackSecond = track(el, {}) // replaces the entry; {} never writes --sv-t
+  assert.ok(!('--sv-t' in el.vars), 'replacing releases the outputs only the first entry ever wrote')
+  pump()
+  assert.ok(!('--sv-t' in el.vars), 'the second entry never writes it back')
+
+  untrackSecond()
+  assert.ok(!('--sv-view' in el.vars), 'the second entry cleaned up its own output')
+
+  untrackFirst() // stale: entries.get(el) is nothing now, this must be a no-op
+  assert.ok(el.classes.has('sv'), 'the stale untrack did not touch anything')
+})
+
+test('driver: a root that is also tracked standalone keeps its ResizeObserver watch until nothing needs it', async () => {
+  const { track } = await import('../dist/core/driver.js?rootrefcount')
+  const rootEl = makeElement(500)
+  const untrackRoot = track(rootEl, {})
+  assert.ok(observed.has(rootEl), 'the standalone entry observes itself')
+
+  const child = makeElement(200)
+  const untrackChild = track(child, { root: rootEl, travel: true })
+  assert.ok(observed.has(rootEl), 'the child also needs the root observed')
+
+  untrackRoot()
+  assert.ok(observed.has(rootEl), 'the root stays observed: the child entry still references it')
+
+  untrackChild()
+  assert.ok(!observed.has(rootEl), 'nothing references it as root any more, so it may now be unobserved')
+})
+
 test('driver: init() is transactional, a throwing ResizeObserver leaves track() a no-op until it succeeds', async () => {
   global.ResizeObserver = class {
     constructor() {
