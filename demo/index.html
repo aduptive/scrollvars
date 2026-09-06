@@ -3172,7 +3172,8 @@ var SV = (() => {
         if (opts.view !== false)
           setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
         entries.delete(entry.el);
-        resizeObserver?.unobserve(entry.el);
+        if (!stillNeeded(entry.el))
+          resizeObserver?.unobserve(entry.el);
         culler?.unobserve(entry.el);
         return;
       }

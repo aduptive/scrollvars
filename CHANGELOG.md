@@ -51,6 +51,15 @@ findings on the same round): three more defects fixed.
   their `root`. `untrack()` now checks whether any other live entry still
   needs that element watched, either as its own tracked element or as its
   `root`, before unobserving it.
+- Third pass (verifier finding on 130395a): the `once` fire-and-forget branch
+  in `apply()` still unconditionally unobserved its own element on the
+  ResizeObserver when it self-released, bypassing the `stillNeeded()` guard
+  the second pass added elsewhere. An element that is both a `once` entry
+  and another entry's `root` lost that other entry's resize watch the
+  moment the `once` entry went live and settled. The branch now checks
+  `stillNeeded()` before unobserving, same as `releaseEntry()`, but keeps
+  settling `--sv-view` and latching `sv-live` itself: it still does not
+  route through `releaseEntry()`.
 
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so

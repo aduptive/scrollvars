@@ -413,6 +413,24 @@ test('driver: a root that is also tracked standalone keeps its ResizeObserver wa
   assert.ok(!observed.has(rootEl), 'nothing references it as root any more, so it may now be unobserved')
 })
 
+test('driver: a once entry that is also another entry\'s root keeps that root observed after it self-releases', async () => {
+  const { track } = await import('../dist/core/driver.js?onceasroot')
+  const rootEl = makeElement(500)
+  place(rootEl, 300) // inside the live band on the first frame, so once fires immediately
+  const untrackRoot = track(rootEl, { once: true })
+
+  const child = makeElement(200)
+  const untrackChild = track(child, { root: rootEl, travel: true })
+
+  pump()
+  assert.ok(rootEl.classes.has('sv-live'), 'the once entry latches live and self-releases')
+  assert.ok(observed.has(rootEl), 'still observed: the child entry still uses it as root')
+
+  untrackChild()
+  assert.ok(!observed.has(rootEl), 'nothing references it any more, so it may now be released')
+  untrackRoot() // no-op: the once entry already deleted itself from entries on the frame above
+})
+
 test('driver: init() is transactional, a throwing ResizeObserver leaves track() a no-op until it succeeds', async () => {
   global.ResizeObserver = class {
     constructor() {

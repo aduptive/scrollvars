@@ -307,7 +307,9 @@ function apply(entry: Entry, geo: Geometry) {
       // --sv-view at -1 forever (sv-drift would stay invisible)
       if (opts.view !== false) setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
       entries.delete(entry.el)
-      resizeObserver?.unobserve(entry.el)
+      // entry.el can be another live entry's root (a shared scroll container):
+      // only drop the resize watch once no other entry still needs it.
+      if (!stillNeeded(entry.el)) resizeObserver?.unobserve(entry.el)
       culler?.unobserve(entry.el)
       return
     }
