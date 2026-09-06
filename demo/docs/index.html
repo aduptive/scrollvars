@@ -567,6 +567,18 @@ Docs read against the code merged by the five round-5 code tickets.
 <li>README's compat paragraph and <code>src/compat/index.ts</code>'s header comment (the two hand-kept copies) stay in agreement; this pass added text next to them without touching that pairing.</li>
 </ul>
 
+<h4>Slider (blind review round 6)</h4>
+<ul>
+<li>The slider re-asserts the classes it owns on every measure, the way the driver does for its live flag: <code>sv-slider</code>, <code>sv-slider-y</code> and <code>sv-draggable</code> on the rail, <code>sv-active</code> on the slide nearest the centre. A framework that owns the rail's <code>className</code> (React re-rendering it when a prop like <code>perView</code> changes, with no retrack behind it) used to drop the first three, and a consumer restyling a slide dropped <code>sv-active</code> until the active index happened to change. Each is one <code>classList</code> read per measure, with a write only when the DOM disagrees.</li>
+<li><code>state().position</code> interpolates between adjacent slide CENTRES, so the documented continuous position never goes backwards. It normalized the distance by a single slide's own size before, which made it jump back at every midpoint as soon as the slides had a gap: two 100px slides 16px apart read 0.580 and then 0.430 one pixel of scroll later. Gapless sliders read exactly as before.</li>
+<li>The wheel settle (the glide 200 ms after the last wheel event) is dropped by whatever takes the position over inside that window: a pointerdown, <code>goTo</code> and everything routed through it (arrows, keyboard, autoplay), and <code>seek</code>. It only listened to the next wheel event and to <code>destroy</code> before, so a drag started right after a trackpad pan had a glide fighting it. A press that drops a pending settle also resumes the snap the wheel had suspended, since the settle it replaced is no longer there to do it.</li>
+</ul>
+
+<h4>React (blind review round 6)</h4>
+<ul>
+<li><code>&lt;Slider></code>'s engine classes survive a re-render: <code>perView</code> is not an attach dep, so React rewrites the rail's class attribute with no retrack, and a consumer's own slide <code>className</code> rewrite drops <code>sv-active</code>. Fixed in the core slider (above), so plain <code>slider()</code> consumers whose framework owns the class attribute get it too.</li>
+</ul>
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
