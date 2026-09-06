@@ -823,6 +823,77 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3f. The same waiting ancestor, settled by the OTHER exit from the entry
+// map (ADU-140, round 4 finding 1): a `once` entrance descendant latches and
+// deletes its entry inside apply(), never through the untrack handle, so the
+// ancestor released before it kept a sticky, clipping stage with the curtain
+// over its content until some unrelated later release swept the backlog ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      #inner { min-height: 40vh; margin-top: 20vh }
+    </style></head>
+    <body>
+      <div class="sv" data-sv id="outer">
+        <div class="sv-stage" id="stage">
+          <div>revealed content</div>
+          <div class="panel sv-curtain-l" id="curtain-l">left</div>
+        </div>
+        <div class="sv" data-sv id="inner">a section that latches once</div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const ONCE_SIGNATURE = () => ({
+    stage: ['position', 'height', 'overflow']
+      .map((p) => `${p}=${getComputedStyle(document.querySelector('#stage')).getPropertyValue(p).trim()}`)
+      .join(' '),
+    curtain: getComputedStyle(document.querySelector('#curtain-l')).display,
+    outerMarked: document.querySelector('#outer').hasAttribute('data-sv-off'),
+    innerMarked: document.querySelector('#inner').hasAttribute('data-sv-off'),
+    innerLive: document.querySelector('#inner').classList.contains('sv-live'),
+  })
+  const before = await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopOuter = SV.track(document.querySelector('#outer'), { pin: '300vh' })
+    // the descendant is below the live band at rest: it still has to latch
+    SV.track(document.querySelector('#inner'), { once: true })
+    await frame()
+    window.__stopOuter() // the ancestor goes first, exactly like stopScan()
+    await frame()
+    return true
+  })
+  void before
+  const waiting = await page.evaluate(ONCE_SIGNATURE)
+  check(
+    'once release: the released ancestor holds its marker back while the once descendant is still tracked',
+    !waiting.outerMarked && !waiting.innerMarked && waiting.stage.includes('position=sticky'),
+    JSON.stringify(waiting)
+  )
+  const settled = await page.evaluate(async () => {
+    scrollTo(0, innerHeight) // the once descendant enters the band, latches and settles itself out
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+    return true
+  })
+  void settled
+  const after = await page.evaluate(ONCE_SIGNATURE)
+  check(
+    'once release: the settle hands the waiting ancestor its marker, and the stage stops clipping its own content',
+    after.outerMarked && after.stage.includes('position=static') && after.curtain === 'none',
+    JSON.stringify(after)
+  )
+  check(
+    'once release: the settled descendant itself stays live and unmarked (it latched, it was not released)',
+    after.innerLive && !after.innerMarked,
+    JSON.stringify(after)
+  )
+  await page.close()
+}
+
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
 {
   const page = await browser.newPage()

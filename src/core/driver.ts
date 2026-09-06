@@ -339,6 +339,10 @@ function apply(entry: Entry, geo: Geometry) {
         unobserveIfUnneeded(entry.el)
         if (opts.root) unobserveIfUnneeded(opts.root)
         culler?.unobserve(entry.el)
+        // this element stays LIVE (that is what `once` latches), but it just
+        // left `entries`: a released ancestor waiting on it can take its
+        // marker now, and nothing else on this path would ever tell it.
+        settleDeferred()
       }
     }
     opts.onLive?.(isLive)
@@ -431,16 +435,27 @@ function containsTracked(el: HTMLElement): boolean {
   return false
 }
 
+/** Hand the marker to every released element whose last tracked descendant is
+ * gone. Called by BOTH exits from `entries`: releaseEntry() and the `once`
+ * fire-and-forget settle in apply(), which deletes its entry inline. Without
+ * the second call site an ancestor released while a `once` descendant was
+ * still tracked keeps its stage sticky and clipping, curtains closed over the
+ * content, until some unrelated later release happens to sweep the backlog. */
+function settleDeferred() {
+  if (!deferredOff.size) return
+  deferredOff.forEach((waiting) => {
+    if (containsTracked(waiting)) return
+    deferredOff.delete(waiting)
+    waiting.setAttribute?.('data-sv-off', '')
+  })
+}
+
 /** Mark a released element for the static guards, but only once nothing
  * tracked is left inside it. Each release also settles the ancestors that
  * were waiting on it (stopScan() releases outer before inner). */
 function markReleased(el: HTMLElement) {
   deferredOff.add(el)
-  deferredOff.forEach((waiting) => {
-    if (containsTracked(waiting)) return
-    deferredOff.delete(waiting)
-    waiting.setAttribute('data-sv-off', '')
-  })
+  settleDeferred()
 }
 
 /** Drop the released marker off an element AND its ancestors: an ancestor's
@@ -449,8 +464,13 @@ function markReleased(el: HTMLElement) {
  * clock with every preset already settled static. */
 function clearReleased(el: HTMLElement) {
   for (let node: HTMLElement | null = el; node; node = node.parentElement) {
-    deferredOff.delete(node)
+    // An ANCESTOR that carried the marker (or was still waiting for it) is
+    // released all the same: it only lends its marker to the tracker starting
+    // inside it, and goes back to waiting, so the next release that empties it
+    // marks it again. Dropping it here left the shell bare for good.
+    const released = deferredOff.delete(node) || node.hasAttribute?.('data-sv-off') === true
     node.removeAttribute?.('data-sv-off')
+    if (released && node !== el) deferredOff.add(node)
   }
 }
 

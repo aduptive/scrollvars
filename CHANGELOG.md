@@ -1068,6 +1068,38 @@ against the code ADU-129 to ADU-132 shipped.
   `scrollvars/compat`'s fallback sheet re-expresses the same panels with
   that property and is appended later, so it still outranks this block and
   animates them.
+- Third pass (verifier and panel findings in Chrome on f5a81eb): the marker
+  had two more holes, both in the bookkeeping around the waiting set. A
+  `once` entrance descendant leaves the entry map inside `apply()`, not
+  through `releaseEntry()`, and that second exit never swept the elements
+  waiting on it: an ancestor released while such a descendant was still
+  tracked stayed unmarked for good, its `.sv-stage` sticky and clipping with
+  the curtains over the content, until an unrelated later release happened to
+  sweep the backlog. The sweep is its own function now and both exits call
+  it, without marking the settled element itself, which stays live. And
+  `track()` stripping the marker off the ancestor chain FORGOT those
+  ancestors: released, unmarked, and never marked again. An ordinary
+  `<Track>` prop change under a released shell reaches it, and so does
+  `stopScan()` followed by one section re-mounting, which is what the
+  stripping exists for. A cleared ancestor that carried the marker, or was
+  still waiting for it, goes back into the waiting set, so the next release
+  that empties it marks it again. The sweep returns immediately while
+  nothing is waiting, so an ordinary release pays nothing for either fix.
+- `markReleased()` writes the attribute with the same optional call
+  `clearReleased()` removes it with (`setAttribute?.`), so both halves of the
+  pair hold on the same elements.
+- Size, measured, because these are published numbers: the release
+  bookkeeping takes the core entry (`scrollvars`, min+gzip) from 6.0 KB to
+  6.2 KB, and the stamped bundle comparison with it, from `~8× less bundle`
+  than gsap + ScrollTrigger to `~7×` (the ratio is arithmetic on the stamped
+  KB, 46.3 / 6.2). The released twins take `styles/pin.css` from 2.6 to
+  2.9 KB gzip and `styles/core.css` from 2.3 to 2.4 KB, `styles.css` from
+  8.2 to 8.6 KB and the headline typical page from ~4.7 to ~5.0 KB, with
+  their comments trimmed to one note per guard family (`styles/state.css`
+  is back at its 2.2 KB: the note that had moved it is in this changelog,
+  which costs no bytes on the wire). `styles/core.css` crosses its rounding
+  boundary on the RULES alone: 2392 bytes at the base, 2411 with the new
+  selectors and no comment at all, against 2406 for 2.35 KB.
 
 ### Gallery (blind review round 5)
 Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.

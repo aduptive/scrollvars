@@ -152,13 +152,9 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* RELEASED (stopScan(), a Boot unmount, an option change): the clock stopped
-   while `.sv` and `html.sv-on` stayed, so the driver marks the element
-   `data-sv-off` and each guard above gets the twin below, same static
-   rendering as no JS. Each twin is its OWN rule: a parser without `:is()`
-   (Firefox below 78) drops the whole selector list it would share. */
-/* Two marker positions: that guard needs no tracker ancestor either, so the
-   released element can BE the stage. */
+/* RELEASED (`data-sv-off`, written when a tracker stops): the no-JS twin of
+   every guard above, on an ancestor or on the element itself. One rule each,
+   never a shared list: a parser without `:is()` drops the whole list. */
 [data-sv-off] .sv-stage,
 .sv-stage[data-sv-off] {
   position: static;
@@ -192,15 +188,11 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* Below the preset floor WITH JavaScript (translate/rotate/scale are Chrome
-   104, Firefox 72, Safari 14.1): the driver still runs, so `html.sv-on` is
-   set and the guards above cannot fire, while the stacking half of these two
-   presets is plain layout and survives on its own. Same rendering as no-JS. */
+/* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
+   14.1): `html.sv-on` blocks the guards above, and the stacking half of these
+   presets is plain layout. `transform`, not the no-JS `display: none`, so
+   compat's later sheet still outranks this and animates them. */
 @supports not (translate: 0) {
-  /* `transform`, not the no-JS `display: none`: scrollvars/compat's fallback
-     sheet re-expresses these panels with the same property and is appended
-     later, so it still outranks this and animates them. The stage clips what
-     they translate out of it. */
   .sv .sv-curtain-l {
     transform: translateX(-101%);
   }

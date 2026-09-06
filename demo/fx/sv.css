@@ -128,10 +128,8 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
-/* Same for a RELEASED tracker (data-sv-off, see pin.css): a spread scrubbed
-   from --sv-t settles at 0, an overlapping stack. The guard above needs no
-   tracker ancestor, so the marker lands on the container itself when the
-   tracked element IS the spread. Plain list, no :is(). */
+/* Same for a RELEASED tracker (`data-sv-off`, see pin.css), on an ancestor or
+   on the spread itself, which is where the marker lands in the scrub idiom. */
 [data-sv-off] .sv-spread > *,
 .sv-spread[data-sv-off] > * {
   translate: none;
@@ -352,13 +350,9 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* RELEASED (stopScan(), a Boot unmount, an option change): the clock stopped
-   while `.sv` and `html.sv-on` stayed, so the driver marks the element
-   `data-sv-off` and each guard above gets the twin below, same static
-   rendering as no JS. Each twin is its OWN rule: a parser without `:is()`
-   (Firefox below 78) drops the whole selector list it would share. */
-/* Two marker positions: that guard needs no tracker ancestor either, so the
-   released element can BE the stage. */
+/* RELEASED (`data-sv-off`, written when a tracker stops): the no-JS twin of
+   every guard above, on an ancestor or on the element itself. One rule each,
+   never a shared list: a parser without `:is()` drops the whole list. */
 [data-sv-off] .sv-stage,
 .sv-stage[data-sv-off] {
   position: static;
@@ -392,15 +386,11 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* Below the preset floor WITH JavaScript (translate/rotate/scale are Chrome
-   104, Firefox 72, Safari 14.1): the driver still runs, so `html.sv-on` is
-   set and the guards above cannot fire, while the stacking half of these two
-   presets is plain layout and survives on its own. Same rendering as no-JS. */
+/* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
+   14.1): `html.sv-on` blocks the guards above, and the stacking half of these
+   presets is plain layout. `transform`, not the no-JS `display: none`, so
+   compat's later sheet still outranks this and animates them. */
 @supports not (translate: 0) {
-  /* `transform`, not the no-JS `display: none`: scrollvars/compat's fallback
-     sheet re-expresses these panels with the same property and is appended
-     later, so it still outranks this and animates them. The stage clips what
-     they translate out of it. */
   .sv .sv-curtain-l {
     transform: translateX(-101%);
   }
@@ -615,9 +605,7 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 
 /* ScrollVars: interaction-state presets (use with toggles(), the Popover
  * API, or any class you flip yourself. Including sv-live by hand, which
- * replays the whole entrance system on demand, on an element the driver
- * does NOT track: on a tracked one it writes --sv-live inline, and inline
- * outranks every author rule, so the driver owns the flag there. */
+ * replays the whole entrance system on demand). */
 
 /* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
    modern discrete-transition trio (@starting-style + allow-discrete).

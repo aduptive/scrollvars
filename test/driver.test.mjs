@@ -907,6 +907,82 @@ test('driver: a released ancestor never settles a still-tracked descendant', asy
   restart()
 })
 
+test('driver: a `once` descendant settling hands the waiting ancestor its marker', async () => {
+  // a query string this file uses nowhere else: the same one twice hands the
+  // second test the FIRST test's module instance, whose scroll listener was
+  // overwritten by every later import, so nothing it tracks ever updates
+  const { track } = await import('../dist/core/driver.js?oncedescendant')
+  // a fire-and-forget `once` entry leaves `entries` inside apply(), not through
+  // releaseEntry(): the second exit from the map. An ancestor released while it
+  // was still tracked waits on it, and without the sweep on that path it waits
+  // forever, its stage sticky and clipping with the curtains over the content.
+  const outer = makeElement(3000)
+  const inner = makeElement(400)
+  nest(outer, inner)
+  place(outer, -1000)
+  place(inner, 2000) // below the live band: not latched yet
+  const stopOuter = track(outer, { pin: true })
+  const stopInner = track(inner, { once: true })
+  pump()
+
+  stopOuter()
+  assert.ok(!outer.attrs.has('data-sv-off'), 'the ancestor waits while the once descendant is still tracked')
+
+  place(inner, 300) // into the band: `once` latches and the entry settles itself out
+  pump()
+  assert.ok(inner.classes.has('sv-live'), 'the once entry latched live')
+  assert.ok(outer.attrs.has('data-sv-off'), 'and its settle hands the waiting ancestor the marker')
+  assert.ok(!inner.attrs.has('data-sv-off'), 'while the settled element itself stays live, never released')
+
+  stopInner() // the handle is stale (the settle already left the map), and changes nothing
+  assert.ok(outer.attrs.has('data-sv-off'), 'the stale untrack handle leaves the ancestor marked')
+})
+
+test('driver: an ancestor that gives up its marker for a new tracker takes it back', async () => {
+  const { track } = await import('../dist/core/driver.js?clearrelease')
+  // a released shell (stopScan(), a Boot unmount) with one section re-mounting
+  // inside it: track() strips the marker off the whole chain so the new clock
+  // is not settled static, and the shell is still released, so it must take the
+  // marker back as soon as that section goes again.
+  const outer = makeElement(3000)
+  place(outer, -1000)
+  const stopOuter = track(outer, { pin: true })
+  pump()
+  stopOuter()
+  assert.ok(outer.attrs.has('data-sv-off'), 'released with nothing inside, the shell is marked')
+
+  const inner = makeElement(3000)
+  nest(outer, inner)
+  place(inner, -1000)
+  const stopInner = track(inner, { pin: true })
+  assert.ok(!outer.attrs.has('data-sv-off'), 'a tracker starting under it takes the marker off the chain')
+  pump()
+  assert.equal(inner.vars['--sv-pin'], '0.5000', 'so the re-mounted section animates')
+
+  stopInner()
+  assert.ok(inner.attrs.has('data-sv-off'), 'the section is marked when it goes')
+  assert.ok(outer.attrs.has('data-sv-off'), 'and the shell takes its marker back, or its own presets freeze for good')
+
+  // the same one level deeper: the chain walk clears an untracked middle node
+  // too, and that node was never released, so only the shell comes back
+  const shell = makeElement(3000)
+  const middle = makeElement(3000)
+  const leaf = makeElement(3000)
+  nest(shell, middle)
+  nest(middle, leaf)
+  place(shell, -1000)
+  place(leaf, -1000)
+  const stopShell = track(shell, { pin: true })
+  pump()
+  stopShell()
+  const stopLeaf = track(leaf, { pin: true })
+  assert.ok(!shell.attrs.has('data-sv-off'), 'a grandchild tracker unmarks the shell too')
+  pump()
+  stopLeaf()
+  assert.ok(shell.attrs.has('data-sv-off'), 'and the shell takes its marker back when the grandchild goes')
+  assert.ok(!middle.attrs.has('data-sv-off'), 'the untracked node in between was never released and stays bare')
+})
+
 test('styles/pin.css: below the individual-transform floor the deck unstacks and the curtains open, with JS on', () => {
   // Chrome 88-103, Firefox 60-71, Safari 13-14.0 run the driver, so html.sv-on
   // is on and the no-JS guards cannot fire, while translate/rotate/scale are

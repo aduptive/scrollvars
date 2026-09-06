@@ -3189,6 +3189,7 @@ var SV = (() => {
           if (opts.root)
             unobserveIfUnneeded(opts.root);
           culler?.unobserve(entry.el);
+          settleDeferred();
         }
       }
       opts.onLive?.(isLive);
@@ -3251,19 +3252,26 @@ var SV = (() => {
         return true;
     return false;
   }
-  function markReleased(el) {
-    deferredOff.add(el);
+  function settleDeferred() {
+    if (!deferredOff.size)
+      return;
     deferredOff.forEach((waiting) => {
       if (containsTracked(waiting))
         return;
       deferredOff.delete(waiting);
-      waiting.setAttribute("data-sv-off", "");
+      waiting.setAttribute?.("data-sv-off", "");
     });
+  }
+  function markReleased(el) {
+    deferredOff.add(el);
+    settleDeferred();
   }
   function clearReleased(el) {
     for (let node = el; node; node = node.parentElement) {
-      deferredOff.delete(node);
+      const released = deferredOff.delete(node) || node.hasAttribute?.("data-sv-off") === true;
       node.removeAttribute?.("data-sv-off");
+      if (released && node !== el)
+        deferredOff.add(node);
     }
   }
   function releaseEntry(entry) {
