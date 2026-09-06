@@ -225,6 +225,62 @@ test('scan releases split closures when the subtree is removed', async () => {
   stop()
 })
 
+test('scan keeps a retained [data-sv-split] node split through a replaceChildren batch (round 6)', async () => {
+  global.window = { innerHeight: 1000, addEventListener: () => {}, matchMedia: () => ({ matches: false, addEventListener: () => {} }) }
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  let mutationCallback
+  global.MutationObserver = class { constructor(cb) { mutationCallback = cb } observe() {} disconnect() {} }
+  global.HTMLElement = class {}
+  const doc = {
+    documentElement: { classList: { add: () => {} } },
+    visibilityState: 'visible',
+    querySelectorAll: () => [],
+    createElement: () => ({ style: { setProperty() {} }, setAttribute() {}, textContent: '' }),
+    createTextNode: () => ({}),
+  }
+  doc.contains = (node) => {
+    let n = node
+    while (n) {
+      if (n === doc) return true
+      n = n.parent
+    }
+    return false
+  }
+  global.document = doc
+  const el = new global.HTMLElement()
+  let html = 'Hello world'
+  Object.defineProperty(el, 'innerHTML', { get: () => html, set: (v) => (html = v) })
+  // `el`'s `.parent` chain reaches `doc` (a body stand-in in between), like a
+  // node a replaceChildren batch retains: still inside scope by the time the
+  // observer fires, unlike the genuinely removed `el` above.
+  const body = { parent: doc, querySelectorAll: () => [] }
+  Object.assign(el, {
+    attrs: { 'data-sv-split': '' },
+    parent: body,
+    textContent: 'Hello world',
+    style: { setProperty() {}, removeProperty() {} },
+    classList: { add() {}, remove() {} },
+    appendChild() {},
+    hasAttribute: (n) => n in el.attrs,
+    getAttribute: (n) => el.attrs[n] ?? null,
+    matches: () => false,
+    querySelectorAll: () => [],
+  })
+
+  const { scan } = await import('../dist/core/scan.js?splitretained')
+  const stop = scan()
+  mutationCallback([{ addedNodes: [el], removedNodes: [] }])
+  assert.equal(html, '', 'split emptied the element and rebuilt it from spans')
+
+  // one mutation record carries `el` in both addedNodes and removedNodes
+  // (parent.replaceChildren/replaceWith retaining it): scope.contains(el) is
+  // still true, so its spans must survive.
+  mutationCallback([{ addedNodes: [el], removedNodes: [el] }])
+  assert.equal(html, '', 'retained node keeps its spans (removeSplit guarded like remove)')
+
+  stop()
+})
+
 // driver.js is a module-level singleton (its own `initialized`/`resizeObserver`
 // survive across every test in this file, whichever test touches track()
 // first wins the ResizeObserver instance): a churn check needs a signal that
