@@ -16,6 +16,11 @@
  *      from the no-JS finished value to 0, never mid-transition
  *   7. sticky-steps: the non-active shots' inert/aria-hidden follow
  *      prefers-reduced-motion live, not just at mount
+ *   8. The pin-stage occlusion sweep is not blind to clip-path: a real
+ *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
+ *      normal-sized element that only has clip-path (a decorative reveal
+ *      mask) is still a candidate, and gets reported if a panel covers it
+ *      (ADU-102, second pass finding)
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -81,11 +86,27 @@ const HIDDEN_TEXT = () => {
 // a regression back to zero coverage can be asserted instead of passing by omission.
 const OCCLUDED_TEXT = () => {
   const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+  // the sr-only technique (Split, TimelineScrub's year, StatsCountup's count:
+  // clip-path: inset(50%) PLUS a 1px by 1px box, same text as an adjacent
+  // aria-hidden visual digit, by design): nothing is on screen for it to
+  // cover or be covered by, so it is not a candidate, the same way an
+  // aria-hidden sibling is not one. clip-path alone is not the signal: a
+  // decorative reveal effect (e.g. clip-path: circle()) can mask real,
+  // normal-sized visible text, and that text must still be examined.
+  const srOnly = (el) => {
+    if (getComputedStyle(el).clipPath === 'none') return false
+    // offsetWidth/offsetHeight read the layout box, not the painted one: an
+    // ancestor transform (sv-tilt, sv-deck, any scale()) leaves the 1px sr-only
+    // box's getBoundingClientRect scaled up (e.g. 2x2 under scale(2)), which
+    // would escape this exclusion and turn a genuine sr-only span into a false
+    // occlusion candidate.
+    return el.offsetWidth <= 1 && el.offsetHeight <= 1
+  }
   const bad = []
   let examined = 0
   for (const stage of document.querySelectorAll('.sv-stage')) {
     for (const el of stage.querySelectorAll('*')) {
-      if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
+      if (!own(el) || srOnly(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
       el.scrollIntoView({ block: 'center', inline: 'center' })
       const r = el.getBoundingClientRect()
       if (r.width === 0 || r.height === 0) continue
@@ -547,6 +568,40 @@ const MIN_EXAMINED = 1
   const restored = await readShots()
   settled('sticky-steps: switching back restores inert + aria-hidden on the non-active shots', restored)
 
+  await page.close()
+}
+
+// ── 8. Occlusion sweep negative cases: a decorative clip-path mask is not
+// the sr-only technique by itself. Real sr-only text is pinpoint-sized
+// (1px by 1px, matching SR_ONLY_CSS in src/core/split.ts and SR_ONLY in
+// src/react/index.tsx) AND clip-path'd; a normal-sized element that only
+// has clip-path (e.g. a circular reveal effect ScrollVars may ship one
+// day) must stay a candidate, so a panel covering it is still caught
+// (ADU-102, second pass finding: the old predicate excluded every
+// clip-path'd element and this sweep silently examined 0 of them).
+//
+// Third pass finding: pinpoint-size alone must also survive an ancestor
+// transform. A genuine sr-only span nested under a transform: scale(2)
+// ancestor (sv-tilt and sv-deck both transform their content) paints at
+// 2px by 2px, so a getBoundingClientRect-based size check reads it as
+// "not pinpoint" and lets it through as a false occlusion candidate even
+// though nothing covers it. offsetWidth/offsetHeight read the layout box
+// instead, which an ancestor transform never changes ──
+{
+  const page = await browser.newPage()
+  await page.goto(`${base}/bench/harness/fixtures/pin-stage-clip-path-occlusion.html`, { waitUntil: 'load' })
+  await page.addStyleTag({ content: STYLES_CSS })
+  const { bad, examined } = await page.evaluate(OCCLUDED_TEXT)
+  check(
+    'occlusion sweep: a clip-path masked but normal-sized element is examined and reported when a panel covers it',
+    examined > 0 && bad.length > 0,
+    `examined=${examined} bad=${bad.join(',')}`
+  )
+  check(
+    'occlusion sweep: a genuine sr-only span under a transform: scale(2) ancestor is excluded (not examined, no false occlusion)',
+    examined === 1 && !bad.includes('genuine-sr-only'),
+    `examined=${examined} bad=${bad.join(',')}`
+  )
   await page.close()
 }
 

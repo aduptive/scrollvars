@@ -143,24 +143,16 @@
   <h1>Stats count-up</h1>
   <p class="tag">Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.</p>
   <p class="meta"><b>Use it for:</b> Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.<br><b>Knobs:</b> --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1</p>
-  <div class="fxrunway"><style>
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 10px 0; }
-.stats > div { padding: 22px 12px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, #221f31, #17151f 80%); }
-.stats dt { order: 2; color: var(--muted); font-size: 13px; margin-top: 8px; }
-.stats dd { margin: 0; font: 800 clamp(34px, 6vw, 64px)/1 var(--mono); letter-spacing: -.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
-.stats > div { display: flex; flex-direction: column; }
-.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
-html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
-@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
-</style>
-<section data-sv data-sv-once class="fxstage sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
-  <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
-    <div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max: 4"></dd></div>
-  </dl>
-</section></div>
+  <div class="fxrunway"><div class="sv sv-acts fxstage" style="--sv-acts-count:1;--sv-acts-duration:1.8s"><style>
+.sv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; margin: 0; }
+.sv-stats > div { display: flex; flex-direction: column; padding: 22px 12px; border-radius: 14px; border: 1px solid rgba(128,128,128,.25); text-align: center; }
+.sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
+.sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.sv-stats .stat::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+</style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248" data-suffix="+" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99" data-suffix="" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4" data-suffix="" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span></div></dl></div>
+<script>addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))</script></div>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
