@@ -4193,30 +4193,32 @@ var SV = (() => {
  *
  * Give the canvas CSS dimensions. A canvas with none lays out at its own
  * backing-store size, so resizing it feeds back into itself above DPR 1.
- * applySize() detects that by re-measuring the canvas's layout size right
- * after writing the backing store: a CSS-sized canvas never moves as a
- * result, whatever its attribute values, borders or padding, but an
- * unsized one does, because layout follows what was just written. Only
- * then does it pin the CSS-pixel size it measured BEFORE the write to
+ * applySize() detects that by measuring the canvas's own layout size, the
+ * fallback method below, once right before and once right after writing
+ * the backing store, then comparing the two with a 1px tolerance: a
+ * CSS-sized canvas never moves as a result of its own backing-store write,
+ * whatever its attribute values, borders, padding or transform, so the two
+ * readings land within a pixel of each other (sub-pixel residual from
+ * rounding, not a real move). An unsized one does move, and by a whole DPR
+ * factor (300 to 600, say), never by sub-pixel noise, so the tolerance
+ * tells the two cases apart cleanly. Both readings deliberately use the
+ * SAME method: comparing a bit-exact ResizeObserver contentRect against the
+ * fallback's sub-pixel residual instead would read a CSS-sized canvas with
+ * fractional padding, or one under a CSS `transform: scale()` (which
+ * inflates what getBoundingClientRect() reports without moving layout), as
+ * having moved when it never did, pinning it on first mount and then
+ * making it ignore every later CSS resize. Only when the two readings
+ * disagree by more than a pixel does applySize() pin the CSS-pixel size it
+ * measured BEFORE the write (read straight from the ResizeObserver entry's
+ * own `contentRect` when applySize() runs as its callback, bit-exact, no
+ * arithmetic, or otherwise from that same fallback) to
  * `canvas.style.width`/`height`, once, so layout stops following the
- * backing store. That measured size is the content box, border AND
- * padding excluded: read straight from the ResizeObserver entry's own
- * `contentRect` when applySize() runs as its callback (bit-exact, no
- * arithmetic), or, when it does not (a direct DPR-change call, or the
- * synchronous re-measure right after writing the backing store), from
- * `getBoundingClientRect()` minus computed border and padding, never
- * `clientWidth`/`clientHeight` (integer-rounded, off by a whole pixel or
- * more). That fallback is close but not bit-exact for fractional values
- * (computed border/padding can report the authored px value, not the
- * sub-pixel value layout actually used), which would cost an extra
- * applySize() pass if it were what got pinned instead of only feeding the
- * boolean loop check. The pin also forces
- * `box-sizing: content-box` inline, so the width/height it writes
- * reproduce that same content box regardless of the canvas's own
- * `box-sizing` (a `border-box` canvas would otherwise need padding and
- * border added back to the content size instead). A canvas with no CSS
- * size still ends up with one pinned inline by the harness: give it real
- * CSS dimensions to keep control of its own size.
+ * backing store. The pin also forces `box-sizing: content-box` inline, so
+ * the width/height it writes reproduce that same content box regardless of
+ * the canvas's own `box-sizing` (a `border-box` canvas would otherwise need
+ * padding and border added back to the content size instead). A canvas
+ * with no CSS size still ends up with one pinned inline by the harness:
+ * give it real CSS dimensions to keep control of its own size.
  */
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }) {
@@ -4268,17 +4270,20 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // usually is). The fallback, getBoundingClientRect() minus computed
     // border and padding (never clientWidth/Height, which round to an
     // integer), covers the one caller with no entry (onDprChange()) and the
-    // synchronous re-measure inside applySize() right after writing the
-    // backing store (no fresh entry exists yet there either). That fallback
-    // is close but not bit-exact for fractional values: computed border and
-    // padding can report the AUTHORED px value, not the sub-pixel value
-    // layout actually snapped to, so subtracting it from the border-box
-    // rect can land a thousandth of a pixel off the true content box
-    // (verified in Chrome: an unsized canvas with `padding: 0.3px` measures
-    // its contentRect at exactly 300, but rect.width minus computed padding
-    // lands on 299.99375). That residual is harmless where it is only used,
-    // the boolean loop check, but would cost an extra applySize() pass if it
-    // were what got pinned.
+    // two calls applySize() makes around the backing-store write to check
+    // for the feedback loop. That fallback is close but not bit-exact for
+    // fractional values: computed border and padding can report the
+    // AUTHORED px value, not the sub-pixel value layout actually snapped to,
+    // so subtracting it from the border-box rect can land a thousandth of a
+    // pixel off the true content box (verified in Chrome: an unsized canvas
+    // with `padding: 0.3px` measures its contentRect at exactly 300, but
+    // rect.width minus computed padding lands on 299.99375). That residual
+    // is harmless: applySize()'s feedback check compares two fallback reads
+    // against each other with a 1px tolerance, never this against an entry.
+    // The subtraction can also go negative, a display:none canvas (rect all
+    // zero) with real padding: clamp to 0 so it reads as "not laid out yet",
+    // same as a canvas with no rect at all, instead of a negative size that
+    // would round through dpr into a negative backing-store write.
     const measureLayout = (entry) => {
         if (entry)
             return { width: entry.contentRect.width, height: entry.contentRect.height };
@@ -4289,8 +4294,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
         const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
         return {
-            width: rect.width - borderX - paddingX,
-            height: rect.height - borderY - paddingY,
+            width: Math.max(0, rect.width - borderX - paddingX),
+            height: Math.max(0, rect.height - borderY - paddingY),
         };
     };
     const writeBackingStore = (size) => {
@@ -4298,32 +4303,46 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         canvas.height = Math.round(size.height * fx.dpr);
     };
     const applySize = (entries) => {
-        const before = measureLayout(entries?.[0]);
-        if (!before.width || !before.height)
+        const size = measureLayout(entries?.[0]);
+        if (!size.width || !size.height)
             return;
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-        writeBackingStore(before);
-        // Detect the feedback loop directly instead of guessing from equality:
-        // a CSS-sized canvas never changes layout as a consequence of its own
-        // backing store changing, whatever its attribute values, borders or
-        // padding. An unsized canvas lays out at its own backing-store size, so
-        // the write above just moved layout again. This second read is
-        // synchronous (forces layout), but applySize() only runs once per
+        // Detect the feedback loop directly instead of guessing from equality,
+        // and with two readings taken the SAME way so a canvas that never
+        // moved cannot look like it did. A CSS-sized canvas never changes
+        // layout as a consequence of its own backing store changing, whatever
+        // its attribute values, borders, padding or transform: the fallback
+        // read right before the write and the one right after land within a
+        // pixel of each other (any gap is the sub-pixel residual noted in
+        // measureLayout(), never a whole-DPR-factor jump). An unsized canvas
+        // lays out at its own backing-store size, so the write moves it by
+        // exactly that factor (300 to 600, say), which the 1px tolerance never
+        // absorbs. Comparing `size` (bit-exact off the ResizeObserver entry
+        // when one is on hand) against a fallback read instead would fail this
+        // the other way: a CSS-sized canvas with fractional padding, or one
+        // under a CSS transform: scale() that inflates getBoundingClientRect()
+        // without moving layout, would disagree with the fallback for reasons
+        // that have nothing to do with feedback, and get pinned on first mount
+        // for it. Both reads force layout, but applySize() only runs once per
         // resize/DPR-change event, never per animation frame, so it is rare.
-        const after = measureLayout();
-        if (after.width !== before.width || after.height !== before.height) {
-            // Force content-box sizing on the pin: `before` is always the pure
+        const beforeWrite = measureLayout();
+        writeBackingStore(size);
+        const afterWrite = measureLayout();
+        const moved = Math.abs(afterWrite.width - beforeWrite.width) > 1 ||
+            Math.abs(afterWrite.height - beforeWrite.height) > 1;
+        if (moved) {
+            // Force content-box sizing on the pin: `size` is always the pure
             // content box (padding already subtracted above), so the pinned
             // width/height must be interpreted as content-box too, whatever the
             // canvas's own box-sizing says, or a border-box canvas would pin a
             // content box smaller than the one just measured.
             canvas.style.boxSizing = 'content-box';
-            canvas.style.width = `${before.width}px`;
-            canvas.style.height = `${before.height}px`;
-            writeBackingStore(before); // re-run sizing from the pinned, pre-write size
+            canvas.style.width = `${size.width}px`;
+            canvas.style.height = `${size.height}px`;
+            writeBackingStore(size); // re-run sizing from the pinned, pre-write size
         }
-        fx.width = before.width;
-        fx.height = before.height;
+        fx.width = size.width;
+        fx.height = size.height;
         ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
         if (!ready) {
             ready = true;

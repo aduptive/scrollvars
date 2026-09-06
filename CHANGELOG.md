@@ -244,6 +244,27 @@ findings on the same round): three more defects fixed.
   (`Math.round(size * dpr)`), and the CSS pin still comes from that same
   now-exact measure. Every prior case (plain, bordered, padded,
   border-box-with-padding) settles the same as before.
+- Fifth pass (verifier and panel findings, reproduced in Chrome at
+  devicePixelRatio 2): the feedback check compared the bit-exact
+  ResizeObserver entry against a fallback re-measure, which disagrees with
+  it for reasons that have nothing to do with feedback: a CSS-sized canvas
+  with fractional padding (a sub-pixel residual, same root cause as the
+  fourth pass, now on the comparison itself) or one under a CSS
+  `transform: scale()` (the fallback's `getBoundingClientRect()` reports
+  the transformed, inflated box; the entry's `contentRect` is layout size,
+  unaffected) both read as having moved when they never did, so they got
+  pinned on first mount and then ignored every later CSS resize, a
+  permanent freeze through a new trigger. `applySize()` now measures with
+  the SAME method, the fallback, once right before and once right after
+  the backing-store write, and compares those two with a 1px tolerance: a
+  real feedback loop moves the layout by a factor of the device pixel
+  ratio, never by sub-pixel noise. The entry's `contentRect` is used only
+  as the size that gets written and, when the check fires, pinned. Also
+  fixed: the fallback's `rect.width/height` minus border and padding could
+  go negative for a `display: none` canvas with real padding (rect all
+  zero), which the `!size.width` guard did not catch since a negative
+  number is truthy; it is now clamped to 0, read as "not laid out yet"
+  same as a genuinely empty rect.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does

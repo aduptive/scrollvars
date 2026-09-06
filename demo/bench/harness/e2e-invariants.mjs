@@ -17,7 +17,9 @@
  *   7. sticky-steps: the non-active shots' inert/aria-hidden follow
  *      prefers-reduced-motion live, not just at mount
  *   8. Canvas: mountEffect()'s applySize() settles an unsized canvas at
- *      its intrinsic size in one pass, never runs away above DPR 1
+ *      its intrinsic size in one pass, never runs away above DPR 1, and
+ *      never mistakes a CSS-sized canvas (fractional padding, a transform)
+ *      for one that moved
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -583,7 +585,16 @@ const MIN_EXAMINED = 1
 // value, not the sub-pixel value layout actually used, so the same
 // residual (300 measured as 299.99375) remained. measureLayout() now
 // reads the content box straight from the ResizeObserver entry's own
-// contentRect, the layout engine's own measurement, bit-exact ──
+// contentRect, the layout engine's own measurement, bit-exact. Fifth pass
+// (verifier and panel findings, reproduced in Chrome): that bit-exact
+// entry then got compared, in the feedback-loop check itself, against a
+// fallback (getBoundingClientRect-derived) re-measure, which disagrees
+// with it for reasons that have nothing to do with feedback: a sub-pixel
+// residual for a CSS-sized canvas with fractional padding, or a whole
+// scale factor for one under a CSS transform. Both got pinned on first
+// mount and then ignored every later CSS resize. The check now takes both
+// readings the same way, the fallback, once right before and once right
+// after the backing-store write, with a 1px tolerance ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -720,6 +731,58 @@ const MIN_EXAMINED = 1
     'canvas: the pinned CSS size is the exact intrinsic content box (300x150), not a subpixel-rounded 300.4x150.4',
     fractional.style.includes('width: 300px') && fractional.style.includes('height: 150px'),
     fractional.style
+  )
+
+  const sizedFractional = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#css-sized-fractional')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height, cw: canvas.width, ch: canvas.height }),
+        })
+        setTimeout(() => {
+          canvas.classList.add('grown')
+          setTimeout(() => resolve({ log, style: canvas.style.cssText }), 200)
+        }, 200)
+      })
+  )
+  check(
+    'canvas: a CSS-sized canvas with fractional (0.3px) padding is never pinned (ADU-107, fifth pass)',
+    sizedFractional.style === '',
+    sizedFractional.style
+  )
+  check(
+    'canvas: that same canvas follows a later class-driven CSS resize instead of freezing at the first size',
+    sizedFractional.log.length === 2 && sizedFractional.log[1].cw === 800 && sizedFractional.log[1].ch === 400,
+    JSON.stringify(sizedFractional.log)
+  )
+
+  const sizedScaled = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#css-sized-scaled')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height, cw: canvas.width, ch: canvas.height }),
+        })
+        setTimeout(() => {
+          canvas.classList.add('grown')
+          setTimeout(() => resolve({ log, style: canvas.style.cssText }), 200)
+        }, 200)
+      })
+  )
+  check(
+    'canvas: a CSS-sized canvas under transform: scale() is never pinned, even though its rect is inflated (ADU-107, fifth pass)',
+    sizedScaled.style === '',
+    sizedScaled.style
+  )
+  check(
+    'canvas: that same transformed canvas follows a later class-driven CSS resize instead of freezing at the first size',
+    sizedScaled.log.length === 2 && sizedScaled.log[1].cw === 500 && sizedScaled.log[1].ch === 240,
+    JSON.stringify(sizedScaled.log)
   )
   await page.close()
 }

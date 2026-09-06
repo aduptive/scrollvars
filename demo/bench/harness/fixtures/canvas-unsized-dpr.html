@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, fourth pass)</title>
+<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, fifth pass)</title>
 <style>
   /* CSS-sized canvas whose attribute values happen to equal its CSS size,
      the exact shape the old border-box-rect-vs-content-box-attribute
@@ -11,6 +11,22 @@
      it, not stay frozen at the first size. */
   #css-sized { width: 150px; height: 80px; }
   #css-sized.grown { width: 300px; height: 160px; }
+
+  /* CSS-sized, fractional padding: the feedback-loop check comparing a
+     bit-exact ResizeObserver contentRect against the fallback's sub-pixel
+     residual (Chrome's computed padding can report the authored value, not
+     the sub-pixel value layout actually used) mistook this for having
+     moved too, on first mount, fifth-pass verifier finding. */
+  #css-sized-fractional { width: 300px; height: 150px; padding: 0.3px; }
+  #css-sized-fractional.grown { width: 400px; height: 200px; }
+
+  /* CSS-sized under transform: scale(): getBoundingClientRect() (the
+     fallback) reports the transformed, inflated box; a ResizeObserver
+     entry's contentRect is layout size, unaffected by transform. Comparing
+     the two read this never-moved canvas as having moved, fifth-pass
+     panel finding. */
+  #css-sized-scaled { width: 200px; height: 100px; transform: scale(1.3); }
+  #css-sized-scaled.grown { width: 250px; height: 120px; }
 </style>
 </head>
 <body>
@@ -46,11 +62,21 @@
      computed padding can report the authored value, not the sub-pixel
      value layout actually used): measureLayout() now reads the
      ResizeObserver entry's own contentRect instead, the layout engine's
-     own bit-exact measurement. -->
+     own bit-exact measurement.
+
+     #css-sized-fractional, #css-sized-scaled: fifth pass. Once
+     measureLayout() started reading the entry's contentRect, the
+     feedback-loop check itself started comparing that bit-exact value
+     against a fallback read, which disagrees with it for reasons that have
+     nothing to do with feedback: a sub-pixel residual for fractional
+     padding, or a whole scale factor for a CSS transform. Both got pinned
+     on first mount and then ignored every later CSS resize. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
 <canvas id="unsized-border-box" style="border: 4px solid blue; padding: 6px; box-sizing: border-box"></canvas>
 <canvas id="unsized-fractional-padding" style="padding: 0.3px"></canvas>
+<canvas id="css-sized-fractional"></canvas>
+<canvas id="css-sized-scaled"></canvas>
 </body>
 </html>
