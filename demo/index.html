@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.9 KB gzip · full core 5.2 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.9 KB gzip · full core 5.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3302,7 +3302,12 @@ var SV = (() => {
     const words = text.split(/\s+/).filter(Boolean);
     if (by === "word")
       return words;
-    return words.flatMap(chars);
+    const parts = [];
+    for (const word of words) {
+      for (const ch of chars(word))
+        parts.push(ch);
+    }
+    return parts;
   }
   function chars(word) {
     const Segmenter = Intl.Segmenter;
@@ -3464,10 +3469,45 @@ var SV = (() => {
       const triggers = selector ? [...scope.querySelectorAll("[data-sv-toggle]")].filter((t) => t.getAttribute("data-sv-target") === selector) : [target];
       triggers.forEach((t) => t.setAttribute("aria-expanded", String(on)));
     };
+    const settling = /* @__PURE__ */ new WeakSet();
+    const longhandHold = /* @__PURE__ */ new WeakMap();
+    const holdDuration = (target) => {
+      const value = target.style.getPropertyValue("transition-duration");
+      if (!value)
+        return;
+      const priority = target.style.getPropertyPriority("transition-duration");
+      longhandHold.set(target, { value, priority });
+      target.style.setProperty("transition-duration", "0s", priority);
+    };
+    const restoreDuration = (target) => {
+      const saved = longhandHold.get(target);
+      if (!saved)
+        return;
+      longhandHold.delete(target);
+      target.style.setProperty("transition-duration", saved.value, saved.priority);
+    };
     scope.querySelectorAll("[data-sv-toggle]").forEach((trigger) => {
       const { className, selector, target } = resolve(trigger);
-      if (target)
-        sync(selector, target, target.classList.contains(className));
+      if (!target)
+        return;
+      if (!target.classList.contains("sv-ui")) {
+        target.classList.add("sv-ui");
+        if (target.classList.contains("sv-acts")) {
+          target.style.setProperty("--sv-acts-settle", "0s");
+          holdDuration(target);
+          settling.add(target);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (settling.has(target)) {
+                settling.delete(target);
+                target.style.removeProperty("--sv-acts-settle");
+                restoreDuration(target);
+              }
+            });
+          });
+        }
+      }
+      sync(selector, target, target.classList.contains(className));
     });
     const onClick = (event) => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
@@ -3476,6 +3516,12 @@ var SV = (() => {
       const { className, selector, target } = resolve(trigger);
       if (!target)
         return;
+      target.classList.add("sv-ui");
+      if (settling.has(target)) {
+        settling.delete(target);
+        target.style.removeProperty("--sv-acts-settle");
+        restoreDuration(target);
+      }
       const on = target.classList.toggle(className);
       target.style.setProperty("--sv-state", on ? "1" : "0");
       sync(selector, target, on);
@@ -4883,6 +4929,44 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
  * orchestrated multi-act sequences, use GSAP. That's its turf.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
+ *
+ * Marks every target it controls with `sv-ui` (the resolved
+ * `data-sv-target` element, or the trigger itself when there is no target):
+ * a click driver is running on that element even on a page that never calls
+ * scan()/track(), so CSS no-JS guards keyed on `html:not(.sv-on)` (sv-acts)
+ * must also exempt `.sv-acts.sv-ui`, or a click-only widget stays stuck at
+ * the no-JS finished state forever. Scoped to the target, not <html>: an
+ * unrelated scroll-revealed widget elsewhere on the same page must still
+ * fall back to the finished state when the scroll driver never boots.
+ *
+ * Marking a target at boot holds its `--sv-acts-settle` (styles/state.css)
+ * at 0s for two frames: without that, a target closed by default settles
+ * from the no-JS finished value down to 0 WITH the acts transition
+ * running, a visible un-animation the instant the click driver takes over.
+ * Scoped to that one custom property, never the `transition` shorthand:
+ * writing the shorthand would stop every OTHER transition running on the
+ * element too, not just the acts one.
+ * An inline `transition-duration` LONGHAND is the one thing that knob
+ * cannot reach: it outranks the stylesheet's --sv-acts-settle-driven
+ * duration by cascade origin no matter what the knob is set to, so it gets
+ * its own hold for the same two frames, exact value and priority saved and
+ * restored through the longhand getter/setter only, never the shorthand
+ * (the shorthand getter reads an inline longhand back as '', so a
+ * save/restore through it would erase the longhand for good). A target
+ * with no inline longhand never has one written, so an unrelated in-flight
+ * transition on it is never touched.
+ * The whole settle, --sv-acts-settle AND the longhand hold, is scoped to
+ * `.sv-acts` targets: that is the only class with the no-JS finished-value
+ * guard above, so only it has a value to un-animate from. A plain toggle
+ * target (this module's own `<nav id="menu">` example, most of the time)
+ * gets sv-ui and nothing else. This matters beyond skipping needless work:
+ * `getPropertyValue('transition-duration')` cannot tell an authored inline
+ * longhand from the browser's own expansion of an unrelated inline
+ * `transition` SHORTHAND (`style="transition: translate 300ms linear"`
+ * reads back as `'300ms'` on that longhand too), so running the hold on a
+ * non-.sv-acts target risked forcing that unrelated property's duration to
+ * 0s for two frames, snapping instead of animating any change to it that
+ * landed inside the hold window.
  */
 function toggles(root) {
     if (typeof window === 'undefined')
@@ -4901,10 +4985,63 @@ function toggles(root) {
             : [target];
         triggers.forEach((t) => t.setAttribute('aria-expanded', String(on)));
     };
+    // targets currently inside their boot settle: cancellable by a click that
+    // lands inside the two-frame hold, so it still gets its transition
+    const settling = new WeakSet();
+    // an inline transition-duration LONGHAND held for the same settle, saved
+    // per target (value and priority, exact). --sv-acts-settle above cannot
+    // reach this case: an inline longhand outranks it regardless of what the
+    // knob is set to, so a target that has one needs its duration held too.
+    const longhandHold = new WeakMap();
+    const holdDuration = (target) => {
+        const value = target.style.getPropertyValue('transition-duration');
+        if (!value)
+            return; // no inline longhand: the --sv-acts-settle knob alone covers this target
+        const priority = target.style.getPropertyPriority('transition-duration');
+        longhandHold.set(target, { value, priority });
+        target.style.setProperty('transition-duration', '0s', priority);
+    };
+    const restoreDuration = (target) => {
+        const saved = longhandHold.get(target);
+        if (!saved)
+            return;
+        longhandHold.delete(target);
+        target.style.setProperty('transition-duration', saved.value, saved.priority);
+    };
     scope.querySelectorAll('[data-sv-toggle]').forEach((trigger) => {
         const { className, selector, target } = resolve(trigger);
-        if (target)
-            sync(selector, target, target.classList.contains(className));
+        if (!target)
+            return;
+        if (!target.classList.contains('sv-ui')) {
+            target.classList.add('sv-ui');
+            // only a .sv-acts target has a no-JS finished value to un-animate
+            // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
+            // comment): a plain toggle target gets sv-ui above and nothing else,
+            // no --sv-acts-settle, no longhand hold, no pending restore (ADU-104,
+            // round 6 finding).
+            if (target.classList.contains('sv-acts')) {
+                // marking it sv-ui alone stops that guard from matching, and
+                // --sv-act would transition from the finished value down to 0, a
+                // visible un-animation right as the page becomes interactive. Hold
+                // the acts transition at zero duration for exactly the settle,
+                // scoped to --sv-acts-settle (styles/state.css): two frames is
+                // enough for the cascade to apply the new --sv-act before the acts
+                // transition comes back.
+                target.style.setProperty('--sv-acts-settle', '0s');
+                holdDuration(target);
+                settling.add(target);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (settling.has(target)) {
+                            settling.delete(target);
+                            target.style.removeProperty('--sv-acts-settle');
+                            restoreDuration(target);
+                        }
+                    });
+                });
+            }
+        }
+        sync(selector, target, target.classList.contains(className));
     });
     const onClick = (event) => {
         const trigger = event.target.closest?.('[data-sv-toggle]');
@@ -4913,6 +5050,18 @@ function toggles(root) {
         const { className, selector, target } = resolve(trigger);
         if (!target)
             return;
+        // a target that appeared after boot (e.g. inserted later) is marked here
+        // instead: its first click shows the finished state with no transition,
+        // since it was covered by the no-JS/no-boot fallback up to this instant
+        target.classList.add('sv-ui');
+        // a click landing inside the boot settle must still animate: drop the
+        // hold before the class flips, and cancel the scheduled restore so it
+        // does not act on a target a fresh boot may have re-armed since
+        if (settling.has(target)) {
+            settling.delete(target);
+            target.style.removeProperty('--sv-acts-settle');
+            restoreDuration(target);
+        }
         const on = target.classList.toggle(className);
         target.style.setProperty('--sv-state', on ? '1' : '0');
         sync(selector, target, on);

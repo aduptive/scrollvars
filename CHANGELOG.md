@@ -1,5 +1,118 @@
 # Changelog
 
+## Unreleased
+
+Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
+enhancement contract holds in every documented case. Second pass (verifier
+findings on the same round): three more defects fixed.
+
+### Presets and no-JS
+- `.sv-split` word/char spans compute to `display: inline-block`, so
+  `sv-split-rise` can actually apply `translate` to them (non-replaced
+  inline boxes ignore it).
+- The reduced-motion override for `.sv-auto` now matches the same
+  `:not(.sv-skip)` compound as the normal entrance rule, so it wins on
+  specificity instead of losing to it.
+- The no-JS guards for curtain, rail, deck, reading, range and counter now
+  match `[data-sv]` as well as `.sv`: markup that has not been scanned yet
+  (data-sv only, no JS run) no longer leaves curtain panels as absolute
+  overlays over the revealed content.
+- `sv-spread` and `sv-acts` are driven from the inherited `--sv-live` flag,
+  like the entrance presets: a nested tracker that is not itself live no
+  longer inherits a live ancestor's spread or acts clock.
+- `.sv-acts.sv-open` now also outranks the live-driven rule
+  (`.sv-acts:not(.sv-open)` on both selectors): an opened widget sitting
+  inside, or itself, a tracker that is not live keeps its finished
+  `--sv-act` instead of being reset to 0.
+- `.sv-auto > :nth-child(1)` (and `.sv-stagger`) resets `--sv-order` to 0,
+  so the first child never inherits an ancestor's order.
+- `.sv-slider.sv-cols` also matches `.sv-cols .sv-slider > *`, so a
+  `className="sv-cols"` on the Slider shell (one level up from
+  `.sv-slider`, where React's `className` prop lands) works too.
+
+### Click driver
+- `toggles()` now marks `sv-ui` on the element it actually controls (the
+  resolved `data-sv-target`, or the trigger itself when there is no
+  target), not on `<html>`. Marking `<html>` unconditionally meant an
+  unrelated scroll-revealed `sv-acts` widget on a page without a booted
+  scroll driver was wrongly exempted from the no-JS finished-state guard
+  and stayed hidden at act zero forever. The guard is now
+  `html:not(.sv-on) .sv-acts:not(.sv-ui)`: scoped to the widget itself. A
+  target added to the DOM after boot gets `sv-ui` on its first click, so
+  that first click shows the finished state with no visible transition.
+- Third pass: marking a boot-present target `sv-ui` now holds its inline
+  `transition` at `none` for two animation frames. Without that, a target
+  closed by default (`.sv-acts` without `.sv-open`) settled from the no-JS
+  finished value down to 0 with the acts transition still running, a
+  visible un-animation the instant `toggles()` took over.
+- Fourth pass: that hold read and wrote the inline `transition` shorthand
+  (save, set to `none`, restore). Two defects, both reproduced in Chrome:
+  an inline transition longhand (e.g. `style="transition-duration: 400ms"`)
+  reads back as `''` through the shorthand getter, so the "restore" erased
+  it for good; and `transition: none` stopped every transition on the
+  element for the hold, not just the acts one, snapping an unrelated
+  in-flight transform transition. The hold now sets an internal
+  `--sv-acts-settle` custom property to `0s` instead, new and additive:
+  `.sv-acts`'s own transition reads its duration from it
+  (styles/state.css), and `toggles()` never touches `style.transition`.
+- Fifth pass: `--sv-acts-settle` only reaches the duration the stylesheet
+  itself declares on `.sv-acts`. An element that also carries its own
+  inline `transition-duration` LONGHAND (the fixture's `#longhand-target`,
+  `style="transition-duration: 400ms"`) outranks that knob by cascade
+  origin no matter what it is set to, so the settle for that element still
+  played out over the longhand's own duration instead of 0s, reproduced in
+  Chrome (`3, 2.876, ... 0` over 400ms): the exact un-animation this
+  feature exists to remove. The shipped e2e case only asserted the
+  attribute string survived and never sampled `--sv-act` on that element,
+  so it stayed green. `toggles()` now also saves that inline longhand's
+  exact value and priority, holds it at `0s` for the same two frames (or
+  until a click inside the hold cancels it, restored immediately there
+  too), and restores it exact, through the longhand getter/setter only,
+  never the shorthand. A target without an inline longhand never has one
+  written, so an unrelated in-flight transition on it is untouched. What
+  remains unguarded: an author RULE, not an inline style, that overrides
+  `transition-duration` or the whole `transition` shorthand on `.sv-acts`
+  at higher specificity than the preset's own rule still owns the settle
+  timing (styles/state.css).
+- Sixth pass: the whole settle (`--sv-acts-settle` and the inline
+  `transition-duration` hold) now only runs on `.sv-acts` targets, gated
+  only on `sv-ui` before. `getPropertyValue('transition-duration')` cannot
+  tell an authored longhand from the browser's own expansion of an
+  unrelated inline `transition` shorthand, so a plain toggle target with
+  one (this module's own `<nav id="menu">` example, most of the time) had
+  it forced to `0s` for two frames regardless, snapping any change to it
+  that landed inside the window instead of animating. A target that is not
+  `.sv-acts` still gets `sv-ui`, nothing else.
+
+### Compat
+- `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
+  rule for engines missing individual transform properties.
+- `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
+  61-68 and Safari 11, the floor compat claims).
+
+### Testing
+- The no-JS "pin stages never cover their revealed text" e2e sweep now
+  scrolls each candidate into view before measuring: 6 of the 7 pin fx
+  pages were previously off-viewport at scroll position 0 and silently
+  skipped. The sweep asserts and prints a minimum examined count per pin
+  page, so a regression back to zero coverage fails it instead of passing
+  by omission.
+- The boot-settle e2e fixture (toggles-boot-settle.html) gained two more
+  targets: one with an inline `transition-duration` longhand, one with an
+  unrelated in-flight `translate` transition, proving the settle hold
+  leaves both alone. Its post-click assertion now samples `--sv-act`
+  across frames instead of only the final value, so a transition silently
+  reduced to zero duration would fail it instead of passing by omission.
+- Fifth pass: `#longhand-target`'s `--sv-act` is now sampled per frame like
+  the main target, so a settle silently governed by the longhand instead
+  of `--sv-acts-settle` fails the sweep instead of passing on the attribute
+  string alone. A new `#longhand-important-target`
+  (`transition-duration: 400ms !important`) proves the same hold and
+  restore keep the original priority, not just the value. Unit tests cover
+  the longhand hold-and-restore lifecycle exact (value and priority), that
+  a target with no inline longhand never has one written, and that a click
+  inside the hold restores it immediately alongside the knob.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

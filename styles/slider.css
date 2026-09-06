@@ -37,8 +37,11 @@
 /* Columns: set --sv-per-view (fractional = peek) and breakpoints ARE media
    queries. Override the var per breakpoint (or via Tailwind:
    "[--sv-per-view:1.2] md:[--sv-per-view:2.5]"). Slides can span columns
-   with --sv-span. Gate class sv-cols keeps natural sizing the default. */
-.sv-slider.sv-cols > * {
+   with --sv-span. Gate class sv-cols keeps natural sizing the default.
+   sv-cols also works from the Slider shell (React's className prop lands
+   on .sv-slider-shell, one level up from .sv-slider). */
+.sv-slider.sv-cols > *,
+.sv-cols .sv-slider > * {
   flex: 0 0
     calc(
       (100% - (var(--sv-per-view, 1) - 1) * var(--sv-gap, 16px)) / var(--sv-per-view, 1) *

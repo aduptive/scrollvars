@@ -25,7 +25,12 @@ export interface SplitOptions {
 export function splitParts(text: string, by: 'word' | 'char' = 'word'): string[] {
   const words = text.split(/\s+/).filter(Boolean)
   if (by === 'word') return words
-  return words.flatMap(chars)
+  // Chrome 61-68 and Safari 11 (the floor src/compat claims) have no flatMap.
+  const parts: string[] = []
+  for (const word of words) {
+    for (const ch of chars(word)) parts.push(ch)
+  }
+  return parts
 }
 
 /** Grapheme clusters when the engine has Intl.Segmenter (emoji, combining

@@ -39,7 +39,15 @@ Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `-
 Guard: the driver sets `sv-on` on `<html>`. Entrance CSS must hide content
 only under `.sv-on`. Without JS everything stays visible (never fail hidden).
 The shipped `styles.css` already does this; follow the same pattern for
-custom presets.
+custom presets. `toggles()` marks a second class, `sv-ui`, on each element it
+controls (the resolved `data-sv-target`, or the trigger itself when there is
+no target), not on `<html>`: a click-only widget on a page whose scroll
+driver never boots (no `scan()`/`track()`) still needs its own no-JS guard
+to back off, or a click-driven `sv-acts` clock stays stuck at the finished
+state forever, while an unrelated scroll-revealed widget elsewhere on the
+same page correctly keeps that finished-state fallback. Any custom guard
+keyed on `html:not(.sv-on)` for something clicks alone can finish should add
+`:not(.sv-ui)` on the element itself, not on `html`.
 
 ## Imports
 
@@ -50,8 +58,8 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
-import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.0 KB gz)
-// also styles/pin.css (2.4), slider.css (1.2), tilt.css (0.5), state.css (1.5), ui.css (0.7), per page needs
+import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.2 KB gz)
+// also styles/pin.css (2.5), slider.css (1.3), tilt.css (0.5), state.css (2.1), ui.css (0.7), per page needs
 ```
 
 ## The fx gallery (prefer for common patterns)
@@ -261,7 +269,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 5.2 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 5.4 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
