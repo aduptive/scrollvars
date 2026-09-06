@@ -111,7 +111,7 @@ when the track fits the viewport:
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
-`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton; a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math. No client components
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton (an inline static wrapper gets `position: relative` to give the stage a containing block; any other authored position is kept); a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math. No client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
@@ -271,7 +271,7 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
-static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support falls back to a static panel that still opens and closes. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler
@@ -314,14 +314,17 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
-  driver), so without JS the page is a complete static page, SSR, SEO and
-  the Lighthouse load profile stay untouched, with two exceptions by
+  driver), so on the no-JS path the page is a complete static page: SSR,
+  SEO and the Lighthouse load profile stay untouched (a JS-enabled
+  Lighthouse run sees the pre-paint script hide entrances before paint
+  and the pin helper write heights on attach), with three exceptions by
   design: class-toggled panels (menus, modals) stay closed with no click
-  driver to open them, and `sv-view-*` native animations still run without
-  JS where the browser supports `animation-timeline: view()`. A
-  click-driven `sv-acts` target also needs `toggles()` (which marks
-  `sv-ui` on it) to start at zero instead of settling at its no-JS
-  finished state.
+  driver to open them, `sv-view-*` native animations still run without
+  JS where the browser supports `animation-timeline: view()`, and the
+  marquee (`ui.css`) keeps scrolling, its `@keyframes` animation never
+  depends on the driver. A click-driven `sv-acts` target also needs
+  `toggles()` (which marks `sv-ui` on it) to start at zero instead of
+  settling at its no-JS finished state.
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve

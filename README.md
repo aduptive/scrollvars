@@ -51,14 +51,17 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
-  driver), so without JS the page is a complete static page, SSR, SEO and
-  the Lighthouse load profile stay untouched, with two exceptions by
+  driver), so on the no-JS path the page is a complete static page: SSR,
+  SEO and the Lighthouse load profile stay untouched (a JS-enabled
+  Lighthouse run sees the pre-paint script hide entrances before paint
+  and the pin helper write heights on attach), with three exceptions by
   design: class-toggled panels (menus, modals) stay closed with no click
-  driver to open them, and `sv-view-*` native animations still run without
-  JS where the browser supports `animation-timeline: view()`. A
-  click-driven `sv-acts` target also needs `toggles()` (which marks
-  `sv-ui` on it) to start at zero instead of settling at its no-JS
-  finished state.
+  driver to open them, `sv-view-*` native animations still run without
+  JS where the browser supports `animation-timeline: view()`, and the
+  marquee (`ui.css`) keeps scrolling, its `@keyframes` animation never
+  depends on the driver. A click-driven `sv-acts` target also needs
+  `toggles()` (which marks `sv-ui` on it) to start at zero instead of
+  settling at its no-JS finished state.
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
@@ -143,7 +146,7 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55 keeps 4.5:1 on the default dark palette, check your own colors; .13 for drama) |
 | `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
 
-Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
+Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: `--sv-order`'s own default for automatic stagger comes from `.sv-auto > :nth-child(n)`, a real selector with real specificity, so a `:root` override never reaches those auto-ordered children (set `--sv-order` on the child itself, or skip `sv-auto` for a manual order).
 
 Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
 
@@ -468,22 +471,28 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
 | Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
 
-The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
+The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support falls back to a static panel that still opens and closes. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
 on old ones it installs a ResizeObserver stub (viewport-resize backed), an
 always-visible IntersectionObserver stub, and a `transform:`-based fallback
-stylesheet for curtain, rail and drift (written without
-`:is()`/`clamp()`/`min()`; the one `max()` left, drift's fade, sits behind a
-plain `opacity` declaration that old parsers keep); `sv-deck` unstacks to a
-static, non-overlapping layout instead, its fly-away slice needs `clamp()`.
-Text splitting works down to the same floor: `split()`
+stylesheet for the reveal presets (`sv-rise`, `sv-fade`, `sv-slide-l`,
+`sv-slide-r`, `sv-auto`, `sv-drift`) and the pin presets `sv-curtain-l`,
+`sv-curtain-r` and `sv-rail` (written without `:is()`/`clamp()`/`min()`;
+the one `max()` left, drift's fade, sits behind a plain `opacity`
+declaration that old parsers keep). `sv-deck` unstacks to a static,
+non-overlapping layout instead of animating (its fly-away slice needs
+`clamp()`); `sv-split-rise` and `sv-spread` stay static below the floor
+too, no fallback rule for either, their `:is()` selectors are simply
+dropped by a parser that predates it.
+Text splitting itself still works down to the same floor: `split()`
 no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
 Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
-already does per browserslist), the core reveal/pin/split presets animate
-on roughly Chrome 61+ / Firefox 60+ / Safari 11+; sv-counter and
-sv-view-* stay progressive. Call it once, before anything else:
+already does per browserslist), the reveal and pin presets above animate
+on roughly Chrome 61+ / Firefox 60+ / Safari 11+; `sv-deck`,
+`sv-split-rise`, `sv-spread`, `sv-counter` and `sv-view-*` stay static or
+progressive. Call it once, before anything else:
 
 ```ts
 import { compat } from 'scrollvars/compat'

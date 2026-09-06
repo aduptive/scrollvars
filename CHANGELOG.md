@@ -891,6 +891,34 @@ from the code it describes.
   unknown element an engine without `<dialog>` parses, which hid the
   documented static fallback panel with no UA `display: none` behind it.
 
+### Docs (blind review round 4)
+Blind review round 4 (Astra on 7489a11), section 2: eight docs mismatches
+against the code ADU-129 to ADU-132 shipped.
+- The fx gallery's preset table now notes that a scroll-driven `sv-acts`
+  clock needs `core.css` as well as `state.css`, matching the import
+  comments ADU-129 already fixed in README and AGENTS.
+- The no-JS exception list now includes the marquee: `ui.css` animates it
+  via a plain `@keyframes` rule that never depends on the driver.
+- The compat floor sentence separates what the fallback animates (reveal
+  presets `sv-rise`/`sv-fade`/`sv-slide-l`/`sv-slide-r`/`sv-auto`/`sv-drift`
+  and pin presets `sv-curtain-l`/`sv-curtain-r`/`sv-rail`) from what stays
+  static below the floor (`sv-split-rise` and `sv-spread`, no fallback
+  rule, their `:is()` selectors are dropped by those parsers).
+- `sv-deck`'s fallback is documented as ADU-131 shipped it: a static,
+  non-overlapping unstack, no `max()` involved.
+- Modal without `<dialog>` support is documented as a static panel that
+  still opens and closes (ADU-132), not stuck open.
+- AGENTS.md's pinned-skeleton line now states an inline static wrapper
+  gets `position: relative` (ADU-130), matching README.
+- The knobs sentence notes the one exception to zero-specificity defaults:
+  `--sv-order`'s automatic-stagger value comes from
+  `.sv-auto > :nth-child(n)`, a real selector, so a `:root` override never
+  reaches it.
+- The "SSR, SEO and the Lighthouse load profile stay untouched" claim is
+  scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint
+  script hide entrances before paint and the pin helper write heights on
+  attach.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
