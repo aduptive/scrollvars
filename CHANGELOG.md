@@ -1203,6 +1203,43 @@ Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.
   not blow up whichever later test happens to flush it twice.
   Two harness tests pin both halves.
 
+### Docs (round 5, ADU-145)
+Docs read against the code merged by the five round-5 code tickets.
+- `onTravel`/`onPin` are documented as exempt from near-viewport culling
+  when tracked with a custom `root`, by design: the callback fires every
+  frame no matter where the root sits on screen.
+- The "remove `sv-live`, add it back next frame" replay trick is now
+  documented as scoped to elements the driver does not track; a tracked or
+  released element pins `--sv-live` inline, which outranks a non-
+  `!important` author rule, so re-tracking is what replays the entrance
+  there instead.
+- The outputs table now says which option activates each opt-in clock
+  (`--sv-t` needs `travel`, `--sv-pin` needs `pin`, `--sv-scene` needs
+  `scenes` greater than 1), and the `sv-spread` scrub recipe no longer
+  reads as if `--sv-t` were always written.
+- The browser-support section now documents `pin.css`'s own
+  `@supports not (translate: 0)` net accurately: it covers four rules (the
+  stage, both curtains, the deck), not every pin preset; the stage resets
+  to flow so nothing is clipped by the stage itself. `sv-rail` is the one
+  exception again: the no-JS wrap guard does not apply with JS running, so
+  an unwrapped track can run past the viewport edge, reachable only by a
+  page-wide horizontal scroll and not at all under an
+  `overflow-x: hidden` ancestor; `compat()` restores its travel, but with
+  the stage released into flow that travel mostly happens off screen.
+  Also noted, as a caveat pending ADU-150: a released stage can leave a
+  parked curtain panel outside it, extending the document with an empty
+  sideways scroll.
+- The "below the floor nothing breaks" design rule holds with or without
+  `compat()`: skip it and the page renders complete and static, call it
+  and the page animates instead.
+- `data-sv-off`, the driver-managed released twin of `html.sv-on`, is
+  documented next to it in README and AGENTS: added on release, removed on
+  re-track, settles every preset under it to the no-JS rendering; a
+  released ancestor still holding a tracked descendant keeps waiting.
+- README's compat paragraph and `src/compat/index.ts`'s header comment
+  (the two hand-kept copies) stay in agreement; this pass added text next
+  to them without touching that pairing.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

@@ -47,7 +47,13 @@ to back off, or a click-driven `sv-acts` clock stays stuck at the finished
 state forever, while an unrelated scroll-revealed widget elsewhere on the
 same page correctly keeps that finished-state fallback. Any custom guard
 keyed on `html:not(.sv-on)` for something clicks alone can finish should add
-`:not(.sv-ui)` on the element itself, not on `html`.
+`:not(.sv-ui)` on the element itself, not on `html`. A released element (an
+unmounted `<Track>`, a stopped `scan()`) gets the driver's own `data-sv-off`
+instead, the per-element released twin of `sv-on`: it settles every preset
+under it to the no-JS rendering and comes off the moment that element is
+tracked again; a released ancestor still holding a tracked descendant keeps
+waiting for it. A settled `once` entry never takes this marker: it keeps
+`sv-live` and the inline `--sv-live: 1`, live and untracked instead.
 
 ## Imports
 
@@ -117,7 +123,8 @@ in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
 a translate collapses them onto the center while `--sv-spread` is 0. Add
 `.sv-spread-in` to play on arrival (sv-live + stagger), or map the var to
-scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
+scrub (needs `travel: true` on the tracker): `.mine > * { --sv-spread:
+clamp(0, calc(var(--sv-t) * 2), 1) }`.
 Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
 
@@ -201,8 +208,15 @@ canvas with the same camera transform (`Path2D` from the SVG `d`).
 `data-sv-toggle="class"` + `data-sv-target="sel"` flips the class, writes
 `--sv-state` and syncs `aria-expanded`. Presets: `sv-pop` (popover/dialog/
 panel entry-exit via @starting-style) and `sv-words` (rotating words via
-`--sv-word`). Removing `sv-live` and re-adding it on the next frame replays the entrance
-system on demand. **Multi-act timed sequences**: `sv-acts` preset: a registered
+`--sv-word`). On an element the driver does not track (a hand-flipped `.sv`,
+a `toggles()`-driven widget), removing `sv-live` and re-adding it on the
+next frame replays the entrance system on demand; on a tracked (or
+released) element the driver pins `--sv-live` inline (outranks a rule of
+your own without `!important`), so re-tracking is what replays the entrance
+there instead. A settled `once` entry carries that inline value too,
+without being tracked or released, so the class trick alone cannot
+replay it; re-tracking still can, exactly as on a tracked element.
+**Multi-act timed sequences**: `sv-acts` preset: a registered
 custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
 Knobs: --sv-acts-count / --sv-acts-duration. Reversible (retargets, never
@@ -214,7 +228,7 @@ a11y semantics. Use toggles(), Popover API or `:has()` + radios).
 cards. Two delegated listeners (pointermove, pointerout); CSS does tilt + glare from `--mx`/`--my`.
 
 **Scroll-scrubbed media / WebGL:** `onTravel` (viewport travel) and `onPin`
-(progress across a pinned stretch) fire on every driver frame, while near the viewport, with raw 0..1:
+(progress across a pinned stretch) fire on every driver frame, while near the viewport, with raw 0..1 (track with a custom `root` and that near-viewport culling never applies, by design: the callback fires every frame no matter where the root itself sits on screen):
 ```tsx
 useTrack({ onTravel: (t) => { /* drive a camera, a canvas, a timeline */ } })
 useTrack({ onPin: (p) => { /* scrub frames across a pinned section */ } })

@@ -133,6 +133,13 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `--sd` and `--sv-progress` (slider), `--sv-state` (toggles), `--sv-act` (sv-acts).
 <!-- vars:end -->
 
+The opt-in outputs are not written by default: `--sv-t` needs
+`travel: true` (or `data-sv-travel`), `--sv-pin` needs `pin` (or
+`data-sv-pin`), `--sv-scene` (and `--sv-scenes` next to it) needs `scenes`
+greater than 1 (or `data-sv-scenes="4"`), `--mx`/`--my` need the pointer
+module (`trackPointer()` / `usePointer`). Skip the option and the driver
+never writes that variable.
+
 Anything that reads them is a preset. The shipped ones:
 
 | Class | Effect |
@@ -140,7 +147,7 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-rise` / `sv-fade` / `sv-slide-l` / `sv-slide-r` | Entrance transitions, triggered by `.sv-live` |
 | `sv-auto` (on the container) | Every direct child rises in DOM order, no classes on children (`sv-skip` opts out); the first 10 children get their own beat (orders 0 to 9), children beyond 10 share order 10 |
 | `sv-drift` | Continuous drift tied to `--sv-view`. Follows the finger, no transition |
-| `sv-spread` | Centered deck fans out into its flex row, `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
+| `sv-spread` | Centered deck fans out into its flex row, `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` (needs `travel: true` on the tracker) to scrub |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
 | `sv-deck` | Pinned card pile: each child flies away across its slice of the pin (`--sv-count`) |
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55 keeps 4.5:1 on the default dark palette, check your own colors; .13 for drama) |
@@ -203,6 +210,17 @@ plain server components with `data-sv` attributes. No client wrappers anywhere:
 Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 `data-sv-scenes="4"`. New nodes from route changes are picked up automatically
 (vanilla: `scan()`).
+
+One more attribute is the driver's own, not yours to set: `data-sv-off`, the
+released twin of `html.sv-on`. It lands on a released element (an unmounted
+`<Track>`, a stopped `scan()`) and comes off the moment that element is
+tracked again; it settles every preset under it to the no-JS rendering
+(curtains gone, deck unstacked, `sv-range` finished, `.sv-stage` back in
+flow). A released ancestor still holding a tracked descendant keeps waiting:
+it only takes the marker once nothing inside it is tracked any more. A
+settled `once` entry never takes this marker either: it keeps `sv-live` and
+the inline `--sv-live: 1`, so it stays live and untracked instead of
+released.
 
 ## The fx gallery: copy-paste effects (+ shadcn-style CLI)
 
@@ -326,11 +344,19 @@ GSAP.
 .hero .cards { scale: calc(0.9 + var(--a2) * 0.1); }
 ```
 
-Three tricks worth knowing before writing any JS: removing `sv-live` and adding it back on the next frame
-replays the whole entrance system on demand; `:has()` puts state anywhere
-(`body:has(#tab-2:checked) .panel-2`); the Popover API opens/closes with zero
-JS. One-shot intros on load are plain CSS keyframes. Timed multi-act sequences are
-`sv-acts` (above); branching, physics or callback-heavy timelines remain GSAP's turf.
+Three tricks worth knowing before writing any JS: on an element the driver
+does not track (a hand-flipped `.sv`, a `toggles()`-driven widget), removing
+`sv-live` and adding it back on the next frame replays the whole entrance
+system on demand; on a tracked (or released) element the driver pins
+`--sv-live` inline, which outranks a rule of your own without `!important`,
+so re-tracking is what replays the entrance there instead. A settled
+`once` entry carries that same inline value without being tracked or
+released, so the class trick alone cannot replay it there; re-tracking
+still can, exactly as on a tracked element. `:has()` puts
+state anywhere (`body:has(#tab-2:checked) .panel-2`); the Popover API
+opens/closes with zero JS. One-shot intros on load are plain CSS keyframes.
+Timed multi-act sequences are `sv-acts` (above); branching, physics or
+callback-heavy timelines remain GSAP's turf.
 
 ## Pointer tilt
 
@@ -345,7 +371,7 @@ const ref = usePointer()          // or trackPointer(container) in vanilla
 
 ## Video scrub & WebGL
 
-`onTravel` fires on every driver frame while the element is near the viewport, with the raw 0..1 value. Feed it to whatever JS needs to follow the scroll:
+`onTravel` fires on every driver frame while the element is near the viewport, with the raw 0..1 value. Feed it to whatever JS needs to follow the scroll. Track it with a custom `root` and that near-viewport culling never applies, by design: the callback fires every frame no matter where the root itself sits on screen.
 
 ```tsx
 useTrack({ onTravel: (t) => drawFrame(Math.round(t * (frames.length - 1))) }) // frame sequence, never video.currentTime
@@ -469,9 +495,26 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); `sv-rail` is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()` gives it back its own scroll-linked travel, but with the stage released into flow that travel mostly happens off screen |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
+
+Below the transform floor, with JS still running, `styles/pin.css` carries
+its own `@supports not (translate: 0)` net, but only for four of its rules:
+the stage, both curtains and the deck. The curtains sit parted and static
+rather than animated, the deck unstacks to a static, non-overlapping
+layout, and the stage resets to flow so nothing is clipped by the stage
+itself (`sv-reading`, `sv-range` and `sv-counter` need no net of their own,
+they settle for unrelated reasons). `sv-rail` stays the one exception:
+with JS running the no-JS guard's `width: auto; flex-wrap: wrap` does not
+apply, so a track built wider than the viewport runs past the right edge,
+reachable only by a page-wide horizontal scroll, and not at all under an
+`overflow-x: hidden` ancestor. `compat()` gives the rail back its own
+scroll-linked travel, but with the stage released into flow that travel
+mostly happens off screen, so wrap the rail yourself below the floor. One
+more caveat until ADU-150 lands: a released stage can also leave a parked
+curtain panel sitting outside it, extending the document so a reader can
+scroll sideways to an empty panel.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
@@ -505,9 +548,12 @@ Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
 (Safari 13.1); presets = individual transform properties (Chrome 104 /
 Firefox 78 / Safari 14.1); canvas harness adds IntersectionObserver
 (Safari 12.1); slider/pointer = Pointer Events (Safari 13). The design rule
-that makes the table safe for companies: **below the floor nothing breaks.
-The page renders complete and static.** Animation is progressive enhancement,
-never a dependency.
+that makes the table safe for companies: **below the floor nothing
+breaks.** Skip `compat()` and the page renders complete and static, nothing
+overlapping or clipped (curtains parted, deck unstacked, `.sv-stage` back
+in flow; `sv-rail`'s own exception is above); call it and the page animates instead, on roughly
+Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive
+enhancement, never a dependency.
 
 ## License
 
