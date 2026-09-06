@@ -4124,9 +4124,16 @@ var SV = (() => {
  * `fx.width`/`fx.height` match the element's layout size.
  *
  * Give the canvas CSS dimensions. A canvas with none lays out at its own
- * backing-store size, so resizing it feeds back into itself above DPR 1:
- * applySize() detects that loop and pins the first measured size to
- * `canvas.style.width`/`height` once, but a real CSS size avoids it outright.
+ * backing-store size, so resizing it feeds back into itself above DPR 1.
+ * applySize() detects that by re-measuring the canvas's layout size right
+ * after writing the backing store: a CSS-sized canvas never moves as a
+ * result, whatever its attribute values or borders, but an unsized one
+ * does, because layout follows what was just written. Only then does it
+ * pin the CSS-pixel size it measured BEFORE the write to
+ * `canvas.style.width`/`height`, once, so layout stops following the
+ * backing store. A canvas with no CSS size still ends up with one pinned
+ * inline by the harness: give it real CSS dimensions to keep control of
+ * its own size.
  */
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }) {
@@ -4171,24 +4178,42 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             raf = 0;
         }
     };
-    const applySize = () => {
+    // Layout size in CSS pixels: content box, border and padding excluded.
+    // clientWidth/Height read 0 for a canvas not yet laid out (display:none,
+    // detached); fall back to the rect there.
+    const measureLayout = () => {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        if (w && h)
+            return { width: w, height: h };
         const rect = canvas.getBoundingClientRect();
-        if (!rect.width || !rect.height)
+        return { width: rect.width, height: rect.height };
+    };
+    const writeBackingStore = (size) => {
+        canvas.width = Math.round(size.width * fx.dpr);
+        canvas.height = Math.round(size.height * fx.dpr);
+    };
+    const applySize = () => {
+        const before = measureLayout();
+        if (!before.width || !before.height)
             return;
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-        // No CSS size means layout follows the backing store: the rect below
-        // would then match what the previous pass just wrote to canvas.width/
-        // height, and every further tick multiplies the backing store by dpr
-        // again. Pin the first measured CSS size once so layout stops
-        // following the backing store.
-        if (fx.dpr !== 1 && rect.width === canvas.width && rect.height === canvas.height) {
-            canvas.style.width = `${rect.width}px`;
-            canvas.style.height = `${rect.height}px`;
+        writeBackingStore(before);
+        // Detect the feedback loop directly instead of guessing from equality:
+        // a CSS-sized canvas never changes layout as a consequence of its own
+        // backing store changing, whatever its attribute values or borders. An
+        // unsized canvas lays out at its own backing-store size, so the write
+        // above just moved layout again. This second read is synchronous
+        // (forces layout), but applySize() only runs once per resize/DPR-change
+        // event, never per animation frame, so it is rare.
+        const after = measureLayout();
+        if (after.width !== before.width || after.height !== before.height) {
+            canvas.style.width = `${before.width}px`;
+            canvas.style.height = `${before.height}px`;
+            writeBackingStore(before); // re-run sizing from the pinned, pre-write size
         }
-        fx.width = rect.width;
-        fx.height = rect.height;
-        canvas.width = Math.round(rect.width * fx.dpr);
-        canvas.height = Math.round(rect.height * fx.dpr);
+        fx.width = before.width;
+        fx.height = before.height;
         ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
         if (!ready) {
             ready = true;

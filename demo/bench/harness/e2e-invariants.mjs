@@ -26,6 +26,12 @@ import puppeteer from 'puppeteer-core'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
+// The built canvas module has no imports of its own: safe to inject as a
+// classic (non-module) script that assigns its one export to `window`.
+const CANVAS_JS = readFileSync(join(root, '..', 'dist', 'canvas', 'index.js'), 'utf8').replace(
+  'export function mountEffect',
+  'window.mountEffect = function mountEffect'
+)
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
@@ -502,6 +508,76 @@ const MIN_EXAMINED = 1
     'toggles(): the click transition actually animates through an intermediate value, proving the transition returned (ADU-104, round 4 finding 2)',
     afterClickSamples.some((n) => n > 0 && n < FINISHED),
     afterClickSamples.join(', ')
+  )
+  await page.close()
+}
+
+// ── 7. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
+// feedback loop by re-measuring layout right after writing the backing
+// store, not by guessing from a rect/backing-store equality (ADU-107,
+// second pass, verifier finding). The old equality guard compared a
+// border-box rect against a content-box attribute: it missed a bordered
+// unsized canvas entirely (a false negative, the runaway loop this ticket
+// exists to stop still ran), and it mispinned a CSS-sized canvas whose
+// attribute values happened to equal its CSS size on first mount (a false
+// positive, freezing every later resize). Both reproduced in real Chrome
+// at deviceScaleFactor 2 ──
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
+  await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+  await page.addScriptTag({ content: CANVAS_JS })
+
+  const border = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-border')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: an unsized bordered canvas stabilizes at one applySize() pass instead of running away',
+    border.log.length === 1 && border.width === 600 && border.height === 300,
+    `resize() calls: ${border.log.length}, canvas.width=${border.width}, canvas.height=${border.height}`
+  )
+  check(
+    'canvas: the pinned CSS size is the content box (border excluded), not the inflated border-box rect',
+    border.style.includes('width: 300px') && border.style.includes('height: 150px'),
+    border.style
+  )
+
+  const sized = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#css-sized')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height, cw: canvas.width, ch: canvas.height }),
+        })
+        setTimeout(() => {
+          canvas.classList.add('grown')
+          setTimeout(() => resolve({ log, style: canvas.style.cssText }), 200)
+        }, 200)
+      })
+  )
+  check(
+    'canvas: a CSS-sized canvas whose attributes equal its CSS size is never pinned (no inline style written)',
+    sized.style === '',
+    sized.style
+  )
+  check(
+    'canvas: that same canvas follows a later class-driven CSS resize instead of freezing at the first size',
+    sized.log.length === 2 && sized.log[1].cw === 600 && sized.log[1].ch === 320,
+    JSON.stringify(sized.log)
   )
   await page.close()
 }

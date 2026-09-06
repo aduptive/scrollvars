@@ -124,12 +124,14 @@ findings on the same round): three more defects fixed.
   `canvas.style.width`/`height` to the first measured CSS size once, then
   proceeds as before. A canvas with a real CSS size is untouched. The
   harness's doc comment now says a canvas should have CSS dimensions.
-- Second pass (verifier finding): that equality guard compared a
-  border-box rect against a content-box backing store, so it could miss
-  the very loop it exists to catch (an unsized canvas with a border never
-  satisfies the equality) and could also misfire on a legitimately
-  CSS-sized canvas (attribute width/height equal to its CSS size trips the
-  guard on first mount and pins that size inline, freezing every later
+- Second pass (verifier finding): the round 3 claim above, "a canvas with
+  a real CSS size is untouched", did not hold. That equality guard
+  compared a border-box rect against a content-box backing store, so it
+  could miss the very loop it exists to catch (an unsized canvas with a
+  border never satisfies the equality, both reproduced in real Chrome at
+  deviceScaleFactor 2) and could also misfire on a legitimately CSS-sized
+  canvas (attribute width/height equal to its CSS size trips the guard on
+  first mount and pins that size inline, freezing every later
   stylesheet-driven resize). `applySize()` now detects the feedback
   directly instead of guessing from equality: it measures the layout size
   (`clientWidth`/`clientHeight`, falling back to the rect only when those

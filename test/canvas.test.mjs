@@ -119,44 +119,124 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
   assert.equal(env.pending(), 0)
 })
 
-test('canvas harness: a sized canvas is left alone (no inline size written)', async () => {
-  const env = makeEnv()
-  const { mountEffect } = await import('../dist/canvas/index.js')
+// style.width/height as a Proxy: `writes` records every assignment the
+// harness makes through `canvas.style`, so a test can assert it never
+// pinned anything, not just check the final value. Mutating the returned
+// `state` object directly (not through `style`) simulates an external
+// stylesheet/class change instead of a harness write.
+function makeStyle(initial = {}) {
+  const state = { ...initial }
+  const writes = []
+  const style = new Proxy(state, {
+    set(target, prop, value) {
+      writes.push(prop)
+      target[prop] = value
+      return true
+    },
+  })
+  return { style, state, writes }
+}
 
-  mountEffect(env.canvas, { frame: () => {} })
-  env.resize()
-  assert.deepEqual(env.canvas.style, {})
-})
+// clientWidth/clientHeight (content box) follow canvas.width/height (the
+// backing store) until style.width is set, then they follow the CSS size
+// instead, same as a real canvas would. getBoundingClientRect (border box)
+// adds `border` on top, so an unsized bordered canvas has a rect wider than
+// its clientWidth.
+function makeCanvas({ width, height, style, border = 0 }) {
+  return {
+    width,
+    height,
+    style,
+    getContext: () => ({ setTransform: () => {} }),
+    get clientWidth() {
+      return this.style.width ? parseFloat(this.style.width) : this.width
+    },
+    get clientHeight() {
+      return this.style.height ? parseFloat(this.style.height) : this.height
+    },
+    getBoundingClientRect() {
+      const w = (this.style.width ? parseFloat(this.style.width) : this.width) + border
+      const h = (this.style.height ? parseFloat(this.style.height) : this.height) + border
+      return { width: w, height: h }
+    },
+  }
+}
 
-test('canvas harness: pins CSS size for an unsized canvas to stop the DPR feedback loop', async () => {
+test('canvas harness: an unsized canvas stabilizes after one pass (dpr 2)', async () => {
   const env = makeEnv()
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
 
-  // No CSS size: getBoundingClientRect follows canvas.width/height (the
-  // backing store) until style.width is set, then it reports the pinned
-  // CSS size instead, same as a real unstyled canvas would.
-  const canvas = {
-    width: 300,
-    height: 150,
-    style: {},
-    getContext: () => ({ setTransform: () => {} }),
-    getBoundingClientRect() {
-      return canvas.style.width
-        ? { width: parseFloat(canvas.style.width), height: parseFloat(canvas.style.height) }
-        : { width: canvas.width, height: canvas.height }
-    },
-  }
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style })
 
   mountEffect(canvas, { frame: () => {} })
 
-  env.resize() // first tick: detects the loop, pins the measured CSS size
+  env.resize() // first pass: re-measuring after the write catches the loop,
+  // pins the pre-write CSS size
   assert.equal(canvas.style.width, '300px')
   assert.equal(canvas.style.height, '150px')
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not multiplied again
   assert.equal(canvas.height, 300)
 
-  env.resize() // second tick: layout now follows the pinned CSS size
+  env.resize() // second pass: layout now follows the pinned CSS size
   assert.equal(canvas.width, 600) // stable: would have doubled to 1200
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: a CSS-sized canvas is never pinned and follows a later CSS resize', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // Attribute values equal the CSS size, same as <canvas width="200"
+  // height="100" style="width:200px;height:100px">: the old equality guard
+  // mistook this for the unsized case on first mount.
+  const { style, state, writes } = makeStyle({ width: '200px', height: '100px' })
+  const canvas = makeCanvas({ width: 200, height: 100, style })
+
+  const sizes = []
+  mountEffect(canvas, {
+    frame: () => {},
+    resize: (fx) => sizes.push({ w: fx.width, h: fx.height }),
+  })
+
+  env.resize()
+  assert.equal(writes.length, 0) // the harness never wrote to style
+  assert.equal(canvas.width, 400) // 200 CSS px * dpr 2, backing store only
+  assert.equal(canvas.height, 200)
+  assert.deepEqual(sizes.at(-1), { w: 200, h: 100 })
+
+  // A later class- or stylesheet-driven resize, not the harness.
+  state.width = '300px'
+  state.height = '150px'
+  env.resize()
+  assert.equal(writes.length, 0) // still never pinned
+  assert.equal(canvas.width, 600) // follows the new CSS size, not frozen
+  assert.equal(canvas.height, 300)
+  assert.deepEqual(sizes.at(-1), { w: 300, h: 150 })
+})
+
+test('canvas harness: a bordered unsized canvas still stabilizes', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // clientWidth (300) excludes the 2px border the rect (302) includes: the
+  // old border-box rect-vs-content-box-attribute equality guard never fired
+  // here, so the loop it exists to catch ran unchecked.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, border: 2 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '300px')
+  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.width, 600)
+  assert.equal(canvas.height, 300)
+
+  env.resize()
+  assert.equal(canvas.width, 600) // stable
   assert.equal(canvas.height, 300)
 })
