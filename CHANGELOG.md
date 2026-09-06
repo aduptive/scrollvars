@@ -1250,6 +1250,36 @@ Docs read against the code merged by the five round-5 code tickets.
   lines down. `removeSplit` was the only other early-exit path that guard
   had skipped.
 
+### Canvas (blind review round 6)
+- An engine whose CSSOM has no `aspect-ratio` at all (below the README's
+  Safari 12.1 canvas gate) no longer has its canvas marked `pinned`. The
+  previous pass stopped the throw there but kept the premise: the ratio
+  write was dropped by the engine, yet `pinned` still switched the
+  backing-store write to rounding both axes independently, which is only
+  safe once the CSS engine owns the height. It was instead still derived
+  from the intrinsic attribute ratio the harness itself rewrites every
+  pass, so the runaway ADU-107 fixed came back below the floor: a 30x61
+  canvas at DPR 0.51 walked 62, 64, 66, 68, 70 CSS px, growing 2 per pass,
+  unbounded. Below the floor the harness now keeps the width pin (that
+  part does land, and it is what stops the width axis from following),
+  writes no ratio at all, and stays unpinned, so the free-axis derivation
+  anchors height to the ORIGINAL attribute ratio and it settles on the
+  second pass.
+
+### Driver (blind review round 6)
+- The pin helper no longer writes its tall wrapper height below the
+  individual-transform floor (Chrome 104 / Firefox 72 / Safari 14.1),
+  the same way it already skips it under reduced motion. The
+  `@supports not (translate: 0)` net in `styles/pin.css` releases
+  `.sv-stage` there (position static, height auto, overflow visible), so a
+  pinned section renders at its natural height, but `height: 320vh` stayed
+  on the wrapper: with JS on, the content sat at the top of the box with
+  two blank viewports under it. The helper asks
+  `CSS.supports('translate', '0px')` and takes the in-flow branch when the
+  answer is an explicit `false`; an engine too old to answer at all is
+  also too old for the `@supports` rule that releases the stage, so the JS
+  and the CSS always agree on which side of the floor the page is.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

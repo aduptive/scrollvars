@@ -1109,3 +1109,36 @@ test('driver: scrollToScene jumps instead of gliding under reduced motion', asyn
   untrack()
   window.matchMedia = realMatchMedia
 })
+
+test('driver: below the individual-transform floor the pin helper writes no tall wrapper height (ADU-158)', async () => {
+  // styles/pin.css releases `.sv-stage` there (`@supports not (translate: 0)`:
+  // position static, height auto, overflow visible), so the section renders at
+  // its natural height. A tall inline wrapper height on top of that is two
+  // blank viewports under the content, with JS on, exactly what the README's
+  // "below the floor nothing breaks" promises does not happen. Same branch as
+  // reduced motion: leave the authored height alone.
+  window.CSS = { supports: (prop) => prop !== 'translate' }
+  const { track } = await import('../dist/core/driver.js?transformfloor')
+  const el = makeElement(400)
+  el.style.height = '' // no authored height: the pin helper is the only writer
+  const untrack = track(el, { pin: '320vh' })
+  assert.equal(el.style.height, '', 'no 320vh wrapper below the floor')
+  untrack()
+
+  // and the same helper still writes it where the presets actually animate
+  window.CSS = { supports: () => true }
+  const above = makeElement(400)
+  above.style.height = ''
+  const stopAbove = track(above, { pin: '320vh' })
+  assert.equal(above.style.height, '320vh', 'above the floor the tall wrapper is still the whole skeleton')
+  stopAbove()
+
+  // an engine with no CSS.supports at all is below the @supports floor too:
+  // the stage is never released there, so the skeleton stays whole
+  delete window.CSS
+  const ancient = makeElement(400)
+  ancient.style.height = ''
+  const stopAncient = track(ancient, { pin: '320vh' })
+  assert.equal(ancient.style.height, '320vh', 'no answer is not a false: the tall wrapper stays')
+  stopAncient()
+})
