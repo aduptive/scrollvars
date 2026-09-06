@@ -10,13 +10,17 @@
  *
  *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub:
 *     re-measures on viewport changes (misses pure content growth; the page
- *     still works, call `refresh()` after big DOM swaps if needed).
+ *     still works, call `refresh()` after big DOM swaps if needed). Its
+ *     `contentRect` is measured from the layout box, like the native
+ *     observer, so an ancestor `transform: scale()` never inflates it.
  *   - IntersectionObserver missing (Safari < 12.1): an always-visible stub:
 *     the canvas harness simply never auto-pauses offscreen.
  *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
  *     re-expresses curtain, rail and drift with `transform:`. Written
- *     without :is(), clamp(), min() or max() so the old parser accepts it.
+ *     without :is(), clamp() or min() so the old parser accepts it; the
+ *     one max() left, drift's fade, sits behind a plain opacity
+ *     declaration that parser keeps.
  *     sv-deck unstacks to a static, non-overlapping layout instead of
  *     animating (its fly-away slice needs clamp()); sv-reading falls back
  *     to fully-visible text; sv-counter and sv-view-* stay progressive.
@@ -43,10 +47,8 @@ const FALLBACK_CSS = `
 .sv-on .sv .sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
 .sv-on .sv .sv-slide-r { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * 2)); }
 .sv .sv-drift {
-  /* opacity clamps negative/over-1 values on its own (CSS Color 4): squaring
-     the view fraction fades both directions of travel, no comparison
-     function needed. */
-  opacity: calc(1 - var(--sv-view, 0) * var(--sv-view, 0));
+  opacity: 1; /* fallback: max() postdates the floor: old engines keep this */
+  opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));
   transform: translateY(calc(var(--sv-view, 0) * var(--sv-distance, 6rem) * -1));
 }
 .sv .sv-curtain-l { transform: translateX(calc(var(--sv-pin, 0) * -101%)); }
@@ -79,29 +81,36 @@ interface RoEntryStub {
   contentBoxSize: Array<{ inlineSize: number; blockSize: number }>
 }
 
-// Content box in CSS pixels, border and padding excluded: the same
-// technique src/canvas/index.ts's own measureLayout() fallback uses, so a
-// stub entry sizes a canvas exactly the way that fallback already would,
-// no new arithmetic for it to disagree with.
+// Content box in CSS pixels, from the LAYOUT box like a real
+// ResizeObserverEntry: clientWidth/clientHeight exclude the border and
+// include the padding, so one padding subtraction is the content box.
+// getBoundingClientRect() is the PAINT box and scales with an ancestor
+// `transform: scale()`: a canvas under `scale(2)` reported a doubled
+// content box and settled its backing store there forever. clientWidth is
+// transform-immune, which is why the canvas harness's causal probe reads
+// it too. The cost is rounding to whole pixels, where a native contentRect
+// keeps fractions.
 function measureContentRect(el: Element) {
-  const rect = el.getBoundingClientRect()
   const style = window.getComputedStyle(el)
-  const borderX = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth)
-  const borderY = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)
   const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
   const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
   return {
-    width: Math.max(0, rect.width - borderX - paddingX),
-    height: Math.max(0, rect.height - borderY - paddingY),
+    width: Math.max(0, (el as HTMLElement).clientWidth - paddingX),
+    height: Math.max(0, (el as HTMLElement).clientHeight - paddingY),
+    // contentBoxSize is logical, contentRect physical: a vertical writing
+    // mode runs the inline axis down the block box, swapping the two.
+    vertical: (style.writingMode || '').indexOf('vertical') === 0,
   }
 }
 
 function measureEntry(el: Element): RoEntryStub {
-  const contentRect = measureContentRect(el)
+  const { width, height, vertical } = measureContentRect(el)
   return {
     target: el,
-    contentRect,
-    contentBoxSize: [{ inlineSize: contentRect.width, blockSize: contentRect.height }],
+    contentRect: { width, height },
+    contentBoxSize: [
+      vertical ? { inlineSize: height, blockSize: width } : { inlineSize: width, blockSize: height },
+    ],
   }
 }
 

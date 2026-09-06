@@ -475,9 +475,10 @@ targets. On modern browsers it runs three feature checks (ResizeObserver, Inters
 on old ones it installs a ResizeObserver stub (viewport-resize backed), an
 always-visible IntersectionObserver stub, and a `transform:`-based fallback
 stylesheet for curtain, rail and drift (written without
-`:is()`/`clamp()`/`min()`/`max()`); `sv-deck` unstacks to a static,
-non-overlapping layout instead, its fly-away slice needs `clamp()`. Text
-splitting works down to the same floor: `split()`
+`:is()`/`clamp()`/`min()`; the one `max()` left, drift's fade, sits behind a
+plain `opacity` declaration that old parsers keep); `sv-deck` unstacks to a
+static, non-overlapping layout instead, its fly-away slice needs `clamp()`.
+Text splitting works down to the same floor: `split()`
 no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
 Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
 already does per browserslist), the core reveal/pin/split presets animate

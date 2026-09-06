@@ -229,11 +229,14 @@ breaks. The page renders complete and static. Animation is progressive enhanceme
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
-two feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet written
-without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>. With your bundler
-downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets animate on
-roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
+three feature checks and exits (free); on old ones it installs ResizeObserver/
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
+curtain, rail and drift, written without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>
+(the one <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
+declaration that old parsers keep); <code>sv-deck</code> unstacks to a static,
+non-overlapping layout instead, its fly-away slice needs <code>clamp()</code>. With your
+bundler downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets
+animate on roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
@@ -293,9 +296,10 @@ findings on the same round): three more defects fixed.
 
 <h4>Compat</h4>
 <ul>
-<li><code>compat()</code>'s fallback stylesheet gets a <code>transform:</code>-based <code>sv-deck</code> rule for engines missing individual transform properties.</li>
+<li><code>compat()</code>'s fallback stylesheet now covers <code>sv-deck</code> on engines missing individual transform properties: the pile unstacks into a static, non-overlapping layout instead of leaving every card in pin.css's shared grid cell.</li>
 <li><code>splitParts</code> no longer uses <code>Array.prototype.flatMap</code> (missing on Chrome 61-68 and Safari 11, the floor compat claims).</li>
-<li>Blind review round 4 (Astra on 7489a11), findings 3 and 4. The ResizeObserver stub's records now carry a <code>contentRect</code> (from <code>getBoundingClientRect()</code> minus border and padding, via <code>getComputedStyle</code>) and a <code>contentBoxSize</code>, not a bare <code>{ target }</code>: <code>mountEffect()</code>'s <code>measureLayout()</code> reads <code>entry.contentRect.width</code> directly and threw under the old stub. The fallback stylesheet's <code>sv-deck</code> rule used <code>max()</code> for its <code>--sv-slice</code> (shipped together with <code>min()</code>, above the floor README advertises), and <code>sv-drift</code> used <code>max()</code> for its opacity clamp too; below that floor the whole <code>transform</code> on <code>sv-deck</code> was invalid and dropped, leaving every card stacked in pin.css's shared grid cell. Both are now free of comparison functions: <code>sv-deck</code> unstacks statically (<code>display: block</code> on the deck, <code>transform: none</code> on the cards) instead of animating, and <code>sv-drift</code> reaches the same fade shape through <code>opacity</code>'s own built-in clamping (squaring the view fraction) instead of <code>max()</code>.</li>
+<li>Blind review round 4 (Astra on 7489a11), findings 3 and 4. The ResizeObserver stub's records now carry a <code>contentRect</code> and a <code>contentBoxSize</code>, not a bare <code>{ target }</code>: <code>mountEffect()</code>'s <code>measureLayout()</code> reads <code>entry.contentRect.width</code> directly and threw under the old stub. Both come from the layout box, like the native observer: <code>clientWidth</code>/<code>clientHeight</code> minus computed padding, never <code>getBoundingClientRect()</code>, which is the paint box and scales with an ancestor transform (under <code>transform: scale(2)</code> a 400x300 canvas reported an 800x600 content box and settled its backing store there forever). <code>contentBoxSize</code> is logical, so a vertical writing mode swaps <code>inlineSize</code> and <code>blockSize</code>.</li>
+<li>The fallback stylesheet's <code>sv-deck</code> rule bounded its <code>--sv-slice</code> with <code>max()</code> (shipped together with <code>min()</code>, above the floor README advertises) and had no plain declaration in front of it, so below that floor the whole <code>transform</code> was invalid and dropped, leaving every card stacked in pin.css's shared grid cell. The deck fallback no longer uses <code>max()</code>: it unstacks statically (<code>display: block</code> on the deck, <code>transform: none</code> on the cards) instead of animating. Every other <code>max()</code> in the sheet (only <code>sv-drift</code>'s fade) keeps the plain <code>opacity: 1</code> in front of it that old parsers fall back to, and is unchanged.</li>
 </ul>
 
 <h4>Testing</h4>

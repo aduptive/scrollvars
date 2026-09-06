@@ -148,25 +148,33 @@ findings on the same round): three more defects fixed.
   `.sv-acts` still gets `sv-ui`, nothing else.
 
 ### Compat
-- `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
-  rule for engines missing individual transform properties.
+- `compat()`'s fallback stylesheet now covers `sv-deck` on engines missing
+  individual transform properties: the pile unstacks into a static,
+  non-overlapping layout instead of leaving every card in pin.css's shared
+  grid cell.
 - `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
   61-68 and Safari 11, the floor compat claims).
 - Blind review round 4 (Astra on 7489a11), findings 3 and 4. The
-  ResizeObserver stub's records now carry a `contentRect` (from
-  `getBoundingClientRect()` minus border and padding, via
-  `getComputedStyle`) and a `contentBoxSize`, not a bare `{ target }`:
-  `mountEffect()`'s `measureLayout()` reads `entry.contentRect.width`
-  directly and threw under the old stub. The fallback stylesheet's
-  `sv-deck` rule used `max()` for its `--sv-slice` (shipped together with
-  `min()`, above the floor README advertises), and `sv-drift` used
-  `max()` for its opacity clamp too; below that floor the whole
-  `transform` on `sv-deck` was invalid and dropped, leaving every card
-  stacked in pin.css's shared grid cell. Both are now free of comparison
-  functions: `sv-deck` unstacks statically (`display: block` on the deck,
-  `transform: none` on the cards) instead of animating, and `sv-drift`
-  reaches the same fade shape through `opacity`'s own built-in clamping
-  (squaring the view fraction) instead of `max()`.
+  ResizeObserver stub's records now carry a `contentRect` and a
+  `contentBoxSize`, not a bare `{ target }`: `mountEffect()`'s
+  `measureLayout()` reads `entry.contentRect.width` directly and threw
+  under the old stub. Both come from the layout box, like the native
+  observer: `clientWidth`/`clientHeight` minus computed padding, never
+  `getBoundingClientRect()`, which is the paint box and scales with an
+  ancestor transform (under `transform: scale(2)` a 400x300 canvas
+  reported an 800x600 content box and settled its backing store there
+  forever). `contentBoxSize` is logical, so a vertical writing mode swaps
+  `inlineSize` and `blockSize`.
+- The fallback stylesheet's `sv-deck` rule bounded its `--sv-slice` with
+  `max()` (shipped together with `min()`, above the floor README
+  advertises) and had no plain declaration in front of it, so below that
+  floor the whole `transform` was invalid and dropped, leaving every card
+  stacked in pin.css's shared grid cell. The deck fallback no longer uses
+  `max()`: it unstacks statically (`display: block` on the deck,
+  `transform: none` on the cards) instead of animating. Every other
+  `max()` in the sheet (only `sv-drift`'s fade) keeps the plain
+  `opacity: 1` in front of it that old parsers fall back to, and is
+  unchanged.
 
 ### Testing
 - The no-JS "pin stages never cover their revealed text" e2e sweep now
