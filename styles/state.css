@@ -19,9 +19,14 @@
   opacity: 0;
   translate: 0 var(--sv-pop-distance);
 }
-dialog.sv-pop:not([open]) {
-  opacity: 0;
-  translate: 0 var(--sv-pop-distance);
+/* only where <dialog> is implemented: the type selector matches the unknown
+   element too, and hiding THAT would break the documented static fallback
+   panel (nothing else hides it there, no UA display:none) */
+@supports selector(dialog:modal) {
+  dialog.sv-pop:not([open]) {
+    opacity: 0;
+    translate: 0 var(--sv-pop-distance);
+  }
 }
 .sv-pop:not([popover]):not(dialog):not(.sv-open) {
   display: none;

@@ -257,12 +257,14 @@ html:not(.sv-on) .sv-spread > * {
   initial-value: 0;
   inherits: true;
 }
-.sv .sv-counter {
+/* :is(.sv, [data-sv]) here too: the no-JS guard below feeds --sv-int to
+   attribute-only markup, whose digits come from these two rules */
+:is(.sv, [data-sv]) .sv-counter {
   font-variant-numeric: tabular-nums;
   --sv-int: calc(var(--sv-pin, 0) * var(--sv-max, 100));
   counter-reset: sv-counter var(--sv-int);
 }
-.sv .sv-counter::after {
+:is(.sv, [data-sv]) .sv-counter::after {
   content: counter(sv-counter);
 }
 
@@ -555,9 +557,14 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   opacity: 0;
   translate: 0 var(--sv-pop-distance);
 }
-dialog.sv-pop:not([open]) {
-  opacity: 0;
-  translate: 0 var(--sv-pop-distance);
+/* only where <dialog> is implemented: the type selector matches the unknown
+   element too, and hiding THAT would break the documented static fallback
+   panel (nothing else hides it there, no UA display:none) */
+@supports selector(dialog:modal) {
+  dialog.sv-pop:not([open]) {
+    opacity: 0;
+    translate: 0 var(--sv-pop-distance);
+  }
 }
 .sv-pop:not([popover]):not(dialog):not(.sv-open) {
   display: none;

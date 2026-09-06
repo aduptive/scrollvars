@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-// Server-render the React layer with renderToStaticMarkup — no DOM, no
+// Server-render the React layer with renderToStaticMarkup: no DOM, no
 // jsdom: exactly what Next.js does on the server, so this also guards SSR.
 
 function stubBrowserGlobals() {
   // the components call browser APIs only in effects, which never run in
-  // renderToStaticMarkup — but module init must survive a bare import
+  // renderToStaticMarkup, but module init must survive a bare import
   global.window = undefined
 }
 
@@ -143,6 +143,12 @@ function makeNode(tag) {
     },
     setAttribute(name, value) { node.attributes[name] = String(value) },
     removeAttribute(name) { delete node.attributes[name] },
+    toggleAttribute(name, force) {
+      const on = force === undefined ? !(name in node.attributes) : !!force
+      if (on) node.attributes[name] = ''
+      else delete node.attributes[name]
+      return on
+    },
     getAttribute(name) { return node.attributes[name] ?? null },
     hasAttribute(name) { return name in node.attributes },
     addEventListener(type, fn) { (node._listeners[type] ??= []).push(fn) },
@@ -181,6 +187,29 @@ function makeNode(tag) {
 
 const observedRO = new Set()
 let domReady = false
+
+// Frame callbacks are QUEUED, never run on their own: same as the old
+// `() => 1` stub for every test that ignores them, but a test that needs the
+// driver to actually measure (useScenes below) can flush them by hand. It
+// has to be a shared queue: the driver holds one pending frame token until
+// its callback runs, so a token dropped on the floor here would block every
+// later schedule() in the process.
+const rafQueue = []
+let rafSeq = 0
+function flushFrames() {
+  // one flush runs exactly the frames pending when it started. Draining
+  // until the queue empties would never return for a self-rescheduling
+  // frame (a canvas loop, a slider glide), which queues its next frame
+  // from inside this one.
+  const batch = rafQueue.splice(0)
+  for (const { fn } of batch) {
+    // frames left behind by earlier tests' torn-down widgets (a destroyed
+    // slider's measure, a canvas loop) are not the flushing test's business
+    try {
+      fn(0)
+    } catch {}
+  }
+}
 
 function ensureDom() {
   if (domReady) return
@@ -228,8 +257,18 @@ function ensureDom() {
   global.HTMLElement = Object
   global.IS_REACT_ACT_ENVIRONMENT = true
   global.getComputedStyle = () => ({ getPropertyValue: () => '', position: 'static' })
-  global.requestAnimationFrame = () => 1
-  global.cancelAnimationFrame = () => {}
+  // ids are real: cancelAnimationFrame has to drop the entry, or a widget
+  // that cancels its pending frame on teardown still gets it run by the
+  // next flush
+  global.requestAnimationFrame = (fn) => {
+    const id = ++rafSeq
+    rafQueue.push({ id, fn })
+    return id
+  }
+  global.cancelAnimationFrame = (id) => {
+    const i = rafQueue.findIndex((entry) => entry.id === id)
+    if (i !== -1) rafQueue.splice(i, 1)
+  }
   global.location = { search: '' }
   global.window = {
     innerHeight: 800,
@@ -550,4 +589,102 @@ test('react: ScrollVarsBoot debug overlay never mounts if unmounted before the d
   })
   await new Promise((resolve) => setTimeout(resolve, 20))
   assert.equal(appended, 0, 'the debug overlay never appended to document.body')
+})
+
+test('react: Modal without <dialog> support opens AND closes through the attribute', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Modal } = await import('../dist/react/index.js')
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  await act(async () => {
+    root.render(React.createElement(Modal, { open: false }, 'hello'))
+  })
+  const dialog = container.firstChild
+  // the fake node models an engine with no <dialog>: the tag is an unknown
+  // element there, so it has no showModal() and no `open` PROPERTY, only the
+  // attribute. A guard on dialog.open (undefined) could only ever open.
+  assert.equal(typeof dialog.showModal, 'undefined', 'no showModal on an unknown element')
+  assert.equal('open' in dialog, false, 'no open property on an unknown element')
+  assert.equal(dialog.hasAttribute('open'), false, 'closed to start with')
+  // the engines that reach this branch (Safari below 15.4, Firefox below 98)
+  // include Safari 11 and Firefox 60 to 62, which predate toggleAttribute
+  // and are inside the README floor: calling it there throws inside the
+  // effect and React tears the tree down. React itself never calls it.
+  delete dialog.toggleAttribute
+
+  await act(async () => {
+    root.render(React.createElement(Modal, { open: true }, 'hello'))
+  })
+  assert.equal(dialog.hasAttribute('open'), true, 'open={true} sets the attribute')
+
+  await act(async () => {
+    root.render(React.createElement(Modal, { open: false }, 'hello'))
+  })
+  assert.equal(dialog.hasAttribute('open'), false, 'open={false} removes it again')
+
+  await act(async () => { root.unmount() })
+})
+
+test('react: useScenes clamps the reported scene when the count shrinks', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  // the driver only reports through a real measure: it needs a scroll
+  // position and a geometry (1600px tall, its top 800px above an 800px
+  // viewport = pinned to the very end, so the last scene)
+  global.window.scrollY = 0
+
+  const seen = []
+  const render = (count) =>
+    React.createElement(Scenes, { count }, ({ scene }) => {
+      seen.push(scene)
+      return null
+    })
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  try {
+    await act(async () => { root.render(render(3)) })
+    container.firstChild.getBoundingClientRect = () => ({
+      top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600,
+    })
+    await act(async () => { flushFrames() })
+    assert.equal(seen.at(-1), 2, 'the pinned end of a 3-scene container is scene 2')
+
+    // scenes <= 1 makes the driver emit nothing at all, so nothing would
+    // ever correct the stranded index: the hook has to clamp it itself
+    await act(async () => { root.render(render(1)) })
+    assert.equal(seen.at(-1), 0, 'a single scene can only ever be scene 0')
+  } finally {
+    await act(async () => { root.unmount() })
+  }
+})
+
+test('harness: one flush runs one batch of frames, and cancel drops a pending one', async () => {
+  await ensureDomAndWarmDriver()
+  flushFrames() // clear whatever earlier tests left pending
+
+  let runs = 0
+  const loop = () => {
+    runs++
+    if (runs < 2) global.requestAnimationFrame(loop) // a canvas loop, in miniature
+  }
+  global.requestAnimationFrame(loop)
+
+  flushFrames()
+  assert.equal(runs, 1, 'the frame it queued from inside waits for the next flush')
+  flushFrames()
+  assert.equal(runs, 2)
+
+  const pending = global.requestAnimationFrame(loop)
+  global.cancelAnimationFrame(pending)
+  flushFrames()
+  assert.equal(runs, 2, 'a cancelled frame never runs')
 })

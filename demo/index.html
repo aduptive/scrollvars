@@ -3542,9 +3542,16 @@ var SV = (() => {
       const target = selector ? scope.querySelector(selector) : trigger;
       return { className, selector, target };
     };
-    const sync = (selector, target, on) => {
-      const triggers = selector ? [...scope.querySelectorAll("[data-sv-toggle]")].filter((t) => t.getAttribute("data-sv-target") === selector) : [target];
-      triggers.forEach((t) => t.setAttribute("aria-expanded", String(on)));
+    const sync = (target, className, on) => {
+      scope.querySelectorAll("[data-sv-toggle]").forEach((t) => {
+        const other = resolve(t);
+        if (other.target === target && other.className === className)
+          t.setAttribute("aria-expanded", String(on));
+      });
+    };
+    const write = (target, className, on) => {
+      target.style.setProperty("--sv-state", on ? "1" : "0");
+      sync(target, className, on);
     };
     const settling = /* @__PURE__ */ new WeakSet();
     const longhandHold = /* @__PURE__ */ new WeakMap();
@@ -3564,7 +3571,7 @@ var SV = (() => {
       target.style.setProperty("transition-duration", saved.value, saved.priority);
     };
     scope.querySelectorAll("[data-sv-toggle]").forEach((trigger) => {
-      const { className, selector, target } = resolve(trigger);
+      const { className, target } = resolve(trigger);
       if (!target)
         return;
       if (!target.classList.contains("sv-ui")) {
@@ -3584,13 +3591,13 @@ var SV = (() => {
           });
         }
       }
-      sync(selector, target, target.classList.contains(className));
+      write(target, className, target.classList.contains(className));
     });
     const onClick = (event) => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
       if (!trigger)
         return;
-      const { className, selector, target } = resolve(trigger);
+      const { className, target } = resolve(trigger);
       if (!target)
         return;
       target.classList.add("sv-ui");
@@ -3599,9 +3606,7 @@ var SV = (() => {
         target.style.removeProperty("--sv-acts-settle");
         restoreDuration(target);
       }
-      const on = target.classList.toggle(className);
-      target.style.setProperty("--sv-state", on ? "1" : "0");
-      sync(selector, target, on);
+      write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener("click", onClick);
     return () => scope.removeEventListener("click", onClick);
@@ -3648,6 +3653,7 @@ var SV = (() => {
     };
     const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
+    const progress = () => range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0;
     const chainToContainer = (el, x) => {
       let v = 0;
       let node = el;
@@ -3674,6 +3680,7 @@ var SV = (() => {
     };
     const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
     const authoredSnap = container.style.scrollSnapType;
+    const snapIsNone = authoredSnap === "none" || typeof getComputedStyle === "function" && getComputedStyle(container).scrollSnapType === "none";
     const suspendSnap = () => {
       container.style.scrollSnapType = "none";
     };
@@ -3691,7 +3698,7 @@ var SV = (() => {
       active: Math.max(active, 0),
       count: slides().length,
       position,
-      progress: range() > 0 ? pos() / range() : 0,
+      progress: progress(),
       dragging,
       gliding: anim !== 0
     });
@@ -3714,8 +3721,7 @@ var SV = (() => {
         }
       });
       position = Math.min(Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0), Math.max(slides().length - 1, 0));
-      const progress = range() > 0 ? pos() / range() : 0;
-      container.style.setProperty("--sv-progress", progress.toFixed(4));
+      container.style.setProperty("--sv-progress", progress().toFixed(4));
       const bestEl = list[best] ?? null;
       if (best !== active || bestEl !== activeEl) {
         const indexChanged = best !== active;
@@ -3801,11 +3807,11 @@ var SV = (() => {
         setPos(to);
       }
     };
-    const seek = (progress) => {
+    const seek = (progress2) => {
       stopGlide();
       target = -1;
       suspendSnap();
-      setPos(Math.max(0, Math.min(progress, 1)) * range());
+      setPos(Math.max(0, Math.min(progress2, 1)) * range());
     };
     const stepBase = () => anim && target >= 0 ? target : active;
     let lastPointer = 0;
@@ -3877,7 +3883,7 @@ var SV = (() => {
     container.addEventListener("pointerdown", onDown);
     let wheelTimer;
     const onWheel = (event) => {
-      if (authoredSnap === "none")
+      if (snapIsNone)
         return;
       const along = horizontal ? event.deltaX : event.deltaY;
       const cross = horizontal ? event.deltaY : event.deltaX;
@@ -5243,6 +5249,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     const viewport = () => (horizontal ? container.clientWidth : container.clientHeight);
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
+    // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
+    // trackpads) pushes pos() past both ends, and a follower chained through
+    // `onScroll` + `seek(progress)` would be sent outside its own range.
+    const progress = () => (range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0);
     // Container-local start of a slide in logical scroll units, from offset
     // chains: layout positions, so the coverflow transforms a slide carries
     // (scale/rotate from --sd) never feed back into its own measurement. RTL
@@ -5289,6 +5299,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // Snap suspension via inline style. One source of truth. The authored
     // inline value (e.g. 'none' on scroll-driven instances) is preserved.
     const authoredSnap = container.style.scrollSnapType;
+    // Authored none is not always inline: a stylesheet rule or a utility class
+    // (Tailwind's snap-none) reaches the same state, and an instance that
+    // owns its own position must be left alone whichever way it got there.
+    // Read once at init, before suspend/resume start writing the inline value.
+    const snapIsNone = authoredSnap === 'none' ||
+        (typeof getComputedStyle === 'function' &&
+            getComputedStyle(container).scrollSnapType === 'none');
     const suspendSnap = () => {
         container.style.scrollSnapType = 'none';
     };
@@ -5310,7 +5327,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         active: Math.max(active, 0),
         count: slides().length,
         position,
-        progress: range() > 0 ? pos() / range() : 0,
+        progress: progress(),
         dragging,
         gliding: anim !== 0,
     });
@@ -5334,8 +5351,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             }
         });
         position = Math.min(Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0), Math.max(slides().length - 1, 0));
-        const progress = range() > 0 ? pos() / range() : 0;
-        container.style.setProperty('--sv-progress', progress.toFixed(4));
+        container.style.setProperty('--sv-progress', progress().toFixed(4));
         const bestEl = list[best] ?? null;
         if (best !== active || bestEl !== activeEl) {
             const indexChanged = best !== active;
@@ -5540,7 +5556,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // instances authored with snap none (scroll-driven ones own their position).
     let wheelTimer;
     const onWheel = (event) => {
-        if (authoredSnap === 'none')
+        if (snapIsNone)
             return;
         // only react when the gesture's dominant axis is OUR axis. Otherwise
         // this is the page scrolling past the carousel (trackpad gestures are
@@ -5625,7 +5641,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
  *
  * - `data-sv-toggle="class"`. Class to toggle ('sv-open' when empty)
  * - `data-sv-target="sel"`. What receives it (the trigger itself when absent)
- * - the target also gets `--sv-state: 1|0` for continuous CSS use
+ * - the target also gets `--sv-state: 1|0` for continuous CSS use, written at
+ *   boot from the class so markup that ships open agrees from the first frame
  * - the trigger gets `aria-expanded` kept in sync. The accessibility the
  *   old checkbox hack never gave you
  *
@@ -5682,12 +5699,26 @@ function toggles(root) {
         const target = selector ? scope.querySelector(selector) : trigger;
         return { className, selector, target };
     };
-    // every trigger of a target reflects its state: on boot, and after any click
-    const sync = (selector, target, on) => {
-        const triggers = selector
-            ? [...scope.querySelectorAll('[data-sv-toggle]')].filter((t) => t.getAttribute('data-sv-target') === selector)
-            : [target];
-        triggers.forEach((t) => t.setAttribute('aria-expanded', String(on)));
+    // every trigger of the same state reflects it: on boot, and after any
+    // click. The state is the PAIR (resolved element, class), not the
+    // data-sv-target string: two triggers can name the same panel through
+    // different selectors ('#menu' and 'nav.menu'), and a trigger with no
+    // target at all resolves to itself, which is the old selector-less case.
+    // The class is half the key, not decoration: a hamburger toggling 'open'
+    // and a second control toggling 'pinned' on the same nav are two
+    // independent states, and grouping by the element alone made one click
+    // claim aria-expanded="true" for both.
+    const sync = (target, className, on) => {
+        scope.querySelectorAll('[data-sv-toggle]').forEach((t) => {
+            const other = resolve(t);
+            if (other.target === target && other.className === className)
+                t.setAttribute('aria-expanded', String(on));
+        });
+    };
+    // the target's own state, written wherever the class flips
+    const write = (target, className, on) => {
+        target.style.setProperty('--sv-state', on ? '1' : '0');
+        sync(target, className, on);
     };
     // targets currently inside their boot settle: cancellable by a click that
     // lands inside the two-frame hold, so it still gets its transition
@@ -5713,7 +5744,7 @@ function toggles(root) {
         target.style.setProperty('transition-duration', saved.value, saved.priority);
     };
     scope.querySelectorAll('[data-sv-toggle]').forEach((trigger) => {
-        const { className, selector, target } = resolve(trigger);
+        const { className, target } = resolve(trigger);
         if (!target)
             return;
         if (!target.classList.contains('sv-ui')) {
@@ -5745,13 +5776,17 @@ function toggles(root) {
                 });
             }
         }
-        sync(selector, target, target.classList.contains(className));
+        // markup that ships open (the class already on the target) must agree
+        // with --sv-state from the first frame: a continuous CSS rule reading
+        // var(--sv-state, 0) otherwise renders the closed value against an open
+        // class until the first click.
+        write(target, className, target.classList.contains(className));
     });
     const onClick = (event) => {
         const trigger = event.target.closest?.('[data-sv-toggle]');
         if (!trigger)
             return;
-        const { className, selector, target } = resolve(trigger);
+        const { className, target } = resolve(trigger);
         if (!target)
             return;
         // a target that appeared after boot (e.g. inserted later) is marked here
@@ -5766,9 +5801,7 @@ function toggles(root) {
             target.style.removeProperty('--sv-acts-settle');
             restoreDuration(target);
         }
-        const on = target.classList.toggle(className);
-        target.style.setProperty('--sv-state', on ? '1' : '0');
-        sync(selector, target, on);
+        write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener('click', onClick);
     return () => scope.removeEventListener('click', onClick);
