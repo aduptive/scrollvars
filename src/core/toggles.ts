@@ -30,11 +30,18 @@
  * at 0s for two frames: without that, a target closed by default settles
  * from the no-JS finished value down to 0 WITH the acts transition
  * running, a visible un-animation the instant the click driver takes over.
- * Scoped to that one custom property, never the `transition` shorthand or
- * a longhand: writing those would erase an author's own inline transition
- * (an inline `transition-duration` reads back as '' through the shorthand
- * getter, so a naive save/restore erases it for good) and would stop
- * every OTHER transition running on the element too, not just the acts one.
+ * Scoped to that one custom property, never the `transition` shorthand:
+ * writing the shorthand would stop every OTHER transition running on the
+ * element too, not just the acts one.
+ * An inline `transition-duration` LONGHAND is the one thing that knob
+ * cannot reach: it outranks the stylesheet's --sv-acts-settle-driven
+ * duration by cascade origin no matter what the knob is set to, so it gets
+ * its own hold for the same two frames, exact value and priority saved and
+ * restored through the longhand getter/setter only, never the shorthand
+ * (the shorthand getter reads an inline longhand back as '', so a
+ * save/restore through it would erase the longhand for good). A target
+ * with no inline longhand never has one written, so an unrelated in-flight
+ * transition on it is never touched.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
@@ -59,6 +66,24 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // targets currently inside their boot settle: cancellable by a click that
   // lands inside the two-frame hold, so it still gets its transition
   const settling = new WeakSet<HTMLElement>()
+  // an inline transition-duration LONGHAND held for the same settle, saved
+  // per target (value and priority, exact). --sv-acts-settle above cannot
+  // reach this case: an inline longhand outranks it regardless of what the
+  // knob is set to, so a target that has one needs its duration held too.
+  const longhandHold = new WeakMap<HTMLElement, { value: string; priority: string }>()
+  const holdDuration = (target: HTMLElement) => {
+    const value = target.style.getPropertyValue('transition-duration')
+    if (!value) return // no inline longhand: the --sv-acts-settle knob alone covers this target
+    const priority = target.style.getPropertyPriority('transition-duration')
+    longhandHold.set(target, { value, priority })
+    target.style.setProperty('transition-duration', '0s', priority)
+  }
+  const restoreDuration = (target: HTMLElement) => {
+    const saved = longhandHold.get(target)
+    if (!saved) return
+    longhandHold.delete(target)
+    target.style.setProperty('transition-duration', saved.value, saved.priority)
+  }
 
   scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
     const { className, selector, target } = resolve(trigger)
@@ -75,12 +100,14 @@ export function toggles(root?: Document | HTMLElement): () => void {
       // back.
       target.classList.add('sv-ui')
       target.style.setProperty('--sv-acts-settle', '0s')
+      holdDuration(target)
       settling.add(target)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (settling.has(target)) {
             settling.delete(target)
             target.style.removeProperty('--sv-acts-settle')
+            restoreDuration(target)
           }
         })
       })
@@ -105,6 +132,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if (settling.has(target)) {
       settling.delete(target)
       target.style.removeProperty('--sv-acts-settle')
+      restoreDuration(target)
     }
     const on = target.classList.toggle(className)
     target.style.setProperty('--sv-state', on ? '1' : '0')

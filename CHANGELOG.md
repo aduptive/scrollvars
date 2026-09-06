@@ -54,8 +54,26 @@ findings on the same round): three more defects fixed.
   in-flight transform transition. The hold now sets an internal
   `--sv-acts-settle` custom property to `0s` instead, new and additive:
   `.sv-acts`'s own transition reads its duration from it
-  (styles/state.css), and `toggles()` never touches `style.transition` or
-  any longhand.
+  (styles/state.css), and `toggles()` never touches `style.transition`.
+- Fifth pass: `--sv-acts-settle` only reaches the duration the stylesheet
+  itself declares on `.sv-acts`. An element that also carries its own
+  inline `transition-duration` LONGHAND (the fixture's `#longhand-target`,
+  `style="transition-duration: 400ms"`) outranks that knob by cascade
+  origin no matter what it is set to, so the settle for that element still
+  played out over the longhand's own duration instead of 0s, reproduced in
+  Chrome (`3, 2.876, ... 0` over 400ms): the exact un-animation this
+  feature exists to remove. The shipped e2e case only asserted the
+  attribute string survived and never sampled `--sv-act` on that element,
+  so it stayed green. `toggles()` now also saves that inline longhand's
+  exact value and priority, holds it at `0s` for the same two frames (or
+  until a click inside the hold cancels it, restored immediately there
+  too), and restores it exact, through the longhand getter/setter only,
+  never the shorthand. A target without an inline longhand never has one
+  written, so an unrelated in-flight transition on it is untouched. What
+  remains unguarded: an author RULE, not an inline style, that overrides
+  `transition-duration` or the whole `transition` shorthand on `.sv-acts`
+  at higher specificity than the preset's own rule still owns the settle
+  timing (styles/state.css).
 
 ### Compat
 - `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
@@ -76,6 +94,15 @@ findings on the same round): three more defects fixed.
   leaves both alone. Its post-click assertion now samples `--sv-act`
   across frames instead of only the final value, so a transition silently
   reduced to zero duration would fail it instead of passing by omission.
+- Fifth pass: `#longhand-target`'s `--sv-act` is now sampled per frame like
+  the main target, so a settle silently governed by the longhand instead
+  of `--sv-acts-settle` fails the sweep instead of passing on the attribute
+  string alone. A new `#longhand-important-target`
+  (`transition-duration: 400ms !important`) proves the same hold and
+  restore keep the original priority, not just the value. Unit tests cover
+  the longhand hold-and-restore lifecycle exact (value and priority), that
+  a target with no inline longhand never has one written, and that a click
+  inside the hold restores it immediately alongside the knob.
 
 ## 1.13.0 (2026-09-05)
 

@@ -5,6 +5,7 @@ function makeElement(attrs = {}) {
   const el = {
     attrs: { ...attrs },
     vars: {},
+    priorities: {},
     classes: new Set(),
     classList: {
       add(c) {
@@ -23,11 +24,22 @@ function makeElement(attrs = {}) {
       },
     },
     style: {
-      setProperty(k, v) {
+      setProperty(k, v, priority = '') {
         el.vars[k] = v
+        el.priorities[k] = priority
       },
       removeProperty(k) {
         delete el.vars[k]
+        delete el.priorities[k]
+      },
+      // real inline longhands round-trip through these two, never through
+      // a shorthand: the boot settle reads/writes transition-duration this
+      // way only (ADU-104, round 5 finding)
+      getPropertyValue(k) {
+        return el.vars[k] ?? ''
+      },
+      getPropertyPriority(k) {
+        return el.priorities[k] ?? ''
       },
     },
     getAttribute: (k) => el.attrs[k] ?? null,
@@ -157,6 +169,7 @@ test('toggles: sets --sv-acts-settle with the class at boot, removes it after tw
   assert.ok(menu.classes.has('sv-ui'), 'marked at boot')
   assert.equal(menu.vars['--sv-acts-settle'], '0s', 'the acts transition is held at zero duration for the settle')
   assert.equal(menu.style.transition, undefined, 'style.transition is never written')
+  assert.equal(menu.vars['transition-duration'], undefined, 'no inline longhand on this target: nothing written (ADU-104, round 5)')
   assert.equal(rafQueue.length, 1, 'one restore scheduled, not two, even though two triggers share this target')
 
   rafQueue.shift()() // frame 1: still held
@@ -166,6 +179,39 @@ test('toggles: sets --sv-acts-settle with the class at boot, removes it after tw
   rafQueue.shift()() // frame 2: restored
   assert.equal(menu.vars['--sv-acts-settle'], undefined, 'removed, back to the CSS-declared duration')
   assert.equal(menu.style.transition, undefined, 'still never touched')
+  assert.equal(menu.vars['transition-duration'], undefined, 'still never written: this target never had one to hold')
+})
+
+test('toggles: an inline transition-duration longhand is held at 0s for the settle and restored exact, value and priority, after two frames (ADU-104, round 5 finding)', async () => {
+  global.window = {}
+  const rafQueue = []
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-longhand-settle')
+
+  const menu = makeElement()
+  // as if parsed from style="transition-duration: 400ms !important": the
+  // priority matters here too, not just the value
+  menu.style.setProperty('transition-duration', '400ms', 'important')
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const root = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [trigger] : []),
+  }
+
+  toggles(root)
+  assert.equal(menu.vars['transition-duration'], '0s', 'the inline longhand is held at zero duration too, not just --sv-acts-settle')
+  assert.equal(menu.priorities['transition-duration'], 'important', 'the hold keeps writing it at the same priority as the original')
+  assert.equal(menu.style.transition, undefined, 'the shorthand is still never touched')
+
+  rafQueue.shift()() // frame 1: still held
+  assert.equal(menu.vars['transition-duration'], '0s', 'still held after only one frame')
+
+  rafQueue.shift()() // frame 2: restored, same guarded path as --sv-acts-settle
+  assert.equal(menu.vars['--sv-acts-settle'], undefined, 'the knob is removed in the same restore')
+  assert.equal(menu.vars['transition-duration'], '400ms', 'restored to its exact original value')
+  assert.equal(menu.priorities['transition-duration'], 'important', 'restored with its exact original priority')
 })
 
 test('toggles: a click inside the boot settle window drops the hold immediately, so the toggle still animates', async () => {
@@ -175,6 +221,7 @@ test('toggles: a click inside the boot settle window drops the hold immediately,
   const { toggles } = await import('../dist/core/toggles.js?sv-ui-settle-click')
 
   const menu = makeElement()
+  menu.style.setProperty('transition-duration', '250ms') // inline longhand, no !important this time
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const listeners = {}
   const root = {
@@ -186,10 +233,12 @@ test('toggles: a click inside the boot settle window drops the hold immediately,
 
   toggles(root)
   assert.equal(menu.vars['--sv-acts-settle'], '0s', 'the settle is holding')
+  assert.equal(menu.vars['transition-duration'], '0s', 'the inline longhand hold is armed too (ADU-104, round 5 finding)')
   assert.equal(rafQueue.length, 1, 'one restore scheduled')
 
   listeners.click({ target: trigger }) // lands inside the hold window, before either queued frame runs
   assert.equal(menu.vars['--sv-acts-settle'], undefined, 'the click drops the hold immediately, so this toggle still transitions')
+  assert.equal(menu.vars['transition-duration'], '250ms', 'the click restores the inline longhand immediately too, together with the knob')
   assert.ok(menu.classes.has('open'), 'the click still toggles the class as usual')
 
   // the scheduled restore is cancelled: running the frames queued at boot
@@ -197,6 +246,7 @@ test('toggles: a click inside the boot settle window drops the hold immediately,
   rafQueue.shift()()
   rafQueue.shift()()
   assert.equal(menu.vars['--sv-acts-settle'], undefined, 'the cancelled restore never fires')
+  assert.equal(menu.vars['transition-duration'], '250ms', 'unchanged: already restored by the click, the cancelled frames must not touch it again')
   assert.equal(menu.style.transition, undefined, 'style.transition is never written')
 })
 

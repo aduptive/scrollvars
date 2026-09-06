@@ -324,23 +324,42 @@ const MIN_EXAMINED = 1
 // hold must never read or write the `transition` shorthand, so an inline
 // transition-duration longhand on a boot-marked target survives untouched,
 // and an unrelated in-flight transition on a boot-marked target is never
-// stopped mid-flight ──
+// stopped mid-flight. Round 5 finding: an inline transition-duration
+// LONGHAND outranks the stylesheet's --sv-acts-settle-driven duration by
+// cascade origin regardless of its value, so a target that has one must
+// have its own --sv-act sampled per frame too, the same way the main
+// target is, not just have its attribute string checked afterward, or a
+// settle silently governed by the longhand passes by omission ──
 {
   const page = await browser.newPage()
   await page.goto(`${base}/bench/harness/fixtures/toggles-boot-settle.html`, { waitUntil: 'load' })
   await page.addStyleTag({ content: STYLES_CSS })
   const FINISHED = 4
+  const LONGHAND_FINISHED = 3 // #longhand-target(-important) set no --sv-acts-count: the CSS default
   const DRIFT_END = 90 // px, matches the translate this test sets below
-  const { samples, unrelated, longhandDuration, driftSamples } = await page.evaluate(
+  const {
+    samples,
+    unrelated,
+    longhandSamples,
+    longhandDuration,
+    longhandImportantSamples,
+    longhandImportantDuration,
+    longhandImportantPriority,
+    driftSamples,
+  } = await page.evaluate(
     () =>
       new Promise((resolve) => {
         const read = (el) => Number(getComputedStyle(el).getPropertyValue('--sv-act'))
         const target = document.querySelector('#target')
         const other = document.querySelector('#unrelated')
+        const longhand = document.querySelector('#longhand-target')
+        const longhandImportant = document.querySelector('#longhand-important-target')
         const drift = document.querySelector('#drift-target')
         const driftX = () => parseFloat(getComputedStyle(drift).translate) || 0
         const samples = []
         const unrelated = []
+        const longhandSamples = []
+        const longhandImportantSamples = []
         const driftSamples = []
         let booted = false
         let frames = 0
@@ -348,6 +367,8 @@ const MIN_EXAMINED = 1
         const tick = () => {
           samples.push(read(target))
           unrelated.push(read(other))
+          longhandSamples.push(read(longhand))
+          longhandImportantSamples.push(read(longhandImportant))
           driftSamples.push(driftX())
           if (!booted) {
             booted = true
@@ -363,8 +384,12 @@ const MIN_EXAMINED = 1
             resolve({
               samples,
               unrelated,
+              longhandSamples,
+              longhandDuration: longhand.style.transitionDuration,
+              longhandImportantSamples,
+              longhandImportantDuration: longhandImportant.style.getPropertyValue('transition-duration'),
+              longhandImportantPriority: longhandImportant.style.getPropertyPriority('transition-duration'),
               driftSamples,
-              longhandDuration: document.querySelector('#longhand-target').style.transitionDuration,
             })
         }
         requestAnimationFrame(tick)
@@ -387,10 +412,29 @@ const MIN_EXAMINED = 1
     unrelated.every((n) => n === FINISHED),
     unrelated.join(', ')
   )
+  const longhandIntermediate = longhandSamples.filter((n) => n !== LONGHAND_FINISHED && n !== 0)
+  check(
+    'toggles(): a target with an inline transition-duration longhand only ever reads the finished value or 0, never mid-transition (ADU-104, round 5 finding)',
+    longhandIntermediate.length === 0,
+    `intermediate values seen: ${longhandIntermediate.join(', ')}, samples: ${longhandSamples.join(', ')}`
+  )
   check(
     'toggles(): an inline transition-duration longhand on a boot-marked target survives the settle (ADU-104, round 4 finding 2)',
     longhandDuration === '400ms',
     `style.transitionDuration=${longhandDuration}`
+  )
+  const longhandImportantIntermediate = longhandImportantSamples.filter(
+    (n) => n !== LONGHAND_FINISHED && n !== 0
+  )
+  check(
+    'toggles(): an inline transition-duration longhand set with !important only ever reads the finished value or 0, never mid-transition (ADU-104, round 5 finding)',
+    longhandImportantIntermediate.length === 0,
+    `intermediate values seen: ${longhandImportantIntermediate.join(', ')}, samples: ${longhandImportantSamples.join(', ')}`
+  )
+  check(
+    'toggles(): an inline transition-duration longhand set with !important survives the settle with its priority intact, not just its value (ADU-104, round 5 finding)',
+    longhandImportantDuration === '400ms' && longhandImportantPriority === 'important',
+    `value=${longhandImportantDuration} priority=${longhandImportantPriority}`
   )
   check(
     'toggles(): an unrelated in-flight transition on a boot-marked target is never stopped by the settle hold (ADU-104, round 4 finding 2)',

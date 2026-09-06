@@ -32,7 +32,18 @@
      read/wrote the `transition` shorthand): #longhand-target's inline
      transition-duration must survive being marked sv-ui untouched, and
      #drift-target's own unrelated translate transition, already in flight
-     the instant the settle engages, must keep running instead of snapping. -->
+     the instant the settle engages, must keep running instead of snapping.
+
+     #longhand-target and #longhand-important-target repro round 5 (the
+     inline transition-duration LONGHAND outranks --sv-acts-settle by
+     cascade origin regardless of its value, so the settle for either kept
+     playing out over 400ms instead of 0s): both set no --sv-acts-count, so
+     their no-JS finished value is the CSS default (3), and both must only
+     ever read 3 or 0 for --sv-act, never an intermediate value, across the
+     settle. #longhand-important-target's inline declaration also carries
+     !important, proving the hold restores the exact priority, not just
+     the value (a plain style attribute honors !important same as any
+     stylesheet rule, verified against real Chrome). -->
 <button id="trigger" data-sv-toggle="sv-open" data-sv-target="#target">toggle</button>
 <div id="target" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
   <p>finished</p>
@@ -43,6 +54,10 @@
 <button id="trigger-longhand" data-sv-toggle="sv-open" data-sv-target="#longhand-target">toggle longhand</button>
 <div id="longhand-target" class="sv-acts" style="transition-duration: 400ms">
   <p>inline transition-duration longhand must survive the settle</p>
+</div>
+<button id="trigger-longhand-important" data-sv-toggle="sv-open" data-sv-target="#longhand-important-target">toggle longhand important</button>
+<div id="longhand-important-target" class="sv-acts" style="transition-duration: 400ms !important">
+  <p>inline transition-duration longhand with !important must survive the settle, priority included</p>
 </div>
 <button id="trigger-drift" data-sv-toggle="sv-open" data-sv-target="#drift-target">toggle drift</button>
 <div id="drift-target" style="transition: translate 300ms linear; translate: 0px">

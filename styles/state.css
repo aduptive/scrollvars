@@ -76,8 +76,11 @@ dialog.sv-pop:not([open]) {
    Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
    straight to the finished state. Content never hidden.
    --sv-acts-settle is internal, set only by toggles() during its boot
-   settle (src/core/toggles.ts): an author who overrides the whole
-   `transition` shorthand on .sv-acts loses that settle guard. */
+   settle (src/core/toggles.ts), which also holds an element's own inline
+   transition-duration LONGHAND for the same settle. What remains unguarded:
+   an author RULE, not an inline style, that overrides transition-duration
+   or the whole transition shorthand on .sv-acts at higher specificity than
+   this one still owns the settle timing instead of it. */
 @property --sv-act {
   syntax: '<number>';
   initial-value: 0;
