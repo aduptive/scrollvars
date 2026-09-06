@@ -957,6 +957,17 @@ against the code ADU-129 to ADU-132 shipped.
   reordered node keeps its live entry instead of being untracked and
   re-tracked, which used to strip its state and hide it for a frame.
 
+### Scanner (blind review round 5, second pass)
+- The remove path's connectedness check is `scope.contains(el)`, not
+  `el.isConnected`. A scoped `scan(root)` only observes `root`'s own
+  subtree: a tracked node moved OUT of `root` into another still-connected
+  part of the document leaked forever, since it stayed `isConnected` and no
+  further mutation record for it ever arrives. `scope.contains(el)`
+  degrades to the same check as `isConnected` when `scope` is the document
+  (the churn fix above still holds), is correct for a scoped root, and also
+  fixes `scan()` on a genuinely detached root, where `isConnected` is
+  always false and could never trigger the churn guard at all.
+
 ### Pointer (blind review round 5)
 - `trackPointer()` only writes `--mx`/`--my` on a descendant of its own
   container. `event.target.closest(selector)` used to walk straight past

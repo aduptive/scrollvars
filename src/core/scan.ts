@@ -72,9 +72,16 @@ export function scan(root?: ParentNode): () => void {
     // addedNodes (parent.replaceChildren/replaceWith retaining it) or split
     // a reorder across a removal record and an insertion record: by the
     // time the observer fires the DOM has already settled, so a node still
-    // connected was never really removed. Untracking it here would strip
-    // its live state and force a re-track that hides content for a frame.
-    if (el.isConnected) return
+    // inside the observed scope was never really removed. Untracking it
+    // here would strip its live state and force a re-track that hides
+    // content for a frame. scope.contains(el), not el.isConnected: a
+    // scoped scan(root) only observes root's subtree, so a node moved OUT
+    // of root into another still-connected part of the document must be
+    // untracked (isConnected stays true and no further record ever
+    // arrives for it), and a scan() on a detached root needs the same
+    // fix-up (isConnected is always false there, so el.isConnected could
+    // never trigger the churn guard for it either).
+    if (scope.contains(el)) return
     tracked.get(el)?.()
     tracked.delete(el)
   }

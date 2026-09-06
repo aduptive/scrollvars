@@ -3495,7 +3495,7 @@ var SV = (() => {
         tracked.set(el, track(el, optionsFrom(el)));
     };
     const remove = (el) => {
-      if (el.isConnected)
+      if (scope.contains(el))
         return;
       tracked.get(el)?.();
       tracked.delete(el);
