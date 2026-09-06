@@ -96,9 +96,11 @@ function makeEnv() {
       borderRightWidth: '0px',
       borderTopWidth: '0px',
       borderBottomWidth: '0px',
-      // Twelfth pass: getComputedStyle(canvas).aspectRatio, read before the
-      // pin decides whether to set style.aspectRatio itself. 'auto' matches
-      // a real browser's default (no authored aspect-ratio).
+      // getComputedStyle(canvas).aspectRatio, read before the pin decides
+      // whether to set style.aspectRatio itself. This canvas is CSS-sized
+      // on both axes so it never reaches pinAtW0(); a literal 'auto' is
+      // fine here (a real, unsized canvas reports `auto W / H` instead,
+      // see makeCanvas() below, ADU-107 thirteenth pass).
       aspectRatio: 'auto',
     },
     getContext: () => ({ setTransform: () => {} }),
@@ -304,7 +306,7 @@ function makeCanvas({
   aspectRatio = 'auto',
 }) {
   const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
-  return {
+  const canvas = {
     width,
     height,
     style,
@@ -319,9 +321,17 @@ function makeCanvas({
       borderRightWidth: `${border / 2}px`,
       borderTopWidth: `${border / 2}px`,
       borderBottomWidth: `${border / 2}px`,
-      // Twelfth pass: 'auto' unless a test authors its own (kept, not
-      // overridden, when the canvas pins).
-      aspectRatio,
+      // Chrome reports a canvas's computed aspect-ratio as `auto W / H`,
+      // the live intrinsic ratio (== canvas.width/canvas.height, the
+      // SAME attributes this harness itself mutates every pass) appended
+      // to the keyword, never the bare 'auto' string (ADU-107, thirteenth
+      // pass verifier finding): a static 'auto' here hid the twelfth
+      // pass's `=== 'auto'` guard never firing. An authored ratio (passed
+      // explicitly to this fixture) never changes, matching a real
+      // author-set `aspect-ratio` that this harness must not override.
+      get aspectRatio() {
+        return aspectRatio === 'auto' ? `auto ${canvas.width} / ${canvas.height}` : aspectRatio
+      },
     },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect() {
@@ -340,6 +350,7 @@ function makeCanvas({
       return resolveContentSize(this).height + pad.top + pad.bottom
     },
   }
+  return canvas
 }
 
 // Redelivers `canvas`'s OWN current content box (its clientWidth/Height,
