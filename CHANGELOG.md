@@ -152,6 +152,21 @@ findings on the same round): three more defects fixed.
   rule for engines missing individual transform properties.
 - `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
   61-68 and Safari 11, the floor compat claims).
+- Blind review round 4 (Astra on 7489a11), findings 3 and 4. The
+  ResizeObserver stub's records now carry a `contentRect` (from
+  `getBoundingClientRect()` minus border and padding, via
+  `getComputedStyle`) and a `contentBoxSize`, not a bare `{ target }`:
+  `mountEffect()`'s `measureLayout()` reads `entry.contentRect.width`
+  directly and threw under the old stub. The fallback stylesheet's
+  `sv-deck` rule used `max()` for its `--sv-slice` (shipped together with
+  `min()`, above the floor README advertises), and `sv-drift` used
+  `max()` for its opacity clamp too; below that floor the whole
+  `transform` on `sv-deck` was invalid and dropped, leaving every card
+  stacked in pin.css's shared grid cell. Both are now free of comparison
+  functions: `sv-deck` unstacks statically (`display: block` on the deck,
+  `transform: none` on the cards) instead of animating, and `sv-drift`
+  reaches the same fade shape through `opacity`'s own built-in clamping
+  (squaring the view fraction) instead of `max()`.
 
 ### Testing
 - The no-JS "pin stages never cover their revealed text" e2e sweep now
@@ -397,6 +412,16 @@ findings on the same round): three more defects fixed.
   `aspect-ratio` computes to a bare number pair with no `auto` keyword at
   all, so the new check still fires only when the author left the ratio
   alone, and now actually fires.
+- Blind review round 4 (Astra on 7489a11), findings 3 and 16.
+  `measureLayout()` now falls back to its own `getBoundingClientRect()`
+  measurement when a ResizeObserverEntry has no `contentRect` (a stub
+  without one, not just compat()'s own, now fixed too), instead of
+  throwing on `entry.contentRect.width`. A resize while `pause()` is
+  active writes a fresh, blank backing store (`canvas.width = W` clears
+  the bitmap) but left the tick loop stopped, so the canvas stayed blank
+  until whatever resumed it; `applySize()` now paints one frame
+  synchronously right after that write whenever the loop is not running,
+  without starting it.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does

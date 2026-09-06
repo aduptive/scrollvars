@@ -4552,7 +4552,11 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // rect at all, instead of a negative size that would round through dpr
     // into a negative backing-store write.
     const measureLayout = (entry) => {
-        if (entry)
+        // A conforming ResizeObserver always delivers a contentRect; a stub
+        // (compat()'s window-resize-backed one, or a consumer's own) might
+        // not. Fall back to the same measurement onDprChange() uses instead of
+        // throwing on entry.contentRect.width.
+        if (entry?.contentRect)
             return { width: entry.contentRect.width, height: entry.contentRect.height };
         const rect = canvas.getBoundingClientRect();
         const style = window.getComputedStyle(canvas);
@@ -4824,6 +4828,13 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             resize?.(fx);
         }
         sync();
+        // The backing-store write above clears the bitmap. The tick loop
+        // normally repaints it on the very next frame, but pause() (or an
+        // autoPause gate still closed) leaves that loop stopped, so this
+        // resize's own write would otherwise sit blank until whatever resumes
+        // it. Paint one frame here, synchronously, without starting the loop.
+        if (!destroyed && ready && !running())
+            frame(fx, 0);
     };
     const ro = new ResizeObserver(applySize);
     ro.observe(canvas);

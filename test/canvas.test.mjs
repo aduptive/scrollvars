@@ -236,6 +236,39 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
   assert.equal(env.pending(), 0)
 })
 
+test('canvas harness: a resize while paused repaints once without resuming the loop', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const frames = []
+  const handle = mountEffect(env.canvas, {
+    frame: (fx, dt) => frames.push({ dt, w: fx.width, h: fx.height }),
+  })
+
+  env.resize()
+  assert.equal(env.pending(), 1)
+  env.pump(16)
+  assert.equal(frames.length, 1, 'first size paints via the tick loop')
+
+  handle.pause()
+  assert.equal(env.pending(), 0)
+
+  // A resize while paused: the backing-store write clears the bitmap
+  // (canvas.width = w), but the loop stays stopped.
+  env.canvas.style.width = '500px'
+  env.canvas.style.height = '350px'
+  env.resize({ width: 500, height: 350 })
+
+  assert.equal(frames.length, 2, 'one extra frame repaints the resized bitmap')
+  assert.equal(frames.at(-1).dt, 0, 'the repaint is not a tick, no elapsed time')
+  assert.equal(frames.at(-1).w, 500)
+  assert.equal(frames.at(-1).h, 350)
+  assert.equal(env.pending(), 0, 'the loop is not resumed by the resize')
+
+  handle.resume()
+  assert.equal(env.pending(), 1)
+})
+
 // style.width/height as a Proxy: `writes` records every assignment the
 // harness makes through `canvas.style`, so a test can assert it never
 // pinned anything, not just check the final value. Mutating the returned
@@ -1773,4 +1806,46 @@ test('canvas harness: the verifier\'s threshold map at w0 30, dpr 0.51 converges
     assert.equal(canvas.width, Math.round(30 * 0.51), `w0 30x${h0}, dpr 0.51: exact backing width`)
     assert.equal(canvas.height, Math.round(h0 * 0.51), `w0 30x${h0}, dpr 0.51: exact backing height`)
   }
+})
+
+test('canvas harness: mountEffect under the compat() ResizeObserver shim does not throw and sizes the canvas', async () => {
+  const env = makeEnv()
+  const { compat } = await import('../dist/compat/index.js')
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // Simulate a browser missing ResizeObserver/IntersectionObserver: drop
+  // makeEnv()'s own native-shaped fixtures and let compat() install its
+  // stubs instead, then bridge them onto the bare globals src/canvas/
+  // index.ts's `new ResizeObserver(...)` resolves through (this harness
+  // keeps `window` and the bare globals as separate objects, on purpose,
+  // for every other test's isolation; a real browser IS window===globalThis,
+  // so this bridge just restores that identity for this one test).
+  delete global.window.ResizeObserver
+  delete global.window.IntersectionObserver
+  global.window.CSS = { supports: () => true } // individual transforms supported: no fallback stylesheet, unrelated to this fix
+  // compat()'s RO stub also listens for viewport resizes/orientation changes
+  global.window.addEventListener = () => {}
+  global.window.removeEventListener = () => {}
+  assert.equal(compat(), true, 'compat patches the missing observers')
+  global.ResizeObserver = global.window.ResizeObserver
+  global.IntersectionObserver = global.window.IntersectionObserver
+
+  const { style } = makeStyle({ width: '400px', height: '300px' })
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+
+  const frames = []
+  assert.doesNotThrow(() => {
+    mountEffect(canvas, { frame: (fx, dt) => frames.push({ dt, w: fx.width, h: fx.height }) })
+  }, 'the shim delivers a record with no contentRect.width to throw on')
+
+  // compat's ResizeObserverStub.observe() fires its callback synchronously
+  // on mount, so the canvas is sized before mountEffect() even returns.
+  assert.equal(canvas.width, 800) // 400 CSS px * dpr capped at 2
+  assert.equal(canvas.height, 600)
+  assert.equal(env.pending(), 1, 'the tick loop is queued')
+
+  env.pump(16)
+  assert.equal(frames.length, 1)
+  assert.equal(frames[0].w, 400)
+  assert.equal(frames[0].h, 300)
 })
