@@ -10,15 +10,20 @@
  *
  *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub:
 *     re-measures on viewport changes (misses pure content growth; the page
- *     still works, call `refresh()` after big DOM swaps if needed).
+ *     still works, call `refresh()` after big DOM swaps if needed). Its
+ *     `contentRect` is measured from the layout box, like the native
+ *     observer, so an ancestor `transform: scale()` never inflates it.
  *   - IntersectionObserver missing (Safari < 12.1): an always-visible stub:
 *     the canvas harness simply never auto-pauses offscreen.
  *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
- *     re-expresses the presets (curtain, rail, deck) with `transform:`.
- *     Written without :is(), clamp() or min() so the old parser accepts it.
- *     sv-reading falls back to fully-visible text; sv-counter and
- *     sv-view-* stay progressive.
+ *     re-expresses curtain, rail and drift with `transform:`. Written
+ *     without :is(), clamp() or min() so the old parser accepts it; the
+ *     one max() left, drift's fade, sits behind a plain opacity
+ *     declaration that parser keeps.
+ *     sv-deck unstacks to a static, non-overlapping layout instead of
+ *     animating (its fly-away slice needs clamp()); sv-reading falls back
+ *     to fully-visible text; sv-counter and sv-view-* stay progressive.
  *
  * Syntax floor stays the consumer's job: the dist ships ES2020; if you must
  * PARSE on very old engines, let your bundler downlevel it (Next.js already
@@ -50,15 +55,14 @@ const FALLBACK_CSS = `
 .sv .sv-curtain-r { transform: translateX(calc(var(--sv-pin, 0) * 101%)); }
 .sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * (100vw - 100%))); }
 .sv .sv-reading > * { opacity: 1; }
-.sv .sv-deck > * {
-  /* Bounded to 0..1 with only max() (no min(), missing on the same floor):
-     max(0, -1 * max(-X, -1)) stays under 1 and never drops below 0. */
-  --sv-slice: max(0, calc(-1 * max(calc(var(--sv-order, 0) - var(--sv-pin, 0) * var(--sv-count, 4)), -1)));
-  transform:
-    translateY(calc(var(--sv-order, 0) * 14px - var(--sv-slice) * 130vh))
-    rotate(calc(var(--sv-slice) * -7deg))
-    scale(calc(1 - var(--sv-order, 0) * 0.045 + var(--sv-slice) * 0.045));
-}
+/* The fly-away slice (--sv-slice, pin.css) is bounded 0..1 by a comparison
+   function; below the floor that function ships on, it is unparseable and
+   drops the whole transform, which leaves every card stacked in pin.css's
+   shared grid cell (sv-deck's stacking mechanism, not the transform).
+   Unstack statically instead: no comparison function needed, no animation
+   either. */
+.sv .sv-deck { display: block; }
+.sv .sv-deck > * { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),
@@ -71,6 +75,79 @@ const FALLBACK_CSS = `
 }
 `
 
+interface RoEntryStub {
+  target: Element
+  contentRect: { width: number; height: number }
+  contentBoxSize: Array<{ inlineSize: number; blockSize: number }>
+}
+
+// Content box in CSS pixels, from the LAYOUT box like a real
+// ResizeObserverEntry: clientWidth/clientHeight exclude the border and
+// include the padding, so one padding subtraction is the content box.
+// getBoundingClientRect() is the PAINT box and scales with an ancestor
+// `transform: scale()`: a canvas under `scale(2)` reported a doubled
+// content box and settled its backing store there forever. clientWidth is
+// transform-immune, which is why the canvas harness's causal probe reads
+// it too. The cost is rounding to whole pixels, where a native contentRect
+// keeps fractions.
+function measureContentRect(el: Element) {
+  const style = window.getComputedStyle(el)
+  const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+  const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+  return {
+    width: Math.max(0, (el as HTMLElement).clientWidth - paddingX),
+    height: Math.max(0, (el as HTMLElement).clientHeight - paddingY),
+    // contentBoxSize is logical, contentRect physical: a vertical writing
+    // mode runs the inline axis down the block box, swapping the two.
+    vertical: (style.writingMode || '').indexOf('vertical') === 0,
+  }
+}
+
+function measureEntry(el: Element): RoEntryStub {
+  const { width, height, vertical } = measureContentRect(el)
+  return {
+    target: el,
+    contentRect: { width, height },
+    contentBoxSize: [
+      vertical ? { inlineSize: height, blockSize: width } : { inlineSize: width, blockSize: height },
+    ],
+  }
+}
+
+// viewport-resize-backed stand-in: enough for the driver's re-measures.
+// Ships a contentRect/contentBoxSize on every entry (mountEffect's
+// measureLayout() reads entry.contentRect.width/height directly and would
+// throw on a bare `{ target }` record).
+function makeResizeObserverStub() {
+  return class ResizeObserverStub {
+    private cb: (entries: RoEntryStub[]) => void
+    private els = new Set<Element>()
+    private fire: () => void
+    constructor(cb: (entries: RoEntryStub[]) => void) {
+      this.cb = cb
+      this.fire = () => {
+        const entries: RoEntryStub[] = []
+        this.els.forEach((el) => entries.push(measureEntry(el)))
+        this.cb(entries)
+      }
+      window.addEventListener('resize', this.fire)
+      window.addEventListener('orientationchange', this.fire)
+    }
+    observe(el: Element) {
+      this.els.add(el)
+      this.cb([measureEntry(el)]) // like the real one: an initial observation
+    }
+    unobserve(el: Element) {
+      this.els.delete(el)
+    }
+    disconnect() {
+      this.els.clear()
+      window.removeEventListener('resize', this.fire)
+      window.removeEventListener('orientationchange', this.fire)
+    }
+  }
+}
+
 /** Apply the patches this browser needs. Returns true if anything was patched. */
 export function compat(): boolean {
   if (typeof window === 'undefined') return false
@@ -78,35 +155,7 @@ export function compat(): boolean {
   const w = window as any
 
   if (!('ResizeObserver' in w)) {
-    // viewport-resize-backed stand-in: enough for the driver's re-measures
-    class ResizeObserverStub {
-      private cb: (entries: Array<{ target: Element }>) => void
-      private els = new Set<Element>()
-      private fire: () => void
-      constructor(cb: (entries: Array<{ target: Element }>) => void) {
-        this.cb = cb
-        this.fire = () => {
-          const entries: Array<{ target: Element }> = []
-          this.els.forEach((el) => entries.push({ target: el }))
-          this.cb(entries)
-        }
-        window.addEventListener('resize', this.fire)
-        window.addEventListener('orientationchange', this.fire)
-      }
-      observe(el: Element) {
-        this.els.add(el)
-        this.cb([{ target: el }]) // like the real one: an initial observation
-      }
-      unobserve(el: Element) {
-        this.els.delete(el)
-      }
-      disconnect() {
-        this.els.clear()
-        window.removeEventListener('resize', this.fire)
-        window.removeEventListener('orientationchange', this.fire)
-      }
-    }
-    w.ResizeObserver = ResizeObserverStub
+    w.ResizeObserver = makeResizeObserverStub()
     patched = true
   }
 

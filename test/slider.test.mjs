@@ -409,7 +409,10 @@ function makeBox(slides, { rect, clientWidth, clientHeight, scrollWidth, scrollH
     clientWidth, clientHeight, scrollWidth, scrollHeight,
     vars: {},
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
-    style: { setProperty(k, v) { c.vars[k] = v } },
+    // '' like a real element with no inline scroll-snap-type: the snap
+    // suspension writes here, so it doubles as the "did the wheel assist
+    // run?" probe
+    style: { scrollSnapType: '', setProperty(k, v) { c.vars[k] = v } },
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: () => {},
     scrollTo: () => {},
@@ -636,4 +639,65 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   assert.deepEqual(onSlideCalls, [1], 'the index did not change: onSlide must not fire again')
   handle.destroy()
   delete global.MutationObserver
+})
+
+test('slider: snap none from a stylesheet (not inline) keeps the wheel assist off', async () => {
+  const rafQueue = [], listeners = {}, control = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+
+  const slidesA = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  const slidesB = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  const box = { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100 }
+  const styled = makeBox(slidesA, { ...box, listeners, rafQueue })
+  const snapped = makeBox(slidesB, { ...box, listeners: control, rafQueue })
+  // a stylesheet rule or a utility class (Tailwind's snap-none): the inline
+  // style is empty on both, only the computed value tells them apart
+  global.getComputedStyle = (el) => ({
+    direction: 'ltr',
+    scrollSnapType: el === styled ? 'none' : 'x mandatory',
+  })
+
+  const { slider } = await import('../dist/core/slider.js?computedsnap')
+  const off = slider(styled, { duration: 0 })
+  const on = slider(snapped, { duration: 0 })
+  const wheel = { deltaX: 40, deltaY: 0 }
+  listeners.wheel(wheel)
+  control.wheel(wheel)
+
+  // the control proves the gesture reaches the handler in this harness at all
+  assert.equal(snapped.style.scrollSnapType, 'none', 'a snapping instance does suspend on wheel')
+  assert.equal(styled.style.scrollSnapType, '', 'authored none is left alone, whatever authored it')
+
+  off.destroy()
+  on.destroy()
+})
+
+test('slider: elastic overscroll never drives progress outside 0..1', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  // 100px viewport over 300px of content: the scrollable range is 200
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?overscroll')
+  const handle = slider(c, { duration: 0 })
+
+  c.scrollLeft = 260 // rubber band past the end
+  pumpSlider(listeners, rafQueue)
+  assert.equal(handle.state().progress, 1, 'past the end reads 1, not 1.3')
+  assert.equal(c.vars['--sv-progress'], '1.0000')
+
+  c.scrollLeft = -40 // rubber band past the start
+  pumpSlider(listeners, rafQueue)
+  assert.equal(handle.state().progress, 0, 'before the start reads 0, not -0.2')
+  assert.equal(c.vars['--sv-progress'], '0.0000')
+
+  handle.destroy()
 })

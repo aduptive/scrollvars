@@ -148,10 +148,33 @@ findings on the same round): three more defects fixed.
   `.sv-acts` still gets `sv-ui`, nothing else.
 
 ### Compat
-- `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`
-  rule for engines missing individual transform properties.
+- `compat()`'s fallback stylesheet now covers `sv-deck` on engines missing
+  individual transform properties: the pile unstacks into a static,
+  non-overlapping layout instead of leaving every card in pin.css's shared
+  grid cell.
 - `splitParts` no longer uses `Array.prototype.flatMap` (missing on Chrome
   61-68 and Safari 11, the floor compat claims).
+- Blind review round 4 (Astra on 7489a11), findings 3 and 4. The
+  ResizeObserver stub's records now carry a `contentRect` and a
+  `contentBoxSize`, not a bare `{ target }`: `mountEffect()`'s
+  `measureLayout()` reads `entry.contentRect.width` directly and threw
+  under the old stub. Both come from the layout box, like the native
+  observer: `clientWidth`/`clientHeight` minus computed padding, never
+  `getBoundingClientRect()`, which is the paint box and scales with an
+  ancestor transform (under `transform: scale(2)` a 400x300 canvas
+  reported an 800x600 content box and settled its backing store there
+  forever). `contentBoxSize` is logical, so a vertical writing mode swaps
+  `inlineSize` and `blockSize`.
+- The fallback stylesheet's `sv-deck` rule bounded its `--sv-slice` with
+  `max()` (shipped together with `min()`, above the floor README
+  advertises) and had no plain declaration in front of it, so below that
+  floor the whole `transform` was invalid and dropped, leaving every card
+  stacked in pin.css's shared grid cell. The deck fallback no longer uses
+  `max()`: it unstacks statically (`display: block` on the deck,
+  `transform: none` on the cards) instead of animating. Every other
+  `max()` in the sheet (only `sv-drift`'s fade) keeps the plain
+  `opacity: 1` in front of it that old parsers fall back to, and is
+  unchanged.
 
 ### Testing
 - The no-JS "pin stages never cover their revealed text" e2e sweep now
@@ -425,6 +448,16 @@ findings on the same round): three more defects fixed.
   `aspect-ratio` computes to a bare number pair with no `auto` keyword at
   all, so the new check still fires only when the author left the ratio
   alone, and now actually fires.
+- Blind review round 4 (Astra on 7489a11), findings 3 and 16.
+  `measureLayout()` now falls back to its own `getBoundingClientRect()`
+  measurement when a ResizeObserverEntry has no `contentRect` (a stub
+  without one, not just compat()'s own, now fixed too), instead of
+  throwing on `entry.contentRect.width`. A resize while `pause()` is
+  active writes a fresh, blank backing store (`canvas.width = W` clears
+  the bitmap) but left the tick loop stopped, so the canvas stayed blank
+  until whatever resumed it; `applySize()` now paints one frame
+  synchronously right after that write whenever the loop is not running,
+  without starting it.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
@@ -593,6 +626,19 @@ findings on the same round): three more defects fixed.
   pseudo-element the CSS tab generates hangs off a class the React tab
   renders. The two tabs are one block spelled twice, and a reader pastes
   both. Proved red on both pane splits above.
+- Second pass (verifier finding on fe4d844): that gallery gate compared two
+  flat SETS of class names, so either half of the pane split it repaired
+  stayed green on its own. The rule back on `.stats .stat::after` with the
+  `.count` span still in the CSS-tab markup announces "248+" then "248"
+  (`content` computing `counter(n) ""`), the original defect verbatim; the
+  mirror, the rule on `.count` with the span dropped from the markup, ships a
+  snippet that renders no number at all. Every `content:` rule in the CSS pane
+  whose value uses `counter()` is now checked against the element it prints
+  on: the class must appear in that pane's own markup, and it must be the
+  class the React pane hides from assistive tech when the React pane hides
+  one. Proved red on both mutations. `cssPaneClasses()` strips comments as
+  `classesIn()` already did, so a class named only in prose no longer counts
+  as documented.
 - `installed-gate.mjs` closes its HTTP server and every page it opened in a
   `finally`: a throw in the render path no longer leaves a listening socket
   and a pile of tabs behind for the rest of the run.
@@ -795,6 +841,55 @@ from the code it describes.
   `measureSizes` from `docs-data.mjs`, the same source `docs-stamp.mjs`
   reads, so the generated docs page and README render the same measured
   numbers instead of two hand-typed copies that can drift apart.
+
+### React (blind review round 4)
+- `<Modal>` without native `<dialog>` support now closes. The effect
+  branches once on `showModal`: where the element is unknown there is no
+  `open` PROPERTY, so the old `!open && dialog.open` guard could only ever
+  open it. The fallback drives the attribute in both directions with
+  `setAttribute`/`removeAttribute`, never `toggleAttribute`: the engines
+  that reach that branch are the ones without `<dialog>` (Safari below
+  15.4, Firefox below 98), and Safari 11 and Firefox 60 to 62 are inside
+  the supported floor while predating `toggleAttribute`, where the effect
+  would throw and React would unmount the tree.
+- `useScenes()` clamps its scene to `count - 1` when the count changes. The
+  driver emits nothing at all for `scenes <= 1`, so a count going from N to
+  1 used to keep reporting the last index forever, and a consumer marked
+  its only shot inert.
+
+### Slider (blind review round 4)
+- The wheel assist now reads the container's COMPUTED `scroll-snap-type` at
+  init, not only the inline style: an instance set to `none` by a
+  stylesheet or a utility class (Tailwind's `snap-none`) is left alone,
+  same as an inline one, instead of being snap-suspended and scripted to
+  the nearest slide.
+- `state().progress` and `--sv-progress` are clamped to 0..1. Elastic
+  overscroll drove them past both ends, and a follower chained through
+  `onScroll` + `seek(progress)` was seeked outside its own range.
+
+### Click driver (blind review round 4)
+- `toggles()` writes `--sv-state` at boot from the target's class, so
+  markup that ships open no longer disagrees with its own class until the
+  first click.
+- Triggers are grouped by the PAIR (resolved target element, toggled
+  class) instead of by the `data-sv-target` string, so two triggers naming
+  the same panel through different selectors keep each other's
+  `aria-expanded` in sync, while two controls toggling different classes
+  on that same panel (a hamburger on `open`, a second control on `pinned`)
+  keep separate states. Grouping by the element alone made one click
+  report `aria-expanded="true"` for both, the second one with its class
+  absent.
+
+### Presets and no-JS (blind review round 4)
+- `.sv-counter`'s `counter-reset` and `::after` are keyed on
+  `:is(.sv, [data-sv])`, like the no-JS guard that feeds them `--sv-int`:
+  attribute-only markup used to get the variable but render an empty
+  element without JS. The no-JS e2e sweep asserts the digits, not just the
+  variable.
+- `dialog.sv-pop:not([open])`'s fade is wrapped in
+  `@supports selector(dialog:modal)`: the type selector also matches the
+  unknown element an engine without `<dialog>` parses, which hid the
+  documented static fallback panel with no UA `display: none` behind it.
 
 ## 1.13.0 (2026-09-05)
 
