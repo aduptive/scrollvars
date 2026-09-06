@@ -743,10 +743,17 @@ wide, scrollWidth 500).
   hydration (README, "open ones open"), instead of shipping a closed dialog.
   On mount the effect removes that attribute and calls `showModal()`: a
   dialog opened by the attribute is NOT modal, `showModal()` throws on an
-  open one, and the old `!dialog.open` guard skipped it and left it
-  non-modal. It removes the attribute rather than calling `close()`, which
+  open NON-modal one, and the old `!dialog.open` guard skipped it and left
+  it non-modal. It removes the attribute rather than calling `close()`, which
   fires a close event that a controlled parent answers by closing the modal
-  it just rendered open. The rendered attribute is frozen at the first
+  it just rendered open. That promotion runs exactly once per open: a
+  repeated `showModal()` on a dialog that is already modal returns early by
+  spec, but dropping the attribute first walks past that early return, and
+  the second call records a node inside the dialog as the element to restore
+  focus to, so closing dropped focus on the body instead of the control that
+  opened the modal. Visible under StrictMode, which double-invokes effects
+  in development and is the default in Next.js and in the Vite and CRA
+  templates. The rendered attribute is frozen at the first
   render, since from mount on the effect owns it and React writing it would
   strip `open` off a modal dialog without taking it out of the top layer.
   The no-`<dialog>` fallback path is unchanged, the attribute still tracks
