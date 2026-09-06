@@ -396,15 +396,12 @@ export function mountEffect(
   // actual entry, so it stays undefined until the first one arrives.
   let lastContent: { width: number; height: number } | undefined
 
-  // (eleventh pass; see the module doc) The anchor, set once on the very
-  // first applySize() call and never touched again: `anchor` is the CSS
-  // content size the author's own CSS and attributes already produced,
-  // before this harness writes anything; `ratio0` (from `w0`/`h0`, the
-  // ORIGINAL width/height attributes) is the ratio every later pin and
-  // every free-axis derivation below is anchored to, never a later pass's
-  // own, possibly already-perturbed, reading.
+  // (twelfth pass; see the module doc) `w0`/`h0`, set once on the very
+  // first applySize() call and never touched again, are the ORIGINAL
+  // width/height attributes: the ratio every free-axis derivation below is
+  // anchored to (`ratio0`), and, when this canvas pins, the value pinned
+  // to. Never a later pass's own, possibly already-perturbed, measurement.
   let mounted = false
-  let anchor = { width: 0, height: 0 }
   let w0 = 0
   let h0 = 0
   let ratio0 = 1
@@ -451,10 +448,26 @@ export function mountEffect(
 
     if (!mounted) {
       mounted = true
-      anchor = size
       w0 = canvas.width
       h0 = canvas.height
       ratio0 = w0 / h0
+    }
+
+    // Pins this canvas at `w0`, the ORIGINAL attribute width, never a
+    // measurement (see the module doc, twelfth pass): a `max-width` that
+    // later widens, or a percentage cap in a growing container, then lets
+    // the box grow back toward `w0` on its own, live, no further JS
+    // involved. `aspectRatio` is set to `w0 / h0` only when the author
+    // left it `auto`: an author's own `aspect-ratio` is kept, not
+    // overridden. Called from both the primary pin decision below and the
+    // escape check further down.
+    const pinAtW0 = () => {
+      canvas.style.boxSizing = 'content-box'
+      canvas.style.width = `${w0}px`
+      if (window.getComputedStyle(canvas).aspectRatio === 'auto') {
+        canvas.style.aspectRatio = `${w0} / ${h0}`
+      }
+      pinned = true
     }
 
     // The causal probe (see the module doc for the full reasoning): tries
@@ -551,17 +564,7 @@ export function mountEffect(
       canvas.width = current.width
       canvas.height = current.height
 
-      if (widthFollows) {
-        // Unsized: pin at the anchor, not this pass's own size (which,
-        // past mount, could already be a value this harness's earlier
-        // writes helped produce). `aspectRatio` lets the CSS engine derive
-        // height from the ORIGINAL attribute ratio directly, never from
-        // rounding this harness's own backing-store attributes.
-        canvas.style.boxSizing = 'content-box'
-        canvas.style.width = `${anchor.width}px`
-        canvas.style.aspectRatio = `${w0} / ${h0}`
-        pinned = true
-      }
+      if (widthFollows) pinAtW0()
     }
 
     // Backing-store write. A canvas pinned this pass or earlier has both
@@ -592,23 +595,16 @@ export function mountEffect(
       h = Math.round(size.height * fx.dpr)
     }
 
-    // Escape check, unpinned canvases only: a `max-width` cap with no CSS
-    // width of its own still binds on THIS canvas's own intrinsic
-    // width/height attribute, and this candidate write, once committed,
-    // becomes that attribute. At a DPR below 1 the candidate can itself
-    // land BELOW the cap and unclamp it, a genuine unbounded shrink this
-    // harness exists to stop, just discovered here instead of by the
-    // mount-time probe (which deliberately checks `w0`/`h0`, never a
-    // DPR-scaled write, so a cap relationship it cannot see change).
-    // Reuses the exact same causal check as that probe (a proportional
-    // GROW, `clientWidth` before and after, immune to border, padding and
-    // transform because they cancel out of the delta), just against this
-    // candidate write instead of `w0`/`h0`: if the candidate is STILL
-    // capped at double its own size, nothing escaped, safe to commit as
-    // is; if it now reads as following its own attribute, the cap already
-    // escaped this candidate, and this canvas is pinned instead, at the
-    // size actually measured THIS pass (before this candidate write), not
-    // the candidate itself.
+    // Escape check (kept; see the module doc, twelfth pass, for why): a
+    // `max-width` cap below half `w0` sits in the probe above's own blind
+    // spot (halving `w0` never lands under it either), so a DPR below 1
+    // can still make THIS pass's own candidate write land below that cap,
+    // unclamping it for real; left uncaught, the next pass would measure
+    // that smaller, unclamped box and shrink it again, unbounded. Reuses
+    // the same causal growth check against the candidate instead of
+    // `w0`/`h0`: if doubling it still reads capped, nothing escaped; if
+    // not, this canvas pins now, at `w0`, same as the primary pin above,
+    // never at the candidate itself.
     if (!pinned) {
       canvas.width = w
       canvas.height = h
@@ -619,12 +615,7 @@ export function mountEffect(
         const grownW = canvas.clientWidth
         canvas.width = w
         canvas.height = h
-        if (grownW !== baseW) {
-          canvas.style.boxSizing = 'content-box'
-          canvas.style.width = `${size.width}px`
-          canvas.style.aspectRatio = `${w0} / ${h0}`
-          pinned = true
-        }
+        if (grownW !== baseW) pinAtW0()
       }
     }
 

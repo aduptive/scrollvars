@@ -96,6 +96,10 @@ function makeEnv() {
       borderRightWidth: '0px',
       borderTopWidth: '0px',
       borderBottomWidth: '0px',
+      // Twelfth pass: getComputedStyle(canvas).aspectRatio, read before the
+      // pin decides whether to set style.aspectRatio itself. 'auto' matches
+      // a real browser's default (no authored aspect-ratio).
+      aspectRatio: 'auto',
     },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect: () => ({ width: 400, height: 300 }),
@@ -288,7 +292,17 @@ function resolveContentSize(canvas) {
   return { width: w, height: h }
 }
 
-function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, residual = 0, maxWidth }) {
+function makeCanvas({
+  width,
+  height,
+  style,
+  border = 0,
+  padding = 0,
+  scale = 1,
+  residual = 0,
+  maxWidth,
+  aspectRatio = 'auto',
+}) {
   const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
   return {
     width,
@@ -305,6 +319,9 @@ function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, 
       borderRightWidth: `${border / 2}px`,
       borderTopWidth: `${border / 2}px`,
       borderBottomWidth: `${border / 2}px`,
+      // Twelfth pass: 'auto' unless a test authors its own (kept, not
+      // overridden, when the canvas pins).
+      aspectRatio,
     },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect() {
@@ -982,15 +999,15 @@ test('canvas harness: the proportional probe restores the attribute exactly and 
   assert.equal(canvas.width, 400)
   assert.equal(canvas.height, 200)
   const readsAfterMount = canvas.clientReads
-  // One resize event, eight reads total (eleventh pass): a baseline
-  // clientWidth/clientHeight pair (2), doubling both attributes together
-  // shows no follow so the halving tiebreaker also runs (400x200 are both
-  // even, so it is exact, +1 for its own clientWidth read), the two
-  // single-axis probes that decide the free axis (height-alone, +1;
-  // width-alone, +1), and the escape check on the candidate write itself
-  // (a baseline clientWidth, +1, and a doubled one, +1: this canvas stays
-  // CSS-sized at double its own candidate too, so it commits as computed).
-  // Still bounded per resize event, never per frame.
+  // One resize event, eight reads total: a baseline clientWidth/clientHeight
+  // pair (2), doubling both attributes together shows no follow so the
+  // halving tiebreaker also runs (400x200 are both even, so it is exact,
+  // +1 for its own clientWidth read), the two single-axis probes that
+  // decide the free axis (height-alone, +1; width-alone, +1), and the
+  // escape check on the candidate write itself (a baseline clientWidth,
+  // +1, and a doubled one, +1: this canvas stays CSS-sized at double its
+  // own candidate too, so it commits as computed). Still bounded per
+  // resize event, never per frame.
   assert.equal(readsAfterMount, 8)
 
   env.pump(16)
@@ -1382,7 +1399,7 @@ test('canvas harness: a max-width:100px canvas whose cap binds already at its na
   }
 })
 
-test('canvas harness: the same max-width:100px canvas IS pinned below dpr 1, where this harness\'s own write would otherwise drop the attribute below the cap and unclamp it (eleventh pass, escape check)', async () => {
+test('canvas harness: the same max-width:100px canvas IS pinned below dpr 1, where this harness\'s own write would otherwise drop the attribute below the cap and unclamp it (twelfth pass, escape check kept)', async () => {
   // Below dpr 1, `round(cap * dpr) < cap`: this harness's OWN candidate
   // write (80 at dpr 0.8) would itself become an intrinsic width BELOW
   // the cap, unclamping it for real (left unpinned, the very next pass
@@ -1392,10 +1409,10 @@ test('canvas harness: the same max-width:100px canvas IS pinned below dpr 1, whe
   // see this coming, on purpose (see the module doc): a SEPARATE escape
   // check, right after computing this pass's own candidate write, reuses
   // the same causal growth check against THAT candidate instead, and
-  // catches it. Unlike the tenth pass, this does NOT also over-pin at
-  // exactly dpr 1 (`round(100 * 1) = 100`, still exactly at the cap,
-  // doubling it stays clamped both times): a narrow improvement, not just
-  // a port of the old behavior.
+  // catches it. Unlike the eleventh pass, the pin it applies is `w0`
+  // (300), never the cap's own rendered size (100): CSS still clamps the
+  // box to the cap right now, but a later cap change is free to move it,
+  // the whole point of the twelfth pass (see the module doc, finding 1).
   for (const dpr of [0.5, 0.8]) {
     const env = makeEnv()
     global.window.devicePixelRatio = dpr
@@ -1407,7 +1424,7 @@ test('canvas harness: the same max-width:100px canvas IS pinned below dpr 1, whe
     mountEffect(canvas, { frame: () => {} })
 
     env.resize({ width: 100, height: 50 })
-    assert.equal(canvas.style.width, '100px', `dpr ${dpr}: pinned at the cap's own rendered size`)
+    assert.equal(canvas.style.width, '300px', `dpr ${dpr}: pinned at w0, not the cap's rendered size`)
     assert.equal(canvas.width, Math.round(100 * dpr), `dpr ${dpr}: still the crisp backing store`)
     assert.equal(canvas.height, Math.round(50 * dpr))
 
