@@ -284,11 +284,14 @@ breaks. The page renders complete and static. Animation is progressive enhanceme
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
-two feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet written
-without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>. With your bundler
-downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets animate on
-roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
+three feature checks and exits (free); on old ones it installs ResizeObserver/
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
+curtain, rail and drift, written without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>
+(the one <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
+declaration that old parsers keep); <code>sv-deck</code> unstacks to a static,
+non-overlapping layout instead, its fly-away slice needs <code>clamp()</code>. With your
+bundler downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets
+animate on roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
