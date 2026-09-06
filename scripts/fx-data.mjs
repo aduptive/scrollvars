@@ -105,7 +105,7 @@ export const EFFECTS = [
   {
     slug: 'curtain',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Curtain',
     tagline: 'Two panels slide apart as you scroll through a pinned stretch.',
@@ -147,7 +147,7 @@ export const EFFECTS = [
   {
     slug: 'horizontal-rail',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
@@ -246,7 +246,7 @@ export const EFFECTS = [
   {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.9.0' },
+    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.13.0' },
     category: 'Interop',
     title: 'GSAP timeline under scrub',
     tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
@@ -305,7 +305,7 @@ useEffect(() => {
   {
     slug: 'three-scene',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.11.0' },
+    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.13.0' },
     category: 'Interop',
     title: 'Three.js scene on the pin',
     tagline: 'A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.',
@@ -484,7 +484,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   {
     slug: 'pointer-tilt',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['tilt'], min: '1.9.0' },
+    requires: { styles: ['tilt'], min: '1.9.0', tailwind: true },
     category: 'Pointer',
     title: 'Pointer tilt',
     tagline: 'Cards tilt toward the cursor with a moving glare. One delegated listener.',
@@ -529,7 +529,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}</style>
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>`,
     css: `<div class="sv-slider" id="cards">
   <div class="slide">…</div> ×N
@@ -543,7 +543,8 @@ el.style.setProperty('--sv-word', nextIndex)`,
 /* the coverflow is pure CSS on --sd: */
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
-  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }`,
+  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */`,
     tailwind: `<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
   {cards.map(c => (
@@ -664,8 +665,9 @@ el.style.setProperty('--sv-word', nextIndex)`,
     tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
-  <div class="inner text-center">
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"></div>
+  <div class="inner text-center motion-reduce:[opacity:1] motion-reduce:[scale:none]">
     <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
@@ -780,7 +782,10 @@ function Timeline() {
   return (
     <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
       <div className="sv-stage tl-sticky">
-        <span className="tl-year" />
+        <span className="tl-year">
+          <span style={SR_ONLY}>{2026}</span>            {/* real text for AT: no aria-label on a span */}
+          <span className="tl-count" aria-hidden="true" />   {/* the CSS-counter digits */}
+        </span>
         <div className="tl-track"><i className="tl-line" />
           <ol className="sv-range sv-range-rise tl-items">
             {steps.map((s) => (
@@ -945,8 +950,8 @@ html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: fi
    older engines show the final numbers immediately. */`,
     tailwind: `<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd></div>
+    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd></div>
   </dl>
 </section>
 <!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->`,
@@ -963,8 +968,9 @@ function Stats() {
       <dl className="stats">
         {stats.map((s) => (
           <div key={s.label}>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
             <dt>{s.label}</dt>
+            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            <span style={SR_ONLY}>{s.max}{s.suffix ?? ''}</span>
           </div>
         ))}
       </dl>
@@ -1065,7 +1071,7 @@ const css = \`
 .sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
 .sv-timeline .tl-year { font-size: clamp(64px, 12vw, 150px); line-height: 1; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
-.sv-timeline .tl-year::after { content: counter(tl-year); }
+.sv-timeline .tl-year .tl-count::after { content: counter(tl-year); }
 .sv-timeline .tl-cap { display: block; margin-top: 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 .sv-timeline .tl-track { position: relative; padding-left: 34px; }
 .sv-timeline .tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: rgba(128,128,128,.25); }
@@ -1078,6 +1084,17 @@ const css = \`
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 \`
+
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// \`aria-prohibited-attr\`: so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
 
 export interface TimelineStep {
   year: number
@@ -1110,7 +1127,10 @@ export function TimelineScrub({
       <style>{css}</style>
       <div className="sv-stage tl-sticky">
         <div>
-          <span className="tl-year" aria-label={String(from + span)} />
+          <span className="tl-year">
+            <span style={SR_ONLY}>{from + span}</span>
+            <span className="tl-count" aria-hidden="true" />
+          </span>
           <span className="tl-cap">{caption}</span>
         </div>
         <div className="tl-track">
@@ -1171,15 +1191,26 @@ export interface StickyStep {
   label?: string
 }
 
+// React 19 knows inert as a boolean attribute (a string would be dropped as falsy); React 18
+// does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
+const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
+
 export function StickySteps({ steps, className }: { steps: StickyStep[]; className?: string }) {
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh' })
   // after mount only (server markup stays fully usable), and never under reduced
-  // motion, where the shots stack in flow and must all stay reachable
+  // motion, where the shots stack in flow and must all stay reachable. Live:
+  // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
-  React.useEffect(() => setInteractive(!matchMedia('(prefers-reduced-motion: reduce)').matches), [])
+  React.useEffect(() => {
+    const mq = matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setInteractive(!mq.matches)
+    sync()
+    mq.addEventListener?.('change', sync)
+    return () => mq.removeEventListener?.('change', sync)
+  }, [])
   return (
     <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style>{css}</style>
@@ -1190,7 +1221,7 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive && i !== scene ? (React.version.startsWith('18') ? { inert: '' } : { inert: true }) : {})}
+              {...(interactive && i !== scene ? INERT : {})}
               aria-hidden={interactive && i !== scene ? true : undefined}
             >
               {s.media}
@@ -1238,6 +1269,17 @@ const css = \`
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
 \`
 
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// \`aria-prohibited-attr\`: so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
+
 export interface Stat {
   label: React.ReactNode
   value: number
@@ -1264,13 +1306,14 @@ export function StatsCountup({
       <dl className="sv-stats">
         {stats.map((s, i) => (
           <div key={i}>
+            <dt>{s.label}</dt>
             <dd
               className="stat"
               style={{ '--sv-max': s.value } as React.CSSProperties}
               data-suffix={s.suffix ?? ''}
-              aria-label={s.value + (s.suffix ?? '')}
+              aria-hidden="true"
             />
-            <dt>{s.label}</dt>
+            <span style={SR_ONLY}>{s.value}{s.suffix ?? ''}</span>
           </div>
         ))}
       </dl>
@@ -1329,6 +1372,7 @@ export function SequencedScrub({
 'use client'
 import * as React from 'react'
 import gsap from 'gsap'
+import { prefersReducedMotion } from 'scrollvars'
 import { Track } from 'scrollvars/react'
 
 export function GsapScrub({
@@ -1344,13 +1388,17 @@ export function GsapScrub({
   className?: string
 }) {
   const stage = React.useRef<HTMLDivElement>(null)
-  const tl = React.useRef<gsap.core.Timeline>(null)
+  const tl = React.useRef<gsap.core.Timeline | null>(null)
   React.useEffect(() => {
     if (stage.current) tl.current = buildTimeline(stage.current)
     return () => { tl.current?.kill() }
   }, [buildTimeline])
   return (
-    <Track pin={height} onPin={(p) => tl.current?.progress(p)} className={className}>
+    <Track
+      pin={height}
+      onPin={(p) => tl.current?.progress(prefersReducedMotion() ? 1 : p)}
+      className={className}
+    >
       <div ref={stage} className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         {children}
       </div>
@@ -1372,7 +1420,7 @@ import { Track, useCanvasEffect } from 'scrollvars/react'
 
 export function ThreeScene({ height = '250vh', className }: { height?: string; className?: string }) {
   const progress = React.useRef(0)
-  const three = React.useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; mesh: THREE.Mesh }>(null)
+  const three = React.useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; mesh: THREE.Mesh } | null>(null)
 
   const canvasRef = useCanvasEffect({
     context: null, // WebGL owns the canvas
@@ -1623,11 +1671,12 @@ export function PointerTiltGrid({
 import * as React from 'react'
 import { Slide, Slider } from 'scrollvars/react'
 
-const coverflow = {
-  scale: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3))',
-  opacity: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7))',
-  transform: 'perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg))',
-} as React.CSSProperties
+const css = \`
+.cf-slide { scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
+  transform: perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg)); }
+@media (prefers-reduced-motion: reduce) { .cf-slide { scale: none; opacity: 1; transform: none; } }
+\`
 
 export function CoverflowSlider({
   children,
@@ -1635,11 +1684,14 @@ export function CoverflowSlider({
   ...rest
 }: React.ComponentProps<typeof Slider>) {
   return (
-    <Slider perView={perView} gap={16} arrows dots {...rest}>
-      {React.Children.map(children, (child) => (
-        <Slide style={coverflow}>{child}</Slide>
-      ))}
-    </Slider>
+    <>
+      <style>{css}</style>
+      <Slider perView={perView} gap={16} arrows dots {...rest}>
+        {React.Children.map(children, (child) => (
+          <Slide className="cf-slide">{child}</Slide>
+        ))}
+      </Slider>
+    </>
   )
 }
 `,

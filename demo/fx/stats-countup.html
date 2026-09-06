@@ -170,8 +170,8 @@ html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]"&gt;
   &lt;dl class="stats grid grid-cols-3 gap-6 text-center"&gt;
-    &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;/div&gt;
-    &lt;div&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;/dd&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;/dd&gt;&lt;/div&gt;
   &lt;/dl&gt;
 &lt;/section&gt;
 &lt;!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) --&gt;</code></pre>
@@ -202,8 +202,9 @@ function Stats() {
       &lt;dl className="stats"&gt;
         {stats.map((s) =&gt; (
           &lt;div key={s.label}&gt;
-            &lt;dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} /&gt;
             &lt;dt&gt;{s.label}&lt;/dt&gt;
+            &lt;dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" /&gt;
+            &lt;span style={SR_ONLY}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
           &lt;/div&gt;
         ))}
       &lt;/dl&gt;

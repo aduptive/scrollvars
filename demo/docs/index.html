@@ -364,6 +364,37 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Installed components (blind review round 3)
+<ul><li><code>StickySteps</code>'s <code>inert</code> spread now casts like the core does</li></ul>
+  (<code>as unknown as Record&lt;string, never></code>): the previous inline ternary put a
+  <code>string | boolean</code> into a <code>boolean</code> prop, failing <code>tsc</code> under React 19
+  types. It also now subscribes to the <code>prefers-reduced-motion</code> media
+  query's <code>change</code> event instead of reading it once, so a live switch drops,
+  or restores, <code>inert</code>/<code>aria-hidden</code> on the stacked shots immediately.
+<ul><li><code>GsapScrub</code> and <code>ThreeScene</code> declare their mutable refs as</li></ul>
+  <code>useRef&lt;T | null>(null)</code>, not <code>useRef&lt;T>(null)</code>: read-only under React 18
+  types. <code>GsapScrub</code> also drives the timeline through
+  <code>prefersReducedMotion()</code> (imported from <code>scrollvars</code>), so a
+  reduced-motion visitor gets the finished frame instead of a scrubbed one.
+<ul><li><code>gsap-scrub</code> and <code>three-scene</code> declare <code>min: '1.13.0'</code>: the string pin</li></ul>
+  helper and <code>.sv-stage</code> they both use are 1.13.0 features, not the
+  1.9.0/1.11.0 previously declared.
+<ul><li><code>curtain</code>, <code>horizontal-rail</code> and <code>pointer-tilt</code> declare</li></ul>
+  <code>requires.tailwind: true</code>: their installed content leans on Tailwind
+  utility classes with no component-owned CSS backing them. The CLI prints
+  "Tailwind utilities: required" for these effects; the registry gains the
+  <code>tailwind</code> flag.
+<ul><li><code>CoverflowSlider</code>'s coverflow transform moved from an inline <code>style</code></li></ul>
+  object into a <code>.cf-slide</code> class with a <code>prefers-reduced-motion: reduce</code>
+  override, matching the preset policy that scroll-linked transforms return
+  to flow under reduced motion. The Tailwind tab of <code>hero-cinematic</code> gained
+  matching <code>motion-reduce:</code> variants for the orb and the inner block.
+<ul><li><code>TimelineScrub</code> renders the year as visually-hidden real text plus an</li></ul>
+  aria-hidden counter span, instead of <code>aria-label</code> on a bare <code>&lt;span></code>
+  (prohibited on generic roles, Axe <code>aria-prohibited-attr</code>). <code>StatsCountup</code>
+  emits <code>&lt;dt></code> before <code>&lt;dd></code> (order was reversed), and renders the final
+  value as visually-hidden text with the counter itself <code>aria-hidden</code>.
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

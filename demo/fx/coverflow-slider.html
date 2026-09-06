@@ -149,7 +149,7 @@
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}</style>
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
@@ -178,7 +178,8 @@
 /* the coverflow is pure CSS on --sd: */
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
-  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }</code></pre>
+  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */</code></pre>
     <pre data-pane="react"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}&gt;
   {cards.map(c =&gt; &lt;Slide key={c.id}&gt;&lt;Card {...c} /&gt;&lt;/Slide&gt;)}
 &lt;/Slider&gt;

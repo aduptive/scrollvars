@@ -113,6 +113,37 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Installed components (blind review round 3)
+- `StickySteps`'s `inert` spread now casts like the core does
+  (`as unknown as Record<string, never>`): the previous inline ternary put a
+  `string | boolean` into a `boolean` prop, failing `tsc` under React 19
+  types. It also now subscribes to the `prefers-reduced-motion` media
+  query's `change` event instead of reading it once, so a live switch drops,
+  or restores, `inert`/`aria-hidden` on the stacked shots immediately.
+- `GsapScrub` and `ThreeScene` declare their mutable refs as
+  `useRef<T | null>(null)`, not `useRef<T>(null)`: read-only under React 18
+  types. `GsapScrub` also drives the timeline through
+  `prefersReducedMotion()` (imported from `scrollvars`), so a
+  reduced-motion visitor gets the finished frame instead of a scrubbed one.
+- `gsap-scrub` and `three-scene` declare `min: '1.13.0'`: the string pin
+  helper and `.sv-stage` they both use are 1.13.0 features, not the
+  1.9.0/1.11.0 previously declared.
+- `curtain`, `horizontal-rail` and `pointer-tilt` declare
+  `requires.tailwind: true`: their installed content leans on Tailwind
+  utility classes with no component-owned CSS backing them. The CLI prints
+  "Tailwind utilities: required" for these effects; the registry gains the
+  `tailwind` flag.
+- `CoverflowSlider`'s coverflow transform moved from an inline `style`
+  object into a `.cf-slide` class with a `prefers-reduced-motion: reduce`
+  override, matching the preset policy that scroll-linked transforms return
+  to flow under reduced motion. The Tailwind tab of `hero-cinematic` gained
+  matching `motion-reduce:` variants for the orb and the inner block.
+- `TimelineScrub` renders the year as visually-hidden real text plus an
+  aria-hidden counter span, instead of `aria-label` on a bare `<span>`
+  (prohibited on generic roles, Axe `aria-prohibited-attr`). `StatsCountup`
+  emits `<dt>` before `<dd>` (order was reversed), and renders the final
+  value as visually-hidden text with the counter itself `aria-hidden`.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

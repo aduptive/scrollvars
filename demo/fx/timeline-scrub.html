@@ -228,7 +228,10 @@ function Timeline() {
   return (
     &lt;Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}&gt;
       &lt;div className="sv-stage tl-sticky"&gt;
-        &lt;span className="tl-year" /&gt;
+        &lt;span className="tl-year"&gt;
+          &lt;span style={SR_ONLY}&gt;{2026}&lt;/span&gt;            {/* real text for AT: no aria-label on a span */}
+          &lt;span className="tl-count" aria-hidden="true" /&gt;   {/* the CSS-counter digits */}
+        &lt;/span&gt;
         &lt;div className="tl-track"&gt;&lt;i className="tl-line" /&gt;
           &lt;ol className="sv-range sv-range-rise tl-items"&gt;
             {steps.map((s) =&gt; (
