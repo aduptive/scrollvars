@@ -86,6 +86,11 @@ export function scan(root?: ParentNode): () => void {
     tracked.delete(el)
   }
   const removeSplit = (el: HTMLElement) => {
+    // same guard as remove() above: a retained [data-sv-split] node (batch
+    // replaceChildren/replaceWith, or a reorder split across two records)
+    // is still inside scope by the time the observer fires. Restoring its
+    // original markup here would drop sv-split and nothing re-splits it.
+    if (scope.contains(el)) return
     splits.get(el)?.()
     splits.delete(el)
   }

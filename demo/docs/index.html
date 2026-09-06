@@ -567,6 +567,11 @@ Docs read against the code merged by the five round-5 code tickets.
 <li>README's compat paragraph and <code>src/compat/index.ts</code>'s header comment (the two hand-kept copies) stay in agreement; this pass added text next to them without touching that pairing.</li>
 </ul>
 
+<h4>Scanner (blind review round 6)</h4>
+<ul>
+<li><code>scan()</code>'s <code>removeSplit</code> now bails with the same <code>scope.contains(el)</code> guard as <code>remove()</code>. A retained <code>[data-sv-split]</code> node (a batch <code>replaceChildren</code>/<code>replaceWith</code> that keeps it, or a reorder split across a removal record and an insertion record in one callback) was still restored to its original markup and dropped <code>sv-split</code>, and nothing ever re-split it, since the guard added for <code>remove()</code> was not carried five lines down. <code>removeSplit</code> was the only other early-exit path that guard had skipped.</li>
+</ul>
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
