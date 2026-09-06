@@ -688,7 +688,7 @@ Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its sl
 ```html
 <div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
   <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
-    <span class="tl-year"></span>
+    <span class="tl-year"><span class="tl-count"></span></span>
     <div class="tl-track"><i class="tl-line"></i>
       <ol class="sv-range sv-range-rise tl-items">                              <!-- preset: --sv-r per child -->
         <li data-sv-from="0"   data-sv-to=".28"><b>2019</b><p>…</p></li>
@@ -702,7 +702,7 @@ Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its sl
 .tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
 /* the year is a CSS counter driven by the pin. No JS, no innerText */
 .tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
-.tl-year::after { content: counter(tl-year); }
+.tl-year .tl-count::after { content: counter(tl-year); }   /* on the inner span, never on .tl-year itself: the React tab puts the readable year there */
 /* the line fills with the pin */
 .tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
@@ -836,19 +836,19 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
 ```html
 <section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
-    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd></div>
-    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd></div>
+    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"><span class="count"></span></dd></div>
   </dl>
 </section>
-<!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->
+<!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) -->
 ```
 
 ### CSS
 ```html
 <section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
   <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"><span class="count"></span></dd></div>
   </dl>
 </section>
 
@@ -856,7 +856,7 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
    the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
    every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
+.stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
 /* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */

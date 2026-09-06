@@ -162,15 +162,15 @@ html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]"&gt;
   &lt;dl class="stats grid grid-cols-3 gap-6 text-center"&gt;
-    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"&gt;&lt;/dd&gt;&lt;/div&gt;
-    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]"&gt;&lt;span class="count" data-suffix="+"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;span class="count"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
   &lt;/dl&gt;
 &lt;/section&gt;
-&lt;!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) --&gt;</code></pre>
+&lt;!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) --&gt;</code></pre>
     <pre data-pane="css"><code>&lt;section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s"&gt;
   &lt;dl class="stats"&gt;
-    &lt;div&gt;&lt;dt&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 248" data-suffix="+"&gt;&lt;/dd&gt;&lt;/div&gt;
-    &lt;div&gt;&lt;dt&gt;median Lighthouse performance&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 99"&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 248"&gt;&lt;span class="count" data-suffix="+"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;dt&gt;median Lighthouse performance&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 99"&gt;&lt;span class="count"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
   &lt;/dl&gt;
 &lt;/section&gt;
 
@@ -178,7 +178,7 @@ html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
    the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
    every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
+.stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
 /* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */</code></pre>

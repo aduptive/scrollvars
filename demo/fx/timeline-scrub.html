@@ -182,7 +182,7 @@
 &lt;!-- the filling line: a pseudo-element with [scale:1_var(--sv-pin,1)] origin-top (see CSS tab) --&gt;</code></pre>
     <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7"&gt;   &lt;!-- pin helper: the value is the scroll length --&gt;
   &lt;div class="sv-stage tl-sticky"&gt;                                                     &lt;!-- preset: sticky viewport; flow again without JS --&gt;
-    &lt;span class="tl-year"&gt;&lt;/span&gt;
+    &lt;span class="tl-year"&gt;&lt;span class="tl-count"&gt;&lt;/span&gt;&lt;/span&gt;
     &lt;div class="tl-track"&gt;&lt;i class="tl-line"&gt;&lt;/i&gt;
       &lt;ol class="sv-range sv-range-rise tl-items"&gt;                              &lt;!-- preset: --sv-r per child --&gt;
         &lt;li data-sv-from="0"   data-sv-to=".28"&gt;&lt;b&gt;2019&lt;/b&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;
@@ -196,7 +196,7 @@
 .tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
 /* the year is a CSS counter driven by the pin. No JS, no innerText */
 .tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
-.tl-year::after { content: counter(tl-year); }
+.tl-year .tl-count::after { content: counter(tl-year); }   /* on the inner span, never on .tl-year itself: the React tab puts the readable year there */
 /* the line fills with the pin */
 .tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
