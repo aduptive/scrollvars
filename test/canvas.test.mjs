@@ -1534,3 +1534,139 @@ test('canvas harness: a giant unsized canvas with an odd attribute has no safe d
   assert.equal(canvas.width, 8001)
   assert.equal(canvas.height, 4000)
 })
+
+test('canvas harness: a cap in the gap, widened past the natural size, grows instead of freezing at the old pin (ADU-107, twelfth pass, verifier finding 1)', async () => {
+  // w0=160, h0=80 (ratio 2, both even so the shrink fallback stays exact).
+  // A max-width:100px cap sits strictly between half w0 (80) and w0 (160):
+  // the gap the shrink probe DOES detect at mount, pinning this canvas.
+  // The eleventh pass pinned at the MEASURED, capped value (100, "anchor
+  // 100 for a natural 160" in the verifier's terms): frozen there forever,
+  // even once the cap widens past 160 and stops binding at all. The
+  // twelfth pass pins at w0 (160) instead, so CSS keeps clamping it live.
+  for (const dpr of [1, 1.2, 1.5, 2]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 160, height: 80, style, maxWidth: 100 })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    env.resize({ width: 100, height: 50 }) // the cap already binding at mount
+    assert.equal(canvas.style.width, '160px', `dpr ${dpr}: pinned at w0, not the capped 100`)
+    assert.equal(canvas.width, Math.round(100 * dpr), `dpr ${dpr}: backing width at the cap`)
+    assert.equal(canvas.height, Math.round(50 * dpr))
+
+    canvas.maxWidth = 200 // widened past the natural size: no longer binds at all
+    env.resize({ width: 160, height: 80 }) // the real, uncapped box
+    assert.equal(canvas.style.width, '160px', `dpr ${dpr}: same pin, never rewritten`)
+    assert.equal(canvas.width, Math.round(160 * dpr), `dpr ${dpr}: grows back to the natural size`)
+    assert.equal(canvas.height, Math.round(80 * dpr))
+  }
+})
+
+test('canvas harness: a cap in the gap, widened but still binding, tracks the new cap instead of freezing (ADU-107, twelfth pass, verifier finding 1)', async () => {
+  // w0=300, h0=150 (the HTML default). A max-width:220px cap sits strictly
+  // between half w0 (150) and w0 (300): detected via the shrink probe at
+  // mount. Widening the cap to 260 (still below w0, still binding) is the
+  // eleventh pass's own "cap 220 widened to 260" freeze case: pinned at the
+  // measured 220 there, it never moved; pinned at w0 here, it tracks 260.
+  for (const dpr of [1, 1.2, 1.5, 2]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 300, height: 150, style, maxWidth: 220 })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    env.resize({ width: 220, height: 110 })
+    assert.equal(canvas.style.width, '300px', `dpr ${dpr}: pinned at w0, not the capped 220`)
+    assert.equal(canvas.width, Math.round(220 * dpr), `dpr ${dpr}: backing width at the cap`)
+    assert.equal(canvas.height, Math.round(110 * dpr))
+
+    canvas.maxWidth = 260 // widened, still binding (260 < 300)
+    env.resize({ width: 260, height: 130 })
+    assert.equal(canvas.style.width, '300px', `dpr ${dpr}: same pin, never rewritten`)
+    assert.equal(canvas.width, Math.round(260 * dpr), `dpr ${dpr}: follows the widened cap`)
+    assert.equal(canvas.height, Math.round(130 * dpr))
+  }
+})
+
+test('canvas harness: a percentage cap tracks a growing container instead of freezing at the old pin (ADU-107, twelfth pass, verifier finding 1)', async () => {
+  // w0=200, h0=100 (ratio 2, both even). A max-width:60% cap, modeled the
+  // same way the rest of this file models a container-relative cap
+  // (mutating `maxWidth` to the resolved pixel value): 60% of a 200px
+  // container is 120, in the gap (half w0 100, w0 200), detected via the
+  // shrink probe at mount. The container then grows to 400px, so the same
+  // 60% cap resolves to 240, past w0: no longer binds at all.
+  for (const dpr of [1, 1.2, 1.5, 2]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 200, height: 100, style, maxWidth: 120 })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    env.resize({ width: 120, height: 60 }) // 60% of a 200px container
+    assert.equal(canvas.style.width, '200px', `dpr ${dpr}: pinned at w0, not the capped 120`)
+    assert.equal(canvas.width, Math.round(120 * dpr), `dpr ${dpr}: backing width at the cap`)
+    assert.equal(canvas.height, Math.round(60 * dpr))
+
+    canvas.maxWidth = 240 // the container grows to 400px; 60% of it is 240
+    env.resize({ width: 200, height: 100 }) // uncapped: the natural size
+    assert.equal(canvas.style.width, '200px', `dpr ${dpr}: same pin, never rewritten`)
+    assert.equal(canvas.width, Math.round(200 * dpr), `dpr ${dpr}: grows with the container`)
+    assert.equal(canvas.height, Math.round(100 * dpr))
+  }
+})
+
+test('canvas harness: an authored aspect-ratio on an unsized canvas is kept, not overridden (ADU-107, twelfth pass, verifier finding 2)', async () => {
+  // A 300x300 unsized canvas with its own `aspect-ratio: 1`: the eleventh
+  // pass set style.aspectRatio to w0/h0 (1) unconditionally, which happens
+  // to match here, so this specific ratio never exposed the bug; what it
+  // hides is that ANY authored aspect-ratio got silently replaced. This
+  // fixture's computedStyle.aspectRatio is '1 / 1' (authored, not 'auto'),
+  // so the harness must leave canvas.style.aspectRatio untouched.
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 300, style, aspectRatio: '1 / 1' })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '300px') // width still pinned
+  assert.equal(canvas.style.aspectRatio, undefined) // never set: the author's own is kept
+  assert.equal(canvas.width, 300)
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: a width="0" attribute is treated as CSS-sized instead of producing NaN or Infinity (ADU-107, twelfth pass)', async () => {
+  // width="0" makes w0 zero, so ratio0 (w0/h0) is 0: any free-axis math
+  // built on it (a division or multiplication) would produce 0, Infinity or
+  // NaN. This canvas is CSS-sized (style.width/height both set), so a real
+  // browser renders it at 200x100 regardless of the 0 attribute; the guard
+  // must leave it that way; never pinned, never NaN.
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1.5
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const { style } = makeStyle({ width: '200px', height: '100px' })
+  const canvas = makeCanvas({ width: 0, height: 150, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '200px') // untouched: never pinned
+  assert.equal(canvas.width, 300) // round(200 * 1.5), independent rounding
+  assert.equal(canvas.height, 150) // round(100 * 1.5)
+  assert.equal(Number.isNaN(canvas.width), false)
+  assert.equal(Number.isFinite(canvas.height), true)
+})
