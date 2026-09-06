@@ -539,7 +539,10 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
         onScroll: (state) => onScrollRef.current?.(state),
       })
       handleRef.current = handle
-      return handle.destroy
+      return () => {
+        handleRef.current = null
+        handle.destroy()
+      }
     },
     [snap, drag, duration, axis]
   )

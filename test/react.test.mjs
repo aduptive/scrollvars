@@ -160,6 +160,9 @@ function makeNode(tag) {
       return false
     },
     get firstChild() { return node.childNodes[0] ?? null },
+    // element children only, like the real DOM's `.children` (skips text
+    // nodes): the slider walks this to find slides.
+    get children() { return node.childNodes.filter((c) => c.nodeType === 1) },
   }
   Object.defineProperty(node, 'innerHTML', {
     get() { return node._innerHTML ?? '' },
@@ -211,6 +214,14 @@ function ensureDom() {
   global.ResizeObserver = class {
     observe(el) { observedRO.add(el) }
     unobserve(el) { observedRO.delete(el) }
+    disconnect() {}
+  }
+  // never fires: nothing here needs a real intersection callback, this
+  // stub only exists so mountEffect's `new IntersectionObserver(...)`
+  // (useCanvasEffect) doesn't throw against a DOM with no real layout.
+  global.IntersectionObserver = class {
+    observe() {}
+    unobserve() {}
     disconnect() {}
   }
   global.HTMLIFrameElement = doc.HTMLIFrameElement
@@ -275,31 +286,199 @@ test('react: useTrack attaches through the ref setter (conditional mount), untra
   assert.equal(observedRO.size, before, 'untracked on unmount')
 })
 
-test('react: useTrack moves the tracking when the node is replaced', async () => {
+test('react: useTrack moves the tracking to the new node by identity, no key change', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default
   const { createRoot } = await import('react-dom/client')
   const { act } = React
   const { useTrack } = await import('../dist/react/index.js')
 
-  function Keyed({ k }) {
+  // same component instance, no key: React itself replaces the host node
+  // because the tag changed (div -> span), the case a count-only assertion
+  // cannot distinguish from "still the same node, count coincidentally net."
+  function Swapped({ tag }) {
     const ref = useTrack()
-    return React.createElement('div', { ref, key: k })
+    return React.createElement(tag, { ref })
+  }
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+
+  await act(async () => { root.render(React.createElement(Swapped, { tag: 'div' })) })
+  const firstNode = container.firstChild
+  assert.ok(observedRO.has(firstNode), 'the first node is tracked')
+
+  await act(async () => { root.render(React.createElement(Swapped, { tag: 'span' })) })
+  const secondNode = container.firstChild
+  assert.notEqual(secondNode, firstNode, 'a tag swap with no key still replaces the host node')
+  assert.ok(!observedRO.has(firstNode), 'the old node is no longer tracked')
+  assert.ok(observedRO.has(secondNode), 'the new node is tracked, by identity')
+
+  await act(async () => { root.unmount() })
+  assert.ok(!observedRO.has(secondNode), 'untracked on unmount')
+})
+
+test('react: useTrack re-tracks the same node when an option changes, the entry reflects the new value', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Track } = await import('../dist/react/index.js')
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+
+  await act(async () => { root.render(React.createElement(Track, { pin: '320vh' })) })
+  const node = container.firstChild
+  assert.equal(node.style.height, '320vh')
+
+  // same node, no key change: only the `pin` option differs between renders
+  await act(async () => { root.render(React.createElement(Track, { pin: '480vh' })) })
+  assert.equal(container.firstChild, node, 'no remount, same node')
+  assert.equal(node.style.height, '480vh', 'the retrack applied the new option to the tracked entry')
+
+  await act(async () => { root.unmount() })
+})
+
+test('react: useSlider does not drive a destroyed handle after the tracked node detaches (ADU-106)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { useSlider } = await import('../dist/react/index.js')
+
+  let latestNext = null
+
+  function Cond({ show }) {
+    const { ref, next } = useSlider()
+    latestNext = next // stable across renders (empty deps), captured once is enough
+    return show
+      ? React.createElement(
+          'div',
+          { ref },
+          React.createElement('div', null, 'one'),
+          React.createElement('div', null, 'two')
+        )
+      : null
+  }
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+
+  await act(async () => { root.render(React.createElement(Cond, { show: true })) })
+  const next = latestNext
+
+  // detach the target while the component itself stays mounted
+  await act(async () => { root.render(React.createElement(Cond, { show: false })) })
+
+  const rafCalls = []
+  const realRaf = global.requestAnimationFrame
+  global.requestAnimationFrame = (fn) => { rafCalls.push(fn); return realRaf(fn) }
+  try {
+    assert.doesNotThrow(() => next())
+  } finally {
+    global.requestAnimationFrame = realRaf
+  }
+  assert.equal(rafCalls.length, 0, 'no glide starts against a destroyed handle')
+
+  await act(async () => { root.unmount() })
+})
+
+test('react: useTrack settles to one tracked node under StrictMode double-invocation, no leak on unmount', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { useTrack } = await import('../dist/react/index.js')
+
+  function Tracked() {
+    const ref = useTrack()
+    return React.createElement('div', { ref })
   }
 
   const container = global.document.createElement('div')
   const root = createRoot(container)
   const before = observedRO.size
 
-  await act(async () => { root.render(React.createElement(Keyed, { k: 'a' })) })
-  assert.equal(observedRO.size, before + 1)
-
-  await act(async () => { root.render(React.createElement(Keyed, { k: 'b' })) })
-  // the old node untracked, the new one tracked: net count unchanged
-  assert.equal(observedRO.size, before + 1, 'old node untracked, new node tracked')
+  await act(async () => {
+    root.render(React.createElement(React.StrictMode, null, React.createElement(Tracked)))
+  })
+  const node = container.firstChild
+  assert.equal(observedRO.size, before + 1, 'StrictMode\'s mount/unmount/remount settles to exactly one tracked node')
+  assert.ok(observedRO.has(node), 'the surviving attach is the actual rendered node')
 
   await act(async () => { root.unmount() })
-  assert.equal(observedRO.size, before)
+  assert.equal(observedRO.size, before, 'no leak: unmount untracks it even after the double-invoke cycle')
+})
+
+test('react: usePointer attaches and detaches the delegated listener on a conditional target', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { usePointer } = await import('../dist/react/index.js')
+
+  function Cond({ show }) {
+    const ref = usePointer()
+    return show ? React.createElement('div', { ref }) : null
+  }
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+
+  await act(async () => { root.render(React.createElement(Cond, { show: false })) })
+  await act(async () => { root.render(React.createElement(Cond, { show: true })) })
+  const node = container.firstChild
+  assert.equal((node._listeners.pointermove || []).length, 1, 'the delegated pointermove listener is added on attach')
+
+  await act(async () => { root.render(React.createElement(Cond, { show: false })) })
+  assert.equal((node._listeners.pointermove || []).length, 0, 'the listener is removed on detach')
+
+  await act(async () => { root.unmount() })
+})
+
+test('react: useCanvasEffect mounts and destroys the effect on a conditional target', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { useCanvasEffect } = await import('../dist/react/index.js')
+
+  // mountEffect always registers a visibilitychange listener on attach and
+  // removes it on destroy: a cheap, specific proxy for "setup ran" / "destroy ran"
+  // that doesn't require a real canvas 2D context or firing ResizeObserver.
+  const listeners = []
+  const realAdd = global.document.addEventListener
+  const realRemove = global.document.removeEventListener
+  global.document.addEventListener = (type, fn) => {
+    if (type === 'visibilitychange') listeners.push(fn)
+  }
+  global.document.removeEventListener = (type, fn) => {
+    if (type !== 'visibilitychange') return
+    const i = listeners.indexOf(fn)
+    if (i !== -1) listeners.splice(i, 1)
+  }
+
+  try {
+    function Cond({ show }) {
+      const ref = useCanvasEffect({ context: null, frame: () => {} })
+      return show ? React.createElement('canvas', { ref }) : null
+    }
+
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+
+    await act(async () => { root.render(React.createElement(Cond, { show: true })) })
+    assert.equal(listeners.length, 1, 'mountEffect ran: the visibility listener is attached')
+
+    await act(async () => { root.render(React.createElement(Cond, { show: false })) })
+    assert.equal(listeners.length, 0, 'destroy ran: the visibility listener is removed')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.document.addEventListener = realAdd
+    global.document.removeEventListener = realRemove
+  }
 })
 
 test('react: Scenes pin="320vh" sets the wrapper height, pin={false} sets none', async () => {
