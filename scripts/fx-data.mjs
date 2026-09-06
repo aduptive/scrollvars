@@ -828,7 +828,7 @@ function Timeline() {
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
+@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } .st-steps > li { opacity: 1; } }   /* no crossfade: the shots stack, every step stays readable too (ADU-155) */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
     tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">

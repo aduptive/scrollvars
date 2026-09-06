@@ -1240,6 +1240,26 @@ Docs read against the code merged by the five round-5 code tickets.
   (the two hand-kept copies) stay in agreement; this pass added text next
   to them without touching that pairing.
 
+### Gallery (blind review round 6)
+Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
+- `sticky-steps`'s CSS tab now resets `.st-steps > li` to opacity 1 inside
+  its reduced-motion block too, not only `.st-shot`: ADU-144 fixed this in
+  the installed component but never in the tab the docs tell a reader to
+  paste, so pasted code left every non-active step at 30% opacity forever
+  under reduce. A new gate (`test/cli-components.test.mjs`) compares, for
+  every Section with both a CSS tab and an installed component, the
+  selectors inside each side's `@media (prefers-reduced-motion: reduce)`
+  block, past the installed component's own wrapper-class scoping
+  (`.sv-hero`, `.sv-steps`, ...) and past chrome the installed component
+  renders that the tab never documents (sticky-steps' dots), and fails on
+  any drift. Audited every other effect for the same split: `hero-cinematic`
+  already agreed on both sides; `timeline-scrub` and `stats-countup` carry
+  no reduced-motion block on either side; `coverflow-slider`'s tab and
+  installed component reset the same three properties under its own,
+  differently named class (`.slide` against `.cf-slide`), a naming choice
+  the Sliders category is free to make, not drift, so the gate is scoped to
+  Sections the same way the CSS/React pane-pairing gate above already is.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
