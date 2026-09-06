@@ -1347,6 +1347,13 @@ Docs read against the code merged by the five round-5 code tickets.
   answer is an explicit `false`; an engine too old to answer at all is
   also too old for the `@supports` rule that releases the stage, so the JS
   and the CSS always agree on which side of the floor the page is.
+- `prefersReducedMotion()` and `scrollToScene()` no longer return a stale
+  `false` before anything has ever been tracked. The `reducedMotion` flag
+  was only ever set inside `init()`, which only `track()` calls, so asking
+  either function first picked the wrong answer for a reduce user. Both now
+  read the media query lazily on first use, and fall back to the live
+  `reducedMotion` flag once `init()` has wired its change listener (the
+  `addListener` fallback for pre-Safari-14 `MediaQueryList` is untouched).
 
 ## 1.13.0 (2026-09-05)
 
