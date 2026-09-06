@@ -389,8 +389,14 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 /* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
    14.1): `html.sv-on` blocks the guards above, and the stacking half of these
    presets is plain layout. `transform`, not the no-JS `display: none`, so
-   compat's later sheet still outranks this and animates them. */
+   compat's sheet still outranks and animates them. Guarantee: the curtains
+   sit parted and static, nothing overlaps, content stays in flow. */
 @supports not (translate: 0) {
+  .sv-stage {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
   .sv .sv-curtain-l {
     transform: translateX(-101%);
   }
