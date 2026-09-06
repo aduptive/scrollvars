@@ -99,6 +99,16 @@ findings on the same round): three more defects fixed.
 - `.sv-slider.sv-cols` also matches `.sv-cols .sv-slider > *`, so a
   `className="sv-cols"` on the Slider shell (one level up from
   `.sv-slider`, where React's `className` prop lands) works too.
+- Blind review round 5 (Astra on 7992458), findings 7a and 7b. The
+  reduced-motion overrides for `.sv-spread > *` and
+  `.sv-tilt.sv-pointer-leave` lost their specificity fight against the
+  animating rules they are meant to override (`.sv-on .sv
+  .sv-spread.sv-spread-in > *` at four classes, `.sv-tilt.sv-pointer-leave`
+  at two, both outranking the media query's plain one-class selector), so a
+  live preference switch animated the reset instead of snapping to it.
+  Same fix as the `.sv-auto` one above, missed on these two presets: each
+  override now also carries the animating rule's own selector shape inside
+  the media query, ties on specificity and wins on source order.
 
 ### Click driver
 - `toggles()` now marks `sv-ui` on the element it actually controls (the
@@ -465,6 +475,20 @@ findings on the same round): three more defects fixed.
   until whatever resumed it; `applySize()` now paints one frame
   synchronously right after that write whenever the loop is not running,
   without starting it.
+- Blind review round 5 (Astra on 7992458), finding 13 and doc row 4's
+  canvas half. `getComputedStyle(canvas).aspectRatio.startsWith('auto')`
+  threw a `TypeError` on any engine whose CSSOM has no `aspectRatio`
+  support at all: the property is absent there, not an empty string, but
+  the DOM lib types it as always a string, so nothing guarded the read.
+  `pinAtW0()` threw out of both `applySize()` and `mountEffect()` on any
+  such engine, below the README's own Safari 12.1 canvas gate. Fixed with
+  an explicit `typeof` check ahead of `startsWith`, so a missing property
+  is treated the same as `'auto'` instead of thrown on.
+  `media.addEventListener?.('change', ...)` is a silent no-op on a
+  `MediaQueryList` that only implements the deprecated
+  `addListener`/`removeListener` pair (Safari below 14): both the
+  DPR-resolution watch and the reduced-motion watch now fall back to it,
+  symmetrically on mount and on `destroy()`.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does

@@ -28,7 +28,11 @@
 }
 
 @media (prefers-reduced-motion: reduce), (hover: none) {
-  .sv-tilt {
+  /* .sv-tilt.sv-pointer-leave (line 15) matches the plain .sv-tilt selector's
+     specificity here, so add it too: the override ties and wins on source
+     order instead of losing to the leave-transition rule's extra class. */
+  .sv-tilt,
+  .sv-tilt.sv-pointer-leave {
     transform: none;
     transition: none;
   }

@@ -1849,3 +1849,67 @@ test('canvas harness: mountEffect under the compat() ResizeObserver shim does no
   assert.equal(frames[0].w, 400)
   assert.equal(frames[0].h, 300)
 })
+
+test('canvas harness: a computed style with no aspectRatio support does not throw and still pins the canvas (ADU-143)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+  // An engine whose CSSOM never implemented `aspect-ratio` (below the
+  // README's Safari 12.1 canvas gate) reports the property as absent, not
+  // as an empty string: the DOM lib types getComputedStyle(...).aspectRatio
+  // as always a string, but this fixture's own getter (makeCanvas above)
+  // is an own, configurable accessor, so `delete` reproduces that absence.
+  delete canvas.computedStyle.aspectRatio
+
+  assert.doesNotThrow(() => {
+    mountEffect(canvas, { frame: () => {} })
+    env.resize()
+  }, 'a CSSOM with no aspectRatio support must not throw')
+
+  assert.equal(canvas.style.width, '300px')
+  assert.equal(canvas.style.aspectRatio, '300 / 150', 'missing aspectRatio treated the same as "auto", still pinned')
+  assert.equal(canvas.width, 600)
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: a MediaQueryList with only addListener (no addEventListener) still gets the dpr and reduced-motion listeners (ADU-143)', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // Safari below 14: MediaQueryList has no addEventListener/removeEventListener
+  // at all, only the deprecated addListener/removeListener pair.
+  const queries = []
+  global.window.matchMedia = (query) => {
+    const listeners = []
+    const mq = {
+      matches: false,
+      addListener: (fn) => listeners.push(fn),
+      removeListener: (fn) => {
+        const i = listeners.indexOf(fn)
+        if (i >= 0) listeners.splice(i, 1)
+      },
+    }
+    queries.push({ query, listeners })
+    return mq
+  }
+
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+
+  let handle
+  assert.doesNotThrow(() => {
+    handle = mountEffect(canvas, { frame: () => {} })
+  }, 'mountEffect must not throw when MediaQueryList only has addListener')
+
+  const motion = queries.find((q) => q.query.includes('prefers-reduced-motion'))
+  const dpr = queries.find((q) => q.query.startsWith('(resolution'))
+  assert.equal(motion.listeners.length, 1, 'the reduced-motion listener registered through the addListener fallback')
+  assert.equal(dpr.listeners.length, 1, 'the dpr listener registered through the addListener fallback')
+
+  handle.destroy()
+  assert.equal(motion.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
+  assert.equal(dpr.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
+})
