@@ -439,12 +439,17 @@ function releaseEntry(entry: Entry) {
   // dropping `.sv`, because server markup keeps its authored `[data-sv]`
   // (which hides on its own) and the driver must not rewrite that attribute.
   el.style.setProperty?.('--sv-live', '1')
-  // The same promise for everything the pin presets style on this element's
-  // DESCENDANTS, which no inline variable here could reach: `.sv-off` is the
-  // marker the guards in styles/pin.css exclude, so a released element
-  // renders like its no-JS state (curtains gone, deck unstacked, sv-range
-  // finished, `.sv-stage` back in flow) instead of freezing the last frame.
-  el.classList.add('sv-off')
+  // The same promise for everything the presets style on this element's
+  // DESCENDANTS, which no inline variable here could reach: `[data-sv-off]` is
+  // the marker the guards in styles/pin.css and styles/core.css read, so a
+  // released element renders like its no-JS state (curtains gone, deck
+  // unstacked, sv-range finished, spread in flow, `.sv-stage` back in flow)
+  // instead of freezing the last frame. An ATTRIBUTE, not a class, on purpose:
+  // the marker outlives a className rewrite (React's `<Track>` renders
+  // `className={'sv ' + className}`), and a released element has no tracker
+  // left to put a dropped class back. setAttribute, not toggleAttribute:
+  // fallback-reachable code stays inside the supported floor (Safari 11).
+  el.setAttribute('data-sv-off', '')
 }
 
 /** Track an element. Returns an untrack function. */
@@ -461,12 +466,14 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   const existing = entries.get(el)
   if (existing) releaseEntry(existing)
   // a previous release settled the element visible with an inline --sv-live: 1
-  // (and `.sv-off`); tracking hands the flag back to the driver, so drop both
-  // before the first frame. `sv-live` goes too: a settled `once` entry keeps
-  // the class with no tracker behind it, and a new entry starts at live:false,
-  // so leaving it would skip the entrance and desync the DOM from the driver.
+  // (and `data-sv-off`); tracking hands the flag back to the driver, so drop
+  // both before the first frame. `sv-live` goes too: a settled `once` entry
+  // keeps the class with no tracker behind it, and a new entry starts at
+  // live:false, so leaving it would skip the entrance and desync the DOM from
+  // the driver.
   el.style.removeProperty?.('--sv-live')
-  el.classList.remove('sv-live', 'sv-off')
+  el.classList.remove('sv-live')
+  el.removeAttribute('data-sv-off')
   const entry: Entry = {
     el,
     opts,

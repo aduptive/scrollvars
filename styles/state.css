@@ -1,6 +1,8 @@
 /* ScrollVars: interaction-state presets (use with toggles(), the Popover
  * API, or any class you flip yourself. Including sv-live by hand, which
- * replays the whole entrance system on demand). */
+ * replays the whole entrance system on demand, on an element the driver
+ * does NOT track: on a tracked one it writes --sv-live inline, and inline
+ * outranks every author rule, so the driver owns the flag there. */
 
 /* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
    modern discrete-transition trio (@starting-style + allow-discrete).

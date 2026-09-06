@@ -19,6 +19,7 @@ function makeElement(height = 400) {
     vars: {},
     setCalls: 0,
     classes: new Set(),
+    attrs: new Map(),
     style: {
       setProperty(name, value) {
         el.vars[name] = value
@@ -36,6 +37,12 @@ function makeElement(height = 400) {
       contains: (c) => el.classes.has(c),
       remove: (...cs) => cs.forEach((c) => el.classes.delete(c)),
     },
+    // the release marker is an ATTRIBUTE (data-sv-off), which no className
+    // rewrite can drop; setAttribute/removeAttribute, not toggleAttribute,
+    // which is outside the supported floor
+    setAttribute: (name, value) => el.attrs.set(name, value),
+    removeAttribute: (name) => el.attrs.delete(name),
+    hasAttribute: (name) => el.attrs.has(name),
     getBoundingClientRect: () => ({ ...el.rect }),
   }
   return el
@@ -735,12 +742,18 @@ test('driver: the driver owns the live state, a className rewrite that drops sv-
 // styles/pin.css, comments stripped (a doc comment naming a selector is not a
 // rule), as selector-list + body pairs. Nested at-rules never match as a whole
 // (their body holds braces), so their inner rules are what land here.
-const pinCss = readFileSync(new URL('../styles/pin.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-const pinRules = [...pinCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
-  selectors: m[1].split(',').map((s) => s.replace(/\s+/g, ' ').trim()),
-  body: m[2].replace(/\s+/g, ' ').trim(),
-}))
-const ruleFor = (selector) => pinRules.find((rule) => rule.selectors.includes(selector))
+const readCss = (name) =>
+  readFileSync(new URL(`../styles/${name}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const rulesOf = (css) =>
+  [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    // split on top-level commas only: the one inside `:is(.sv, [data-sv])`
+    // separates no selectors, and splitting it hid every guard from this file
+    selectors: m[1].split(/,(?![^()]*\))/).map((s) => s.replace(/\s+/g, ' ').trim()),
+    body: m[2].replace(/\s+/g, ' ').trim(),
+  }))
+const pinCss = readCss('pin.css')
+const guardRules = [...rulesOf(pinCss), ...rulesOf(readCss('core.css'))]
+const ruleFor = (selector) => guardRules.find((rule) => rule.selectors.includes(selector))
 
 test('driver: releasing an element settles it to its no-JS rendering, and pin.css guards every preset on that', async () => {
   const { track } = await import('../dist/core/driver.js?releasestatic')
@@ -752,29 +765,65 @@ test('driver: releasing an element settles it to its no-JS rendering, and pin.cs
 
   untrack()
   assert.ok(!('--sv-pin' in el.vars), 'the clock the presets read is gone')
-  assert.ok(el.classes.has('sv-off'), 'and the element is marked released, for the static guards in pin.css')
+  assert.ok(el.attrs.has('data-sv-off'), 'and the element is marked released, for the static guards in the presets')
   assert.ok(el.classes.has('sv'), '.sv still stays: server markup keeps its authored [data-sv] either way')
 
+  // the marker is an attribute on purpose: React's <Track> renders
+  // `className={'sv ' + className}`, so a prop change rewrites the whole class
+  // attribute. A released element has no tracker left to put a dropped class
+  // back, and the stage would snap to sticky + overflow hidden with the
+  // curtains over the content, permanently.
+  el.classes.clear()
+  assert.ok(el.attrs.has('data-sv-off'), 'a className rewrite that drops every driver class leaves the marker in place')
+  assert.equal(el.vars['--sv-live'], '1', 'and the settled entrance flag with it')
+
   const retrack = track(el, {})
-  assert.ok(!el.classes.has('sv-off'), 'tracking it again takes the marker back off')
+  assert.ok(!el.attrs.has('data-sv-off'), 'tracking it again takes the marker back off')
   retrack()
 
-  // the marker is only half the contract: without these four guards a released
+  // the marker is only half the contract: without these guards a released
   // element keeps closed curtains over its content, a stacked deck, an
-  // unfinished sv-range and a sticky, clipping stage, all of which the no-JS
-  // rendering does not have. The e2e invariant proves the computed values.
+  // unfinished sv-range, an overlapping spread and a sticky, clipping stage,
+  // none of which the no-JS rendering has. The e2e invariant proves the
+  // computed values.
   const settled = {
-    '.sv-off .sv-curtain-l': 'display: none',
-    '.sv-off .sv-curtain-r': 'display: none',
-    '.sv-off .sv-deck': 'display: block',
-    '.sv-off .sv-deck > *': 'translate: none',
-    '.sv-off .sv-range > *': '--sv-r: 1',
-    '.sv-off .sv-stage': 'position: static',
+    '[data-sv-off] .sv-curtain-l': 'display: none',
+    '[data-sv-off] .sv-curtain-r': 'display: none',
+    '[data-sv-off] .sv-deck': 'display: block',
+    '[data-sv-off] .sv-deck > *': 'translate: none',
+    '[data-sv-off] .sv-range > *': '--sv-r: 1',
+    '[data-sv-off] .sv-reading > *': 'opacity: 1',
+    '[data-sv-off] .sv-rail': 'translate: none',
+    '[data-sv-off] .sv-counter': '--sv-int: var(--sv-max, 100)',
+    '[data-sv-off] .sv-stage': 'position: static',
+    '[data-sv-off] .sv-spread > *': 'translate: none', // core.css, the scrub idiom settles overlapping without it
   }
   for (const [selector, declaration] of Object.entries(settled)) {
     const rule = ruleFor(selector)
-    assert.ok(rule, `styles/pin.css settles the released state with a \`${selector}\` rule`)
+    assert.ok(rule, `the presets settle the released state with a \`${selector}\` rule`)
     assert.ok(rule.body.includes(declaration), `\`${selector}\` declares \`${declaration}\`, got \`${rule.body}\``)
+  }
+
+  // every no-JS guard needs the released twin, or the CHANGELOG claim ("a
+  // released element settles to its no-JS rendering") holds for some presets
+  // and lies about the rest
+  for (const rule of guardRules) {
+    for (const selector of rule.selectors) {
+      if (!selector.startsWith('html:not(.sv-on)')) continue
+      const target = selector.replace(/^html:not\(\.sv-on\)\s*(:is\(\.sv, \[data-sv\]\)\s*)?/, '')
+      assert.ok(ruleFor(`[data-sv-off] ${target}`), `\`${selector}\` has its released twin \`[data-sv-off] ${target}\``)
+    }
+  }
+
+  // a selector list is all-or-nothing in a parser that predates :is()
+  // (Firefox below 78 is the only engine inside the floor the @supports block
+  // does not already cover): a released guard sharing a rule with an :is()
+  // selector is dropped whole, exactly where it must survive
+  for (const rule of guardRules) {
+    const released = rule.selectors.filter((s) => s.includes('[data-sv-off]'))
+    if (!released.length) continue
+    const withIs = rule.selectors.filter((s) => s.includes(':is('))
+    assert.equal(withIs.length, 0, `\`${released[0]}\` shares a rule with \`${withIs[0]}\`, which drops both pre-:is()`)
   }
 })
 
@@ -784,10 +833,7 @@ test('styles/pin.css: below the individual-transform floor the deck unstacks and
   // dropped and the deck's grid stacking (plain layout) survives on its own.
   const block = pinCss.match(/@supports\s+not\s*\(\s*translate:\s*0\s*\)\s*\{([\s\S]*?)\n\}/)
   assert.ok(block, 'pin.css carries an `@supports not (translate: 0)` block')
-  const rules = [...block[1].matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
-    selectors: m[1].split(',').map((s) => s.replace(/\s+/g, ' ').trim()),
-    body: m[2].replace(/\s+/g, ' ').trim(),
-  }))
+  const rules = rulesOf(block[1])
   const deck = rules.find((rule) => rule.selectors.includes('.sv .sv-deck'))
   assert.ok(deck && deck.body.includes('display: block'), `the deck unstacks: ${deck?.body}`)
   for (const side of ['l', 'r']) {

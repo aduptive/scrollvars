@@ -124,6 +124,12 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
+/* Same for a RELEASED tracker (data-sv-off, see pin.css): a spread scrubbed
+   from --sv-t settles at 0, an overlapping stack. Own rule, no :is() in it. */
+[data-sv-off] .sv-spread > * {
+  translate: none;
+  rotate: none;
+}
 .sv-on .sv .sv-spread.sv-spread-in > * {
   transition:
     translate var(--sv-duration, 800ms) var(--sv-ease, ease),

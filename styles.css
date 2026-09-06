@@ -128,6 +128,12 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
+/* Same for a RELEASED tracker (data-sv-off, see pin.css): a spread scrubbed
+   from --sv-t settles at 0, an overlapping stack. Own rule, no :is() in it. */
+[data-sv-off] .sv-spread > * {
+  translate: none;
+  rotate: none;
+}
 .sv-on .sv .sv-spread.sv-spread-in > * {
   transition:
     translate var(--sv-duration, 800ms) var(--sv-ease, ease),
@@ -305,13 +311,7 @@ html:not(.sv-on) .sv-spread > * {
   height: calc(var(--sv-stage-height, 100vh) - var(--sv-pin-offset, 0px)); /* --sv-stage-height: an inner scroller's height when tracking with root */
   overflow: hidden;
 }
-/* Two states settle to the same static rendering, so every guard below lists
-   both. `html:not(.sv-on)`: the driver never arrived. `.sv-off`: it arrived
-   and then RELEASED this element (stopScan(), a Boot unmount, an option
-   change), which stops the clock these presets read while `.sv` and
-   `html.sv-on` both stay. */
-html:not(.sv-on) .sv-stage,
-.sv-off .sv-stage {
+html:not(.sv-on) .sv-stage {
   position: static;
   height: auto;
   overflow: visible;
@@ -319,37 +319,66 @@ html:not(.sv-on) .sv-stage,
 /* Markup carries data-sv before the driver runs (scan() adds .sv with JS):
    nothing may hide or fly off, or stay stacked over the revealed content */
 html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-l,
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-r,
-.sv-off .sv-curtain-l,
-.sv-off .sv-curtain-r {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-r {
   display: none;
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-rail,
-.sv-off .sv-rail {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-rail {
   translate: none;
   width: auto;
   flex-wrap: wrap;
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck,
-.sv-off .sv-deck {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck {
   display: block;
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck > *,
-.sv-off .sv-deck > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck > * {
   translate: none;
   rotate: none;
   scale: none;
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-reading > *,
-.sv-off .sv-reading > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-reading > * {
   opacity: 1;
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-range > *,
-.sv-off .sv-range > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-range > * {
   --sv-r: 1; /* the clock is 0 without the driver; the finished state, not opacity 0 */
 }
-html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter,
-.sv-off .sv-counter {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
+  --sv-int: var(--sv-max, 100);
+}
+
+/* RELEASED (stopScan(), a Boot unmount, an option change): the clock stopped
+   while `.sv` and `html.sv-on` stayed, so the driver marks the element
+   `data-sv-off` and each guard above gets the twin below, same static
+   rendering as no JS. Each twin is its OWN rule: a parser without `:is()`
+   (Firefox below 78) drops the whole selector list it would share. */
+[data-sv-off] .sv-stage {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+[data-sv-off] .sv-curtain-l,
+[data-sv-off] .sv-curtain-r {
+  display: none;
+}
+[data-sv-off] .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+[data-sv-off] .sv-deck {
+  display: block;
+}
+[data-sv-off] .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+[data-sv-off] .sv-reading > * {
+  opacity: 1;
+}
+[data-sv-off] .sv-range > * {
+  --sv-r: 1;
+}
+[data-sv-off] .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
@@ -572,7 +601,9 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter,
 
 /* ScrollVars: interaction-state presets (use with toggles(), the Popover
  * API, or any class you flip yourself. Including sv-live by hand, which
- * replays the whole entrance system on demand). */
+ * replays the whole entrance system on demand, on an element the driver
+ * does NOT track: on a tracked one it writes --sv-live inline, and inline
+ * outranks every author rule, so the driver owns the flag there. */
 
 /* Pop: entry/exit for popovers, dialogs and display-toggled panels via the
    modern discrete-transition trio (@starting-style + allow-discrete).

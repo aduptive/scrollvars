@@ -960,6 +960,14 @@ against the code ADU-129 to ADU-132 shipped.
   clears the class and the inline flag before the first frame, so the new
   entry (which starts not live) and the DOM agree and the entrance replays
   when the element enters the band again.
+- Precedence, on tracked elements only: `--sv-live` is now an INLINE
+  declaration, and inline outranks every non-important author rule. A rule
+  of your own that lifts the flag (`#hero.sv { --sv-live: 1 }`) loses to
+  the driver from the first frame it measures, and the "remove `sv-live`,
+  add it back next frame and the entrance replays" trick now works only on
+  elements the driver does not track (a hand-flipped `.sv`, a
+  `toggles()`-driven widget). On a tracked element the driver owns the
+  flag: re-tracking replays the entrance instead.
 - The identity guard runs after `onTravel` and after `onPin` too, not only
   after `onLive`: a callback that untracks its own element no longer gets
   `--sv-pin`/`--sv-scene` written inline (variables the release had already
@@ -970,20 +978,32 @@ against the code ADU-129 to ADU-132 shipped.
   whole preference a no-op.
 
 ### Presets and no-JS (blind review round 5)
-- **Added: the `.sv-off` class** (public API, driver-managed). Releasing a
-  tracked element now settles it to its no-JS RENDERING, not just to a
-  visible entrance. ADU-130's inline `--sv-live: 1` covered the entrance
-  presets, but `.sv` stays and `html.sv-on` never comes off, so after
-  `stopScan()`, a `ScrollVarsBoot` unmount or an option change the pin
-  presets kept reading a clock that had stopped: `.sv-curtain-l`/`-r` sat
-  closed over the content, `.sv-deck` stayed stacked in one grid cell,
-  `.sv-range` children stayed at `--sv-r: 0` (opacity 0) and `.sv-stage`
-  kept `position: sticky`, `100vh` and `overflow: hidden`. `releaseEntry()`
-  marks the element `.sv-off` and every static guard in `styles/pin.css`
-  now lists it next to `html:not(.sv-on)`, so both class markup and
-  `[data-sv]` markup settle static. `track()` takes the marker back off.
-  The guard reaches the DESCENDANTS these presets style, which an inline
-  variable on the tracked element cannot.
+- **Added: the `data-sv-off` attribute** (public API, driver-managed).
+  Releasing a tracked element now settles it to its no-JS RENDERING, not
+  just to a visible entrance. ADU-130's inline `--sv-live: 1` covered the
+  entrance presets, but `.sv` stays and `html.sv-on` never comes off, so
+  after `stopScan()`, a `ScrollVarsBoot` unmount or an option change the
+  pin presets kept reading a clock that had stopped: `.sv-curtain-l`/`-r`
+  sat closed over the content, `.sv-deck` stayed stacked in one grid cell,
+  `.sv-range` children stayed at `--sv-r: 0` (opacity 0), a `.sv-spread`
+  scrubbed from `--sv-t` stayed fanned into an overlapping stack and
+  `.sv-stage` kept `position: sticky`, `100vh` and `overflow: hidden`.
+  `releaseEntry()` marks the element `data-sv-off`, and every
+  `html:not(.sv-on)` guard in `styles/pin.css` and `styles/core.css` now
+  has a `[data-sv-off]` twin, so both class markup and `[data-sv]` markup
+  settle static. `track()` takes the marker back off. The guard reaches the
+  DESCENDANTS these presets style, which an inline variable on the tracked
+  element cannot.
+- An attribute, not a class: React's `<Track>` renders
+  `className={'sv ' + className}`, so a prop change rewrites the whole
+  class attribute, and a released element has no tracker left to put a
+  dropped class back. A class marker would have snapped the stage back to
+  `position: sticky` with the curtains over the content, permanently.
+- Each `[data-sv-off]` twin is its own rule, never a selector appended to
+  the `:is(.sv, [data-sv])` guards next to it: a parser that predates
+  `:is()` throws away the whole selector list, and Firefox 72 to 77 is
+  inside the supported floor and not covered by the `@supports` block
+  below.
 - `styles/pin.css` carries an `@supports not (translate: 0)` block: with
   JavaScript on and no `compat()` call, an engine without individual
   transform properties (Chrome below 104, Firefox below 72, Safari below

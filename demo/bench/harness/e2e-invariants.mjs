@@ -485,8 +485,9 @@ const MIN_EXAMINED = 1
 // --sv-live: 1, but `.sv` stays and `html.sv-on` never comes off, so every
 // pin preset kept reading a clock that had stopped: closed curtains over the
 // content, a deck stacked in one grid cell, an unfinished sv-range at
-// opacity 0, and a sticky, 100vh, overflow-hidden stage. The same markup
-// with JavaScript off is the reference rendering ──
+// opacity 0, a spread scrubbed from --sv-t fanned into an overlapping stack,
+// and a sticky, 100vh, overflow-hidden stage. The same markup with
+// JavaScript off is the reference rendering ──
 {
   // SSR shape on purpose (`class="sv"` next to the data-sv attributes, what
   // React <Track> emits): the two pages then differ only by the driver having
@@ -497,6 +498,9 @@ const MIN_EXAMINED = 1
       .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
       .revealed { display: grid; place-items: center; height: 100% }
       .card { padding: 2rem; background: #333; color: #fff }
+      /* the documented scrub idiom for the spread preset, mapped from the
+         driver's own travel clock (styles/core.css says so verbatim) */
+      #spread > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }
     </style></head>
     <body>
       <div class="sv" data-sv data-sv-pin="300vh" id="pinned">
@@ -513,13 +517,35 @@ const MIN_EXAMINED = 1
         </div>
       </div>
       <p>after the pinned stretch</p>
+      <!-- a second tracker, far below the fold: it never goes live while the
+           driver runs, so its presets sit at the START of their clocks. The
+           entrance half settles on the inline --sv-live: 1 the release writes,
+           the scrubbed spread only on the [data-sv-off] guard. Spans by hand,
+           not data-sv-split: split() is JS, and both pages must ship the same
+           markup for the comparison to mean anything. -->
+      <section class="sv" data-sv id="below" style="min-height:40vh">
+        <p class="sv-split-rise" id="split"><span aria-hidden="true" id="split-span" style="--sv-order:0">one</span></p>
+        <div class="sv-spread" id="spread">
+          <div class="card" id="spread-card" style="--sv-order:0">a</div>
+          <div class="card" style="--sv-order:1">b</div>
+          <div class="card" style="--sv-order:2">c</div>
+        </div>
+        <div class="sv-acts" id="acts" style="--sv-acts-duration:60ms">act clock</div>
+      </section>
     </body></html>`
   const SETTLED_SIGNATURE = () => {
+    // an identity transform paints exactly like `none`, and the two pages
+    // reach it by different routes: the released page computes
+    // `translate: 0 calc((1 - 1) * 0.6em)` to `0px`, the no-JS page never
+    // applies the rule at all. Only translate/rotate/scale are folded, so a
+    // real 100px offset still reads as a difference.
+    const identity = (prop, value) =>
+      ['translate', 'rotate', 'scale'].includes(prop) && /^(0px|0px 0px|0deg|1|1 1)$/.test(value) ? 'none' : value
     const read = (sel, props) => {
       const el = document.querySelector(sel)
       if (!el) return `MISSING ${sel}`
       const cs = getComputedStyle(el)
-      return props.map((p) => `${p}=${cs.getPropertyValue(p)}`).join(' ')
+      return props.map((p) => `${p}=${identity(p, cs.getPropertyValue(p).trim())}`).join(' ')
     }
     return {
       wrapper: read('#pinned', ['height', 'position']),
@@ -529,6 +555,9 @@ const MIN_EXAMINED = 1
       deck: read('#deck', ['display']),
       card: read('#card', ['translate', 'rotate', 'scale', 'opacity']),
       rise: read('#rise-item', ['opacity', 'translate']),
+      spread: read('#spread-card', ['translate', 'rotate']),
+      split: read('#split-span', ['opacity', 'translate']),
+      acts: read('#acts', ['--sv-act']),
     }
   }
 
@@ -555,6 +584,10 @@ const MIN_EXAMINED = 1
     await frame()
     scrollTo(0, 0) // same scroll position the no-JS page is read at
     await frame()
+    // the settle is animated, not instant: the entrance transition is
+    // --sv-duration (800ms) and the acts clock 60ms in this fixture. Reading
+    // at 200ms caught a split-rise span still 0.63px short of its rest.
+    await new Promise((done) => setTimeout(done, 1200))
   })
   const released = await page.evaluate(SETTLED_SIGNATURE)
 
@@ -566,11 +599,34 @@ const MIN_EXAMINED = 1
     drivenDiff.length > 0,
     `identical on every probe: ${JSON.stringify(driven)}`
   )
+  // and the below-the-fold section only proves its three presets if the driver
+  // really held them at the start of their clocks first
+  const belowDriven = ['spread', 'split', 'acts'].filter((k) => driven[k] === baseline[k])
+  check(
+    'release: while scanning, the below-the-fold spread, split-rise and acts sit at their unstarted state',
+    belowDriven.length === 0,
+    `already settled while driving: ${belowDriven.map((k) => `${k}[${driven[k]}]`).join(' | ')}`
+  )
+  // the marker is an attribute, not a class, exactly for this: React's
+  // <Track> renders className={'sv ' + className}, and a released element has
+  // no tracker left to put a dropped class back
+  await page.evaluate(async () => {
+    for (const el of document.querySelectorAll('[data-sv]')) el.className = 'sv rewritten'
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+  })
+  const rewritten = await page.evaluate(SETTLED_SIGNATURE)
+
   const stillDiffering = differing(released, baseline)
   check(
-    'release: after stopScan() the curtain, deck, sv-range and stage all render exactly as with no JS',
+    'release: after stopScan() the curtain, deck, sv-range, stage, spread, split-rise and acts all render exactly as with no JS',
     stillDiffering.length === 0,
     stillDiffering.map((k) => `${k}: released[${released[k]}] noJS[${baseline[k]}]`).join(' | ')
+  )
+  const rewrittenDiff = differing(rewritten, baseline)
+  check(
+    'release: a className rewrite after the release keeps that rendering (the marker is an attribute, which React never drops)',
+    rewrittenDiff.length === 0,
+    rewrittenDiff.map((k) => `${k}: rewritten[${rewritten[k]}] noJS[${baseline[k]}]`).join(' | ')
   )
   await page.close()
 }
