@@ -68,6 +68,13 @@ export function scan(root?: ParentNode): () => void {
     if (!tracked.has(el)) tracked.set(el, track(el, optionsFrom(el)))
   }
   const remove = (el: HTMLElement) => {
+    // a mutation batch can carry the same node in both removedNodes and
+    // addedNodes (parent.replaceChildren/replaceWith retaining it) or split
+    // a reorder across a removal record and an insertion record: by the
+    // time the observer fires the DOM has already settled, so a node still
+    // connected was never really removed. Untracking it here would strip
+    // its live state and force a re-track that hides content for a frame.
+    if (el.isConnected) return
     tracked.get(el)?.()
     tracked.delete(el)
   }

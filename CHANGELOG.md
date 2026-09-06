@@ -946,6 +946,27 @@ against the code ADU-129 to ADU-132 shipped.
   script hide entrances before paint and the pin helper write heights on
   attach.
 
+### Scanner (blind review round 5)
+- `scan()`'s `MutationObserver` callback no longer untracks a node that is
+  still connected. A DOM "replace all" (`parent.replaceChildren(...)`,
+  `replaceWith`) queues one mutation record with a retained node in BOTH
+  `addedNodes` and `removedNodes`, and a list reorder splits the same move
+  across a removal record and an insertion record in one batch: either way
+  the node was never really removed by the time the observer fires. The
+  remove path now bails with `if (el.isConnected) return`, so a retained or
+  reordered node keeps its live entry instead of being untracked and
+  re-tracked, which used to strip its state and hide it for a frame.
+
+### Pointer (blind review round 5)
+- `trackPointer()` only writes `--mx`/`--my` on a descendant of its own
+  container. `event.target.closest(selector)` used to walk straight past
+  the container, so a `.sv-tilt` ANCESTOR of the tracked container matched
+  and received the pointer output. The match is now required to be inside
+  the container (`container.contains(match) && match !== container`).
+- Teardown now clears `--mx`, `--my` and the `sv-pointer-leave` class from
+  the last hovered element. It used to only remove the listeners and cancel
+  the pending frame, leaving a destroyed instance's card frozen mid-tilt.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

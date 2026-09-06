@@ -477,6 +477,17 @@ against the code ADU-129 to ADU-132 shipped.
 <li>The "SSR, SEO and the Lighthouse load profile stay untouched" claim is scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint script hide entrances before paint and the pin helper write heights on attach.</li>
 </ul>
 
+<h4>Scanner (blind review round 5)</h4>
+<ul>
+<li><code>scan()</code>'s <code>MutationObserver</code> callback no longer untracks a node that is still connected. A DOM "replace all" (<code>parent.replaceChildren(...)</code>, <code>replaceWith</code>) queues one mutation record with a retained node in BOTH <code>addedNodes</code> and <code>removedNodes</code>, and a list reorder splits the same move across a removal record and an insertion record in one batch: either way the node was never really removed by the time the observer fires. The remove path now bails with <code>if (el.isConnected) return</code>, so a retained or reordered node keeps its live entry instead of being untracked and re-tracked, which used to strip its state and hide it for a frame.</li>
+</ul>
+
+<h4>Pointer (blind review round 5)</h4>
+<ul>
+<li><code>trackPointer()</code> only writes <code>--mx</code>/<code>--my</code> on a descendant of its own container. <code>event.target.closest(selector)</code> used to walk straight past the container, so a <code>.sv-tilt</code> ANCESTOR of the tracked container matched and received the pointer output. The match is now required to be inside the container (<code>container.contains(match) &amp;&amp; match !== container</code>).</li>
+<li>Teardown now clears <code>--mx</code>, <code>--my</code> and the <code>sv-pointer-leave</code> class from the last hovered element. It used to only remove the listeners and cancel the pending frame, leaving a destroyed instance's card frozen mid-tilt.</li>
+</ul>
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

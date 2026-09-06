@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.4 KB gzip · full core 5.9 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.4 KB gzip · full core 6.0 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3335,6 +3335,11 @@ var SV = (() => {
       };
     let pending = null;
     let raf2 = 0;
+    let last = null;
+    const matchIn = (target) => {
+      const el = target?.closest?.(selector);
+      return el && el !== container && container.contains(el) ? el : null;
+    };
     const flush = () => {
       raf2 = 0;
       if (!pending)
@@ -3347,16 +3352,17 @@ var SV = (() => {
       el.style.setProperty("--my", unit((y - rect.top) / rect.height * 2 - 1));
     };
     const onMove = (event) => {
-      const el = event.target.closest?.(selector);
+      const el = matchIn(event.target);
       if (!el)
         return;
+      last = el;
       el.classList.remove("sv-pointer-leave");
       pending = { el, x: event.clientX, y: event.clientY };
       if (!raf2)
         raf2 = requestAnimationFrame(flush);
     };
     const onOut = (event) => {
-      const el = event.target.closest?.(selector);
+      const el = matchIn(event.target);
       if (!el || el.contains(event.relatedTarget))
         return;
       if (pending?.el === el)
@@ -3372,6 +3378,11 @@ var SV = (() => {
       container.removeEventListener("pointerout", onOut);
       if (raf2)
         cancelAnimationFrame(raf2);
+      if (last) {
+        last.style.removeProperty("--mx");
+        last.style.removeProperty("--my");
+        last.classList.remove("sv-pointer-leave");
+      }
     };
   }
 
@@ -3484,6 +3495,8 @@ var SV = (() => {
         tracked.set(el, track(el, optionsFrom(el)));
     };
     const remove = (el) => {
+      if (el.isConnected)
+        return;
       tracked.get(el)?.();
       tracked.delete(el);
     };
