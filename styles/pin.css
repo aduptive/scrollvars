@@ -152,6 +152,58 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
+/* RELEASED (`data-sv-off`, written when a tracker stops): the no-JS twin of
+   every guard above, on an ancestor or on the element itself. One rule each,
+   never a shared list: a parser without `:is()` drops the whole list. */
+[data-sv-off] .sv-stage,
+.sv-stage[data-sv-off] {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+[data-sv-off] .sv-curtain-l,
+[data-sv-off] .sv-curtain-r {
+  display: none;
+}
+[data-sv-off] .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+[data-sv-off] .sv-deck {
+  display: block;
+}
+[data-sv-off] .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+[data-sv-off] .sv-reading > * {
+  opacity: 1;
+}
+[data-sv-off] .sv-range > * {
+  --sv-r: 1;
+}
+[data-sv-off] .sv-counter {
+  --sv-int: var(--sv-max, 100);
+}
+
+/* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
+   14.1): `html.sv-on` blocks the guards above, and the stacking half of these
+   presets is plain layout. `transform`, not the no-JS `display: none`, so
+   compat's later sheet still outranks this and animates them. */
+@supports not (translate: 0) {
+  .sv .sv-curtain-l {
+    transform: translateX(-101%);
+  }
+  .sv .sv-curtain-r {
+    transform: translateX(101%);
+  }
+  .sv .sv-deck {
+    display: block; /* the same line compat's sheet carries, for the same reason */
+  }
+}
+
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {

@@ -21,6 +21,14 @@ function makeElement(attrs = {}, children = [], isConnected = true) {
     getAttribute(name) {
       return el.attrs[name] ?? null
     },
+    // releaseEntry() marks the element data-sv-off and track() clears the
+    // marker again: a real element always carries the whole attribute trio
+    setAttribute(name, value) {
+      el.attrs[name] = value
+    },
+    removeAttribute(name) {
+      delete el.attrs[name]
+    },
     querySelectorAll(sel) {
       return sel === '[data-sv]' ? el.children.filter((c) => 'data-sv' in c.attrs) : []
     },
@@ -137,6 +145,7 @@ test('scan writes data-sv-* knob attributes as CSS variables, once', async () =>
       classList: { add: () => {}, toggle: () => {} },
       hasAttribute: (n) => n in attrs,
       getAttribute: (n) => attrs[n] ?? null,
+      removeAttribute: (n) => delete attrs[n],
       matches: (sel) => sel === VAR_SEL && Object.keys(attrs).some((a) => sel.includes(`[${a}]`)),
       querySelectorAll: () => [],
       getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),

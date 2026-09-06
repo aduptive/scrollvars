@@ -970,6 +970,137 @@ against the code ADU-129 to ADU-132 shipped.
   script hide entrances before paint and the pin helper write heights on
   attach.
 
+### Driver (blind review round 5)
+- The driver owns the live state of every element it tracks. It writes the
+  flag twice now, as the `sv-live` class and as an inline `--sv-live`, and
+  re-asserts both on any measured frame where the DOM disagrees. A React
+  `<Track>` renders `className={'sv ' + className}`, so a prop change
+  rewrites the whole class attribute and takes the driver-added `sv-live`
+  with it: the section faded back out (`.sv` alone declares `--sv-live: 0`),
+  and a settled `once` section, with no tracker left to put the class back,
+  stayed at opacity 0 for good. The inline flag survives the rewrite; the
+  class returns on the next frame the driver measures.
+- `track()` on an element that still carries a settled `once` `sv-live`
+  clears the class and the inline flag before the first frame, so the new
+  entry (which starts not live) and the DOM agree and the entrance replays
+  when the element enters the band again.
+- Precedence, on tracked elements only: `--sv-live` is now an INLINE
+  declaration, and inline outranks every non-important author rule. A rule
+  of your own that lifts the flag (`#hero.sv { --sv-live: 1 }`) loses to
+  the driver from the first frame its live state changes (`writeLive()`
+  runs on a live-state transition or a class disagreement, so an element
+  that never enters the band never gets the inline flag), and the "remove
+  `sv-live`, add it back next frame and the entrance replays" trick now
+  works only on
+  elements the driver does not track (a hand-flipped `.sv`, a
+  `toggles()`-driven widget). On a tracked element the driver owns the
+  flag: re-tracking replays the entrance instead.
+- The identity guard runs after `onTravel` and after `onPin` too, not only
+  after `onLive`: a callback that untracks its own element no longer gets
+  `--sv-pin`/`--sv-scene` written inline (variables the release had already
+  cleaned up, so they stayed forever) plus one extra `onScene`.
+- The `prefers-reduced-motion` listener falls back to the deprecated
+  `addListener` when `MediaQueryList.addEventListener` is missing (Safari
+  below 14, inside the supported floor), where the optional call made the
+  whole preference a no-op.
+
+### Presets and no-JS (blind review round 5)
+- **Added: the `data-sv-off` attribute** (public API, driver-managed).
+  Releasing a tracked element now settles it to its no-JS RENDERING, not
+  just to a visible entrance. ADU-130's inline `--sv-live: 1` covered the
+  entrance presets, but `.sv` stays and `html.sv-on` never comes off, so
+  after `stopScan()`, a `ScrollVarsBoot` unmount or an option change the
+  pin presets kept reading a clock that had stopped: `.sv-curtain-l`/`-r`
+  sat closed over the content, `.sv-deck` stayed stacked in one grid cell,
+  `.sv-range` children stayed at `--sv-r: 0` (opacity 0), a `.sv-spread`
+  scrubbed from `--sv-t` stayed fanned into an overlapping stack and
+  `.sv-stage` kept `position: sticky`, `100vh` and `overflow: hidden`.
+  `releaseEntry()` marks the element `data-sv-off`, and every
+  `html:not(.sv-on)` guard in `styles/pin.css` and `styles/core.css` now
+  has a `[data-sv-off]` twin, so both class markup and `[data-sv]` markup
+  settle static. `track()` takes the marker back off. The guard reaches the
+  DESCENDANTS these presets style, which an inline variable on the tracked
+  element cannot.
+- An attribute, not a class: React's `<Track>` renders
+  `className={'sv ' + className}`, so a prop change rewrites the whole
+  class attribute, and a released element has no tracker left to put a
+  dropped class back. A class marker would have snapped the stage back to
+  `position: sticky` with the curtains over the content, permanently.
+- Each `[data-sv-off]` twin is its own rule, never a selector appended to
+  the `:is(.sv, [data-sv])` guards next to it: a parser that predates
+  `:is()` throws away the whole selector list, and Firefox 72 to 77 is
+  inside the supported floor and not covered by the `@supports` block
+  below.
+- Second pass (verifier findings in Chrome on ce777d0): the marker is read
+  as `[data-sv-off] X`, which matches through ANY depth, so a released
+  ANCESTOR settled every preset under a descendant whose clock was still
+  running. `track(outer)`, `track(inner, { pin: true })`, `untrack(outer)`
+  left the inner tracker writing `--sv-pin` into a stage flipped back to
+  `position: static`, curtains at `display: none` and a deck unstacked.
+  Nested trackers are a first-class pattern here (the nearest tracker, not
+  any live ancestor, owns spread), and `:has()` is far above the supported
+  floor, so the driver keeps the marker honest instead: `releaseEntry()`
+  marks an element only once nothing tracked is left inside it, and each
+  release settles the ancestors that were waiting on it, since `stopScan()`
+  releases an outer tracker before its inner one. `track()` strips the
+  marker off the whole ancestor chain, not only off its own element, so a
+  section re-mounting under a released one does not run its clock against
+  presets already settled static.
+- The `.sv-spread` twin fires when the tracked element IS the spread
+  container too. Its no-JS guard (`html:not(.sv-on) .sv-spread > *`)
+  requires no tracker ancestor, while the twin was a descendant combinator
+  and needed a separate marked ancestor: with the documented scrub idiom on
+  the container itself (`<div class="sv sv-spread" data-sv data-sv-travel>`)
+  a released spread stayed at `translate: calc(100% + 16px)`,
+  `rotate: 5deg`, where no JS gives `none`. Both guards with no ancestor
+  requirement now carry the second marker position too
+  (`.sv-spread[data-sv-off] > *`, `.sv-stage[data-sv-off]`), as plain comma
+  lists rather than `:is()`. The audit compares each twin's ANCESTOR SHAPE
+  with its guard's instead of stripping a selector prefix, and reads every
+  file in `styles/`, not the two that carry guards today.
+- `styles/pin.css` carries an `@supports not (translate: 0)` block: with
+  JavaScript on and no `compat()` call, an engine without individual
+  transform properties (Chrome below 104, Firefox below 72, Safari below
+  14.1) runs the driver, so `html.sv-on` is set and the no-JS guards cannot
+  fire, while the stacking half of these presets is plain layout and
+  survives. The deck unstacks and the curtains open there too. The curtains
+  open with `transform` rather than the no-JS `display: none` on purpose:
+  `scrollvars/compat`'s fallback sheet re-expresses the same panels with
+  that property and is appended later, so it still outranks this block and
+  animates them.
+- Third pass (verifier and panel findings in Chrome on f5a81eb): the marker
+  had two more holes, both in the bookkeeping around the waiting set. A
+  `once` entrance descendant leaves the entry map inside `apply()`, not
+  through `releaseEntry()`, and that second exit never swept the elements
+  waiting on it: an ancestor released while such a descendant was still
+  tracked stayed unmarked for good, its `.sv-stage` sticky and clipping with
+  the curtains over the content, until an unrelated later release happened to
+  sweep the backlog. The sweep is its own function now and both exits call
+  it, without marking the settled element itself, which stays live. And
+  `track()` stripping the marker off the ancestor chain FORGOT those
+  ancestors: released, unmarked, and never marked again. An ordinary
+  `<Track>` prop change under a released shell reaches it, and so does
+  `stopScan()` followed by one section re-mounting, which is what the
+  stripping exists for. A cleared ancestor that carried the marker, or was
+  still waiting for it, goes back into the waiting set, so the next release
+  that empties it marks it again. The sweep returns immediately while
+  nothing is waiting, so an ordinary release pays nothing for either fix.
+- `markReleased()` writes the attribute with the same optional call
+  `clearReleased()` removes it with (`setAttribute?.`), so both halves of the
+  pair hold on the same elements.
+- Size, measured, because these are published numbers: the release
+  bookkeeping takes the core entry (`scrollvars`, min+gzip) from 6.0 KB to
+  6.2 KB, and the stamped bundle comparison with it, from `~8× less bundle`
+  than gsap + ScrollTrigger to `~7×` (the ratio is arithmetic on the stamped
+  KB, 46.3 / 6.2). The released twins take `styles/pin.css` from 2.6 to
+  2.9 KB gzip and `styles/core.css` from 2.3 to 2.4 KB, `styles.css` from
+  8.2 to 8.6 KB and the headline typical page from ~4.7 to ~5.0 KB, with
+  their comments trimmed to one note per guard family (`styles/state.css`
+  is back at its 2.2 KB: the note that had moved it is in this changelog,
+  which costs no bytes on the wire). `styles/core.css` crosses its rounding
+  boundary on the RULES alone: 2392 bytes at the base, 2411 with the new
+  selectors and no comment at all, against 2406 for 2.35 KB.
+
 ### Gallery (blind review round 5)
 Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.
 - `StickySteps`'s reduced-motion block now resets `.st-steps > li` and

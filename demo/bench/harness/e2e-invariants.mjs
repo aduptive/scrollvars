@@ -449,6 +449,451 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3c. The driver owns the live state (ADU-140, round 5 finding 1): a
+// className rewrite that drops the driver-added `sv-live` never hides a
+// section that already went live. React's <Track> renders
+// `className={'sv ' + className}`, so a prop change rewrites the whole
+// attribute, keeps `.sv` (which declares --sv-live: 0) and takes `sv-live`
+// with it. A still-tracked element gets the class back on the next frame; a
+// settled `once` one has no tracker left at all, and only the inline
+// --sv-live the driver now writes keeps it visible ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <!-- tall enough to sit inside the live band (enter 75%, exit 25% of the viewport) -->
+      <section class="sv" data-sv id="tracked" style="margin-top:20vh;min-height:40vh"><p class="sv-rise">tracked, still scanning</p></section>
+      <section class="sv" data-sv data-sv-once id="settled" style="min-height:40vh"><p class="sv-rise">settled once, no tracker left</p></section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const opacity = (id) => getComputedStyle(document.querySelector(`#${id} .sv-rise`)).opacity
+    SV.scan()
+    await frame()
+    await new Promise((done) => setTimeout(done, 1200)) // --sv-duration is 800ms
+    const liveBefore = ['tracked', 'settled'].filter((id) => document.getElementById(id).classList.contains('sv-live'))
+    const visibleBefore = ['tracked', 'settled'].filter((id) => opacity(id) === '1')
+    for (const id of ['tracked', 'settled']) document.getElementById(id).className = 'sv rewritten'
+    await frame()
+    await new Promise((done) => setTimeout(done, 1200)) // long enough for a fade-out to finish
+    const visibleAfter = ['tracked', 'settled'].filter((id) => opacity(id) === '1')
+    // a class rewrite schedules no frame of its own (nothing scrolled, nothing
+    // resized): the class comes back on the next frame the driver measures,
+    // while the inline flag it wrote at the transition covers the meantime
+    scrollTo(0, 1)
+    await frame()
+    return {
+      liveBefore,
+      visibleBefore,
+      visibleAfter,
+      trackedClass: document.getElementById('tracked').classList.contains('sv-live'),
+      settledInline: document.getElementById('settled').style.getPropertyValue('--sv-live'),
+      opacities: ['tracked', 'settled'].map((id) => `${id}=${opacity(id)}`).join(' '),
+    }
+  })
+  check(
+    'live state: the fixture starts with both sections live and revealed',
+    r.liveBefore.length === 2 && r.visibleBefore.length === 2,
+    `live=${r.liveBefore.join(',')} visible=${r.visibleBefore.join(',')}`
+  )
+  check(
+    'live state: a className rewrite that drops sv-live leaves both sections visible',
+    r.visibleAfter.length === 2,
+    `visible=${r.visibleAfter.join(',')} (${r.opacities})`
+  )
+  check(
+    'live state: the still-tracked section gets sv-live back on its next measured frame, the settled once one holds the inline flag',
+    r.trackedClass && r.settledInline === '1',
+    `class=${r.trackedClass} inline=${r.settledInline || '(none)'}`
+  )
+  await page.close()
+}
+
+// ── 3d. Release settles a tracked element to its no-JS rendering (ADU-140,
+// round 5 finding 2). ADU-130 settled the ENTRANCE presets with an inline
+// --sv-live: 1, but `.sv` stays and `html.sv-on` never comes off, so every
+// pin preset kept reading a clock that had stopped: closed curtains over the
+// content, a deck stacked in one grid cell, an unfinished sv-range at
+// opacity 0, a spread scrubbed from --sv-t fanned into an overlapping stack,
+// and a sticky, 100vh, overflow-hidden stage. The same markup with
+// JavaScript off is the reference rendering ──
+{
+  // SSR shape on purpose (`class="sv"` next to the data-sv attributes, what
+  // React <Track> emits): the two pages then differ only by the driver having
+  // run, which is exactly the claim under test.
+  const RELEASE_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      .revealed { display: grid; place-items: center; height: 100% }
+      .card { padding: 2rem; background: #333; color: #fff }
+      /* the documented scrub idiom for the spread preset, mapped from the
+         driver's own travel clock (styles/core.css says so verbatim) */
+      #spread > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }
+    </style></head>
+    <body>
+      <div class="sv" data-sv data-sv-pin="300vh" id="pinned">
+        <div class="sv-stage" id="stage">
+          <div class="revealed">revealed content</div>
+          <div class="panel sv-curtain-l" id="curtain-l">left</div>
+          <div class="panel sv-curtain-r" id="curtain-r" style="left:50%">right</div>
+          <div class="sv-deck" id="deck" style="--sv-count:3">
+            <div class="card" id="card">one</div><div class="card">two</div><div class="card">three</div>
+          </div>
+          <div class="sv-range sv-range-rise" id="range">
+            <p id="rise-item" style="--sv-from:0;--sv-to:.5">ranged text</p>
+          </div>
+        </div>
+      </div>
+      <p>after the pinned stretch</p>
+      <!-- a second tracker, far below the fold: it never goes live while the
+           driver runs, so its presets sit at the START of their clocks. The
+           entrance half settles on the inline --sv-live: 1 the release writes,
+           the scrubbed spread only on the [data-sv-off] guard. Spans by hand,
+           not data-sv-split: split() is JS, and both pages must ship the same
+           markup for the comparison to mean anything. -->
+      <section class="sv" data-sv id="below" style="min-height:40vh">
+        <p class="sv-split-rise" id="split"><span aria-hidden="true" id="split-span" style="--sv-order:0">one</span></p>
+        <div class="sv-spread" id="spread">
+          <div class="card" id="spread-card" style="--sv-order:0">a</div>
+          <div class="card" style="--sv-order:1">b</div>
+          <div class="card" style="--sv-order:2">c</div>
+        </div>
+        <div class="sv-acts" id="acts" style="--sv-acts-duration:60ms">act clock</div>
+      </section>
+    </body></html>`
+  const SETTLED_SIGNATURE = () => {
+    // an identity transform paints exactly like `none`, and the two pages
+    // reach it by different routes: the released page computes
+    // `translate: 0 calc((1 - 1) * 0.6em)` to `0px`, the no-JS page never
+    // applies the rule at all. Only translate/rotate/scale are folded, so a
+    // real 100px offset still reads as a difference.
+    const identity = (prop, value) =>
+      ['translate', 'rotate', 'scale'].includes(prop) && /^(0px|0px 0px|0deg|1|1 1)$/.test(value) ? 'none' : value
+    const read = (sel, props) => {
+      const el = document.querySelector(sel)
+      if (!el) return `MISSING ${sel}`
+      const cs = getComputedStyle(el)
+      return props.map((p) => `${p}=${identity(p, cs.getPropertyValue(p).trim())}`).join(' ')
+    }
+    return {
+      wrapper: read('#pinned', ['height', 'position']),
+      stage: read('#stage', ['position', 'height', 'overflow']),
+      curtainL: read('#curtain-l', ['display', 'translate', 'transform']),
+      curtainR: read('#curtain-r', ['display', 'translate', 'transform']),
+      deck: read('#deck', ['display']),
+      card: read('#card', ['translate', 'rotate', 'scale', 'opacity']),
+      rise: read('#rise-item', ['opacity', 'translate']),
+      spread: read('#spread-card', ['translate', 'rotate']),
+      split: read('#split-span', ['opacity', 'translate']),
+      acts: read('#acts', ['--sv-act']),
+    }
+  }
+
+  const noJs = await browser.newPage()
+  await noJs.setJavaScriptEnabled(false)
+  await noJs.setContent(RELEASE_FIXTURE)
+  const baseline = await noJs.evaluate(SETTLED_SIGNATURE)
+  await noJs.close()
+
+  const page = await browser.newPage()
+  await page.setContent(RELEASE_FIXTURE)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan = SV.scan()
+    await frame()
+    scrollTo(0, innerHeight) // into the pinned stretch: every clock is mid-flight
+    await frame()
+  })
+  const driven = await page.evaluate(SETTLED_SIGNATURE)
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan() // a ScrollVarsBoot unmount, a route teardown
+    await frame()
+    scrollTo(0, 0) // same scroll position the no-JS page is read at
+    await frame()
+    // the settle is animated, not instant: the entrance transition is
+    // --sv-duration (800ms) and the acts clock 60ms in this fixture. Reading
+    // at 200ms caught a split-rise span still 0.63px short of its rest.
+    await new Promise((done) => setTimeout(done, 1200))
+  })
+  const released = await page.evaluate(SETTLED_SIGNATURE)
+
+  const differing = (a, b) => Object.keys(baseline).filter((k) => a[k] !== b[k])
+  // the comparison is only worth anything if the driver really was driving
+  const drivenDiff = differing(driven, baseline)
+  check(
+    'release: while scanning, the pinned fixture really does render differently from its no-JS state',
+    drivenDiff.length > 0,
+    `identical on every probe: ${JSON.stringify(driven)}`
+  )
+  // and the below-the-fold section only proves its three presets if the driver
+  // really held them at the start of their clocks first
+  const belowDriven = ['spread', 'split', 'acts'].filter((k) => driven[k] === baseline[k])
+  check(
+    'release: while scanning, the below-the-fold spread, split-rise and acts sit at their unstarted state',
+    belowDriven.length === 0,
+    `already settled while driving: ${belowDriven.map((k) => `${k}[${driven[k]}]`).join(' | ')}`
+  )
+  // the marker is an attribute, not a class, exactly for this: React's
+  // <Track> renders className={'sv ' + className}, and a released element has
+  // no tracker left to put a dropped class back
+  await page.evaluate(async () => {
+    for (const el of document.querySelectorAll('[data-sv]')) el.className = 'sv rewritten'
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+  })
+  const rewritten = await page.evaluate(SETTLED_SIGNATURE)
+
+  const stillDiffering = differing(released, baseline)
+  check(
+    'release: after stopScan() the curtain, deck, sv-range, stage, spread, split-rise and acts all render exactly as with no JS',
+    stillDiffering.length === 0,
+    stillDiffering.map((k) => `${k}: released[${released[k]}] noJS[${baseline[k]}]`).join(' | ')
+  )
+  const rewrittenDiff = differing(rewritten, baseline)
+  check(
+    'release: a className rewrite after the release keeps that rendering (the marker is an attribute, which React never drops)',
+    rewrittenDiff.length === 0,
+    rewrittenDiff.map((k) => `${k}: rewritten[${rewritten[k]}] noJS[${baseline[k]}]`).join(' | ')
+  )
+  await page.close()
+}
+
+// ── 3d bis. Release with the tracker ON the .sv-spread container (ADU-140,
+// round 3 finding 2). The no-JS guard `html:not(.sv-on) .sv-spread > *` needs
+// no tracker ancestor, and the documented scrub idiom puts `.sv` and the
+// data-sv attributes on the spread container itself, so the release marker
+// lands on the .sv-spread. A descendant-only twin can never fire there, and
+// the cards stayed fanned into an overlapping stack where no JS gives none ──
+{
+  const SPREAD_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .card { padding: 1rem; background: #333; color: #fff }
+      /* the scrub idiom styles/core.css documents, on the tracked element */
+      #spread > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }
+    </style></head>
+    <body>
+      <div style="height:120vh">above the fold</div>
+      <div class="sv sv-spread" data-sv data-sv-travel id="spread">
+        <div class="card" id="spread-card" style="--sv-order:0">a</div>
+        <div class="card" style="--sv-order:1">b</div>
+        <div class="card" style="--sv-order:2">c</div>
+      </div>
+    </body></html>`
+  const SPREAD_PROBE = () => {
+    const cs = getComputedStyle(document.querySelector('#spread-card'))
+    return `translate=${cs.translate} rotate=${cs.rotate}`
+  }
+  const noJs = await browser.newPage()
+  await noJs.setJavaScriptEnabled(false)
+  await noJs.setContent(SPREAD_FIXTURE)
+  const spreadBaseline = await noJs.evaluate(SPREAD_PROBE)
+  await noJs.close()
+
+  const page = await browser.newPage()
+  await page.setContent(SPREAD_FIXTURE)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan = SV.scan()
+    await frame()
+    scrollTo(0, innerHeight * 0.6) // mid-travel: the cards sit part-way out
+    await frame()
+  })
+  const spreadDriven = await page.evaluate(SPREAD_PROBE)
+  check(
+    'released spread: the scrub idiom on the container really does fan the cards while the driver runs',
+    spreadDriven !== spreadBaseline,
+    `identical to the no-JS page already: ${spreadDriven}`
+  )
+  const spreadReleased = await page.evaluate(async () => {
+    window.__stopScan()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+    return document.querySelector('#spread').hasAttribute('data-sv-off')
+  })
+  check('released spread: the marker lands on the tracked .sv-spread itself', spreadReleased, 'no data-sv-off on #spread')
+  const spreadAfter = await page.evaluate(SPREAD_PROBE)
+  check(
+    'released spread: a released .sv-spread container settles its cards exactly as with no JS',
+    spreadAfter === spreadBaseline,
+    `released[${spreadAfter}] noJS[${spreadBaseline}]`
+  )
+  await page.close()
+}
+
+// ── 3e. A released ancestor must not settle a still-tracked descendant
+// (ADU-140, round 3 finding 1). `[data-sv-off] X` matches through ANY depth
+// and nested trackers are a first-class pattern (invariant 4 below: the
+// NEAREST tracker owns spread), so releasing an outer tracker flipped the
+// inner one's stage, curtains and deck to their static rendering while its
+// pin clock kept writing --sv-pin ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      .card { padding: 2rem; background: #333; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv id="outer">
+        <div class="sv" data-sv id="inner">
+          <div class="sv-stage" id="stage">
+            <div>revealed content</div>
+            <div class="panel sv-curtain-l" id="curtain-l">left</div>
+            <div class="sv-deck" id="deck" style="--sv-count:3">
+              <div class="card" id="card">one</div><div class="card">two</div><div class="card">three</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const NESTED_SIGNATURE = () => {
+    const read = (sel, props) => {
+      const cs = getComputedStyle(document.querySelector(sel))
+      return props.map((p) => `${p}=${cs.getPropertyValue(p).trim()}`).join(' ')
+    }
+    return {
+      pin: read('#inner', ['--sv-pin']),
+      stage: read('#stage', ['position', 'height', 'overflow']),
+      curtain: read('#curtain-l', ['display', 'translate']),
+      deck: read('#deck', ['display']),
+      card: read('#card', ['translate', 'rotate', 'scale']),
+    }
+  }
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopOuter = SV.track(document.querySelector('#outer'), {})
+    window.__stopInner = SV.track(document.querySelector('#inner'), { pin: '300vh' })
+    await frame()
+    scrollTo(0, innerHeight) // into the inner tracker's pinned stretch: every clock mid-flight
+    await frame()
+  })
+  const both = await page.evaluate(NESTED_SIGNATURE)
+  const clock = Number(both.pin.split('=')[1])
+  check(
+    'nested release: the inner tracker really is mid-flight before the outer one is released',
+    clock > 0 && clock < 1 && both.stage.includes('position=sticky'),
+    `${both.pin} | ${both.stage}`
+  )
+  await page.evaluate(async () => {
+    window.__stopOuter() // the ancestor goes, the descendant keeps tracking
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+  })
+  const afterOuter = await page.evaluate(NESTED_SIGNATURE)
+  const moved = Object.keys(both).filter((key) => both[key] !== afterOuter[key])
+  check(
+    'nested release: releasing an outer tracker leaves a still-tracked descendant rendering exactly as before',
+    moved.length === 0,
+    moved.map((key) => `${key}: after[${afterOuter[key]}] before[${both[key]}]`).join(' | ')
+  )
+  const marks = await page.evaluate(() => ({
+    outer: document.querySelector('#outer').hasAttribute('data-sv-off'),
+    inner: document.querySelector('#inner').hasAttribute('data-sv-off'),
+  }))
+  check(
+    'nested release: the released ancestor holds its marker back while a descendant is still tracked',
+    !marks.outer && !marks.inner,
+    `outer=${marks.outer} inner=${marks.inner}`
+  )
+  // and the ancestor was WAITING, not skipped: stopScan() releases the outer
+  // tracker first, so the marker has to land when the inner one goes too
+  const settled = await page.evaluate(async () => {
+    window.__stopInner()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    return {
+      outer: document.querySelector('#outer').hasAttribute('data-sv-off'),
+      inner: document.querySelector('#inner').hasAttribute('data-sv-off'),
+      stage: getComputedStyle(document.querySelector('#stage')).position,
+      curtain: getComputedStyle(document.querySelector('#curtain-l')).display,
+    }
+  })
+  check(
+    'nested release: releasing the descendant settles it AND the ancestor that was waiting on it',
+    settled.outer && settled.inner && settled.stage === 'static' && settled.curtain === 'none',
+    JSON.stringify(settled)
+  )
+  await page.close()
+}
+
+// ── 3f. The same waiting ancestor, settled by the OTHER exit from the entry
+// map (ADU-140, round 4 finding 1): a `once` entrance descendant latches and
+// deletes its entry inside apply(), never through the untrack handle, so the
+// ancestor released before it kept a sticky, clipping stage with the curtain
+// over its content until some unrelated later release swept the backlog ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      #inner { min-height: 40vh; margin-top: 20vh }
+    </style></head>
+    <body>
+      <div class="sv" data-sv id="outer">
+        <div class="sv-stage" id="stage">
+          <div>revealed content</div>
+          <div class="panel sv-curtain-l" id="curtain-l">left</div>
+        </div>
+        <div class="sv" data-sv id="inner">a section that latches once</div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const ONCE_SIGNATURE = () => ({
+    stage: ['position', 'height', 'overflow']
+      .map((p) => `${p}=${getComputedStyle(document.querySelector('#stage')).getPropertyValue(p).trim()}`)
+      .join(' '),
+    curtain: getComputedStyle(document.querySelector('#curtain-l')).display,
+    outerMarked: document.querySelector('#outer').hasAttribute('data-sv-off'),
+    innerMarked: document.querySelector('#inner').hasAttribute('data-sv-off'),
+    innerLive: document.querySelector('#inner').classList.contains('sv-live'),
+  })
+  const before = await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopOuter = SV.track(document.querySelector('#outer'), { pin: '300vh' })
+    // the descendant is below the live band at rest: it still has to latch
+    SV.track(document.querySelector('#inner'), { once: true })
+    await frame()
+    window.__stopOuter() // the ancestor goes first, exactly like stopScan()
+    await frame()
+    return true
+  })
+  void before
+  const waiting = await page.evaluate(ONCE_SIGNATURE)
+  check(
+    'once release: the released ancestor holds its marker back while the once descendant is still tracked',
+    !waiting.outerMarked && !waiting.innerMarked && waiting.stage.includes('position=sticky'),
+    JSON.stringify(waiting)
+  )
+  const settled = await page.evaluate(async () => {
+    scrollTo(0, innerHeight) // the once descendant enters the band, latches and settles itself out
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+    return true
+  })
+  void settled
+  const after = await page.evaluate(ONCE_SIGNATURE)
+  check(
+    'once release: the settle hands the waiting ancestor its marker, and the stage stops clipping its own content',
+    after.outerMarked && after.stage.includes('position=static') && after.curtain === 'none',
+    JSON.stringify(after)
+  )
+  check(
+    'once release: the settled descendant itself stays live and unmarked (it latched, it was not released)',
+    after.innerLive && !after.innerMarked,
+    JSON.stringify(after)
+  )
+  await page.close()
+}
+
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
 {
   const page = await browser.newPage()

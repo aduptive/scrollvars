@@ -124,6 +124,13 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
+/* Same for a RELEASED tracker (`data-sv-off`, see pin.css), on an ancestor or
+   on the spread itself, which is where the marker lands in the scrub idiom. */
+[data-sv-off] .sv-spread > *,
+.sv-spread[data-sv-off] > * {
+  translate: none;
+  rotate: none;
+}
 .sv-on .sv .sv-spread.sv-spread-in > * {
   transition:
     translate var(--sv-duration, 800ms) var(--sv-ease, ease),

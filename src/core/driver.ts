@@ -95,11 +95,16 @@ function init() {
 
   const media = window.matchMedia('(prefers-reduced-motion: reduce)')
   reducedMotion = media.matches
-  media.addEventListener?.('change', (event) => {
+  const onMotionChange = (event: MediaQueryListEvent) => {
     reducedMotion = event.matches
     entries.forEach(applyPinHelper)
     schedule()
-  })
+  }
+  // addEventListener on a MediaQueryList is Safari 14; inside the supported
+  // floor (Safari 11) only the deprecated addListener exists, and the
+  // optional call alone made the whole preference a no-op there.
+  if (typeof media.addEventListener === 'function') media.addEventListener('change', onMotionChange)
+  else media.addListener?.(onMotionChange)
 
   // Offscreen culling: a viewport of margin on each side keeps fast scrolls
   // correct; far outside it the rect read is skipped entirely.
@@ -283,6 +288,20 @@ function setVar(entry: Entry, name: string, value: number) {
   entry.el.style.setProperty(name, serialized)
 }
 
+/** The driver owns the live state, so it writes it twice: the `sv-live`
+ * class (public API, what authored CSS hooks into) and an inline
+ * `--sv-live`, which no className rewrite can reach. React's `<Track>`
+ * renders `className={'sv ' + className}`: a prop change rewrites the whole
+ * attribute and drops a class the driver added, and a settled `once` entry
+ * has no tracker left to put it back, which used to hold that section at
+ * opacity 0 forever. */
+function writeLive(entry: Entry) {
+  const flag = entry.live ? '1' : '0'
+  entry.written['--sv-live'] = flag
+  entry.el.classList.toggle('sv-live', entry.live)
+  entry.el.style.setProperty?.('--sv-live', flag)
+}
+
 function apply(entry: Entry, geo: Geometry) {
   const { opts } = entry
   const enter = opts.enter ?? LIVE_ENTER
@@ -293,7 +312,7 @@ function apply(entry: Entry, geo: Geometry) {
     (entry.live && !!opts.once)
   if (isLive !== entry.live) {
     entry.live = isLive
-    entry.el.classList.toggle('sv-live', isLive)
+    writeLive(entry)
     // once + nothing continuous = fire-and-forget: stop tracking, stop paying
     // the per-frame rect read. The class stays; --sv-view freezes as-is.
     const settle =
@@ -320,6 +339,10 @@ function apply(entry: Entry, geo: Geometry) {
         unobserveIfUnneeded(entry.el)
         if (opts.root) unobserveIfUnneeded(opts.root)
         culler?.unobserve(entry.el)
+        // this element stays LIVE (that is what `once` latches), but it just
+        // left `entries`: a released ancestor waiting on it can take its
+        // marker now, and nothing else on this path would ever tell it.
+        settleDeferred()
       }
     }
     opts.onLive?.(isLive)
@@ -331,6 +354,16 @@ function apply(entry: Entry, geo: Geometry) {
     if (entries.get(entry.el) !== entry) return
   }
 
+  // Something outside the driver can rewrite the class attribute of a tracked
+  // element (React re-rendering `className`), dropping `sv` and `sv-live`
+  // mid-flight. The driver re-asserts what it owns on every write: one
+  // classList read per frame, an actual write only when the DOM disagrees.
+  const classes = entry.el.classList
+  if (classes.contains?.('sv') !== true || classes.contains?.('sv-live') !== entry.live) {
+    classes.add('sv')
+    writeLive(entry)
+  }
+
   if (opts.view !== false) {
     setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
   }
@@ -339,12 +372,18 @@ function apply(entry: Entry, geo: Geometry) {
     const t = computeTravel(geo)
     if (opts.travel) setVar(entry, '--sv-t', t)
     opts.onTravel?.(t)
+    // every callback can untrack (or replace) its own element: the same
+    // identity check the onLive branch makes, or a released entry keeps
+    // getting --sv-pin/--sv-scene written inline (variables releaseEntry
+    // already cleaned up, so they would stay forever) and one extra onScene
+    if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.pin || opts.onPin) {
     const p = computePin(geo, entry.pinOffset)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
+    if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.scenes && opts.scenes > 1) {
@@ -381,6 +420,60 @@ function unobserveIfUnneeded(target: HTMLElement) {
   if (!stillNeeded(target)) resizeObserver?.unobserve(target)
 }
 
+/** Released elements still holding a tracked descendant: they take the marker
+ * as soon as that descendant is released too. */
+const deferredOff = new Set<HTMLElement>()
+
+/** True while `el` itself, or anything inside it, is still tracked. The
+ * released marker is read as `[data-sv-off] X`, which matches through ANY
+ * depth: marking an element settles every preset under it, a still-running
+ * nested tracker's included (nested trackers are a first-class pattern, the
+ * NEAREST tracker owns spread). `:has()` would express it in CSS but is far
+ * above the supported floor, so the driver keeps the marker honest instead. */
+function containsTracked(el: HTMLElement): boolean {
+  for (const other of entries.values()) if (other.el === el || el.contains?.(other.el)) return true
+  return false
+}
+
+/** Hand the marker to every released element whose last tracked descendant is
+ * gone. Called by BOTH exits from `entries`: releaseEntry() and the `once`
+ * fire-and-forget settle in apply(), which deletes its entry inline. Without
+ * the second call site an ancestor released while a `once` descendant was
+ * still tracked keeps its stage sticky and clipping, curtains closed over the
+ * content, until some unrelated later release happens to sweep the backlog. */
+function settleDeferred() {
+  if (!deferredOff.size) return
+  deferredOff.forEach((waiting) => {
+    if (containsTracked(waiting)) return
+    deferredOff.delete(waiting)
+    waiting.setAttribute?.('data-sv-off', '')
+  })
+}
+
+/** Mark a released element for the static guards, but only once nothing
+ * tracked is left inside it. Each release also settles the ancestors that
+ * were waiting on it (stopScan() releases outer before inner). */
+function markReleased(el: HTMLElement) {
+  deferredOff.add(el)
+  settleDeferred()
+}
+
+/** Drop the released marker off an element AND its ancestors: an ancestor's
+ * marker reaches this element just as well, so a tracker starting under a
+ * released one (stopScan() then a single section re-mounting) would run its
+ * clock with every preset already settled static. */
+function clearReleased(el: HTMLElement) {
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    // An ANCESTOR that carried the marker (or was still waiting for it) is
+    // released all the same: it only lends its marker to the tracker starting
+    // inside it, and goes back to waiting, so the next release that empties it
+    // marks it again. Dropping it here left the shell bare for good.
+    const released = deferredOff.delete(node) || node.hasAttribute?.('data-sv-off') === true
+    node.removeAttribute?.('data-sv-off')
+    if (released && node !== el) deferredOff.add(node)
+  }
+}
+
 /** Undo everything a track() call installed for one entry: written vars,
  * `--sv-scenes`, the pin helper, both observers (respecting shared roots).
  * Shared by the identity-guarded untrack and by track() replacing an
@@ -404,6 +497,17 @@ function releaseEntry(entry: Entry) {
   // dropping `.sv`, because server markup keeps its authored `[data-sv]`
   // (which hides on its own) and the driver must not rewrite that attribute.
   el.style.setProperty?.('--sv-live', '1')
+  // The same promise for everything the presets style on this element's
+  // DESCENDANTS, which no inline variable here could reach: `[data-sv-off]` is
+  // the marker the guards in styles/pin.css and styles/core.css read, so a
+  // released element renders like its no-JS state (curtains gone, deck
+  // unstacked, sv-range finished, spread in flow, `.sv-stage` back in flow)
+  // instead of freezing the last frame. An ATTRIBUTE, not a class, on purpose:
+  // the marker outlives a className rewrite (React's `<Track>` renders
+  // `className={'sv ' + className}`), and a released element has no tracker
+  // left to put a dropped class back. setAttribute, not toggleAttribute:
+  // fallback-reachable code stays inside the supported floor (Safari 11).
+  markReleased(el)
 }
 
 /** Track an element. Returns an untrack function. */
@@ -419,9 +523,15 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // forever once the identity guard blocks its own untrack.
   const existing = entries.get(el)
   if (existing) releaseEntry(existing)
-  // a previous release settled the element visible with an inline --sv-live: 1;
-  // tracking hands the flag back to the class, so drop it before the first frame
+  // a previous release settled the element visible with an inline --sv-live: 1
+  // (and `data-sv-off`); tracking hands the flag back to the driver, so drop
+  // both before the first frame. `sv-live` goes too: a settled `once` entry
+  // keeps the class with no tracker behind it, and a new entry starts at
+  // live:false, so leaving it would skip the entrance and desync the DOM from
+  // the driver.
   el.style.removeProperty?.('--sv-live')
+  el.classList.remove('sv-live')
+  clearReleased(el)
   const entry: Entry = {
     el,
     opts,
