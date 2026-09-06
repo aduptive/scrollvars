@@ -51,6 +51,9 @@
  *      stylesheets its registry entry declares, under React 18 and 19, with
  *      and without the engine and under reduced motion (installed-gate.mjs,
  *      ADU-129)
+ *  11. trackPointer() on a container that matches its own selector still
+ *      writes --mx/--my on a pointermove over a child, the hero fixture
+ *      round 5's ancestor fix collaterally broke (ADU-152)
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -892,6 +895,82 @@ const MIN_EXAMINED = 1
     JSON.stringify(after)
   )
   await page.close()
+}
+
+// ── 3g. Below the individual-transform floor, JS ON: the pin helper writes
+// no tall wrapper height (ADU-158). The `@supports not (translate: 0)` net in
+// styles/pin.css (ADU-149) releases `.sv-stage` there, so the section renders
+// at its natural height; the helper kept writing `height: 320vh` on the
+// wrapper anyway, which left the content at the top of the box with two blank
+// viewports under it, with JS on, against README's floor promise ──
+{
+  // Chrome supports individual transforms, so the @supports block never
+  // applies here: those three declarations are copied by hand into the
+  // fixture, which is what puts this page on the below-floor side of the CSS.
+  // The half actually under test is the JS one: the driver asks
+  // CSS.supports('translate', '0px'), stubbed false below before the engine
+  // ever boots, exactly the answer a below-floor engine gives.
+  const FLOOR_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      /* the three declarations of pin.css's @supports not (translate: 0) block */
+      .sv-stage { position: static; height: auto; overflow: visible }
+      .revealed { height: 300px; background: #111; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv data-sv-pin="320vh" id="pinned">
+        <div class="sv-stage" id="stage">
+          <div class="revealed">revealed content</div>
+        </div>
+      </div>
+      <p id="after">after the pinned stretch</p>
+    </body></html>`
+  // How far the wrapper's own bottom sits below the bottom of everything it
+  // renders: the blank space a visitor scrolls through, in viewports.
+  const BLANK_UNDER_CONTENT = () => {
+    const wrapper = document.getElementById('pinned')
+    const stage = document.getElementById('stage')
+    return {
+      blank: wrapper.getBoundingClientRect().bottom - stage.getBoundingClientRect().bottom,
+      viewports: (wrapper.getBoundingClientRect().bottom - stage.getBoundingClientRect().bottom) / innerHeight,
+      inlineHeight: wrapper.style.height,
+    }
+  }
+  const run = async (belowFloor) => {
+    const page = await browser.newPage()
+    await page.setContent(FLOOR_FIXTURE)
+    if (belowFloor) {
+      await page.evaluate(() => {
+        const real = CSS.supports.bind(CSS)
+        CSS.supports = (prop, value) => (prop === 'translate' ? false : real(prop, value))
+      })
+    }
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(async () => {
+      SV.scan()
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    })
+    const r = await page.evaluate(BLANK_UNDER_CONTENT)
+    await page.close()
+    return r
+  }
+
+  const above = await run(false)
+  // the control: with the engine answering the way Chrome really does, the
+  // helper writes the skeleton and this fixture measures the blank space it
+  // creates. Without this, "no blank space" could pass on a fixture that can
+  // never show any.
+  check(
+    'pin floor: the fixture does measure the tall wrapper, above the floor the helper still writes it',
+    above.inlineHeight === '320vh' && above.viewports > 1,
+    JSON.stringify(above)
+  )
+  const below = await run(true)
+  check(
+    'pin floor: below the individual-transform floor the wrapper ends with its content, no blank viewports under it',
+    below.inlineHeight === '' && below.blank < 1,
+    JSON.stringify(below)
+  )
 }
 
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
@@ -2400,6 +2479,53 @@ const MIN_EXAMINED = 1
     'occlusion sweep: a genuine sr-only span under a transform: scale(2) ancestor is excluded (not examined, no false occlusion)',
     examined === 1 && !bad.includes('genuine-sr-only'),
     `examined=${examined} bad=${bad.join(',')}`
+  )
+  await page.close()
+}
+
+// ── 9c. trackPointer() on a container that matches its own selector still
+// writes --mx/--my on a move over a child (ADU-152, live regression). This
+// is exactly the gallery's flagship hero: usePointer/trackPointer wired
+// with `{ selector: '.sv-hero' }` on the '.sv-hero' section itself. Round
+// 5's ancestor fix (ADU-141) added `match !== container`, which rejected
+// this self case too and dropped every pointermove; the day that shipped,
+// this invariant would have failed ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <section class="sv-hero" id="hero" style="position:relative;width:300px;height:200px">
+        <div class="hero-orb" style="width:20px;height:20px"></div>
+      </section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const hero = document.querySelector('.sv-hero')
+    SV.trackPointer(hero, { selector: '.sv-hero' })
+    const rect = hero.getBoundingClientRect()
+    const orb = document.querySelector('.hero-orb')
+    orb.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: rect.top + rect.height * 0.25,
+      })
+    )
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    return {
+      mx: hero.style.getPropertyValue('--mx'),
+      my: hero.style.getPropertyValue('--my'),
+    }
+  })
+  check(
+    'pointer: a container that matches its own selector (the hero fixture) writes --mx on a move over a child',
+    r.mx !== '',
+    `--mx="${r.mx}"`
+  )
+  check(
+    'pointer: ...and writes --my on the same move',
+    r.my !== '',
+    `--my="${r.my}"`
   )
   await page.close()
 }

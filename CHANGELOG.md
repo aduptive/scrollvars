@@ -1240,6 +1240,74 @@ Docs read against the code merged by the five round-5 code tickets.
   (the two hand-kept copies) stay in agreement; this pass added text next
   to them without touching that pairing.
 
+### Pointer (blind review round 6, ADU-152, live regression)
+- `trackPointer()` accepts a container that matches its own selector again.
+  Round 5's ancestor fix (`container.contains(match) && match !== container`)
+  closed the ancestor case it was written for but also closed the SELF
+  case, which is how the gallery's flagship hero is wired
+  (`trackPointer(hero, { selector: '.sv-hero' })` on the hero itself): every
+  pointermove was silently dropped, `--mx`/`--my` never wrote, and the orb
+  parallax was dead. `container.contains(match)` alone still rejects an
+  ancestor (an ancestor is never inside its own descendant) while allowing
+  the container itself (`Node.contains()` is true for the node itself), so
+  the extra `match !== container` was never needed.
+
+### Testing (round 6, ADU-152 fix pass)
+- The gallery regression guard's own selector match was a false negative:
+  its `\b${cls}\b` boundaries treat a hyphen as a word edge, so a selector
+  reading `.hero` passed as long as ANY sibling class started with
+  `hero-` (`hero-orb`, `hero-inner`), even though no element carries the
+  exact class `hero`. It now splits each `class`/`className` attribute on
+  whitespace and compares tokens exactly, and requires the CSS-side match
+  to not be followed by a further word character or hyphen either. Proved
+  red by mutating `hero-cinematic`'s React selector to `.hero`, proved
+  green again on revert.
+- The same guard now also scans `previewScript`, the field `hero-cinematic`
+  actually renders through in the gallery (the exact path ADU-152 broke in
+  production); it previously scanned only `preview`, `css`, `tailwind` and
+  `react`.
+- `trackPointer()` teardown while the last hovered element IS the
+  self-matched container (the hero's own wiring) is now a locked-in test:
+  the runtime already cleared `--mx`, `--my` and `sv-pointer-leave`
+  correctly there, this closes the coverage gap.
+
+### Slider (blind review round 6)
+- The slider re-asserts the classes it owns on every measure, the way the
+  driver does for its live flag: `sv-slider`, `sv-slider-y` and
+  `sv-draggable` on the rail, `sv-active` on the slide nearest the centre.
+  A framework that owns the rail's `className` (React re-rendering it when
+  a prop like `perView` changes, with no retrack behind it) used to drop the
+  first three, and a consumer restyling a slide dropped `sv-active` until
+  the active index happened to change. Each is one `classList` read per
+  measure, with a write only when the DOM disagrees.
+- `state().position` interpolates between adjacent slide CENTRES, so the
+  documented continuous position never goes backwards. It normalized the
+  distance by a single slide's own size before, which made it jump back at
+  every midpoint as soon as the slides had a gap: two 100px slides 16px
+  apart read 0.580 and then 0.430 one pixel of scroll later. Measured old
+  against new on the same fixture: gapless sliders with equal-size slides
+  read exactly as before (max difference 0.0000 over 121 samples across
+  the whole range). Gapless sliders with unequal slides (`--sv-span`
+  making slides different widths, `--sv-gap: 0`, a real configuration)
+  differ: 0.75 old against 0.6667 new at scrollLeft 0, maximum difference
+  0.0833. The new value is the one that is monotone and centre to centre;
+  unequal gapless slides now reading centre to centre is the intended
+  contract, not a regression.
+- The wheel settle (the glide 200 ms after the last wheel event) is dropped
+  by whatever takes the position over inside that window: a pointerdown,
+  `goTo` and everything routed through it (arrows, keyboard, autoplay), and
+  `seek`. It only listened to the next wheel event and to `destroy` before,
+  so a drag started right after a trackpad pan had a glide fighting it. A
+  press that drops a pending settle also resumes the snap the wheel had
+  suspended, since the settle it replaced is no longer there to do it.
+
+### React (blind review round 6)
+- `<Slider>`'s engine classes survive a re-render: `perView` is not an
+  attach dep, so React rewrites the rail's class attribute with no retrack,
+  and a consumer's own slide `className` rewrite drops `sv-active`. Fixed
+  in the core slider (above), so plain `slider()` consumers whose framework
+  owns the class attribute get it too.
+
 ### Scanner (blind review round 6)
 - `scan()`'s `removeSplit` now bails with the same `scope.contains(el)`
   guard as `remove()`. A retained `[data-sv-split]` node (a batch
@@ -1299,6 +1367,36 @@ Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
   Proved red by collapsing the blank line in `sticky-steps`'s CSS tab and
   green again once restored; a unit test (`test/installed-gate.test.mjs`)
   covers both the throw and the ordinary split.
+
+### Canvas (blind review round 6)
+- An engine whose CSSOM has no `aspect-ratio` at all (below the README's
+  Safari 12.1 canvas gate) no longer has its canvas marked `pinned`. The
+  previous pass stopped the throw there but kept the premise: the ratio
+  write was dropped by the engine, yet `pinned` still switched the
+  backing-store write to rounding both axes independently, which is only
+  safe once the CSS engine owns the height. It was instead still derived
+  from the intrinsic attribute ratio the harness itself rewrites every
+  pass, so the runaway ADU-107 fixed came back below the floor: a 30x61
+  canvas at DPR 0.51 walked 62, 64, 66, 68, 70 CSS px, growing 2 per pass,
+  unbounded. Below the floor the harness now keeps the width pin (that
+  part does land, and it is what stops the width axis from following),
+  writes no ratio at all, and stays unpinned, so the free-axis derivation
+  anchors height to the ORIGINAL attribute ratio and it settles on the
+  second pass.
+
+### Driver (blind review round 6)
+- The pin helper no longer writes its tall wrapper height below the
+  individual-transform floor (Chrome 104 / Firefox 72 / Safari 14.1),
+  the same way it already skips it under reduced motion. The
+  `@supports not (translate: 0)` net in `styles/pin.css` releases
+  `.sv-stage` there (position static, height auto, overflow visible), so a
+  pinned section renders at its natural height, but `height: 320vh` stayed
+  on the wrapper: with JS on, the content sat at the top of the box with
+  two blank viewports under it. The helper asks
+  `CSS.supports('translate', '0px')` and takes the in-flow branch when the
+  answer is an explicit `false`; an engine too old to answer at all is
+  also too old for the `@supports` rule that releases the stage, so the JS
+  and the CSS always agree on which side of the floor the page is.
 
 ## 1.13.0 (2026-09-05)
 
