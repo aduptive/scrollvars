@@ -1253,8 +1253,15 @@ Docs read against the code merged by the five round-5 code tickets.
   documented continuous position never goes backwards. It normalized the
   distance by a single slide's own size before, which made it jump back at
   every midpoint as soon as the slides had a gap: two 100px slides 16px
-  apart read 0.580 and then 0.430 one pixel of scroll later. Gapless
-  sliders read exactly as before.
+  apart read 0.580 and then 0.430 one pixel of scroll later. Measured old
+  against new on the same fixture: gapless sliders with equal-size slides
+  read exactly as before (max difference 0.0000 over 121 samples across
+  the whole range). Gapless sliders with unequal slides (`--sv-span`
+  making slides different widths, `--sv-gap: 0`, a real configuration)
+  differ: 0.75 old against 0.6667 new at scrollLeft 0, maximum difference
+  0.0833. The new value is the one that is monotone and centre to centre;
+  unequal gapless slides now reading centre to centre is the intended
+  contract, not a regression.
 - The wheel settle (the glide 200 ms after the last wheel event) is dropped
   by whatever takes the position over inside that window: a pointerdown,
   `goTo` and everything routed through it (arrows, keyboard, autoplay), and
