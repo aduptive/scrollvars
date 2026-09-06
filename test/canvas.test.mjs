@@ -48,6 +48,7 @@ function makeEnv() {
   const canvas = {
     width: 0,
     height: 0,
+    style: {},
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect: () => ({ width: 400, height: 300 }),
   }
@@ -116,4 +117,46 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
 
   handle.destroy()
   assert.equal(env.pending(), 0)
+})
+
+test('canvas harness: a sized canvas is left alone (no inline size written)', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  mountEffect(env.canvas, { frame: () => {} })
+  env.resize()
+  assert.deepEqual(env.canvas.style, {})
+})
+
+test('canvas harness: pins CSS size for an unsized canvas to stop the DPR feedback loop', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // No CSS size: getBoundingClientRect follows canvas.width/height (the
+  // backing store) until style.width is set, then it reports the pinned
+  // CSS size instead, same as a real unstyled canvas would.
+  const canvas = {
+    width: 300,
+    height: 150,
+    style: {},
+    getContext: () => ({ setTransform: () => {} }),
+    getBoundingClientRect() {
+      return canvas.style.width
+        ? { width: parseFloat(canvas.style.width), height: parseFloat(canvas.style.height) }
+        : { width: canvas.width, height: canvas.height }
+    },
+  }
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize() // first tick: detects the loop, pins the measured CSS size
+  assert.equal(canvas.style.width, '300px')
+  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not multiplied again
+  assert.equal(canvas.height, 300)
+
+  env.resize() // second tick: layout now follows the pinned CSS size
+  assert.equal(canvas.width, 600) // stable: would have doubled to 1200
+  assert.equal(canvas.height, 300)
 })

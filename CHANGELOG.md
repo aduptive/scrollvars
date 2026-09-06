@@ -113,6 +113,18 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Canvas
+- `mountEffect()`'s `applySize()` now guards against the unsized-canvas DPR
+  feedback loop (blind review round 3, finding 22): a canvas with no CSS
+  width/height lays out at its own backing-store size, so at a
+  devicePixelRatio above 1 every ResizeObserver tick measured the size the
+  previous tick had just written and multiplied the backing store by dpr
+  again, unbounded. `applySize()` now detects that (the measured rect
+  equals the backing size it just wrote, with dpr not 1) and pins
+  `canvas.style.width`/`height` to the first measured CSS size once, then
+  proceeds as before. A canvas with a real CSS size is untouched. The
+  harness's doc comment now says a canvas should have CSS dimensions.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

@@ -10,6 +10,11 @@
  *
  * Drawing space is CSS pixels: the context is pre-scaled by DPR, so
  * `fx.width`/`fx.height` match the element's layout size.
+ *
+ * Give the canvas CSS dimensions. A canvas with none lays out at its own
+ * backing-store size, so resizing it feeds back into itself above DPR 1:
+ * applySize() detects that loop and pins the first measured size to
+ * `canvas.style.width`/`height` once, but a real CSS size avoids it outright.
  */
 
 export interface EffectFrame {
@@ -105,6 +110,15 @@ export function mountEffect(
     const rect = canvas.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap)
+    // No CSS size means layout follows the backing store: the rect below
+    // would then match what the previous pass just wrote to canvas.width/
+    // height, and every further tick multiplies the backing store by dpr
+    // again. Pin the first measured CSS size once so layout stops
+    // following the backing store.
+    if (fx.dpr !== 1 && rect.width === canvas.width && rect.height === canvas.height) {
+      canvas.style.width = `${rect.width}px`
+      canvas.style.height = `${rect.height}px`
+    }
     fx.width = rect.width
     fx.height = rect.height
     canvas.width = Math.round(rect.width * fx.dpr)
