@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The progressive-enhancement invariants, as tests — the architectural
+ * The progressive-enhancement invariants, as tests: the architectural
  * promises the reviewers flagged as "claimed but not proven":
  *
  *   1. No JS  → the page renders COMPLETE: no entrance-hidden content
@@ -123,7 +123,7 @@ const base = `http://127.0.0.1:${server.address().port}`
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true })
 let failures = 0
 const check = (name, ok, detail = '') => {
-  console.log(`${ok ? 'ok ' : 'FAIL'} ${name}${ok ? '' : ' — ' + detail}`)
+  console.log(`${ok ? 'ok ' : 'FAIL'} ${name}${ok ? '' : ': ' + detail}`)
   if (!ok) failures++
 }
 

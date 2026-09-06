@@ -341,3 +341,40 @@ test('toggles: boot writes --sv-state from the class, and triggers group by the 
   assert.equal(byClass.attrs['aria-expanded'], 'false', 'the sibling trigger of that element follows the click')
   assert.equal(other.attrs['aria-expanded'], 'false', 'an unrelated target is untouched')
 })
+
+test('toggles: two triggers on one target with different classes keep separate aria-expanded', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?two-classes')
+
+  const nav = makeElement()
+  // the same nav reached through two selectors, toggling two different
+  // classes: two independent states, so one click must not speak for both
+  const hamburger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const pinner = makeElement({ 'data-sv-toggle': 'pinned', 'data-sv-target': 'nav.menu' })
+  const listeners = {}
+  const root = {
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: () => {},
+    querySelector: (sel) => (sel === '#menu' || sel === 'nav.menu' ? nav : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [hamburger, pinner] : []),
+  }
+
+  toggles(root)
+  assert.equal(hamburger.attrs['aria-expanded'], 'false', 'neither class is on the target at boot')
+  assert.equal(pinner.attrs['aria-expanded'], 'false')
+
+  listeners.click({ target: hamburger })
+  assert.ok(nav.classes.has('open'))
+  assert.ok(!nav.classes.has('pinned'), 'only the clicked trigger class flips')
+  assert.equal(hamburger.attrs['aria-expanded'], 'true')
+  assert.equal(
+    pinner.attrs['aria-expanded'],
+    'false',
+    'the pinned control must not report expanded with its class absent'
+  )
+
+  listeners.click({ target: pinner })
+  assert.equal(pinner.attrs['aria-expanded'], 'true')
+  assert.equal(hamburger.attrs['aria-expanded'], 'true', 'the open state survives the other control')
+})

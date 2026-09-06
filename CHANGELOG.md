@@ -698,7 +698,11 @@ from the code it describes.
   branches once on `showModal`: where the element is unknown there is no
   `open` PROPERTY, so the old `!open && dialog.open` guard could only ever
   open it. The fallback drives the attribute in both directions with
-  `toggleAttribute('open', open)`.
+  `setAttribute`/`removeAttribute`, never `toggleAttribute`: the engines
+  that reach that branch are the ones without `<dialog>` (Safari below
+  15.4, Firefox below 98), and Safari 11 and Firefox 60 to 62 are inside
+  the supported floor while predating `toggleAttribute`, where the effect
+  would throw and React would unmount the tree.
 - `useScenes()` clamps its scene to `count - 1` when the count changes. The
   driver emits nothing at all for `scenes <= 1`, so a count going from N to
   1 used to keep reporting the last index forever, and a consumer marked
@@ -718,9 +722,14 @@ from the code it describes.
 - `toggles()` writes `--sv-state` at boot from the target's class, so
   markup that ships open no longer disagrees with its own class until the
   first click.
-- Triggers are grouped by their RESOLVED target element instead of by the
-  `data-sv-target` string, so two triggers naming the same panel through
-  different selectors keep each other's `aria-expanded` in sync.
+- Triggers are grouped by the PAIR (resolved target element, toggled
+  class) instead of by the `data-sv-target` string, so two triggers naming
+  the same panel through different selectors keep each other's
+  `aria-expanded` in sync, while two controls toggling different classes
+  on that same panel (a hamburger on `open`, a second control on `pinned`)
+  keep separate states. Grouping by the element alone made one click
+  report `aria-expanded="true"` for both, the second one with its class
+  absent.
 
 ### Presets and no-JS (blind review round 4)
 - `.sv-counter`'s `counter-reset` and `::after` are keyed on

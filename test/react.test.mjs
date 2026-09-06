@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-// Server-render the React layer with renderToStaticMarkup — no DOM, no
+// Server-render the React layer with renderToStaticMarkup: no DOM, no
 // jsdom: exactly what Next.js does on the server, so this also guards SSR.
 
 function stubBrowserGlobals() {
   // the components call browser APIs only in effects, which never run in
-  // renderToStaticMarkup — but module init must survive a bare import
+  // renderToStaticMarkup, but module init must survive a bare import
   global.window = undefined
 }
 
@@ -195,9 +195,14 @@ let domReady = false
 // its callback runs, so a token dropped on the floor here would block every
 // later schedule() in the process.
 const rafQueue = []
+let rafSeq = 0
 function flushFrames() {
-  while (rafQueue.length) {
-    const fn = rafQueue.shift()
+  // one flush runs exactly the frames pending when it started. Draining
+  // until the queue empties would never return for a self-rescheduling
+  // frame (a canvas loop, a slider glide), which queues its next frame
+  // from inside this one.
+  const batch = rafQueue.splice(0)
+  for (const { fn } of batch) {
     // frames left behind by earlier tests' torn-down widgets (a destroyed
     // slider's measure, a canvas loop) are not the flushing test's business
     try {
@@ -252,8 +257,18 @@ function ensureDom() {
   global.HTMLElement = Object
   global.IS_REACT_ACT_ENVIRONMENT = true
   global.getComputedStyle = () => ({ getPropertyValue: () => '', position: 'static' })
-  global.requestAnimationFrame = (fn) => rafQueue.push(fn)
-  global.cancelAnimationFrame = () => {}
+  // ids are real: cancelAnimationFrame has to drop the entry, or a widget
+  // that cancels its pending frame on teardown still gets it run by the
+  // next flush
+  global.requestAnimationFrame = (fn) => {
+    const id = ++rafSeq
+    rafQueue.push({ id, fn })
+    return id
+  }
+  global.cancelAnimationFrame = (id) => {
+    const i = rafQueue.findIndex((entry) => entry.id === id)
+    if (i !== -1) rafQueue.splice(i, 1)
+  }
   global.location = { search: '' }
   global.window = {
     innerHeight: 800,
@@ -595,6 +610,11 @@ test('react: Modal without <dialog> support opens AND closes through the attribu
   assert.equal(typeof dialog.showModal, 'undefined', 'no showModal on an unknown element')
   assert.equal('open' in dialog, false, 'no open property on an unknown element')
   assert.equal(dialog.hasAttribute('open'), false, 'closed to start with')
+  // the engines that reach this branch (Safari below 15.4, Firefox below 98)
+  // include Safari 11 and Firefox 60 to 62, which predate toggleAttribute
+  // and are inside the README floor: calling it there throws inside the
+  // effect and React tears the tree down. React itself never calls it.
+  delete dialog.toggleAttribute
 
   await act(async () => {
     root.render(React.createElement(Modal, { open: true }, 'hello'))
@@ -645,4 +665,26 @@ test('react: useScenes clamps the reported scene when the count shrinks', async 
   } finally {
     await act(async () => { root.unmount() })
   }
+})
+
+test('harness: one flush runs one batch of frames, and cancel drops a pending one', async () => {
+  await ensureDomAndWarmDriver()
+  flushFrames() // clear whatever earlier tests left pending
+
+  let runs = 0
+  const loop = () => {
+    runs++
+    if (runs < 2) global.requestAnimationFrame(loop) // a canvas loop, in miniature
+  }
+  global.requestAnimationFrame(loop)
+
+  flushFrames()
+  assert.equal(runs, 1, 'the frame it queued from inside waits for the next flush')
+  flushFrames()
+  assert.equal(runs, 2)
+
+  const pending = global.requestAnimationFrame(loop)
+  global.cancelAnimationFrame(pending)
+  flushFrames()
+  assert.equal(runs, 2, 'a cancelled frame never runs')
 })

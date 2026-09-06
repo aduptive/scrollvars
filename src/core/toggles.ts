@@ -67,20 +67,26 @@ export function toggles(root?: Document | HTMLElement): () => void {
     const target = selector ? (scope.querySelector(selector) as HTMLElement | null) : trigger
     return { className, selector, target }
   }
-  // every trigger of a target reflects its state: on boot, and after any
-  // click. Grouped by the RESOLVED element, not by the data-sv-target
-  // string: two triggers can name the same panel through different
-  // selectors ('#menu' and 'nav.menu'), and a trigger with no target at all
-  // resolves to itself, which is the old selector-less case.
-  const sync = (target: HTMLElement, on: boolean) => {
+  // every trigger of the same state reflects it: on boot, and after any
+  // click. The state is the PAIR (resolved element, class), not the
+  // data-sv-target string: two triggers can name the same panel through
+  // different selectors ('#menu' and 'nav.menu'), and a trigger with no
+  // target at all resolves to itself, which is the old selector-less case.
+  // The class is half the key, not decoration: a hamburger toggling 'open'
+  // and a second control toggling 'pinned' on the same nav are two
+  // independent states, and grouping by the element alone made one click
+  // claim aria-expanded="true" for both.
+  const sync = (target: HTMLElement, className: string, on: boolean) => {
     scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((t) => {
-      if (resolve(t).target === target) t.setAttribute('aria-expanded', String(on))
+      const other = resolve(t)
+      if (other.target === target && other.className === className)
+        t.setAttribute('aria-expanded', String(on))
     })
   }
   // the target's own state, written wherever the class flips
-  const write = (target: HTMLElement, on: boolean) => {
+  const write = (target: HTMLElement, className: string, on: boolean) => {
     target.style.setProperty('--sv-state', on ? '1' : '0')
-    sync(target, on)
+    sync(target, className, on)
   }
   // targets currently inside their boot settle: cancellable by a click that
   // lands inside the two-frame hold, so it still gets its transition
@@ -140,7 +146,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // with --sv-state from the first frame: a continuous CSS rule reading
     // var(--sv-state, 0) otherwise renders the closed value against an open
     // class until the first click.
-    write(target, target.classList.contains(className))
+    write(target, className, target.classList.contains(className))
   })
 
   const onClick = (event: Event) => {
@@ -162,7 +168,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
       target.style.removeProperty('--sv-acts-settle')
       restoreDuration(target)
     }
-    write(target, target.classList.toggle(className))
+    write(target, className, target.classList.toggle(className))
   }
 
   scope.addEventListener('click', onClick)

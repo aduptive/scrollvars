@@ -909,8 +909,14 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
     // open and never close. Drive the attribute in both directions instead,
     // and let styles/state.css keep the unknown element visible (the
     // documented open static panel).
+    // set/removeAttribute, never toggleAttribute: the engines that land in
+    // this branch are exactly the ones without <dialog> (Safari below 15.4,
+    // Firefox below 98), and Safari 11 / Firefox 60 to 62 are inside the
+    // README floor while predating toggleAttribute. There it would throw
+    // and React would tear the tree down.
     if (typeof dialog.showModal !== 'function') {
-      dialog.toggleAttribute('open', open)
+      if (open) dialog.setAttribute('open', '')
+      else dialog.removeAttribute('open')
       return
     }
     if (open && !dialog.open) dialog.showModal()
