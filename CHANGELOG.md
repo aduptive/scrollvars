@@ -1218,12 +1218,14 @@ Docs read against the code merged by the five round-5 code tickets.
   `scenes` greater than 1), and the `sv-spread` scrub recipe no longer
   reads as if `--sv-t` were always written.
 - The browser-support section documents `pin.css`'s own
-  `@supports not (translate: 0)` net: curtains and the deck already work
-  below the transform floor with no `compat()` call, `sv-rail` has no such
-  net.
-- The "below the floor nothing breaks" design rule is scoped to the
-  `compat()` case: a `sv-rail` below the floor without it clips its own
-  cards past the first viewport, the one documented exception.
+  `@supports not (translate: 0)` net: below the floor it keeps every pin
+  preset in flow and readable (curtains parted and static, deck unstacked,
+  `.sv-stage` back in flow), `sv-rail` included; `compat()` is what adds
+  the animation, the curtains and the rail travelling again, the deck
+  staying unstacked either way.
+- The "below the floor nothing breaks" design rule holds with or without
+  `compat()`: skip it and the page renders complete and static, call it
+  and the page animates instead.
 - `data-sv-off`, the driver-managed released twin of `html.sv-on`, is
   documented next to it in README and AGENTS: added on release, removed on
   re-track, settles every preset under it to the no-JS rendering; a

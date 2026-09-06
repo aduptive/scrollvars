@@ -60,12 +60,13 @@ to back off, or a click-driven `sv-acts` clock stays stuck at the finished
 state forever, while an unrelated scroll-revealed widget elsewhere on the
 same page correctly keeps that finished-state fallback. Any custom guard
 keyed on `html:not(.sv-on)` for something clicks alone can finish should add
-`:not(.sv-ui)` on the element itself, not on `html`. A released element (a
-settled `once` entry, an unmounted `<Track>`, a stopped `scan()`) gets the
-driver's own `data-sv-off` instead, the per-element released twin of
-`sv-on`: it settles every preset under it to the no-JS rendering and comes
-off the moment that element is tracked again; a released ancestor still
-holding a tracked descendant keeps waiting for it.
+`:not(.sv-ui)` on the element itself, not on `html`. A released element (an
+unmounted `<Track>`, a stopped `scan()`) gets the driver's own `data-sv-off`
+instead, the per-element released twin of `sv-on`: it settles every preset
+under it to the no-JS rendering and comes off the moment that element is
+tracked again; a released ancestor still holding a tracked descendant keeps
+waiting for it. A settled `once` entry never takes this marker: it keeps
+`sv-live` and the inline `--sv-live: 1`, live and untracked instead.
 
 ## Imports
 
@@ -135,7 +136,8 @@ in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
 a translate collapses them onto the center while `--sv-spread` is 0. Add
 `.sv-spread-in` to play on arrival (sv-live + stagger), or map the var to
-scrub: `.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }`.
+scrub (needs `travel: true` on the tracker): `.mine > * { --sv-spread:
+clamp(0, calc(var(--sv-t) * 2), 1) }`.
 Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 
 
@@ -224,7 +226,9 @@ a `toggles()`-driven widget), removing `sv-live` and re-adding it on the
 next frame replays the entrance system on demand; on a tracked (or
 released) element the driver pins `--sv-live` inline (outranks a rule of
 your own without `!important`), so re-tracking is what replays the entrance
-there instead. **Multi-act timed sequences**: `sv-acts` preset: a registered
+there instead. A settled `once` entry carries that inline value too,
+without being tracked or released, so neither trick replays it.
+**Multi-act timed sequences**: `sv-acts` preset: a registered
 custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
 Knobs: --sv-acts-count / --sv-acts-duration. Reversible (retargets, never

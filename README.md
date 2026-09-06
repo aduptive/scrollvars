@@ -133,11 +133,12 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 Derived by presets and components, not the driver: `--sv-r` (sv-range slice), `--sd` and `--sv-progress` (slider), `--sv-state` (toggles), `--sv-act` (sv-acts).
 <!-- vars:end -->
 
-Three of those outputs are opt-in, not written by default: `--sv-t` needs
+The opt-in outputs are not written by default: `--sv-t` needs
 `travel: true` (or `data-sv-travel`), `--sv-pin` needs `pin` (or
-`data-sv-pin`), `--sv-scene` needs `scenes` greater than 1 (or
-`data-sv-scenes="4"`). Skip the option and the driver never writes that
-variable.
+`data-sv-pin`), `--sv-scene` (and `--sv-scenes` next to it) needs `scenes`
+greater than 1 (or `data-sv-scenes="4"`), `--mx`/`--my` need the pointer
+module (`trackPointer()` / `usePointer`). Skip the option and the driver
+never writes that variable.
 
 Anything that reads them is a preset. The shipped ones:
 
@@ -211,13 +212,15 @@ Attributes: `data-sv` (track), `data-sv-once`, `data-sv-pin`, `data-sv-travel`,
 (vanilla: `scan()`).
 
 One more attribute is the driver's own, not yours to set: `data-sv-off`, the
-released twin of `html.sv-on`. It lands on a released element (a settled
-`once` entry, an unmounted `<Track>`, a stopped `scan()`) and comes off the
-moment that element is tracked again; it settles every preset under it to
-the no-JS rendering (curtains gone, deck unstacked, `sv-range` finished,
-`.sv-stage` back in flow). A released ancestor still holding a tracked
-descendant keeps waiting: it only takes the marker once nothing inside it
-is tracked any more.
+released twin of `html.sv-on`. It lands on a released element (an unmounted
+`<Track>`, a stopped `scan()`) and comes off the moment that element is
+tracked again; it settles every preset under it to the no-JS rendering
+(curtains gone, deck unstacked, `sv-range` finished, `.sv-stage` back in
+flow). A released ancestor still holding a tracked descendant keeps waiting:
+it only takes the marker once nothing inside it is tracked any more. A
+settled `once` entry never takes this marker either: it keeps `sv-live` and
+the inline `--sv-live: 1`, so it stays live and untracked instead of
+released.
 
 ## The fx gallery: copy-paste effects (+ shadcn-style CLI)
 
@@ -346,7 +349,9 @@ does not track (a hand-flipped `.sv`, a `toggles()`-driven widget), removing
 `sv-live` and adding it back on the next frame replays the whole entrance
 system on demand; on a tracked (or released) element the driver pins
 `--sv-live` inline, which outranks a rule of your own without `!important`,
-so re-tracking is what replays the entrance there instead. `:has()` puts
+so re-tracking is what replays the entrance there instead. A settled
+`once` entry carries that same inline value without being tracked or
+released, so neither trick replays it there. `:has()` puts
 state anywhere (`body:has(#tab-2:checked) .panel-2`); the Popover API
 opens/closes with zero JS. One-shot intros on load are plain CSS keyframes.
 Timed multi-act sequences are `sv-acts` (above); branching, physics or
@@ -489,19 +494,18 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, curtains and the deck already work on their own (see below); a `sv-rail` needs `compat()`, or its cards past the first viewport go unreachable |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps every pin preset in flow and readable, curtains parted and static (see below); `compat()` adds the curtains' and the rail's own scroll-linked movement, the deck stays unstacked either way |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
-Two of the pin presets need no `compat()` call at all: below the transform
-floor, `sv-curtain-l`/`sv-curtain-r` and `sv-deck` already work, because
-`styles/pin.css` carries its own `@supports not (translate: 0)` net that
-re-expresses the curtains with `transform:` and unstacks the deck to a
-static, non-overlapping layout. `sv-rail` has no such net (its `translate:`
-is the only thing that ever moves it): below that same floor, without
-`compat()`, a rail sits at its natural width inside a `.sv-stage` that
-still clips with `overflow: hidden`, so every card past the first viewport
-is there but unreachable.
+Below the transform floor, with JS still running, `styles/pin.css` carries
+its own `@supports not (translate: 0)` net for every pin preset: nothing
+overlaps, the curtains sit parted and static rather than animated, the deck
+unstacks to a static, non-overlapping layout, and the shared `.sv-stage`
+itself resets to flow so content stays in place and is readable, `sv-rail`
+included. What the net does not do is move anything: `compat()` is what
+gives the curtains and the rail their own scroll-linked travel again; the
+deck stays unstacked either way, its fly-away slice needs `clamp()`.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
@@ -535,11 +539,12 @@ Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
 (Safari 13.1); presets = individual transform properties (Chrome 104 /
 Firefox 78 / Safari 14.1); canvas harness adds IntersectionObserver
 (Safari 12.1); slider/pointer = Pointer Events (Safari 13). The design rule
-that makes the table safe for companies: **below the floor nothing breaks,
-once `compat()` is called.** The page renders complete and static; skip
-that call under a `sv-rail` and its cards past the first viewport are the
-one exception, clipped and unreachable (curtains and the deck need no call,
-see above). Animation is progressive enhancement, never a dependency.
+that makes the table safe for companies: **below the floor nothing
+breaks.** Skip `compat()` and the page renders complete and static, nothing
+overlapping or clipped (curtains parted, deck unstacked, `.sv-stage` back
+in flow, see above); call it and the page animates instead, on roughly
+Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive
+enhancement, never a dependency.
 
 ## License
 
