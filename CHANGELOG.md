@@ -149,6 +149,35 @@ wide, scrollWidth 500).
   and `--sv-slide` without firing `onSlide` for an index that never
   changed.
 
+### React
+- `useTrack`, `usePointer`, `useSlider` and `useCanvasEffect` now attach
+  through the ref itself instead of a mount-effect: the returned ref's
+  `current` is an accessor, so React's own attach/detach (any object with
+  a `current` property, unchanged between React 18 and 19) runs the
+  track/untrack. A conditionally rendered target that mounts after the
+  first render, or a node replaced by a new one, used to sit untracked
+  until an unrelated option changed forced the effect to rerun; both are
+  now tracked the moment the node attaches, and untracked on detach.
+  Option changes still retrack the current node. The ref type is declared
+  `React.RefObject<T>`, same as before.
+- `<Scenes pin>` now takes a string that wins over `height` and the
+  one-viewport-per-scene default (`pin="320vh"`), matching `<Track pin>`.
+  `pin={false}` still disables the pin helper.
+- `<ScrollVarsBoot nonce>`: forwarded to the pre-paint script tag, for a
+  strict CSP with no `'unsafe-inline'`. Additive, no existing prop changes.
+- `<ScrollVarsBoot>`'s debug overlay (`?sv-debug`) no longer mounts if the
+  component unmounts before its dynamic import resolves: the effect
+  cleanup now sets a `disposed` flag the import's callback checks first.
+- `useSlider`'s `handleRef` kept pointing at a destroyed `SliderHandle`
+  after the tracked node detached (a conditional unmount, a node swap):
+  `next()`, `prev()`, `goTo()` and `handle.current` on a detached slider
+  drove a dead container, including starting a new glide `requestAnimationFrame`
+  loop nothing could stop. The `useAttachedRef` cleanup now also sets
+  `handleRef.current = null` before destroying the handle. Checked every
+  other hook built on `useAttachedRef` for the same shape (`useCanvasEffect`,
+  `usePointer`): neither keeps a handle ref beside it, so only `useSlider`
+  needed the fix.
+
 ### CI
 - CI now proves the React layer on React 18, not only the React 19 the
   root installs: a new `test-react-18` job (`npm run test:react18`, also
