@@ -282,6 +282,36 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 0c-2. Reduced motion, dedicated fixtures: spread and tilt specificity ──
+// Round 5 finding: the spread entrance transition rule and the tilt
+// leave-transition rule both outrank the reduced-motion override on raw
+// selector specificity (extra classes), so a live preference switch used
+// to animate the very reset that is supposed to land instantly.
+{
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <div class="sv"><div class="sv-spread sv-spread-in"><div id="spreadChild">child</div></div></div>
+      <div class="sv-tilt sv-pointer-leave" id="tilt"></div>
+    </body></html>`)
+  const r = await page.evaluate(() => ({
+    spreadDuration: getComputedStyle(document.getElementById('spreadChild')).transitionDuration,
+    tiltProperty: getComputedStyle(document.getElementById('tilt')).transitionProperty,
+  }))
+  check(
+    `reduced motion: a live .sv-spread-in child's transition-duration is 0s, not the animating rule's duration (ADU-143)`,
+    r.spreadDuration === '0s',
+    r.spreadDuration
+  )
+  check(
+    `reduced motion: .sv-tilt.sv-pointer-leave's transition is none, not the leave rule's duration (ADU-143)`,
+    r.tiltProperty === 'none',
+    r.tiltProperty
+  )
+  await page.close()
+}
+
 // ── 0d. No JS, attribute-only markup: the counter renders DIGITS ──
 // The no-JS guard feeds --sv-int to [data-sv] markup as well as .sv, but the
 // digits themselves come from counter-reset + ::after: keyed on .sv alone,

@@ -168,7 +168,11 @@ html:not(.sv-on) .sv-spread > * {
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
-  .sv-spread > * {
+  /* Matches the animating rule's selector shape (line 127) so the override
+     ties on specificity and wins on source order, not just on the ambient
+     .sv-spread > * rule it also covers. */
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
     translate: none;
     rotate: none;
     transition: none;
@@ -527,7 +531,11 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 }
 
 @media (prefers-reduced-motion: reduce), (hover: none) {
-  .sv-tilt {
+  /* .sv-tilt.sv-pointer-leave (line 15) matches the plain .sv-tilt selector's
+     specificity here, so add it too: the override ties and wins on source
+     order instead of losing to the leave-transition rule's extra class. */
+  .sv-tilt,
+  .sv-tilt.sv-pointer-leave {
     transform: none;
     transition: none;
   }

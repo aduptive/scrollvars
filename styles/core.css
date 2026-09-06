@@ -164,7 +164,11 @@ html:not(.sv-on) .sv-spread > * {
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
-  .sv-spread > * {
+  /* Matches the animating rule's selector shape (line 127) so the override
+     ties on specificity and wins on source order, not just on the ambient
+     .sv-spread > * rule it also covers. */
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
     translate: none;
     rotate: none;
     transition: none;
