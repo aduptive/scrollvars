@@ -358,8 +358,32 @@ const classesIn = (pane) => [
       .filter(Boolean)
   ),
 ]
-// `.foo` in a selector, never `1.8s`, `hero.jpg` or `document.querySelector`
-const cssPaneClasses = (pane) => new Set([...pane.matchAll(/(?<![\w-])\.([a-z][\w-]*)/g)].map((m) => m[1]))
+// `.foo` in a selector, never `1.8s`, `hero.jpg` or `document.querySelector`,
+// and never a class that only a comment names: prose documents nothing
+const cssPaneClasses = (pane) => new Set([...stripComments(pane).matchAll(/(?<![\w-])\.([a-z][\w-]*)/g)].map((m) => m[1]))
+// Two flat sets of class names cannot tell `.stat::after` from
+// `.stat .count::after`, so either half of the defect above stays green on its
+// own: keep the rule on the dd with the span still in the markup and the number
+// is announced twice (with the suffix gone, `content` computing `counter(n) ""`);
+// keep the rule on the span and drop the span from the markup and the documented
+// HTML renders no number at all. A `counter()` rule is checked against the
+// element it prints on, not against a bag of names.
+const counterRules = (pane) =>
+  [...stripComments(pane).matchAll(/([^{}]*)\{([^{}]*)\}/g)]
+    .filter((m) => /(?<![\w-])content\s*:[^;}]*counter\(/.test(m[2]))
+    .map((m) => ({ sel: m[1].trim().split('\n').pop().trim(), cls: [...m[1].matchAll(/\.([\w-]+)/g)].pop()?.[1] }))
+// the classes the React tab hides from assistive tech: where generated digits
+// belong, next to a readable copy of the same value
+const hiddenClasses = (pane) =>
+  new Set(
+    [...stripComments(pane).matchAll(/<[a-zA-Z][^<>]*>/g)]
+      .map((m) => m[0])
+      .filter((tag) => /aria-hidden\s*=\s*(?:"true"|'true'|\{\s*true\s*\})/.test(tag))
+      .flatMap((tag) =>
+        [...tag.matchAll(/class(?:Name)?\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].flatMap((m) => (m[1] ?? m[2]).split(/\s+/))
+      )
+      .filter(Boolean)
+  )
 
 for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.react)) {
   test(`gallery ${fx.slug}: the CSS tab and the React tab document one markup`, () => {
@@ -378,6 +402,22 @@ for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.r
       .map((m) => m[1])
       .filter((c) => !rendered.has(c))
     assert.deepEqual(orphans, [], `the CSS tab generates content on .${orphans.join(', .')}, absent from the React tab`)
+    // and a counter prints on ONE element in both tabs: the class the CSS tab's
+    // own markup renders, and the class the React tab hides from AT
+    const shown = new Set(classesIn(fx.css))
+    const hidden = hiddenClasses(fx.react)
+    const misplaced = counterRules(fx.css).flatMap(({ sel, cls }) => {
+      const on = cls ? `.${cls}` : sel
+      if (!cls || !shown.has(cls))
+        return [`\`${sel}\` prints the counter on ${on}, which the CSS tab's own markup never renders`]
+      if (hidden.size && !hidden.has(cls))
+        return [
+          `\`${sel}\` prints the counter on ${on}, but the React tab hides ` +
+            `${[...hidden].map((c) => `.${c}`).join(', ')} from AT: the digits land on a box that already reads its value`,
+        ]
+      return []
+    })
+    assert.deepEqual(misplaced, [], misplaced.join('\n'))
   })
 }
 
