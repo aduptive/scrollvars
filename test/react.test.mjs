@@ -763,6 +763,88 @@ test('react: ScrollVarsBoot debug overlay never mounts if unmounted before the d
   assert.equal(appended, 0, 'the debug overlay never appended to document.body')
 })
 
+test('react: a Modal rendered open carries the open attribute in the SSR markup', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Modal } = await import('../dist/react/index.js')
+
+  // without this attribute the server markup is a CLOSED dialog: a no-JS or
+  // pre-hydration modal renders nothing, against README's "open ones open"
+  const open = renderToStaticMarkup(React.createElement(Modal, { open: true }, 'hello'))
+  assert.match(open, /<dialog[^>]*\sopen=""/)
+  assert.match(open, /hello/)
+
+  const closed = renderToStaticMarkup(React.createElement(Modal, { open: false }, 'hello'))
+  assert.doesNotMatch(closed, /\sopen=""/)
+})
+
+test('react: a Modal that mounts open ends up MODAL, not merely open', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Modal } = await import('../dist/react/index.js')
+
+  // a real <dialog>, modelled close enough to matter: `open` reflects the
+  // attribute both ways (react-dom may write either), showModal() throws on
+  // an already-open dialog exactly like the spec's InvalidStateError, and
+  // only it sets `modal` (the top layer). React sets the rendered attribute
+  // while it commits the element, before any effect runs, so this mount
+  // hands the effect the same DOM a hydrated server-rendered modal does.
+  let closeCalls = 0
+  const realCreate = global.document.createElement
+  global.document.createElement = (tag) => {
+    const el = realCreate(tag)
+    if (tag !== 'dialog') return el
+    el.modal = false
+    Object.defineProperty(el, 'open', {
+      configurable: true,
+      get: () => el.hasAttribute('open'),
+      set: (on) => (on ? el.setAttribute('open', '') : el.removeAttribute('open')),
+    })
+    el.showModal = () => {
+      if (el.hasAttribute('open')) throw new Error('InvalidStateError: showModal on an open dialog')
+      el.setAttribute('open', '')
+      el.modal = true
+    }
+    el.close = () => {
+      closeCalls++
+      el.removeAttribute('open')
+      el.modal = false
+    }
+    return el
+  }
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  try {
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: true }, 'hello'))
+    })
+    const dialog = container.firstChild
+    assert.equal(dialog.hasAttribute('open'), true, 'still open after mount')
+    assert.equal(dialog.modal, true, 'promoted into the top layer by showModal()')
+    // close() would fire a close event, and a controlled parent answers that
+    // by setting open back to false: the promotion drops the attribute instead
+    assert.equal(closeCalls, 0, 'nothing called close() while promoting')
+
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: false }, 'hello'))
+    })
+    assert.equal(closeCalls, 1, 'open={false} closes it')
+    assert.equal(dialog.modal, false, 'and it leaves the top layer')
+    assert.equal(dialog.hasAttribute('open'), false)
+
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: true }, 'hello'))
+    })
+    assert.equal(dialog.modal, true, 'and it can be opened again')
+  } finally {
+    global.document.createElement = realCreate
+    await act(async () => { root.unmount() })
+  }
+})
+
 test('react: Modal without <dialog> support opens AND closes through the attribute', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

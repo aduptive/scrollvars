@@ -738,6 +738,19 @@ wide, scrollWidth 500).
   other hook built on `useAttachedRef` for the same shape (`useCanvasEffect`,
   `usePointer`): neither keeps a handle ref beside it, so only `useSlider`
   needed the fix.
+- `<Modal open>` renders the `open` attribute: a modal that starts open is
+  now open in the server markup and stays open without JS and before
+  hydration (README, "open ones open"), instead of shipping a closed dialog.
+  On mount the effect removes that attribute and calls `showModal()`: a
+  dialog opened by the attribute is NOT modal, `showModal()` throws on an
+  open one, and the old `!dialog.open` guard skipped it and left it
+  non-modal. It removes the attribute rather than calling `close()`, which
+  fires a close event that a controlled parent answers by closing the modal
+  it just rendered open. The rendered attribute is frozen at the first
+  render, since from mount on the effect owns it and React writing it would
+  strip `open` off a modal dialog without taking it out of the top layer.
+  The no-`<dialog>` fallback path is unchanged, the attribute still tracks
+  state in both directions there. No new prop, no API change.
 
 ### CI
 - CI now proves the React layer on React 18, not only the React 19 the

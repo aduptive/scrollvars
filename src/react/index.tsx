@@ -925,6 +925,13 @@ export interface ModalProps extends React.DialogHTMLAttributes<HTMLDialogElement
 /** Native <dialog> + the sv-pop entry/exit preset. */
 export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children, ...rest }) => {
   const ref = useRef<HTMLDialogElement>(null)
+  // Rendered, so a modal that starts open IS open in the server markup and
+  // stays open before hydration and without JS (README: open ones open).
+  // Frozen at the first render on purpose: from mount on the effect owns the
+  // attribute, and React writing it would strip `open` off a modal dialog
+  // without taking it out of the top layer, leaving an invisible dialog that
+  // still blocks the page.
+  const initialOpen = useRef(open).current
 
   useEffect(() => {
     const dialog = ref.current
@@ -944,14 +951,24 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
       else dialog.removeAttribute('open')
       return
     }
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
+    if (open) {
+      // An `open` attribute (the server markup, or React's own first client
+      // render) leaves the dialog open but NOT modal, and showModal() throws
+      // on an open one: a `!dialog.open` guard would skip it and leave it
+      // non-modal forever. Drop the attribute, then promote it.
+      // removeAttribute, never close(): close() fires a close event, and a
+      // controlled parent answers that by setting open back to false, which
+      // closes the modal it just server-rendered open.
+      dialog.removeAttribute('open')
+      dialog.showModal()
+    } else if (dialog.open) dialog.close()
   }, [open])
 
   return (
     <dialog
       ref={ref}
       className={className ? `sv-pop ${className}` : 'sv-pop'}
+      open={initialOpen}
       onClose={onClose}
       {...rest}
     >
