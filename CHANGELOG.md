@@ -113,6 +113,17 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Tooling
+- `npm run demo:sync` is idempotent again: the bench page's inlined engine
+  marker was lazy on the content but only matched a fixed 3-newline gap
+  before `</script>`, and the replacement kept the fresh IIFE's own
+  trailing newline on top of that gap, so every run against a live driver
+  added one more blank line and `demo/bench/scrollvars.html` never
+  settled. The marker now consumes however many blank lines already
+  accumulated instead of a fixed count, so it self-heals instead of
+  drifting. `.github/workflows/ci.yml` and `.github/workflows/release.yml`
+  now include `demo/bench/scrollvars.html` in the generated-files gate.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
