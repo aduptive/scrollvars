@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 6.1 KB gzip as ESM; the fx/sv.js IIFE on these pages is 6.3 KB). Each effect below includes when to
+> (npm i scrollvars, 6.2 KB gzip as ESM; the fx/sv.js IIFE on these pages is 6.4 KB). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 

@@ -987,8 +987,11 @@ against the code ADU-129 to ADU-132 shipped.
 - Precedence, on tracked elements only: `--sv-live` is now an INLINE
   declaration, and inline outranks every non-important author rule. A rule
   of your own that lifts the flag (`#hero.sv { --sv-live: 1 }`) loses to
-  the driver from the first frame it measures, and the "remove `sv-live`,
-  add it back next frame and the entrance replays" trick now works only on
+  the driver from the first frame its live state changes (`writeLive()`
+  runs on a live-state transition or a class disagreement, so an element
+  that never enters the band never gets the inline flag), and the "remove
+  `sv-live`, add it back next frame and the entrance replays" trick now
+  works only on
   elements the driver does not track (a hand-flipped `.sv`, a
   `toggles()`-driven widget). On a tracked element the driver owns the
   flag: re-tracking replays the entrance instead.
@@ -1028,6 +1031,33 @@ against the code ADU-129 to ADU-132 shipped.
   `:is()` throws away the whole selector list, and Firefox 72 to 77 is
   inside the supported floor and not covered by the `@supports` block
   below.
+- Second pass (verifier findings in Chrome on ce777d0): the marker is read
+  as `[data-sv-off] X`, which matches through ANY depth, so a released
+  ANCESTOR settled every preset under a descendant whose clock was still
+  running. `track(outer)`, `track(inner, { pin: true })`, `untrack(outer)`
+  left the inner tracker writing `--sv-pin` into a stage flipped back to
+  `position: static`, curtains at `display: none` and a deck unstacked.
+  Nested trackers are a first-class pattern here (the nearest tracker, not
+  any live ancestor, owns spread), and `:has()` is far above the supported
+  floor, so the driver keeps the marker honest instead: `releaseEntry()`
+  marks an element only once nothing tracked is left inside it, and each
+  release settles the ancestors that were waiting on it, since `stopScan()`
+  releases an outer tracker before its inner one. `track()` strips the
+  marker off the whole ancestor chain, not only off its own element, so a
+  section re-mounting under a released one does not run its clock against
+  presets already settled static.
+- The `.sv-spread` twin fires when the tracked element IS the spread
+  container too. Its no-JS guard (`html:not(.sv-on) .sv-spread > *`)
+  requires no tracker ancestor, while the twin was a descendant combinator
+  and needed a separate marked ancestor: with the documented scrub idiom on
+  the container itself (`<div class="sv sv-spread" data-sv data-sv-travel>`)
+  a released spread stayed at `translate: calc(100% + 16px)`,
+  `rotate: 5deg`, where no JS gives `none`. Both guards with no ancestor
+  requirement now carry the second marker position too
+  (`.sv-spread[data-sv-off] > *`, `.sv-stage[data-sv-off]`), as plain comma
+  lists rather than `:is()`. The audit compares each twin's ANCESTOR SHAPE
+  with its guard's instead of stripping a selector prefix, and reads every
+  file in `styles/`, not the two that carry guards today.
 - `styles/pin.css` carries an `@supports not (translate: 0)` block: with
   JavaScript on and no `compat()` call, an engine without individual
   transform properties (Chrome below 104, Firefox below 72, Safari below

@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.5 KB gzip · full core 6.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.6 KB gzip · full core 6.2 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3244,6 +3244,28 @@ var SV = (() => {
     if (!stillNeeded(target))
       resizeObserver?.unobserve(target);
   }
+  var deferredOff = /* @__PURE__ */ new Set();
+  function containsTracked(el) {
+    for (const other of entries.values())
+      if (other.el === el || el.contains?.(other.el))
+        return true;
+    return false;
+  }
+  function markReleased(el) {
+    deferredOff.add(el);
+    deferredOff.forEach((waiting) => {
+      if (containsTracked(waiting))
+        return;
+      deferredOff.delete(waiting);
+      waiting.setAttribute("data-sv-off", "");
+    });
+  }
+  function clearReleased(el) {
+    for (let node = el; node; node = node.parentElement) {
+      deferredOff.delete(node);
+      node.removeAttribute?.("data-sv-off");
+    }
+  }
   function releaseEntry(entry) {
     const { el } = entry;
     entries.delete(el);
@@ -3257,7 +3279,7 @@ var SV = (() => {
       el.style.removeProperty?.(name);
     el.style.removeProperty?.("--sv-scenes");
     el.style.setProperty?.("--sv-live", "1");
-    el.setAttribute("data-sv-off", "");
+    markReleased(el);
   }
   function track(el, opts = {}) {
     init();
@@ -3269,7 +3291,7 @@ var SV = (() => {
       releaseEntry(existing);
     el.style.removeProperty?.("--sv-live");
     el.classList.remove("sv-live");
-    el.removeAttribute("data-sv-off");
+    clearReleased(el);
     const entry = {
       el,
       opts,

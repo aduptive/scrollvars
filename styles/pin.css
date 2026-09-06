@@ -157,8 +157,8 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
    `data-sv-off` and each guard above gets the twin below, same static
    rendering as no JS. Each twin is its OWN rule: a parser without `:is()`
    (Firefox below 78) drops the whole selector list it would share. */
-/* Two marker positions, like the no-JS guard's two: `html:not(.sv-on)`
-   demands no tracker ancestor, so the released element can BE the target. */
+/* Two marker positions: that guard needs no tracker ancestor either, so the
+   released element can BE the stage. */
 [data-sv-off] .sv-stage,
 .sv-stage[data-sv-off] {
   position: static;

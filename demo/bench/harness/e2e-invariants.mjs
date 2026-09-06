@@ -661,6 +661,168 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3d bis. Release with the tracker ON the .sv-spread container (ADU-140,
+// round 3 finding 2). The no-JS guard `html:not(.sv-on) .sv-spread > *` needs
+// no tracker ancestor, and the documented scrub idiom puts `.sv` and the
+// data-sv attributes on the spread container itself, so the release marker
+// lands on the .sv-spread. A descendant-only twin can never fire there, and
+// the cards stayed fanned into an overlapping stack where no JS gives none ──
+{
+  const SPREAD_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .card { padding: 1rem; background: #333; color: #fff }
+      /* the scrub idiom styles/core.css documents, on the tracked element */
+      #spread > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1) }
+    </style></head>
+    <body>
+      <div style="height:120vh">above the fold</div>
+      <div class="sv sv-spread" data-sv data-sv-travel id="spread">
+        <div class="card" id="spread-card" style="--sv-order:0">a</div>
+        <div class="card" style="--sv-order:1">b</div>
+        <div class="card" style="--sv-order:2">c</div>
+      </div>
+    </body></html>`
+  const SPREAD_PROBE = () => {
+    const cs = getComputedStyle(document.querySelector('#spread-card'))
+    return `translate=${cs.translate} rotate=${cs.rotate}`
+  }
+  const noJs = await browser.newPage()
+  await noJs.setJavaScriptEnabled(false)
+  await noJs.setContent(SPREAD_FIXTURE)
+  const spreadBaseline = await noJs.evaluate(SPREAD_PROBE)
+  await noJs.close()
+
+  const page = await browser.newPage()
+  await page.setContent(SPREAD_FIXTURE)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan = SV.scan()
+    await frame()
+    scrollTo(0, innerHeight * 0.6) // mid-travel: the cards sit part-way out
+    await frame()
+  })
+  const spreadDriven = await page.evaluate(SPREAD_PROBE)
+  check(
+    'released spread: the scrub idiom on the container really does fan the cards while the driver runs',
+    spreadDriven !== spreadBaseline,
+    `identical to the no-JS page already: ${spreadDriven}`
+  )
+  const spreadReleased = await page.evaluate(async () => {
+    window.__stopScan()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+    return document.querySelector('#spread').hasAttribute('data-sv-off')
+  })
+  check('released spread: the marker lands on the tracked .sv-spread itself', spreadReleased, 'no data-sv-off on #spread')
+  const spreadAfter = await page.evaluate(SPREAD_PROBE)
+  check(
+    'released spread: a released .sv-spread container settles its cards exactly as with no JS',
+    spreadAfter === spreadBaseline,
+    `released[${spreadAfter}] noJS[${spreadBaseline}]`
+  )
+  await page.close()
+}
+
+// ── 3e. A released ancestor must not settle a still-tracked descendant
+// (ADU-140, round 3 finding 1). `[data-sv-off] X` matches through ANY depth
+// and nested trackers are a first-class pattern (invariant 4 below: the
+// NEAREST tracker owns spread), so releasing an outer tracker flipped the
+// inner one's stage, curtains and deck to their static rendering while its
+// pin clock kept writing --sv-pin ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      .card { padding: 2rem; background: #333; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv id="outer">
+        <div class="sv" data-sv id="inner">
+          <div class="sv-stage" id="stage">
+            <div>revealed content</div>
+            <div class="panel sv-curtain-l" id="curtain-l">left</div>
+            <div class="sv-deck" id="deck" style="--sv-count:3">
+              <div class="card" id="card">one</div><div class="card">two</div><div class="card">three</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const NESTED_SIGNATURE = () => {
+    const read = (sel, props) => {
+      const cs = getComputedStyle(document.querySelector(sel))
+      return props.map((p) => `${p}=${cs.getPropertyValue(p).trim()}`).join(' ')
+    }
+    return {
+      pin: read('#inner', ['--sv-pin']),
+      stage: read('#stage', ['position', 'height', 'overflow']),
+      curtain: read('#curtain-l', ['display', 'translate']),
+      deck: read('#deck', ['display']),
+      card: read('#card', ['translate', 'rotate', 'scale']),
+    }
+  }
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopOuter = SV.track(document.querySelector('#outer'), {})
+    window.__stopInner = SV.track(document.querySelector('#inner'), { pin: '300vh' })
+    await frame()
+    scrollTo(0, innerHeight) // into the inner tracker's pinned stretch: every clock mid-flight
+    await frame()
+  })
+  const both = await page.evaluate(NESTED_SIGNATURE)
+  const clock = Number(both.pin.split('=')[1])
+  check(
+    'nested release: the inner tracker really is mid-flight before the outer one is released',
+    clock > 0 && clock < 1 && both.stage.includes('position=sticky'),
+    `${both.pin} | ${both.stage}`
+  )
+  await page.evaluate(async () => {
+    window.__stopOuter() // the ancestor goes, the descendant keeps tracking
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+  })
+  const afterOuter = await page.evaluate(NESTED_SIGNATURE)
+  const moved = Object.keys(both).filter((key) => both[key] !== afterOuter[key])
+  check(
+    'nested release: releasing an outer tracker leaves a still-tracked descendant rendering exactly as before',
+    moved.length === 0,
+    moved.map((key) => `${key}: after[${afterOuter[key]}] before[${both[key]}]`).join(' | ')
+  )
+  const marks = await page.evaluate(() => ({
+    outer: document.querySelector('#outer').hasAttribute('data-sv-off'),
+    inner: document.querySelector('#inner').hasAttribute('data-sv-off'),
+  }))
+  check(
+    'nested release: the released ancestor holds its marker back while a descendant is still tracked',
+    !marks.outer && !marks.inner,
+    `outer=${marks.outer} inner=${marks.inner}`
+  )
+  // and the ancestor was WAITING, not skipped: stopScan() releases the outer
+  // tracker first, so the marker has to land when the inner one goes too
+  const settled = await page.evaluate(async () => {
+    window.__stopInner()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    return {
+      outer: document.querySelector('#outer').hasAttribute('data-sv-off'),
+      inner: document.querySelector('#inner').hasAttribute('data-sv-off'),
+      stage: getComputedStyle(document.querySelector('#stage')).position,
+      curtain: getComputedStyle(document.querySelector('#curtain-l')).display,
+    }
+  })
+  check(
+    'nested release: releasing the descendant settles it AND the ancestor that was waiting on it',
+    settled.outer && settled.inner && settled.stage === 'static' && settled.curtain === 'none',
+    JSON.stringify(settled)
+  )
+  await page.close()
+}
+
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
 {
   const page = await browser.newPage()
