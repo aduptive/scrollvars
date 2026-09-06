@@ -139,21 +139,20 @@
  * pinned at an inflated 450x225 at dpr 1.5 instead of the true 300x150).
  *
  * The design anchors every pin, and every free-axis derivation below, to
- * values captured on the very FIRST `applySize()` call (mount), before this
- * harness ever writes anything: `anchor`, the CSS content size the
- * author's own CSS and attributes already produced, and `ratio0` (from
- * `w0`/`h0`), the ORIGINAL width/height attribute ratio. The causal probe
- * itself now runs BEFORE this pass's own write, on `w0`/`h0` specifically,
- * never on this harness's own evolving backing store: at mount the two are
- * the same value, but on any LATER pass probing the evolving store instead
- * can itself misread a cap relationship once the cap later changes (a cap
+ * `w0`/`h0`, the canvas's ORIGINAL width/height attributes captured on the
+ * very FIRST `applySize()` call (mount), before this harness ever writes
+ * anything; `ratio0` is their ratio. The causal probe itself runs BEFORE
+ * this pass's own write, on `w0`/`h0` specifically, never on this
+ * harness's own evolving backing store: at mount the two are the same
+ * value, but on any LATER pass probing the evolving store instead can
+ * itself misread a cap relationship once the cap later changes (a cap
  * that widened past what the shrunk, already-DPR-scaled store's own
  * doubling would reveal read as a false follow in testing). The probe never
  * runs again once a canvas is pinned. When width follows, `style.width` is
- * set to `anchor.width` (never a later pass's own, possibly already-nudged
- * size) and `style.aspectRatio` to `w0 / h0`, so the CSS engine derives
- * height directly from the ORIGINAL attribute ratio from then on, never
- * through this harness's own rounded backing-store attributes again.
+ * set to `w0` (never a measurement, see the twelfth pass below) and
+ * `style.aspectRatio` to `w0 / h0`, so the CSS engine derives height
+ * directly from the ORIGINAL attribute ratio from then on, never through
+ * this harness's own rounded backing-store attributes again.
  *
  * For a canvas that stays unpinned (CSS-sized, or a cap already binding), a
  * SECOND kind of probe, two single-axis perturbations (width alone, then
@@ -186,51 +185,34 @@
  * natural size doubles or halves the SAME, never DPR-inflated pair every
  * time, so it reads as CSS-sized at every DPR in that range; a cap ABOVE
  * the natural size still only starts to bind once doubling `w0`/`h0`
- * pushes past it, and pins at the anchor, never an already-inflated write.
- * It does NOT remove the tenth pass's dpr-BELOW-1 case, and should not: at
- * dpr 1 and above, `round(cap * dpr) >= cap` always, so this harness's own
- * write never drops the attribute below the cap either, genuinely never
- * pinned; below dpr 1 the write CAN itself land below the cap, unclamping
- * it for real, exactly the risk the mount-time probe (on `w0`/`h0`, never
- * a DPR-scaled value, on purpose) cannot see coming. A SEPARATE escape
- * check, right after computing each pass's own candidate write (below),
- * reuses the SAME causal growth check against THAT candidate instead of
- * `w0`/`h0`, and catches it there: if doubling the candidate itself still
- * reads capped, nothing escaped, safe to commit as is; if the candidate
- * now reads as following its own attribute, this canvas is pinned instead,
- * at the size actually measured THIS pass, before the candidate write.
- * Unlike the tenth pass, this does not also over-pin at EXACTLY dpr 1
- * (`round(cap * 1) = cap`, doubling that stays clamped both times, the
- * narrow "harmless over-pin" boundary case the tenth pass documented): a
- * genuine improvement, not just a port of the old behavior. One narrow
- * limitation remains in the mount-time probe specifically, inherited from
- * its own halving fallback's exactness requirement: a cap strictly
- * BETWEEN half the natural size and the natural size itself can still
- * read as a false follow if it changes AFTER this canvas was already
- * found sized (halving `w0` alone can land inside that exact gap, below
- * the new cap, while `w0` itself stays above it); a cap that starts, or
- * stays, at or below half the natural size, or above the natural size
- * entirely, is unaffected. Documented, not fixed in this pass.
+ * pushes past it. It does NOT remove the tenth pass's dpr-BELOW-1 case,
+ * and should not: at dpr 1 and above, `round(cap * dpr) >= cap` always, so
+ * this harness's own write never drops the attribute below the cap either,
+ * genuinely never pinned; below dpr 1 the write CAN itself land below the
+ * cap, unclamping it for real, exactly the risk the mount-time probe (on
+ * `w0`/`h0`, never a DPR-scaled value, on purpose) cannot see coming. An
+ * escape check, kept through the twelfth pass below (see there for why),
+ * catches that one case specifically.
  *
- * When width follows, `applySize()` pins the WIDTH ONLY, forcing
- * `box-sizing: content-box` so an author's border-box declaration cannot
- * reinterpret the pinned number as a smaller content box. `style.height`
- * is left untouched: `aspect-ratio` above is what keeps height correct now,
- * not an unpinned height tracking this harness's own attribute ratio the
- * way the ninth and tenth passes relied on. A canvas with a genuine CSS
- * height and no CSS width reads as CSS-sized on the width-follows probe too
- * (its width is ratio-derived from that fixed height, and the ratio is
- * exactly what the probe's proportional doubling leaves alone): there is no
- * loop on that axis, so, correctly, nothing is pinned there either.
- * Otherwise `applySize()` does nothing further: the canvas already has full
- * control of its own size. The context transform (`ctx.setTransform`, the
- * 2D context's DPR scale) is applied AFTER every probe runs, so a pin never
- * leaves a stale scale behind. Every probe runs only inside `applySize()`
- * (a ResizeObserver callback or a DPR change), never once per animation
- * frame, and never again once pinned or dead-banded; setting an attribute
- * momentarily and back also clears the bitmap, same as any width/height
- * write, but the frame callback repaints on every resize regardless, so
- * this is free.
+ * When width follows, `applySize()` pins the WIDTH ONLY, at `w0` (the
+ * twelfth pass; see below), forcing `box-sizing: content-box` so an
+ * author's border-box declaration cannot reinterpret the pinned number as
+ * a smaller content box. `style.height` is left untouched: `aspect-ratio`
+ * above is what keeps height correct now, not an unpinned height tracking
+ * this harness's own attribute ratio the way the ninth and tenth passes
+ * relied on. A canvas with a genuine CSS height and no CSS width reads as
+ * CSS-sized on the width-follows probe too (its width is ratio-derived
+ * from that fixed height, and the ratio is exactly what the probe's
+ * proportional doubling leaves alone): there is no loop on that axis, so,
+ * correctly, nothing is pinned there either. Otherwise `applySize()` does
+ * nothing further: the canvas already has full control of its own size.
+ * The context transform (`ctx.setTransform`, the 2D context's DPR scale)
+ * is applied AFTER every probe runs, so a pin never leaves a stale scale
+ * behind. Every probe runs only inside `applySize()` (a ResizeObserver
+ * callback or a DPR change), never once per animation frame, and never
+ * again once pinned or dead-banded; setting an attribute momentarily and
+ * back also clears the bitmap, same as any width/height write, but the
+ * frame callback repaints on every resize regardless, so this is free.
  *
  * A pinned canvas's own pin write changes its layout box, so it fires one
  * more ResizeObserver entry; that entry takes the normal path above, probe
@@ -254,6 +236,50 @@
  * bit-exact, a transform never touches it) and reuses that on the
  * DPR-change path; only before the first entry has ever arrived does it
  * fall back to the rect read, same as before.
+ *
+ * (twelfth pass) Two more verifier findings, both on the eleventh pass's
+ * pin, showed it pinned the wrong thing. Finding 1: the pin used
+ * `anchor.width`, the CSS content size MEASURED at the moment this canvas
+ * was judged unsized, which, for a canvas whose cap was already binding
+ * right then, IS the capped value, not the natural one (a `max-width:120px`
+ * cap on a natural-300 canvas pinned at 120). Fixed at that measured value
+ * forever, the box never grew back when the cap later widened or the
+ * percentage cap's container grew: a symptom the eleventh pass documented
+ * as "the gap" limitation was really this bug wearing a different value.
+ * Finding 2: `style.aspectRatio` was set unconditionally to `w0 / h0`,
+ * silently overriding an author's own `aspect-ratio` (a square 300x300
+ * canvas with `aspect-ratio: 1` snapped to 2:1 on mount).
+ *
+ * The fix is simpler than the mechanism it replaces: an unsized canvas
+ * wants its intrinsic size, which is the attribute size in CSS px, `w0` by
+ * `h0`, and nothing measured. `style.width` is pinned to `w0` (never a
+ * measurement, whatever this pass's or an earlier pass's own cap
+ * relationship happened to read), and `style.aspectRatio` to `w0 / h0`
+ * ONLY when `getComputedStyle(canvas).aspectRatio` is still `'auto'`, so
+ * an authored ratio is kept, not overridden. CSS caps then clamp `w0`
+ * exactly as they always clamp an intrinsic size, LIVE: a `max-width`
+ * that widens or narrows, or a percentage cap in a container that resizes,
+ * moves the box with it, at mount and on every later change, no different
+ * from an ordinary CSS-sized element under the same cap. The backing store
+ * keeps writing from the measured content box on every entry, same as
+ * before (the dead band still applies), so a capped box gets the cap times
+ * DPR, crisp.
+ *
+ * This removes the eleventh pass's "gap" limitation outright: it existed
+ * only because the pin froze at a measured value a cap could later escape;
+ * pinned at `w0`, there is no stale value to escape from. It does NOT
+ * remove the escape check (DPR below 1 landing this pass's own candidate
+ * write below a cap the mount-time `w0`/`h0` probe cannot see because the
+ * cap sits below half `w0`, its own separate blind spot, unrelated to the
+ * gap): a test proved that case still shrinks unboundedly without it, so
+ * it stays, just retargeted to pin at `w0` like every other pin here
+ * instead of the candidate value.
+ *
+ * Stated plainly: an unsized canvas renders at its attribute size in CSS
+ * pixels, with a device-pixel backing store for a crisp bitmap. CSS caps
+ * and percentages still apply on top of that size, exactly as they would
+ * on any other element. Give a canvas real CSS dimensions to size it any
+ * other way.
  */
 
 export interface EffectFrame {
