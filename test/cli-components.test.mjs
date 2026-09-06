@@ -123,6 +123,39 @@ for (const fx of EFFECTS) {
   writeFileSync(join(tscDir, file), content)
   tscFiles.push(file)
 }
+// ADU-120: a consumer using each ref-returning hook in the natural idiom
+// (`const ref = usePointer<HTMLDivElement>(); return <div ref={ref} />`, no
+// `as React.RefObject<T>` cast) must type-check under both majors. The four
+// EFFECTS fixtures above still cast at the JSX ref site (ADU-108, added
+// before ADU-106 tightened every hook's declared return type to
+// `React.RefObject<T>`); this fixture proves the cast is no longer required.
+const HOOK_REF_IDIOMS_FILE = 'HookRefIdioms.tsx'
+const HOOK_REF_IDIOMS_CONTENT = `import * as React from 'react'
+import { useCanvasEffect, usePointer, useScenes, useSlider, useTrack } from 'scrollvars/react'
+
+function PointerIdiom() {
+  const ref = usePointer<HTMLDivElement>()
+  return <div ref={ref} />
+}
+function TrackIdiom() {
+  const ref = useTrack<HTMLDivElement>()
+  return <div ref={ref} />
+}
+function ScenesIdiom() {
+  const { ref } = useScenes<HTMLDivElement>(3)
+  return <div ref={ref} />
+}
+function CanvasEffectIdiom() {
+  const ref = useCanvasEffect({ frame: () => {} })
+  return <canvas ref={ref} />
+}
+function SliderIdiom() {
+  const { ref } = useSlider()
+  return <div ref={ref} />
+}
+`
+writeFileSync(join(tscDir, HOOK_REF_IDIOMS_FILE), HOOK_REF_IDIOMS_CONTENT)
+tscFiles.push(HOOK_REF_IDIOMS_FILE)
 if (NEEDS_STUB.gsap) {
   writeFileSync(join(tscDir, 'gsap.d.ts'), AMBIENT_GSAP)
   tscFiles.push('gsap.d.ts')
@@ -212,6 +245,11 @@ test('tsc gate fails the suite on any tsc error, attributed or not', () => {
     `tsc exited non-zero over the installed fixtures (${allTscErrorLines.length} error(s), ` +
       `${attributedTscErrorCount} attributed to a fixture file); raw output:\n${tscOutput}`
   )
+})
+
+test('consumer-idiom hook refs (no cast) type-check under the installed React major', () => {
+  const errors = tscErrorsByFile.get(HOOK_REF_IDIOMS_FILE) ?? []
+  assert.deepEqual(errors, [], `${HOOK_REF_IDIOMS_FILE} fails to type-check:\n${errors.join('\n')}`)
 })
 
 for (const fx of EFFECTS) {
