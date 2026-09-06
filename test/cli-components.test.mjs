@@ -165,11 +165,10 @@ try {
   tscFailed = true
   tscOutput = (err.stdout || '') + (err.stderr || '')
 }
-// Every line tsc calls an error, not just the ones this regex can attribute
-// to a fixture file: a config-level failure (a bad compilerOption, say)
-// prints as `tsconfig.json(9,25): error TS6046: ...`, which never matches
-// `<name>.tsx(line,col)` and would otherwise leave every fixture believing
-// it "type-checks: pass" while tsc never actually checked any of them.
+// Attribution is for the nicer per-fixture message only (below), never the
+// gate itself: a config-level failure (a bad compilerOption, say) prints as
+// `tsconfig.json(9,25): error TS6046: ...`, which never matches the per-file
+// `<name>.tsx(line,col)` regex and is simply unattributed here.
 const allTscErrorLines = tscOutput.split('\n').filter((line) => /error TS\d+/.test(line))
 const tscErrorsByFile = new Map()
 for (const line of allTscErrorLines) {
@@ -178,17 +177,23 @@ for (const line of allTscErrorLines) {
 }
 const attributedTscErrorCount = [...tscErrorsByFile.values()].reduce((n, lines) => n + lines.length, 0)
 
-test('tsc gate is not vacuous under a config-level error', () => {
-  if (!tscFailed) return // tsc succeeded outright, nothing to attribute
-  assert.ok(
-    attributedTscErrorCount > 0,
-    `tsc exited non-zero but produced no per-file diagnostics (a config-level error?); raw output:\n${tscOutput}`
-  )
+// This is the real gate: fail the whole file on ANY non-zero tsc exit, no
+// matter how (or whether) the diagnostics get attributed to a fixture file.
+// The per-fixture attribution below is only a nicer message on top of this;
+// it is not itself the gate. A prior version asserted only that attribution
+// was internally consistent (every error line matched some file), which
+// missed diagnostics attributed to a file nothing here asserts on: the
+// ambient stubs `gsap.d.ts` / `three.d.ts` are compiled in scope (needed to
+// exercise gsap-scrub/three-scene) but are not one of the EFFECTS fixtures,
+// so a syntax error injected into AMBIENT_GSAP/AMBIENT_THREE attributed
+// cleanly to `gsap.d.ts(line,col)` and passed every fixture test and the old
+// meta-test alike, with tsc having exited 1 the whole time.
+test('tsc gate fails the suite on any tsc error, attributed or not', () => {
   assert.equal(
-    allTscErrorLines.length,
-    attributedTscErrorCount,
-    `tsc reported ${allTscErrorLines.length} error(s) but only ${attributedTscErrorCount} were attributed to a fixture ` +
-      `file; the rest would pass every fixture silently. Raw output:\n${tscOutput}`
+    tscFailed,
+    false,
+    `tsc exited non-zero over the installed fixtures (${allTscErrorLines.length} error(s), ` +
+      `${attributedTscErrorCount} attributed to a fixture file); raw output:\n${tscOutput}`
   )
 })
 

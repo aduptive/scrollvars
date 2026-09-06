@@ -168,6 +168,23 @@ findings on the same round): three more defects fixed.
   exported from `scrollvars`). Both now inline the sr-only style object
   literal at the point of use.
 
+### Installed components (blind review round 3, third pass)
+- The second pass's `tsc` gate fix counted every `error TS\d+` line against
+  the lines it could attribute to a fixture file, but the ambient stubs
+  `gsap.d.ts` / `three.d.ts` compile in the same scope (needed to
+  type-check `gsap-scrub`/`three-scene`) and are not one of the EFFECTS
+  fixtures the per-file loop asserts on: a syntax error injected into
+  `AMBIENT_GSAP` attributed cleanly to `gsap.d.ts(line,col)`, so the count
+  matched, the "not vacuous" meta-test passed, and all 17 fixture tests
+  reported "type-checks: pass" while tsc had exited 1 the whole time. The
+  gate now fails the whole test file on any non-zero tsc exit, no matter
+  how the diagnostics are attributed, printing the raw output; per-fixture
+  attribution stays for the nicer message. Proved red by injecting a
+  syntax error into the ambient stub (the gate failed with the raw
+  `gsap.d.ts` diagnostics, every fixture test still green), green again
+  after removing it; a per-file error (injected into `marquee`) still
+  fails only that fixture's test plus the file-level gate.
+
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
   marker was lazy on the content but only matched a fixed 3-newline gap
