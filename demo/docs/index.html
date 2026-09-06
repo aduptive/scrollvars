@@ -325,6 +325,15 @@ findings on the same round): three more defects fixed.
   <code>transition-duration</code> or the whole <code>transition</code> shorthand on <code>.sv-acts</code>
   at higher specificity than the preset's own rule still owns the settle
   timing (styles/state.css).
+<ul><li>Sixth pass: the whole settle (<code>--sv-acts-settle</code> and the inline</li></ul>
+  <code>transition-duration</code> hold) now only runs on <code>.sv-acts</code> targets, gated
+  only on <code>sv-ui</code> before. <code>getPropertyValue('transition-duration')</code> cannot
+  tell an authored longhand from the browser's own expansion of an
+  unrelated inline <code>transition</code> shorthand, so a plain toggle target with
+  one (this module's own <code>&lt;nav id="menu"></code> example, most of the time) had
+  it forced to <code>0s</code> for two frames regardless, snapping any change to it
+  that landed inside the window instead of animating. A target that is not
+  <code>.sv-acts</code> still gets <code>sv-ui</code>, nothing else.
 
 ### Compat
 <ul><li><code>compat()</code>'s fallback stylesheet gets a <code>transform:</code>-based <code>sv-deck</code></li></ul>

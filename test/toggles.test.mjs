@@ -156,6 +156,7 @@ test('toggles: sets --sv-acts-settle with the class at boot, removes it after tw
   const { toggles } = await import('../dist/core/toggles.js?sv-ui-settle')
 
   const menu = makeElement()
+  menu.classes.add('sv-acts') // the settle only runs on .sv-acts targets (ADU-104, round 6)
   const a = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' }) // shares the same target as a
   const root = {
@@ -189,6 +190,7 @@ test('toggles: an inline transition-duration longhand is held at 0s for the sett
   const { toggles } = await import('../dist/core/toggles.js?sv-ui-longhand-settle')
 
   const menu = makeElement()
+  menu.classes.add('sv-acts') // the settle only runs on .sv-acts targets (ADU-104, round 6)
   // as if parsed from style="transition-duration: 400ms !important": the
   // priority matters here too, not just the value
   menu.style.setProperty('transition-duration', '400ms', 'important')
@@ -214,6 +216,39 @@ test('toggles: an inline transition-duration longhand is held at 0s for the sett
   assert.equal(menu.priorities['transition-duration'], 'important', 'restored with its exact original priority')
 })
 
+test('toggles: a target without .sv-acts never gets the settle, even carrying an inline transition shorthand (ADU-104, round 6 finding)', async () => {
+  global.window = {}
+  const rafQueue = []
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  const { toggles } = await import('../dist/core/toggles.js?sv-ui-non-acts-settle')
+
+  const menu = makeElement() // no 'sv-acts' class: a plain toggle target
+  // stands in for style="transition: translate 300ms linear": the longhand
+  // getter reads this back as '300ms' too, indistinguishable from an
+  // authored transition-duration (ADU-104, round 6 finding). The settle
+  // must not even look at this: gated on .sv-acts before it ever reaches
+  // holdDuration()
+  menu.style.setProperty('transition-duration', '300ms')
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const root = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [trigger] : []),
+  }
+
+  toggles(root)
+  assert.ok(menu.classes.has('sv-ui'), 'still marked sv-ui, same as any other target')
+  assert.ok(!menu.classes.has('sv-acts'), 'sanity: this target really is not .sv-acts')
+  assert.equal(menu.vars['--sv-acts-settle'], undefined, 'no .sv-acts: the settle knob is never set')
+  assert.equal(
+    menu.vars['transition-duration'],
+    '300ms',
+    'unchanged: holdDuration() never runs on a non-.sv-acts target, whatever this reads back as'
+  )
+  assert.equal(rafQueue.length, 0, 'no restore ever scheduled for a non-.sv-acts target')
+})
+
 test('toggles: a click inside the boot settle window drops the hold immediately, so the toggle still animates', async () => {
   global.window = {}
   const rafQueue = []
@@ -221,6 +256,7 @@ test('toggles: a click inside the boot settle window drops the hold immediately,
   const { toggles } = await import('../dist/core/toggles.js?sv-ui-settle-click')
 
   const menu = makeElement()
+  menu.classes.add('sv-acts') // the settle only runs on .sv-acts targets (ADU-104, round 6)
   menu.style.setProperty('transition-duration', '250ms') // inline longhand, no !important this time
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const listeners = {}

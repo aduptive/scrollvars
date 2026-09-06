@@ -329,7 +329,16 @@ const MIN_EXAMINED = 1
 // cascade origin regardless of its value, so a target that has one must
 // have its own --sv-act sampled per frame too, the same way the main
 // target is, not just have its attribute string checked afterward, or a
-// settle silently governed by the longhand passes by omission ──
+// settle silently governed by the longhand passes by omission. Round 6
+// finding: the settle must never run at all on a target that is not
+// .sv-acts, since getPropertyValue('transition-duration') cannot tell an
+// authored longhand from the browser's own expansion of an unrelated
+// inline `transition` SHORTHAND, so a plain toggle target with one got
+// held too. #drift-after-target is not .sv-acts; its own unrelated
+// translate transition starts one frame INTO the hold window (after
+// toggles() has already run, unlike #drift-target above which starts
+// alongside it), the instant the bug forced a snap instead of letting it
+// animate ──
 {
   const page = await browser.newPage()
   await page.goto(`${base}/bench/harness/fixtures/toggles-boot-settle.html`, { waitUntil: 'load' })
@@ -346,6 +355,7 @@ const MIN_EXAMINED = 1
     longhandImportantDuration,
     longhandImportantPriority,
     driftSamples,
+    driftAfterSamples,
   } = await page.evaluate(
     () =>
       new Promise((resolve) => {
@@ -356,12 +366,17 @@ const MIN_EXAMINED = 1
         const longhandImportant = document.querySelector('#longhand-important-target')
         const drift = document.querySelector('#drift-target')
         const driftX = () => parseFloat(getComputedStyle(drift).translate) || 0
+        const driftAfter = document.querySelector('#drift-after-target')
+        const driftAfterX = () => parseFloat(getComputedStyle(driftAfter).translate) || 0
         const samples = []
         const unrelated = []
         const longhandSamples = []
         const longhandImportantSamples = []
         const driftSamples = []
+        const driftAfterSamples = []
         let booted = false
+        let toggleRan = false
+        let driftAfterArmed = false
         let frames = 0
         const FRAMES = 20
         const tick = () => {
@@ -370,13 +385,24 @@ const MIN_EXAMINED = 1
           longhandSamples.push(read(longhand))
           longhandImportantSamples.push(read(longhandImportant))
           driftSamples.push(driftX())
+          driftAfterSamples.push(driftAfterX())
           if (!booted) {
             booted = true
             // an unrelated transition, already committed at translate: 0px
             // since page load, kicked off right as toggles() is scheduled
             // to boot: it must keep animating straight through the settle
             drift.style.translate = '90px'
-            setTimeout(() => window.SV.toggles(), 0)
+            setTimeout(() => {
+              window.SV.toggles()
+              toggleRan = true
+            }, 0)
+          } else if (toggleRan && !driftAfterArmed) {
+            // the first sampled frame after toggles() has actually run, not
+            // just been scheduled: #drift-after-target's own unrelated
+            // transition starts here, one frame INTO the two-frame settle
+            // hold, the instant round 6's bug forced a snap (ADU-104)
+            driftAfterArmed = true
+            driftAfter.style.translate = '90px'
           }
           frames++
           if (frames < FRAMES) requestAnimationFrame(tick)
@@ -390,6 +416,7 @@ const MIN_EXAMINED = 1
               longhandImportantDuration: longhandImportant.style.getPropertyValue('transition-duration'),
               longhandImportantPriority: longhandImportant.style.getPropertyPriority('transition-duration'),
               driftSamples,
+              driftAfterSamples,
             })
         }
         requestAnimationFrame(tick)
@@ -440,6 +467,11 @@ const MIN_EXAMINED = 1
     'toggles(): an unrelated in-flight transition on a boot-marked target is never stopped by the settle hold (ADU-104, round 4 finding 2)',
     driftSamples.some((n) => n > 0 && n < DRIFT_END),
     `sampled translate: ${driftSamples.join(', ')}`
+  )
+  check(
+    'toggles(): a plain toggle target (not .sv-acts) never runs the settle, so an unrelated transition started one frame into the hold window still animates instead of snapping (ADU-104, round 6 finding)',
+    driftAfterSamples.some((n) => n > 0 && n < DRIFT_END),
+    `sampled translate: ${driftAfterSamples.join(', ')}`
   )
 
   await page.click('#trigger')

@@ -74,6 +74,15 @@ findings on the same round): three more defects fixed.
   `transition-duration` or the whole `transition` shorthand on `.sv-acts`
   at higher specificity than the preset's own rule still owns the settle
   timing (styles/state.css).
+- Sixth pass: the whole settle (`--sv-acts-settle` and the inline
+  `transition-duration` hold) now only runs on `.sv-acts` targets, gated
+  only on `sv-ui` before. `getPropertyValue('transition-duration')` cannot
+  tell an authored longhand from the browser's own expansion of an
+  unrelated inline `transition` shorthand, so a plain toggle target with
+  one (this module's own `<nav id="menu">` example, most of the time) had
+  it forced to `0s` for two frames regardless, snapping any change to it
+  that landed inside the window instead of animating. A target that is not
+  `.sv-acts` still gets `sv-ui`, nothing else.
 
 ### Compat
 - `compat()`'s fallback stylesheet gets a `transform:`-based `sv-deck`

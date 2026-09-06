@@ -43,7 +43,18 @@
      settle. #longhand-important-target's inline declaration also carries
      !important, proving the hold restores the exact priority, not just
      the value (a plain style attribute honors !important same as any
-     stylesheet rule, verified against real Chrome). -->
+     stylesheet rule, verified against real Chrome).
+
+     #drift-after-target repros round 6 (the settle ran on every toggle
+     target, gated only on sv-ui, never on .sv-acts: getPropertyValue
+     cannot tell an authored transition-duration longhand from the
+     browser's own expansion of an unrelated inline `transition` SHORTHAND,
+     so a plain toggle target like this one, or the module's own
+     <nav id="menu"> doc example, got its unrelated transition held at 0s
+     too). Not .sv-acts on purpose. e2e-invariants.mjs starts its translate
+     transition one frame INTO the hold window, after toggles() already
+     ran, not alongside it like #drift-target above: that is the instant
+     the bug forced a snap instead of an animation. -->
 <button id="trigger" data-sv-toggle="sv-open" data-sv-target="#target">toggle</button>
 <div id="target" class="sv-acts" style="--sv-acts-count: 4; --sv-acts-duration: 150ms">
   <p>finished</p>
@@ -62,6 +73,10 @@
 <button id="trigger-drift" data-sv-toggle="sv-open" data-sv-target="#drift-target">toggle drift</button>
 <div id="drift-target" style="transition: translate 300ms linear; translate: 0px">
   <p>unrelated in-flight transition must not be stopped by the settle</p>
+</div>
+<button id="trigger-drift-after" data-sv-toggle="sv-open" data-sv-target="#drift-after-target">toggle drift after</button>
+<div id="drift-after-target" style="transition: translate 300ms linear; translate: 0px">
+  <p>plain toggle target, not .sv-acts: a transition started one frame into the boot settle hold must still animate</p>
 </div>
 <script src="/fx/sv.js"></script>
 </body>

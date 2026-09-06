@@ -42,6 +42,18 @@
  * save/restore through it would erase the longhand for good). A target
  * with no inline longhand never has one written, so an unrelated in-flight
  * transition on it is never touched.
+ * The whole settle, --sv-acts-settle AND the longhand hold, is scoped to
+ * `.sv-acts` targets: that is the only class with the no-JS finished-value
+ * guard above, so only it has a value to un-animate from. A plain toggle
+ * target (this module's own `<nav id="menu">` example, most of the time)
+ * gets sv-ui and nothing else. This matters beyond skipping needless work:
+ * `getPropertyValue('transition-duration')` cannot tell an authored inline
+ * longhand from the browser's own expansion of an unrelated inline
+ * `transition` SHORTHAND (`style="transition: translate 300ms linear"`
+ * reads back as `'300ms'` on that longhand too), so running the hold on a
+ * non-.sv-acts target risked forcing that unrelated property's duration to
+ * 0s for two frames, snapping instead of animating any change to it that
+ * landed inside the hold window.
  */
 
 export function toggles(root?: Document | HTMLElement): () => void {
@@ -89,28 +101,33 @@ export function toggles(root?: Document | HTMLElement): () => void {
     const { className, selector, target } = resolve(trigger)
     if (!target) return
     if (!target.classList.contains('sv-ui')) {
-      // a target closed by default already painted the no-JS finished value
-      // (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module comment):
-      // marking it sv-ui alone stops that guard from matching, and --sv-act
-      // would transition from the finished value down to 0, a visible
-      // un-animation right as the page becomes interactive. Hold the acts
-      // transition at zero duration for exactly the settle, scoped to
-      // --sv-acts-settle (styles/state.css): two frames is enough for the
-      // cascade to apply the new --sv-act before the acts transition comes
-      // back.
       target.classList.add('sv-ui')
-      target.style.setProperty('--sv-acts-settle', '0s')
-      holdDuration(target)
-      settling.add(target)
-      requestAnimationFrame(() => {
+      // only a .sv-acts target has a no-JS finished value to un-animate
+      // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
+      // comment): a plain toggle target gets sv-ui above and nothing else,
+      // no --sv-acts-settle, no longhand hold, no pending restore (ADU-104,
+      // round 6 finding).
+      if (target.classList.contains('sv-acts')) {
+        // marking it sv-ui alone stops that guard from matching, and
+        // --sv-act would transition from the finished value down to 0, a
+        // visible un-animation right as the page becomes interactive. Hold
+        // the acts transition at zero duration for exactly the settle,
+        // scoped to --sv-acts-settle (styles/state.css): two frames is
+        // enough for the cascade to apply the new --sv-act before the acts
+        // transition comes back.
+        target.style.setProperty('--sv-acts-settle', '0s')
+        holdDuration(target)
+        settling.add(target)
         requestAnimationFrame(() => {
-          if (settling.has(target)) {
-            settling.delete(target)
-            target.style.removeProperty('--sv-acts-settle')
-            restoreDuration(target)
-          }
+          requestAnimationFrame(() => {
+            if (settling.has(target)) {
+              settling.delete(target)
+              target.style.removeProperty('--sv-acts-settle')
+              restoreDuration(target)
+            }
+          })
         })
-      })
+      }
     }
     sync(selector, target, target.classList.contains(className))
   })
