@@ -389,6 +389,26 @@ wide, scrollWidth 500).
   and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
   changed.
 
+### React
+<ul><li><code>useTrack</code>, <code>usePointer</code>, <code>useSlider</code> and <code>useCanvasEffect</code> now attach</li></ul>
+  through the ref itself instead of a mount-effect: the returned ref's
+  <code>current</code> is an accessor, so React's own attach/detach (any object with
+  a <code>current</code> property, unchanged between React 18 and 19) runs the
+  track/untrack. A conditionally rendered target that mounts after the
+  first render, or a node replaced by a new one, used to sit untracked
+  until an unrelated option changed forced the effect to rerun; both are
+  now tracked the moment the node attaches, and untracked on detach.
+  Option changes still retrack the current node. The ref type is declared
+  <code>React.RefObject&lt;T></code>, same as before.
+<ul><li><code>&lt;Scenes pin></code> now takes a string that wins over <code>height</code> and the</li></ul>
+  one-viewport-per-scene default (<code>pin="320vh"</code>), matching <code>&lt;Track pin></code>.
+  <code>pin={false}</code> still disables the pin helper.
+<ul><li><code>&lt;ScrollVarsBoot nonce></code>: forwarded to the pre-paint script tag, for a</li></ul>
+  strict CSP with no <code>'unsafe-inline'</code>. Additive, no existing prop changes.
+<ul><li><code>&lt;ScrollVarsBoot></code>'s debug overlay (<code>?sv-debug</code>) no longer mounts if the</li></ul>
+  component unmounts before its dynamic import resolves: the effect
+  cleanup now sets a <code>disposed</code> flag the import's callback checks first.
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

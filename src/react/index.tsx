@@ -36,25 +36,34 @@ const PREPAINT =
   "var h=document.documentElement;h.classList.add('sv-on');" +
   "setTimeout(function(){if(!window.__scrollvars)h.classList.remove('sv-on')},3000)}catch(e){}})()"
 
-export const ScrollVarsBoot: React.FC = () => {
+export interface ScrollVarsBootProps {
+  /** CSP nonce, forwarded to the pre-paint script tag. Required under a
+   * strict `script-src` that has no `'unsafe-inline'`. */
+  nonce?: string
+}
+
+export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce }) => {
   useEffect(() => {
     const stopScan = scan()
     const stopToggles = toggles()
     // dev convenience: ?sv-debug mounts the overlay (code-split. Costs
     // nothing unless the flag is present)
     let stopDebug: (() => void) | undefined
+    let disposed = false
     if (new URLSearchParams(location.search).has('sv-debug')) {
       import('../debug/index.js').then((m) => {
+        if (disposed) return
         stopDebug = m.debug()
       })
     }
     return () => {
+      disposed = true
       stopScan()
       stopToggles()
       stopDebug?.()
     }
   }, [])
-  return <script dangerouslySetInnerHTML={{ __html: PREPAINT }} />
+  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
 /** React 19 knows `inert` as a boolean attribute (a string would be dropped as falsy); React 18
@@ -64,14 +73,67 @@ const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true })
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
 
 /**
+ * A ref whose `current` is an accessor instead of a plain field. React's
+ * commit phase treats any object with a `current` property as an object
+ * ref (`ref.current = node` on attach, `ref.current = null` on detach,
+ * duck-typed, unchanged between React 18 and 19), so the setter itself
+ * runs `attach`/cleanup instead of an effect keyed on the ref's identity.
+ * A mount-effect alone misses a target that appears after the initial
+ * render (conditional render, a node swapped for a new one): the setter
+ * catches it the moment React assigns it. `attach` is read through a ref
+ * so it always runs with the latest options; `deps` changing re-runs it
+ * against the node already attached, so option changes still re-track.
+ * The returned object is typed as `React.RefObject<T>` so it drops
+ * straight into `ref={...}` like any other ref.
+ */
+function useAttachedRef<T extends HTMLElement>(
+  attach: (node: T) => (() => void) | void,
+  deps: React.DependencyList
+): React.RefObject<T> {
+  const nodeRef = useRef<T | null>(null)
+  const cleanupRef = useRef<(() => void) | undefined>(undefined)
+  const attachRef = useRef(attach)
+  attachRef.current = attach
+
+  const retrack = useCallback((node: T | null) => {
+    cleanupRef.current?.()
+    cleanupRef.current = undefined
+    nodeRef.current = node
+    if (node) cleanupRef.current = attachRef.current(node) ?? undefined
+  }, [])
+
+  const [ref] = useState<React.RefObject<T>>(() =>
+    Object.defineProperty({}, 'current', {
+      get: () => nodeRef.current,
+      set: retrack,
+      enumerable: true,
+      configurable: true,
+    }) as React.RefObject<T>
+  )
+
+  // deps changed while a node is already attached (no re-mount): retrack
+  // it with the latest options. Skips the very first run, the setter
+  // above already attached the initial node with these same options.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
+    if (nodeRef.current) retrack(nodeRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+
+  return ref
+}
+
+/**
  * Track an element with the scroll driver.
  * No React state is touched on scroll. Values land as CSS variables.
  */
 export function useTrack<T extends HTMLElement = HTMLDivElement>(
   options: TrackOptions = {}
-) {
-  const ref = useRef<T>(null)
-
+): React.RefObject<T> {
   // latest-ref pattern: callbacks never force a re-track
   const callbacksRef = useRef<Callbacks>({})
   callbacksRef.current = {
@@ -86,30 +148,29 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
   const hasSceneCb = !!options.onScene
   const hasPinCb = !!options.onPin
 
-  useEffect(() => {
-    if (!ref.current) return
-    return track(ref.current, {
-      view,
-      travel,
-      scenes,
-      snap,
-      once,
-      pin,
-      root,
-      enter,
-      exit,
-      onLive: (live) => callbacksRef.current.onLive?.(live),
-      onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
-      onTravel: hasTravelCb
-        ? (t) => callbacksRef.current.onTravel?.(t)
-        : undefined,
-      onPin: hasPinCb
-        ? (p) => callbacksRef.current.onPin?.(p)
-        : undefined,
-    })
-  }, [view, travel, scenes, snap, once, pin, root, enter, exit, hasSceneCb, hasTravelCb, hasPinCb])
-
-  return ref
+  return useAttachedRef<T>(
+    (node) =>
+      track(node, {
+        view,
+        travel,
+        scenes,
+        snap,
+        once,
+        pin,
+        root,
+        enter,
+        exit,
+        onLive: (live) => callbacksRef.current.onLive?.(live),
+        onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
+        onTravel: hasTravelCb
+          ? (t) => callbacksRef.current.onTravel?.(t)
+          : undefined,
+        onPin: hasPinCb
+          ? (p) => callbacksRef.current.onPin?.(p)
+          : undefined,
+      }),
+    [view, travel, scenes, snap, once, pin, root, enter, exit, hasSceneCb, hasTravelCb, hasPinCb]
+  )
 }
 
 /**
@@ -399,7 +460,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   ...rest
 }) => {
   const { ref, scene, goTo } = useScenes(count, {
-    pin: pin === false ? undefined : (height ?? `${count * 100}vh`),
+    pin: typeof pin === 'string' ? pin : pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
     enter,
     exit,
@@ -435,17 +496,14 @@ export const Scenes: React.FC<ScenesProps> = ({
  * Mount a canvas effect (see `scrollvars/canvas`). Callbacks follow the
  * latest-ref pattern. Changing them never remounts the effect.
  */
-export function useCanvasEffect(options: EffectOptions) {
-  const ref = useRef<HTMLCanvasElement>(null)
-
+export function useCanvasEffect(options: EffectOptions): React.RefObject<HTMLCanvasElement> {
   const optionsRef = useRef(options)
   optionsRef.current = options
 
   const { dprCap, autoPause, context } = options
 
-  useEffect(() => {
-    if (!ref.current) return
-    const handle = mountEffect(ref.current, {
+  return useAttachedRef<HTMLCanvasElement>((node) => {
+    const handle = mountEffect(node, {
       dprCap,
       autoPause,
       context,
@@ -453,10 +511,8 @@ export function useCanvasEffect(options: EffectOptions) {
       frame: (fx, dt) => optionsRef.current.frame(fx, dt),
       resize: (fx) => optionsRef.current.resize?.(fx),
     })
-    return handle.destroy
+    return () => handle.destroy()
   }, [dprCap, autoPause, context])
-
-  return ref
 }
 
 /**
@@ -466,26 +522,27 @@ export function useCanvasEffect(options: EffectOptions) {
  * `--sd` / `.sv-active` for pure-CSS animation.
  */
 export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
-  const ref = useRef<HTMLDivElement>(null)
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
   const { snap, drag, duration, axis } = options
   const onScrollRef = useRef(options.onScroll)
   onScrollRef.current = options.onScroll
 
-  useEffect(() => {
-    if (!ref.current) return
-    const handle = slider(ref.current, {
-      snap,
-      drag,
-      duration,
-      axis,
-      onSlide: setActive,
-      onScroll: (state) => onScrollRef.current?.(state),
-    })
-    handleRef.current = handle
-    return handle.destroy
-  }, [snap, drag, duration, axis])
+  const ref = useAttachedRef<HTMLDivElement>(
+    (node) => {
+      const handle = slider(node, {
+        snap,
+        drag,
+        duration,
+        axis,
+        onSlide: setActive,
+        onScroll: (state) => onScrollRef.current?.(state),
+      })
+      handleRef.current = handle
+      return handle.destroy
+    },
+    [snap, drag, duration, axis]
+  )
 
   const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
   const prev = useCallback((smooth?: boolean) => handleRef.current?.prev(smooth), [])
@@ -855,14 +912,8 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
 /** Pointer tilt for every `.sv-tilt` descendant. One delegated listener. */
 export function usePointer<T extends HTMLElement = HTMLDivElement>(
   options: PointerOptions = {}
-) {
-  const ref = useRef<T>(null)
+): React.RefObject<T> {
   const selector = options.selector
 
-  useEffect(() => {
-    if (!ref.current) return
-    return trackPointer(ref.current, { selector })
-  }, [selector])
-
-  return ref
+  return useAttachedRef<T>((node) => trackPointer(node, { selector }), [selector])
 }

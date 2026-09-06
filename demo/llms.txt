@@ -243,7 +243,9 @@ ambient canvas its own unmanaged `requestAnimationFrame` loop.
 All content renders on the server. The components are thin `'use client'`
 wrappers whose children stay RSC (`<Scenes>` takes a render function, so what it renders is client-side; keep heavy content in RSC siblings). `<ScrollVarsBoot />` (first child of `<body>`) sets
 `sv-on` before first paint and removes it again if the driver never boots, so
-entrances neither flash nor fail hidden. Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
+entrances neither flash nor fail hidden. Under a strict CSP with no
+`'unsafe-inline'`, pass the request's nonce: `<ScrollVarsBoot nonce={nonce} />`.
+Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.
 
 ## Performance rules (violating these is the whole reason this lib exists)
