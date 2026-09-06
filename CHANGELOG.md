@@ -1253,6 +1253,16 @@ Docs read against the code merged by the five round-5 code tickets.
   (the two hand-kept copies) stay in agreement; this pass added text next
   to them without touching that pairing.
 
+### Scanner (blind review round 6)
+- `scan()`'s `removeSplit` now bails with the same `scope.contains(el)`
+  guard as `remove()`. A retained `[data-sv-split]` node (a batch
+  `replaceChildren`/`replaceWith` that keeps it, or a reorder split across
+  a removal record and an insertion record in one callback) was still
+  restored to its original markup and dropped `sv-split`, and nothing ever
+  re-split it, since the guard added for `remove()` was not carried five
+  lines down. `removeSplit` was the only other early-exit path that guard
+  had skipped.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
