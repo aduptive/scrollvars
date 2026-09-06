@@ -1240,6 +1240,18 @@ Docs read against the code merged by the five round-5 code tickets.
   (the two hand-kept copies) stay in agreement; this pass added text next
   to them without touching that pairing.
 
+### Pointer (blind review round 6, ADU-152, live regression)
+- `trackPointer()` accepts a container that matches its own selector again.
+  Round 5's ancestor fix (`container.contains(match) && match !== container`)
+  closed the ancestor case it was written for but also closed the SELF
+  case, which is how the gallery's flagship hero is wired
+  (`trackPointer(hero, { selector: '.sv-hero' })` on the hero itself): every
+  pointermove was silently dropped, `--mx`/`--my` never wrote, and the orb
+  parallax was dead. `container.contains(match)` alone still rejects an
+  ancestor (an ancestor is never inside its own descendant) while allowing
+  the container itself (`Node.contains()` is true for the node itself), so
+  the extra `match !== container` was never needed.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
