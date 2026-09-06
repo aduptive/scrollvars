@@ -23,6 +23,9 @@ function makeElement(height = 400) {
         el.vars[name] = value
         el.setCalls++
       },
+      removeProperty(name) {
+        delete el.vars[name]
+      },
     },
     classList: {
       add: (c) => el.classes.add(c),
@@ -191,6 +194,8 @@ test('driver: custom live band and custom root geometry', async () => {
   // custom root: a 500px-tall inner scroller at viewport top 100; the child
   // rect sits at 450 → relative top 350 = 70% of the root, inside its band
   const rootEl = {
+    clientTop: 0,
+    clientHeight: 500,
     getBoundingClientRect: () => ({ top: 100, bottom: 600, height: 500 }),
   }
   const child = makeElement(200)
@@ -344,4 +349,245 @@ test('driver: --sv-pin-offset applies to onPin consumers, and the pin helper res
   stop()
   assert.equal(wrapper.style.height, '10px', 'untrack restores the authored height')
   delete global.getComputedStyle
+})
+
+test('driver: untrack is identity-guarded, a stale untrack cannot delete a replacement', async () => {
+  const { track } = await import('../dist/core/driver.js?identityguard')
+  const el = makeElement(400)
+  place(el, 300) // inside the live band from the start
+  const untrackFirst = track(el, { travel: true })
+  pump()
+  assert.ok(el.classes.has('sv-live'))
+  assert.ok('--sv-view' in el.vars)
+
+  const untrackSecond = track(el, { travel: true }) // re-track the same element
+  untrackFirst() // stale: entries.get(el) is now the second entry, this must be a no-op
+  assert.ok(observed.has(el), 'the stale untrack must not unobserve the still-tracked element')
+  pump()
+  assert.ok(el.classes.has('sv'), 'the second entry is still tracked')
+  place(el, 2000) // move it far below: proves the SECOND entry keeps getting measured
+  pump()
+  assert.equal(el.vars['--sv-view'], '-1.0000', 'the second entry keeps updating after the first, stale untrack')
+
+  untrackSecond() // the real untrack: cleanup runs now
+  assert.ok(!el.classes.has('sv-live'), 'sv-live removed')
+  assert.ok(!('--sv-view' in el.vars), 'no --sv-view left inline')
+  assert.ok(!('--sv-t' in el.vars), 'no --sv-t left inline')
+  assert.ok(el.classes.has('sv'), '.sv stays')
+})
+
+test('driver: re-tracking an element releases the previous entry, so a var only it wrote does not stay inline', async () => {
+  const { track } = await import('../dist/core/driver.js?releaseonreplace')
+  const el = makeElement(400)
+  place(el, 300) // inside the live band from the start
+  const untrackFirst = track(el, { travel: true })
+  pump()
+  assert.ok('--sv-t' in el.vars, 'the first entry wrote --sv-t')
+
+  const untrackSecond = track(el, {}) // replaces the entry; {} never writes --sv-t
+  assert.ok(!('--sv-t' in el.vars), 'replacing releases the outputs only the first entry ever wrote')
+  pump()
+  assert.ok(!('--sv-t' in el.vars), 'the second entry never writes it back')
+
+  untrackSecond()
+  assert.ok(!('--sv-view' in el.vars), 'the second entry cleaned up its own output')
+
+  untrackFirst() // stale: entries.get(el) is nothing now, this must be a no-op
+  assert.ok(el.classes.has('sv'), 'the stale untrack did not touch anything')
+})
+
+test('driver: a root that is also tracked standalone keeps its ResizeObserver watch until nothing needs it', async () => {
+  const { track } = await import('../dist/core/driver.js?rootrefcount')
+  const rootEl = makeElement(500)
+  const untrackRoot = track(rootEl, {})
+  assert.ok(observed.has(rootEl), 'the standalone entry observes itself')
+
+  const child = makeElement(200)
+  const untrackChild = track(child, { root: rootEl, travel: true })
+  assert.ok(observed.has(rootEl), 'the child also needs the root observed')
+
+  untrackRoot()
+  assert.ok(observed.has(rootEl), 'the root stays observed: the child entry still references it')
+
+  untrackChild()
+  assert.ok(!observed.has(rootEl), 'nothing references it as root any more, so it may now be unobserved')
+})
+
+test('driver: a once entry that is also another entry\'s root keeps that root observed after it self-releases', async () => {
+  const { track } = await import('../dist/core/driver.js?onceasroot')
+  const rootEl = makeElement(500)
+  place(rootEl, 300) // inside the live band on the first frame, so once fires immediately
+  const untrackRoot = track(rootEl, { once: true })
+
+  const child = makeElement(200)
+  const untrackChild = track(child, { root: rootEl, travel: true })
+
+  pump()
+  assert.ok(rootEl.classes.has('sv-live'), 'the once entry latches live and self-releases')
+  assert.ok(observed.has(rootEl), 'still observed: the child entry still uses it as root')
+
+  untrackChild()
+  assert.ok(!observed.has(rootEl), 'nothing references it any more, so it may now be released')
+  untrackRoot() // no-op: the once entry already deleted itself from entries on the frame above
+})
+
+test('driver: a once entry that declares its own root releases that root once nothing else needs it', async () => {
+  const { track } = await import('../dist/core/driver.js?oncedeclaresroot')
+  const rootRect = { top: 100, bottom: 620, height: 520 }
+  const rootEl = {
+    clientTop: 10, // bordered root, same shape as the offsetParent-chain test above
+    clientHeight: 500,
+    scrollTop: 0,
+    getBoundingClientRect: () => ({ ...rootRect }),
+    scrollTo(opts) {
+      rootEl.lastScrollTo = opts
+    },
+  }
+
+  const child = makeElement(200)
+  place(child, 300) // geo.top = 300-110 = 190, geo.bottom = 500-110 = 390: live from the first frame
+  const untrackOnce = track(child, { once: true, root: rootEl })
+  pump()
+  assert.ok(child.classes.has('sv-live'), 'the once entry latches live on the first frame')
+  assert.ok(
+    !observed.has(rootEl),
+    'nothing else uses the root: it is released the same frame the once entry self-releases'
+  )
+
+  // same leak, but this time another entry still needs the root observed
+  const other = makeElement(200)
+  const untrackOther = track(other, { root: rootEl, travel: true })
+  const child2 = makeElement(200)
+  place(child2, 300)
+  const untrackOnce2 = track(child2, { once: true, root: rootEl })
+  pump()
+  assert.ok(child2.classes.has('sv-live'), 'the second once entry also latches live on the first frame')
+  assert.ok(observed.has(rootEl), 'another entry still declares the same root: it stays observed after the once entry self-releases')
+
+  untrackOther()
+  assert.ok(!observed.has(rootEl), 'nothing references the root any more, so it may now be released')
+  untrackOnce() // no-op: already self-released on the frame above
+  untrackOnce2() // no-op: already self-released on the frame above
+})
+
+test('driver: init() is transactional, a throwing ResizeObserver leaves track() a no-op until it succeeds', async () => {
+  global.ResizeObserver = class {
+    constructor() {
+      throw new Error('no ResizeObserver in this browser')
+    }
+  }
+  const { track } = await import('../dist/core/driver.js?initfail')
+  const el = makeElement(400)
+  const untrack = track(el, { travel: true })
+  pump()
+  assert.equal(el.classes.size, 0, 'no .sv class: the page stays static')
+  assert.deepEqual(el.vars, {}, 'no inline vars written')
+  untrack() // the no-op must be safely callable
+
+  // scrollvars/compat shims a real ResizeObserver in; a later track() retries init()
+  global.ResizeObserver = class {
+    constructor() {}
+    observe(el) {
+      observed.add(el)
+    }
+    unobserve(el) {
+      observed.delete(el)
+    }
+  }
+  const untrack2 = track(el, { travel: true })
+  pump()
+  assert.ok(el.classes.has('sv'), 'track() succeeds once the ResizeObserver is available')
+  untrack2()
+})
+
+test('driver: refresh() forces one geometry pass through culled entries', async () => {
+  let ioCallback
+  global.IntersectionObserver = class {
+    constructor(cb) {
+      ioCallback = cb
+    }
+    observe(el) {
+      observed.add(el)
+    }
+    unobserve(el) {
+      observed.delete(el)
+    }
+    disconnect() {}
+  }
+  const { track, refresh } = await import('../dist/core/driver.js?refreshforce')
+  const el = makeElement(400)
+  const untrack = track(el, {})
+  pump()
+  ioCallback([{ target: el, isIntersecting: false }]) // cull it
+  place(el, 300) // move into the live band while culled
+  pump()
+  assert.ok(!el.classes.has('sv-live'), 'a culled entry is not measured on a plain scroll frame')
+  refresh()
+  pump()
+  assert.ok(el.classes.has('sv-live'), 'refresh() forces one geometry pass through the culled entry')
+  untrack()
+  delete global.IntersectionObserver
+})
+
+test('driver: a bordered root shares one origin between update() pin progress and scrollToScene()', async () => {
+  const { track, scrollToScene } = await import('../dist/core/driver.js?rootorigin')
+  const rootRect = { top: 100, bottom: 620, height: 520 }
+  const rootEl = {
+    clientTop: 10, // e.g. a 10px top border
+    clientHeight: 500, // border-box minus the top+bottom border, unlike the 520px bounding rect
+    scrollTop: 0,
+    getBoundingClientRect: () => ({ ...rootRect }),
+    scrollTo(opts) {
+      rootEl.lastScrollTo = opts
+    },
+  }
+  const child = makeElement(2000)
+  place(child, -200)
+  const untrack = track(child, { pin: true, root: rootEl })
+  assert.ok(observed.has(rootEl), 'the root is observed by the ResizeObserver too')
+  pump()
+  assert.equal(child.vars['--sv-pin'], '0.2067', 'origin uses root.clientTop, vp uses root.clientHeight')
+
+  scrollToScene(child, 1, 3, false, rootEl)
+  const delta = rootEl.lastScrollTo.top - rootEl.scrollTop
+  rootEl.scrollTop = rootEl.lastScrollTo.top
+  place(child, child.rect.top - delta) // simulate the root having scrolled by that delta
+  pump()
+  assert.equal(
+    child.vars['--sv-pin'],
+    '0.5000',
+    'the offset scrollToScene computed lands where update() reports the same progress'
+  )
+  untrack()
+})
+
+test('driver: readPinOffset resolves rem, em, vh/svh/lvh/dvh, vw and bare numbers to px', async () => {
+  window.innerWidth = 400
+  const { track } = await import('../dist/core/driver.js?pinunits')
+
+  const cases = [
+    { raw: '4rem', elFont: '20px', px: 64 }, // 4 * the root's 16px font-size
+    { raw: '2em', elFont: '32px', px: 64 }, // 2 * the element's own 32px font-size
+    { raw: '10vh', elFont: '16px', px: 100 }, // 10% of innerHeight 1000
+    { raw: '10svh', elFont: '16px', px: 100 },
+    { raw: '10lvh', elFont: '16px', px: 100 },
+    { raw: '10dvh', elFont: '16px', px: 100 },
+    { raw: '25vw', elFont: '16px', px: 100 }, // 25% of innerWidth 400
+    { raw: '64', elFont: '16px', px: 64 }, // a bare number reads as px
+  ]
+
+  for (const { raw, elFont, px } of cases) {
+    global.getComputedStyle = (target) => ({
+      getPropertyValue: (n) => (n === '--sv-pin-offset' ? raw : ''),
+      fontSize: target === document.documentElement ? '16px' : elFont,
+    })
+    const el = makeElement(3000)
+    const untrack = track(el, { pin: true })
+    place(el, px) // the stage sticks at `px` from the top: progress 0 there
+    pump()
+    assert.equal(el.vars['--sv-pin'], '0.0000', `${raw} resolves to ${px}px`)
+    untrack()
+  }
+  delete global.getComputedStyle
+  delete window.innerWidth
 })

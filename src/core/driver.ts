@@ -69,8 +69,21 @@ let reducedMotion = false
 
 function init() {
   if (initialized || typeof window === 'undefined') return
-  initialized = true
   vh = window.innerHeight
+
+  // Construct the ResizeObserver FIRST, before any listener is installed: a
+  // throwing constructor must leave nothing behind to undo, so a later
+  // track() (after scrollvars/compat shims one in) can retry init() clean.
+  try {
+    resizeObserver = new ResizeObserver(() => schedule())
+    // Layout shifts above an element (images loading, fonts) move it without
+    // resizing it: watching the document catches those too.
+    resizeObserver.observe(document.documentElement)
+  } catch {
+    resizeObserver = null
+    return // no ResizeObserver: stay a static page (scrollvars/compat adds a shim)
+  }
+  initialized = true
 
   // capture: scroll doesn't bubble, but it does capture-descend. One
   // listener covers nested scrollers (modals, inner panels) for free
@@ -87,15 +100,6 @@ function init() {
     entries.forEach(applyPinHelper)
     schedule()
   })
-
-  try {
-    resizeObserver = new ResizeObserver(() => schedule())
-    // Layout shifts above an element (images loading, fonts) move it without
-    // resizing it: watching the document catches those too.
-    resizeObserver.observe(document.documentElement)
-  } catch {
-    return // no ResizeObserver: stay a static page (scrollvars/compat adds a shim)
-  }
 
   // Offscreen culling: a viewport of margin on each side keeps fast scrolls
   // correct; far outside it the rect read is skipped entirely.
@@ -124,8 +128,11 @@ function init() {
 let lastY = -1
 let lastT = 0
 let velTimer: ReturnType<typeof setTimeout> | undefined
+let lastPageStr = ''
+let lastVStr = ''
 
 let pageOutputs = false // true once anything was ever tracked: --sv-page/--sv-v then follow every scroll
+let forceAll = false // set by refresh(): give culled entries one geometry pass on the next update()
 
 function schedule() {
   if (!raf && (entries.size > 0 || pageOutputs)) raf = requestAnimationFrame(update)
@@ -133,6 +140,8 @@ function schedule() {
 
 function update() {
   raf = 0
+  const force = forceAll
+  forceAll = false
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
   const y = window.scrollY
@@ -146,7 +155,7 @@ function update() {
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry }> = []
   entries.forEach((entry) => {
-    if (!entry.near && !entry.opts.root && !jumped) return
+    if (!entry.near && !entry.opts.root && !jumped && !force) return
     const rect = entry.el.getBoundingClientRect()
     const root = entry.opts.root
     let geo: Geometry
@@ -156,7 +165,11 @@ function update() {
         rr = root.getBoundingClientRect()
         rootRects.set(root, rr)
       }
-      geo = { top: rect.top - rr.top, bottom: rect.bottom - rr.top, height: rect.height, vp: rr.height }
+      // clientTop/clientHeight (not the border-inclusive bounding rect) so a
+      // bordered root measures the same origin here as scrollToScene uses.
+      const originTop = rr.top + root.clientTop
+      const vp = root.clientHeight
+      geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp }
     } else {
       geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
     }
@@ -172,10 +185,12 @@ function update() {
   // skew/stretch effect back to rest.
   const dt = now - lastT
   const v = lastY < 0 || dt <= 0 ? 0 : ((y - lastY) / dt) * 1000 / vh
-  docEl.style?.setProperty('--sv-page', clamp(y / pageSpan, 0, 1).toFixed(4))
-  docEl.style?.setProperty('--sv-v', (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3))
+  const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4)
+  if (pageStr !== lastPageStr) docEl.style?.setProperty('--sv-page', (lastPageStr = pageStr))
+  const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3)
+  if (vStr !== lastVStr) docEl.style?.setProperty('--sv-v', (lastVStr = vStr))
   clearTimeout(velTimer)
-  velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', '0'), 80)
+  velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', (lastVStr = '0')), 80)
   lastY = y
   lastT = now
 }
@@ -217,10 +232,33 @@ function computePin(geo: Geometry, offset = 0): number {
   return clamp((offset - geo.top) / span, 0, 1)
 }
 
-/** `--sv-pin-offset` as a number of px (0 when unset or outside a browser). */
+/** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
+ * Resolves rem (root font-size), em (the element's own font-size), vh/svh/lvh/dvh
+ * (window.innerHeight) and vw (window.innerWidth); anything else, including a
+ * bare number, falls back to parseFloat as px. svh/lvh/dvh resolve like vh:
+ * there is no JS API for the small/large viewport height without an actual
+ * probe element, so all three read window.innerHeight like vh does. */
 function readPinOffset(el: HTMLElement): number {
   if (typeof getComputedStyle !== 'function') return 0
-  return parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin-offset')) || 0
+  const raw = getComputedStyle(el).getPropertyValue('--sv-pin-offset').trim()
+  const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i)
+  const value = match ? parseFloat(match[1]) : parseFloat(raw)
+  if (!value) return 0
+  switch (match?.[2]?.toLowerCase()) {
+    case 'rem':
+      return value * parseFloat(getComputedStyle(document.documentElement).fontSize)
+    case 'em':
+      return value * parseFloat(getComputedStyle(el).fontSize)
+    case 'vh':
+    case 'svh':
+    case 'lvh':
+    case 'dvh':
+      return (value / 100) * window.innerHeight
+    case 'vw':
+      return (value / 100) * window.innerWidth
+    default:
+      return value
+  }
 }
 
 function computeScene(pin: number, count: number, snap: number | false): number {
@@ -269,7 +307,11 @@ function apply(entry: Entry, geo: Geometry) {
       // --sv-view at -1 forever (sv-drift would stay invisible)
       if (opts.view !== false) setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
       entries.delete(entry.el)
-      resizeObserver?.unobserve(entry.el)
+      // entry.el can be another live entry's root (a shared scroll container),
+      // and this entry can declare its own root: only drop each resize watch
+      // once no other entry still needs it.
+      unobserveIfUnneeded(entry.el)
+      if (opts.root) unobserveIfUnneeded(opts.root)
       culler?.unobserve(entry.el)
       return
     }
@@ -305,9 +347,56 @@ function apply(entry: Entry, geo: Geometry) {
   }
 }
 
+/** True if some OTHER live entry still needs `target` watched: either as its
+ * own tracked element, or as its `root`. A root can be shared (a standalone
+ * tracked element that is also another entry's scroll container), so release
+ * must never unobserve a target another live entry still depends on. */
+function stillNeeded(target: HTMLElement): boolean {
+  for (const other of entries.values()) {
+    if (other.el === target || other.opts.root === target) return true
+  }
+  return false
+}
+
+/** Drop the resize watch on `target` (a tracked element or a `root`), but
+ * only once no other live entry still needs it. Shared by releaseEntry()
+ * and the once fire-and-forget branch in apply() so the two release paths
+ * cannot drift apart again: both must release the tracked element AND its
+ * `root`, or a `{ once: true, root }` entry leaks the root's watch. */
+function unobserveIfUnneeded(target: HTMLElement) {
+  if (!stillNeeded(target)) resizeObserver?.unobserve(target)
+}
+
+/** Undo everything a track() call installed for one entry: written vars,
+ * `--sv-scenes`, the pin helper, both observers (respecting shared roots).
+ * Shared by the identity-guarded untrack and by track() replacing an
+ * already-tracked element, so a replacing track() is exactly untrack then
+ * track. */
+function releaseEntry(entry: Entry) {
+  const { el } = entry
+  entries.delete(el)
+  culler?.unobserve(el)
+  unobserveIfUnneeded(el)
+  if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
+  restorePinHelper(entry)
+  el.classList.toggle('sv-live', false)
+  for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
+  el.style.removeProperty?.('--sv-scenes')
+}
+
 /** Track an element. Returns an untrack function. */
 export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   init()
+  // A failed init() (no ResizeObserver) leaves the driver uninitialized: stay
+  // a no-op so the page stays static until compat() shims one in and a later
+  // track() call retries init() clean.
+  if (!initialized) return () => {}
+  // re-tracking an already-tracked element must behave like untrack then
+  // track: release the previous entry's outputs first, or a variable only it
+  // ever wrote (e.g. --sv-t from a first call with travel:true) stays inline
+  // forever once the identity guard blocks its own untrack.
+  const existing = entries.get(el)
+  if (existing) releaseEntry(existing)
   const entry: Entry = {
     el,
     opts,
@@ -329,14 +418,20 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   }
   pageOutputs = true
   resizeObserver?.observe(el)
+  // a root scrolls its own content; watch it too so a resize of the scroller
+  // itself (not just the tracked element) reschedules a measure. A root can
+  // be shared by several entries (or be a standalone tracked element too),
+  // so release() only unobserves it once no live entry needs it any more.
+  if (opts.root) resizeObserver?.observe(opts.root)
   if (!opts.root) culler?.observe(el)
   schedule()
 
   return () => {
-    entries.delete(el)
-    resizeObserver?.unobserve(el)
-    culler?.unobserve(el)
-    restorePinHelper(entry)
+    // a second track() on the same element replaces this entry in the map;
+    // an untrack from the first call must not release or unobserve the
+    // replacement, only its own bookkeeping.
+    if (entries.get(el) !== entry) return
+    releaseEntry(entry)
   }
 }
 
@@ -366,6 +461,9 @@ export function refresh() {
   entries.forEach((entry) => {
     if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin) entry.pinOffset = readPinOffset(entry.el)
   })
+  // culled entries skip the per-frame rect read; give them one anyway so a
+  // manual refresh() (content changed, no resize fired) reaches them too
+  forceAll = true
   schedule()
 }
 
@@ -387,7 +485,12 @@ export function scrollToScene(
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
   const behavior: ScrollBehavior = smooth ? 'smooth' : 'instant'
   if (root) {
-    root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior })
+    // same origin update() measures against: the root's border-box top plus
+    // clientTop, not the bare bounding rect
+    root.scrollTo({
+      top: root.scrollTop + rect.top - root.getBoundingClientRect().top - root.clientTop + offset,
+      behavior,
+    })
   } else {
     window.scrollTo({ top: window.scrollY + rect.top + offset, behavior })
   }
