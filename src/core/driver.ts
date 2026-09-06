@@ -175,8 +175,12 @@ function update() {
     }
     frames.push({ entry, geo })
   })
-  // WRITE phase
+  // WRITE phase. `frames` is a snapshot taken before any callback ran: an
+  // onLive/onScene fired earlier in this same loop can untrack (or replace)
+  // a later entry, and a released entry must not get one more write and one
+  // more callback after its untrack returned.
   for (const { entry, geo } of frames) {
+    if (entries.get(entry.el) !== entry) continue
     apply(entry, geo)
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
@@ -290,10 +294,9 @@ function apply(entry: Entry, geo: Geometry) {
   if (isLive !== entry.live) {
     entry.live = isLive
     entry.el.classList.toggle('sv-live', isLive)
-    opts.onLive?.(isLive)
     // once + nothing continuous = fire-and-forget: stop tracking, stop paying
     // the per-frame rect read. The class stays; --sv-view freezes as-is.
-    if (
+    const settle =
       isLive &&
       opts.once &&
       !opts.travel &&
@@ -302,19 +305,25 @@ function apply(entry: Entry, geo: Geometry) {
       !opts.onTravel &&
       !opts.onPin &&
       !opts.onScene
-    ) {
+    if (settle) {
       // settle the outputs first: a child measured below the screen must not keep
       // --sv-view at -1 forever (sv-drift would stay invisible)
       if (opts.view !== false) setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
-      entries.delete(entry.el)
-      // entry.el can be another live entry's root (a shared scroll container),
-      // and this entry can declare its own root: only drop each resize watch
-      // once no other entry still needs it.
-      unobserveIfUnneeded(entry.el)
-      if (opts.root) unobserveIfUnneeded(opts.root)
-      culler?.unobserve(entry.el)
-      return
+      // release BEFORE onLive runs, and by identity: the callback is free to
+      // track() the same element again, and a delete-by-element afterwards
+      // would drop that replacement instead of this entry.
+      if (entries.get(entry.el) === entry) {
+        entries.delete(entry.el)
+        // entry.el can be another live entry's root (a shared scroll container),
+        // and this entry can declare its own root: only drop each resize watch
+        // once no other entry still needs it.
+        unobserveIfUnneeded(entry.el)
+        if (opts.root) unobserveIfUnneeded(opts.root)
+        culler?.unobserve(entry.el)
+      }
     }
+    opts.onLive?.(isLive)
+    if (settle) return
   }
 
   if (opts.view !== false) {
@@ -382,6 +391,14 @@ function releaseEntry(entry: Entry) {
   el.classList.toggle('sv-live', false)
   for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
   el.style.removeProperty?.('--sv-scenes')
+  // A released element settles VISIBLE. `.sv` and `[data-sv]` both declare
+  // `--sv-live: 0`, only `.sv.sv-live` lifts it to 1, and `html.sv-on` is
+  // never taken off: without this, stopScan() or a ScrollVarsBoot unmount
+  // would leave every not-yet-live section at opacity 0 forever, and an
+  // option change would flash content out and back. Inline rather than
+  // dropping `.sv`, because server markup keeps its authored `[data-sv]`
+  // (which hides on its own) and the driver must not rewrite that attribute.
+  el.style.setProperty?.('--sv-live', '1')
 }
 
 /** Track an element. Returns an untrack function. */
@@ -397,6 +414,9 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // forever once the identity guard blocks its own untrack.
   const existing = entries.get(el)
   if (existing) releaseEntry(existing)
+  // a previous release settled the element visible with an inline --sv-live: 1;
+  // tracking hands the flag back to the class, so drop it before the first frame
+  el.style.removeProperty?.('--sv-live')
   const entry: Entry = {
     el,
     opts,
@@ -444,9 +464,13 @@ function applyPinHelper(entry: Entry) {
   } else {
     el.style.height = opts.pin
     // only a static element needs the positioning context; one positioned by a
-    // stylesheet (absolute, fixed, sticky) keeps it
+    // stylesheet or inline (absolute, fixed, sticky) keeps it. An authored
+    // inline `static` is exactly the case that needs replacing: keeping it
+    // means the containing block the helper promises never exists, and an
+    // absolutely positioned curtain escapes the stage.
+    const keep = authored.position && authored.position !== 'static' ? authored.position : ''
     const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
-    el.style.position = authored.position || (!computed || computed === 'static' ? 'relative' : '')
+    el.style.position = keep || (!computed || computed === 'static' ? 'relative' : '')
   }
 }
 function restorePinHelper(entry: Entry) {
@@ -483,7 +507,9 @@ export function scrollToScene(
   const pinOffset = readPinOffset(el)
   const span = Math.max(rect.height - vp + pinOffset, 1)
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
-  const behavior: ScrollBehavior = smooth ? 'smooth' : 'instant'
+  // reduced motion outranks the caller's `smooth`, the same way the slider's
+  // glide falls back to a jump: a scene jump is navigation, not decoration
+  const behavior: ScrollBehavior = smooth && !reducedMotion ? 'smooth' : 'instant'
   if (root) {
     // same origin update() measures against: the root's border-box top plus
     // clientTop, not the bare bounding rect

@@ -191,6 +191,34 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Driver (blind review round 4)
+- Releasing a tracked element now settles it VISIBLE. `.sv` and `[data-sv]`
+  both declare `--sv-live: 0`, only `.sv.sv-live` lifts it to 1, and
+  `html.sv-on` is never taken back off, so `stopScan()`, a
+  `ScrollVarsBoot` unmount or a route teardown used to strand every section
+  that had not gone live yet at opacity 0 forever, and an option change
+  flashed content out and back. Release writes an inline `--sv-live: 1`
+  (rather than dropping `.sv`, because server markup keeps its authored
+  `data-sv`, which hides on its own); `track()` removes that inline value
+  first, so tracking hands the flag back to the class.
+- The `pin: '320vh'` helper no longer keeps an authored inline
+  `position: static`: only a non-static authored position is kept, and a
+  static one (inline or computed) gets `relative`, so the containing block
+  the helper promises really exists and an absolutely positioned curtain
+  cannot escape the stage.
+- The `once` fire-and-forget path deletes its entry by identity
+  (`entries.get(el) === entry`) BEFORE invoking `onLive`, so a callback that
+  tracks the same element again keeps its replacement instead of having it
+  deleted out of the map.
+- The write phase skips entries that are no longer in the map: an `onLive`
+  or `onScene` earlier in the same frame can untrack another element, and
+  that element no longer gets one more variable write and one more callback
+  after its untrack returned.
+- `scrollToScene()` scrolls with `behavior: 'instant'` under
+  `prefers-reduced-motion: reduce` even when the caller asked for smooth,
+  mirroring the slider's glide. `useScenes().goTo` routes through it, so
+  React scene navigation honors the preference too.
+
 ### Canvas
 - `mountEffect()`'s `applySize()` stops the unsized-canvas DPR feedback loop
   (ADU-107): a canvas with no CSS width/height lays out at its own
