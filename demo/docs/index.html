@@ -410,6 +410,17 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Tooling
+<ul><li><code>npm run demo:sync</code> is idempotent again: the bench page's inlined engine</li></ul>
+  marker was lazy on the content but only matched a fixed 3-newline gap
+  before <code>&lt;/script></code>, and the replacement kept the fresh IIFE's own
+  trailing newline on top of that gap, so every run against a live driver
+  added one more blank line and <code>demo/bench/scrollvars.html</code> never
+  settled. The marker now consumes however many blank lines already
+  accumulated instead of a fixed count, so it self-heals instead of
+  drifting. <code>.github/workflows/ci.yml</code> and <code>.github/workflows/release.yml</code>
+  now include <code>demo/bench/scrollvars.html</code> in the generated-files gate.
+
 ### Slider
 Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
 Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
@@ -434,6 +445,23 @@ wide, scrollWidth 500).
   active node as well: a changed node at the same index moves <code>sv-active</code>
   and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
   changed.
+
+### CI
+<ul><li>CI now proves the React layer on React 18, not only the React 19 the</li></ul>
+  root installs: a new <code>test-react-18</code> job (<code>npm run test:react18</code>, also
+  runnable locally) installs react@18, react-dom@18 and their <code>@types</code>
+  into <code>node_modules/.cache/react18</code> (its own package.json, <code>--no-save</code>,
+  never the root <code>package-lock.json</code>), type-checks <code>src/</code> against those
+  <code>@types</code> instead of the root's through a generated tsconfig <code>paths</code>
+  entry (guarded by a canary that fails loudly if the redirect ever
+  silently falls back to React 19), and runs <code>test/react.test.mjs</code> and
+  <code>test/cli-components.test.mjs</code> with a <code>node --import</code> loader hook that
+  redirects every <code>react</code>/<code>react-dom</code> import to that install for the
+  process (<code>NODE_PATH</code> does not affect ESM resolution).
+<ul><li><code>react: Marquee duplicate is aria-hidden and inert</code> now asserts the</li></ul>
+  literal wire format <code>inert=""</code>, not just the attribute's presence: the
+  case both React majors must agree on (<code>{ inert: '' }</code> under 18,
+  <code>{ inert: true }</code> under 19).
 
 <h3>1.13.0 (2026-09-05)</h3>
 
