@@ -274,6 +274,31 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 0d. No JS, attribute-only markup: the counter renders DIGITS ──
+// The no-JS guard feeds --sv-int to [data-sv] markup as well as .sv, but the
+// digits themselves come from counter-reset + ::after: keyed on .sv alone,
+// attribute-only markup rendered an empty element. Measured as width, not as
+// getComputedStyle().content: Chrome reports the literal counter(sv-counter)
+// there, for a rule that renders and for one that does not.
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <div class="sv"><span id="cls" class="sv-counter" style="--sv-max: 421"></span></div>
+      <div data-sv><span id="attr" class="sv-counter" style="--sv-max: 421"></span></div>
+    </body></html>`)
+  const r = await page.evaluate(() => ({
+    cls: document.getElementById('cls').getBoundingClientRect().width,
+    attr: document.getElementById('attr').getBoundingClientRect().width,
+  }))
+  check(
+    'no-JS: [data-sv] .sv-counter renders its digits, exactly like .sv does',
+    r.attr > 0 && r.attr === r.cls,
+    `class=${r.cls} attribute=${r.attr}`
+  )
+  await page.close()
+}
+
 // ── 1. No JS → fully visible ──
 {
   const page = await browser.newPage()

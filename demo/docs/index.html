@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 2.5 · slider 1.3 · tilt 0.5 · state 2.1 · ui 0.7).</p>
+(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 2.6 · slider 1.3 · tilt 0.5 · state 2.2 · ui 0.7).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -392,6 +392,30 @@ from the code it describes.
 <li><code>&lt;Scenes></code>'s render function is documented as server-rendered inside a client component boundary, not "client-side"; and a string <code>pin</code> wins over <code>height</code>. <code>&lt;ScrollVarsBoot></code>'s pre-paint hiding is documented as gated on <code>IntersectionObserver</code> and <code>ResizeObserver</code>. The compat floor explicitly covers <code>sv-deck</code> and no longer depends on <code>Array.prototype.flatMap</code>. AGENTS.md's build line now names <code>scripts/build-styles.mjs</code>.</li>
 <li><code>scripts/docs-build.mjs</code>'s CHANGELOG-to-HTML renderer (<code>mdLite</code>) fixed two bugs: a <code>### </code> sub-heading rendered as literal text instead of a heading, and a multi-line bullet only wrapped its first line in <code>&lt;li></code>, dropping every continuation line from the rendered list. Rewritten line by line instead of by regex backtracking: <code>### </code> now renders as <code>&lt;h4></code>, and a bullet's indented continuation lines join into the same <code>&lt;li></code>.</li>
 <li>Second pass (verifier finding on 31ee8af): <code>scripts/docs-build.mjs</code>'s generated browser-support table hardcoded Firefox at 74+ (Mar 2020), contradicting README's and AGENTS's 78+ (Jun 2020, <code>:is()</code>/<code>:where()</code>), the version core.css actually needs. Fixed to 78+ (Jun 2020). The same sweep found the table's per-part CSS sizes (core, pin, slider, tilt, state, ui) hand-typed and stale against what <code>docs-stamp.mjs</code> measures and stamps into README (core read 1.9 KB against a measured 2.2, pin 1.8 against 2.5, state 1.5 against 2.1, ui 0.8 against 0.7; slider and tilt happened to still match). <code>scripts/docs-build.mjs</code> now imports <code>measureSizes</code> from <code>docs-data.mjs</code>, the same source <code>docs-stamp.mjs</code> reads, so the generated docs page and README render the same measured numbers instead of two hand-typed copies that can drift apart.</li>
+</ul>
+
+<h4>React (blind review round 4)</h4>
+<ul>
+<li><code>&lt;Modal></code> without native <code>&lt;dialog></code> support now closes. The effect branches once on <code>showModal</code>: where the element is unknown there is no <code>open</code> PROPERTY, so the old <code>!open &amp;&amp; dialog.open</code> guard could only ever open it. The fallback drives the attribute in both directions with <code>toggleAttribute('open', open)</code>.</li>
+<li><code>useScenes()</code> clamps its scene to <code>count - 1</code> when the count changes. The driver emits nothing at all for <code>scenes &lt;= 1</code>, so a count going from N to 1 used to keep reporting the last index forever, and a consumer marked its only shot inert.</li>
+</ul>
+
+<h4>Slider (blind review round 4)</h4>
+<ul>
+<li>The wheel assist now reads the container's COMPUTED <code>scroll-snap-type</code> at init, not only the inline style: an instance set to <code>none</code> by a stylesheet or a utility class (Tailwind's <code>snap-none</code>) is left alone, same as an inline one, instead of being snap-suspended and scripted to the nearest slide.</li>
+<li><code>state().progress</code> and <code>--sv-progress</code> are clamped to 0..1. Elastic overscroll drove them past both ends, and a follower chained through <code>onScroll</code> + <code>seek(progress)</code> was seeked outside its own range.</li>
+</ul>
+
+<h4>Click driver (blind review round 4)</h4>
+<ul>
+<li><code>toggles()</code> writes <code>--sv-state</code> at boot from the target's class, so markup that ships open no longer disagrees with its own class until the first click.</li>
+<li>Triggers are grouped by their RESOLVED target element instead of by the <code>data-sv-target</code> string, so two triggers naming the same panel through different selectors keep each other's <code>aria-expanded</code> in sync.</li>
+</ul>
+
+<h4>Presets and no-JS (blind review round 4)</h4>
+<ul>
+<li><code>.sv-counter</code>'s <code>counter-reset</code> and <code>::after</code> are keyed on <code>:is(.sv, [data-sv])</code>, like the no-JS guard that feeds them <code>--sv-int</code>: attribute-only markup used to get the variable but render an empty element without JS. The no-JS e2e sweep asserts the digits, not just the variable.</li>
+<li><code>dialog.sv-pop:not([open])</code>'s fade is wrapped in <code>@supports selector(dialog:modal)</code>: the type selector also matches the unknown element an engine without <code>&lt;dialog></code> parses, which hid the documented static fallback panel with no UA <code>display: none</code> behind it.</li>
 </ul>
 
 <h3>1.13.0 (2026-09-05)</h3>

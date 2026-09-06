@@ -331,6 +331,14 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
   options: Omit<TrackOptions, 'scenes' | 'onScene'> = {}
 ) {
   const [scene, setScene] = useState(0)
+  // A shrinking count strands the last index: the driver emits nothing at
+  // all when scenes <= 1, so a 5 → 1 change would keep reporting scene 4
+  // and every consumer would treat the only scene as past. Clamp here, on
+  // the render that sees the new count, instead of waiting for an event
+  // that never comes.
+  const last = Math.max(count - 1, 0)
+  if (scene > last) setScene(last)
+  const current = Math.min(scene, last)
 
   const ref = useTrack<T>({
     ...options,
@@ -345,7 +353,7 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     [count, options.root]
   )
 
-  return { ref, scene, goTo }
+  return { ref, scene: current, goTo }
 }
 
 export interface ScenesProps extends Omit<TrackProps, 'scenes' | 'children'> {
@@ -896,7 +904,16 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    if (open && !dialog.open) typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', '')
+    // Branch once on real <dialog> support. Without it the element is
+    // unknown: `dialog.open` is undefined, so a check on it can only ever
+    // open and never close. Drive the attribute in both directions instead,
+    // and let styles/state.css keep the unknown element visible (the
+    // documented open static panel).
+    if (typeof dialog.showModal !== 'function') {
+      dialog.toggleAttribute('open', open)
+      return
+    }
+    if (open && !dialog.open) dialog.showModal()
     else if (!open && dialog.open) dialog.close()
   }, [open])
 

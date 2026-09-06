@@ -306,3 +306,38 @@ test('toggles: a target added after boot gets sv-ui on its first click', async (
   assert.ok(late.classes.has('sv-ui'), 'marked on its first click')
   assert.ok(late.classes.has('open'), 'the click still toggles the class as usual')
 })
+
+test('toggles: boot writes --sv-state from the class, and triggers group by the resolved target, not the selector string', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?boot-state')
+
+  const menu = makeElement()
+  menu.classes.add('open') // server-rendered already open
+  const shut = makeElement()
+  const byId = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  // the same element, reached through a different selector: the old grouping
+  // compared the data-sv-target strings, so these two never saw each other
+  const byClass = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': 'nav.menu' })
+  const other = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#shut' })
+  const listeners = {}
+  const root = {
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: () => {},
+    querySelector: (sel) =>
+      sel === '#menu' || sel === 'nav.menu' ? menu : sel === '#shut' ? shut : null,
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [byId, byClass, other] : []),
+  }
+
+  toggles(root)
+  assert.equal(menu.vars['--sv-state'], '1', 'markup that ships open agrees with its class from boot')
+  assert.equal(shut.vars['--sv-state'], '0', 'a closed target is written too, never left unset')
+  assert.equal(byId.attrs['aria-expanded'], 'true')
+  assert.equal(byClass.attrs['aria-expanded'], 'true', 'another selector for the same element still syncs')
+  assert.equal(other.attrs['aria-expanded'], 'false')
+
+  listeners.click({ target: byId })
+  assert.equal(menu.vars['--sv-state'], '0')
+  assert.equal(byClass.attrs['aria-expanded'], 'false', 'the sibling trigger of that element follows the click')
+  assert.equal(other.attrs['aria-expanded'], 'false', 'an unrelated target is untouched')
+})
