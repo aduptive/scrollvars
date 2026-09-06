@@ -7,25 +7,61 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { varsHtml } from './docs-data.mjs'
+import { varsHtml, measureSizes } from './docs-data.mjs'
+
+/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold).
+ * Bullets group their indented continuation lines into one <li>, and a run
+ * of bullets is wrapped in one <ul>, line by line rather than by regex
+ * backtracking, so a multi-line entry (the common case in this file) does
+ * not lose everything past its first line. */
+export const mdLite = (md) => {
+  const escaped = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^# .+$/gm, '')
+    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
+
+  const out = []
+  let bullet = null // accumulated text of the bullet in progress, or null
+  let inList = false
+  const flushBullet = () => {
+    if (bullet === null) return
+    if (!inList) { out.push('<ul>'); inList = true }
+    out.push(`<li>${bullet}</li>`)
+    bullet = null
+  }
+  const closeList = () => { if (inList) { out.push('</ul>'); inList = false } }
+  for (const line of escaped.split('\n')) {
+    const start = line.match(/^- (.+)$/)
+    if (start) {
+      flushBullet()
+      bullet = start[1]
+    } else if (bullet !== null && /^\s+\S/.test(line)) {
+      bullet += ' ' + line.trim() // indented continuation of the open bullet
+    } else {
+      flushBullet()
+      closeList()
+      out.push(line)
+    }
+  }
+  flushBullet()
+  closeList()
+
+  return out
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'demo', 'docs')
 mkdirSync(out, { recursive: true })
 const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-
-/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold) */
-const mdLite = (md) =>
-  md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# .+$/gm, '')
-    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?)(?=\n(?!<li>|\s)|$)/g, '$1')
-    .replace(/(?:^|\n)(<li>[\s\S]*?<\/li>)(?=\n(?!<li>))/g, '\n<ul>$1</ul>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
+const sizes = measureSizes(root)
 const changelogHtml = mdLite(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'))
 
 const page = `<!doctype html>
@@ -49,6 +85,7 @@ const page = `<!doctype html>
   h1 { font-size: 30px; margin: 10px 0 6px; }
   h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
+  h4 { font-size: 12px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   p, li { color: #cfcbe4; } p.lead { color: var(--muted); }
   p.grp { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-top: 14px; }
@@ -174,7 +211,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
+(gzipped: <code>styles/core.css</code> ${sizes.css.core}&nbsp;KB · pin ${sizes.css.pin} · slider ${sizes.css.slider} · tilt ${sizes.css.tilt} · state ${sizes.css.state} · ui ${sizes.css.ui}).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -238,7 +275,7 @@ plug in what's missing.</p>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
-<tr><td>Firefox</td><td><b>74+</b> (Mar 2020)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
 </table>
@@ -274,3 +311,5 @@ ${changelogHtml}
 
 writeFileSync(join(out, 'index.html'), page)
 console.log(`docs built (v${VERSION})`)
+
+}

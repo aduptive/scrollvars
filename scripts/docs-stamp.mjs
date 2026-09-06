@@ -31,7 +31,7 @@ const stamp = (text, name, body) => {
 let readme = readFileSync(join(root, 'README.md'), 'utf8')
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
 readme = stamp(readme, 'sizes', [
-  `Per import, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
+  `Per module entry, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
   '| you import | JS on the wire |', '| --- | --- |',
   `| \`track\` (the driver) | ${sizes.driver} KB |`,
   `| \`track\` + \`scan\` (zero-wrapper mode) | ${sizes.driverScan} KB |`,
@@ -48,9 +48,9 @@ for (const [name, note] of Object.entries(STYLE_NOTES)) {
   readme = readme.replace(re, `$1${note}, ${sizes.css[name]} KB gz`)
 }
 // prose mentions: the intro line and the slider section carry one number each
-const intro = /Measured \(min\+gzip\): driver [\d.]+ KB, full core incl\. the slider [\d.]+ KB, styles [\d.]+ KB for every preset or [\d.]+ KB for the core part\./
+const intro = /Measured \(JS min\+gzip, CSS gzip as shipped\): driver [\d.]+ KB, full core incl\. the slider [\d.]+ KB, styles [\d.]+ KB for every preset or [\d.]+ KB for the core part\. A typical page ships ~[\d.]+ KB on the wire\./
 if (!intro.test(readme)) throw new Error('README intro sizes sentence not found')
-readme = readme.replace(intro, `Measured (min+gzip): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part.`)
+readme = readme.replace(intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`)
 readme = readme.replace(/Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`)
 writeFileSync(join(root, 'README.md'), readme)
 

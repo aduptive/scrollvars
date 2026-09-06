@@ -3,13 +3,13 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (min+gzip): driver 2.3 KB, full core incl. the slider 5.9 KB, styles 7.9 KB for every preset or 2.2 KB for the core part. A typical page ships ~3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.3 KB, full core incl. the slider 5.9 KB, styles 7.9 KB for every preset or 2.2 KB for the core part. A typical page ships ~4.5 KB on the wire.
 
 ## Why
 
 Most scroll-animation setups pipe scroll values through framework state (a re-render per frame per element) and interleave layout reads with style writes (layout thrashing). ScrollVars fixes the transport:
 
-- **One global driver**: a single passive scroll listener + a single `requestAnimationFrame` for the whole page.
+- **One global driver**: a single passive scroll listener, one rAF for all scroll tracking; slider, pointer and canvas schedule their own.
 - **Batched read → write phases**. All rects first, all CSS variables after.
 - **No framework in the hot path**, React renders zero times during scroll.
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
@@ -41,7 +41,7 @@ shallow, batched GSAP wins deep subtrees. The published curve).
 
 Why the numbers come out this way. Each is a design decision, not tuning:
 
-- **The hot path writes CSS variables and nothing else.** The browser's own
+- **The hot path writes CSS variables and discrete state: a class, a callback.** The browser's own
   transition/animation machinery does the animating; JS only steers. That is
   why 900 animated elements cost so little script time in the table above.
 - **One passive scroll listener + one rAF for all scroll tracking** (the slider, pointer and canvas modules schedule their own frames), strict
@@ -52,7 +52,13 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so without JS the page is a complete static page, SSR, SEO and
-  the Lighthouse load profile stay untouched.
+  the Lighthouse load profile stay untouched, with two exceptions by
+  design: class-toggled panels (menus, modals) stay closed with no click
+  driver to open them, and `sv-view-*` native animations still run without
+  JS where the browser supports `animation-timeline: view()`. A
+  click-driven `sv-acts` target also needs `toggles()` (which marks
+  `sv-ui` on it) to start at zero instead of settling at its no-JS
+  finished state.
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
@@ -89,7 +95,7 @@ import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 
 The package is fully tree-shakeable (ESM, side-effect-free JS); measured
 <!-- sizes:start -->
-Per import, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzip as shipped):
+Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzip as shipped):
 
 | you import | JS on the wire |
 | --- | --- |
@@ -117,7 +123,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 vh/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -129,7 +135,7 @@ Anything that reads them is a preset. The shipped ones:
 | Class | Effect |
 | --- | --- |
 | `sv-rise` / `sv-fade` / `sv-slide-l` / `sv-slide-r` | Entrance transitions, triggered by `.sv-live` |
-| `sv-auto` (on the container) | Every direct child rises in DOM order, no classes on children (`sv-skip` opts out); the first 10 children get their own beat (orders 0 to 9), the rest share order 10 |
+| `sv-auto` (on the container) | Every direct child rises in DOM order, no classes on children (`sv-skip` opts out); the first 10 children get their own beat (orders 0 to 9), children beyond 10 share order 10 |
 | `sv-drift` | Continuous drift tied to `--sv-view`. Follows the finger, no transition |
 | `sv-spread` | Centered deck fans out into its flex row, `.sv-spread-in` plays on arrival, or map `--sv-spread` from `--sv-t` to scrub |
 | `sv-view-fade` / `sv-view-rise` | Pure CSS, zero JS, where `animation-timeline: view()` exists |
@@ -139,7 +145,7 @@ Anything that reads them is a preset. The shipped ones:
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`.
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the wrapper's height and `position: relative`; put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
 
 ## React
 
@@ -243,7 +249,9 @@ import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
 
 `perView` fractional gives the peek (`1.2`); responsive via the map above,
 media queries, or Tailwind: `className="sv-cols [--sv-per-view:1.2] md:[--sv-per-view:2.5]"`
-(`sv-cols` does the column math; `perView` adds it for you).
+(`sv-cols` does the column math whether it sits on the slider itself or one
+level up on the Slider shell, where React's `className` prop lands;
+`perView` adds the class for you automatically).
 Vars cascade, so every knob has a global default and a per-instance (or
 per-slide) override. No `loop` in v1: where Swiper's loop is used, a
 `<Marquee>` is usually the honest fit.
@@ -266,8 +274,11 @@ const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
 Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
 settle ms; default 600: raise for softer), `axis: 'y'` (vertical),
 `onScroll(state)` (full state per frame: active/count/position/progress/
-dragging/gliding. Also on the container as `--sv-progress`). Handle:
-`next/prev/goTo/seek/active/state/destroy`.
+dragging/gliding. Also on the container as `--sv-progress`). Two return
+shapes: `slider(el)` returns the handle itself, `next/prev/goTo/seek/active/
+state/destroy`; `useSlider()` returns `{ ref, active, next, prev, goTo,
+handle }`, where `handle` is a ref to that same handle for `seek`, `state`
+and `destroy`.
 
 Chain two sliders (Swiper's controller/thumbs, one line, unidirectional):
 
@@ -391,8 +402,8 @@ springs. It is "A animates over 0–40% of the pin, B over 30–70%, C over
 parent clock (`--sv-pin` when pinned, else `--sv-t`):
 
 ```html
-<div data-sv data-sv-pin class="outer">
-  <div class="sticky">
+<div data-sv data-sv-pin="320vh">
+  <div class="sv-stage">
     <div class="sv-range sv-range-rise">
       <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
       <p style="--sv-from: .3; --sv-to: .7">Second</p>
@@ -414,9 +425,13 @@ WebGL uniforms). Overlapping ranges are fine: that is the point.
 `track(el, { root: scrollerEl })` measures against an inner scroll container
 instead of the window, brand-center layouts with inner panels stop being a
 disqualifier (the capture-phase listener already hears those scrolls; `root`
-makes the geometry agree). `enter`/`exit` (fractions, defaults 0.75/0.25) tune
-the live band per element. Also as `data-sv-enter="0.6"` / `data-sv-exit="0.2"`
-in zero-wrapper mode and as props on `<Track>`/`<Reveal>`.
+makes the geometry agree). A root with borders is measured from its client
+box, inside the border, so `track()`'s pin math and `scrollToScene()`'s
+scroll target share one origin. `enter`/`exit` (fractions, defaults
+0.75/0.25) tune the live band per element. Also as `data-sv-enter="0.6"` /
+`data-sv-exit="0.2"` in zero-wrapper mode and as props on `<Track>`/
+`<Reveal>`. A `.sv-stage` pinned inside a root reads `--sv-stage-height`
+instead of the default `100vh`: set it to the root's own height.
 
 ## When to use what
 
@@ -459,11 +474,13 @@ The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<di
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
 on old ones it installs a ResizeObserver stub (viewport-resize backed), an
 always-visible IntersectionObserver stub, and a `transform:`-based fallback
-stylesheet for the presets (written without `:is()`/`clamp()`/`min()`).
-Combined with your bundler downleveling the ES2020 dist (Next.js already
-does per browserslist), the core reveal/pin presets animate on roughly
-Chrome 61+ / Firefox 60+ / Safari 11+; sv-counter and sv-view-* stay
-progressive. Call it once, before anything else:
+stylesheet for the presets (written without `:is()`/`clamp()`/`min()`),
+`sv-deck` included. Text splitting works down to the same floor: `split()`
+no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
+Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
+already does per browserslist), the core reveal/pin/split presets animate
+on roughly Chrome 61+ / Firefox 60+ / Safari 11+; sv-counter and
+sv-view-* stay progressive. Call it once, before anything else:
 
 ```ts
 import { compat } from 'scrollvars/compat'
