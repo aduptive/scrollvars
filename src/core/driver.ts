@@ -324,6 +324,11 @@ function apply(entry: Entry, geo: Geometry) {
     }
     opts.onLive?.(isLive)
     if (settle) return
+    // onLive just ran and can untrack or re-track this same element: check
+    // identity again before any further write, or a released (or replaced)
+    // entry keeps writing --sv-view/--sv-t inline and fires one extra
+    // onTravel/onPin/onScene for a callback that already returned.
+    if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.view !== false) {

@@ -68,6 +68,13 @@ findings on the same round): three more defects fixed.
   its `root`) are now one `unobserveIfUnneeded()` helper, used by both
   `releaseEntry()` and the `once` branch, so the two paths cannot drift
   apart again.
+- Fifth pass (verifier findings on PR #13 / ADU-130, and a panel pass): `apply()`
+  kept writing `--sv-view` and `--sv-t` inline, and fired one extra
+  `onTravel`, after an entry's own `onLive` untracked or re-tracked that
+  same element from inside the callback. `apply()` now re-checks
+  `entries.get(entry.el) === entry` right after `onLive` returns, before
+  any of the writes and callbacks that follow, and skips them all when the
+  callback changed the entry's identity.
 
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so
@@ -790,6 +797,15 @@ wide, scrollWidth 500).
   genuine sr-only span under a scaled ancestor, covered by nothing, that
   must be excluded outright (not examined, no false occlusion) while the
   existing masked, normal-sized element is still reported.
+- Fourth pass (panel finding): the "paste the preset" CSS snippets for
+  `staggered-reveal` and `split-reveal` keyed the entrance rule on the
+  `.sv-live` class, while `styles/core.css` keys it on `var(--sv-live)`.
+  A consumer who pasted the snippet instead of loading `core.css` missed
+  the settle-visible behavior a `once` entry gets from `releaseEntry()`
+  (an inline `--sv-live: 1` with the class already removed), so the
+  content silently dropped back to hidden the moment the tracker settled.
+  Both snippets now copy `core.css`'s own rule shape, the `--sv-live`
+  variable declarations included.
 
 ### Docs
 Blind review round 3 (GPT-6 Astra), section 2: wording that had drifted

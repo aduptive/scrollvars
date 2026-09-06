@@ -168,13 +168,14 @@
      aria-hidden. char mode: data-sv-split="char". --&gt;
 
 /* the preset (styles/core.css): */
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-split-rise &gt; span {
-  opacity: 0; translate: 0 .6em;
+  opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
   transition: opacity var(--sv-duration) var(--sv-ease),
               translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
-.sv-on .sv.sv-live .sv-split-rise &gt; span { opacity: 1; translate: 0 0; }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 &lt;h2 class="sv-reading" data-sv-split&gt;…&lt;/h2&gt;   &lt;!-- inside a data-sv-pin --&gt;</code></pre>
