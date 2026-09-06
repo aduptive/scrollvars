@@ -124,6 +124,49 @@ findings on the same round): three more defects fixed.
   `canvas.style.width`/`height` to the first measured CSS size once, then
   proceeds as before. A canvas with a real CSS size is untouched. The
   harness's doc comment now says a canvas should have CSS dimensions.
+- Second pass (verifier finding): that equality guard compared a
+  border-box rect against a content-box backing store, so it could miss
+  the very loop it exists to catch (an unsized canvas with a border never
+  satisfies the equality) and could also misfire on a legitimately
+  CSS-sized canvas (attribute width/height equal to its CSS size trips the
+  guard on first mount and pins that size inline, freezing every later
+  stylesheet-driven resize). `applySize()` now detects the feedback
+  directly instead of guessing from equality: it measures the layout size
+  (`clientWidth`/`clientHeight`, falling back to the rect only when those
+  are 0), writes the backing store, then measures again synchronously. A
+  CSS-sized canvas never changes layout when its own backing store
+  changes, so it is never pinned, whatever its attributes or borders. Only
+  a canvas whose layout size moved as a consequence of that write (layout
+  following the backing store, i.e. no CSS size at all) gets
+  `canvas.style.width`/`height` pinned, once, to the size measured BEFORE
+  the write. Remaining limitation, documented in the doc comment: a canvas
+  with no CSS size still gets one pinned inline by the harness, so give a
+  canvas CSS dimensions to keep control of its size.
+
+### Slider
+Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
+Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
+wide, scrollWidth 500).
+- `slideStart()` walked the offsetParent chain and always subtracted the
+  container's own border (`clientLeft`/`clientTop`), even when the
+  container itself was the slide's offsetParent. offsetLeft is already
+  measured against the offsetParent's padding edge in that case, so the
+  border was subtracted twice: a bordered, positioned container gave -10
+  for its first slide instead of 0. The walk now stops the moment it
+  reaches the container and only falls back to the absolute-position
+  subtraction (plus the border) when the container is skipped entirely
+  (a statically positioned rail whose real offsetParent sits further up).
+- RTL mirrored the slide start against `scrollWidth` instead of
+  `clientWidth`: measured in Chrome, a position:relative RTL rail gave 200
+  for its first slide instead of 0. The mirror now uses the container's
+  own client box.
+- `measure()` tracked only the active index, not the active element. A
+  MutationObserver-driven replacement of that element (same index, new
+  node, e.g. a framework re-render) left `sv-active` on the detached old
+  node and never moved it to the new one. `measure()` now remembers the
+  active node as well: a changed node at the same index moves `sv-active`
+  and `--sv-slide` without firing `onSlide` for an index that never
+  changed.
 
 ## 1.13.0 (2026-09-05)
 
