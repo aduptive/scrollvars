@@ -865,8 +865,11 @@ function StickySteps() {
   },
   {
     slug: 'stats-countup',
-    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['state'], min: '1.13.0' },
+    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars.
+    // core.css is not decoration here: the acts clock is
+    // `calc(var(--sv-live) * var(--sv-acts-count))` and --sv-live is declared
+    // in core.css alone, so on state.css by itself every number renders 0.
+    requires: { styles: ['core', 'state'], min: '1.13.0' },
     category: 'Sections',
     title: 'Stats count-up',
     tagline: 'Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.',
@@ -893,8 +896,9 @@ function StickySteps() {
   </dl>
 </section>
 
-/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
-   block goes live; the counter re-renders every frame of that transition. */
+/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
+   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
+   every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
 .stats .stat::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
@@ -921,9 +925,13 @@ function Stats() {
         {stats.map((s) => (
           <div key={s.label}>
             <dt>{s.label}</dt>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" />
-            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
-            <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
+                term whose only dd is aria-hidden is a term with no definition */}
+            <dd className="stat" style={{ '--sv-max': s.max }}>
+              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>
@@ -940,7 +948,11 @@ export const COMPONENTS = {
     content: `// ScrollVars fx · hero-cinematic
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/ui.css'
 // Split headline rising on a beat, pointer-parallax glow, marquee strip; the block
-// fades and scales out as it leaves (--sv-t). The CSS below is the whole section.
+// fades and scales out as it leaves (--sv-t). The CSS below is the whole section,
+// one constant string injected as raw HTML: React 18's server renderer escapes a
+// <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so the entity never
+// decodes and every child-combinator rule is dropped. CSP is unchanged from any
+// inline <style>: a style-src nonce or hash, or lift the string into your own CSS.
 'use client'
 import * as React from 'react'
 import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -981,7 +993,7 @@ export function HeroCinematic({
     // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
     <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="hero-orb a" />
       <div className="hero-orb b" />
       <Track travel>
@@ -1018,6 +1030,11 @@ export function HeroCinematic({
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage, sv-range)
 // Pinned: the scroll draws the line, counts the year (a CSS counter) and lights each
 // milestone over its own slice of the pin. No JS beyond the driver.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes and every child-combinator rule is dropped. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
@@ -1079,7 +1096,7 @@ export function TimelineScrub({
       className={className ? 'sv-timeline ' + className : 'sv-timeline'}
       style={{ '--tl-from': from, '--tl-span': span } as React.CSSProperties}
     >
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage tl-sticky">
         <div>
           <span className="tl-year">
@@ -1114,6 +1131,12 @@ export function TimelineScrub({
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage)
 // Media stays put while the copy scrolls; each step swaps the shot. --sv-scene does the
 // swapping, the crossfade is one max() per element. Without JS the shots stack in flow.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes. Here that dropped the whole --st-d rule (its selector
+// list carries a child combinator) and every shot stayed at full opacity. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { useScenes } from 'scrollvars/react'
@@ -1170,7 +1193,7 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
     <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage st-grid">
         <div className="st-media">
           {steps.map((s, i) => (
@@ -1208,10 +1231,18 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
   'stats-countup': {
     file: 'StatsCountup.tsx',
     content: `// ScrollVars fx · stats-countup
-// Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (sv-acts)
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/state.css'
+// state.css owns sv-acts; core.css declares --sv-live, and the acts clock is
+// calc(var(--sv-live) * var(--sv-acts-count)): without core.css every number
+// renders 0 the moment the driver boots.
 // Numbers count from zero when the block enters: a CSS counter driven by the
 // registered --sv-act transition. No JS, no innerText. Without JS or under
 // reduced motion the final numbers render immediately.
+// The CSS below is one constant string, injected as raw HTML: a <style> child
+// is escaped by React 18's server renderer (\`>\` becomes \`&gt;\`, dropping every
+// child-combinator rule), and <style> is raw text, so the entity never decodes.
+// CSP is unchanged from any inline <style>: allow it with a style-src nonce or
+// hash, or lift this string into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
@@ -1222,7 +1253,7 @@ const css = \`
 .sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
 .sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.sv-stats .stat::after { content: counter(n) attr(data-suffix); }
+.sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
 \`
 
@@ -1259,18 +1290,18 @@ export function StatsCountup({
       className={className ? 'sv-acts ' + className : 'sv-acts'}
       style={{ '--sv-acts-count': 1, '--sv-acts-duration': duration + 's' } as React.CSSProperties}
     >
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <dl className="sv-stats">
         {stats.map((s, i) => (
           <div key={i}>
             <dt>{s.label}</dt>
-            <dd
-              className="stat"
-              style={{ '--sv-max': s.value } as React.CSSProperties}
-              data-suffix={s.suffix ?? ''}
-              aria-hidden="true"
-            />
-            <span style={SR_ONLY}>{s.value}{s.suffix ?? ''}</span>
+            {/* both halves sit INSIDE the dd: a dl group takes dt/dd only (a loose
+                span there is not in the content model), and a term whose only dd
+                is aria-hidden reaches assistive tech with no definition at all */}
+            <dd className="stat" style={{ '--sv-max': s.value } as React.CSSProperties}>
+              <span style={SR_ONLY}>{s.value}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>
@@ -1629,6 +1660,11 @@ export function PointerTiltGrid({
     content: `// ScrollVars fx · coverflow-slider
 // Requires: npm i scrollvars · import 'scrollvars/styles/slider.css' (layout)
 // Chrome knobs: --sv-arrow-* / --sv-dot-* on this element or :root.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes and every child-combinator rule is dropped. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Slide, Slider } from 'scrollvars/react'
@@ -1647,7 +1683,7 @@ export function CoverflowSlider({
 }: React.ComponentProps<typeof Slider>) {
   return (
     <>
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <Slider perView={perView} gap={16} arrows dots {...rest}>
         {React.Children.map(children, (child) => (
           <Slide className="cf-slide">{child}</Slide>

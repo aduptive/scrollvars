@@ -852,8 +852,9 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
   </dl>
 </section>
 
-/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
-   block goes live; the counter re-renders every frame of that transition. */
+/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
+   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
+   every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
 .stats .stat::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
@@ -877,9 +878,13 @@ function Stats() {
         {stats.map((s) => (
           <div key={s.label}>
             <dt>{s.label}</dt>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" />
-            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
-            <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
+                term whose only dd is aria-hidden is a term with no definition */}
+            <dd className="stat" style={{ '--sv-max': s.max }}>
+              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>

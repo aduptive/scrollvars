@@ -149,9 +149,9 @@
 .sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
 .sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.sv-stats .stat::after { content: counter(n) attr(data-suffix); }
+.sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
-</style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248" data-suffix="+" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99" data-suffix="" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4" data-suffix="" aria-hidden="true"></dd><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span></div></dl></div>
+</style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span><span class="count" data-suffix="+" aria-hidden="true"></span></dd></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div></dl></div>
 <script>addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))</script></div>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
@@ -174,8 +174,9 @@ html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
   &lt;/dl&gt;
 &lt;/section&gt;
 
-/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
-   block goes live; the counter re-renders every frame of that transition. */
+/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
+   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
+   every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
 .stats .stat::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
@@ -195,9 +196,13 @@ function Stats() {
         {stats.map((s) =&gt; (
           &lt;div key={s.label}&gt;
             &lt;dt&gt;{s.label}&lt;/dt&gt;
-            &lt;dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" /&gt;
-            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
-            &lt;span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
+            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
+                term whose only dd is aria-hidden is a term with no definition */}
+            &lt;dd className="stat" style={{ '--sv-max': s.max }}&gt;
+              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+              &lt;span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
+              &lt;span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" /&gt;
+            &lt;/dd&gt;
           &lt;/div&gt;
         ))}
       &lt;/dl&gt;

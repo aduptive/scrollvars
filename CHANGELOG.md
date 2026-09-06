@@ -494,6 +494,51 @@ findings on the same round): three more defects fixed.
   now casts the ref to `React.RefObject<T>` at the JSX call site, the same
   shape `GsapScrub` already needed for its own mutable `useRef`.
 
+### Installed components (blind review round 4)
+- `stats-countup` declares `core.css` as well as `state.css`. The acts clock
+  is `calc(var(--sv-live) * var(--sv-acts-count))` and `--sv-live` is
+  declared in `core.css` alone, so a consumer who imported exactly what the
+  registry asked for got `--sv-act: 0` the moment the driver booted, and
+  every number rendered as 0. Without JS the numbers were correct, which is
+  why nothing caught it: the gallery page loads the whole `styles.css`.
+- `StatsCountup`'s markup is valid again: the screen-reader value and the
+  `aria-hidden` counter both sit inside the `<dd>` (`.count`). The readable
+  value used to be a `<span>` sibling of the `<dd>` inside `<dl><div>`, which
+  is outside the definition-list content model, and the only `<dd>` was
+  `aria-hidden`, so every term reached assistive tech with no definition.
+- Every installed component renders its constant CSS with
+  `dangerouslySetInnerHTML` instead of a `<style>` text child. React 18's
+  `renderToStaticMarkup` escapes `>` inside `<style>` (React 19 does not),
+  and `<style>` is a raw-text element, so the entity never decodes and every
+  child-combinator rule was dropped: under React 18 SSR, `sticky-steps` lost
+  the whole `--st-d` rule and its shots stopped crossfading. CSP is unchanged
+  from any other inline `<style>`: a `style-src` nonce or hash.
+- `test/cli-components.test.mjs` compares the React 18 render with the React
+  19 one instead of returning early: that skip is what let the corrupted
+  React 18 markup ship unseen.
+- New unit gate: an effect must declare the stylesheets the presets it uses
+  read variables from, so a rule reading `var(--x)` with no fallback can
+  never again be one undeclared import away from computing to nothing.
+
+### Testing (blind review round 4)
+- New harness step, the isolated installation gate
+  (`demo/bench/harness/installed-gate.mjs`, `render-installed.mjs`, wired
+  into `npm run test:e2e`): per effect in `demo/fx/registry.json` it installs
+  the component into a temp dir with the real CLI, renders it with its
+  `previewProps` under React 18 and React 19, and loads it into headless
+  Chrome with ONLY the stylesheets `requires.styles` names, plus the engine.
+  It asserts the page renders complete with no engine at all, that the
+  effect's key behavior happens with the engine (the counters resolve above
+  zero, the pin clock scrubs the year counter, the shots crossfade, the hero
+  is split and live), that reduced motion hides nothing and adds no inert
+  content, that a `<dl>`'s content model and terms hold, and that every
+  focusable element stays keyboard reachable. Proved red on the three
+  defects above before they were fixed.
+- `npm run test:e2e` installs the isolated React 18 first
+  (`scripts/react18-install.mjs`, the same one `test:react18` uses): the gate
+  renders under both majors and fails loudly rather than silently halving
+  its coverage.
+
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
   marker was lazy on the content but only matched a fixed 3-newline gap

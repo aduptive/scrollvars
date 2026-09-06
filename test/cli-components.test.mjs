@@ -247,6 +247,61 @@ test('tsc gate fails the suite on any tsc error, attributed or not', () => {
   )
 })
 
+// ---- requires.styles must be CLOSED over the variables those stylesheets
+// read. One stylesheet here can consume a custom property another one
+// declares: state.css's acts clock is `calc(var(--sv-live) * var(--sv-acts-count))`
+// and --sv-live is declared in core.css alone, so an effect that declared
+// state.css without core.css computed --sv-act 0 and rendered every number as
+// zero the moment the driver booted, only with JS on (ADU-129, finding 1).
+// Driver outputs (--sv-t, --sv-pin, --sv-scene) and author knobs are declared
+// in no stylesheet at all, so they are never flagged; a var read WITHOUT a
+// fallback that another scrollvars stylesheet declares is a missing import.
+const STYLESHEETS = ['core', 'pin', 'slider', 'tilt', 'state', 'ui']
+// comments first: a doc comment naming `var(--sv-t)` is not a consumer
+const styleSource = Object.fromEntries(
+  STYLESHEETS.map((name) => [
+    name,
+    readFileSync(join(root, 'styles', `${name}.css`), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
+  ])
+)
+const declaresVars = (name) =>
+  new Set([
+    ...[...styleSource[name].matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
+    ...[...styleSource[name].matchAll(/@property\s+(--[\w-]+)/g)].map((m) => m[1]),
+  ])
+// selector + body pairs. Nested at-rules never match as a whole (their body
+// holds braces), so their inner rules are what land here: enough for this.
+const rulesOf = (name) =>
+  [...styleSource[name].matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }))
+// var(--x) with no comma before the closing paren: no fallback to fall back on
+const readsWithoutFallback = (body) => [...body.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)].map((m) => m[1])
+// classes every tracked element carries anyway: they say nothing about which
+// preset a rule belongs to, so they never decide relevance on their own
+const ENGINE_CLASSES = new Set(['sv', 'sv-on', 'sv-live', 'sv-open', 'sv-ui'])
+
+test('every effect declares the stylesheets its own presets read variables from', () => {
+  const missing = []
+  for (const fx of EFFECTS) {
+    const declared = fx.requires?.styles ?? []
+    const own = new Set(declared.flatMap((name) => [...declaresVars(name)]))
+    const content = COMPONENTS[fx.slug].content
+    for (const name of declared) {
+      for (const rule of rulesOf(name)) {
+        // only the presets this component actually uses: state.css also ships
+        // sv-words, and a rotating-words consumer needs nothing from core.css
+        const specific = [...rule.sel.matchAll(/\.([\w-]+)/g)].map((m) => m[1]).filter((c) => !ENGINE_CLASSES.has(c))
+        if (specific.length && !specific.some((c) => new RegExp(`\\b${c}\\b`).test(content))) continue
+        for (const v of readsWithoutFallback(rule.body)) {
+          if (own.has(v)) continue
+          const from = STYLESHEETS.find((other) => declaresVars(other).has(v))
+          if (from) missing.push(`${fx.slug}: ${name}.css \`${rule.sel}\` reads ${v}, declared in ${from}.css`)
+        }
+      }
+    }
+  }
+  assert.deepEqual(missing, [], missing.join('\n'))
+})
+
 test('consumer-idiom hook refs (no cast) type-check under the installed React major', () => {
   const errors = tscErrorsByFile.get(HOOK_REF_IDIOMS_FILE) ?? []
   assert.deepEqual(errors, [], `${HOOK_REF_IDIOMS_FILE} fails to type-check:\n${errors.join('\n')}`)
@@ -284,11 +339,13 @@ for (const fx of EFFECTS) {
       const markup = renderStatic(mod[name], fx.previewProps)
       assert.ok(markup.length > 50, 'renders markup on the server')
       // demo/fx/<slug>.html is generated once, under the repo's default React
-      // (19, `npm run demo:sync`): React 18's renderToStaticMarkup escapes a
-      // <style> child's text differently (`>` becomes `&gt;`), so the
-      // byte-for-byte drift check below only holds outside test:react18,
-      // which instead proves the component itself still renders, warning-free.
-      if (react18) return
+      // (19, `npm run demo:sync`), so under test:react18 this same comparison
+      // IS the cross-major check: React 18's renderToStaticMarkup escapes a
+      // <style> child's text (`>` becomes `&gt;`) and <style> is raw text, so
+      // the entity never decodes and every child-combinator rule is dropped.
+      // The components render their constant CSS with dangerouslySetInnerHTML
+      // for exactly that reason; this used to `return` here instead, and the
+      // corrupted React 18 markup shipped unseen (ADU-129).
       const expected = await renderSectionPreview(fx, { file, content })
       const page = readFileSync(join(root, 'demo', 'fx', `${fx.slug}.html`), 'utf8')
       assert.ok(
