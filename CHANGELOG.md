@@ -480,6 +480,55 @@ wide, scrollWidth 500).
   in flight also edits. No type or runtime change: `dist/react/index.js` is
   byte-identical before and after.
 
+### Gallery
+- The gallery preview for the four Sections (`hero-cinematic`, `timeline-scrub`,
+  `sticky-steps`, `stats-countup`) is no longer a hand-typed HTML string: it is
+  the installed component itself, compiled with esbuild and rendered with
+  `react-dom/server` (the same pipeline `test/cli-components.test.mjs` already
+  proves every fixture against), with a small `previewProps` object per
+  Section (`scripts/fx-data.mjs`) standing in for real content. Preview and
+  component now share one source, so they cannot drift. A component that
+  attaches via a client hook (`usePointer`, `useScenes`, a bare `<Track pin>`)
+  has no scannable `data-sv` attribute in its server markup, so its gallery
+  page keeps a tiny `previewScript` (documented on the effect entry) that
+  calls the vanilla driver directly once `sv.js` loads.
+- `test/cli-components.test.mjs`'s class-token parity check (installed
+  component vs. hand-written preview) is replaced, for these four, by an
+  assertion that `demo/fx/<slug>.html` literally contains the component's own
+  render; the check for every effect that still has a hand-written preview
+  is unchanged. Rendering with `previewProps` also fails the test on any
+  React warning to stderr.
+- `demo/bench/harness/e2e-invariants.mjs`'s pin-stage occlusion sweep no
+  longer flags the visually-hidden sr-only text used alongside an
+  aria-hidden visual counter (`Split`, `TimelineScrub`'s year,
+  `StatsCountup`'s count: `clip-path: inset(50%)`, by design the same text
+  and position as the digit it describes): nothing on screen for it to
+  cover or be covered by. The rendered `TimelineScrub` preview is the first
+  page that put this pattern inside a `.sv-stage`, where the sweep actually
+  looks.
+- Second pass (verifier finding on 8ecd8f1): that sr-only exclusion tested
+  `clip-path !== 'none'` alone, which also excludes a normal-sized element
+  that only wears a decorative `clip-path` mask (a circular reveal effect,
+  for instance), so visible text covered by a panel there would silently
+  drop out of the sweep. Real sr-only text is pinpoint-sized (1px by 1px,
+  matching `SR_ONLY_CSS` in `src/core/split.ts` and `SR_ONLY` in
+  `src/react/index.tsx`) in addition to being `clip-path`'d, so the
+  predicate now requires both. A new negative fixture
+  (`demo/bench/harness/fixtures/pin-stage-clip-path-occlusion.html`) proves
+  a masked, normal-sized element under an opaque panel is still examined
+  and reported.
+- Third pass (verifier finding on 4f637e0): the pinpoint-size half of that
+  same predicate read `el.getBoundingClientRect()`, which measures the
+  painted rect. A real sr-only span nested under a `transform: scale(2)`
+  ancestor (`sv-tilt` and `sv-deck` both transform their content) paints
+  at 2px by 2px, so it read as "not pinpoint", escaped the exclusion, and
+  became a false occlusion candidate. The predicate now reads
+  `offsetWidth`/`offsetHeight` instead, the layout box, which an ancestor
+  transform never changes. The same fixture gained a positive case: a
+  genuine sr-only span under a scaled ancestor, covered by nothing, that
+  must be excluded outright (not examined, no false occlusion) while the
+  existing masked, normal-sized element is still reported.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
