@@ -530,6 +530,7 @@ Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome v
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */
 ```
 
 ### React
@@ -590,9 +591,13 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
 ### Tailwind
 ```html
 <section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&_.inner]:[opacity:1] motion-reduce:[&_.inner]:[scale:none]">
+  <!-- the motion-reduce override is written on the section, same [&_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order -->
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"></div>
   <div class="inner text-center">
     <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
@@ -720,7 +725,11 @@ function Timeline() {
   return (
     <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
       <div className="sv-stage tl-sticky">
-        <span className="tl-year" />
+        <span className="tl-year">
+          {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{2026}</span>
+          <span className="tl-count" aria-hidden="true" />   {/* the CSS-counter digits */}
+        </span>
         <div className="tl-track"><i className="tl-line" />
           <ol className="sv-range sv-range-rise tl-items">
             {steps.map((s) => (
@@ -827,8 +836,8 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
 ```html
 <section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd></div>
+    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd></div>
   </dl>
 </section>
 <!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->
@@ -867,8 +876,10 @@ function Stats() {
       <dl className="stats">
         {stats.map((s) => (
           <div key={s.label}>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
             <dt>{s.label}</dt>
+            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+            <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
           </div>
         ))}
       </dl>

@@ -427,6 +427,102 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Installed components (blind review round 3)
+<ul><li><code>StickySteps</code>'s <code>inert</code> spread now casts like the core does</li></ul>
+  (<code>as unknown as Record&lt;string, never></code>): the previous inline ternary put a
+  <code>string | boolean</code> into a <code>boolean</code> prop, failing <code>tsc</code> under React 19
+  types. It also now subscribes to the <code>prefers-reduced-motion</code> media
+  query's <code>change</code> event instead of reading it once, so a live switch drops,
+  or restores, <code>inert</code>/<code>aria-hidden</code> on the stacked shots immediately.
+<ul><li><code>GsapScrub</code> and <code>ThreeScene</code> declare their mutable refs as</li></ul>
+  <code>useRef&lt;T | null>(null)</code>, not <code>useRef&lt;T>(null)</code>: read-only under React 18
+  types. <code>GsapScrub</code> also drives the timeline through
+  <code>prefersReducedMotion()</code> (imported from <code>scrollvars</code>), so a
+  reduced-motion visitor gets the finished frame instead of a scrubbed one.
+<ul><li><code>gsap-scrub</code> and <code>three-scene</code> declare <code>min: '1.13.0'</code>: the string pin</li></ul>
+  helper and <code>.sv-stage</code> they both use are 1.13.0 features, not the
+  1.9.0/1.11.0 previously declared.
+<ul><li><code>curtain</code>, <code>horizontal-rail</code> and <code>pointer-tilt</code> declare</li></ul>
+  <code>requires.tailwind: true</code>: their installed content leans on Tailwind
+  utility classes with no component-owned CSS backing them. The CLI prints
+  "Tailwind utilities: required" for these effects; the registry gains the
+  <code>tailwind</code> flag.
+<ul><li><code>CoverflowSlider</code>'s coverflow transform moved from an inline <code>style</code></li></ul>
+  object into a <code>.cf-slide</code> class with a <code>prefers-reduced-motion: reduce</code>
+  override, matching the preset policy that scroll-linked transforms return
+  to flow under reduced motion. The Tailwind tab of <code>hero-cinematic</code> gained
+  matching <code>motion-reduce:</code> variants for the orb and the inner block.
+<ul><li><code>TimelineScrub</code> renders the year as visually-hidden real text plus an</li></ul>
+  aria-hidden counter span, instead of <code>aria-label</code> on a bare <code>&lt;span></code>
+  (prohibited on generic roles, Axe <code>aria-prohibited-attr</code>). <code>StatsCountup</code>
+  emits <code>&lt;dt></code> before <code>&lt;dd></code> (order was reversed), and renders the final
+  value as visually-hidden text with the counter itself <code>aria-hidden</code>.
+
+### Installed components (blind review round 3, second pass)
+<ul><li>The CLI component <code>tsc</code> gate was vacuous under a config-level error: a</li></ul>
+  bad <code>moduleResolution</code> prints as <code>tsconfig.json(9,25): error TS6046</code>,
+  which never matches the per-file <code>&lt;name>.tsx(line,col)</code> regex, so every
+  fixture reported "type-checks: pass" while tsc never actually checked
+  any of them. The gate now counts every <code>error TS\d+</code> line in the raw
+  output against the lines it can attribute to a fixture file and fails
+  loudly, with the raw output, on any mismatch or on a non-zero exit with
+  no per-file diagnostics. Proved red on a deliberately invalid
+  <code>moduleResolution</code> before landing, green again after reverting it.
+<ul><li><code>hero-cinematic</code>'s Tailwind tab: the <code>motion-reduce:</code> override for</li></ul>
+  <code>.inner</code> sat on the <code>.inner</code> div itself (<code>[opacity:1]</code>/<code>[scale:none]</code>,
+  a one-class selector, specificity 0,1,0) while the base rule reaches
+  <code>.inner</code> through the section's <code>[&amp;_.inner]:</code> variants (a two-class
+  selector, 0,2,0), so the override never won and reduced-motion visitors
+  still got the scroll-driven fade and scale. The override now lives on
+  the section in the same <code>[&amp;_.inner]:</code> shape, after the base variants,
+  so equal specificity lets source order settle it.
+<ul><li>The condensed <code>react:</code> doc snippets for <code>timeline-scrub</code> and</li></ul>
+  <code>stats-countup</code> referenced <code>&lt;span style={SR_ONLY}></code> without defining
+  it, unlike every other self-contained snippet (<code>SR_ONLY</code> is not
+  exported from <code>scrollvars</code>). Both now inline the sr-only style object
+  literal at the point of use.
+
+### Installed components (blind review round 3, third pass)
+<ul><li>The second pass's <code>tsc</code> gate fix counted every <code>error TS\d+</code> line against</li></ul>
+  the lines it could attribute to a fixture file, but the ambient stubs
+  <code>gsap.d.ts</code> / <code>three.d.ts</code> compile in the same scope (needed to
+  type-check <code>gsap-scrub</code>/<code>three-scene</code>) and are not one of the EFFECTS
+  fixtures the per-file loop asserts on: a syntax error injected into
+  <code>AMBIENT_GSAP</code> attributed cleanly to <code>gsap.d.ts(line,col)</code>, so the count
+  matched, the "not vacuous" meta-test passed, and all 17 fixture tests
+  reported "type-checks: pass" while tsc had exited 1 the whole time. The
+  gate now fails the whole test file on any non-zero tsc exit, no matter
+  how the diagnostics are attributed, printing the raw output; per-fixture
+  attribution stays for the nicer message. Proved red by injecting a
+  syntax error into the ambient stub (the gate failed with the raw
+  <code>gsap.d.ts</code> diagnostics, every fixture test still green), green again
+  after removing it; a per-file error (injected into <code>marquee</code>) still
+  fails only that fixture's test plus the file-level gate.
+
+### Installed components (blind review round 3, fourth pass)
+<ul><li>The CLI component <code>tsc</code> gate spawned <code>tsc</code> with a generated tsconfig that</li></ul>
+  had no <code>paths</code> redirect for <code>react</code>, so the subprocess always resolved the
+  root's React 19 <code>@types</code>, even under <code>npm run test:react18</code>: the
+  <code>--import</code> loader hook only redirects the parent process's own runtime
+  imports, never a subprocess it spawns. No <code>tsc</code> run anywhere checked the
+  installed fixtures against React 18 types, so reverting <code>GsapScrub</code>'s
+  <code>useRef&lt;T | null>(null)</code> fix stayed green everywhere. <code>react18-register.mjs</code>
+  now sets <code>SV_REACT18_DIR</code> (its value read straight from
+  <code>react18-paths.mjs</code>, the same module <code>react18-tsc.mjs</code> already used for
+  <code>src/</code>), and the gate adds the same <code>paths</code> redirect and canary when that
+  variable is set. Proved red by reverting the <code>GsapScrub</code> fix under
+  <code>npm run test:react18</code> (the gate failed with "Cannot assign to 'current'
+  because it is a read-only property"), green again after restoring it.
+<ul><li>With the gate actually checking React 18 types, four more fixtures failed</li></ul>
+  it: <code>HeroCinematic</code>, <code>PointerTiltGrid</code>, <code>StickySteps</code> and <code>ThreeScene</code> all
+  pass a hook's <code>RefObject&lt;T | null></code> (the same shape <code>GsapScrub</code> needed to
+  satisfy both majors) straight into a host element's <code>ref</code>. React 18's
+  types compare that generic argument literally against <code>RefObject&lt;T></code>
+  instead of expanding both to <code>{ current: T | null }</code>, so <code>T | null</code> fails
+  where <code>T</code> succeeds even though the two are structurally identical. Each
+  now casts the ref to <code>React.RefObject&lt;T></code> at the JSX call site, the same
+  shape <code>GsapScrub</code> already needed for its own mutable <code>useRef</code>.
+
 ### Tooling
 <ul><li><code>npm run demo:sync</code> is idempotent again: the bench page's inlined engine</li></ul>
   marker was lazy on the content but only matched a fixed 3-newline gap

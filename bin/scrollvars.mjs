@@ -112,7 +112,7 @@ if (command === 'list') {
 requires:
   ${versionNote}${deps.length ? `\n  npm i ${deps.join(' ')}` : ''}
   ${styles.length ? styles.join('\n  ') : '(no stylesheet)'}   in the root layout
-  <ScrollVarsBoot /> once, first child of <body> (scrollvars/react)
+  <ScrollVarsBoot /> once, first child of <body> (scrollvars/react)${req.tailwind ? '\n  Tailwind utilities: required (or ship your own CSS)' : ''}
 
 docs for this effect: ${effect.page}`)
 } else {

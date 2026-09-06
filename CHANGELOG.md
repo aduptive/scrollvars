@@ -176,6 +176,102 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Installed components (blind review round 3)
+- `StickySteps`'s `inert` spread now casts like the core does
+  (`as unknown as Record<string, never>`): the previous inline ternary put a
+  `string | boolean` into a `boolean` prop, failing `tsc` under React 19
+  types. It also now subscribes to the `prefers-reduced-motion` media
+  query's `change` event instead of reading it once, so a live switch drops,
+  or restores, `inert`/`aria-hidden` on the stacked shots immediately.
+- `GsapScrub` and `ThreeScene` declare their mutable refs as
+  `useRef<T | null>(null)`, not `useRef<T>(null)`: read-only under React 18
+  types. `GsapScrub` also drives the timeline through
+  `prefersReducedMotion()` (imported from `scrollvars`), so a
+  reduced-motion visitor gets the finished frame instead of a scrubbed one.
+- `gsap-scrub` and `three-scene` declare `min: '1.13.0'`: the string pin
+  helper and `.sv-stage` they both use are 1.13.0 features, not the
+  1.9.0/1.11.0 previously declared.
+- `curtain`, `horizontal-rail` and `pointer-tilt` declare
+  `requires.tailwind: true`: their installed content leans on Tailwind
+  utility classes with no component-owned CSS backing them. The CLI prints
+  "Tailwind utilities: required" for these effects; the registry gains the
+  `tailwind` flag.
+- `CoverflowSlider`'s coverflow transform moved from an inline `style`
+  object into a `.cf-slide` class with a `prefers-reduced-motion: reduce`
+  override, matching the preset policy that scroll-linked transforms return
+  to flow under reduced motion. The Tailwind tab of `hero-cinematic` gained
+  matching `motion-reduce:` variants for the orb and the inner block.
+- `TimelineScrub` renders the year as visually-hidden real text plus an
+  aria-hidden counter span, instead of `aria-label` on a bare `<span>`
+  (prohibited on generic roles, Axe `aria-prohibited-attr`). `StatsCountup`
+  emits `<dt>` before `<dd>` (order was reversed), and renders the final
+  value as visually-hidden text with the counter itself `aria-hidden`.
+
+### Installed components (blind review round 3, second pass)
+- The CLI component `tsc` gate was vacuous under a config-level error: a
+  bad `moduleResolution` prints as `tsconfig.json(9,25): error TS6046`,
+  which never matches the per-file `<name>.tsx(line,col)` regex, so every
+  fixture reported "type-checks: pass" while tsc never actually checked
+  any of them. The gate now counts every `error TS\d+` line in the raw
+  output against the lines it can attribute to a fixture file and fails
+  loudly, with the raw output, on any mismatch or on a non-zero exit with
+  no per-file diagnostics. Proved red on a deliberately invalid
+  `moduleResolution` before landing, green again after reverting it.
+- `hero-cinematic`'s Tailwind tab: the `motion-reduce:` override for
+  `.inner` sat on the `.inner` div itself (`[opacity:1]`/`[scale:none]`,
+  a one-class selector, specificity 0,1,0) while the base rule reaches
+  `.inner` through the section's `[&_.inner]:` variants (a two-class
+  selector, 0,2,0), so the override never won and reduced-motion visitors
+  still got the scroll-driven fade and scale. The override now lives on
+  the section in the same `[&_.inner]:` shape, after the base variants,
+  so equal specificity lets source order settle it.
+- The condensed `react:` doc snippets for `timeline-scrub` and
+  `stats-countup` referenced `<span style={SR_ONLY}>` without defining
+  it, unlike every other self-contained snippet (`SR_ONLY` is not
+  exported from `scrollvars`). Both now inline the sr-only style object
+  literal at the point of use.
+
+### Installed components (blind review round 3, third pass)
+- The second pass's `tsc` gate fix counted every `error TS\d+` line against
+  the lines it could attribute to a fixture file, but the ambient stubs
+  `gsap.d.ts` / `three.d.ts` compile in the same scope (needed to
+  type-check `gsap-scrub`/`three-scene`) and are not one of the EFFECTS
+  fixtures the per-file loop asserts on: a syntax error injected into
+  `AMBIENT_GSAP` attributed cleanly to `gsap.d.ts(line,col)`, so the count
+  matched, the "not vacuous" meta-test passed, and all 17 fixture tests
+  reported "type-checks: pass" while tsc had exited 1 the whole time. The
+  gate now fails the whole test file on any non-zero tsc exit, no matter
+  how the diagnostics are attributed, printing the raw output; per-fixture
+  attribution stays for the nicer message. Proved red by injecting a
+  syntax error into the ambient stub (the gate failed with the raw
+  `gsap.d.ts` diagnostics, every fixture test still green), green again
+  after removing it; a per-file error (injected into `marquee`) still
+  fails only that fixture's test plus the file-level gate.
+
+### Installed components (blind review round 3, fourth pass)
+- The CLI component `tsc` gate spawned `tsc` with a generated tsconfig that
+  had no `paths` redirect for `react`, so the subprocess always resolved the
+  root's React 19 `@types`, even under `npm run test:react18`: the
+  `--import` loader hook only redirects the parent process's own runtime
+  imports, never a subprocess it spawns. No `tsc` run anywhere checked the
+  installed fixtures against React 18 types, so reverting `GsapScrub`'s
+  `useRef<T | null>(null)` fix stayed green everywhere. `react18-register.mjs`
+  now sets `SV_REACT18_DIR` (its value read straight from
+  `react18-paths.mjs`, the same module `react18-tsc.mjs` already used for
+  `src/`), and the gate adds the same `paths` redirect and canary when that
+  variable is set. Proved red by reverting the `GsapScrub` fix under
+  `npm run test:react18` (the gate failed with "Cannot assign to 'current'
+  because it is a read-only property"), green again after restoring it.
+- With the gate actually checking React 18 types, four more fixtures failed
+  it: `HeroCinematic`, `PointerTiltGrid`, `StickySteps` and `ThreeScene` all
+  pass a hook's `RefObject<T | null>` (the same shape `GsapScrub` needed to
+  satisfy both majors) straight into a host element's `ref`. React 18's
+  types compare that generic argument literally against `RefObject<T>`
+  instead of expanding both to `{ current: T | null }`, so `T | null` fails
+  where `T` succeeds even though the two are structurally identical. Each
+  now casts the ref to `React.RefObject<T>` at the JSX call site, the same
+  shape `GsapScrub` already needed for its own mutable `useRef`.
+
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
   marker was lazy on the content but only matched a fixed 3-newline gap

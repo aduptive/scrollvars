@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>fixture: sticky-steps inert/aria-hidden follows prefers-reduced-motion live</title>
+</head>
+<body>
+<!-- Regression fixture (ADU-108, blind review round 3, finding 19): the
+     installed StickySteps component (scripts/fx-data.mjs COMPONENTS,
+     npx scrollvars add sticky-steps) makes every non-active shot inert and
+     aria-hidden once mounted, so a crossfaded shot cannot keep focusable
+     links, but never under reduced motion, where the shots stack in flow
+     and every one must stay reachable. It read the media query once in an
+     effect; a live switch mid-session left the old value stuck. This
+     fixture reproduces the exact same contract in plain JS (the component
+     itself is TSX, exercised by test/cli-components.test.mjs, not runnable
+     by this static harness): scene 0 starts active, scenes 1 and 2 do not.
+
+     Not shipped, not generated: loaded directly by
+     demo/bench/harness/e2e-invariants.mjs. -->
+<div class="st-media">
+  <figure class="st-shot" data-i="0">01</figure>
+  <figure class="st-shot" data-i="1">02</figure>
+  <figure class="st-shot" data-i="2">03</figure>
+</div>
+<script>
+(function () {
+  var scene = 0
+  var figures = [].slice.call(document.querySelectorAll('.st-shot'))
+  var mq = matchMedia('(prefers-reduced-motion: reduce)')
+  function sync() {
+    var interactive = !mq.matches
+    figures.forEach(function (fig, i) {
+      if (interactive && i !== scene) {
+        fig.inert = true
+        fig.setAttribute('aria-hidden', 'true')
+      } else {
+        fig.inert = false
+        fig.removeAttribute('aria-hidden')
+      }
+    })
+  }
+  sync()
+  mq.addEventListener('change', sync)
+})()
+</script>
+</body>
+</html>

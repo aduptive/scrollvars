@@ -180,9 +180,13 @@
   <div class="code">
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]"&gt;
+  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&amp;_.inner]:[opacity:1] motion-reduce:[&amp;_.inner]:[scale:none]"&gt;
+  &lt;!-- the motion-reduce override is written on the section, same [&amp;_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order --&gt;
   &lt;div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"&gt;&lt;/div&gt;
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"&gt;&lt;/div&gt;
   &lt;div class="inner text-center"&gt;
     &lt;p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400"&gt;Eyebrow&lt;/p&gt;
     &lt;h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
