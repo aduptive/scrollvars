@@ -77,7 +77,7 @@ function makeEnv() {
     const hasH = !!canvas.style.height
     const w = hasW ? parseFloat(canvas.style.width) : canvas.width
     const h = hasH ? parseFloat(canvas.style.height) : canvas.height
-    const ratio = ratioFromAspectRatio(canvas.style.aspectRatio)
+    const ratio = laidOutRatio(canvas)
     if (hasW && !hasH) return { width: w, height: ratio ? w / ratio : w * (canvas.height / canvas.width) }
     if (!hasW && hasH) return { width: ratio ? h * ratio : h * (canvas.width / canvas.height), height: h }
     return { width: w, height: h }
@@ -324,6 +324,19 @@ function ratioFromAspectRatio(value) {
   return m ? Number(m[1]) / Number(m[2]) : undefined
 }
 
+// The ratio LAYOUT actually derives a free axis from (ADU-158). An engine
+// whose CSSOM never implemented `aspect-ratio` (below the README's Safari
+// 12.1 canvas gate, modelled here the way the ADU-143 test does it: the
+// computed property is absent, not an empty string) does not honor
+// `style.aspectRatio` in layout either, whatever this harness wrote there:
+// the free axis keeps following the canvas's own width/height attributes,
+// which this harness rewrites every pass. A fixture that honors an inline
+// ratio the engine ignores hides exactly the runaway this models.
+function laidOutRatio(canvas) {
+  if (!('aspectRatio' in canvas.computedStyle)) return undefined
+  return ratioFromAspectRatio(canvas.style.aspectRatio)
+}
+
 // `maxWidth` (mutable on the returned object, so a test can simulate a
 // container shrink by lowering it later, same pattern as mutating
 // `state.width` above) models `max-width`: it caps whatever the width
@@ -342,7 +355,7 @@ function resolveContentSize(canvas) {
   const hasH = !!canvas.style.height
   let w = hasW ? parseFloat(canvas.style.width) : undefined
   let h = hasH ? parseFloat(canvas.style.height) : undefined
-  const ratio = ratioFromAspectRatio(canvas.style.aspectRatio)
+  const ratio = laidOutRatio(canvas)
   if (w !== undefined && canvas.maxWidth != null) w = Math.min(w, canvas.maxWidth)
   if (w === undefined && canvas.maxWidth != null && h === undefined) {
     w = Math.min(canvas.width, canvas.maxWidth) // auto width, capped
@@ -1850,7 +1863,7 @@ test('canvas harness: mountEffect under the compat() ResizeObserver shim does no
   assert.equal(frames[0].h, 300)
 })
 
-test('canvas harness: a computed style with no aspectRatio support does not throw and still pins the canvas (ADU-143)', async () => {
+test('canvas harness: a computed style with no aspectRatio support does not throw and sizes the canvas without pinning it (ADU-143, ADU-158)', async () => {
   const env = makeEnv()
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
@@ -1870,9 +1883,49 @@ test('canvas harness: a computed style with no aspectRatio support does not thro
   }, 'a CSSOM with no aspectRatio support must not throw')
 
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.aspectRatio, '300 / 150', 'missing aspectRatio treated the same as "auto", still pinned')
+  // ADU-158: a ratio the engine cannot take is not written at all, and the
+  // canvas is left unpinned, so the free-axis derivation keeps anchoring
+  // height to the original attribute ratio. The size is the same either way
+  // here (300 * 2 and 150 * 2 are both integers); the case that diverges is
+  // the ADU-158 test below.
+  assert.equal(canvas.style.aspectRatio, undefined, 'nothing is written where the property cannot take effect')
   assert.equal(canvas.width, 600)
   assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: below the CSS aspect-ratio floor an unsized canvas is never pinned and its height stops growing (ADU-158)', async () => {
+  // ADU-143 stopped the throw and kept the premise: the write below the
+  // floor is dropped by the engine, yet the canvas was still marked
+  // `pinned`, which means both axes round independently against an
+  // intrinsic ratio this harness itself rewrites every pass. At 30x61,
+  // dpr 0.51, the height walked 62, 64, 66, 68, 70 CSS px, growing 2 per
+  // pass, unbounded, the same runaway ADU-107 fixed above the floor.
+  // Unpinned, the probe keeps running and anchors height to `ratio0` (the
+  // ORIGINAL attribute ratio), so it settles on the second pass and stays.
+  const env = makeEnv()
+  global.window.devicePixelRatio = 0.51
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 30, height: 61, style })
+  delete canvas.computedStyle.aspectRatio // no aspect-ratio in this CSSOM, and none in its layout either
+
+  mountEffect(canvas, { frame: () => {} })
+
+  const heights = []
+  for (let pass = 0; pass < 5; pass++) {
+    env.resize({ width: canvas.clientWidth, height: canvas.clientHeight })
+    // 30 * (31 / 15) is 62.00000000000001 in binary floating point, not 62:
+    // rounded here so the assertion below reads the real drift (2 CSS px a
+    // pass) and not that last-bit noise.
+    heights.push(Math.round(canvas.clientHeight * 1e6) / 1e6)
+  }
+
+  assert.deepEqual(heights, [62, 62, 62, 62, 62], 'the laid-out height is stable over five passes')
+  assert.equal(canvas.style.width, '30px', 'width is still pinned: that is what stops the width axis from following')
+  assert.equal(canvas.style.aspectRatio, undefined, 'no aspect-ratio is written where the property cannot take effect')
+  assert.equal(canvas.width, 15, 'backing width: 30 CSS px * dpr 0.51')
+  assert.equal(canvas.height, 31, 'backing height: anchored to the 30/61 attribute ratio, never its own last write')
 })
 
 test('canvas harness: a MediaQueryList with only addListener (no addEventListener) still gets the dpr and reduced-motion listeners (ADU-143)', async () => {

@@ -546,7 +546,8 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // constants CSS can read: how many scenes, so progress bars need no hard-coded count
   if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
   // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
-  // under reduced motion the wrapper stays in flow instead of an empty scroll
+  // under reduced motion, and below the individual-transform floor, the
+  // wrapper stays in flow instead of an empty scroll
   if (typeof opts.pin === 'string') {
     entry.authored = { height: el.style.height, position: el.style.position }
     applyPinHelper(entry)
@@ -570,10 +571,21 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   }
 }
 
+// Below the individual-transform floor (Chrome 104 / Firefox 72 / Safari
+// 14.1) the `@supports not (translate: 0)` net in styles/pin.css releases
+// `.sv-stage` (position static, height auto, overflow visible), so a pinned
+// section renders at its natural height with JS on. The tall wrapper height
+// on top of that would be two blank viewports under the content, which is
+// what README's "below the floor nothing breaks" promises does not happen.
+// An engine too old to answer at all is also too old for the @supports rule
+// that releases the stage, so only an explicit `false` counts here: the JS
+// and the CSS then always agree on which side of the floor the page is.
+const belowTransformFloor = () => window.CSS?.supports?.('translate', '0px') === false
+
 function applyPinHelper(entry: Entry) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
-  if (reducedMotion) {
+  if (reducedMotion || belowTransformFloor()) {
     el.style.height = authored.height
     el.style.position = authored.position
   } else {

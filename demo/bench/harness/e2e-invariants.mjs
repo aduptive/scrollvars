@@ -897,6 +897,82 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3g. Below the individual-transform floor, JS ON: the pin helper writes
+// no tall wrapper height (ADU-158). The `@supports not (translate: 0)` net in
+// styles/pin.css (ADU-149) releases `.sv-stage` there, so the section renders
+// at its natural height; the helper kept writing `height: 320vh` on the
+// wrapper anyway, which left the content at the top of the box with two blank
+// viewports under it, with JS on, against README's floor promise ──
+{
+  // Chrome supports individual transforms, so the @supports block never
+  // applies here: those three declarations are copied by hand into the
+  // fixture, which is what puts this page on the below-floor side of the CSS.
+  // The half actually under test is the JS one: the driver asks
+  // CSS.supports('translate', '0px'), stubbed false below before the engine
+  // ever boots, exactly the answer a below-floor engine gives.
+  const FLOOR_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      /* the three declarations of pin.css's @supports not (translate: 0) block */
+      .sv-stage { position: static; height: auto; overflow: visible }
+      .revealed { height: 300px; background: #111; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv data-sv-pin="320vh" id="pinned">
+        <div class="sv-stage" id="stage">
+          <div class="revealed">revealed content</div>
+        </div>
+      </div>
+      <p id="after">after the pinned stretch</p>
+    </body></html>`
+  // How far the wrapper's own bottom sits below the bottom of everything it
+  // renders: the blank space a visitor scrolls through, in viewports.
+  const BLANK_UNDER_CONTENT = () => {
+    const wrapper = document.getElementById('pinned')
+    const stage = document.getElementById('stage')
+    return {
+      blank: wrapper.getBoundingClientRect().bottom - stage.getBoundingClientRect().bottom,
+      viewports: (wrapper.getBoundingClientRect().bottom - stage.getBoundingClientRect().bottom) / innerHeight,
+      inlineHeight: wrapper.style.height,
+    }
+  }
+  const run = async (belowFloor) => {
+    const page = await browser.newPage()
+    await page.setContent(FLOOR_FIXTURE)
+    if (belowFloor) {
+      await page.evaluate(() => {
+        const real = CSS.supports.bind(CSS)
+        CSS.supports = (prop, value) => (prop === 'translate' ? false : real(prop, value))
+      })
+    }
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(async () => {
+      SV.scan()
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    })
+    const r = await page.evaluate(BLANK_UNDER_CONTENT)
+    await page.close()
+    return r
+  }
+
+  const above = await run(false)
+  // the control: with the engine answering the way Chrome really does, the
+  // helper writes the skeleton and this fixture measures the blank space it
+  // creates. Without this, "no blank space" could pass on a fixture that can
+  // never show any.
+  check(
+    'pin floor: the fixture does measure the tall wrapper, above the floor the helper still writes it',
+    above.inlineHeight === '320vh' && above.viewports > 1,
+    JSON.stringify(above)
+  )
+  const below = await run(true)
+  check(
+    'pin floor: below the individual-transform floor the wrapper ends with its content, no blank viewports under it',
+    below.inlineHeight === '' && below.blank < 1,
+    JSON.stringify(below)
+  )
+}
+
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
 {
   const page = await browser.newPage()
