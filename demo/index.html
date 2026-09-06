@@ -4435,8 +4435,10 @@ var SV = (() => {
  * `h0`, and nothing measured. `style.width` is pinned to `w0` (never a
  * measurement, whatever this pass's or an earlier pass's own cap
  * relationship happened to read), and `style.aspectRatio` to `w0 / h0`
- * ONLY when `getComputedStyle(canvas).aspectRatio` is still `'auto'`, so
- * an authored ratio is kept, not overridden. CSS caps then clamp `w0`
+ * ONLY when the computed `aspectRatio` still starts with the `auto`
+ * keyword (see the thirteenth pass below for why an exact `'auto'` check
+ * does not work), so an authored ratio is kept, not overridden. CSS caps
+ * then clamp `w0`
  * exactly as they always clamp an intrinsic size, LIVE: a `max-width`
  * that widens or narrows, or a percentage cap in a container that resizes,
  * moves the box with it, at mount and on every later change, no different
@@ -4460,6 +4462,22 @@ var SV = (() => {
  * and percentages still apply on top of that size, exactly as they would
  * on any other element. Give a canvas real CSS dimensions to size it any
  * other way.
+ *
+ * (thirteenth pass) The twelfth pass's `aspectRatio === 'auto'` guard never
+ * fired, for any canvas, authored or not. Chrome always reports a canvas's
+ * computed `aspectRatio` as `auto W / H`, the intrinsic width/height
+ * attributes appended to the keyword, never the bare `auto` string, so the
+ * strict equality check was always false and `pinAtW0()` never wrote
+ * `style.aspectRatio` at all. Height then kept deriving from whatever this
+ * harness's own DPR-scaled attributes happened to hold, and, whenever
+ * `w0 * dpr` was not already an integer, the rounding remainder reapplied
+ * to the CURRENT height on every later pass instead of the fixed `w0`/`h0`
+ * pair: an unbounded drift the twelfth pass's design intended `aspectRatio`
+ * to rule out entirely. An authored `aspect-ratio` computes to a bare
+ * number pair with no `auto` keyword at all (`1 / 1`), and no authored
+ * ratio computes to `auto` or `auto W / H`, so `startsWith('auto')` is the
+ * correct test: it fires exactly when the author left the ratio alone, and
+ * never overrides one the author set.
  */
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 // Browsers cap a canvas's own width/height attribute well above this
@@ -4616,7 +4634,14 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         const pinAtW0 = () => {
             canvas.style.boxSizing = 'content-box';
             canvas.style.width = `${w0}px`;
-            if (window.getComputedStyle(canvas).aspectRatio === 'auto') {
+            // Chrome always reports a canvas's computed `aspectRatio` as
+            // `auto W / H` (the intrinsic ratio appended to the keyword), never
+            // the bare `auto`, so an equality check against `'auto'` never fires
+            // for ANY canvas, authored or not (thirteenth pass). An authored
+            // ratio computes to a bare number pair with no `auto` keyword at all
+            // (`1 / 1`), so `startsWith('auto')` is what actually distinguishes
+            // "still auto" from "author set it".
+            if (window.getComputedStyle(canvas).aspectRatio.startsWith('auto')) {
                 canvas.style.aspectRatio = `${w0} / ${h0}`;
             }
             pinned = true;

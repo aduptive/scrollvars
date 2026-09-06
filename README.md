@@ -105,7 +105,7 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.5 KB |
 | everything in `scrollvars` (the core entry) | 5.9 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 11.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 11.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
