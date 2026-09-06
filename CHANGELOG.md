@@ -423,6 +423,23 @@ wide, scrollWidth 500).
   case both React majors must agree on (`{ inert: '' }` under 18,
   `{ inert: true }` under 19).
 
+### React types
+- Proved, with a new fixture, that the natural consumer idiom
+  (`const ref = usePointer<HTMLDivElement>(); return <div ref={ref} />`,
+  no cast) type-checks under both React 18 and 19 for `usePointer`,
+  `useTrack`, `useScenes`, `useCanvasEffect` and `useSlider`: each hook's
+  return type has been `React.RefObject<T>` since ADU-106, which already
+  satisfies a JSX ref under both majors' types. `test/cli-components.test.mjs`
+  now compiles a `HookRefIdioms.tsx` fixture alongside the installed CLI
+  components under the same tsc gate (both `npm test` and
+  `npm run test:react18`), and fails loudly if a future signature change
+  regresses back to a nullable `RefObject<T | null>`. The `as
+  React.RefObject<T>` casts ADU-108 added around `usePointer`/`useTrack` in
+  `HeroCinematic`, `StickySteps`, `ThreeScene` and `PointerTiltGrid` are
+  redundant now, left in place to avoid touching lines the fx gallery work
+  in flight also edits. No type or runtime change: `dist/react/index.js` is
+  byte-identical before and after.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
