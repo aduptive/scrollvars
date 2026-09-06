@@ -70,7 +70,26 @@
      against a fallback read, which disagrees with it for reasons that have
      nothing to do with feedback: a sub-pixel residual for fractional
      padding, or a whole scale factor for a CSS transform. Both got pinned
-     on first mount and then ignored every later CSS resize. -->
+     on first mount and then ignored every later CSS resize. The check now
+     takes both readings the same way, the fallback, once right before and
+     once right after the backing-store write.
+
+     #unsized-tiny, #unsized-tiny-20: sixth pass (panel finding). A real
+     feedback loop moves an unsized canvas by size * (dpr - 1) CSS pixels
+     per applySize() pass: for a small canvas at a DPR just over 1 that is
+     itself only a pixel or two (4x4 at dpr 1.25, or 20x20 at dpr 1.05, both
+     move by exactly 1px on the very first pass). The fifth pass's flat 1px
+     tolerance needed that gap to grow PAST a pixel, so it took many passes
+     to notice, pinning 50-100% inflated first. The check now compares the
+     two readings by ratio instead, which scales with size and DPR (see
+     src/canvas/index.ts). Loaded on their own page below at a fractional
+     deviceScaleFactor.
+
+     onDprChange()'s own sixth-pass fix (a transformed CSS-sized canvas no
+     longer mis-sizing itself on a real DPR change, see src/canvas/index.ts
+     and test/canvas.test.mjs) has no fixture here: Puppeteer's
+     page.setViewport() cannot trigger it (see the note in
+     e2e-invariants.mjs), so it is unit-tested only. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
@@ -78,5 +97,7 @@
 <canvas id="unsized-fractional-padding" style="padding: 0.3px"></canvas>
 <canvas id="css-sized-fractional"></canvas>
 <canvas id="css-sized-scaled"></canvas>
+<canvas id="unsized-tiny" width="4" height="4"></canvas>
+<canvas id="unsized-tiny-20" width="20" height="20"></canvas>
 </body>
 </html>

@@ -265,6 +265,25 @@ findings on the same round): three more defects fixed.
   zero), which the `!size.width` guard did not catch since a negative
   number is truthy; it is now clamped to 0, read as "not laid out yet"
   same as a genuinely empty rect.
+- Sixth pass (panel and verifier findings, reproduced in Chrome). The fifth
+  pass's flat 1px tolerance did not scale: a real feedback loop moves an
+  unsized canvas by `size * (dpr - 1)` CSS pixels per tick, so a small
+  canvas at a DPR just over 1 (a 4x4 canvas at 1.25, or a 20x20 at 1.05)
+  moves by exactly 1px on the first tick, which the tolerance needed to
+  grow PAST, not just reach, taking 3 to 27 `applySize()` passes to notice
+  and pinning 50-100% inflated in the meantime. The check now compares the
+  two readings by ratio instead of an absolute delta
+  (`after / before >= 1 + (dpr - 1) / 2`, checked on either axis, only when
+  `dpr > 1`), which scales with both size and DPR: a small canvas at a
+  small fractional DPR now pins on its very first pass. Also, `onDprChange()`
+  (a fixed-CSS-size canvas moving to a monitor with a different DPR) called
+  `applySize()` with no ResizeObserver entry, so its fallback read included
+  the canvas's own `transform: scale()`: a transformed CSS-sized canvas got
+  its `fx.width`/`fx.height` and context scale wrong by the transform
+  factor on every real DPR change, and never self-corrected. The harness
+  now remembers the last content size a real ResizeObserver entry reported
+  (bit-exact, a transform never touches it) and reuses that on the
+  DPR-change path instead of re-deriving it from the rect.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does

@@ -7,11 +7,18 @@ function makeEnv() {
   let now = 0
   const listeners = { visibilitychange: [] }
 
+  // Captures the 'change' listener from the `(resolution: ...dppx)` query
+  // specifically (not the reduced-motion one, which also calls matchMedia):
+  // a real DPR change fires this without ever touching ResizeObserver, and
+  // env.changeDpr() below drives it the same way.
+  let dprChangeListener
   global.window = {
     devicePixelRatio: 3,
-    matchMedia: () => ({
+    matchMedia: (query) => ({
       matches: false,
-      addEventListener: () => {},
+      addEventListener: (_type, fn) => {
+        if (query.startsWith('(resolution')) dprChangeListener = fn
+      },
       removeEventListener: () => {},
     }),
     getComputedStyle: (el) => el.computedStyle,
@@ -72,6 +79,14 @@ function makeEnv() {
     // other two call sites (onDprChange, and applySize()'s own internal
     // re-measure), neither of which has an entry either.
     resize: (contentRect) => roCallback(contentRect ? [{ contentRect }] : []),
+    // Simulates a real DPR change (moving window to another monitor): the
+    // media query's 'change' event fires with no ResizeObserver entry
+    // involved at all, same as onDprChange()'s own trigger in a real
+    // browser.
+    changeDpr: (dpr) => {
+      global.window.devicePixelRatio = dpr
+      dprChangeListener?.()
+    },
     intersect: (v) => ioCallback([{ isIntersecting: v }]),
     setHidden: (hidden) => {
       global.document.visibilityState = hidden ? 'hidden' : 'visible'
@@ -505,4 +520,105 @@ test('canvas harness: a display:none canvas with padding returns early instead o
   assert.equal(canvas.width, 0) // never written, not a negative value
   assert.equal(canvas.height, 0)
   assert.equal(env.pending(), 0) // never started: setup()/frame() never ran
+})
+
+test('canvas harness: a small unsized canvas is pinned on the very first pass at a fractional DPR (ADU-107, sixth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1.25
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // 4x4, dpr 1.25: the feedback loop moves this canvas by size * (dpr - 1)
+  // = 1 CSS pixel on this very first tick. The old flat 1px tolerance
+  // needed the gap to grow PAST a pixel (`> 1`), so an exact 1px move took
+  // many ticks to accumulate past it, pinning 50-100% inflated first; the
+  // ratio check (after / before >= 1 + (dpr - 1) / 2) catches it
+  // immediately, whatever the canvas's size.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 4, height: 4, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '4px') // pinned at the intrinsic size
+  assert.equal(canvas.style.height, '4px')
+  assert.equal(canvas.width, 5) // 4 CSS px * dpr 1.25
+  assert.equal(canvas.height, 5)
+
+  env.resize()
+  assert.equal(canvas.width, 5) // stable
+  assert.equal(canvas.height, 5)
+})
+
+test('canvas harness: a small unsized canvas is pinned on the very first pass at a barely-fractional DPR (ADU-107, sixth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1.05
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // 20x20, dpr 1.05: also moves by size * (dpr - 1) = 1 CSS pixel, same
+  // edge case as the 4x4/1.25 test above at a different size and DPR, to
+  // prove the ratio scales with both instead of hard-coding one pair.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 20, height: 20, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '20px')
+  assert.equal(canvas.style.height, '20px')
+  assert.equal(canvas.width, 21) // 20 CSS px * dpr 1.05
+  assert.equal(canvas.height, 21)
+
+  env.resize()
+  assert.equal(canvas.width, 21) // stable
+  assert.equal(canvas.height, 21)
+})
+
+test('canvas harness: a small CSS-sized canvas with fractional padding is never pinned at a fractional DPR (ADU-107, sixth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1.25
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // CSS-sized (style authored), padding: 0.3px, at the same small size and
+  // fractional DPR as the unsized case above: the ratio check has to tell
+  // the two apart at this scale too, not just at dpr 2 on a 300px canvas.
+  const { style, writes } = makeStyle({ width: '4px', height: '4px' })
+  const canvas = makeCanvas({ width: 4, height: 4, style, padding: 0.3 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(writes.length, 0) // never pinned
+  assert.equal(canvas.width, 5) // 4 CSS px * dpr 1.25
+
+  env.resize()
+  assert.equal(writes.length, 0) // still never pinned
+  assert.equal(canvas.width, 5)
+})
+
+test("canvas harness: onDprChange() reuses the last ResizeObserver-measured content size instead of a transform-inflated rect (ADU-107, sixth pass)", async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // CSS-sized (style width/height authored below), transform: scale(1.5).
+  // onDprChange() (a real DPR change, no ResizeObserver entry involved) used
+  // to fall back to getBoundingClientRect(), inflated by the transform, and
+  // wrote a wrong fx.width/height and context scale that never
+  // self-corrected. The harness now remembers the content size the last
+  // real ResizeObserver entry reported (bit-exact, a transform never
+  // touches it) and reuses that here instead of re-deriving from the rect.
+  const { style } = makeStyle({ width: '200px', height: '100px' })
+  const canvas = makeCanvas({ width: 200, height: 100, style, scale: 1.5 })
+
+  const sizes = []
+  mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+  env.resize({ width: 200, height: 100 }) // entry: unaffected by transform
+  assert.deepEqual(sizes.at(-1), { w: 200, h: 100 })
+  assert.equal(canvas.width, 200) // 200 CSS px * dpr 1
+
+  env.changeDpr(2) // a real DPR change: no ResizeObserver entry involved
+  assert.deepEqual(sizes.at(-1), { w: 200, h: 100 }) // unchanged, not 300 (200 * 1.5 rect inflation)
+  assert.equal(canvas.width, 400) // 200 CSS px * new dpr 2, not 600 (300 inflated * 2)
+  assert.equal(canvas.height, 200)
 })

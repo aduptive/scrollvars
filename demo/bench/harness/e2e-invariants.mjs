@@ -17,9 +17,9 @@
  *   7. sticky-steps: the non-active shots' inert/aria-hidden follow
  *      prefers-reduced-motion live, not just at mount
  *   8. Canvas: mountEffect()'s applySize() settles an unsized canvas at
- *      its intrinsic size in one pass, never runs away above DPR 1, and
- *      never mistakes a CSS-sized canvas (fractional padding, a transform)
- *      for one that moved
+ *      its intrinsic size in one pass, even a small one at a barely
+ *      fractional DPR, never runs away above DPR 1, and never mistakes a
+ *      CSS-sized canvas (fractional padding, a transform) for one that moved
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -786,6 +786,100 @@ const MIN_EXAMINED = 1
   )
   await page.close()
 }
+
+// ── 8b. Canvas: a small unsized canvas at a fractional deviceScaleFactor
+// pins on its very first applySize() pass (ADU-107, sixth pass, panel
+// finding). A real feedback loop moves an unsized canvas by
+// size * (dpr - 1) CSS pixels per pass: for a 4x4 canvas at dpr 1.25 that
+// is exactly 1px, which the fifth pass's flat 1px tolerance needed to grow
+// PAST, not just reach, so it took many passes to notice, pinning 50-100%
+// inflated first. The check now compares the two readings by ratio, which
+// scales with size and DPR (see src/canvas/index.ts) ──
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 1.25 })
+  await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+  await page.addScriptTag({ content: CANVAS_JS })
+
+  const tiny = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-tiny')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: a 4x4 unsized canvas at deviceScaleFactor 1.25 stabilizes at one applySize() pass, not several (ADU-107, sixth pass)',
+    tiny.log.length === 1 && tiny.width === 5 && tiny.height === 5,
+    `resize() calls: ${tiny.log.length}, canvas.width=${tiny.width}, canvas.height=${tiny.height}`
+  )
+  check(
+    'canvas: that pin lands on the intrinsic 4x4 content box',
+    tiny.style.includes('width: 4px') && tiny.style.includes('height: 4px'),
+    tiny.style
+  )
+  await page.close()
+}
+
+// ── 8c. Same finding, a barely-fractional DPR and a larger (still small)
+// canvas, to prove the ratio scales with both size and DPR instead of one
+// hard-coded pair of numbers (ADU-107, sixth pass) ──
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 1.05 })
+  await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+  await page.addScriptTag({ content: CANVAS_JS })
+
+  const tiny20 = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-tiny-20')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: a 20x20 unsized canvas at deviceScaleFactor 1.05 stabilizes at one applySize() pass, not several (ADU-107, sixth pass)',
+    tiny20.log.length === 1 && tiny20.width === 21 && tiny20.height === 21,
+    `resize() calls: ${tiny20.log.length}, canvas.width=${tiny20.width}, canvas.height=${tiny20.height}`
+  )
+  check(
+    'canvas: that pin lands on the intrinsic 20x20 content box',
+    tiny20.style.includes('width: 20px') && tiny20.style.includes('height: 20px'),
+    tiny20.style
+  )
+  await page.close()
+}
+
+// 8d. Canvas: onDprChange() reuses the last ResizeObserver-measured content
+// size instead of a transform-inflated rect (ADU-107, sixth pass, verifier
+// finding: a transformed CSS-sized canvas got its content size inflated or
+// deflated by the transform on every real devicePixelRatio change, since
+// the DPR-change path had no ResizeObserver entry to measure from and fell
+// back to getBoundingClientRect(), transform included). Not e2e-able here:
+// measured directly (a probe script, not committed), page.setViewport()'s
+// deviceScaleFactor does change window.devicePixelRatio and flips a
+// matching MediaQueryList's `.matches`, but Chromium never dispatches that
+// MediaQueryList's 'change' event for a CDP-emulated DPR override the way
+// it does for a real display change, so onDprChange() cannot be triggered
+// this way in Puppeteer. Covered by a unit test instead
+// (test/canvas.test.mjs, "onDprChange() reuses the last
+// ResizeObserver-measured content size...").
 
 await browser.close()
 server.close()
