@@ -345,6 +345,21 @@ const noop: EffectHandle = { pause: () => {}, resume: () => {}, destroy: () => {
 // canvas (see the module doc, tenth pass).
 const GIANT_CANVAS_LIMIT = 8192
 
+// Safari below 14 has no addEventListener/removeEventListener on
+// MediaQueryList at all, only the deprecated addListener/removeListener
+// pair, so `mq.addEventListener?.('change', fn)` is a silent no-op there.
+// The DOM lib types both methods as always present, so a plain
+// `if (mq.addEventListener)` narrows nothing and TS flags it as always
+// true; `typeof` is the feature-detection idiom that survives that.
+function onMediaChange(mq: MediaQueryList, handler: () => void) {
+  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', handler)
+  else mq.addListener(handler)
+}
+function offMediaChange(mq: MediaQueryList, handler: () => void) {
+  if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', handler)
+  else mq.removeListener(handler)
+}
+
 export function mountEffect(
   canvas: HTMLCanvasElement,
   { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }: EffectOptions
@@ -518,8 +533,13 @@ export function mountEffect(
       // for ANY canvas, authored or not (thirteenth pass). An authored
       // ratio computes to a bare number pair with no `auto` keyword at all
       // (`1 / 1`), so `startsWith('auto')` is what actually distinguishes
-      // "still auto" from "author set it".
-      if (window.getComputedStyle(canvas).aspectRatio.startsWith('auto')) {
+      // "still auto" from "author set it". An engine whose CSSOM has no
+      // `aspectRatio` support at all (below the README's own Safari 12.1
+      // canvas gate) reports it as `undefined`, not `''`: the DOM lib
+      // types the property as always a `string`, so `typeof` is what
+      // actually narrows it, a `??` fallback here is flagged unreachable.
+      const aspectRatio = window.getComputedStyle(canvas).aspectRatio
+      if (typeof aspectRatio !== 'string' || aspectRatio.startsWith('auto')) {
         canvas.style.aspectRatio = `${w0} / ${h0}`
       }
       pinned = true
@@ -726,9 +746,9 @@ export function mountEffect(
   // a monitor with a different devicePixelRatio. Watch the resolution too.
   let dprQuery: MediaQueryList | null = null
   const watchDpr = () => {
-    dprQuery?.removeEventListener?.('change', onDprChange)
+    if (dprQuery) offMediaChange(dprQuery, onDprChange)
     dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
-    dprQuery.addEventListener?.('change', onDprChange)
+    onMediaChange(dprQuery, onDprChange)
   }
   const onDprChange = () => {
     applySize()
@@ -739,7 +759,7 @@ export function mountEffect(
   const onMotion = () => {
     fx.reducedMotion = motionQuery.matches
   }
-  motionQuery.addEventListener?.('change', onMotion)
+  onMediaChange(motionQuery, onMotion)
 
   return {
     pause: () => {
@@ -757,8 +777,8 @@ export function mountEffect(
       ro.disconnect()
       io.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
-      motionQuery.removeEventListener?.('change', onMotion)
-      dprQuery?.removeEventListener?.('change', onDprChange)
+      offMediaChange(motionQuery, onMotion)
+      if (dprQuery) offMediaChange(dprQuery, onDprChange)
     },
   }
 }
