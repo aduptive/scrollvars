@@ -247,12 +247,18 @@ test('tsc gate fails the suite on any tsc error, attributed or not', () => {
   )
 })
 
-// ---- requires.styles must be CLOSED over the variables those stylesheets
-// read. One stylesheet here can consume a custom property another one
-// declares: state.css's acts clock is `calc(var(--sv-live) * var(--sv-acts-count))`
-// and --sv-live is declared in core.css alone, so an effect that declared
-// state.css without core.css computed --sv-act 0 and rendered every number as
-// zero the moment the driver booted, only with JS on (ADU-129, finding 1).
+// ---- requires.styles must be CLOSED, twice over: over the presets the
+// component uses (the stylesheet that OWNS a class it renders has to be
+// imported) and over the variables those stylesheets read. One stylesheet
+// here can consume a custom property another one declares: state.css's acts
+// clock is `calc(var(--sv-live) * var(--sv-acts-count))` and --sv-live is
+// declared in core.css alone, so an effect that declared state.css without
+// core.css computed --sv-act 0 and rendered every number as zero the moment
+// the driver booted, only with JS on (ADU-129, finding 1).
+// The ownership map is built over ALL stylesheets, never over the ones the
+// effect declared: an earlier version iterated `requires.styles` itself, so a
+// component that used .sv-stage while declaring only core.css (pin.css, which
+// owns the preset, named nowhere) had no rule to read and stayed green.
 // Driver outputs (--sv-t, --sv-pin, --sv-scene) and author knobs are declared
 // in no stylesheet at all, so they are never flagged; a var read WITHOUT a
 // fallback that another scrollvars stylesheet declares is a missing import.
@@ -278,29 +284,102 @@ const readsWithoutFallback = (body) => [...body.matchAll(/var\(\s*(--[\w-]+)\s*\
 // classes every tracked element carries anyway: they say nothing about which
 // preset a rule belongs to, so they never decide relevance on their own
 const ENGINE_CLASSES = new Set(['sv', 'sv-on', 'sv-live', 'sv-open', 'sv-ui'])
+const selectorClasses = (sel) => [...sel.matchAll(/\.([\w-]+)/g)].map((m) => m[1]).filter((c) => !ENGINE_CLASSES.has(c))
+// which stylesheet defines rules for a class, over all six
+const classOwners = new Map()
+for (const name of STYLESHEETS) {
+  for (const rule of rulesOf(name)) {
+    for (const c of selectorClasses(rule.sel)) classOwners.set(c, (classOwners.get(c) ?? new Set()).add(name))
+  }
+}
+const varOwner = (v) => STYLESHEETS.find((name) => declaresVars(name).has(v))
+// prose names presets and stylesheets it does not use ("state.css also ships
+// sv-words"): only what the component renders counts as used
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const embeddedCss = (content) => (content.match(/const css = `([\s\S]*?)`/) ?? ['', ''])[1]
 
-test('every effect declares the stylesheets its own presets read variables from', () => {
+test('every effect declares the stylesheets its presets live in and read variables from', () => {
   const missing = []
   for (const fx of EFFECTS) {
     const declared = fx.requires?.styles ?? []
     const own = new Set(declared.flatMap((name) => [...declaresVars(name)]))
     const content = COMPONENTS[fx.slug].content
-    for (const name of declared) {
+    const used = tokens(stripComments(content))
+    // 1. the preset itself: whoever owns a class this component renders is an import
+    const needed = new Set(declared)
+    for (const cls of used) {
+      const owners = classOwners.get(cls)
+      if (!owners) continue // component-local class, or one of its own embedded CSS
+      for (const o of owners) needed.add(o)
+      if (![...owners].some((o) => declared.includes(o)))
+        missing.push(
+          `${fx.slug}: renders .${cls}, owned by ${[...owners].map((o) => `${o}.css`).join(' or ')}, ` +
+            `not in requires.styles [${declared.join(', ') || 'none'}]`
+        )
+    }
+    // 2. the variables those stylesheets read, over every sheet it needs
+    for (const name of needed) {
       for (const rule of rulesOf(name)) {
         // only the presets this component actually uses: state.css also ships
         // sv-words, and a rotating-words consumer needs nothing from core.css
-        const specific = [...rule.sel.matchAll(/\.([\w-]+)/g)].map((m) => m[1]).filter((c) => !ENGINE_CLASSES.has(c))
-        if (specific.length && !specific.some((c) => new RegExp(`\\b${c}\\b`).test(content))) continue
+        const specific = selectorClasses(rule.sel)
+        if (specific.length && !specific.some((c) => used.has(c))) continue
         for (const v of readsWithoutFallback(rule.body)) {
           if (own.has(v)) continue
-          const from = STYLESHEETS.find((other) => declaresVars(other).has(v))
+          const from = varOwner(v)
           if (from) missing.push(`${fx.slug}: ${name}.css \`${rule.sel}\` reads ${v}, declared in ${from}.css`)
         }
       }
     }
+    // 3. and the variables the component's OWN css string reads
+    for (const v of readsWithoutFallback(stripComments(embeddedCss(content)))) {
+      if (own.has(v)) continue
+      const from = varOwner(v)
+      if (from) missing.push(`${fx.slug}: its own CSS reads ${v}, declared in ${from}.css`)
+    }
   }
   assert.deepEqual(missing, [], missing.join('\n'))
 })
+
+// ---- the gallery tabs of one Section are two spellings of the SAME block: a
+// reader copies the CSS tab and pastes the React tab under it. stats-countup
+// shipped `.stats .stat::after { content: counter(n) attr(data-suffix) }` next
+// to a React tab whose <dd> holds a `.count` span, so the pair generated the
+// number on the <dd> (with the suffix gone, data-suffix having moved to the
+// span) on top of the readable value inside it: the double announcement the
+// React tab exists to avoid. timeline-scrub carried the same split
+// (`.tl-year::after` against a `.tl-count` span). Sections only: the smaller
+// effects' React tabs are fragments and lean on Tailwind utilities the CSS tab
+// never mentions (ADU-129, fix pass).
+const classesIn = (pane) => [
+  ...new Set(
+    [...stripComments(pane).matchAll(/\bclass(?:Name)?\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
+      .flatMap((m) => (m[1] ?? m[2]).split(/\s+/))
+      .filter(Boolean)
+  ),
+]
+// `.foo` in a selector, never `1.8s`, `hero.jpg` or `document.querySelector`
+const cssPaneClasses = (pane) => new Set([...pane.matchAll(/(?<![\w-])\.([a-z][\w-]*)/g)].map((m) => m[1]))
+
+for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.react)) {
+  test(`gallery ${fx.slug}: the CSS tab and the React tab document one markup`, () => {
+    const documented = new Set([...classesIn(fx.css), ...cssPaneClasses(fx.css)])
+    const undocumented = classesIn(fx.react).filter((c) => !documented.has(c))
+    assert.deepEqual(
+      undocumented,
+      [],
+      `the React tab renders ${undocumented.join(', ')}, which the CSS tab neither shows nor styles`
+    )
+    // and the other way for generated content: a `content:` rule must hang off
+    // an element the React tab actually renders, or the number lands on the
+    // wrong box (or on two boxes at once)
+    const rendered = new Set(classesIn(fx.react))
+    const orphans = [...fx.css.matchAll(/\.([\w-]+)::(?:after|before)[^{]*\{[^}]*content:/g)]
+      .map((m) => m[1])
+      .filter((c) => !rendered.has(c))
+    assert.deepEqual(orphans, [], `the CSS tab generates content on .${orphans.join(', .')}, absent from the React tab`)
+  })
+}
 
 test('consumer-idiom hook refs (no cast) type-check under the installed React major', () => {
   const errors = tscErrorsByFile.get(HOOK_REF_IDIOMS_FILE) ?? []

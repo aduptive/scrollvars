@@ -19,8 +19,9 @@
  * text, list semantics intact, no inert content); with the engine the
  * effect's key behavior actually happens (the counters resolve above zero,
  * the timeline scrubs, the shots swap, the hero is split and live); reduced
- * motion hides nothing and adds no inert; every focusable element stays
- * keyboard reachable.
+ * motion hides nothing and adds no inert; and every focusable element it
+ * counts is keyboard reachable, which today is a guard rather than a claim:
+ * the four Sections render none with their preview props.
  *
  * Called from e2e-invariants.mjs, which owns the browser and the `check`
  * counter and passes its own HIDDEN_TEXT probe in, so both suites judge
@@ -213,93 +214,106 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
   await new Promise((r) => server.listen(0, r))
   const base = `http://127.0.0.1:${server.address().port}`
   const engine = readFileSync(join(repo, 'demo', 'fx', 'sv.js'), 'utf8')
-
-  // The React 18 pass is not optional: a <style> child serialized differently
-  // by the other supported major is exactly the class of bug this gate exists
-  // for, so a missing install fails loudly instead of quietly halving coverage.
-  const react18Present = existsSync(join(repo, 'node_modules', '.cache', 'react18', 'node_modules', 'react'))
-  check(
-    'installed: the isolated React 18 is available to render against',
-    react18Present,
-    'run `node scripts/react18-install.mjs` (npm run test:e2e does it for you)'
-  )
-
-  for (const react18 of react18Present ? [false, true] : [false]) {
-    const payload = renderPayload(react18)
-    const tag = `react ${payload.react}`
-    check(`installed(${tag}): the CLI installed and rendered every Section`, payload.effects.length > 0, 'nothing rendered')
-
-    for (const fx of payload.effects) {
-      const css = fx.styles.map((name) => readFileSync(join(repo, 'styles', `${name}.css`), 'utf8')).join('\n')
-      const declared = fx.styles.length ? fx.styles.map((n) => `${n}.css`).join(' + ') : '(no stylesheet)'
-      const noJs = `/${react18 ? '18' : '19'}/${fx.slug}/no-js`
-      const withJs = `/${react18 ? '18' : '19'}/${fx.slug}/js`
-      pages.set(noJs, page({ css, markup: fx.markup, engine: '', script: '' }))
-      pages.set(withJs, page({ css, markup: fx.markup, engine, script: fx.previewScript }))
-
-      // 1. no engine: the page a consumer whose bundle never loaded still gets
-      const p = await browser.newPage()
-      await p.goto(base + noJs, { waitUntil: 'load' })
-      const hidden = await p.evaluate(HIDDEN_TEXT)
-      const semantics = await p.evaluate(LIST_SEMANTICS)
-      const inertNoJs = await p.evaluate(INERT_LIST)
-      check(
-        `installed(${tag}) ${fx.slug} [${declared}]: renders complete with no engine`,
-        hidden === 0,
-        `${hidden} hidden text element(s)`
-      )
-      check(
-        `installed(${tag}) ${fx.slug}: list semantics hold (${semantics.examined} term(s) examined)`,
-        semantics.bad.length === 0,
-        semantics.bad.join('; ')
-      )
-      check(
-        `installed(${tag}) ${fx.slug}: nothing is inert without aria-hidden`,
-        inertNoJs.every((d) => d.endsWith('[aria-hidden]')),
-        inertNoJs.join(' ')
-      )
-      await p.close()
-
-      // 2. engine loaded: the effect's own key behavior, on the declared CSS only
-      const behavior = BEHAVIOR[fx.slug]
-      if (behavior) {
-        const b = await browser.newPage()
-        await b.setViewport({ width: 1200, height: 800 })
-        await b.goto(base + withJs, { waitUntil: 'load' })
-        const result = await behavior.run(b)
-        check(`installed(${tag}) ${fx.slug} [${declared}]: ${behavior.what}`, result.ok, result.detail)
-        const keys = await b.evaluate(FOCUSABLE)
-        check(
-          `installed(${tag}) ${fx.slug}: all ${keys.total} focusable element(s) stay keyboard reachable`,
-          keys.unreachable.length === 0,
-          keys.unreachable.join(' ')
-        )
-        await b.close()
-      }
-
-      // 3. reduced motion: nothing hidden, and no inert the static markup did not already carry
-      const r = await browser.newPage()
-      await r.setViewport({ width: 1200, height: 800 })
-      await r.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
-      await r.goto(base + withJs, { waitUntil: 'load' })
-      await r.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
-      await sleep(300)
-      await r.evaluate(() => scrollTo(0, innerHeight))
-      await sleep(300)
-      const reducedHidden = await r.evaluate(HIDDEN_TEXT)
-      const reducedInert = await r.evaluate(INERT_LIST)
-      check(
-        `installed(${tag}) ${fx.slug}: reduced motion hides nothing`,
-        reducedHidden === 0,
-        `${reducedHidden} hidden text element(s)`
-      )
-      check(
-        `installed(${tag}) ${fx.slug}: reduced motion adds no inert content`,
-        reducedInert.length === inertNoJs.length,
-        `${inertNoJs.length} → ${reducedInert.length}: ${reducedInert.join(' ')}`
-      )
-      await r.close()
-    }
+  // Every page this gate opens is closed in the finally below: a throw in the
+  // render path (the CLI failing to install, a fixture that will not render)
+  // must not leave a listening socket and a pile of tabs behind in a run that
+  // still has suites to go. The browser itself belongs to the caller.
+  const open = new Set()
+  const newPage = async () => {
+    const p = await browser.newPage()
+    open.add(p)
+    return p
   }
-  server.close()
+  try {
+    // The React 18 pass is not optional: a <style> child serialized differently
+    // by the other supported major is exactly the class of bug this gate exists
+    // for, so a missing install fails loudly instead of quietly halving coverage.
+    const react18Present = existsSync(join(repo, 'node_modules', '.cache', 'react18', 'node_modules', 'react'))
+    check(
+      'installed: the isolated React 18 is available to render against',
+      react18Present,
+      'run `node scripts/react18-install.mjs` (npm run test:e2e does it for you)'
+    )
+
+    for (const react18 of react18Present ? [false, true] : [false]) {
+      const payload = renderPayload(react18)
+      const tag = `react ${payload.react}`
+      check(`installed(${tag}): the CLI installed and rendered every Section`, payload.effects.length > 0, 'nothing rendered')
+
+      for (const fx of payload.effects) {
+        const css = fx.styles.map((name) => readFileSync(join(repo, 'styles', `${name}.css`), 'utf8')).join('\n')
+        const declared = fx.styles.length ? fx.styles.map((n) => `${n}.css`).join(' + ') : '(no stylesheet)'
+        const noJs = `/${react18 ? '18' : '19'}/${fx.slug}/no-js`
+        const withJs = `/${react18 ? '18' : '19'}/${fx.slug}/js`
+        pages.set(noJs, page({ css, markup: fx.markup, engine: '', script: '' }))
+        pages.set(withJs, page({ css, markup: fx.markup, engine, script: fx.previewScript }))
+
+        // 1. no engine: the page a consumer whose bundle never loaded still gets
+        const p = await newPage()
+        await p.goto(base + noJs, { waitUntil: 'load' })
+        const hidden = await p.evaluate(HIDDEN_TEXT)
+        const semantics = await p.evaluate(LIST_SEMANTICS)
+        const inertNoJs = await p.evaluate(INERT_LIST)
+        check(
+          `installed(${tag}) ${fx.slug} [${declared}]: renders complete with no engine`,
+          hidden === 0,
+          `${hidden} hidden text element(s)`
+        )
+        check(
+          `installed(${tag}) ${fx.slug}: list semantics hold (${semantics.examined} term(s) examined)`,
+          semantics.bad.length === 0,
+          semantics.bad.join('; ')
+        )
+        check(
+          `installed(${tag}) ${fx.slug}: nothing is inert without aria-hidden`,
+          inertNoJs.every((d) => d.endsWith('[aria-hidden]')),
+          inertNoJs.join(' ')
+        )
+        await p.close()
+
+        // 2. engine loaded: the effect's own key behavior, on the declared CSS only
+        const behavior = BEHAVIOR[fx.slug]
+        if (behavior) {
+          const b = await newPage()
+          await b.setViewport({ width: 1200, height: 800 })
+          await b.goto(base + withJs, { waitUntil: 'load' })
+          const result = await behavior.run(b)
+          check(`installed(${tag}) ${fx.slug} [${declared}]: ${behavior.what}`, result.ok, result.detail)
+          const keys = await b.evaluate(FOCUSABLE)
+          check(
+            `installed(${tag}) ${fx.slug}: all ${keys.total} focusable element(s) stay keyboard reachable`,
+            keys.unreachable.length === 0,
+            keys.unreachable.join(' ')
+          )
+          await b.close()
+        }
+
+        // 3. reduced motion: nothing hidden, and no inert the static markup did not already carry
+        const r = await newPage()
+        await r.setViewport({ width: 1200, height: 800 })
+        await r.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+        await r.goto(base + withJs, { waitUntil: 'load' })
+        await r.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
+        await sleep(300)
+        await r.evaluate(() => scrollTo(0, innerHeight))
+        await sleep(300)
+        const reducedHidden = await r.evaluate(HIDDEN_TEXT)
+        const reducedInert = await r.evaluate(INERT_LIST)
+        check(
+          `installed(${tag}) ${fx.slug}: reduced motion hides nothing`,
+          reducedHidden === 0,
+          `${reducedHidden} hidden text element(s)`
+        )
+        check(
+          `installed(${tag}) ${fx.slug}: reduced motion adds no inert content`,
+          reducedInert.length === inertNoJs.length,
+          `${inertNoJs.length} → ${reducedInert.length}: ${reducedInert.join(' ')}`
+        )
+        await r.close()
+      }
+    }
+  } finally {
+    server.close()
+    for (const p of open) await p.close().catch(() => {})
+  }
 }

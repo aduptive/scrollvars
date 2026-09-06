@@ -519,6 +519,27 @@ findings on the same round): three more defects fixed.
 - New unit gate: an effect must declare the stylesheets the presets it uses
   read variables from, so a rule reading `var(--x)` with no fallback can
   never again be one undeclared import away from computing to nothing.
+- Second pass (verifier findings on 91e2b9c): the gallery's CSS tab for
+  `stats-countup` still generated the number on the `<dd>` itself
+  (`.stats .stat::after`), while its React tab had moved `data-suffix` onto a
+  `.count` span inside that `<dd>`. Copy both tabs, which is what the page
+  invites, and `::after` resolved `counter(n) ""`: the number rendered on the
+  `<dd>` without its suffix, on top of the readable value in the span, so the
+  block announced "248+" and then "248". The double announcement this fix
+  removed, reintroduced in the documented snippet. The CSS tab, the Tailwind
+  tab and the React tab now all carry the `.count` span, the rule is
+  `.stats .stat .count::after`, and no `.stat::after` is left.
+  `timeline-scrub` shipped the same split (`.tl-year::after` against a React
+  tab with a `.tl-count` span) and is fixed the same way.
+- The requires closure gate iterated `requires.styles` itself, so it could
+  only ever check stylesheets an effect had already declared: a component
+  using a preset from a stylesheet named nowhere had no rule to read and
+  stayed green, and `sticky-steps` on `styles: ['core']`, with `.sv-stage`
+  and the `pin.css` that owns it dropped, passed. Class and variable
+  ownership is now mapped over all six stylesheets, and an effect must
+  declare whichever one owns each class it renders, whichever one those
+  rules read their variables from, and whichever one declares a variable its
+  own embedded CSS reads without a fallback.
 
 ### Testing (blind review round 4)
 - New harness step, the isolated installation gate
@@ -531,13 +552,22 @@ findings on the same round): three more defects fixed.
   effect's key behavior happens with the engine (the counters resolve above
   zero, the pin clock scrubs the year counter, the shots crossfade, the hero
   is split and live), that reduced motion hides nothing and adds no inert
-  content, that a `<dl>`'s content model and terms hold, and that every
-  focusable element stays keyboard reachable. Proved red on the three
-  defects above before they were fixed.
+  content, that a `<dl>`'s content model and terms hold, and it counts the
+  focusable elements and fails if any is unreachable: the four Sections ship
+  none with their preview props, so that last one is a guard, not a claim.
+  Proved red on the three defects above before they were fixed.
 - `npm run test:e2e` installs the isolated React 18 first
   (`scripts/react18-install.mjs`, the same one `test:react18` uses): the gate
   renders under both majors and fails loudly rather than silently halving
   its coverage.
+- New unit gate on the gallery tabs of a Section: every class the React tab
+  renders is shown or styled in the CSS tab, and every `content:`
+  pseudo-element the CSS tab generates hangs off a class the React tab
+  renders. The two tabs are one block spelled twice, and a reader pastes
+  both. Proved red on both pane splits above.
+- `installed-gate.mjs` closes its HTTP server and every page it opened in a
+  `finally`: a throw in the render path no longer leaves a listening socket
+  and a pile of tabs behind for the rest of the run.
 
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
