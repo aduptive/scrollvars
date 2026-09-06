@@ -4200,83 +4200,123 @@ var SV = (() => {
  * what this write produced and multiply the backing store by the device
  * pixel ratio again, unbounded.
  *
- * (eighth pass, final design change) Seven earlier passes (CHANGELOG.md's
- * Canvas section has the history) all tried to catch that loop by
- * MEASURING: an equality guard, a content-box-vs-border-box comparison, a
- * padding subtraction, a ratio with a tolerance, an "echo window" matching
- * a later ResizeObserver entry's `contentRect` against the exact W/H just
- * written. Every one of those is a comparison of two numbers, or a number
- * against a deadline, and a real, ordinary CSS resize can coincidentally
- * produce the very same number the harness itself would have written, at
- * any time: a 300x150 canvas at dpr 2, doubled to 600x300 by a class
- * applied a frame after mount, lands exactly on the 600x300 the harness
- * wrote to that same canvas's backing store one frame earlier. No amount
- * of tightening the value comparison or the timing window tells that
- * coincidence apart from the harness's own echo, because a comparison
- * never asks WHY the numbers match, only THAT they do.
+ * (ninth pass, final design) Eight earlier passes (CHANGELOG.md's Canvas
+ * section has the history) all tried to catch that loop by MEASURING: an
+ * equality guard, a content-box-vs-border-box comparison, a padding
+ * subtraction, a ratio with a tolerance, an "echo window" matching a later
+ * ResizeObserver entry's `contentRect` against the exact W/H just written,
+ * and (eighth pass) a causal probe: bump `canvas.width`/`height` up by one
+ * EACH and pin both `style.width` and `style.height` together whenever
+ * either axis' `clientWidth`/`clientHeight` responded. That probe was
+ * causal, not a coincidence check, but it asked the wrong shape of
+ * question, and verifier findings in real Chrome caught two consequences.
+ * First, bumping width and height by a flat +1 each perturbs the RATIO
+ * between them, not just their size: an ordinary `width: 100%; height:
+ * auto` canvas has a height computed from that ratio (no CSS height at
+ * all: the auto height derives from the CSS width through the canvas's own
+ * intrinsic width/height ratio, i.e. its attribute values), and two
+ * independent +1s can cross a rounding boundary and read the height back as
+ * "changed" even though the CSS width never moved, so this ordinary,
+ * fully-responsive canvas got wrongly pinned. Second, pinning both axes
+ * together assumes both need it: a `max-width: 100%` canvas not yet at its
+ * cap correctly reads as unsized on width for now, but pinning
+ * `style.height` to that moment's value freezes the aspect ratio, so a
+ * later container shrink that re-engages the cap on width leaves height
+ * stuck at the old number, distorting the box instead of scaling it.
  *
- * applySize() now asks the browser directly instead of guessing from a
- * coincidence: a causal probe. Right after writing the backing store
- * (`canvas.width = W`, `canvas.height = H`), it bumps the attributes up by
- * one (`canvas.width = W + 1`, `canvas.height = H + 1`) and forces a layout
- * read (`canvas.clientWidth`, `canvas.clientHeight`), then sets them back
- * to `W`/`H` and reads again. If an axis has no CSS size of its own, its
- * layout size IS the attribute value, so the two readings on that axis
- * differ by exactly 1; if the axis has a real CSS size, changing the
- * attribute never touches layout, so the two readings are identical, a
- * difference of exactly 0. `clientWidth`/`clientHeight` include padding,
- * exclude border, and are never affected by a CSS `transform` (a transform
- * is applied after layout), so the probe is unaffected by border, padding
- * (whole or fractional), a transform on the canvas itself, or which way
- * the device pixel ratio moved the backing store: above 1, below 1, or
- * exactly 1, where the write happens to equal the CSS size numerically but
- * the causal relationship (layout tracking the attribute) is unchanged, so
- * an unsized canvas still gets pinned there too, consistent with the
- * documented limitation below. The attribute values this harness ever
- * writes are whole device pixels, so the difference between the two
- * readings is always exactly 1 or exactly 0, never a fraction that would
- * need a tolerance.
+ * The final design narrows the question: PROPORTIONAL, and about ONE axis.
+ * Right after `applySize()` writes the backing store (`canvas.width = W`,
+ * `canvas.height = H`), it sets `canvas.width = Math.floor(W / 2)` and
+ * `canvas.height = Math.floor(H / 2)` together, same divisor on both axes,
+ * so the RATIO between them is preserved and an axis derived from that
+ * ratio does not move. It forces one layout read (`canvas.clientWidth`),
+ * restores `W`/`H`, and reads `clientWidth` again. If the two readings
+ * differ, the WIDTH follows the attribute (this canvas is unsized on
+ * width, whatever its height does): a `max-width` cap that is not binding
+ * at half size still lets width move, so a bare `max-width: 400px` with no
+ * `width` at all, at a DPR that would otherwise inflate the backing store
+ * past the cap, is still caught. If the two readings are equal, the width
+ * is CSS-sized, whatever its literal source (a percentage, a fixed px
+ * value, or itself derived from a fixed CSS height through the intrinsic
+ * ratio, the mirror case): nothing about height enters that conclusion,
+ * because nothing about height is asked. Halving instead of bumping by one
+ * is what keeps the probe from distorting the very ratio a ratio-derived
+ * axis needs held steady to read as stable; `Math.floor` keeps both
+ * readings whole device pixels, so the delta a real feedback loop produces
+ * is always exactly 1 or exactly 0, never a fraction that would need a
+ * tolerance. The probe is skipped when `W < 2` (a backing store under two
+ * device pixels): too small a move to read past rounding noise, and never
+ * pinning it costs nothing worth a special case (the documented limitation
+ * below already covers a canvas that never gets pinned).
  *
- * This is causal, not a measurement comparison, because the perturbation
- * IS the harness's own known cause: bump the attribute, exactly here,
+ * This is still causal, not a value comparison, because the perturbation
+ * IS the harness's own known cause: halve the attributes, exactly here,
  * exactly now, and read the one response that can only follow from THAT
  * write, not from anything else happening on the page. There is no value
  * to coincide with and no window to land inside, so a genuine resize
  * landing on any size at any time, including the exact size the harness
  * itself just wrote, produces no response to the probe's own perturbation
- * and is never mistaken for one.
+ * and is never mistaken for one. `clientWidth` includes padding, excludes
+ * border, and is never affected by a CSS `transform` (applied after
+ * layout), so the probe is unaffected by border, padding (whole or
+ * fractional), a transform on the canvas itself, or which way the device
+ * pixel ratio moved the backing store: above 1, below 1, or exactly 1.
  *
- * A canvas can have a CSS size on one axis and none on the other (a
- * replaced element with only, say, a CSS `height` computes its `width`
- * from its own intrinsic width/height ratio, i.e. its attribute values):
- * either axis following the attribute is reason enough to pin both
- * `canvas.style.width` and `height` together, forcing
- * `box-sizing: content-box`, to the CSS content size measured right before
- * the write (pinning the axis that already had a CSS size to the value it
- * already measured is a no-op for that axis, and stops the other one from
- * drifting on its own). Otherwise applySize() does nothing further: the
- * canvas already has full control of its own size. The context transform
- * (`ctx.setTransform`, the 2D context's DPR scale) is applied AFTER the
- * probe runs, so a pin never leaves a stale scale behind. The probe itself
- * runs only inside applySize() (a ResizeObserver callback or a DPR
- * change), never once per animation frame: its cost is two forced layouts
- * per resize event, not per frame (browsers only recompute layout once per
- * dirty/read cycle, so reading `clientWidth` and `clientHeight` together,
- * twice, costs exactly that and no more). Setting the attribute
- * momentarily to `W + 1` and back also clears the bitmap, same as any
- * width/height write; the frame callback repaints on every resize
+ * When width follows, `applySize()` pins the WIDTH ONLY: `canvas.style.width`
+ * is set to the CSS content width it measured right before the write
+ * (`size.width`, in CSS pixels), forcing `box-sizing: content-box` so an
+ * author's border-box declaration cannot reinterpret the pinned number as a
+ * smaller content box. `style.height` is left untouched, deliberately: a
+ * height the browser derives from the intrinsic ratio (no CSS height at
+ * all, or the mirror case, a fixed CSS height with auto width) is exactly
+ * the axis this harness's own proportional writes keep stable, so it needs
+ * no pin, and staying free lets it keep tracking that ratio; a later
+ * `max-width` shrink that re-engages the cap on width then correctly
+ * recomputes height from the new, smaller width through that same ratio,
+ * instead of fighting a frozen number. A canvas with a genuine CSS height
+ * and no CSS width reads as CSS-sized on this probe too (its width is
+ * ratio-derived from that fixed height, and the ratio is exactly what the
+ * probe's proportional halving leaves alone): there is no loop on that
+ * axis, so, correctly, nothing is pinned there either. Otherwise
+ * `applySize()` does nothing further: the canvas already has full control
+ * of its own size. The context transform (`ctx.setTransform`, the 2D
+ * context's DPR scale) is applied AFTER the probe runs, so a pin never
+ * leaves a stale scale behind. The probe itself runs only inside
+ * `applySize()` (a ResizeObserver callback or a DPR change), never once per
+ * animation frame: its cost is two forced layouts per resize event, not per
+ * frame (browsers only recompute layout once per dirty/read cycle, so
+ * reading `clientWidth` twice costs exactly that and no more). Setting the
+ * attribute momentarily to half and back also clears the bitmap, same as
+ * any width/height write; the frame callback repaints on every resize
  * regardless, so this is free.
  *
  * A pinned canvas's own pin write changes its layout box, so it fires one
  * more ResizeObserver entry; that entry takes the normal path above (its
- * own probe now finds neither axis following the attribute, since the
- * canvas has a CSS size now, so it does not pin again). An unpinned
+ * own probe now finds the width no longer following the attribute, since
+ * the canvas has a CSS width now, so it does not pin again). An unpinned
  * canvas's box never moves as a result of the harness's own write, so it
  * produces no such entry either way: no state to track, no window to miss,
  * no loop either way. Documented limitation, unchanged since the very
- * first pass: a canvas with no CSS size on either axis still gets one
- * pinned inline by the harness; give it real CSS dimensions to keep
+ * first pass: a canvas with no CSS size on either axis still gets its
+ * width pinned inline by the harness (after which height, now derived from
+ * that pinned width through the intrinsic ratio, behaves the same as an
+ * author-authored fixed-width canvas); give it real CSS dimensions to keep
  * control of its own size.
+ *
+ * A second, narrower trade-off of pinning width only: the auto-derived
+ * height keeps reading the CURRENT `canvas.width`/`height` attribute ratio,
+ * and this harness rounds each axis of the backing store independently
+ * (correctly: two CSS-sized axes have no reason to share a ratio at all).
+ * At a DPR/size pair where that independent rounding is not symmetric (a
+ * 300x150 canvas at dpr 1.25 rounds 150 up to 188 while 300 divides to an
+ * exact 375, verified in Chrome), the auto height the browser then derives
+ * from the pinned width and this slightly-off ratio lands a fraction of a
+ * CSS pixel from the true value, firing one more, still bounded (not
+ * unbounded) ResizeObserver entry to settle: the backing store itself never
+ * moves again once it does (both passes write the identical value), the
+ * same class of imperceptible sub-pixel residual the fourth pass already
+ * documented for fractional padding, just on the axis this design leaves
+ * free rather than the one it pins.
  *
  * onDprChange() (a fixed-CSS-size canvas moving to a monitor with a
  * different DPR, no ResizeObserver callback involved) has no entry to
@@ -4390,37 +4430,29 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             return;
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
         writeBackingStore(size);
-        // The causal probe (eighth pass, final design; see the module doc for
-        // the full reasoning): bump the just-written attribute up by one on
-        // each axis and force a layout read, then put it back and read again.
-        // An axis with no CSS size of its own has its layout size driven
-        // directly by the attribute, so the two readings differ by exactly 1;
-        // an axis with a real CSS size never responds to the attribute at
-        // all, so they are identical, a difference of exactly 0. Reading both
-        // axes together in each pass (not one axis fully, then the other)
-        // costs exactly two forced layouts total, not four: nothing redirties
-        // layout between the two reads of the same pass.
+        // The proportional probe (ninth pass, final design; see the module doc
+        // for the full reasoning): halve the just-written attributes together
+        // (same divisor on both axes, so the ratio between them holds steady)
+        // and force one layout read, then restore them and read again. Skipped
+        // under 2 device pixels: too small a move to read past rounding noise.
         const w = canvas.width;
         const h = canvas.height;
-        canvas.width = w + 1;
-        canvas.height = h + 1;
-        const afterBumpW = canvas.clientWidth;
-        const afterBumpH = canvas.clientHeight;
-        canvas.width = w;
-        canvas.height = h;
-        const afterResetW = canvas.clientWidth;
-        const afterResetH = canvas.clientHeight;
-        const widthFollows = afterBumpW - afterResetW === 1;
-        const heightFollows = afterBumpH - afterResetH === 1;
-        if (widthFollows || heightFollows) {
-            // Either axis following is reason enough to pin both together
-            // (a canvas can have a CSS size on only one axis, the other driven
-            // by the intrinsic width/height ratio): force content-box sizing so
-            // a border-box canvas doesn't reinterpret the pinned width as a
-            // smaller content box.
-            canvas.style.boxSizing = 'content-box';
-            canvas.style.width = `${size.width}px`;
-            canvas.style.height = `${size.height}px`;
+        if (w >= 2) {
+            canvas.width = Math.floor(w / 2);
+            canvas.height = Math.floor(h / 2);
+            const halved = canvas.clientWidth;
+            canvas.width = w;
+            canvas.height = h;
+            const restored = canvas.clientWidth;
+            const widthFollows = halved !== restored;
+            if (widthFollows) {
+                // Width only: height stays free to keep tracking the intrinsic
+                // ratio (see the module doc for why that is correct, not a gap).
+                // Force content-box sizing so a border-box canvas doesn't
+                // reinterpret the pinned width as a smaller content box.
+                canvas.style.boxSizing = 'content-box';
+                canvas.style.width = `${size.width}px`;
+            }
         }
         fx.width = size.width;
         fx.height = size.height;

@@ -22,7 +22,11 @@
  *      backing store (above 1, or a zoomed-out page's dpr below 1), and
  *      never mistakes a CSS-sized canvas (padding, a transform, or both
  *      together, or a genuine resize landing exactly on the size the
- *      harness itself just wrote) for one that moved
+ *      harness itself just wrote) for one that moved. It also never pins a
+ *      genuinely responsive canvas (width:100%, height:auto), pins width
+ *      only (not a frozen height) on a max-width cap that only engages
+ *      later, and never settles a bare max-width canvas inflated past its
+ *      cap (ADU-107, ninth pass, three verifier findings on the eighth)
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -585,7 +589,7 @@ const MIN_EXAMINED = 1
 }
 
 // ── 8. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
-// feedback loop (ADU-107). First through seventh pass, each one a verifier
+// feedback loop (ADU-107). First through eighth pass, each one a verifier
 // or panel finding reproduced in real Chrome, are in CHANGELOG.md's Canvas
 // section: a border-box-rect-vs-content-box-attribute equality guard that
 // both missed a bordered unsized canvas and mispinned a legitimately
@@ -593,35 +597,48 @@ const MIN_EXAMINED = 1
 // residual; a fallback re-measure that disagreed with a bit-exact
 // ResizeObserverEntry for reasons that had nothing to do with feedback
 // (fractional padding, a transform); a flat 1px tolerance that took dozens
-// of passes to notice a small canvas's small move; and a value- and
-// timing-based "echo window" (matching a later ResizeObserverEntry's
-// contentRect against the exact W/H just written) that could not tell a
-// coincidental real resize landing on that same number apart from its own
-// echo (the eighth pass's regression, see 8f below).
+// of passes to notice a small canvas's small move; a value- and
+// timing-based "echo window" that could not tell a coincidental real resize
+// landing on the harness's own just-written size apart from its own echo;
+// and (eighth pass) a causal probe that bumped `canvas.width`/`height` up
+// by a flat +1 EACH and pinned `style.width` AND `style.height` together
+// whenever either axis' `clientWidth`/`clientHeight` responded. That probe
+// was genuinely causal, not a coincidence check, but three verifier
+// findings on it (see 8g/8h/8i below) showed it asked the wrong shape of
+// question: a flat, per-axis bump perturbs the RATIO between width and
+// height, not just their size, so an ordinary `width:100%; height:auto`
+// canvas (no CSS height at all: the auto height derives from the ratio)
+// could read as having moved on height and get wrongly pinned; and pinning
+// both axes together freezes the aspect ratio even when only width needed
+// it, so a `max-width` cap not yet binding got pinned correctly on mount but
+// then distorted, not scaled, on a later container shrink that engaged it.
 //
-// Eighth pass (final design change): every earlier pass tried to catch the
-// loop by MEASURING, comparing two numbers (or a number against a
-// deadline). applySize() now asks the browser directly instead: right
-// after writing the backing store, it bumps `canvas.width`/`height` up by
-// one and reads `canvas.clientWidth`/`clientHeight` (a forced layout), then
-// puts the attribute back and reads again. An axis with no CSS size of its
-// own has its layout size driven directly by that attribute, so the two
-// readings differ by exactly 1; an axis with a real CSS size never
-// responds to the attribute at all, so they are identical. This is causal,
-// not a value comparison: the probe supplies its own known cause (the
-// bump) and reads only the response that can follow from THAT write, so a
-// real resize landing on any size, at any time, including the exact size
-// the harness itself just wrote, produces no response and is never
-// mistaken for anything. See the module doc in src/canvas/index.ts for the
-// full reasoning. A settle takes no extra ResizeObserver round trip at all,
-// measured against real Chrome: the pin runs synchronously inside the same
-// callback that delivered the entry, before the browser ever gets a chance
-// to render the intermediate (unpinned) box the backing-store write alone
-// would have produced, so from the ResizeObserver's own perspective the
-// canvas's box started this callback at its intrinsic size and ends it at
-// that same pinned size, no observable change, no further entry. `log.length`
-// below is 1 for a case that settles, the consumer sees the correct size
-// exactly once, never an inflated one and never a second confirmation. ──
+// Ninth pass (final design): the probe is now PROPORTIONAL and asks about
+// ONE axis only. Right after writing the backing store, it sets
+// `canvas.width`/`height` to HALF their just-written value together (same
+// divisor on both axes, so the ratio between them holds steady) and reads
+// `canvas.clientWidth` (a forced layout), then restores them and reads
+// again. If the two readings differ, width follows the attribute (unsized
+// on width, whatever height does); if they are equal, width is CSS-sized,
+// whatever its source (a percentage, a fixed px value, or itself
+// ratio-derived from a fixed height), and nothing about height enters that
+// conclusion. Only WIDTH gets pinned: height stays free to keep tracking
+// the intrinsic ratio, which is exactly the axis the harness's own
+// proportional writes keep stable, and a later `max-width` shrink then
+// correctly recomputes height from the new width through that ratio instead
+// of fighting a frozen number. See the module doc in src/canvas/index.ts
+// for the full reasoning. A settle still takes no extra ResizeObserver
+// round trip at all, measured against real Chrome: the pin runs
+// synchronously inside the same callback that delivered the entry, before
+// the browser ever gets a chance to render the intermediate (unpinned) box
+// the backing-store write alone would have produced, so from the
+// ResizeObserver's own perspective the canvas's box started this callback
+// at its intrinsic size and ends it at that same pinned size, no
+// observable change, no further entry. `log.length` below is 1 for a case
+// that settles, the consumer sees the correct size exactly once, never an
+// inflated one and never a second confirmation. Height is never written to
+// style at all now, so every check below that used to assert a pinned
+// `height: ...px` instead asserts the style has NO `height` in it. ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -649,8 +666,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${border.log.length}, canvas.width=${border.width}, canvas.height=${border.height}`
   )
   check(
-    'canvas: the pinned CSS size is the content box (border excluded), not the inflated border-box rect',
-    border.style.includes('width: 300px') && border.style.includes('height: 150px'),
+    'canvas: the pinned CSS width is the content box (border excluded), not the inflated border-box rect; height is never pinned (ninth pass)',
+    border.style.includes('width: 300px') && !border.style.includes('height'),
     border.style
   )
 
@@ -701,8 +718,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${padded.log.length}, canvas.width=${padded.width}, canvas.height=${padded.height}`
   )
   check(
-    'canvas: the pinned CSS size is the intrinsic content box (300x150), not the padding-inflated 320x170',
-    padded.style.includes('width: 300px') && padded.style.includes('height: 150px'),
+    'canvas: the pinned CSS width is the intrinsic content box (300), not the padding-inflated 320; height is never pinned (ninth pass)',
+    padded.style.includes('width: 300px') && !padded.style.includes('height'),
     padded.style
   )
 
@@ -727,9 +744,9 @@ const MIN_EXAMINED = 1
     `resize() calls: ${borderBox.log.length}, canvas.width=${borderBox.width}, canvas.height=${borderBox.height}`
   )
   check(
-    'canvas: that pin lands on the intrinsic content box even under the author\'s own box-sizing:border-box',
+    'canvas: that width pin lands on the intrinsic content box even under the author\'s own box-sizing:border-box; height is never pinned (ninth pass)',
     borderBox.style.includes('width: 300px') &&
-      borderBox.style.includes('height: 150px') &&
+      !borderBox.style.includes('height') &&
       borderBox.style.includes('box-sizing: content-box'),
     borderBox.style
   )
@@ -755,8 +772,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${fractional.log.length}, canvas.width=${fractional.width}, canvas.height=${fractional.height}`
   )
   check(
-    'canvas: the pinned CSS size is the exact intrinsic content box (300x150), not a subpixel-rounded 300.4x150.4',
-    fractional.style.includes('width: 300px') && fractional.style.includes('height: 150px'),
+    'canvas: the pinned CSS width is the exact intrinsic content box (300), not a subpixel-rounded 300.4; height is never pinned (ninth pass)',
+    fractional.style.includes('width: 300px') && !fractional.style.includes('height'),
     fractional.style
   )
 
@@ -833,8 +850,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${paddedScaled.log.length}, canvas.width=${paddedScaled.width}, canvas.height=${paddedScaled.height}`
   )
   check(
-    'canvas: that pin is the true content box (300x150), not a transform/padding-dampened inflated size',
-    paddedScaled.style.includes('width: 300px') && paddedScaled.style.includes('height: 150px'),
+    'canvas: that width pin is the true content box (300), not a transform/padding-dampened inflated size; height is never pinned (ninth pass)',
+    paddedScaled.style.includes('width: 300px') && !paddedScaled.style.includes('height'),
     paddedScaled.style
   )
   await page.close()
@@ -874,8 +891,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${tiny.log.length}, canvas.width=${tiny.width}, canvas.height=${tiny.height}`
   )
   check(
-    'canvas: that pin lands on the intrinsic 4x4 content box',
-    tiny.style.includes('width: 4px') && tiny.style.includes('height: 4px'),
+    'canvas: that width pin lands on the intrinsic 4x4 content box; height is never pinned (ninth pass)',
+    tiny.style.includes('width: 4px') && !tiny.style.includes('height'),
     tiny.style
   )
   await page.close()
@@ -911,8 +928,8 @@ const MIN_EXAMINED = 1
     `resize() calls: ${tiny20.log.length}, canvas.width=${tiny20.width}, canvas.height=${tiny20.height}`
   )
   check(
-    'canvas: that pin lands on the intrinsic 20x20 content box',
-    tiny20.style.includes('width: 20px') && tiny20.style.includes('height: 20px'),
+    'canvas: that width pin lands on the intrinsic 20x20 content box; height is never pinned (ninth pass)',
+    tiny20.style.includes('width: 20px') && !tiny20.style.includes('height'),
     tiny20.style
   )
   await page.close()
@@ -1001,22 +1018,31 @@ const MIN_EXAMINED = 1
       const r = result.canvases[id]
       const bw = Math.round(w * result.dpr)
       const bh = Math.round(h * result.dpr)
-      // The causal probe perturbs the CURRENT attribute value by one and
-      // reads how layout responds: that response is independent of whether
-      // the backing-store write this pass happened to change the numeric
-      // value at all (a coincidence at some size/DPR pairs, e.g. a 4x4
-      // canvas at ~1.05 rounding back to 4), so every genuinely unsized
-      // canvas gets pinned here regardless. And the pin runs synchronously
-      // inside the very callback that delivered the entry, before the
-      // browser ever renders the unpinned intermediate box, so there is
-      // never a second, confirming entry either: log.length is 1 always.
+      // The proportional probe halves the CURRENT attribute value and reads
+      // how layout responds: that response is independent of whether the
+      // backing-store write this pass happened to change the numeric value
+      // at all (a coincidence at some size/DPR pairs, e.g. a 4x4 canvas at
+      // ~1.05 rounding back to 4), so every genuinely unsized canvas gets
+      // its width pinned here regardless. The pin runs synchronously inside
+      // the very callback that delivered the entry, before the browser
+      // ever renders the unpinned intermediate box, so log.length is 1
+      // for most size/DPR pairs; a non-square canvas at a DPR where the
+      // backing store rounds its two axes asymmetrically (e.g. 300x150 at
+      // dpr 1.25: 150 rounds up to 188, 300 divides exactly to 375) costs
+      // one further, still-bounded pass while the free height axis settles
+      // a sub-pixel residual against that ratio (see the module doc's
+      // second trade-off): at most 2, and the backing store itself must
+      // still land on, and stay at, the correct value. Only width is ever
+      // written to style (ninth pass): height keeps tracking the intrinsic
+      // ratio, so it never appears there at all.
       check(
         `canvas: #${id} settles at its intrinsic ${w}x${h} at deviceScaleFactor ${dpr} (actual dpr ${result.dpr}), backing store ${bw}x${bh}`,
-        r.log.length === 1 &&
+        r.log.length >= 1 &&
+          r.log.length <= 2 &&
           r.width === bw &&
           r.height === bh &&
           r.style.includes(`width: ${w}px`) &&
-          r.style.includes(`height: ${h}px`),
+          !r.style.includes('height'),
         `resize() calls: ${r.log.length}, canvas.width=${r.width} (want ${bw}), canvas.height=${r.height} (want ${bh}), style=${r.style}`
       )
     }
@@ -1083,6 +1109,173 @@ const MIN_EXAMINED = 1
     `canvas.width=${rebound.width} (want 1200), canvas.height=${rebound.height} (want 600), log: ${JSON.stringify(rebound.log)}`
   )
   await page.close()
+}
+
+// ── 8g. Ninth pass, the verifier's finding 1: an ordinary responsive
+// canvas (width:100%, height:auto, no CSS height at all) must never be
+// pinned, at every DPR the finding named (0.5, 0.8, 1.25) plus every other
+// DPR this whole ticket has ever needed to sweep. The eighth-pass probe
+// bumped width and height by a flat +1 each, perturbing the ratio the auto
+// height derives from; at some of these exact dpr/rounding combinations
+// that read this canvas as having moved on height and wrongly pinned it ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const canvas = document.querySelector('#width-percent-height-auto')
+          const log = []
+          window.mountEffect(canvas, {
+            frame: () => {},
+            resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+          })
+          setTimeout(() => {
+            document.querySelector('#percent-container').classList.add('grown')
+            setTimeout(
+              () =>
+                resolve({
+                  log,
+                  style: canvas.style.cssText,
+                  dpr: window.devicePixelRatio,
+                  width: canvas.width,
+                }),
+              200
+            )
+          }, 200)
+        })
+    )
+    check(
+      `canvas: width:100%,height:auto is never pinned at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style === '',
+      result.style
+    )
+    check(
+      `canvas: that same canvas follows the container growing from 400 to 600 at deviceScaleFactor ${dpr}`,
+      result.log.length === 2 && result.width === Math.round(600 * result.dpr),
+      `resize() calls: ${result.log.length}, canvas.width=${result.width} (want ${Math.round(600 * result.dpr)}), log: ${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8h. Ninth pass, the verifier's finding 2: a max-width:100% canvas not
+// binding at mount is pinned on width only, and a later container shrink
+// that engages the cap scales height with it (the eighth pass pinned
+// height too, freezing the ratio and distorting the box instead), at every
+// DPR the finding named plus every other DPR this whole ticket has ever
+// needed to sweep ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const canvas = document.querySelector('#maxwidth-percent')
+          const log = []
+          window.mountEffect(canvas, {
+            frame: () => {},
+            resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+          })
+          setTimeout(() => {
+            const mounted = { style: canvas.style.cssText, width: canvas.width, height: canvas.height }
+            document.querySelector('#maxwidth-container').classList.add('shrunk')
+            setTimeout(
+              () =>
+                resolve({
+                  mounted,
+                  log,
+                  style: canvas.style.cssText,
+                  dpr: window.devicePixelRatio,
+                  width: canvas.width,
+                  height: canvas.height,
+                }),
+              200
+            )
+          }, 200)
+        })
+    )
+    const bw = Math.round(300 * result.dpr)
+    const bh = Math.round(150 * result.dpr)
+    check(
+      `canvas: max-width:100% not binding at mount is pinned on width only at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.mounted.style.includes('width: 300px') &&
+        !result.mounted.style.includes('height') &&
+        result.mounted.width === bw &&
+        result.mounted.height === bh,
+      `style=${result.mounted.style}, canvas.width=${result.mounted.width} (want ${bw}), canvas.height=${result.mounted.height} (want ${bh})`
+    )
+    const sw = Math.round(150 * result.dpr)
+    check(
+      `canvas: the container shrink re-engages the cap and scales height with it (not frozen at the old ratio, the eighth-pass 150x150 distortion) at deviceScaleFactor ${dpr}`,
+      result.style.includes('width: 300px') && // the pin itself is never rewritten
+        result.width === sw &&
+        result.height !== result.mounted.height &&
+        Math.abs(result.height / result.width - 0.5) < 0.02,
+      `style=${result.style}, mounted.height=${result.mounted.height}, canvas.width=${result.width} (want ${sw}), canvas.height=${result.height}, log: ${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8i. Ninth pass, the verifier's finding 3: a bare max-width, no CSS
+// width or height at all, is pinned at its true, uncapped intrinsic width
+// and never settles inflated past the cap, at every DPR the finding named
+// (2) plus every other DPR this whole ticket has ever needed to sweep ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const canvas = document.querySelector('#maxwidth-bare')
+          const log = []
+          window.mountEffect(canvas, {
+            frame: () => {},
+            resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+          })
+          setTimeout(
+            () =>
+              resolve({
+                log,
+                style: canvas.style.cssText,
+                dpr: window.devicePixelRatio,
+                width: canvas.width,
+                height: canvas.height,
+              }),
+            200
+          )
+        })
+    )
+    const bw = Math.round(300 * result.dpr)
+    const bh = Math.round(150 * result.dpr)
+    // Same non-square-DPR-rounding settle as the 8e sweep (see the module
+    // doc's second trade-off): at most 2 resize() calls, never more, and
+    // the backing store must land on, and stay at, the correct value.
+    check(
+      `canvas: a bare max-width:400px canvas is pinned at its uncapped intrinsic width (300, never 400) at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.log.length >= 1 &&
+        result.log.length <= 2 &&
+        result.style.includes('width: 300px') &&
+        !result.style.includes('height') &&
+        result.width === bw &&
+        result.height === bh,
+      `resize() calls: ${result.log.length}, style=${result.style}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh})`
+    )
+    await page.close()
+  }
 }
 
 // ── 9. Occlusion sweep negative cases: a decorative clip-path mask is not

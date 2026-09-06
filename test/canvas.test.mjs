@@ -56,16 +56,24 @@ function makeEnv() {
   }
 
   // The canvas's own content box the way a real ResizeObserverEntry reports
-  // it (seventh pass): style.width/height if the canvas has a CSS size
-  // (never moves as a consequence of the canvas's own backing-store write),
-  // otherwise its width/height attribute (an unsized canvas's layout size
-  // IS that attribute value, in CSS pixels — the whole feedback loop). No
-  // padding/border/transform enters this at all, matching a real
-  // contentRect exactly.
-  const contentBoxOf = (canvas) => ({
-    width: canvas.style.width ? parseFloat(canvas.style.width) : canvas.width,
-    height: canvas.style.height ? parseFloat(canvas.style.height) : canvas.height,
-  })
+  // it: style.width/height if the canvas has a CSS size (never moves as a
+  // consequence of the canvas's own backing-store write), otherwise its
+  // width/height attribute (an unsized canvas's layout size IS that
+  // attribute value, in CSS pixels — the whole feedback loop). When only
+  // one axis has a CSS size (ninth pass: the harness now pins width only,
+  // leaving height to the intrinsic ratio), the other axis is derived from
+  // the resolved one through the canvas's own width/height attribute ratio,
+  // same as a real replaced element. No padding/border/transform enters
+  // this at all, matching a real contentRect exactly.
+  const contentBoxOf = (canvas) => {
+    const hasW = !!canvas.style.width
+    const hasH = !!canvas.style.height
+    const w = hasW ? parseFloat(canvas.style.width) : canvas.width
+    const h = hasH ? parseFloat(canvas.style.height) : canvas.height
+    if (hasW && !hasH) return { width: w, height: w * (canvas.height / canvas.width) }
+    if (!hasW && hasH) return { width: h * (canvas.width / canvas.height), height: h }
+    return { width: w, height: h }
+  }
 
   const canvas = {
     width: 0,
@@ -249,12 +257,40 @@ function makeStyle(initial = {}) {
 // needs to account for them. `clientReads` counts every
 // clientWidth/clientHeight read, so a test can assert the probe ran
 // exactly when expected (once per applySize() call, never per frame).
-function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, residual = 0 }) {
+//
+// `maxWidth` (mutable on the returned object, so a test can simulate a
+// container shrink by lowering it later, same pattern as mutating
+// `state.width` above) models `max-width`: it caps whatever the width
+// would otherwise resolve to, exactly like the real CSS property, whether
+// that source is the attribute (unsized) or an authored `style.width`.
+// When one axis has no CSS size of its own (`style.width`/`height` unset),
+// its content size is derived from the OTHER, resolved axis through the
+// canvas's own width/height attribute ratio, same as a real replaced
+// element's intrinsic sizing (this is also what a real `height: auto` or
+// `width: auto` resolves to, and what the ninth-pass module doc calls the
+// axis "the harness's own proportional writes keep stable").
+function resolveContentSize(canvas) {
+  const hasW = !!canvas.style.width
+  const hasH = !!canvas.style.height
+  let w = hasW ? parseFloat(canvas.style.width) : undefined
+  let h = hasH ? parseFloat(canvas.style.height) : undefined
+  if (w !== undefined && canvas.maxWidth != null) w = Math.min(w, canvas.maxWidth)
+  if (w === undefined && canvas.maxWidth != null && h === undefined) {
+    w = Math.min(canvas.width, canvas.maxWidth) // auto width, capped
+  }
+  if (w === undefined && h !== undefined) w = h * (canvas.width / canvas.height)
+  if (w === undefined) w = canvas.width
+  if (h === undefined) h = hasW || w !== canvas.width ? w * (canvas.height / canvas.width) : canvas.height
+  return { width: w, height: h }
+}
+
+function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, residual = 0, maxWidth }) {
   const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
   return {
     width,
     height,
     style,
+    maxWidth,
     clientReads: 0,
     computedStyle: {
       paddingLeft: `${pad.left}px`,
@@ -268,8 +304,7 @@ function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, 
     },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect() {
-      const contentW = this.style.width ? parseFloat(this.style.width) : this.width
-      const contentH = this.style.height ? parseFloat(this.style.height) : this.height
+      const { width: contentW, height: contentH } = resolveContentSize(this)
       return {
         width: (contentW + pad.left + pad.right + border) * scale - residual,
         height: (contentH + pad.top + pad.bottom + border) * scale - residual,
@@ -277,13 +312,11 @@ function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, 
     },
     get clientWidth() {
       this.clientReads++
-      const contentW = this.style.width ? parseFloat(this.style.width) : this.width
-      return contentW + pad.left + pad.right
+      return resolveContentSize(this).width + pad.left + pad.right
     },
     get clientHeight() {
       this.clientReads++
-      const contentH = this.style.height ? parseFloat(this.style.height) : this.height
-      return contentH + pad.top + pad.bottom
+      return resolveContentSize(this).height + pad.top + pad.bottom
     },
   }
 }
@@ -303,13 +336,17 @@ test('canvas harness: an unsized canvas stabilizes after one pass (dpr 2)', asyn
   // the very first delivery, no cascade needed.
   env.resize()
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.height, '150px')
+  // Ninth pass: only width is pinned. Height stays free (unset), deriving
+  // from the pinned width through the intrinsic ratio (see contentBoxOf()
+  // above and the module doc), which is why it still reads 150 on the
+  // stability check below without ever being written to style itself.
+  assert.equal(canvas.style.height, undefined)
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not multiplied again
   assert.equal(canvas.height, 300)
 
-  env.resize() // second pass: layout now follows the pinned CSS size
+  env.resize() // second pass: layout now follows the pinned CSS width
   assert.equal(canvas.width, 600) // stable: would have doubled to 1200
-  assert.equal(canvas.height, 300)
+  assert.equal(canvas.height, 300) // stable too: the ratio never drifts
 })
 
 test('canvas harness: a CSS-sized canvas is never pinned and follows a later CSS resize', async () => {
@@ -351,8 +388,8 @@ test('canvas harness: a bordered unsized canvas still stabilizes', async () => {
   const { mountEffect } = await import('../dist/canvas/index.js')
 
   // A real ResizeObserverEntry's contentRect excludes border already, and
-  // the causal probe reads clientWidth/clientHeight, which exclude border
-  // the same way: a border changes nothing here.
+  // the causal probe reads clientWidth, which excludes border the same
+  // way: a border changes nothing here.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, border: 2 })
 
@@ -360,7 +397,7 @@ test('canvas harness: a bordered unsized canvas still stabilizes', async () => {
 
   env.resize()
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 600)
   assert.equal(canvas.height, 300)
 
@@ -388,7 +425,7 @@ test('canvas harness: an unsized padded canvas pins its true content box, not th
 
   env.resize() // one pass settles it, same as the plain and bordered cases
   assert.equal(canvas.style.width, '300px') // the true content box, not 320
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.style.boxSizing, 'content-box')
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not the inflated 320
   assert.equal(canvas.height, 300)
@@ -417,7 +454,7 @@ test('canvas harness: a bordered, padded, border-box unsized canvas still pins i
 
   env.resize()
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.style.boxSizing, 'content-box')
   assert.equal(canvas.width, 600)
   assert.equal(canvas.height, 300)
@@ -445,7 +482,7 @@ test('canvas harness: an unsized canvas with fractional padding settles in one p
 
   env.resize() // one pass settles it, same as the integer-padding case
   assert.equal(canvas.style.width, '300px') // exact, not 300.4
-  assert.equal(canvas.style.height, '150px') // exact, not 150.4
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2
   assert.equal(canvas.height, 300)
 
@@ -464,13 +501,13 @@ test('canvas harness: an unsized canvas with padding AND its own transform still
   // transform) minus computed padding, which dampens the before/after
   // ratio below the threshold the feedback check needed: the panel's
   // sixth-pass regression finding, reproduced in Chrome, pinned this
-  // canvas at an inflated size instead of its true 300x150. The causal
-  // probe (eighth pass) reads clientWidth/clientHeight instead, which
-  // include padding (constant across both readings, cancels out of the
-  // delta) and are never touched by a transform (applied after layout), so
-  // it never sees any inflation at all; the size that gets pinned still
-  // comes from the ResizeObserverEntry's own bit-exact contentRect, which
-  // excludes padding and ignores transform outright.
+  // canvas at an inflated size instead of its true 300x150. The probe
+  // reads clientWidth instead, which includes padding (constant across
+  // both readings, cancels out of the delta) and is never touched by a
+  // transform (applied after layout), so it never sees any inflation at
+  // all; the size that gets pinned still comes from the
+  // ResizeObserverEntry's own bit-exact contentRect, which excludes
+  // padding and ignores transform outright.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, padding: 10, scale: 2 })
 
@@ -478,7 +515,7 @@ test('canvas harness: an unsized canvas with padding AND its own transform still
 
   env.resize()
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.style.boxSizing, 'content-box')
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not the transform-inflated value
   assert.equal(canvas.height, 300)
@@ -620,7 +657,7 @@ test('canvas harness: a small unsized canvas is pinned on the very first pass at
 
   env.resize()
   assert.equal(canvas.style.width, '4px') // pinned at the intrinsic size
-  assert.equal(canvas.style.height, '4px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 5) // 4 CSS px * dpr 1.25
   assert.equal(canvas.height, 5)
 
@@ -646,7 +683,7 @@ test('canvas harness: a small unsized canvas is pinned on the very first pass at
 
   env.resize()
   assert.equal(canvas.style.width, '20px')
-  assert.equal(canvas.style.height, '20px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 21) // 20 CSS px * dpr 1.05
   assert.equal(canvas.height, 21)
 
@@ -675,7 +712,7 @@ test('canvas harness: an unsized canvas settles in one pass at devicePixelRatio 
 
   env.resize()
   assert.equal(canvas.style.width, '300px') // pinned at the intrinsic size
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 240) // 300 CSS px * dpr 0.8, not shrinking further
   assert.equal(canvas.height, 120)
 
@@ -696,7 +733,7 @@ test('canvas harness: an unsized canvas settles in one pass at devicePixelRatio 
 
   env.resize()
   assert.equal(canvas.style.width, '300px')
-  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.height, undefined) // ninth pass: width-only pin
   assert.equal(canvas.width, 150) // 300 CSS px * dpr 0.5
   assert.equal(canvas.height, 75)
 
@@ -856,7 +893,7 @@ test("canvas harness: onDprChange() reuses the last ResizeObserver-measured cont
   assert.equal(canvas.height, 200)
 })
 
-test('canvas harness: the causal probe restores the attribute exactly and runs only inside applySize, never per frame (ADU-107, eighth pass)', async () => {
+test('canvas harness: the proportional probe restores the attribute exactly and runs only inside applySize, never per frame (ADU-107, ninth pass)', async () => {
   const env = makeEnv()
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
@@ -870,16 +907,16 @@ test('canvas harness: the causal probe restores the attribute exactly and runs o
   mountEffect(canvas, { frame: () => {} })
 
   env.resize()
-  // 200 CSS px * dpr 2: the probe bumped canvas.width/height by one on
-  // each axis and put them back, landing on the exact value applySize()
-  // itself wrote, not one off it either way.
+  // 200 CSS px * dpr 2: the probe halved canvas.width/height and put them
+  // back, landing on the exact value applySize() itself wrote, not one off
+  // it either way.
   assert.equal(canvas.width, 400)
   assert.equal(canvas.height, 200)
   const readsAfterMount = canvas.clientReads
-  // One resize event, both axes probed together: clientWidth + clientHeight
-  // read once after the bump, once after the reset, 4 reads total, not 8
-  // (see the module doc: two forced layouts, not four).
-  assert.equal(readsAfterMount, 4)
+  // One resize event, one axis read: clientWidth read once after the
+  // halving, once after the restore, 2 reads total (see the module doc:
+  // two forced layouts, not four, and only width is asked at all).
+  assert.equal(readsAfterMount, 2)
 
   env.pump(16)
   env.pump(16)
@@ -887,7 +924,165 @@ test('canvas harness: the causal probe restores the attribute exactly and runs o
   assert.equal(canvas.clientReads, readsAfterMount) // no reads from the frame loop itself
 
   env.resize() // a second resize event: the probe runs again, reads again
-  assert.equal(canvas.clientReads, readsAfterMount + 4)
+  assert.equal(canvas.clientReads, readsAfterMount + 2)
   assert.equal(canvas.width, 400) // still restored correctly
   assert.equal(canvas.height, 200)
+})
+
+test('canvas harness: a width:100%,height:auto canvas is never pinned, at dpr 0.5, 0.8, 1.25 and 2 (ADU-107, ninth pass, verifier finding 1)', async () => {
+  for (const dpr of [0.5, 0.8, 1.25, 2]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    // width:100% resolves to a fixed 700px against its container,
+    // independent of the canvas's own attribute; height:auto is not
+    // authored at all, so the browser derives it from the resolved width
+    // through the canvas's own 300x150 (2:1) intrinsic width/height
+    // ratio, i.e. its attribute values. The eighth-pass probe bumped both
+    // attributes by a flat +1 each, which nudges that ratio and can flip
+    // the height reading across a rounding boundary at exactly these dprs
+    // (the verifier's finding 1, reproduced in Chrome): this ordinary,
+    // fully-responsive canvas got wrongly pinned, and once pinned to a
+    // literal px width never followed its container again. The ninth-pass
+    // probe only ever asks about width, so a genuine 100%-width canvas is
+    // never pinned regardless of what its ratio-derived height does.
+    const { style, state, writes } = makeStyle({ width: '700px' })
+    const canvas = makeCanvas({ width: 300, height: 150, style })
+
+    const sizes = []
+    mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+    env.resize({ width: 700, height: 350 }) // height:auto resolved, 2:1 ratio
+    assert.equal(writes.length, 0, `dpr ${dpr}: never pinned`)
+    assert.equal(canvas.width, Math.round(700 * dpr))
+    assert.equal(canvas.height, Math.round(350 * dpr))
+    assert.deepEqual(sizes.at(-1), { w: 700, h: 350 })
+
+    // The container really grows: still following, never pinned.
+    state.width = '900px'
+    env.resize({ width: 900, height: 450 })
+    assert.equal(writes.length, 0, `dpr ${dpr}: still never pinned`)
+    assert.equal(canvas.width, Math.round(900 * dpr))
+    assert.deepEqual(sizes.at(-1), { w: 900, h: 450 })
+  }
+})
+
+test('canvas harness: a height:100px,width:auto canvas is never pinned (the mirror case, ADU-107, ninth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // height:100px fixed; width:auto derives from that height through the
+  // canvas's own 300x150 (2:1) intrinsic ratio, i.e. its attribute values:
+  // the mirror of the width:100%/height:auto case above. The probe still
+  // only ever asks about width, and this width IS the ratio-derived axis,
+  // exactly what the harness's own proportional halving keeps stable, so
+  // it reads as CSS-sized and is never pinned either.
+  const { style, writes } = makeStyle({ height: '100px' })
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+
+  const sizes = []
+  mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+  env.resize({ width: 200, height: 100 }) // width:auto resolved, 2:1 ratio
+  assert.equal(writes.length, 0)
+  assert.equal(canvas.width, 400) // 200 CSS px * dpr 2
+  assert.equal(canvas.height, 200)
+  assert.deepEqual(sizes.at(-1), { w: 200, h: 100 })
+
+  env.resize({ width: 200, height: 100 }) // a second delivery, stable
+  assert.equal(writes.length, 0)
+  assert.equal(canvas.width, 400)
+  assert.equal(canvas.height, 200)
+})
+
+test('canvas harness: a max-width:100% canvas not binding at mount is pinned on width only, then keeps the ratio through a container shrink (ADU-107, ninth pass, verifier finding 2)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // max-width:100% against a wide container: not binding at mount, so this
+  // canvas behaves like a fully unsized one on width for now (nothing else
+  // constrains it) and correctly gets pinned. The eighth-pass design pinned
+  // BOTH style.width and style.height together at that moment; a later
+  // container shrink that re-engaged the cap left height frozen at the old
+  // pinned number, distorting a 150x150 box instead of scaling it to
+  // 150x75 (the verifier's finding 2, reproduced in Chrome). The ninth-pass
+  // design pins width only, so height stays free to keep deriving from the
+  // (possibly capped) width through the intrinsic ratio.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, maxWidth: 1000 })
+
+  const sizes = []
+  mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+  env.resize({ width: 300, height: 150 }) // cap not binding: unsized on width
+  assert.equal(canvas.style.width, '300px') // pinned at the uncapped intrinsic width
+  assert.equal(canvas.style.height, undefined) // height never pinned
+  assert.equal(canvas.width, 300)
+  assert.equal(canvas.height, 150)
+
+  // The container shrinks: max-width now binds on the pinned 300px width.
+  canvas.maxWidth = 150
+  env.resize({ width: 150, height: 75 }) // the real, ratio-preserving box
+  assert.equal(canvas.style.width, '300px') // still the same pin, never rewritten
+  assert.equal(canvas.width, 150) // follows the cap correctly
+  assert.equal(canvas.height, 75) // 2:1 ratio kept, not the old, distorted 150x150
+  assert.deepEqual(sizes.at(-1), { w: 150, h: 75 })
+})
+
+test('canvas harness: a bare max-width:400px canvas is pinned at its uncapped intrinsic width, never inflated past the cap (ADU-107, ninth pass, verifier finding 3)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // <canvas width="300" height="150" style="max-width: 400px">: no CSS
+  // width or height at all, only a cap that does not bind on the true
+  // 300x150 intrinsic size. At dpr 2 the backing-store write inflates the
+  // intrinsic size to 600x300, which DOES exceed the cap: the eighth-pass
+  // probe read the harness's own just-written 600 straight through the cap
+  // (400) and never detected a follow at all, so this canvas settled
+  // rendered at an inflated 400x200 and was never pinned (the verifier's
+  // finding 3, reproduced in Chrome). Halving instead of bumping by one
+  // still trips the cap at the RESTORED reading (600, capped to 400)
+  // against the HALVED reading (300, still under the cap), so the ninth
+  // pass catches it and pins the true, uncapped CSS width of 300, not 400.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, maxWidth: 400 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize({ width: 300, height: 150 }) // cap not binding yet: true intrinsic size
+  assert.equal(canvas.style.width, '300px') // pinned at 300, not the capped 400
+  assert.equal(canvas.style.height, undefined)
+  assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, correctly dpr-scaled
+  assert.equal(canvas.height, 300)
+  assert.equal(canvas.clientWidth, 300) // the rendered CSS box: never 400
+
+  env.resize({ width: 300, height: 150 }) // stable: same CSS box measured again
+  assert.equal(canvas.width, 600) // would have doubled to 1200 without the fix
+  assert.equal(canvas.height, 300)
+  assert.equal(canvas.clientWidth, 300)
+})
+
+test('canvas harness: the probe is skipped when the backing store rounds under two device pixels (documented limitation)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 1
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // A 1x1 unsized canvas: the backing-store write stays at 1, under the
+  // probe's own W >= 2 floor. Genuinely unsized, but too small a move to
+  // read past rounding noise reliably, so it is never pinned: the same
+  // documented trade-off as a canvas with no CSS size on either axis, just
+  // at a size nobody would notice either way.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 1, height: 1, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, undefined) // probe skipped, never pinned
+  assert.equal(canvas.width, 1)
+  assert.equal(canvas.height, 1)
 })
