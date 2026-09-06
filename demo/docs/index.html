@@ -239,7 +239,10 @@ without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
 declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs
 <code>clamp()</code>); <code>sv-split-rise</code> and <code>sv-spread</code> stay static
-below the floor too, no fallback rule for either. With your bundler downleveling the
+below the floor too, no fallback rule for either. <code>sv-split-rise</code> because its
+animating rule is written with <code>:is()</code>, dropped whole by a parser that predates
+it; <code>sv-spread</code> because its rule parses fine and has no
+<code>translate</code>/<code>rotate</code> to apply down there. With your bundler downleveling the
 ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
@@ -462,13 +465,13 @@ from the code it describes.
 Blind review round 4 (Astra on 7489a11), section 2: eight docs mismatches
 against the code ADU-129 to ADU-132 shipped.
 <ul>
-<li>The fx gallery's preset table now notes that a scroll-driven <code>sv-acts</code> clock needs <code>core.css</code> as well as <code>state.css</code>, matching the import comments ADU-129 already fixed in README and AGENTS.</li>
+<li>The docs page's "Preset vocabulary" table now notes that a scroll-driven <code>sv-acts</code> clock needs <code>core.css</code> as well as <code>state.css</code>, matching the import comments ADU-129 already fixed in README and AGENTS.</li>
 <li>The no-JS exception list now includes the marquee: <code>ui.css</code> animates it via a plain <code>@keyframes</code> rule that never depends on the driver.</li>
-<li>The compat floor sentence separates what the fallback animates (reveal presets <code>sv-rise</code>/<code>sv-fade</code>/<code>sv-slide-l</code>/<code>sv-slide-r</code>/<code>sv-auto</code>/<code>sv-drift</code> and pin presets <code>sv-curtain-l</code>/<code>sv-curtain-r</code>/<code>sv-rail</code>) from what stays static below the floor (<code>sv-split-rise</code> and <code>sv-spread</code>, no fallback rule, their <code>:is()</code> selectors are dropped by those parsers).</li>
+<li>The compat floor sentence separates what the fallback animates (reveal presets <code>sv-rise</code>/<code>sv-fade</code>/<code>sv-slide-l</code>/<code>sv-slide-r</code>/<code>sv-auto</code>/<code>sv-drift</code> and pin presets <code>sv-curtain-l</code>/<code>sv-curtain-r</code>/<code>sv-rail</code>) from what stays static below the floor, with the real cause per preset: <code>sv-split-rise</code> has no fallback rule and its animating selector is an <code>:is()</code> those parsers drop whole, <code>sv-spread</code> has no fallback rule either but its selector parses fine and simply has no <code>translate</code>/<code>rotate</code> to apply. <code>src/compat</code>'s header comment named only curtain, rail and drift as the covered presets: it lists the same nine now, plus <code>sv-deck</code>, <code>sv-split-rise</code> and <code>sv-spread</code> with a reason each.</li>
 <li><code>sv-deck</code>'s fallback is documented as ADU-131 shipped it: a static, non-overlapping unstack, no <code>max()</code> involved.</li>
-<li>Modal without <code>&lt;dialog></code> support is documented as a static panel that still opens and closes (ADU-132), not stuck open.</li>
+<li>Modal without <code>&lt;dialog></code> support is documented as an open static panel: <code>styles/state.css</code> scopes the closed-dialog fade to <code>@supports selector(dialog:modal)</code> and keeps the type selector out of the <code>display: none</code> rule, so nothing there hides the element in either state. The <code>open</code> attribute still tracks state in both directions (ADU-132), so the consumer's own CSS can hide it.</li>
 <li>AGENTS.md's pinned-skeleton line now states an inline static wrapper gets <code>position: relative</code> (ADU-130), matching README.</li>
-<li>The knobs sentence notes the one exception to zero-specificity defaults: <code>--sv-order</code>'s automatic-stagger value comes from <code>.sv-auto > :nth-child(n)</code>, a real selector, so a <code>:root</code> override never reaches it.</li>
+<li>The knobs sentence notes the one exception to zero-specificity defaults: <code>--sv-order</code>'s automatic-stagger value is declared on the child itself, by <code>.sv-auto > :nth-child(n)</code> and <code>.sv-stagger > :nth-child(n)</code>, and an inherited <code>:root</code> value never applies where the child declares its own. Those rules are (0,2,0), so an override needs an inline value or a rule at least as specific.</li>
 <li>The "SSR, SEO and the Lighthouse load profile stay untouched" claim is scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint script hide entrances before paint and the pin helper write heights on attach.</li>
 </ul>
 

@@ -294,7 +294,10 @@ without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
 declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs
 <code>clamp()</code>); <code>sv-split-rise</code> and <code>sv-spread</code> stay static
-below the floor too, no fallback rule for either. With your bundler downleveling the
+below the floor too, no fallback rule for either. <code>sv-split-rise</code> because its
+animating rule is written with <code>:is()</code>, dropped whole by a parser that predates
+it; <code>sv-spread</code> because its rule parses fine and has no
+<code>translate</code>/<code>rotate</code> to apply down there. With your bundler downleveling the
 ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'

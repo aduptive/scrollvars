@@ -894,7 +894,7 @@ from the code it describes.
 ### Docs (blind review round 4)
 Blind review round 4 (Astra on 7489a11), section 2: eight docs mismatches
 against the code ADU-129 to ADU-132 shipped.
-- The fx gallery's preset table now notes that a scroll-driven `sv-acts`
+- The docs page's "Preset vocabulary" table now notes that a scroll-driven `sv-acts`
   clock needs `core.css` as well as `state.css`, matching the import
   comments ADU-129 already fixed in README and AGENTS.
 - The no-JS exception list now includes the marquee: `ui.css` animates it
@@ -902,18 +902,29 @@ against the code ADU-129 to ADU-132 shipped.
 - The compat floor sentence separates what the fallback animates (reveal
   presets `sv-rise`/`sv-fade`/`sv-slide-l`/`sv-slide-r`/`sv-auto`/`sv-drift`
   and pin presets `sv-curtain-l`/`sv-curtain-r`/`sv-rail`) from what stays
-  static below the floor (`sv-split-rise` and `sv-spread`, no fallback
-  rule, their `:is()` selectors are dropped by those parsers).
+  static below the floor, with the real cause per preset: `sv-split-rise`
+  has no fallback rule and its animating selector is an `:is()` those
+  parsers drop whole, `sv-spread` has no fallback rule either but its
+  selector parses fine and simply has no `translate`/`rotate` to apply.
+  `src/compat`'s header comment named only curtain, rail and drift as the
+  covered presets: it lists the same nine now, plus `sv-deck`,
+  `sv-split-rise` and `sv-spread` with a reason each.
 - `sv-deck`'s fallback is documented as ADU-131 shipped it: a static,
   non-overlapping unstack, no `max()` involved.
-- Modal without `<dialog>` support is documented as a static panel that
-  still opens and closes (ADU-132), not stuck open.
+- Modal without `<dialog>` support is documented as an open static panel:
+  `styles/state.css` scopes the closed-dialog fade to
+  `@supports selector(dialog:modal)` and keeps the type selector out of the
+  `display: none` rule, so nothing there hides the element in either state.
+  The `open` attribute still tracks state in both directions (ADU-132), so
+  the consumer's own CSS can hide it.
 - AGENTS.md's pinned-skeleton line now states an inline static wrapper
   gets `position: relative` (ADU-130), matching README.
 - The knobs sentence notes the one exception to zero-specificity defaults:
-  `--sv-order`'s automatic-stagger value comes from
-  `.sv-auto > :nth-child(n)`, a real selector, so a `:root` override never
-  reaches it.
+  `--sv-order`'s automatic-stagger value is declared on the child itself,
+  by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and an
+  inherited `:root` value never applies where the child declares its own.
+  Those rules are (0,2,0), so an override needs an inline value or a rule
+  at least as specific.
 - The "SSR, SEO and the Lighthouse load profile stay untouched" claim is
   scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint
   script hide entrances before paint and the pin helper write heights on

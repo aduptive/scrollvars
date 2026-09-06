@@ -284,7 +284,7 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
-static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support falls back to a static panel that still opens and closes. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler

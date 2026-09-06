@@ -146,7 +146,7 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55 keeps 4.5:1 on the default dark palette, check your own colors; .13 for drama) |
 | `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
 
-Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: `--sv-order`'s own default for automatic stagger comes from `.sv-auto > :nth-child(n)`, a real selector with real specificity, so a `:root` override never reaches those auto-ordered children (set `--sv-order` on the child itself, or skip `sv-auto` for a manual order).
+Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
 
 Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
 
@@ -471,7 +471,7 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
 | Anything older, or no JS | content 100% visible, static | `html.sv-on` guard: hiding styles only apply after the driver boots |
 
-The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support falls back to a static panel that still opens and closes. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
+The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
@@ -484,8 +484,10 @@ the one `max()` left, drift's fade, sits behind a plain `opacity`
 declaration that old parsers keep). `sv-deck` unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs
 `clamp()`); `sv-split-rise` and `sv-spread` stay static below the floor
-too, no fallback rule for either, their `:is()` selectors are simply
-dropped by a parser that predates it.
+too, no fallback rule for either. `sv-split-rise` because its animating
+rule is written with `:is()`, dropped whole by a parser that predates it;
+`sv-spread` because its rule parses fine and has no `translate`/`rotate`
+to apply down there.
 Text splitting itself still works down to the same floor: `split()`
 no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
 Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
