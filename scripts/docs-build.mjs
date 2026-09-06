@@ -9,23 +9,58 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { varsHtml } from './docs-data.mjs'
 
+/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold).
+ * Bullets group their indented continuation lines into one <li>, and a run
+ * of bullets is wrapped in one <ul>, line by line rather than by regex
+ * backtracking, so a multi-line entry (the common case in this file) does
+ * not lose everything past its first line. */
+export const mdLite = (md) => {
+  const escaped = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^# .+$/gm, '')
+    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
+
+  const out = []
+  let bullet = null // accumulated text of the bullet in progress, or null
+  let inList = false
+  const flushBullet = () => {
+    if (bullet === null) return
+    if (!inList) { out.push('<ul>'); inList = true }
+    out.push(`<li>${bullet}</li>`)
+    bullet = null
+  }
+  const closeList = () => { if (inList) { out.push('</ul>'); inList = false } }
+  for (const line of escaped.split('\n')) {
+    const start = line.match(/^- (.+)$/)
+    if (start) {
+      flushBullet()
+      bullet = start[1]
+    } else if (bullet !== null && /^\s+\S/.test(line)) {
+      bullet += ' ' + line.trim() // indented continuation of the open bullet
+    } else {
+      flushBullet()
+      closeList()
+      out.push(line)
+    }
+  }
+  flushBullet()
+  closeList()
+
+  return out
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'demo', 'docs')
 mkdirSync(out, { recursive: true })
 const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-
-/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold) */
-const mdLite = (md) =>
-  md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# .+$/gm, '')
-    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?)(?=\n(?!<li>|\s)|$)/g, '$1')
-    .replace(/(?:^|\n)(<li>[\s\S]*?<\/li>)(?=\n(?!<li>))/g, '\n<ul>$1</ul>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
 const changelogHtml = mdLite(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'))
 
 const page = `<!doctype html>
@@ -49,6 +84,7 @@ const page = `<!doctype html>
   h1 { font-size: 30px; margin: 10px 0 6px; }
   h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
+  h4 { font-size: 12px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   p, li { color: #cfcbe4; } p.lead { color: var(--muted); }
   p.grp { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-top: 14px; }
@@ -274,3 +310,5 @@ ${changelogHtml}
 
 writeFileSync(join(out, 'index.html'), page)
 console.log(`docs built (v${VERSION})`)
+
+}

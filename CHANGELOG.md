@@ -420,6 +420,45 @@ wide, scrollWidth 500).
   must be excluded outright (not examined, no false occlusion) while the
   existing masked, normal-sized element is still reported.
 
+### Docs
+Blind review round 3 (GPT-6 Astra), section 2: wording that had drifted
+from the code it describes.
+- README's size intro: the "min+gzip" label now reads "JS min+gzip, CSS
+  gzip as shipped", and the "typical page" number is stamped from
+  `docs-data`'s `typical` size instead of hand-typed; the sizes table intro
+  reads "per module entry", not "per import"; the VARS table's velocity
+  column reads "viewport-heights/s", not "vh/s".
+- `sv-auto`'s doc row says children beyond 10 share order 10, not "the
+  rest". The pin helper doc says it sets `position: relative` only when
+  the wrapper is static, keeping authored positioning otherwise. The
+  sequenced-scrub example uses `data-sv-pin="320vh"` and a `sv-stage`
+  child, not the empty attribute and `.outer`/`.sticky`.
+- The slider's two return shapes are documented separately: `slider()`
+  returns the handle itself (`next/prev/goTo/seek/active/state/destroy`);
+  `useSlider()` returns `{ ref, active, next, prev, goTo, handle }`, where
+  `handle` is a ref to that same handle.
+- The no-JS "complete static page" claim lists its two exceptions by
+  design (class-toggled panels stay closed, native `sv-view-*` still
+  runs), and that a click-driven `sv-acts` target needs `toggles()` to
+  start at zero. Nested scrollers documents `--sv-stage-height` and that a
+  bordered root is measured from its client box. `Split`'s char mode
+  documents its `Intl.Segmenter` requirement on both server and client
+  render (Firefox 125+), or emoji and combining marks can split
+  differently across hydration.
+- `<Scenes>`'s render function is documented as server-rendered inside a
+  client component boundary, not "client-side"; and a string `pin` wins
+  over `height`. `<ScrollVarsBoot>`'s pre-paint hiding is documented as
+  gated on `IntersectionObserver` and `ResizeObserver`. The compat floor
+  explicitly covers `sv-deck` and no longer depends on
+  `Array.prototype.flatMap`. AGENTS.md's build line now names
+  `scripts/build-styles.mjs`.
+- `scripts/docs-build.mjs`'s CHANGELOG-to-HTML renderer (`mdLite`) fixed
+  two bugs: a `### ` sub-heading rendered as literal text instead of a
+  heading, and a multi-line bullet only wrapped its first line in `<li>`,
+  dropping every continuation line from the rendered list. Rewritten line
+  by line instead of by regex backtracking: `### ` now renders as `<h4>`,
+  and a bullet's indented continuation lines join into the same `<li>`.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
