@@ -479,6 +479,22 @@ against the code ADU-129 to ADU-132 shipped.
 <li>The "SSR, SEO and the Lighthouse load profile stay untouched" claim is scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint script hide entrances before paint and the pin helper write heights on attach.</li>
 </ul>
 
+<h4>Scanner (blind review round 5)</h4>
+<ul>
+<li><code>scan()</code>'s <code>MutationObserver</code> callback no longer untracks a node that is still connected. A DOM "replace all" (<code>parent.replaceChildren(...)</code>, <code>replaceWith</code>) queues one mutation record with a retained node in BOTH <code>addedNodes</code> and <code>removedNodes</code>, and a list reorder splits the same move across a removal record and an insertion record in one batch: either way the node was never really removed by the time the observer fires. The remove path now bails with <code>if (el.isConnected) return</code>, so a retained or reordered node keeps its live entry instead of being untracked and re-tracked, which used to strip its state and hide it for a frame.</li>
+</ul>
+
+<h4>Scanner (blind review round 5, second pass)</h4>
+<ul>
+<li>The remove path's connectedness check is <code>scope.contains(el)</code>, not <code>el.isConnected</code>. A scoped <code>scan(root)</code> only observes <code>root</code>'s own subtree: a tracked node moved OUT of <code>root</code> into another still-connected part of the document leaked forever, since it stayed <code>isConnected</code> and no further mutation record for it ever arrives. <code>scope.contains(el)</code> degrades to the same check as <code>isConnected</code> when <code>scope</code> is the document (the churn fix above still holds), is correct for a scoped root, and also fixes <code>scan()</code> on a genuinely detached root, where <code>isConnected</code> is always false and could never trigger the churn guard at all.</li>
+</ul>
+
+<h4>Pointer (blind review round 5)</h4>
+<ul>
+<li><code>trackPointer()</code> only writes <code>--mx</code>/<code>--my</code> on a descendant of its own container. <code>event.target.closest(selector)</code> used to walk straight past the container, so a <code>.sv-tilt</code> ANCESTOR of the tracked container matched and received the pointer output. The match is now required to be inside the container (<code>container.contains(match) &amp;&amp; match !== container</code>).</li>
+<li>Teardown now clears <code>--mx</code>, <code>--my</code> and the <code>sv-pointer-leave</code> class from the last hovered element. It used to only remove the listeners and cancel the pending frame, leaving a destroyed instance's card frozen mid-tilt.</li>
+</ul>
+
 <h4>React (blind review round 5)</h4>
 <ul>
 <li><code>&lt;Slider></code> composes a consumer <code>onPointerEnter</code> / <code>onPointerLeave</code> with autoplay's hover pause instead of letting the props spread replace it. Both are public props (the component extends <code>HTMLAttributes</code>), so a consumer <code>onPointerEnter</code> used to silence the pause entirely, and a lone consumer <code>onPointerLeave</code> left the slider hovering forever, autoplay never resuming after the first hover.</li>
