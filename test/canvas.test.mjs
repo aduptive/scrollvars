@@ -59,19 +59,27 @@ function makeEnv() {
   // it: style.width/height if the canvas has a CSS size (never moves as a
   // consequence of the canvas's own backing-store write), otherwise its
   // width/height attribute (an unsized canvas's layout size IS that
-  // attribute value, in CSS pixels — the whole feedback loop). When only
-  // one axis has a CSS size (ninth pass: the harness now pins width only,
-  // leaving height to the intrinsic ratio), the other axis is derived from
-  // the resolved one through the canvas's own width/height attribute ratio,
-  // same as a real replaced element. No padding/border/transform enters
-  // this at all, matching a real contentRect exactly.
+  // attribute value, in CSS pixels, the whole feedback loop). When only one
+  // axis has a CSS size (ninth pass: the harness now pins width only,
+  // leaving height to the intrinsic ratio) AND `style.aspectRatio` is set
+  // (pinAtW0(), eleventh pass onward), the other axis is derived EXACTLY
+  // from that ratio, in CSS pixels, never rounded (ADU-107, thirteenth
+  // pass: this is what a real CSS `aspect-ratio` actually does, and what
+  // keeps a pinned canvas's height stable at a non-integer `w0 * dpr`
+  // instead of drifting through this harness's own rounded backing-store
+  // attributes, which the fallback below still models for the one case
+  // that has no CSS ratio at all: an axis unpinned and free-derived through
+  // the canvas's own width/height attribute ratio, same as a real replaced
+  // element). No padding/border/transform enters this at all, matching a
+  // real contentRect exactly.
   const contentBoxOf = (canvas) => {
     const hasW = !!canvas.style.width
     const hasH = !!canvas.style.height
     const w = hasW ? parseFloat(canvas.style.width) : canvas.width
     const h = hasH ? parseFloat(canvas.style.height) : canvas.height
-    if (hasW && !hasH) return { width: w, height: w * (canvas.height / canvas.width) }
-    if (!hasW && hasH) return { width: h * (canvas.width / canvas.height), height: h }
+    const ratio = ratioFromAspectRatio(canvas.style.aspectRatio)
+    if (hasW && !hasH) return { width: w, height: ratio ? w / ratio : w * (canvas.height / canvas.width) }
+    if (!hasW && hasH) return { width: ratio ? h * ratio : h * (canvas.width / canvas.height), height: h }
     return { width: w, height: h }
   }
 
@@ -268,29 +276,49 @@ function makeStyle(initial = {}) {
 // clientWidth/clientHeight read, so a test can assert the probe ran
 // exactly when expected (once per applySize() call, never per frame).
 //
+// Parses a computed/inline `aspect-ratio` value ("300 / 150") into a
+// numeric width/height ratio, or undefined for anything else (including
+// 'auto' and the strings this fixture's own computedStyle.aspectRatio
+// getter returns for an un-pinned canvas, "auto W / H"). Real CSS
+// `aspect-ratio` derives the missing axis from this ratio EXACTLY, in CSS
+// pixels, never through a rounded, DPR-scaled backing-store attribute
+// (ADU-107, thirteenth pass): once pinAtW0() sets `style.aspectRatio`,
+// this is what actually keeps height stable at a non-integer `w0 * dpr`,
+// so contentBoxOf() and resolveContentSize() below must honor it the same
+// way a real browser does.
+function ratioFromAspectRatio(value) {
+  const m = /^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/.exec(value || '')
+  return m ? Number(m[1]) / Number(m[2]) : undefined
+}
+
 // `maxWidth` (mutable on the returned object, so a test can simulate a
 // container shrink by lowering it later, same pattern as mutating
 // `state.width` above) models `max-width`: it caps whatever the width
 // would otherwise resolve to, exactly like the real CSS property, whether
 // that source is the attribute (unsized) or an authored `style.width`.
 // When one axis has no CSS size of its own (`style.width`/`height` unset),
-// its content size is derived from the OTHER, resolved axis through the
-// canvas's own width/height attribute ratio, same as a real replaced
-// element's intrinsic sizing (this is also what a real `height: auto` or
-// `width: auto` resolves to, and what the ninth-pass module doc calls the
-// axis "the harness's own proportional writes keep stable").
+// its content size is derived from `style.aspectRatio` if set (see
+// ratioFromAspectRatio() above), otherwise from the OTHER, resolved axis
+// through the canvas's own width/height attribute ratio, same as a real
+// replaced element's intrinsic sizing (this is also what a real
+// `height: auto` or `width: auto` resolves to, and what the ninth-pass
+// module doc calls the axis "the harness's own proportional writes keep
+// stable").
 function resolveContentSize(canvas) {
   const hasW = !!canvas.style.width
   const hasH = !!canvas.style.height
   let w = hasW ? parseFloat(canvas.style.width) : undefined
   let h = hasH ? parseFloat(canvas.style.height) : undefined
+  const ratio = ratioFromAspectRatio(canvas.style.aspectRatio)
   if (w !== undefined && canvas.maxWidth != null) w = Math.min(w, canvas.maxWidth)
   if (w === undefined && canvas.maxWidth != null && h === undefined) {
     w = Math.min(canvas.width, canvas.maxWidth) // auto width, capped
   }
-  if (w === undefined && h !== undefined) w = h * (canvas.width / canvas.height)
+  if (w === undefined && h !== undefined) w = ratio ? h * ratio : h * (canvas.width / canvas.height)
   if (w === undefined) w = canvas.width
-  if (h === undefined) h = hasW || w !== canvas.width ? w * (canvas.height / canvas.width) : canvas.height
+  if (h === undefined) {
+    h = ratio ? w / ratio : (hasW || w !== canvas.width ? w * (canvas.height / canvas.width) : canvas.height)
+  }
   return { width: w, height: h }
 }
 
