@@ -366,6 +366,10 @@ test('canvas harness: an unsized canvas stabilizes after one pass (dpr 2)', asyn
   // above and the module doc), which is why it still reads 150 on the
   // stability check below without ever being written to style itself.
   assert.equal(canvas.style.height, undefined)
+  // Eleventh pass: `aspect-ratio` is set to the ORIGINAL attribute ratio
+  // (the anchor design), so the CSS engine derives height exactly, never
+  // through this harness's own rounded backing-store attributes.
+  assert.equal(canvas.style.aspectRatio, '300 / 150')
   assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not multiplied again
   assert.equal(canvas.height, 300)
 
@@ -548,6 +552,40 @@ test('canvas harness: an unsized canvas with padding AND its own transform still
   env.resize()
   assert.equal(canvas.width, 600) // stable
   assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: every unsized variant pins once at the anchor with aspect-ratio set (ADU-107, eleventh pass)', async () => {
+  // The anchor design (see the module doc): a pin always sets
+  // `style.aspectRatio` to the ORIGINAL, un-perturbed width/height
+  // attributes (300/150 here, whatever border/padding/transform the box
+  // also carries: none of that touches the attribute values themselves),
+  // so the CSS engine derives height exactly, never through this
+  // harness's own rounded backing-store attributes. One test per variant
+  // already covers its own specific measurement quirk in detail above;
+  // this one is just the aspect-ratio pin, swept across all of them.
+  const variants = [
+    ['plain', {}],
+    ['bordered', { border: 2 }],
+    ['padded', { padding: 10 }],
+    ['bordered, padded, border-box', { border: 4, padding: 6 }],
+    ['fractional padding', { padding: 0.3 }],
+    ['padded and transformed', { padding: 10, scale: 2 }],
+  ]
+  for (const [name, opts] of variants) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = 2
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 300, height: 150, style, ...opts })
+
+    mountEffect(canvas, { frame: () => {} })
+    env.resize()
+
+    assert.equal(canvas.style.width, '300px', `${name}: pinned width`)
+    assert.equal(canvas.style.aspectRatio, '300 / 150', `${name}: aspect-ratio set to the original attributes`)
+    assert.equal(canvas.style.height, undefined, `${name}: height never pinned directly`)
+  }
 })
 
 test('canvas harness: applySize() uses the entry\'s contentRect, not the canvas\'s own attribute values, to size the backing store', async () => {
@@ -972,6 +1010,50 @@ test('canvas harness: the proportional probe restores the attribute exactly and 
   assert.equal(canvas.height, 210)
 })
 
+test('canvas harness: the dead band skips a sub-pixel content change, but a DPR change at the same size still rewrites (ADU-107, eleventh pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+
+  const sizes = []
+  mountEffect(canvas, { frame: () => {}, resize: (fx) => sizes.push({ w: fx.width, h: fx.height }) })
+
+  env.resize({ width: 300, height: 150 }) // mount: writes the backing store
+  assert.equal(canvas.width, 600)
+  assert.equal(canvas.height, 300)
+  assert.equal(sizes.length, 1)
+
+  // A sub-pixel content change (< 0.5px on both axes): the dead band skips
+  // the whole pass, backing store included, and `resize()` never fires.
+  env.resize({ width: 300.2, height: 150.3 })
+  assert.equal(canvas.width, 600) // unchanged, not re-rounded to 601
+  assert.equal(canvas.height, 300)
+  assert.equal(sizes.length, 1) // resize() did not fire again
+
+  // Back to the exact mounted size: also dead (no change at all), and
+  // resets the size onDprChange() below will fall back to.
+  env.resize({ width: 300, height: 150 })
+  assert.equal(sizes.length, 1)
+
+  // The SAME content size again, but a real DPR change: never dead, since
+  // a new bitmap is needed even when the CSS content size did not move.
+  // (dprCap defaults to 2, so dpr 1 is the one that actually takes effect
+  // here, not a value above the cap.)
+  env.changeDpr(1)
+  assert.equal(canvas.width, 300) // 300 CSS px * new dpr 1
+  assert.equal(canvas.height, 150)
+  assert.equal(sizes.length, 2)
+
+  // Back to a genuinely different size at the same DPR: not dead either.
+  env.resize({ width: 320, height: 160 })
+  assert.equal(canvas.width, 320) // 320 CSS px * dpr 1
+  assert.equal(canvas.height, 160)
+  assert.equal(sizes.length, 3)
+})
+
 test('canvas harness: a width:100%,height:auto canvas is never pinned, at dpr 0.5, 0.8, 1.25 and 2 (ADU-107, ninth pass, verifier finding 1)', async () => {
   for (const dpr of [0.5, 0.8, 1.25, 2]) {
     const env = makeEnv()
@@ -1194,6 +1276,35 @@ test('canvas harness: a bare max-width:400px canvas is pinned at its uncapped in
   assert.equal(canvas.width, 600) // would have doubled to 1200 without the fix
   assert.equal(canvas.height, 300)
   assert.equal(canvas.clientWidth, 300)
+})
+
+test('canvas harness: a bare max-width:400px canvas (cap above the natural size) pins at 300, at dpr 1.2, 1.5, 1.7, 1.9 and 2 (ADU-107, eleventh pass)', async () => {
+  // Same shape as the dpr-2-only test above, swept across the
+  // parity-mismatch DPRs the eleventh-pass verifier named plus 2: a cap
+  // ABOVE the natural size is genuinely unsized until a DPR inflates the
+  // just-written attribute past it, and the anchor design pins it at the
+  // true, uncapped anchor (300) with `aspect-ratio` set, at every one of
+  // these DPRs.
+  for (const dpr of [1.2, 1.5, 1.7, 1.9, 2]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 300, height: 150, style, maxWidth: 400 })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    env.resize({ width: 300, height: 150 })
+    assert.equal(canvas.style.width, '300px', `dpr ${dpr}: pinned at 300`)
+    assert.equal(canvas.style.aspectRatio, '300 / 150', `dpr ${dpr}: aspect-ratio set`)
+    assert.equal(canvas.width, Math.round(300 * dpr), `dpr ${dpr}: backing width`)
+    assert.equal(canvas.height, Math.round(150 * dpr), `dpr ${dpr}: backing height`)
+
+    env.resize({ width: 300, height: 150 }) // stable
+    assert.equal(canvas.width, Math.round(300 * dpr), `dpr ${dpr}: stable backing width`)
+    assert.equal(canvas.height, Math.round(150 * dpr), `dpr ${dpr}: stable backing height`)
+  }
 })
 
 test('canvas harness: a max-width:100px canvas whose cap binds already at its natural size renders crisp at the cap and is never pinned (ADU-107, tenth pass, verifier finding 2, cap semantics)', async () => {
