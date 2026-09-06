@@ -51,6 +51,9 @@
  *      stylesheets its registry entry declares, under React 18 and 19, with
  *      and without the engine and under reduced motion (installed-gate.mjs,
  *      ADU-129)
+ *  11. trackPointer() on a container that matches its own selector still
+ *      writes --mx/--my on a pointermove over a child, the hero fixture
+ *      round 5's ancestor fix collaterally broke (ADU-152)
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -2476,6 +2479,53 @@ const MIN_EXAMINED = 1
     'occlusion sweep: a genuine sr-only span under a transform: scale(2) ancestor is excluded (not examined, no false occlusion)',
     examined === 1 && !bad.includes('genuine-sr-only'),
     `examined=${examined} bad=${bad.join(',')}`
+  )
+  await page.close()
+}
+
+// ── 9c. trackPointer() on a container that matches its own selector still
+// writes --mx/--my on a move over a child (ADU-152, live regression). This
+// is exactly the gallery's flagship hero: usePointer/trackPointer wired
+// with `{ selector: '.sv-hero' }` on the '.sv-hero' section itself. Round
+// 5's ancestor fix (ADU-141) added `match !== container`, which rejected
+// this self case too and dropped every pointermove; the day that shipped,
+// this invariant would have failed ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <section class="sv-hero" id="hero" style="position:relative;width:300px;height:200px">
+        <div class="hero-orb" style="width:20px;height:20px"></div>
+      </section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const hero = document.querySelector('.sv-hero')
+    SV.trackPointer(hero, { selector: '.sv-hero' })
+    const rect = hero.getBoundingClientRect()
+    const orb = document.querySelector('.hero-orb')
+    orb.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: rect.top + rect.height * 0.25,
+      })
+    )
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    return {
+      mx: hero.style.getPropertyValue('--mx'),
+      my: hero.style.getPropertyValue('--my'),
+    }
+  })
+  check(
+    'pointer: a container that matches its own selector (the hero fixture) writes --mx on a move over a child',
+    r.mx !== '',
+    `--mx="${r.mx}"`
+  )
+  check(
+    'pointer: ...and writes --my on the same move',
+    r.my !== '',
+    `--my="${r.my}"`
   )
   await page.close()
 }

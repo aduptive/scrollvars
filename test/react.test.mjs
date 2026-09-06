@@ -173,10 +173,14 @@ function makeNode(tag) {
     attributes: {},
     style: { setProperty(name, value) { node.style[name] = value } },
     classes: new Set(),
+    // classList and the class attribute are two views of ONE token list in a
+    // real element: a classList write updates the attribute, and writing the
+    // attribute (React committing `className`) replaces every token, engine
+    // classes included. A stub where they drift cannot see that collision.
     classList: {
-      add: (c) => node.classes.add(c),
-      remove: (c) => node.classes.delete(c),
-      toggle: (c, on) => (on ? node.classes.add(c) : node.classes.delete(c)),
+      add: (c) => (node.classes.add(c), syncClass()),
+      remove: (c) => (node.classes.delete(c), syncClass()),
+      toggle: (c, on) => ((on ? node.classes.add(c) : node.classes.delete(c)), syncClass()),
       contains: (c) => node.classes.has(c),
       get length() { return node.classes.size },
       [Symbol.iterator]() { return node.classes[Symbol.iterator]() },
@@ -201,8 +205,14 @@ function makeNode(tag) {
       if (child) child.parentNode = null
       return child
     },
-    setAttribute(name, value) { node.attributes[name] = String(value) },
-    removeAttribute(name) { delete node.attributes[name] },
+    setAttribute(name, value) {
+      node.attributes[name] = String(value)
+      if (name === 'class') node.classes = new Set(String(value).split(/\s+/).filter(Boolean))
+    },
+    removeAttribute(name) {
+      delete node.attributes[name]
+      if (name === 'class') node.classes = new Set()
+    },
     toggleAttribute(name, force) {
       const on = force === undefined ? !(name in node.attributes) : !!force
       if (on) node.attributes[name] = ''
@@ -230,6 +240,15 @@ function makeNode(tag) {
     // nodes): the slider walks this to find slides.
     get children() { return node.childNodes.filter((c) => c.nodeType === 1) },
   }
+  const syncClass = () => {
+    node.attributes.class = [...node.classes].join(' ')
+  }
+  // react-dom writes one or the other depending on the major: both land on
+  // the same token list here, like in a browser
+  Object.defineProperty(node, 'className', {
+    get() { return [...node.classes].join(' ') },
+    set(value) { node.setAttribute('class', value) },
+  })
   Object.defineProperty(node, 'innerHTML', {
     get() { return node._innerHTML ?? '' },
     set(html) {
@@ -593,6 +612,52 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
   } finally {
     global.setInterval = realSetInterval
   }
+})
+
+test('react: a className rewrite cannot strip the classes the slider owns', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  const view = (props, slideClass) =>
+    React.createElement(
+      Slider,
+      props,
+      React.createElement('div', { className: slideClass }, 'one'),
+      React.createElement('div', null, 'two')
+    )
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  await act(async () => { root.render(view({}, 'card')) })
+
+  const shell = container.firstChild
+  const rail = shell.children.find((child) => child.classes.has('sv-slider'))
+  assert.ok(rail, 'the rail carries the engine class after mount')
+  assert.ok(rail.classes.has('sv-draggable'), 'drag is on by default')
+  const [first, second] = rail.children
+  assert.ok(first.classes.has('sv-active'), 'the first slide is active in this zero-geometry DOM')
+
+  // `perView` is not an attach dep, so React rewrites the rail's class
+  // attribute (sv-slider -> sv-slider sv-cols) with no retrack behind it, and
+  // a consumer restyling a slide rewrites that one too. Both drop what the
+  // engine wrote; the next measure has to put it back.
+  await act(async () => { root.render(view({ perView: 2 }, 'card card-lit')) })
+  assert.equal(shell.children.find((child) => child.classes.has('sv-slider')), rail, 'same rail node, no remount')
+
+  rail._listeners.scroll[0]() // any measure will do: a scroll is the cheapest
+  flushFrames()
+
+  assert.ok(rail.classes.has('sv-cols'), "React's own class survived")
+  assert.ok(rail.classes.has('sv-draggable'), 'the engine re-asserts sv-draggable')
+  assert.ok(rail.classes.has('sv-slider'), 'and sv-slider')
+  assert.ok(first.classes.has('card-lit'), "the consumer's new slide class survived")
+  assert.ok(first.classes.has('sv-active'), 'sv-active is re-asserted on the active slide')
+  assert.ok(!second.classes.has('sv-active'), 'and only there')
+
+  await act(async () => { root.unmount() })
 })
 
 test('react: useTrack settles to one tracked node under StrictMode double-invocation, no leak on unmount', async () => {
