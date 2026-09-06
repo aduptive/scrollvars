@@ -828,9 +828,13 @@ function Timeline() {
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } .st-steps > li { opacity: 1; } }   /* no crossfade: the shots stack, every step stays readable too (ADU-155) */
+@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
-html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
+html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+/* Placed after the rule above (same specificity, later wins, so a media block
+   up there would lose): the stage unpins under reduce but --sv-scene keeps
+   being written, and every non-active step would sit at 30% forever (ADU-155) */
+@media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }`,
     tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
   <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
     <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">

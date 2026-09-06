@@ -1252,11 +1252,17 @@ Docs read against the code merged by the five round-5 code tickets.
 
 ### Gallery (blind review round 6)
 Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
-- `sticky-steps`'s CSS tab now resets `.st-steps > li` to opacity 1 inside
-  its reduced-motion block too, not only `.st-shot`: ADU-144 fixed this in
+- `sticky-steps`'s CSS tab now resets `.st-steps > li` to opacity 1 under
+  reduced motion too, not only `.st-shot`: ADU-144 fixed this in
   the installed component but never in the tab the docs tell a reader to
   paste, so pasted code left every non-active step at 30% opacity forever
-  under reduce. A new gate (`test/cli-components.test.mjs`) compares, for
+  under reduce. The reset sits in its own
+  `@media (prefers-reduced-motion: reduce)` block placed AFTER
+  `.st-steps > li { opacity: calc(...) }`, mirroring the installed
+  component: both selectors are `.st-steps > li`, so with equal specificity
+  the later rule in source order wins whichever one the media query matches,
+  and a reset written into the existing media block above the base rule
+  never applies. A gate (`test/cli-components.test.mjs`) compares, for
   every Section with both a CSS tab and an installed component, the
   selectors inside each side's `@media (prefers-reduced-motion: reduce)`
   block, past the installed component's own wrapper-class scoping
@@ -1269,6 +1275,17 @@ Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
   differently named class (`.slide` against `.cf-slide`), a naming choice
   the Sliders category is free to make, not drift, so the gate is scoped to
   Sections the same way the CSS/React pane-pairing gate above already is.
+- Second pass (verifier findings on 29669c0): that selector-text gate could
+  not see either half of the defect it was written for, because it reads
+  selectors and never declarations or cascade position. The e2e harness now
+  judges the rendered result instead. `demo/bench/harness/installed-gate.mjs`
+  renders every Section's CSS tab on its own (the tab's markup, only the
+  tab's CSS, `html.sv-on` and the driver's own variables set by hand, under
+  `prefers-reduced-motion: reduce`) and runs the identical probe the
+  installed component passes: the reduced-motion assertion is now one
+  function shared by both spellings of a section rather than two that drift.
+  Proved red in Chrome on both mutations, the wrong value and the wrong
+  cascade position, each of which leaves the selector-text gate green.
 
 ## 1.13.0 (2026-09-05)
 

@@ -23,6 +23,12 @@
  * counts is keyboard reachable, which today is a guard rather than a claim:
  * the four Sections render none with their preview props.
  *
+ * One more pass at the end, same file because it must share the assertion:
+ * the gallery CSS tab of each Section that declares a reduced-motion
+ * behavior is rendered on its own and put through the identical probe. The
+ * installed component and the pasteable tab are two spellings of one
+ * section, and they have drifted (ADU-144, ADU-155).
+ *
  * Called from e2e-invariants.mjs, which owns the browser and the `check`
  * counter and passes its own HIDDEN_TEXT probe in, so both suites judge
  * "hidden" by one definition.
@@ -32,6 +38,10 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+// live source, not demo/fx/registry.json: the registry carries the installed
+// component but not the gallery CSS tab, and reading the tab live means a
+// mutation to it is provable red without a demo:sync in between
+import { EFFECTS } from '../../../scripts/fx-data.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = join(here, '..', '..', '..')
@@ -188,32 +198,56 @@ const BEHAVIOR = {
 // sweep below already left the page at: only the step whose --i equals the
 // current scene has st-d=0, so any other step still animated by st-d fails
 // this the moment more than one step exists.
+//
+// Split in two on purpose: `settle` drives the real page (scroll, engine,
+// timing) and `probe` reads the result. The gallery-CSS-tab gate at the
+// bottom of this file reuses `probe` verbatim against the tab's own markup,
+// so the block a reader pastes is judged by the very assertion the installed
+// component passes, not by a second one that can drift from it (ADU-155).
 const REDUCED_BEHAVIOR = {
   'sticky-steps': {
     what: 'every step and dot resets to fully opaque and unmoved',
-    async run(page) {
+    // the installed component's own wrapper class, the element the driver
+    // writes --sv-scene on
+    root: '.sv-steps',
+    // what the driver writes on the tracked element once it is running, for
+    // the tab gate, which sets these by hand instead of running the engine
+    writes: { '--sv-scene': '1' },
+    async settle(page, root) {
       // the stage unpins under reduced motion (pin.css restores its authored,
       // natural height): the generic sweep above (scroll to document bottom,
       // back to one viewport down) can leave a short, unpinned block already
       // scrolled fully past, --sv-scene pinned at 0. Scroll by the element's
       // own geometry instead, same approach as the BEHAVIOR check above.
-      await page.evaluate(() => {
-        const el = document.querySelector('.sv-steps')
+      await page.evaluate((sel) => {
+        const el = document.querySelector(sel)
         scrollTo(0, el.getBoundingClientRect().top + scrollY + el.offsetHeight * 0.9)
-      })
+      }, root)
       await sleep(300)
-      return page.evaluate(() => {
-        const scene = getComputedStyle(document.querySelector('.sv-steps')).getPropertyValue('--sv-scene').trim()
-        const read = (el, prop) => `${getComputedStyle(el).opacity}/${getComputedStyle(el)[prop]}`
-        const steps = [...document.querySelectorAll('.st-steps > li')].map((el) => read(el, 'translate'))
-        const dots = [...document.querySelectorAll('.st-dots i')].map((el) => read(el, 'scale'))
-        return {
-          ok: steps.every((s) => s === '1/none') && dots.every((d) => d === '1/none'),
-          detail: `--sv-scene=${scene} steps=[${steps.join(', ')}] dots=[${dots.join(', ')}]`,
-        }
-      })
+    },
+    // `steps.length > 0` is not decoration: with an empty list every() is
+    // vacuously true, so a probe that found nothing would pass on nothing.
+    probe: (root) => {
+      const scene = getComputedStyle(document.querySelector(root)).getPropertyValue('--sv-scene').trim()
+      const read = (el, prop) => `${getComputedStyle(el).opacity}/${getComputedStyle(el)[prop]}`
+      const steps = [...document.querySelectorAll('.st-steps > li')].map((el) => read(el, 'translate'))
+      const dots = [...document.querySelectorAll('.st-dots i')].map((el) => read(el, 'scale'))
+      return {
+        ok: steps.length > 0 && steps.every((s) => s === '1/none') && dots.every((d) => d === '1/none'),
+        detail: `--sv-scene=${scene} steps=[${steps.join(', ')}] dots=[${dots.join(', ')}]`,
+      }
     },
   },
+}
+
+// A gallery CSS tab is one string: the markup a reader copies, a blank line,
+// then the CSS they paste into their stylesheet (the pane-pairing gate in
+// test/cli-components.test.mjs leans on the same shape). If the split ever
+// goes wrong the rendered page carries no markup at all, and the probes above
+// fail on their empty-list guard rather than passing on nothing.
+const splitPane = (pane) => {
+  const at = pane.search(/\n[ \t]*\n/)
+  return { markup: pane.slice(0, at), css: pane.slice(at) }
 }
 
 // ---- the page: only what the registry told the consumer to import ---------
@@ -349,11 +383,47 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
         )
         const reducedBehavior = REDUCED_BEHAVIOR[fx.slug]
         if (reducedBehavior) {
-          const result = await reducedBehavior.run(r)
+          await reducedBehavior.settle(r, reducedBehavior.root)
+          const result = await r.evaluate(reducedBehavior.probe, reducedBehavior.root)
           check(`installed(${tag}) ${fx.slug}: reduced motion, ${reducedBehavior.what}`, result.ok, result.detail)
         }
         await r.close()
       }
+    }
+
+    // ---- the gallery CSS tab, which is the block a reader actually pastes --
+    // The installed component and the tab are two spellings of one section and
+    // ADU-155 caught them drifting twice: first the tab had no reduced-motion
+    // reset for its steps at all, then the reset was there but sat BEFORE the
+    // rule it has to beat. Same selector, same specificity, later wins, so a
+    // media block above the base rule never applies no matter which one the
+    // media query matches. No gate that reads selector TEXT can see that, so
+    // this one reads the rendered result: the tab's own markup with ONLY the
+    // tab's own CSS (a reader pasting it has nothing else of ours on the
+    // page), what the driver writes set by hand (html.sv-on plus the effect's
+    // vars, so the assertion is about the cascade and not about pin geometry
+    // or scroll timing), and then the SAME probe the installed component just
+    // passed. An effect enters this loop by gaining a REDUCED_BEHAVIOR entry.
+    for (const fx of EFFECTS) {
+      const reduced = REDUCED_BEHAVIOR[fx.slug]
+      if (!reduced || !fx.css || fx.category !== 'Sections') continue
+      const pane = splitPane(fx.css)
+      const url = `/tab/${fx.slug}`
+      pages.set(url, page({ css: pane.css, markup: pane.markup, engine: '', script: '' }))
+      const t = await newPage()
+      await t.setViewport({ width: 1200, height: 800 })
+      await t.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+      await t.goto(base + url, { waitUntil: 'load' })
+      // every Section tab is one tracked block: the [data-sv] element is what
+      // the driver would carry the class and the vars on
+      await t.evaluate((writes) => {
+        document.documentElement.classList.add('sv-on')
+        const root = document.querySelector('[data-sv]')
+        for (const [k, v] of Object.entries(writes)) root.style.setProperty(k, v)
+      }, reduced.writes)
+      const result = await t.evaluate(reduced.probe, '[data-sv]')
+      check(`gallery tab ${fx.slug}: reduced motion, ${reduced.what}`, result.ok, result.detail)
+      await t.close()
     }
   } finally {
     server.close()
