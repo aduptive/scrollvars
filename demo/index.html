@@ -4132,14 +4132,23 @@ var SV = (() => {
  * then does it pin the CSS-pixel size it measured BEFORE the write to
  * `canvas.style.width`/`height`, once, so layout stops following the
  * backing store. That measured size is the content box, border AND
- * padding excluded: `clientWidth`/`clientHeight` already exclude border
- * but include padding, so the harness reads computed padding and
- * subtracts it. The pin also forces `box-sizing: content-box` inline, so
- * the width/height it writes reproduce that same content box regardless
- * of the canvas's own `box-sizing` (a `border-box` canvas would otherwise
- * need padding and border added back to the content size instead). A
- * canvas with no CSS size still ends up with one pinned inline by the
- * harness: give it real CSS dimensions to keep control of its own size.
+ * padding excluded: read straight from the ResizeObserver entry's own
+ * `contentRect` when applySize() runs as its callback (bit-exact, no
+ * arithmetic), or, when it does not (a direct DPR-change call, or the
+ * synchronous re-measure right after writing the backing store), from
+ * `getBoundingClientRect()` minus computed border and padding, never
+ * `clientWidth`/`clientHeight` (integer-rounded, off by a whole pixel or
+ * more). That fallback is close but not bit-exact for fractional values
+ * (computed border/padding can report the authored px value, not the
+ * sub-pixel value layout actually used), which would cost an extra
+ * applySize() pass if it were what got pinned instead of only feeding the
+ * boolean loop check. The pin also forces
+ * `box-sizing: content-box` inline, so the width/height it writes
+ * reproduce that same content box regardless of the canvas's own
+ * `box-sizing` (a `border-box` canvas would otherwise need padding and
+ * border added back to the content size instead). A canvas with no CSS
+ * size still ends up with one pinned inline by the harness: give it real
+ * CSS dimensions to keep control of its own size.
  */
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }) {
@@ -4185,31 +4194,43 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         }
     };
     // Layout size in CSS pixels: content box, border and padding excluded.
-    // clientWidth/Height already exclude border, but include padding, so
-    // subtract computed padding to get the true content box (a padded
-    // unsized canvas otherwise measures its padding box, pins to that, and
-    // ends up larger than the content it was ever meant to be). clientWidth/
-    // Height read 0 for a canvas not yet laid out (display:none, detached);
-    // fall back to the rect there.
-    const measureLayout = () => {
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        if (w && h) {
-            const style = window.getComputedStyle(canvas);
-            return {
-                width: w - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
-                height: h - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
-            };
-        }
+    // A ResizeObserverEntry's own contentRect IS that content box, straight
+    // from the layout engine, no subtraction needed: use it when one is on
+    // hand (applySize() runs as the ResizeObserver callback below, so it
+    // usually is). The fallback, getBoundingClientRect() minus computed
+    // border and padding (never clientWidth/Height, which round to an
+    // integer), covers the one caller with no entry (onDprChange()) and the
+    // synchronous re-measure inside applySize() right after writing the
+    // backing store (no fresh entry exists yet there either). That fallback
+    // is close but not bit-exact for fractional values: computed border and
+    // padding can report the AUTHORED px value, not the sub-pixel value
+    // layout actually snapped to, so subtracting it from the border-box
+    // rect can land a thousandth of a pixel off the true content box
+    // (verified in Chrome: an unsized canvas with `padding: 0.3px` measures
+    // its contentRect at exactly 300, but rect.width minus computed padding
+    // lands on 299.99375). That residual is harmless where it is only used,
+    // the boolean loop check, but would cost an extra applySize() pass if it
+    // were what got pinned.
+    const measureLayout = (entry) => {
+        if (entry)
+            return { width: entry.contentRect.width, height: entry.contentRect.height };
         const rect = canvas.getBoundingClientRect();
-        return { width: rect.width, height: rect.height };
+        const style = window.getComputedStyle(canvas);
+        const borderX = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+        const borderY = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+        return {
+            width: rect.width - borderX - paddingX,
+            height: rect.height - borderY - paddingY,
+        };
     };
     const writeBackingStore = (size) => {
         canvas.width = Math.round(size.width * fx.dpr);
         canvas.height = Math.round(size.height * fx.dpr);
     };
-    const applySize = () => {
-        const before = measureLayout();
+    const applySize = (entries) => {
+        const before = measureLayout(entries?.[0]);
         if (!before.width || !before.height)
             return;
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);

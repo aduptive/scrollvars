@@ -50,13 +50,28 @@ function makeEnv() {
     width: 0,
     height: 0,
     style: {},
+    computedStyle: {
+      paddingLeft: '0px',
+      paddingRight: '0px',
+      paddingTop: '0px',
+      paddingBottom: '0px',
+      borderLeftWidth: '0px',
+      borderRightWidth: '0px',
+      borderTopWidth: '0px',
+      borderBottomWidth: '0px',
+    },
     getContext: () => ({ setTransform: () => {} }),
     getBoundingClientRect: () => ({ width: 400, height: 300 }),
   }
 
   return {
     canvas,
-    resize: () => roCallback([]),
+    // A real ResizeObserver hands its callback the entry it observed;
+    // `contentRect` (below) exercises applySize()'s preferred, bit-exact
+    // read of it. Called with nothing, this stub matches the harness's
+    // other two call sites (onDprChange, and applySize()'s own internal
+    // re-measure), neither of which has an entry either.
+    resize: (contentRect) => roCallback(contentRect ? [{ contentRect }] : []),
     intersect: (v) => ioCallback([{ isIntersecting: v }]),
     setHidden: (hidden) => {
       global.document.visibilityState = hidden ? 'hidden' : 'visible'
@@ -139,12 +154,17 @@ function makeStyle(initial = {}) {
 }
 
 // The content box (canvas.width/height, or style.width/height once the
-// harness pins it, exactly like clientWidth/clientHeight track a real
-// canvas) plus `padding` is what clientWidth/clientHeight actually report:
-// clientWidth/Height always include padding, whatever box-sizing says
-// (box-sizing only changes what a specified CSS `width` means, never what
-// clientWidth reports). getBoundingClientRect (border box) adds `border`
-// on top of that too.
+// harness pins it) plus `padding` plus `border` is what getBoundingClientRect
+// reports (a real border-box rect), whatever the canvas's own box-sizing
+// says: box-sizing only changes what a specified CSS `width` means, never
+// what the rendered border box measures.
+// A real layout engine snaps subpixel sizes to a fixed-precision grid; raw
+// IEEE-754 addition does not (0.3 + 0.3 - 0.6 !== 0 in binary floating
+// point), which would inject arithmetic noise this stub has no business
+// producing. Round to 9 decimal places, well past any pixel value this
+// harness cares about, so fractional-padding fixtures stay exact.
+const round9 = (n) => Math.round(n * 1e9) / 1e9
+
 function makeCanvas({ width, height, style, border = 0, padding = 0 }) {
   const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
   return {
@@ -156,22 +176,22 @@ function makeCanvas({ width, height, style, border = 0, padding = 0 }) {
       paddingRight: `${pad.right}px`,
       paddingTop: `${pad.top}px`,
       paddingBottom: `${pad.bottom}px`,
+      // split evenly: getBoundingClientRect() below adds the combined
+      // `border` once per axis, so left+right (and top+bottom) must sum
+      // back to it for measureLayout()'s subtraction to recover the
+      // content box.
+      borderLeftWidth: `${border / 2}px`,
+      borderRightWidth: `${border / 2}px`,
+      borderTopWidth: `${border / 2}px`,
+      borderBottomWidth: `${border / 2}px`,
     },
     getContext: () => ({ setTransform: () => {} }),
-    get clientWidth() {
-      const content = this.style.width ? parseFloat(this.style.width) : this.width
-      return content + pad.left + pad.right
-    },
-    get clientHeight() {
-      const content = this.style.height ? parseFloat(this.style.height) : this.height
-      return content + pad.top + pad.bottom
-    },
     getBoundingClientRect() {
       const contentW = this.style.width ? parseFloat(this.style.width) : this.width
       const contentH = this.style.height ? parseFloat(this.style.height) : this.height
       return {
-        width: contentW + pad.left + pad.right + border,
-        height: contentH + pad.top + pad.bottom + border,
+        width: round9(contentW + pad.left + pad.right + border),
+        height: round9(contentH + pad.top + pad.bottom + border),
       }
     },
   }
@@ -287,12 +307,14 @@ test('canvas harness: a bordered, padded, border-box unsized canvas still pins i
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
 
-  // border:4px, padding:6px, box-sizing:border-box. clientWidth already
-  // excludes the border regardless of box-sizing (clientWidth is always
-  // the padding box), so the same padding subtraction recovers the true
-  // 300 content box. Forcing box-sizing:content-box on the pin is what
-  // stops the author's own border-box declaration from reinterpreting the
-  // pinned width as a border box and shrinking the content back down.
+  // border:4px, padding:6px, box-sizing:border-box. getBoundingClientRect
+  // reports the border box regardless of box-sizing (box-sizing only
+  // changes what a specified CSS `width` means, never what the rendered
+  // box measures), so subtracting both computed border and padding
+  // recovers the true 300 content box. Forcing box-sizing:content-box on
+  // the pin is what stops the author's own border-box declaration from
+  // reinterpreting the pinned width as a border box and shrinking the
+  // content back down.
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style, border: 4, padding: 6 })
 
@@ -308,4 +330,63 @@ test('canvas harness: a bordered, padded, border-box unsized canvas still pins i
   env.resize()
   assert.equal(canvas.width, 600) // stable
   assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: an unsized canvas with fractional padding settles in one pass at the exact content size, via the getBoundingClientRect fallback (ADU-107, fourth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // padding: 0.3px, common from a percentage or calc() padding, or a
+  // non-100% zoom. clientWidth rounds to an integer before computed
+  // padding (subpixel-precise) is subtracted, so the old measureLayout()
+  // landed a fraction of a pixel off the true 300x150 content box on its
+  // first read, needing a second applySize() pass to notice and correct.
+  // getBoundingClientRect() is subpixel-precise like the padding it is
+  // read alongside, so the same subtraction lands exactly on 300x150 in
+  // one env.resize(). This stub has no real layout engine to snap sizes
+  // to a sub-pixel grid, so it cannot reproduce the residual mismatch a
+  // real browser has between this fallback and a ResizeObserver entry's
+  // own contentRect (see the next test): this one only proves the
+  // arithmetic itself is exact when the two subpixel-precise reads agree.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, padding: 0.3 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize() // one pass settles it, same as the integer-padding case
+  assert.equal(canvas.style.width, '300px') // exact, not 300.4
+  assert.equal(canvas.style.height, '150px') // exact, not 150.4
+  assert.equal(canvas.width, 600) // 300 CSS px * dpr 2
+  assert.equal(canvas.height, 300)
+
+  env.resize()
+  assert.equal(canvas.width, 600) // stable
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: applySize() prefers the ResizeObserver entry\'s own contentRect over getBoundingClientRect (ADU-107, fourth pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // A real ResizeObserver entry's contentRect is the layout engine's own
+  // content-box measurement, bit-exact: no border/padding subtraction, so
+  // no residual mismatch between an authored computed-style value and the
+  // sub-pixel value layout actually used (the real-Chrome finding behind
+  // the previous test). Feeding applySize() an entry whose contentRect
+  // (111x222) disagrees with what getBoundingClientRect()/computed style
+  // on this same canvas would derive (300x150, padding 0) proves the
+  // entry wins: if the harness fell back to the rect it would pin 300x150
+  // instead.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize({ width: 111, height: 222 })
+  assert.equal(canvas.style.width, '111px')
+  assert.equal(canvas.style.height, '222px')
+  assert.equal(canvas.width, 222) // 111 CSS px * dpr 2, not 600 (300 * 2)
+  assert.equal(canvas.height, 444)
 })

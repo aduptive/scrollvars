@@ -99,7 +99,7 @@ Per import, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzi
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.0 KB |
 | everything in `scrollvars` (the core entry) | 5.5 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 10.3 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 10.4 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

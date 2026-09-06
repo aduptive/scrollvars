@@ -157,6 +157,30 @@ findings on the same round): three more defects fixed.
   pinned width/height reproduce that content box regardless of the
   canvas's own box-sizing. Both padding and border-box-with-padding cases
   now settle in one `applySize()` pass at the intrinsic 300x150.
+- Fourth pass (verifier finding, reproduced in Chrome): that fix subtracted
+  subpixel-precise computed padding from `clientWidth`/`clientHeight`,
+  which round to an integer. An unsized `<canvas style="padding:0.3px">`
+  (fractional padding is common: a percentage or `calc()` padding, or a
+  non-100% zoom) landed a fraction of a pixel off the true content box on
+  its first read, so it still took two `applySize()` passes to settle,
+  at 300.4x150.4 instead of one pass at 300x150. Swapping in
+  `getBoundingClientRect()` minus computed border and padding (still never
+  `clientWidth`/`clientHeight`) turned out not to fully close it either:
+  Chrome's computed border/padding can report the value the author wrote,
+  not the sub-pixel value layout actually snapped to, so subtracting it
+  from the border-box rect still landed a thousandth of a pixel off (300
+  measured as 299.99375), still costing a second pass. `measureLayout()`
+  now reads the content box straight from the ResizeObserver entry's own
+  `contentRect` when `applySize()` runs as its callback (bit-exact, no
+  arithmetic at all: that IS the layout engine's content-box measurement),
+  falling back to the rect-minus-border-and-padding route only for the one
+  caller with no entry (a direct DPR-change call) and for the internal
+  synchronous re-measure right after writing the backing store, where the
+  fallback's residual imprecision only feeds a boolean loop check, never
+  the pinned value. The final backing-store size is still rounded
+  (`Math.round(size * dpr)`), and the CSS pin still comes from that same
+  now-exact measure. Every prior case (plain, bordered, padded,
+  border-box-with-padding) settles the same as before.
 
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine

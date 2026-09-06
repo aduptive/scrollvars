@@ -525,7 +525,19 @@ const MIN_EXAMINED = 1
 // called clientWidth/clientHeight the content box, but they include
 // padding (unlike border, which they already exclude), so a padded
 // unsized canvas measured its padding box, pinned to that, and settled on
-// an even larger size after a second applySize() pass ──
+// an even larger size after a second applySize() pass. Fourth pass
+// (verifier finding, reproduced in Chrome): that fix subtracted
+// subpixel-precise computed padding from clientWidth/clientHeight, which
+// round to an integer, so a canvas with fractional padding (0.3px, as
+// common from a percentage/calc() padding or a non-100% zoom) still
+// landed a fraction of a pixel off the intrinsic size on its first read
+// and needed a second applySize() pass to settle. Swapping in
+// getBoundingClientRect() minus computed border/padding did not fully
+// close it either: Chrome's computed padding can report the authored
+// value, not the sub-pixel value layout actually used, so the same
+// residual (300 measured as 299.99375) remained. measureLayout() now
+// reads the content box straight from the ResizeObserver entry's own
+// contentRect, the layout engine's own measurement, bit-exact ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -636,6 +648,32 @@ const MIN_EXAMINED = 1
       borderBox.style.includes('height: 150px') &&
       borderBox.style.includes('box-sizing: content-box'),
     borderBox.style
+  )
+
+  const fractional = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-fractional-padding')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: an unsized canvas with fractional (0.3px) padding stabilizes at one applySize() pass, not two (ADU-107, fourth pass)',
+    fractional.log.length === 1 && fractional.width === 600 && fractional.height === 300,
+    `resize() calls: ${fractional.log.length}, canvas.width=${fractional.width}, canvas.height=${fractional.height}`
+  )
+  check(
+    'canvas: the pinned CSS size is the exact intrinsic content box (300x150), not a subpixel-rounded 300.4x150.4',
+    fractional.style.includes('width: 300px') && fractional.style.includes('height: 150px'),
+    fractional.style
   )
   await page.close()
 }
