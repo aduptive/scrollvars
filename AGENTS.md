@@ -47,7 +47,12 @@ to back off, or a click-driven `sv-acts` clock stays stuck at the finished
 state forever, while an unrelated scroll-revealed widget elsewhere on the
 same page correctly keeps that finished-state fallback. Any custom guard
 keyed on `html:not(.sv-on)` for something clicks alone can finish should add
-`:not(.sv-ui)` on the element itself, not on `html`.
+`:not(.sv-ui)` on the element itself, not on `html`. A released element (a
+settled `once` entry, an unmounted `<Track>`, a stopped `scan()`) gets the
+driver's own `data-sv-off` instead, the per-element released twin of
+`sv-on`: it settles every preset under it to the no-JS rendering and comes
+off the moment that element is tracked again; a released ancestor still
+holding a tracked descendant keeps waiting for it.
 
 ## Imports
 
@@ -201,8 +206,12 @@ canvas with the same camera transform (`Path2D` from the SVG `d`).
 `data-sv-toggle="class"` + `data-sv-target="sel"` flips the class, writes
 `--sv-state` and syncs `aria-expanded`. Presets: `sv-pop` (popover/dialog/
 panel entry-exit via @starting-style) and `sv-words` (rotating words via
-`--sv-word`). Removing `sv-live` and re-adding it on the next frame replays the entrance
-system on demand. **Multi-act timed sequences**: `sv-acts` preset: a registered
+`--sv-word`). On an element the driver does not track (a hand-flipped `.sv`,
+a `toggles()`-driven widget), removing `sv-live` and re-adding it on the
+next frame replays the entrance system on demand; on a tracked (or
+released) element the driver pins `--sv-live` inline (outranks a rule of
+your own without `!important`), so re-tracking is what replays the entrance
+there instead. **Multi-act timed sequences**: `sv-acts` preset: a registered
 custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
 Knobs: --sv-acts-count / --sv-acts-duration. Reversible (retargets, never
@@ -214,7 +223,7 @@ a11y semantics. Use toggles(), Popover API or `:has()` + radios).
 cards. Two delegated listeners (pointermove, pointerout); CSS does tilt + glare from `--mx`/`--my`.
 
 **Scroll-scrubbed media / WebGL:** `onTravel` (viewport travel) and `onPin`
-(progress across a pinned stretch) fire on every driver frame, while near the viewport, with raw 0..1:
+(progress across a pinned stretch) fire on every driver frame, while near the viewport, with raw 0..1 (track with a custom `root` and that near-viewport culling never applies, by design: the callback fires every frame no matter where the root itself sits on screen):
 ```tsx
 useTrack({ onTravel: (t) => { /* drive a camera, a canvas, a timeline */ } })
 useTrack({ onPin: (p) => { /* scrub frames across a pinned section */ } })

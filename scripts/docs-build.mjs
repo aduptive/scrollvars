@@ -277,12 +277,23 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, curtains and the deck already work on their own (see below); a <code>sv-rail</code> needs <code>compat()</code>, or its cards past the first viewport go unreachable</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
-breaks. The page renders complete and static. Animation is progressive enhancement, never a
-dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
-degrade to their end state individually.</p>
+breaks, once <code>compat()</code> is called. The page renders complete and static; skip that
+call under a <code>sv-rail</code> and its cards past the first viewport are the one exception,
+clipped and unreachable (curtains and the deck need no call, see below). Animation is
+progressive enhancement, never a dependency. Presets that lean on newer CSS
+(<code>sv-range</code>, <code>sv-counter</code>) degrade to their end state individually.</p>
+<p>Two of the pin presets need no <code>compat()</code> call at all: below the transform floor,
+<code>sv-curtain-l</code>/<code>sv-curtain-r</code> and <code>sv-deck</code> already work,
+because <code>styles/pin.css</code> carries its own <code>@supports not (translate: 0)</code>
+net that re-expresses the curtains with <code>transform:</code> and unstacks the deck to a
+static, non-overlapping layout. <code>sv-rail</code> has no such net (its
+<code>translate:</code> is the only thing that ever moves it): below that same floor, without
+<code>compat()</code>, a rail sits at its natural width inside a <code>.sv-stage</code> that
+still clips with <code>overflow: hidden</code>, so every card past the first viewport is there
+but unreachable.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
 three feature checks and exits (free); on old ones it installs ResizeObserver/
 IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for the
