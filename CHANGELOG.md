@@ -1100,6 +1100,21 @@ against the code ADU-129 to ADU-132 shipped.
   which costs no bytes on the wire). `styles/core.css` crosses its rounding
   boundary on the RULES alone: 2392 bytes at the base, 2411 with the new
   selectors and no comment at all, against 2406 for 2.35 KB.
+- Fourth pass (the ADU-145 docs verification, round 5): the `@supports not
+  (translate: 0)` block above unstacked the deck and opened the curtains,
+  but left `.sv-stage` at `position: sticky`, `height: 100vh`,
+  `overflow: hidden`, whose only escapes were the no-JS, released and
+  reduced-motion guards, never this block. Measured in Chrome with the
+  block's declarations applied by hand: four 45vh cards in an 800px stage
+  landed at 0..360, 360..720, 720..1080, 1080..1440, so the fourth card sat
+  entirely outside the clip box and the third was half gone. The block now
+  resets the stage the same way its reduced-motion twin already does, and
+  its own comment states exactly what it guarantees: the curtains sit
+  parted and static, nothing overlaps, content stays in flow.
+- Size, measured: the stage reset takes `styles/pin.css` from 2.9 to 3.0 KB
+  gzip (2995 to 3030 bytes; the new selector alone costs one byte against
+  the file's existing repetition, the comment the rest) and `styles.css`
+  from 8.6 to 8.7 KB (8845 to 8880 bytes).
 
 ### Gallery (blind review round 5)
 Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.

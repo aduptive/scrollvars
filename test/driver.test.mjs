@@ -983,7 +983,7 @@ test('driver: an ancestor that gives up its marker for a new tracker takes it ba
   assert.ok(!middle.attrs.has('data-sv-off'), 'the untracked node in between was never released and stays bare')
 })
 
-test('styles/pin.css: below the individual-transform floor the deck unstacks and the curtains open, with JS on', () => {
+test('styles/pin.css: below the individual-transform floor the deck unstacks, the curtains open and the stage releases, with JS on', () => {
   // Chrome 88-103, Firefox 60-71, Safari 13-14.0 run the driver, so html.sv-on
   // is on and the no-JS guards cannot fire, while translate/rotate/scale are
   // dropped and the deck's grid stacking (plain layout) survives on its own.
@@ -998,6 +998,17 @@ test('styles/pin.css: below the individual-transform floor the deck unstacks and
     // sheet re-expresses these panels with the same property and is appended
     // later, so it still outranks this and animates them down there
     assert.ok(curtain && /transform:\s*translateX\(/.test(curtain.body), `curtain-${side} opens: ${curtain?.body}`)
+  }
+  // ADU-149: unstacking the deck is not enough on its own. `.sv-stage` keeps
+  // `position: sticky; height: 100vh; overflow: hidden` (its base rule),
+  // whose only escapes used to be the no-JS, released and reduced-motion
+  // guards, never this block: an unstacked deck taller than one viewport
+  // still clipped past the first card. The block must release the stage
+  // the same way its reduced-motion twin already does.
+  const stage = rules.find((rule) => rule.selectors.includes('.sv-stage'))
+  assert.ok(stage, 'the block resets `.sv-stage`, or an unstacked deck taller than one viewport still clips')
+  for (const declaration of ['position: static', 'height: auto', 'overflow: visible']) {
+    assert.ok(stage.body.includes(declaration), `\`.sv-stage\` declares \`${declaration}\`, got \`${stage.body}\``)
   }
 })
 
