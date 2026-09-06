@@ -175,7 +175,8 @@
 .sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise { opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }</code></pre>
     <pre data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
   &lt;h2&gt;Title&lt;/h2&gt;
@@ -188,7 +189,7 @@
   &lt;Item order={1} effect="slide-l" distance="4rem"&gt;second&lt;/Item&gt;
 &lt;/Reveal&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.0 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.1 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

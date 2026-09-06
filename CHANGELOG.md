@@ -99,6 +99,16 @@ findings on the same round): three more defects fixed.
 - `.sv-slider.sv-cols` also matches `.sv-cols .sv-slider > *`, so a
   `className="sv-cols"` on the Slider shell (one level up from
   `.sv-slider`, where React's `className` prop lands) works too.
+- Blind review round 5 (Astra on 7992458), findings 7a and 7b. The
+  reduced-motion overrides for `.sv-spread > *` and
+  `.sv-tilt.sv-pointer-leave` lost their specificity fight against the
+  animating rules they are meant to override (`.sv-on .sv
+  .sv-spread.sv-spread-in > *` at four classes, `.sv-tilt.sv-pointer-leave`
+  at two, both outranking the media query's plain one-class selector), so a
+  live preference switch animated the reset instead of snapping to it.
+  Same fix as the `.sv-auto` one above, missed on these two presets: each
+  override now also carries the animating rule's own selector shape inside
+  the media query, ties on specificity and wins on source order.
 
 ### Click driver
 - `toggles()` now marks `sv-ui` on the element it actually controls (the
@@ -465,6 +475,20 @@ findings on the same round): three more defects fixed.
   until whatever resumed it; `applySize()` now paints one frame
   synchronously right after that write whenever the loop is not running,
   without starting it.
+- Blind review round 5 (Astra on 7992458), finding 13 and doc row 4's
+  canvas half. `getComputedStyle(canvas).aspectRatio.startsWith('auto')`
+  threw a `TypeError` on any engine whose CSSOM has no `aspectRatio`
+  support at all: the property is absent there, not an empty string, but
+  the DOM lib types it as always a string, so nothing guarded the read.
+  `pinAtW0()` threw out of both `applySize()` and `mountEffect()` on any
+  such engine, below the README's own Safari 12.1 canvas gate. Fixed with
+  an explicit `typeof` check ahead of `startsWith`, so a missing property
+  is treated the same as `'auto'` instead of thrown on.
+  `media.addEventListener?.('change', ...)` is a silent no-op on a
+  `MediaQueryList` that only implements the deprecated
+  `addListener`/`removeListener` pair (Safari below 14): both the
+  DPR-resolution watch and the reduced-motion watch now fall back to it,
+  symmetrically on mount and on `destroy()`.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
@@ -1014,6 +1038,93 @@ against the code ADU-129 to ADU-132 shipped.
   `scrollvars/compat`'s fallback sheet re-expresses the same panels with
   that property and is appended later, so it still outranks this block and
   animates them.
+
+### Gallery (blind review round 5)
+Blind review round 5 (Astra on 7992458), findings 7c, 10, 11.
+- `StickySteps`'s reduced-motion block now resets `.st-steps > li` and
+  `.st-dots i` too (opacity 1, no translate, no scale), not only `.st-shot`:
+  the pinned stage unpins under reduced motion by design, so `--sv-scene`
+  keeps advancing, and every step not at the current scene stayed at 30%
+  opacity and slid with the raw scroll forever. The installed gate's
+  reduced-motion pass asserts every step and dot resets, for `sticky-steps`.
+- `RotatingWords` guards an empty word list (no interval scheduled, so
+  `(i + 1) % 0` never runs and `--sv-word` never goes `NaN`) and clamps the
+  index on the render that sees a shrunk list, same shape as `useScenes`.
+  Previously a late word list (fetched after mount) could tick once against
+  an empty array, poison the index to `NaN`, and never recover once real
+  words arrived; a shrinking list stranded the index past the end.
+- The staggered-reveal and split-reveal "paste the preset" snippets carry a
+  fallback on every `var(--sv-*)` they read (`--sv-ease`, split-reveal's
+  `--sv-duration` and `--sv-stagger` too): without `core.css` the bare vars
+  made the `transition` shorthand invalid and the entrance snapped instead
+  of animating. split-reveal's snippet also regained
+  `.sv-split > span[aria-hidden] { display: inline-block }`
+  (`styles/core.css`'s own rule): without it `translate` does nothing on
+  the non-replaced inline spans. The GSAP React snippet's `useRef` is typed
+  `gsap.core.Timeline | null`, matching the installed `GsapScrub` twin,
+  instead of a type that never allows the `null` the ref is assigned.
+
+### Scanner (blind review round 5)
+- `scan()`'s `MutationObserver` callback no longer untracks a node that is
+  still connected. A DOM "replace all" (`parent.replaceChildren(...)`,
+  `replaceWith`) queues one mutation record with a retained node in BOTH
+  `addedNodes` and `removedNodes`, and a list reorder splits the same move
+  across a removal record and an insertion record in one batch: either way
+  the node was never really removed by the time the observer fires. The
+  remove path now bails with `if (el.isConnected) return`, so a retained or
+  reordered node keeps its live entry instead of being untracked and
+  re-tracked, which used to strip its state and hide it for a frame.
+
+### Scanner (blind review round 5, second pass)
+- The remove path's connectedness check is `scope.contains(el)`, not
+  `el.isConnected`. A scoped `scan(root)` only observes `root`'s own
+  subtree: a tracked node moved OUT of `root` into another still-connected
+  part of the document leaked forever, since it stayed `isConnected` and no
+  further mutation record for it ever arrives. `scope.contains(el)`
+  degrades to the same check as `isConnected` when `scope` is the document
+  (the churn fix above still holds), is correct for a scoped root, and also
+  fixes `scan()` on a genuinely detached root, where `isConnected` is
+  always false and could never trigger the churn guard at all.
+
+### Pointer (blind review round 5)
+- `trackPointer()` only writes `--mx`/`--my` on a descendant of its own
+  container. `event.target.closest(selector)` used to walk straight past
+  the container, so a `.sv-tilt` ANCESTOR of the tracked container matched
+  and received the pointer output. The match is now required to be inside
+  the container (`container.contains(match) && match !== container`).
+- Teardown now clears `--mx`, `--my` and the `sv-pointer-leave` class from
+  the last hovered element. It used to only remove the listeners and cancel
+  the pending frame, leaving a destroyed instance's card frozen mid-tilt.
+
+### React (blind review round 5)
+- `<Slider>` composes a consumer `onPointerEnter` / `onPointerLeave` with
+  autoplay's hover pause instead of letting the props spread replace it.
+  Both are public props (the component extends `HTMLAttributes`), so a
+  consumer `onPointerEnter` used to silence the pause entirely, and a lone
+  consumer `onPointerLeave` left the slider hovering forever, autoplay
+  never resuming after the first hover.
+- `<Slider>`'s responsive `perView` stylesheet is rendered as raw text
+  (`dangerouslySetInnerHTML`) instead of a `<style>` child. react-dom
+  18.3.1 escapes `"` to `&quot;` inside a `<style>`, 19 does not, and
+  `<style>` is raw text so the entity never decodes: on React 18 the server
+  dropped every `[data-sv-uid="..."]` rule the responsive map emits, and
+  hydration did not repair it. Same root as the gallery sections, which
+  already render their CSS this way. The raw sink also drops React's
+  `</style` escaping, which is what kept an interpolated value inert, so
+  `perViewCss` coerces every part it interpolates with `Number()`: a
+  `perView` off untyped data (a CMS) renders `--sv-per-view:NaN`, a
+  declaration the CSS parser drops, and can neither close the element nor
+  emit a tag. No CSP change, the sheet is still one inline `<style>`.
+
+### Testing (blind review round 5)
+- `test/react.test.mjs`'s `flushFrames` rethrows what a frame scheduled by
+  the running test throws, and keeps swallowing only frames left pending by
+  earlier tests (queued callbacks carry the test that scheduled them). A
+  driver or canvas frame that blew up could not fail a React test before.
+  A frame scheduled from inside a running frame inherits that frame's test,
+  not the flushing one, so a leftover canvas loop rescheduling itself does
+  not blow up whichever later test happens to flush it twice.
+  Two harness tests pin both halves.
 
 ## 1.13.0 (2026-09-05)
 

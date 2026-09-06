@@ -21,6 +21,14 @@ export function trackPointer(
 
   let pending: { el: HTMLElement; x: number; y: number } | null = null
   let raf = 0
+  let last: HTMLElement | null = null
+
+  // any DESCENDANT matching selector, never the container itself and never
+  // an ancestor closest() walked past the container to find
+  const matchIn = (target: EventTarget | null): HTMLElement | null => {
+    const el = (target as HTMLElement)?.closest?.(selector) as HTMLElement | null
+    return el && el !== container && container.contains(el) ? el : null
+  }
 
   const flush = () => {
     raf = 0
@@ -34,15 +42,16 @@ export function trackPointer(
   }
 
   const onMove = (event: PointerEvent) => {
-    const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
+    const el = matchIn(event.target)
     if (!el) return
+    last = el
     el.classList.remove('sv-pointer-leave')
     pending = { el, x: event.clientX, y: event.clientY }
     if (!raf) raf = requestAnimationFrame(flush)
   }
 
   const onOut = (event: PointerEvent) => {
-    const el = (event.target as HTMLElement).closest?.(selector) as HTMLElement | null
+    const el = matchIn(event.target)
     if (!el || el.contains(event.relatedTarget as Node)) return
     if (pending?.el === el) pending = null // drop queued move. It's stale now
     el.classList.add('sv-pointer-leave')
@@ -57,5 +66,12 @@ export function trackPointer(
     container.removeEventListener('pointermove', onMove)
     container.removeEventListener('pointerout', onOut)
     if (raf) cancelAnimationFrame(raf)
+    // a destroyed instance must not leave the last hovered element frozen
+    // mid-tilt: drop its inline vars and the leave class, back to CSS defaults
+    if (last) {
+      last.style.removeProperty('--mx')
+      last.style.removeProperty('--my')
+      last.classList.remove('sv-pointer-leave')
+    }
   }
 }

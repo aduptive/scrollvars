@@ -160,6 +160,11 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 .sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+/* Placed after the rules above (same specificity, later wins): the stage is
+   unpinned under reduced motion, so --sv-scene keeps writing but every
+   non-active step would otherwise sit at 30% opacity forever and the copy
+   would slide with the raw scroll. Reset both the steps and the dots. */
+@media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 </style><div class="sv-stage fxsticky st-grid"><div class="st-media"><figure class="st-shot" style="--i:0">01</figure><figure class="st-shot" style="--i:1">02</figure><figure class="st-shot" style="--i:2">03</figure></div><ol class="st-steps"><li style="--i:0"><b>Step 1</b><h3>Track the section</h3><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li><li style="--i:1"><b>Step 2</b><h3>Give each piece an index</h3><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li><li style="--i:2"><b>Step 3</b><h3>Ship it</h3><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li></ol><div class="st-dots" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div></div></div>
 <script>addEventListener('load', () => SV.track(document.querySelector('.sv-steps'), { pin: '300vh', scenes: 3 }))</script>
@@ -231,7 +236,7 @@ function StickySteps() {
 }
 // npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.0 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.1 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

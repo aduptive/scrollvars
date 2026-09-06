@@ -170,11 +170,13 @@
 /* the preset (styles/core.css): */
 .sv, [data-sv] { --sv-live: 0; }
 .sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split &gt; span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise &gt; span {
   opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
@@ -191,7 +193,7 @@
    HTML, so no client-side splitting, no layout shift, no hydration
    flash. by="char" for letters. */}</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.0 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.1 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

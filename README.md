@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.5 KB, full core incl. the slider 6.0 KB, styles 8.7 KB for every preset or 2.3 KB for the core part. A typical page ships ~4.8 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.5 KB, full core incl. the slider 6.1 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~4.9 KB on the wire.
 
 ## Why
 
@@ -26,7 +26,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 6.0 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 6.1 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -86,10 +86,10 @@ npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 // app/globals.css or layout. Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.3 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.4 KB gz
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.1 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
-import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
+import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.6 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 ```
@@ -107,12 +107,12 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | `slider` | 2.1 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.5 KB |
-| everything in `scrollvars` (the core entry) | 6.0 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 11.4 KB |
+| everything in `scrollvars` (the core entry) | 6.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 11.5 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~4.8 KB gzipped, total.**
+**~4.9 KB gzipped, total.**
 
 ## Mental model
 

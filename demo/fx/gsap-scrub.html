@@ -189,7 +189,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 &lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline&gt;(null)
+    <pre data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
 useEffect(() =&gt; {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -200,7 +200,7 @@ useEffect(() =&gt; {
   &lt;div className="sv-stage"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.0 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.1 KB gzip as ESM (this page's fx/sv.js IIFE: 6.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
