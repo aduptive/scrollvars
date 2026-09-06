@@ -347,6 +347,42 @@ findings on the same round): three more defects fixed.
   requirement: a cap strictly between half the natural size and the natural
   size itself can still read as a false follow if it changes AFTER this
   canvas was already found sized; documented, not fixed in this pass.
+  Twelfth pass, two more verifier findings on the eleventh pass, both on
+  its pin. Finding 1: the pin used `anchor.width`, the CSS content size
+  MEASURED at the moment this canvas was judged unsized, which, for a
+  canvas whose cap was already binding right then, IS the capped value,
+  not the natural one (a `max-width: 120px` cap on a natural-300 canvas
+  pinned at 120); fixed at that measured value forever, the box never grew
+  back when the cap later widened, or a percentage cap's container grew, a
+  symptom the eleventh pass's own "gap" limitation was really this bug
+  wearing a different value. Finding 2: `style.aspectRatio` was set
+  unconditionally to `w0 / h0`, silently overriding an author's own
+  `aspect-ratio` (a square 300x300 canvas with `aspect-ratio: 1` snapped to
+  2:1 on mount). The fix is simpler than the mechanism it replaces: an
+  unsized canvas wants its intrinsic size, which is the attribute size in
+  CSS px, `w0` by `h0`, and nothing measured. `style.width` is now pinned
+  to `w0` always, never a measurement, so CSS caps clamp it exactly as they
+  always clamp an intrinsic size, LIVE, at mount and on every later change,
+  no different from an ordinary CSS-sized element under the same cap;
+  `style.aspectRatio` is set to `w0 / h0` only when `getComputedStyle`
+  reports `'auto'`, so an authored ratio is kept. This removes the
+  eleventh pass's "gap" limitation outright: it existed only because the
+  pin froze at a measured value a cap could later escape, and pinned at
+  `w0` there is no stale value to escape from. It does not remove the
+  escape check (a DPR below 1 landing a pass's own candidate write below a
+  cap the mount-time `w0`/`h0` probe cannot see because the cap sits below
+  half `w0`, a separate blind spot, unrelated to the gap): a test proved
+  that case still shrinks unboundedly without it, so it stays, retargeted
+  to pin at `w0` like every other pin here instead of the candidate value.
+  Also guards `ratio0` (`w0 / h0`) against a `width="0"` or `height="0"`
+  attribute, which would otherwise make it 0, Infinity or NaN: such a
+  canvas now skips the probe and the free-axis derivation entirely and is
+  treated as CSS-sized, both axes rounded independently from the measured
+  size. Stated plainly: an unsized canvas renders at its attribute size in
+  CSS pixels, with a device-pixel backing store for a crisp bitmap; CSS
+  caps and percentages still apply on top of that size, exactly as they
+  would on any other element; give a canvas real CSS dimensions to size it
+  any other way.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
