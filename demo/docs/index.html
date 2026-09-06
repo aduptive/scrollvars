@@ -463,6 +463,35 @@ wide, scrollWidth 500).
   and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
   changed.
 
+### React
+<ul><li><code>useTrack</code>, <code>usePointer</code>, <code>useSlider</code> and <code>useCanvasEffect</code> now attach</li></ul>
+  through the ref itself instead of a mount-effect: the returned ref's
+  <code>current</code> is an accessor, so React's own attach/detach (any object with
+  a <code>current</code> property, unchanged between React 18 and 19) runs the
+  track/untrack. A conditionally rendered target that mounts after the
+  first render, or a node replaced by a new one, used to sit untracked
+  until an unrelated option changed forced the effect to rerun; both are
+  now tracked the moment the node attaches, and untracked on detach.
+  Option changes still retrack the current node. The ref type is declared
+  <code>React.RefObject&lt;T></code>, same as before.
+<ul><li><code>&lt;Scenes pin></code> now takes a string that wins over <code>height</code> and the</li></ul>
+  one-viewport-per-scene default (<code>pin="320vh"</code>), matching <code>&lt;Track pin></code>.
+  <code>pin={false}</code> still disables the pin helper.
+<ul><li><code>&lt;ScrollVarsBoot nonce></code>: forwarded to the pre-paint script tag, for a</li></ul>
+  strict CSP with no <code>'unsafe-inline'</code>. Additive, no existing prop changes.
+<ul><li><code>&lt;ScrollVarsBoot></code>'s debug overlay (<code>?sv-debug</code>) no longer mounts if the</li></ul>
+  component unmounts before its dynamic import resolves: the effect
+  cleanup now sets a <code>disposed</code> flag the import's callback checks first.
+<ul><li><code>useSlider</code>'s <code>handleRef</code> kept pointing at a destroyed <code>SliderHandle</code></li></ul>
+  after the tracked node detached (a conditional unmount, a node swap):
+  <code>next()</code>, <code>prev()</code>, <code>goTo()</code> and <code>handle.current</code> on a detached slider
+  drove a dead container, including starting a new glide <code>requestAnimationFrame</code>
+  loop nothing could stop. The <code>useAttachedRef</code> cleanup now also sets
+  <code>handleRef.current = null</code> before destroying the handle. Checked every
+  other hook built on <code>useAttachedRef</code> for the same shape (<code>useCanvasEffect</code>,
+  <code>usePointer</code>): neither keeps a handle ref beside it, so only <code>useSlider</code>
+  needed the fix.
+
 ### CI
 <ul><li>CI now proves the React layer on React 18, not only the React 19 the</li></ul>
   root installs: a new <code>test-react-18</code> job (<code>npm run test:react18</code>, also
