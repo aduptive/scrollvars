@@ -352,7 +352,10 @@ function ensureDom() {
     innerHeight: 800,
     addEventListener: () => {},
     removeEventListener: () => {},
-    matchMedia: () => ({ matches: false, addEventListener: () => {} }),
+    // A real MediaQueryList never has addEventListener without its
+    // removeEventListener pair (ADU-143's addListener fallback in
+    // src/canvas/index.ts asks for the pair explicitly on cleanup).
+    matchMedia: () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }),
     scrollTo: () => {},
     document: doc,
     HTMLIFrameElement: doc.HTMLIFrameElement,
