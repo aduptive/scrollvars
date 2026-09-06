@@ -204,7 +204,8 @@ function Stats() {
           &lt;div key={s.label}&gt;
             &lt;dt&gt;{s.label}&lt;/dt&gt;
             &lt;dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" /&gt;
-            &lt;span style={SR_ONLY}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
+            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+            &lt;span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
           &lt;/div&gt;
         ))}
       &lt;/dl&gt;

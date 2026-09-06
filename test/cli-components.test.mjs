@@ -154,6 +154,7 @@ writeFileSync(
   )
 )
 let tscOutput = ''
+let tscFailed = false
 try {
   execFileSync(join(root, 'node_modules', '.bin', 'tsc'), ['--project', 'tsconfig.json'], {
     cwd: tscDir,
@@ -161,13 +162,35 @@ try {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 } catch (err) {
+  tscFailed = true
   tscOutput = (err.stdout || '') + (err.stderr || '')
 }
+// Every line tsc calls an error, not just the ones this regex can attribute
+// to a fixture file: a config-level failure (a bad compilerOption, say)
+// prints as `tsconfig.json(9,25): error TS6046: ...`, which never matches
+// `<name>.tsx(line,col)` and would otherwise leave every fixture believing
+// it "type-checks: pass" while tsc never actually checked any of them.
+const allTscErrorLines = tscOutput.split('\n').filter((line) => /error TS\d+/.test(line))
 const tscErrorsByFile = new Map()
-for (const line of tscOutput.split('\n')) {
+for (const line of allTscErrorLines) {
   const m = line.match(/^([\w.-]+\.tsx?)\(\d+,\d+\)/)
   if (m) tscErrorsByFile.set(m[1], [...(tscErrorsByFile.get(m[1]) ?? []), line])
 }
+const attributedTscErrorCount = [...tscErrorsByFile.values()].reduce((n, lines) => n + lines.length, 0)
+
+test('tsc gate is not vacuous under a config-level error', () => {
+  if (!tscFailed) return // tsc succeeded outright, nothing to attribute
+  assert.ok(
+    attributedTscErrorCount > 0,
+    `tsc exited non-zero but produced no per-file diagnostics (a config-level error?); raw output:\n${tscOutput}`
+  )
+  assert.equal(
+    allTscErrorLines.length,
+    attributedTscErrorCount,
+    `tsc reported ${allTscErrorLines.length} error(s) but only ${attributedTscErrorCount} were attributed to a fixture ` +
+      `file; the rest would pass every fixture silently. Raw output:\n${tscOutput}`
+  )
+})
 
 for (const fx of EFFECTS) {
   test(`cli component ${fx.slug}: type-checks, declares requires, compiles${COMPILE_ONLY.has(fx.slug) ? '' : ', renders, matches its preview'}`, async () => {

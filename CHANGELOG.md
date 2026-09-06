@@ -144,6 +144,30 @@ findings on the same round): three more defects fixed.
   emits `<dt>` before `<dd>` (order was reversed), and renders the final
   value as visually-hidden text with the counter itself `aria-hidden`.
 
+### Installed components (blind review round 3, second pass)
+- The CLI component `tsc` gate was vacuous under a config-level error: a
+  bad `moduleResolution` prints as `tsconfig.json(9,25): error TS6046`,
+  which never matches the per-file `<name>.tsx(line,col)` regex, so every
+  fixture reported "type-checks: pass" while tsc never actually checked
+  any of them. The gate now counts every `error TS\d+` line in the raw
+  output against the lines it can attribute to a fixture file and fails
+  loudly, with the raw output, on any mismatch or on a non-zero exit with
+  no per-file diagnostics. Proved red on a deliberately invalid
+  `moduleResolution` before landing, green again after reverting it.
+- `hero-cinematic`'s Tailwind tab: the `motion-reduce:` override for
+  `.inner` sat on the `.inner` div itself (`[opacity:1]`/`[scale:none]`,
+  a one-class selector, specificity 0,1,0) while the base rule reaches
+  `.inner` through the section's `[&_.inner]:` variants (a two-class
+  selector, 0,2,0), so the override never won and reduced-motion visitors
+  still got the scroll-driven fade and scale. The override now lives on
+  the section in the same `[&_.inner]:` shape, after the base variants,
+  so equal specificity lets source order settle it.
+- The condensed `react:` doc snippets for `timeline-scrub` and
+  `stats-countup` referenced `<span style={SR_ONLY}>` without defining
+  it, unlike every other self-contained snippet (`SR_ONLY` is not
+  exported from `scrollvars`). Both now inline the sr-only style object
+  literal at the point of use.
+
 ### Slider
 Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
 Chrome with a puppeteer-core probe (5 slides of 100px, container 300px

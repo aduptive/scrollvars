@@ -591,11 +591,14 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
 ### Tailwind
 ```html
 <section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&_.inner]:[opacity:1] motion-reduce:[&_.inner]:[scale:none]">
+  <!-- the motion-reduce override is written on the section, same [&_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order -->
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
     [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
     motion-reduce:[translate:none] motion-reduce:transition-none"></div>
-  <div class="inner text-center motion-reduce:[opacity:1] motion-reduce:[scale:none]">
+  <div class="inner text-center">
     <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
@@ -723,7 +726,8 @@ function Timeline() {
     <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
       <div className="sv-stage tl-sticky">
         <span className="tl-year">
-          <span style={SR_ONLY}>{2026}</span>            {/* real text for AT: no aria-label on a span */}
+          {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{2026}</span>
           <span className="tl-count" aria-hidden="true" />   {/* the CSS-counter digits */}
         </span>
         <div className="tl-track"><i className="tl-line" />
@@ -874,7 +878,8 @@ function Stats() {
           <div key={s.label}>
             <dt>{s.label}</dt>
             <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} aria-hidden="true" />
-            <span style={SR_ONLY}>{s.max}{s.suffix ?? ''}</span>
+            {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+            <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
           </div>
         ))}
       </dl>

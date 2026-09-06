@@ -395,6 +395,55 @@ findings on the same round): three more defects fixed.
   emits <code>&lt;dt></code> before <code>&lt;dd></code> (order was reversed), and renders the final
   value as visually-hidden text with the counter itself <code>aria-hidden</code>.
 
+### Installed components (blind review round 3, second pass)
+<ul><li>The CLI component <code>tsc</code> gate was vacuous under a config-level error: a</li></ul>
+  bad <code>moduleResolution</code> prints as <code>tsconfig.json(9,25): error TS6046</code>,
+  which never matches the per-file <code>&lt;name>.tsx(line,col)</code> regex, so every
+  fixture reported "type-checks: pass" while tsc never actually checked
+  any of them. The gate now counts every <code>error TS\d+</code> line in the raw
+  output against the lines it can attribute to a fixture file and fails
+  loudly, with the raw output, on any mismatch or on a non-zero exit with
+  no per-file diagnostics. Proved red on a deliberately invalid
+  <code>moduleResolution</code> before landing, green again after reverting it.
+<ul><li><code>hero-cinematic</code>'s Tailwind tab: the <code>motion-reduce:</code> override for</li></ul>
+  <code>.inner</code> sat on the <code>.inner</code> div itself (<code>[opacity:1]</code>/<code>[scale:none]</code>,
+  a one-class selector, specificity 0,1,0) while the base rule reaches
+  <code>.inner</code> through the section's <code>[&amp;_.inner]:</code> variants (a two-class
+  selector, 0,2,0), so the override never won and reduced-motion visitors
+  still got the scroll-driven fade and scale. The override now lives on
+  the section in the same <code>[&amp;_.inner]:</code> shape, after the base variants,
+  so equal specificity lets source order settle it.
+<ul><li>The condensed <code>react:</code> doc snippets for <code>timeline-scrub</code> and</li></ul>
+  <code>stats-countup</code> referenced <code>&lt;span style={SR_ONLY}></code> without defining
+  it, unlike every other self-contained snippet (<code>SR_ONLY</code> is not
+  exported from <code>scrollvars</code>). Both now inline the sr-only style object
+  literal at the point of use.
+
+### Slider
+Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
+Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
+wide, scrollWidth 500).
+<ul><li><code>slideStart()</code> walked the offsetParent chain and always subtracted the</li></ul>
+  container's own border (<code>clientLeft</code>/<code>clientTop</code>), even when the
+  container itself was the slide's offsetParent. offsetLeft is already
+  measured against the offsetParent's padding edge in that case, so the
+  border was subtracted twice: a bordered, positioned container gave -10
+  for its first slide instead of 0. The walk now stops the moment it
+  reaches the container and only falls back to the absolute-position
+  subtraction (plus the border) when the container is skipped entirely
+  (a statically positioned rail whose real offsetParent sits further up).
+<ul><li>RTL mirrored the slide start against <code>scrollWidth</code> instead of</li></ul>
+  <code>clientWidth</code>: measured in Chrome, a position:relative RTL rail gave 200
+  for its first slide instead of 0. The mirror now uses the container's
+  own client box.
+<ul><li><code>measure()</code> tracked only the active index, not the active element. A</li></ul>
+  MutationObserver-driven replacement of that element (same index, new
+  node, e.g. a framework re-render) left <code>sv-active</code> on the detached old
+  node and never moved it to the new one. <code>measure()</code> now remembers the
+  active node as well: a changed node at the same index moves <code>sv-active</code>
+  and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
+  changed.
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
