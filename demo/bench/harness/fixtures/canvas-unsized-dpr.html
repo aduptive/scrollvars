@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, ninth pass)</title>
+<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, tenth pass)</title>
 <style>
   /* CSS-sized canvas whose attribute values happen to equal its CSS size,
      the exact shape the old border-box-rect-vs-content-box-attribute
@@ -68,6 +68,24 @@
      never detected a follow at all, so this canvas settled visually
      inflated at 400x200 and was never pinned. */
   #maxwidth-bare { max-width: 400px; }
+
+  /* Tenth pass, the verifier's finding 1: a fixed CSS height, auto width
+     derived through the canvas's own 300x150 (2:1) intrinsic ratio, the
+     mirror of #height-fixed-width-auto's sibling case above but at an ODD
+     height (101px, not 100px): the ninth pass's halving probe
+     (Math.floor(W / 2)) does not preserve the W:H ratio when the
+     just-written backing store has mismatched parity, so this ordinary,
+     fully-responsive canvas read as "width follows" and got wrongly pinned
+     at some DPRs, distorting the box on the next CSS height change. */
+  #height-fixed-odd-width-auto { height: 101px; }
+
+  /* Tenth pass, the verifier's finding 2 (cap semantics): a max-width BELOW
+     the natural 300x150 intrinsic size, binding already at mount, at every
+     DPR: the opposite of #maxwidth-bare above (cap 400 is ABOVE the natural
+     300). This canvas renders crisp at the cap (100), its backing store the
+     cap scaled by dpr, and must never be pinned: pinning it would freeze it
+     away from the cap it is correctly, permanently bound to. */
+  #maxwidth-binding { max-width: 100px; }
 </style>
 </head>
 <body>
@@ -168,7 +186,20 @@
      canvas.width/height by a flat +1 EACH and pinned style.width AND
      style.height together whenever either axis followed: a value- shape
      defect, not a coincidence one. See src/canvas/index.ts for the
-     proportional, width-only probe that replaces it. -->
+     proportional, width-only probe that replaces it.
+
+     #height-fixed-odd-width-auto, #maxwidth-binding: tenth pass, two
+     verifier findings on the ninth pass, both reproduced in real Chrome.
+     Finding 1: the ninth pass's HALVING probe does not preserve the W:H
+     ratio when the just-written backing store has mismatched parity, so
+     this fixed-CSS-height, auto-width canvas (odd height, unlike its
+     100px sibling above) read as following and got wrongly pinned at some
+     DPR/rounding combinations. Finding 2: a max-width cap that already
+     binds at the canvas's natural (uncapped) size, at every DPR, is the
+     crisp cap semantics documented in CHANGELOG.md and src/canvas/index.ts,
+     not inflation, and must never be pinned. See src/canvas/index.ts for
+     the doubling probe (with an exact-halving fallback for a cap already
+     binding on the just-written attribute) that fixes both. -->
 <canvas id="unsized-border" style="border: 4px solid red"></canvas>
 <canvas id="css-sized" width="150" height="80"></canvas>
 <canvas id="unsized-padded" style="padding: 10px"></canvas>
@@ -183,5 +214,7 @@
 <div id="percent-container"><canvas id="width-percent-height-auto" width="300" height="150"></canvas></div>
 <div id="maxwidth-container"><canvas id="maxwidth-percent" width="300" height="150"></canvas></div>
 <canvas id="maxwidth-bare" width="300" height="150"></canvas>
+<canvas id="height-fixed-odd-width-auto" width="300" height="150"></canvas>
+<canvas id="maxwidth-binding" width="300" height="150"></canvas>
 </body>
 </html>

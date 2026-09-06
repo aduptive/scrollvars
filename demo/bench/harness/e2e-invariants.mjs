@@ -23,10 +23,14 @@
  *      never mistakes a CSS-sized canvas (padding, a transform, or both
  *      together, or a genuine resize landing exactly on the size the
  *      harness itself just wrote) for one that moved. It also never pins a
- *      genuinely responsive canvas (width:100%, height:auto), pins width
- *      only (not a frozen height) on a max-width cap that only engages
- *      later, and never settles a bare max-width canvas inflated past its
- *      cap (ADU-107, ninth pass, three verifier findings on the eighth)
+ *      genuinely responsive canvas (width:100%, height:auto, or the fixed-
+ *      height/auto-width mirror, even at an odd height that would trip the
+ *      ninth pass's halving probe on parity), pins width only (not a frozen
+ *      height) on a max-width cap that only engages later, never settles a
+ *      bare max-width canvas inflated past its cap, and never pins a cap
+ *      that already binds at the canvas's natural size (rendered crisp at
+ *      the cap, not inflation) (ADU-107, ninth pass, three verifier
+ *      findings on the eighth; tenth pass, two more on the ninth)
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -613,32 +617,51 @@ const MIN_EXAMINED = 1
 // it, so a `max-width` cap not yet binding got pinned correctly on mount but
 // then distorted, not scaled, on a later container shrink that engaged it.
 //
-// Ninth pass (final design): the probe is now PROPORTIONAL and asks about
-// ONE axis only. Right after writing the backing store, it sets
-// `canvas.width`/`height` to HALF their just-written value together (same
-// divisor on both axes, so the ratio between them holds steady) and reads
-// `canvas.clientWidth` (a forced layout), then restores them and reads
-// again. If the two readings differ, width follows the attribute (unsized
-// on width, whatever height does); if they are equal, width is CSS-sized,
-// whatever its source (a percentage, a fixed px value, or itself
-// ratio-derived from a fixed height), and nothing about height enters that
-// conclusion. Only WIDTH gets pinned: height stays free to keep tracking
-// the intrinsic ratio, which is exactly the axis the harness's own
-// proportional writes keep stable, and a later `max-width` shrink then
-// correctly recomputes height from the new width through that ratio instead
-// of fighting a frozen number. See the module doc in src/canvas/index.ts
-// for the full reasoning. A settle still takes no extra ResizeObserver
-// round trip at all, measured against real Chrome: the pin runs
-// synchronously inside the same callback that delivered the entry, before
-// the browser ever gets a chance to render the intermediate (unpinned) box
-// the backing-store write alone would have produced, so from the
-// ResizeObserver's own perspective the canvas's box started this callback
-// at its intrinsic size and ends it at that same pinned size, no
-// observable change, no further entry. `log.length` below is 1 for a case
-// that settles, the consumer sees the correct size exactly once, never an
-// inflated one and never a second confirmation. Height is never written to
-// style at all now, so every check below that used to assert a pinned
-// `height: ...px` instead asserts the style has NO `height` in it. ──
+// Ninth pass: the probe is now PROPORTIONAL and asks about ONE axis only.
+// Right after writing the backing store, it sets `canvas.width`/`height` to
+// HALF their just-written value together (same divisor on both axes, so
+// the ratio between them holds steady) and reads `canvas.clientWidth` (a
+// forced layout), then restores them and reads again. If the two readings
+// differ, width follows the attribute (unsized on width, whatever height
+// does); if they are equal, width is CSS-sized, whatever its source (a
+// percentage, a fixed px value, or itself ratio-derived from a fixed
+// height), and nothing about height enters that conclusion. Only WIDTH
+// gets pinned: height stays free to keep tracking the intrinsic ratio,
+// which is exactly the axis the harness's own proportional writes keep
+// stable, and a later `max-width` shrink then correctly recomputes height
+// from the new width through that ratio instead of fighting a frozen
+// number. A settle still takes no extra ResizeObserver round trip at all,
+// measured against real Chrome: the pin runs synchronously inside the same
+// callback that delivered the entry, before the browser ever gets a chance
+// to render the intermediate (unpinned) box the backing-store write alone
+// would have produced, so from the ResizeObserver's own perspective the
+// canvas's box started this callback at its intrinsic size and ends it at
+// that same pinned size, no observable change, no further entry.
+// `log.length` below is 1 for a case that settles, the consumer sees the
+// correct size exactly once, never an inflated one and never a second
+// confirmation. Height is never written to style at all now, so every
+// check below that used to assert a pinned `height: ...px` instead asserts
+// the style has NO `height` in it.
+//
+// Tenth pass: two more verifier findings on the ninth pass, both
+// reproduced in real Chrome (see 8j/8k below). Finding 1: HALVING
+// (`Math.floor(W / 2)`) does not preserve the W:H ratio when W and H have
+// different parity, so a fixed-CSS-height, auto-width canvas (the mirror
+// case) could have its floored ratio read a fraction off the true one,
+// flipping the before/after comparison and wrongly pinning an ordinary,
+// fully-responsive canvas. Finding 2: a `max-width` cap that already binds
+// at the canvas's natural (uncapped) size settles correctly unpinned,
+// rendered crisp at the cap, and this is documented as the correct
+// behavior, not inflation (`#maxwidth-bare` above covers the opposite case,
+// a cap ABOVE the natural size, which stays the inflation case and must
+// still be pinned). The probe now DOUBLES instead of halving (exact for any
+// integer pair, whatever the parity), with a fallback to an exact halving
+// (only when both W and H are even, so it can never reintroduce finding
+// 1's rounding bug) for a cap that is already binding on the just-written,
+// dpr-inflated attribute, which doubling alone cannot detect (doubling only
+// grows further past a cap already behind it). See the module doc in
+// src/canvas/index.ts and CHANGELOG.md's Canvas section for the full
+// reasoning ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -1273,6 +1296,107 @@ const MIN_EXAMINED = 1
         result.width === bw &&
         result.height === bh,
       `resize() calls: ${result.log.length}, style=${result.style}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh})`
+    )
+    await page.close()
+  }
+}
+
+// ── 8j. Tenth pass, the verifier's finding 1: a fixed-CSS-height (101px,
+// odd), auto-width canvas is never pinned, at every DPR this whole ticket
+// has ever needed to sweep. The ninth pass's HALVING probe does not
+// preserve the W:H ratio when the just-written backing store has mismatched
+// parity, so this ordinary, fully-responsive canvas (the parity mirror of
+// #height-fixed-width-auto's 100px sibling, which never exposed the bug)
+// could read as "width follows" and get wrongly pinned at some
+// DPR/rounding combinations, distorting the box on a later CSS height
+// change. The tenth-pass DOUBLING probe preserves any integer ratio
+// exactly, whatever the parity ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const canvas = document.querySelector('#height-fixed-odd-width-auto')
+          const log = []
+          window.mountEffect(canvas, {
+            frame: () => {},
+            resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+          })
+          setTimeout(() => resolve({ log, style: canvas.style.cssText, dpr: window.devicePixelRatio }), 200)
+        })
+    )
+    check(
+      `canvas: a fixed height:101px, auto-width canvas (the parity mirror case) is never pinned at deviceScaleFactor ${dpr} (actual dpr ${result.dpr})`,
+      result.style === '',
+      `style=${result.style}, log=${JSON.stringify(result.log)}`
+    )
+    await page.close()
+  }
+}
+
+// ── 8k. Tenth pass, the verifier's finding 2 (cap semantics): a max-width
+// cap BELOW the canvas's natural 300x150 intrinsic size (the opposite of
+// #maxwidth-bare's cap, which is above its natural size) already binds at
+// mount, and the backing store is always the cap scaled by dpr, crisp,
+// exactly what a canvas of that size needs, never inflated past the cap
+// (see CHANGELOG.md and src/canvas/index.ts for the cap semantics this
+// proves: a cap at or below the natural size is crisp and correct; a cap
+// above the natural size is the inflation case #maxwidth-bare covers).
+// Above dpr 1 the cap keeps binding on the just-written attribute too (a
+// larger DPR only pushes the attribute further past the cap, never below
+// it), so nothing about the box ever moves and it is never pinned. AT OR
+// BELOW dpr 1, the just-written attribute can land AT (dpr 1 exactly, a
+// documented, harmless boundary case: pinning here freezes the width at
+// the exact number the cap already renders, so nothing about the crisp
+// backing store below changes either way) or BELOW the cap (dpr 0.5, 0.8:
+// a genuine risk, the same unbounded feedback loop this whole module
+// exists to stop, just shrinking instead of growing, since an unpinned
+// write at these DPRs would itself drop the attribute under the cap and
+// visibly, incorrectly, shrink the box on the very next resize), so the
+// shrinking half of the probe (see src/canvas/index.ts) correctly pins it ──
+{
+  for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 2]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const canvas = document.querySelector('#maxwidth-binding')
+          const log = []
+          window.mountEffect(canvas, {
+            frame: () => {},
+            resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+          })
+          setTimeout(
+            () =>
+              resolve({
+                log,
+                style: canvas.style.cssText,
+                dpr: window.devicePixelRatio,
+                width: canvas.width,
+                height: canvas.height,
+              }),
+            200
+          )
+        })
+    )
+    const bw = Math.round(100 * result.dpr)
+    const bh = Math.round(50 * result.dpr)
+    // The backing store is crisp (the cap scaled by dpr) either way: only
+    // whether it is pinned differs, and only at or below dpr 1 (see above).
+    const expectPinned = result.dpr <= 1
+    check(
+      `canvas: a max-width:100px canvas whose cap binds already at its natural size renders a crisp backing store at deviceScaleFactor ${dpr} (actual dpr ${result.dpr}), pinned only at or below dpr 1`,
+      (result.style === '') !== expectPinned && result.width === bw && result.height === bh,
+      `style=${result.style}, canvas.width=${result.width} (want ${bw}), canvas.height=${result.height} (want ${bh}), log=${JSON.stringify(result.log)}`
     )
     await page.close()
   }

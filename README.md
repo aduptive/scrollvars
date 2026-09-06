@@ -103,7 +103,7 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | `track` + `scan` (zero-wrapper mode) | 3.2 KB |
 | `slider` | 2.1 KB |
 | `trackPointer` | 0.5 KB |
-| `mountEffect` (canvas) | 1.1 KB |
+| `mountEffect` (canvas) | 1.2 KB |
 | everything in `scrollvars` (the core entry) | 5.9 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 10.8 KB |
 <!-- sizes:end -->
