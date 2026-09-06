@@ -42,7 +42,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 vh/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -114,7 +114,9 @@ tied to `--sv-view` (flat inside the live band), no transition (transitions on c
 ```tsx
 <Scenes count={4}>{({ scene, goTo }) => <Shot index={scene} />}</Scenes>   // Shot: your component
 ```
-The container is N viewports tall, content is `position: sticky`. For pure-CSS
+The container is N viewports tall by default (one per scene); a string
+`pin` (`pin="320vh"`) overrides that and wins over `height` too, matching
+`<Track pin>`. Content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
 `sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-rail-start` = the stage width when it is not the viewport: enters from offscreen right and still moves
 when the track fits the viewport:
@@ -135,10 +137,16 @@ Set `--sv-order` per child and `--sv-mid` = (N−1)/2 on the container.
 **Split text (SplitText-lite: do NOT add GSAP for this; it flattens inline markup, so keep links and bold outside the split element):** `data-sv-split`
 (or `data-sv-split="char"`) wraps each word/char in a span with `--sv-order`
 (+ `--sv-count` on the element, full text kept in a visually-hidden first
-span (no aria-label, it is prohibited on generic roles) spans aria-hidden). Pair
-with `sv-split-rise` (staggered entrance) or `sv-reading` (scrubbed). React:
-`<Split as="h2">…</Split>` renders the spans ON THE SERVER. No client
-splitting, no CLS, no hydration flash.
+span (no aria-label, it is prohibited on generic roles) spans aria-hidden).
+Word mode splits on whitespace, deterministic everywhere. Char mode splits
+on grapheme clusters via `Intl.Segmenter` where it exists (emoji and
+combining marks stay whole); it needs Firefox 125+ (Chrome and Safari have
+had it for longer), and it must be available on BOTH the render that
+produces the markup and the browser that hydrates it, or the two disagree
+on where a cluster boundary falls. Pair with `sv-split-rise` (staggered
+entrance) or `sv-reading` (scrubbed). React: `<Split as="h2">…</Split>`
+renders the spans ON THE SERVER. No client splitting, no CLS, no hydration
+flash.
 
 **Sequenced scrub (choreography: do NOT add GSAP for this):** `sv-range`.
 Each child gets `--sv-r` (0..1) over its own slice of the pin: set
@@ -172,9 +180,12 @@ would be), `<Accordion>` (native details), `<Modal>` (dialog + sv-pop).
 Lower level: `useSlider()` / `slider(el)`:
 native scroll + snap; slides get `--sd` (signed distance from center) and
 `.sv-active`, so slide animations are pure CSS (`scale: calc(1 - max(var(--sd), -1 * var(--sd)) * .1)`).
-Handle: `next/prev/goTo/seek/active/state`. Options: `snap`, `drag`,
-`duration` (glide settle ms), `axis: 'y'`, `onScroll(state)`. State has
-active/count/position/progress/dragging/gliding; container also gets
+Two return shapes: `slider(el)` returns the handle itself,
+`next/prev/goTo/seek/active/state/destroy`; `useSlider()` returns
+`{ ref, active, next, prev, goTo, handle }`, where `handle` is a ref to
+that same handle for `seek`, `state` and `destroy`. Options: `snap`,
+`drag`, `duration` (glide settle ms), `axis: 'y'`, `onScroll(state)`. State
+has active/count/position/progress/dragging/gliding; container also gets
 `--sv-progress`. Chain sliders unidirectionally (thumbs/controller):
 `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`: author the
 follower with inline `scroll-snap-type: none` (seek suspends it anyway).
@@ -241,9 +252,16 @@ ambient canvas its own unmanaged `requestAnimationFrame` loop.
 ## SSR / Next.js
 
 All content renders on the server. The components are thin `'use client'`
-wrappers whose children stay RSC (`<Scenes>` takes a render function, so what it renders is client-side; keep heavy content in RSC siblings). `<ScrollVarsBoot />` (first child of `<body>`) sets
+wrappers whose children stay RSC (`<Scenes>` takes a render function; its
+initial output is still server-rendered, just inside a client component
+boundary rather than a server one, so it cannot itself hold RSC-only
+children: keep heavy content in RSC siblings instead). `<ScrollVarsBoot />` (first child of `<body>`) sets
 `sv-on` before first paint and removes it again if the driver never boots, so
-entrances neither flash nor fail hidden. Under a strict CSP with no
+entrances neither flash nor fail hidden. That pre-paint hiding depends on
+the inline script itself running: it is gated on `IntersectionObserver` and
+`ResizeObserver` both existing, so without JS, or on an engine missing
+either, `sv-on` is never added and the page stays fully visible from the
+first paint, nothing to undo. Under a strict CSP with no
 `'unsafe-inline'`, pass the request's nonce: `<ScrollVarsBoot nonce={nonce} />`.
 Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.
@@ -299,7 +317,7 @@ shallow, batched GSAP wins deep subtrees. The published curve).
 
 Why the numbers come out this way. Each is a design decision, not tuning:
 
-- **The hot path writes CSS variables and nothing else.** The browser's own
+- **The hot path writes CSS variables and discrete state: a class, a callback.** The browser's own
   transition/animation machinery does the animating; JS only steers. That is
   why 900 animated elements cost so little script time in the table above.
 - **One passive scroll listener + one rAF for all scroll tracking** (the slider, pointer and canvas modules schedule their own frames), strict
@@ -310,7 +328,13 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so without JS the page is a complete static page, SSR, SEO and
-  the Lighthouse load profile stay untouched.
+  the Lighthouse load profile stay untouched, with two exceptions by
+  design: class-toggled panels (menus, modals) stay closed with no click
+  driver to open them, and `sv-view-*` native animations still run without
+  JS where the browser supports `animation-timeline: view()`. A
+  click-driven `sv-acts` target also needs `toggles()` (which marks
+  `sv-ui` on it) to start at zero instead of settling at its no-JS
+  finished state.
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
@@ -331,5 +355,6 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 from the built dist by `npm run demo:sync`; NEVER hand-edit them. Deploy
 with `npm run demo:deploy`: it builds, syncs, deploys and re-points the
 alias in one step), `test/` (node:test, no DOM.
-Stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc). Node version:
-respect `.nvmrc`.
+Stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc, then
+`scripts/build-styles.mjs` regenerates `styles.css`). Node version: respect
+`.nvmrc`.

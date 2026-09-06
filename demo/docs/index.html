@@ -19,6 +19,7 @@
   h1 { font-size: 30px; margin: 10px 0 6px; }
   h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
+  h4 { font-size: 12px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   p, li { color: #cfcbe4; } p.lead { color: var(--muted); }
   p.grp { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-top: 14px; }
@@ -83,7 +84,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>Progress across a pinned (sticky) stretch: curtains, rails, scrubbing</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
-<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 vh/s</td><td>On <code>&lt;html></code> once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
 <tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
 <tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
@@ -155,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
+(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 2.5 · slider 1.3 · tilt 0.5 · state 2.1 · ui 0.7).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -219,7 +220,7 @@ plug in what's missing.</p>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
-<tr><td>Firefox</td><td><b>74+</b> (Mar 2020)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
 </table>
@@ -257,558 +258,136 @@ Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
 enhancement contract holds in every documented case. Second pass (verifier
 findings on the same round): three more defects fixed.
 
-### Driver
-<ul><li><code>track()</code>'s returned untrack is identity-guarded: it deletes and unobserves</li></ul>
-  only if it is still the current entry for that element
-  (<code>entries.get(el) === entry</code>), so tracking the same element twice and
-  calling the first untrack no longer deletes the replacement. An explicit
-  untrack now also removes <code>sv-live</code> and every variable that entry wrote
-  (plus <code>--sv-scenes</code>); <code>.sv</code> stays, and the <code>once</code> fire-and-forget path
-  keeps <code>sv-live</code> (its self-delete already left the entry map, so the guard
-  makes the later untrack call a no-op there, which is the intended
-  behavior).
-<ul><li><code>init()</code> is transactional: it constructs the <code>ResizeObserver</code> before</li></ul>
-  installing any listener, so a throwing constructor leaves nothing to undo.
-  <code>track()</code> checks <code>initialized</code> after calling <code>init()</code> and returns a no-op
-  (no entry, no pin helper, no schedule, no <code>.sv</code> class) when it failed,
-  so the page stays static until <code>compat()</code> shims a <code>ResizeObserver</code> in and
-  a later <code>track()</code> call retries <code>init()</code> clean.
-<ul><li><code>refresh()</code> now forces one geometry pass through every entry on the very</li></ul>
-  next frame, including culled ones (<code>near === false</code>): content changes that
-  do not fire a resize (an accordion opening, an image swapped for a taller
-  one) previously left offscreen trackers stale until they scrolled back
-  into the culling margin.
-<ul><li>A tracked element with a <code>root</code> now measures against <code>root.clientTop</code> and</li></ul>
-  <code>root.clientHeight</code> instead of the root's bounding rect, so a bordered
-  scroll container shares one origin between <code>track()</code>'s pin math and
-  <code>scrollToScene()</code>'s scroll target. <code>track()</code> also observes the <code>root</code>
-  with the <code>ResizeObserver</code>, so a resize of the scroller itself
-  reschedules a measure.
-<ul><li><code>--sv-pin-offset</code> now resolves <code>rem</code> (root font-size), <code>em</code> (the</li></ul>
-  element's own font-size), <code>vh</code>/<code>svh</code>/<code>lvh</code>/<code>dvh</code> (<code>window.innerHeight</code>)
-  and <code>vw</code> (<code>window.innerWidth</code>) to pixels; a bare number still reads as px.
-<ul><li><code>--sv-page</code> and <code>--sv-v</code> skip the style write when the serialized value</li></ul>
-  did not change from the previous frame.
-<ul><li>Second pass (verifier findings on 00436db): <code>track()</code> on an element that</li></ul>
-  is already tracked replaced its entry in place, which left the identity
-  guard on the first entry's untrack blocking forever, so a variable only
-  the first entry ever wrote (<code>--sv-t</code> from <code>{travel: true}</code> followed by
-  <code>{}</code>) stayed inline. A replacing <code>track()</code> now releases the previous
-  entry's outputs first (its written vars, <code>--sv-scenes</code>, its pin helper,
-  both observers), so it is exactly untrack then track. A root element
-  that is also tracked standalone lost its <code>ResizeObserver</code> watch the
-  moment the standalone entry was untracked, because <code>unobserve(el)</code> fired
-  for the shared element with no regard for the entries still using it as
-  their <code>root</code>. <code>untrack()</code> now checks whether any other live entry still
-  needs that element watched, either as its own tracked element or as its
-  <code>root</code>, before unobserving it.
-<ul><li>Third pass (verifier finding on 130395a): the <code>once</code> fire-and-forget branch</li></ul>
-  in <code>apply()</code> still unconditionally unobserved its own element on the
-  ResizeObserver when it self-released, bypassing the <code>stillNeeded()</code> guard
-  the second pass added elsewhere. An element that is both a <code>once</code> entry
-  and another entry's <code>root</code> lost that other entry's resize watch the
-  moment the <code>once</code> entry went live and settled. The branch now checks
-  <code>stillNeeded()</code> before unobserving, same as <code>releaseEntry()</code>, but keeps
-  settling <code>--sv-view</code> and latching <code>sv-live</code> itself: it still does not
-  route through <code>releaseEntry()</code>.
-<ul><li>Fourth pass (verifier finding on 293b1dc): the third pass guarded the</li></ul>
-  <code>once</code> branch's unobserve of its own element, but never released its own
-  <code>root</code>. A <code>{ once: true, root }</code> entry that self-released kept the
-  root's <code>ResizeObserver</code> watch forever, since <code>releaseEntry()</code> is never
-  called on that path. The two guarded unobserves (the tracked element and
-  its <code>root</code>) are now one <code>unobserveIfUnneeded()</code> helper, used by both
-  <code>releaseEntry()</code> and the <code>once</code> branch, so the two paths cannot drift
-  apart again.
+<h4>Driver</h4>
+<ul>
+<li><code>track()</code>'s returned untrack is identity-guarded: it deletes and unobserves only if it is still the current entry for that element (<code>entries.get(el) === entry</code>), so tracking the same element twice and calling the first untrack no longer deletes the replacement. An explicit untrack now also removes <code>sv-live</code> and every variable that entry wrote (plus <code>--sv-scenes</code>); <code>.sv</code> stays, and the <code>once</code> fire-and-forget path keeps <code>sv-live</code> (its self-delete already left the entry map, so the guard makes the later untrack call a no-op there, which is the intended behavior).</li>
+<li><code>init()</code> is transactional: it constructs the <code>ResizeObserver</code> before installing any listener, so a throwing constructor leaves nothing to undo. <code>track()</code> checks <code>initialized</code> after calling <code>init()</code> and returns a no-op (no entry, no pin helper, no schedule, no <code>.sv</code> class) when it failed, so the page stays static until <code>compat()</code> shims a <code>ResizeObserver</code> in and a later <code>track()</code> call retries <code>init()</code> clean.</li>
+<li><code>refresh()</code> now forces one geometry pass through every entry on the very next frame, including culled ones (<code>near === false</code>): content changes that do not fire a resize (an accordion opening, an image swapped for a taller one) previously left offscreen trackers stale until they scrolled back into the culling margin.</li>
+<li>A tracked element with a <code>root</code> now measures against <code>root.clientTop</code> and <code>root.clientHeight</code> instead of the root's bounding rect, so a bordered scroll container shares one origin between <code>track()</code>'s pin math and <code>scrollToScene()</code>'s scroll target. <code>track()</code> also observes the <code>root</code> with the <code>ResizeObserver</code>, so a resize of the scroller itself reschedules a measure.</li>
+<li><code>--sv-pin-offset</code> now resolves <code>rem</code> (root font-size), <code>em</code> (the element's own font-size), <code>vh</code>/<code>svh</code>/<code>lvh</code>/<code>dvh</code> (<code>window.innerHeight</code>) and <code>vw</code> (<code>window.innerWidth</code>) to pixels; a bare number still reads as px.</li>
+<li><code>--sv-page</code> and <code>--sv-v</code> skip the style write when the serialized value did not change from the previous frame.</li>
+<li>Second pass (verifier findings on 00436db): <code>track()</code> on an element that is already tracked replaced its entry in place, which left the identity guard on the first entry's untrack blocking forever, so a variable only the first entry ever wrote (<code>--sv-t</code> from <code>{travel: true}</code> followed by <code>{}</code>) stayed inline. A replacing <code>track()</code> now releases the previous entry's outputs first (its written vars, <code>--sv-scenes</code>, its pin helper, both observers), so it is exactly untrack then track. A root element that is also tracked standalone lost its <code>ResizeObserver</code> watch the moment the standalone entry was untracked, because <code>unobserve(el)</code> fired for the shared element with no regard for the entries still using it as their <code>root</code>. <code>untrack()</code> now checks whether any other live entry still needs that element watched, either as its own tracked element or as its <code>root</code>, before unobserving it.</li>
+<li>Third pass (verifier finding on 130395a): the <code>once</code> fire-and-forget branch in <code>apply()</code> still unconditionally unobserved its own element on the ResizeObserver when it self-released, bypassing the <code>stillNeeded()</code> guard the second pass added elsewhere. An element that is both a <code>once</code> entry and another entry's <code>root</code> lost that other entry's resize watch the moment the <code>once</code> entry went live and settled. The branch now checks <code>stillNeeded()</code> before unobserving, same as <code>releaseEntry()</code>, but keeps settling <code>--sv-view</code> and latching <code>sv-live</code> itself: it still does not route through <code>releaseEntry()</code>.</li>
+<li>Fourth pass (verifier finding on 293b1dc): the third pass guarded the <code>once</code> branch's unobserve of its own element, but never released its own <code>root</code>. A <code>{ once: true, root }</code> entry that self-released kept the root's <code>ResizeObserver</code> watch forever, since <code>releaseEntry()</code> is never called on that path. The two guarded unobserves (the tracked element and its <code>root</code>) are now one <code>unobserveIfUnneeded()</code> helper, used by both <code>releaseEntry()</code> and the <code>once</code> branch, so the two paths cannot drift apart again.</li>
+</ul>
 
-### Presets and no-JS
-<ul><li><code>.sv-split</code> word/char spans compute to <code>display: inline-block</code>, so</li></ul>
-  <code>sv-split-rise</code> can actually apply <code>translate</code> to them (non-replaced
-  inline boxes ignore it).
-<ul><li>The reduced-motion override for <code>.sv-auto</code> now matches the same</li></ul>
-  <code>:not(.sv-skip)</code> compound as the normal entrance rule, so it wins on
-  specificity instead of losing to it.
-<ul><li>The no-JS guards for curtain, rail, deck, reading, range and counter now</li></ul>
-  match <code>[data-sv]</code> as well as <code>.sv</code>: markup that has not been scanned yet
-  (data-sv only, no JS run) no longer leaves curtain panels as absolute
-  overlays over the revealed content.
-<ul><li><code>sv-spread</code> and <code>sv-acts</code> are driven from the inherited <code>--sv-live</code> flag,</li></ul>
-  like the entrance presets: a nested tracker that is not itself live no
-  longer inherits a live ancestor's spread or acts clock.
-<ul><li><code>.sv-acts.sv-open</code> now also outranks the live-driven rule</li></ul>
-  (<code>.sv-acts:not(.sv-open)</code> on both selectors): an opened widget sitting
-  inside, or itself, a tracker that is not live keeps its finished
-  <code>--sv-act</code> instead of being reset to 0.
-<ul><li><code>.sv-auto > :nth-child(1)</code> (and <code>.sv-stagger</code>) resets <code>--sv-order</code> to 0,</li></ul>
-  so the first child never inherits an ancestor's order.
-<ul><li><code>.sv-slider.sv-cols</code> also matches <code>.sv-cols .sv-slider > *</code>, so a</li></ul>
-  <code>className="sv-cols"</code> on the Slider shell (one level up from
-  <code>.sv-slider</code>, where React's <code>className</code> prop lands) works too.
+<h4>Presets and no-JS</h4>
+<ul>
+<li><code>.sv-split</code> word/char spans compute to <code>display: inline-block</code>, so <code>sv-split-rise</code> can actually apply <code>translate</code> to them (non-replaced inline boxes ignore it).</li>
+<li>The reduced-motion override for <code>.sv-auto</code> now matches the same <code>:not(.sv-skip)</code> compound as the normal entrance rule, so it wins on specificity instead of losing to it.</li>
+<li>The no-JS guards for curtain, rail, deck, reading, range and counter now match <code>[data-sv]</code> as well as <code>.sv</code>: markup that has not been scanned yet (data-sv only, no JS run) no longer leaves curtain panels as absolute overlays over the revealed content.</li>
+<li><code>sv-spread</code> and <code>sv-acts</code> are driven from the inherited <code>--sv-live</code> flag, like the entrance presets: a nested tracker that is not itself live no longer inherits a live ancestor's spread or acts clock.</li>
+<li><code>.sv-acts.sv-open</code> now also outranks the live-driven rule (<code>.sv-acts:not(.sv-open)</code> on both selectors): an opened widget sitting inside, or itself, a tracker that is not live keeps its finished <code>--sv-act</code> instead of being reset to 0.</li>
+<li><code>.sv-auto > :nth-child(1)</code> (and <code>.sv-stagger</code>) resets <code>--sv-order</code> to 0, so the first child never inherits an ancestor's order.</li>
+<li><code>.sv-slider.sv-cols</code> also matches <code>.sv-cols .sv-slider > *</code>, so a <code>className="sv-cols"</code> on the Slider shell (one level up from <code>.sv-slider</code>, where React's <code>className</code> prop lands) works too.</li>
+</ul>
 
-### Click driver
-<ul><li><code>toggles()</code> now marks <code>sv-ui</code> on the element it actually controls (the</li></ul>
-  resolved <code>data-sv-target</code>, or the trigger itself when there is no
-  target), not on <code>&lt;html></code>. Marking <code>&lt;html></code> unconditionally meant an
-  unrelated scroll-revealed <code>sv-acts</code> widget on a page without a booted
-  scroll driver was wrongly exempted from the no-JS finished-state guard
-  and stayed hidden at act zero forever. The guard is now
-  <code>html:not(.sv-on) .sv-acts:not(.sv-ui)</code>: scoped to the widget itself. A
-  target added to the DOM after boot gets <code>sv-ui</code> on its first click, so
-  that first click shows the finished state with no visible transition.
-<ul><li>Third pass: marking a boot-present target <code>sv-ui</code> now holds its inline</li></ul>
-  <code>transition</code> at <code>none</code> for two animation frames. Without that, a target
-  closed by default (<code>.sv-acts</code> without <code>.sv-open</code>) settled from the no-JS
-  finished value down to 0 with the acts transition still running, a
-  visible un-animation the instant <code>toggles()</code> took over.
-<ul><li>Fourth pass: that hold read and wrote the inline <code>transition</code> shorthand</li></ul>
-  (save, set to <code>none</code>, restore). Two defects, both reproduced in Chrome:
-  an inline transition longhand (e.g. <code>style="transition-duration: 400ms"</code>)
-  reads back as <code>''</code> through the shorthand getter, so the "restore" erased
-  it for good; and <code>transition: none</code> stopped every transition on the
-  element for the hold, not just the acts one, snapping an unrelated
-  in-flight transform transition. The hold now sets an internal
-  <code>--sv-acts-settle</code> custom property to <code>0s</code> instead, new and additive:
-  <code>.sv-acts</code>'s own transition reads its duration from it
-  (styles/state.css), and <code>toggles()</code> never touches <code>style.transition</code>.
-<ul><li>Fifth pass: <code>--sv-acts-settle</code> only reaches the duration the stylesheet</li></ul>
-  itself declares on <code>.sv-acts</code>. An element that also carries its own
-  inline <code>transition-duration</code> LONGHAND (the fixture's <code>#longhand-target</code>,
-  <code>style="transition-duration: 400ms"</code>) outranks that knob by cascade
-  origin no matter what it is set to, so the settle for that element still
-  played out over the longhand's own duration instead of 0s, reproduced in
-  Chrome (<code>3, 2.876, ... 0</code> over 400ms): the exact un-animation this
-  feature exists to remove. The shipped e2e case only asserted the
-  attribute string survived and never sampled <code>--sv-act</code> on that element,
-  so it stayed green. <code>toggles()</code> now also saves that inline longhand's
-  exact value and priority, holds it at <code>0s</code> for the same two frames (or
-  until a click inside the hold cancels it, restored immediately there
-  too), and restores it exact, through the longhand getter/setter only,
-  never the shorthand. A target without an inline longhand never has one
-  written, so an unrelated in-flight transition on it is untouched. What
-  remains unguarded: an author RULE, not an inline style, that overrides
-  <code>transition-duration</code> or the whole <code>transition</code> shorthand on <code>.sv-acts</code>
-  at higher specificity than the preset's own rule still owns the settle
-  timing (styles/state.css).
-<ul><li>Sixth pass: the whole settle (<code>--sv-acts-settle</code> and the inline</li></ul>
-  <code>transition-duration</code> hold) now only runs on <code>.sv-acts</code> targets, gated
-  only on <code>sv-ui</code> before. <code>getPropertyValue('transition-duration')</code> cannot
-  tell an authored longhand from the browser's own expansion of an
-  unrelated inline <code>transition</code> shorthand, so a plain toggle target with
-  one (this module's own <code>&lt;nav id="menu"></code> example, most of the time) had
-  it forced to <code>0s</code> for two frames regardless, snapping any change to it
-  that landed inside the window instead of animating. A target that is not
-  <code>.sv-acts</code> still gets <code>sv-ui</code>, nothing else.
+<h4>Click driver</h4>
+<ul>
+<li><code>toggles()</code> now marks <code>sv-ui</code> on the element it actually controls (the resolved <code>data-sv-target</code>, or the trigger itself when there is no target), not on <code>&lt;html></code>. Marking <code>&lt;html></code> unconditionally meant an unrelated scroll-revealed <code>sv-acts</code> widget on a page without a booted scroll driver was wrongly exempted from the no-JS finished-state guard and stayed hidden at act zero forever. The guard is now <code>html:not(.sv-on) .sv-acts:not(.sv-ui)</code>: scoped to the widget itself. A target added to the DOM after boot gets <code>sv-ui</code> on its first click, so that first click shows the finished state with no visible transition.</li>
+<li>Third pass: marking a boot-present target <code>sv-ui</code> now holds its inline <code>transition</code> at <code>none</code> for two animation frames. Without that, a target closed by default (<code>.sv-acts</code> without <code>.sv-open</code>) settled from the no-JS finished value down to 0 with the acts transition still running, a visible un-animation the instant <code>toggles()</code> took over.</li>
+<li>Fourth pass: that hold read and wrote the inline <code>transition</code> shorthand (save, set to <code>none</code>, restore). Two defects, both reproduced in Chrome: an inline transition longhand (e.g. <code>style="transition-duration: 400ms"</code>) reads back as <code>''</code> through the shorthand getter, so the "restore" erased it for good; and <code>transition: none</code> stopped every transition on the element for the hold, not just the acts one, snapping an unrelated in-flight transform transition. The hold now sets an internal <code>--sv-acts-settle</code> custom property to <code>0s</code> instead, new and additive: <code>.sv-acts</code>'s own transition reads its duration from it (styles/state.css), and <code>toggles()</code> never touches <code>style.transition</code>.</li>
+<li>Fifth pass: <code>--sv-acts-settle</code> only reaches the duration the stylesheet itself declares on <code>.sv-acts</code>. An element that also carries its own inline <code>transition-duration</code> LONGHAND (the fixture's <code>#longhand-target</code>, <code>style="transition-duration: 400ms"</code>) outranks that knob by cascade origin no matter what it is set to, so the settle for that element still played out over the longhand's own duration instead of 0s, reproduced in Chrome (<code>3, 2.876, ... 0</code> over 400ms): the exact un-animation this feature exists to remove. The shipped e2e case only asserted the attribute string survived and never sampled <code>--sv-act</code> on that element, so it stayed green. <code>toggles()</code> now also saves that inline longhand's exact value and priority, holds it at <code>0s</code> for the same two frames (or until a click inside the hold cancels it, restored immediately there too), and restores it exact, through the longhand getter/setter only, never the shorthand. A target without an inline longhand never has one written, so an unrelated in-flight transition on it is untouched. What remains unguarded: an author RULE, not an inline style, that overrides <code>transition-duration</code> or the whole <code>transition</code> shorthand on <code>.sv-acts</code> at higher specificity than the preset's own rule still owns the settle timing (styles/state.css).</li>
+<li>Sixth pass: the whole settle (<code>--sv-acts-settle</code> and the inline <code>transition-duration</code> hold) now only runs on <code>.sv-acts</code> targets, gated only on <code>sv-ui</code> before. <code>getPropertyValue('transition-duration')</code> cannot tell an authored longhand from the browser's own expansion of an unrelated inline <code>transition</code> shorthand, so a plain toggle target with one (this module's own <code>&lt;nav id="menu"></code> example, most of the time) had it forced to <code>0s</code> for two frames regardless, snapping any change to it that landed inside the window instead of animating. A target that is not <code>.sv-acts</code> still gets <code>sv-ui</code>, nothing else.</li>
+</ul>
 
-### Compat
-<ul><li><code>compat()</code>'s fallback stylesheet gets a <code>transform:</code>-based <code>sv-deck</code></li></ul>
-  rule for engines missing individual transform properties.
-<ul><li><code>splitParts</code> no longer uses <code>Array.prototype.flatMap</code> (missing on Chrome</li></ul>
-  61-68 and Safari 11, the floor compat claims).
+<h4>Compat</h4>
+<ul>
+<li><code>compat()</code>'s fallback stylesheet gets a <code>transform:</code>-based <code>sv-deck</code> rule for engines missing individual transform properties.</li>
+<li><code>splitParts</code> no longer uses <code>Array.prototype.flatMap</code> (missing on Chrome 61-68 and Safari 11, the floor compat claims).</li>
+</ul>
 
-### Testing
-<ul><li>The no-JS "pin stages never cover their revealed text" e2e sweep now</li></ul>
-  scrolls each candidate into view before measuring: 6 of the 7 pin fx
-  pages were previously off-viewport at scroll position 0 and silently
-  skipped. The sweep asserts and prints a minimum examined count per pin
-  page, so a regression back to zero coverage fails it instead of passing
-  by omission.
-<ul><li>The boot-settle e2e fixture (toggles-boot-settle.html) gained two more</li></ul>
-  targets: one with an inline <code>transition-duration</code> longhand, one with an
-  unrelated in-flight <code>translate</code> transition, proving the settle hold
-  leaves both alone. Its post-click assertion now samples <code>--sv-act</code>
-  across frames instead of only the final value, so a transition silently
-  reduced to zero duration would fail it instead of passing by omission.
-<ul><li>Fifth pass: <code>#longhand-target</code>'s <code>--sv-act</code> is now sampled per frame like</li></ul>
-  the main target, so a settle silently governed by the longhand instead
-  of <code>--sv-acts-settle</code> fails the sweep instead of passing on the attribute
-  string alone. A new <code>#longhand-important-target</code>
-  (<code>transition-duration: 400ms !important</code>) proves the same hold and
-  restore keep the original priority, not just the value. Unit tests cover
-  the longhand hold-and-restore lifecycle exact (value and priority), that
-  a target with no inline longhand never has one written, and that a click
-  inside the hold restores it immediately alongside the knob.
+<h4>Testing</h4>
+<ul>
+<li>The no-JS "pin stages never cover their revealed text" e2e sweep now scrolls each candidate into view before measuring: 6 of the 7 pin fx pages were previously off-viewport at scroll position 0 and silently skipped. The sweep asserts and prints a minimum examined count per pin page, so a regression back to zero coverage fails it instead of passing by omission.</li>
+<li>The boot-settle e2e fixture (toggles-boot-settle.html) gained two more targets: one with an inline <code>transition-duration</code> longhand, one with an unrelated in-flight <code>translate</code> transition, proving the settle hold leaves both alone. Its post-click assertion now samples <code>--sv-act</code> across frames instead of only the final value, so a transition silently reduced to zero duration would fail it instead of passing by omission.</li>
+<li>Fifth pass: <code>#longhand-target</code>'s <code>--sv-act</code> is now sampled per frame like the main target, so a settle silently governed by the longhand instead of <code>--sv-acts-settle</code> fails the sweep instead of passing on the attribute string alone. A new <code>#longhand-important-target</code> (<code>transition-duration: 400ms !important</code>) proves the same hold and restore keep the original priority, not just the value. Unit tests cover the longhand hold-and-restore lifecycle exact (value and priority), that a target with no inline longhand never has one written, and that a click inside the hold restores it immediately alongside the knob.</li>
+</ul>
 
-### Canvas
-<ul><li><code>mountEffect()</code>'s <code>applySize()</code> now guards against the unsized-canvas DPR</li></ul>
-  feedback loop (blind review round 3, finding 22): a canvas with no CSS
-  width/height lays out at its own backing-store size, so at a
-  devicePixelRatio above 1 every ResizeObserver tick measured the size the
-  previous tick had just written and multiplied the backing store by dpr
-  again, unbounded. <code>applySize()</code> now detects that (the measured rect
-  equals the backing size it just wrote, with dpr not 1) and pins
-  <code>canvas.style.width</code>/<code>height</code> to the first measured CSS size once, then
-  proceeds as before. A canvas with a real CSS size is untouched. The
-  harness's doc comment now says a canvas should have CSS dimensions.
-<ul><li>Second pass (verifier finding): the round 3 claim above, "a canvas with</li></ul>
-  a real CSS size is untouched", did not hold. That equality guard
-  compared a border-box rect against a content-box backing store, so it
-  could miss the very loop it exists to catch (an unsized canvas with a
-  border never satisfies the equality, both reproduced in real Chrome at
-  deviceScaleFactor 2) and could also misfire on a legitimately CSS-sized
-  canvas (attribute width/height equal to its CSS size trips the guard on
-  first mount and pins that size inline, freezing every later
-  stylesheet-driven resize). <code>applySize()</code> now detects the feedback
-  directly instead of guessing from equality: it measures the layout size
-  (<code>clientWidth</code>/<code>clientHeight</code>, falling back to the rect only when those
-  are 0), writes the backing store, then measures again synchronously. A
-  CSS-sized canvas never changes layout when its own backing store
-  changes, so it is never pinned, whatever its attributes or borders. Only
-  a canvas whose layout size moved as a consequence of that write (layout
-  following the backing store, i.e. no CSS size at all) gets
-  <code>canvas.style.width</code>/<code>height</code> pinned, once, to the size measured BEFORE
-  the write. Remaining limitation, documented in the doc comment: a canvas
-  with no CSS size still gets one pinned inline by the harness, so give a
-  canvas CSS dimensions to keep control of its size.
-<ul><li>Third pass (verifier finding): that measured layout size used</li></ul>
-  <code>clientWidth</code>/<code>clientHeight</code> directly and called it the content box, but
-  <code>clientWidth</code>/<code>clientHeight</code> exclude border while still including
-  padding. An unsized <code>&lt;canvas style="padding:10px"></code> measured 320x170
-  instead of 300x150, got pinned to that inflated size, its layout moved
-  again and a second <code>applySize()</code> pass ran, settling on 340x190, a size
-  nobody asked for; <code>border</code> plus <code>padding</code> plus <code>box-sizing: border-box</code>
-  misbehaved the same way. <code>applySize()</code> now reads computed padding and
-  subtracts it from <code>clientWidth</code>/<code>clientHeight</code> to get the true content
-  box, and forces <code>box-sizing: content-box</code> inline when it pins, so the
-  pinned width/height reproduce that content box regardless of the
-  canvas's own box-sizing. Both padding and border-box-with-padding cases
-  now settle in one <code>applySize()</code> pass at the intrinsic 300x150.
-<ul><li>Fourth pass (verifier finding, reproduced in Chrome): that fix subtracted</li></ul>
-  subpixel-precise computed padding from <code>clientWidth</code>/<code>clientHeight</code>,
-  which round to an integer. An unsized <code>&lt;canvas style="padding:0.3px"></code>
-  (fractional padding is common: a percentage or <code>calc()</code> padding, or a
-  non-100% zoom) landed a fraction of a pixel off the true content box on
-  its first read, so it still took two <code>applySize()</code> passes to settle,
-  at 300.4x150.4 instead of one pass at 300x150. Swapping in
-  <code>getBoundingClientRect()</code> minus computed border and padding (still never
-  <code>clientWidth</code>/<code>clientHeight</code>) turned out not to fully close it either:
-  Chrome's computed border/padding can report the value the author wrote,
-  not the sub-pixel value layout actually snapped to, so subtracting it
-  from the border-box rect still landed a thousandth of a pixel off (300
-  measured as 299.99375), still costing a second pass. <code>measureLayout()</code>
-  now reads the content box straight from the ResizeObserver entry's own
-  <code>contentRect</code> when <code>applySize()</code> runs as its callback (bit-exact, no
-  arithmetic at all: that IS the layout engine's content-box measurement),
-  falling back to the rect-minus-border-and-padding route only for the one
-  caller with no entry (a direct DPR-change call) and for the internal
-  synchronous re-measure right after writing the backing store, where the
-  fallback's residual imprecision only feeds a boolean loop check, never
-  the pinned value. The final backing-store size is still rounded
-  (<code>Math.round(size * dpr)</code>), and the CSS pin still comes from that same
-  now-exact measure. Every prior case (plain, bordered, padded,
-  border-box-with-padding) settles the same as before.
-<ul><li>Fifth pass (verifier and panel findings, reproduced in Chrome at</li></ul>
-  devicePixelRatio 2): the feedback check compared the bit-exact
-  ResizeObserver entry against a fallback re-measure, which disagrees with
-  it for reasons that have nothing to do with feedback: a CSS-sized canvas
-  with fractional padding (a sub-pixel residual, same root cause as the
-  fourth pass, now on the comparison itself) or one under a CSS
-  <code>transform: scale()</code> (the fallback's <code>getBoundingClientRect()</code> reports
-  the transformed, inflated box; the entry's <code>contentRect</code> is layout size,
-  unaffected) both read as having moved when they never did, so they got
-  pinned on first mount and then ignored every later CSS resize, a
-  permanent freeze through a new trigger. <code>applySize()</code> now measures with
-  the SAME method, the fallback, once right before and once right after
-  the backing-store write, and compares those two with a 1px tolerance: a
-  real feedback loop moves the layout by a factor of the device pixel
-  ratio, never by sub-pixel noise. The entry's <code>contentRect</code> is used only
-  as the size that gets written and, when the check fires, pinned. Also
-  fixed: the fallback's <code>rect.width/height</code> minus border and padding could
-  go negative for a <code>display: none</code> canvas with real padding (rect all
-  zero), which the <code>!size.width</code> guard did not catch since a negative
-  number is truthy; it is now clamped to 0, read as "not laid out yet"
-  same as a genuinely empty rect.
-<ul><li>Sixth pass (panel and verifier findings, reproduced in Chrome). The fifth</li></ul>
-  pass's flat 1px tolerance did not scale: a real feedback loop moves an
-  unsized canvas by <code>size * (dpr - 1)</code> CSS pixels per tick, so a small
-  canvas at a DPR just over 1 (a 4x4 canvas at 1.25, or a 20x20 at 1.05)
-  moves by exactly 1px on the first tick, which the tolerance needed to
-  grow PAST, not just reach, taking 3 to 27 <code>applySize()</code> passes to notice
-  and pinning 50-100% inflated in the meantime. The check now compares the
-  two readings by ratio instead of an absolute delta
-  (<code>after / before >= 1 + (dpr - 1) / 2</code>, checked on either axis, only when
-  <code>dpr > 1</code>), which scales with both size and DPR: a small canvas at a
-  small fractional DPR now pins on its very first pass. Also, <code>onDprChange()</code>
-  (a fixed-CSS-size canvas moving to a monitor with a different DPR) called
-  <code>applySize()</code> with no ResizeObserver entry, so its fallback read included
-  the canvas's own <code>transform: scale()</code>: a transformed CSS-sized canvas got
-  its <code>fx.width</code>/<code>fx.height</code> and context scale wrong by the transform
-  factor on every real DPR change, and never self-corrected. The harness
-  now remembers the last content size a real ResizeObserver entry reported
-  (bit-exact, a transform never touches it) and reuses that on the
-  DPR-change path instead of re-deriving it from the rect.
-<ul><li>Seventh pass (design change, panel finding, reproduced in Chrome): the</li></ul>
-  sixth pass's ratio check had two more regressions. Its <code>dpr > 1</code> guard
-  disabled detection entirely on a page zoomed out to a devicePixelRatio
-  below 1 (0.8, 0.5): an unsized canvas there shrank a little further every
-  pass, unbounded, never pinning. And an unsized canvas with padding AND its
-  own transform read both ratio readings through <code>getBoundingClientRect()</code>,
-  which the transform inflates by a roughly constant factor a padding
-  subtraction does not fully cancel: the ratio undershot the threshold for
-  a few passes (each one's write feeding the next pass's reading), and by
-  the time it finally crossed the threshold the canvas had already grown
-  past its true size, and that grown size is what got pinned (measured: a
-  300x150 canvas with 350px padding and <code>transform: scale(2)</code>, at
-  devicePixelRatio 2, pinned at 600x300, not 300x150). <code>applySize()</code> no
-  longer measures anything to guess whether a canvas moved: it detects the
-  platform's own feedback signal instead. Writing the backing store IS the
-  new CSS layout size for an unsized canvas, so the ResizeObserver delivers
-  another entry reporting exactly that, an echo of the harness's own
-  write, in the following frame; a CSS-sized canvas's box never moves this
-  way, so no such entry ever comes. <code>applySize()</code> now remembers the exact
-  W/H it just wrote plus the CSS size it measured before writing, and
-  checks the next ResizeObserver entry's own <code>contentRect</code> (rounded, exact,
-  already excludes padding and border, ignores transform) against that
-  exact W/H: a match is the echo, and pins the pre-write CSS size. No
-  ratio, no tolerance, no dpr guard, so a DPR below 1 is detected exactly
-  the same way as one above it. The echo window closes two animation
-  frames after the write (measured against real Chrome: a single frame
-  fires the harness's own requestAnimationFrame callback moments before
-  that same frame's ResizeObserver step, where the echo actually lands,
-  clearing the window a step too early), so a coincidental later resize
-  landing on the same size is never mistaken for one.
+<h4>Installed components (blind review round 3)</h4>
+<ul>
+<li><code>StickySteps</code>'s <code>inert</code> spread now casts like the core does (<code>as unknown as Record&lt;string, never></code>): the previous inline ternary put a <code>string | boolean</code> into a <code>boolean</code> prop, failing <code>tsc</code> under React 19 types. It also now subscribes to the <code>prefers-reduced-motion</code> media query's <code>change</code> event instead of reading it once, so a live switch drops, or restores, <code>inert</code>/<code>aria-hidden</code> on the stacked shots immediately.</li>
+<li><code>GsapScrub</code> and <code>ThreeScene</code> declare their mutable refs as <code>useRef&lt;T | null>(null)</code>, not <code>useRef&lt;T>(null)</code>: read-only under React 18 types. <code>GsapScrub</code> also drives the timeline through <code>prefersReducedMotion()</code> (imported from <code>scrollvars</code>), so a reduced-motion visitor gets the finished frame instead of a scrubbed one.</li>
+<li><code>gsap-scrub</code> and <code>three-scene</code> declare <code>min: '1.13.0'</code>: the string pin helper and <code>.sv-stage</code> they both use are 1.13.0 features, not the 1.9.0/1.11.0 previously declared.</li>
+<li><code>curtain</code>, <code>horizontal-rail</code> and <code>pointer-tilt</code> declare <code>requires.tailwind: true</code>: their installed content leans on Tailwind utility classes with no component-owned CSS backing them. The CLI prints "Tailwind utilities: required" for these effects; the registry gains the <code>tailwind</code> flag.</li>
+<li><code>CoverflowSlider</code>'s coverflow transform moved from an inline <code>style</code> object into a <code>.cf-slide</code> class with a <code>prefers-reduced-motion: reduce</code> override, matching the preset policy that scroll-linked transforms return to flow under reduced motion. The Tailwind tab of <code>hero-cinematic</code> gained matching <code>motion-reduce:</code> variants for the orb and the inner block.</li>
+<li><code>TimelineScrub</code> renders the year as visually-hidden real text plus an aria-hidden counter span, instead of <code>aria-label</code> on a bare <code>&lt;span></code> (prohibited on generic roles, Axe <code>aria-prohibited-attr</code>). <code>StatsCountup</code> emits <code>&lt;dt></code> before <code>&lt;dd></code> (order was reversed), and renders the final value as visually-hidden text with the counter itself <code>aria-hidden</code>.</li>
+</ul>
 
-### Installed components (blind review round 3)
-<ul><li><code>StickySteps</code>'s <code>inert</code> spread now casts like the core does</li></ul>
-  (<code>as unknown as Record&lt;string, never></code>): the previous inline ternary put a
-  <code>string | boolean</code> into a <code>boolean</code> prop, failing <code>tsc</code> under React 19
-  types. It also now subscribes to the <code>prefers-reduced-motion</code> media
-  query's <code>change</code> event instead of reading it once, so a live switch drops,
-  or restores, <code>inert</code>/<code>aria-hidden</code> on the stacked shots immediately.
-<ul><li><code>GsapScrub</code> and <code>ThreeScene</code> declare their mutable refs as</li></ul>
-  <code>useRef&lt;T | null>(null)</code>, not <code>useRef&lt;T>(null)</code>: read-only under React 18
-  types. <code>GsapScrub</code> also drives the timeline through
-  <code>prefersReducedMotion()</code> (imported from <code>scrollvars</code>), so a
-  reduced-motion visitor gets the finished frame instead of a scrubbed one.
-<ul><li><code>gsap-scrub</code> and <code>three-scene</code> declare <code>min: '1.13.0'</code>: the string pin</li></ul>
-  helper and <code>.sv-stage</code> they both use are 1.13.0 features, not the
-  1.9.0/1.11.0 previously declared.
-<ul><li><code>curtain</code>, <code>horizontal-rail</code> and <code>pointer-tilt</code> declare</li></ul>
-  <code>requires.tailwind: true</code>: their installed content leans on Tailwind
-  utility classes with no component-owned CSS backing them. The CLI prints
-  "Tailwind utilities: required" for these effects; the registry gains the
-  <code>tailwind</code> flag.
-<ul><li><code>CoverflowSlider</code>'s coverflow transform moved from an inline <code>style</code></li></ul>
-  object into a <code>.cf-slide</code> class with a <code>prefers-reduced-motion: reduce</code>
-  override, matching the preset policy that scroll-linked transforms return
-  to flow under reduced motion. The Tailwind tab of <code>hero-cinematic</code> gained
-  matching <code>motion-reduce:</code> variants for the orb and the inner block.
-<ul><li><code>TimelineScrub</code> renders the year as visually-hidden real text plus an</li></ul>
-  aria-hidden counter span, instead of <code>aria-label</code> on a bare <code>&lt;span></code>
-  (prohibited on generic roles, Axe <code>aria-prohibited-attr</code>). <code>StatsCountup</code>
-  emits <code>&lt;dt></code> before <code>&lt;dd></code> (order was reversed), and renders the final
-  value as visually-hidden text with the counter itself <code>aria-hidden</code>.
+<h4>Installed components (blind review round 3, second pass)</h4>
+<ul>
+<li>The CLI component <code>tsc</code> gate was vacuous under a config-level error: a bad <code>moduleResolution</code> prints as <code>tsconfig.json(9,25): error TS6046</code>, which never matches the per-file <code>&lt;name>.tsx(line,col)</code> regex, so every fixture reported "type-checks: pass" while tsc never actually checked any of them. The gate now counts every <code>error TS\d+</code> line in the raw output against the lines it can attribute to a fixture file and fails loudly, with the raw output, on any mismatch or on a non-zero exit with no per-file diagnostics. Proved red on a deliberately invalid <code>moduleResolution</code> before landing, green again after reverting it.</li>
+<li><code>hero-cinematic</code>'s Tailwind tab: the <code>motion-reduce:</code> override for <code>.inner</code> sat on the <code>.inner</code> div itself (<code>[opacity:1]</code>/<code>[scale:none]</code>, a one-class selector, specificity 0,1,0) while the base rule reaches <code>.inner</code> through the section's <code>[&amp;_.inner]:</code> variants (a two-class selector, 0,2,0), so the override never won and reduced-motion visitors still got the scroll-driven fade and scale. The override now lives on the section in the same <code>[&amp;_.inner]:</code> shape, after the base variants, so equal specificity lets source order settle it.</li>
+<li>The condensed <code>react:</code> doc snippets for <code>timeline-scrub</code> and <code>stats-countup</code> referenced <code>&lt;span style={SR_ONLY}></code> without defining it, unlike every other self-contained snippet (<code>SR_ONLY</code> is not exported from <code>scrollvars</code>). Both now inline the sr-only style object literal at the point of use.</li>
+</ul>
 
-### Installed components (blind review round 3, second pass)
-<ul><li>The CLI component <code>tsc</code> gate was vacuous under a config-level error: a</li></ul>
-  bad <code>moduleResolution</code> prints as <code>tsconfig.json(9,25): error TS6046</code>,
-  which never matches the per-file <code>&lt;name>.tsx(line,col)</code> regex, so every
-  fixture reported "type-checks: pass" while tsc never actually checked
-  any of them. The gate now counts every <code>error TS\d+</code> line in the raw
-  output against the lines it can attribute to a fixture file and fails
-  loudly, with the raw output, on any mismatch or on a non-zero exit with
-  no per-file diagnostics. Proved red on a deliberately invalid
-  <code>moduleResolution</code> before landing, green again after reverting it.
-<ul><li><code>hero-cinematic</code>'s Tailwind tab: the <code>motion-reduce:</code> override for</li></ul>
-  <code>.inner</code> sat on the <code>.inner</code> div itself (<code>[opacity:1]</code>/<code>[scale:none]</code>,
-  a one-class selector, specificity 0,1,0) while the base rule reaches
-  <code>.inner</code> through the section's <code>[&amp;_.inner]:</code> variants (a two-class
-  selector, 0,2,0), so the override never won and reduced-motion visitors
-  still got the scroll-driven fade and scale. The override now lives on
-  the section in the same <code>[&amp;_.inner]:</code> shape, after the base variants,
-  so equal specificity lets source order settle it.
-<ul><li>The condensed <code>react:</code> doc snippets for <code>timeline-scrub</code> and</li></ul>
-  <code>stats-countup</code> referenced <code>&lt;span style={SR_ONLY}></code> without defining
-  it, unlike every other self-contained snippet (<code>SR_ONLY</code> is not
-  exported from <code>scrollvars</code>). Both now inline the sr-only style object
-  literal at the point of use.
+<h4>Installed components (blind review round 3, third pass)</h4>
+<ul>
+<li>The second pass's <code>tsc</code> gate fix counted every <code>error TS\d+</code> line against the lines it could attribute to a fixture file, but the ambient stubs <code>gsap.d.ts</code> / <code>three.d.ts</code> compile in the same scope (needed to type-check <code>gsap-scrub</code>/<code>three-scene</code>) and are not one of the EFFECTS fixtures the per-file loop asserts on: a syntax error injected into <code>AMBIENT_GSAP</code> attributed cleanly to <code>gsap.d.ts(line,col)</code>, so the count matched, the "not vacuous" meta-test passed, and all 17 fixture tests reported "type-checks: pass" while tsc had exited 1 the whole time. The gate now fails the whole test file on any non-zero tsc exit, no matter how the diagnostics are attributed, printing the raw output; per-fixture attribution stays for the nicer message. Proved red by injecting a syntax error into the ambient stub (the gate failed with the raw <code>gsap.d.ts</code> diagnostics, every fixture test still green), green again after removing it; a per-file error (injected into <code>marquee</code>) still fails only that fixture's test plus the file-level gate.</li>
+</ul>
 
-### Installed components (blind review round 3, third pass)
-<ul><li>The second pass's <code>tsc</code> gate fix counted every <code>error TS\d+</code> line against</li></ul>
-  the lines it could attribute to a fixture file, but the ambient stubs
-  <code>gsap.d.ts</code> / <code>three.d.ts</code> compile in the same scope (needed to
-  type-check <code>gsap-scrub</code>/<code>three-scene</code>) and are not one of the EFFECTS
-  fixtures the per-file loop asserts on: a syntax error injected into
-  <code>AMBIENT_GSAP</code> attributed cleanly to <code>gsap.d.ts(line,col)</code>, so the count
-  matched, the "not vacuous" meta-test passed, and all 17 fixture tests
-  reported "type-checks: pass" while tsc had exited 1 the whole time. The
-  gate now fails the whole test file on any non-zero tsc exit, no matter
-  how the diagnostics are attributed, printing the raw output; per-fixture
-  attribution stays for the nicer message. Proved red by injecting a
-  syntax error into the ambient stub (the gate failed with the raw
-  <code>gsap.d.ts</code> diagnostics, every fixture test still green), green again
-  after removing it; a per-file error (injected into <code>marquee</code>) still
-  fails only that fixture's test plus the file-level gate.
+<h4>Installed components (blind review round 3, fourth pass)</h4>
+<ul>
+<li>The CLI component <code>tsc</code> gate spawned <code>tsc</code> with a generated tsconfig that had no <code>paths</code> redirect for <code>react</code>, so the subprocess always resolved the root's React 19 <code>@types</code>, even under <code>npm run test:react18</code>: the <code>--import</code> loader hook only redirects the parent process's own runtime imports, never a subprocess it spawns. No <code>tsc</code> run anywhere checked the installed fixtures against React 18 types, so reverting <code>GsapScrub</code>'s <code>useRef&lt;T | null>(null)</code> fix stayed green everywhere. <code>react18-register.mjs</code> now sets <code>SV_REACT18_DIR</code> (its value read straight from <code>react18-paths.mjs</code>, the same module <code>react18-tsc.mjs</code> already used for <code>src/</code>), and the gate adds the same <code>paths</code> redirect and canary when that variable is set. Proved red by reverting the <code>GsapScrub</code> fix under <code>npm run test:react18</code> (the gate failed with "Cannot assign to 'current' because it is a read-only property"), green again after restoring it.</li>
+<li>With the gate actually checking React 18 types, four more fixtures failed it: <code>HeroCinematic</code>, <code>PointerTiltGrid</code>, <code>StickySteps</code> and <code>ThreeScene</code> all pass a hook's <code>RefObject&lt;T | null></code> (the same shape <code>GsapScrub</code> needed to satisfy both majors) straight into a host element's <code>ref</code>. React 18's types compare that generic argument literally against <code>RefObject&lt;T></code> instead of expanding both to <code>{ current: T | null }</code>, so <code>T | null</code> fails where <code>T</code> succeeds even though the two are structurally identical. Each now casts the ref to <code>React.RefObject&lt;T></code> at the JSX call site, the same shape <code>GsapScrub</code> already needed for its own mutable <code>useRef</code>.</li>
+</ul>
 
-### Installed components (blind review round 3, fourth pass)
-<ul><li>The CLI component <code>tsc</code> gate spawned <code>tsc</code> with a generated tsconfig that</li></ul>
-  had no <code>paths</code> redirect for <code>react</code>, so the subprocess always resolved the
-  root's React 19 <code>@types</code>, even under <code>npm run test:react18</code>: the
-  <code>--import</code> loader hook only redirects the parent process's own runtime
-  imports, never a subprocess it spawns. No <code>tsc</code> run anywhere checked the
-  installed fixtures against React 18 types, so reverting <code>GsapScrub</code>'s
-  <code>useRef&lt;T | null>(null)</code> fix stayed green everywhere. <code>react18-register.mjs</code>
-  now sets <code>SV_REACT18_DIR</code> (its value read straight from
-  <code>react18-paths.mjs</code>, the same module <code>react18-tsc.mjs</code> already used for
-  <code>src/</code>), and the gate adds the same <code>paths</code> redirect and canary when that
-  variable is set. Proved red by reverting the <code>GsapScrub</code> fix under
-  <code>npm run test:react18</code> (the gate failed with "Cannot assign to 'current'
-  because it is a read-only property"), green again after restoring it.
-<ul><li>With the gate actually checking React 18 types, four more fixtures failed</li></ul>
-  it: <code>HeroCinematic</code>, <code>PointerTiltGrid</code>, <code>StickySteps</code> and <code>ThreeScene</code> all
-  pass a hook's <code>RefObject&lt;T | null></code> (the same shape <code>GsapScrub</code> needed to
-  satisfy both majors) straight into a host element's <code>ref</code>. React 18's
-  types compare that generic argument literally against <code>RefObject&lt;T></code>
-  instead of expanding both to <code>{ current: T | null }</code>, so <code>T | null</code> fails
-  where <code>T</code> succeeds even though the two are structurally identical. Each
-  now casts the ref to <code>React.RefObject&lt;T></code> at the JSX call site, the same
-  shape <code>GsapScrub</code> already needed for its own mutable <code>useRef</code>.
+<h4>Tooling</h4>
+<ul>
+<li><code>npm run demo:sync</code> is idempotent again: the bench page's inlined engine marker was lazy on the content but only matched a fixed 3-newline gap before <code>&lt;/script></code>, and the replacement kept the fresh IIFE's own trailing newline on top of that gap, so every run against a live driver added one more blank line and <code>demo/bench/scrollvars.html</code> never settled. The marker now consumes however many blank lines already accumulated instead of a fixed count, so it self-heals instead of drifting. <code>.github/workflows/ci.yml</code> and <code>.github/workflows/release.yml</code> now include <code>demo/bench/scrollvars.html</code> in the generated-files gate.</li>
+</ul>
 
-### Tooling
-<ul><li><code>npm run demo:sync</code> is idempotent again: the bench page's inlined engine</li></ul>
-  marker was lazy on the content but only matched a fixed 3-newline gap
-  before <code>&lt;/script></code>, and the replacement kept the fresh IIFE's own
-  trailing newline on top of that gap, so every run against a live driver
-  added one more blank line and <code>demo/bench/scrollvars.html</code> never
-  settled. The marker now consumes however many blank lines already
-  accumulated instead of a fixed count, so it self-heals instead of
-  drifting. <code>.github/workflows/ci.yml</code> and <code>.github/workflows/release.yml</code>
-  now include <code>demo/bench/scrollvars.html</code> in the generated-files gate.
-
-### Slider
+<h4>Slider</h4>
 Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
 Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
 wide, scrollWidth 500).
-<ul><li><code>slideStart()</code> walked the offsetParent chain and always subtracted the</li></ul>
-  container's own border (<code>clientLeft</code>/<code>clientTop</code>), even when the
-  container itself was the slide's offsetParent. offsetLeft is already
-  measured against the offsetParent's padding edge in that case, so the
-  border was subtracted twice: a bordered, positioned container gave -10
-  for its first slide instead of 0. The walk now stops the moment it
-  reaches the container and only falls back to the absolute-position
-  subtraction (plus the border) when the container is skipped entirely
-  (a statically positioned rail whose real offsetParent sits further up).
-<ul><li>RTL mirrored the slide start against <code>scrollWidth</code> instead of</li></ul>
-  <code>clientWidth</code>: measured in Chrome, a position:relative RTL rail gave 200
-  for its first slide instead of 0. The mirror now uses the container's
-  own client box.
-<ul><li><code>measure()</code> tracked only the active index, not the active element. A</li></ul>
-  MutationObserver-driven replacement of that element (same index, new
-  node, e.g. a framework re-render) left <code>sv-active</code> on the detached old
-  node and never moved it to the new one. <code>measure()</code> now remembers the
-  active node as well: a changed node at the same index moves <code>sv-active</code>
-  and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
-  changed.
+<ul>
+<li><code>slideStart()</code> walked the offsetParent chain and always subtracted the container's own border (<code>clientLeft</code>/<code>clientTop</code>), even when the container itself was the slide's offsetParent. offsetLeft is already measured against the offsetParent's padding edge in that case, so the border was subtracted twice: a bordered, positioned container gave -10 for its first slide instead of 0. The walk now stops the moment it reaches the container and only falls back to the absolute-position subtraction (plus the border) when the container is skipped entirely (a statically positioned rail whose real offsetParent sits further up).</li>
+<li>RTL mirrored the slide start against <code>scrollWidth</code> instead of <code>clientWidth</code>: measured in Chrome, a position:relative RTL rail gave 200 for its first slide instead of 0. The mirror now uses the container's own client box.</li>
+<li><code>measure()</code> tracked only the active index, not the active element. A MutationObserver-driven replacement of that element (same index, new node, e.g. a framework re-render) left <code>sv-active</code> on the detached old node and never moved it to the new one. <code>measure()</code> now remembers the active node as well: a changed node at the same index moves <code>sv-active</code> and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never changed.</li>
+</ul>
 
-### React
-<ul><li><code>useTrack</code>, <code>usePointer</code>, <code>useSlider</code> and <code>useCanvasEffect</code> now attach</li></ul>
-  through the ref itself instead of a mount-effect: the returned ref's
-  <code>current</code> is an accessor, so React's own attach/detach (any object with
-  a <code>current</code> property, unchanged between React 18 and 19) runs the
-  track/untrack. A conditionally rendered target that mounts after the
-  first render, or a node replaced by a new one, used to sit untracked
-  until an unrelated option changed forced the effect to rerun; both are
-  now tracked the moment the node attaches, and untracked on detach.
-  Option changes still retrack the current node. The ref type is declared
-  <code>React.RefObject&lt;T></code>, same as before.
-<ul><li><code>&lt;Scenes pin></code> now takes a string that wins over <code>height</code> and the</li></ul>
-  one-viewport-per-scene default (<code>pin="320vh"</code>), matching <code>&lt;Track pin></code>.
-  <code>pin={false}</code> still disables the pin helper.
-<ul><li><code>&lt;ScrollVarsBoot nonce></code>: forwarded to the pre-paint script tag, for a</li></ul>
-  strict CSP with no <code>'unsafe-inline'</code>. Additive, no existing prop changes.
-<ul><li><code>&lt;ScrollVarsBoot></code>'s debug overlay (<code>?sv-debug</code>) no longer mounts if the</li></ul>
-  component unmounts before its dynamic import resolves: the effect
-  cleanup now sets a <code>disposed</code> flag the import's callback checks first.
-<ul><li><code>useSlider</code>'s <code>handleRef</code> kept pointing at a destroyed <code>SliderHandle</code></li></ul>
-  after the tracked node detached (a conditional unmount, a node swap):
-  <code>next()</code>, <code>prev()</code>, <code>goTo()</code> and <code>handle.current</code> on a detached slider
-  drove a dead container, including starting a new glide <code>requestAnimationFrame</code>
-  loop nothing could stop. The <code>useAttachedRef</code> cleanup now also sets
-  <code>handleRef.current = null</code> before destroying the handle. Checked every
-  other hook built on <code>useAttachedRef</code> for the same shape (<code>useCanvasEffect</code>,
-  <code>usePointer</code>): neither keeps a handle ref beside it, so only <code>useSlider</code>
-  needed the fix.
+<h4>React</h4>
+<ul>
+<li><code>useTrack</code>, <code>usePointer</code>, <code>useSlider</code> and <code>useCanvasEffect</code> now attach through the ref itself instead of a mount-effect: the returned ref's <code>current</code> is an accessor, so React's own attach/detach (any object with a <code>current</code> property, unchanged between React 18 and 19) runs the track/untrack. A conditionally rendered target that mounts after the first render, or a node replaced by a new one, used to sit untracked until an unrelated option changed forced the effect to rerun; both are now tracked the moment the node attaches, and untracked on detach. Option changes still retrack the current node. The ref type is declared <code>React.RefObject&lt;T></code>, same as before.</li>
+<li><code>&lt;Scenes pin></code> now takes a string that wins over <code>height</code> and the one-viewport-per-scene default (<code>pin="320vh"</code>), matching <code>&lt;Track pin></code>. <code>pin={false}</code> still disables the pin helper.</li>
+<li><code>&lt;ScrollVarsBoot nonce></code>: forwarded to the pre-paint script tag, for a strict CSP with no <code>'unsafe-inline'</code>. Additive, no existing prop changes.</li>
+<li><code>&lt;ScrollVarsBoot></code>'s debug overlay (<code>?sv-debug</code>) no longer mounts if the component unmounts before its dynamic import resolves: the effect cleanup now sets a <code>disposed</code> flag the import's callback checks first.</li>
+<li><code>useSlider</code>'s <code>handleRef</code> kept pointing at a destroyed <code>SliderHandle</code> after the tracked node detached (a conditional unmount, a node swap): <code>next()</code>, <code>prev()</code>, <code>goTo()</code> and <code>handle.current</code> on a detached slider drove a dead container, including starting a new glide <code>requestAnimationFrame</code> loop nothing could stop. The <code>useAttachedRef</code> cleanup now also sets <code>handleRef.current = null</code> before destroying the handle. Checked every other hook built on <code>useAttachedRef</code> for the same shape (<code>useCanvasEffect</code>, <code>usePointer</code>): neither keeps a handle ref beside it, so only <code>useSlider</code> needed the fix.</li>
+</ul>
 
-### CI
-<ul><li>CI now proves the React layer on React 18, not only the React 19 the</li></ul>
-  root installs: a new <code>test-react-18</code> job (<code>npm run test:react18</code>, also
-  runnable locally) installs react@18, react-dom@18 and their <code>@types</code>
-  into <code>node_modules/.cache/react18</code> (its own package.json, <code>--no-save</code>,
-  never the root <code>package-lock.json</code>), type-checks <code>src/</code> against those
-  <code>@types</code> instead of the root's through a generated tsconfig <code>paths</code>
-  entry (guarded by a canary that fails loudly if the redirect ever
-  silently falls back to React 19), and runs <code>test/react.test.mjs</code> and
-  <code>test/cli-components.test.mjs</code> with a <code>node --import</code> loader hook that
-  redirects every <code>react</code>/<code>react-dom</code> import to that install for the
-  process (<code>NODE_PATH</code> does not affect ESM resolution).
-<ul><li><code>react: Marquee duplicate is aria-hidden and inert</code> now asserts the</li></ul>
-  literal wire format <code>inert=""</code>, not just the attribute's presence: the
-  case both React majors must agree on (<code>{ inert: '' }</code> under 18,
-  <code>{ inert: true }</code> under 19).
+<h4>CI</h4>
+<ul>
+<li>CI now proves the React layer on React 18, not only the React 19 the root installs: a new <code>test-react-18</code> job (<code>npm run test:react18</code>, also runnable locally) installs react@18, react-dom@18 and their <code>@types</code> into <code>node_modules/.cache/react18</code> (its own package.json, <code>--no-save</code>, never the root <code>package-lock.json</code>), type-checks <code>src/</code> against those <code>@types</code> instead of the root's through a generated tsconfig <code>paths</code> entry (guarded by a canary that fails loudly if the redirect ever silently falls back to React 19), and runs <code>test/react.test.mjs</code> and <code>test/cli-components.test.mjs</code> with a <code>node --import</code> loader hook that redirects every <code>react</code>/<code>react-dom</code> import to that install for the process (<code>NODE_PATH</code> does not affect ESM resolution).</li>
+<li><code>react: Marquee duplicate is aria-hidden and inert</code> now asserts the literal wire format <code>inert=""</code>, not just the attribute's presence: the case both React majors must agree on (<code>{ inert: '' }</code> under 18, <code>{ inert: true }</code> under 19).</li>
+</ul>
 
-### React types
-<ul><li>Proved, with a new fixture, that the natural consumer idiom</li></ul>
-  (<code>const ref = usePointer&lt;HTMLDivElement>(); return &lt;div ref={ref} /></code>,
-  no cast) type-checks under both React 18 and 19 for <code>usePointer</code>,
-  <code>useTrack</code>, <code>useScenes</code>, <code>useCanvasEffect</code> and <code>useSlider</code>: each hook's
-  return type has been <code>React.RefObject&lt;T></code> since ADU-106, which already
-  satisfies a JSX ref under both majors' types. <code>test/cli-components.test.mjs</code>
-  now compiles a <code>HookRefIdioms.tsx</code> fixture alongside the installed CLI
-  components under the same tsc gate (both <code>npm test</code> and
-  <code>npm run test:react18</code>), and fails loudly if a future signature change
-  regresses back to a nullable <code>RefObject&lt;T | null></code>. The <code>as
-  React.RefObject&lt;T></code> casts ADU-108 added around <code>usePointer</code>/<code>useTrack</code> in
-  <code>HeroCinematic</code>, <code>StickySteps</code>, <code>ThreeScene</code> and <code>PointerTiltGrid</code> are
-  redundant now, left in place to avoid touching lines the fx gallery work
-  in flight also edits. No type or runtime change: <code>dist/react/index.js</code> is
-  byte-identical before and after.
+<h4>React types</h4>
+<ul>
+<li>Proved, with a new fixture, that the natural consumer idiom (<code>const ref = usePointer&lt;HTMLDivElement>(); return &lt;div ref={ref} /></code>, no cast) type-checks under both React 18 and 19 for <code>usePointer</code>, <code>useTrack</code>, <code>useScenes</code>, <code>useCanvasEffect</code> and <code>useSlider</code>: each hook's return type has been <code>React.RefObject&lt;T></code> since ADU-106, which already satisfies a JSX ref under both majors' types. <code>test/cli-components.test.mjs</code> now compiles a <code>HookRefIdioms.tsx</code> fixture alongside the installed CLI components under the same tsc gate (both <code>npm test</code> and <code>npm run test:react18</code>), and fails loudly if a future signature change regresses back to a nullable <code>RefObject&lt;T | null></code>. The <code>as React.RefObject&lt;T></code> casts ADU-108 added around <code>usePointer</code>/<code>useTrack</code> in <code>HeroCinematic</code>, <code>StickySteps</code>, <code>ThreeScene</code> and <code>PointerTiltGrid</code> are redundant now, left in place to avoid touching lines the fx gallery work in flight also edits. No type or runtime change: <code>dist/react/index.js</code> is byte-identical before and after.</li>
+</ul>
 
-### Gallery
-<ul><li>The gallery preview for the four Sections (<code>hero-cinematic</code>, <code>timeline-scrub</code>,</li></ul>
-  <code>sticky-steps</code>, <code>stats-countup</code>) is no longer a hand-typed HTML string: it is
-  the installed component itself, compiled with esbuild and rendered with
-  <code>react-dom/server</code> (the same pipeline <code>test/cli-components.test.mjs</code> already
-  proves every fixture against), with a small <code>previewProps</code> object per
-  Section (<code>scripts/fx-data.mjs</code>) standing in for real content. Preview and
-  component now share one source, so they cannot drift. A component that
-  attaches via a client hook (<code>usePointer</code>, <code>useScenes</code>, a bare <code>&lt;Track pin></code>)
-  has no scannable <code>data-sv</code> attribute in its server markup, so its gallery
-  page keeps a tiny <code>previewScript</code> (documented on the effect entry) that
-  calls the vanilla driver directly once <code>sv.js</code> loads.
-<ul><li><code>test/cli-components.test.mjs</code>'s class-token parity check (installed</li></ul>
-  component vs. hand-written preview) is replaced, for these four, by an
-  assertion that <code>demo/fx/&lt;slug>.html</code> literally contains the component's own
-  render; the check for every effect that still has a hand-written preview
-  is unchanged. Rendering with <code>previewProps</code> also fails the test on any
-  React warning to stderr.
-<ul><li><code>demo/bench/harness/e2e-invariants.mjs</code>'s pin-stage occlusion sweep no</li></ul>
-  longer flags the visually-hidden sr-only text used alongside an
-  aria-hidden visual counter (<code>Split</code>, <code>TimelineScrub</code>'s year,
-  <code>StatsCountup</code>'s count: <code>clip-path: inset(50%)</code>, by design the same text
-  and position as the digit it describes): nothing on screen for it to
-  cover or be covered by. The rendered <code>TimelineScrub</code> preview is the first
-  page that put this pattern inside a <code>.sv-stage</code>, where the sweep actually
-  looks.
-<ul><li>Second pass (verifier finding on 8ecd8f1): that sr-only exclusion tested</li></ul>
-  <code>clip-path !== 'none'</code> alone, which also excludes a normal-sized element
-  that only wears a decorative <code>clip-path</code> mask (a circular reveal effect,
-  for instance), so visible text covered by a panel there would silently
-  drop out of the sweep. Real sr-only text is pinpoint-sized (1px by 1px,
-  matching <code>SR_ONLY_CSS</code> in <code>src/core/split.ts</code> and <code>SR_ONLY</code> in
-  <code>src/react/index.tsx</code>) in addition to being <code>clip-path</code>'d, so the
-  predicate now requires both. A new negative fixture
-  (<code>demo/bench/harness/fixtures/pin-stage-clip-path-occlusion.html</code>) proves
-  a masked, normal-sized element under an opaque panel is still examined
-  and reported.
-<ul><li>Third pass (verifier finding on 4f637e0): the pinpoint-size half of that</li></ul>
-  same predicate read <code>el.getBoundingClientRect()</code>, which measures the
-  painted rect. A real sr-only span nested under a <code>transform: scale(2)</code>
-  ancestor (<code>sv-tilt</code> and <code>sv-deck</code> both transform their content) paints
-  at 2px by 2px, so it read as "not pinpoint", escaped the exclusion, and
-  became a false occlusion candidate. The predicate now reads
-  <code>offsetWidth</code>/<code>offsetHeight</code> instead, the layout box, which an ancestor
-  transform never changes. The same fixture gained a positive case: a
-  genuine sr-only span under a scaled ancestor, covered by nothing, that
-  must be excluded outright (not examined, no false occlusion) while the
-  existing masked, normal-sized element is still reported.
+<h4>Gallery</h4>
+<ul>
+<li>The gallery preview for the four Sections (<code>hero-cinematic</code>, <code>timeline-scrub</code>, <code>sticky-steps</code>, <code>stats-countup</code>) is no longer a hand-typed HTML string: it is the installed component itself, compiled with esbuild and rendered with <code>react-dom/server</code> (the same pipeline <code>test/cli-components.test.mjs</code> already proves every fixture against), with a small <code>previewProps</code> object per Section (<code>scripts/fx-data.mjs</code>) standing in for real content. Preview and component now share one source, so they cannot drift. A component that attaches via a client hook (<code>usePointer</code>, <code>useScenes</code>, a bare <code>&lt;Track pin></code>) has no scannable <code>data-sv</code> attribute in its server markup, so its gallery page keeps a tiny <code>previewScript</code> (documented on the effect entry) that calls the vanilla driver directly once <code>sv.js</code> loads.</li>
+<li><code>test/cli-components.test.mjs</code>'s class-token parity check (installed component vs. hand-written preview) is replaced, for these four, by an assertion that <code>demo/fx/&lt;slug>.html</code> literally contains the component's own render; the check for every effect that still has a hand-written preview is unchanged. Rendering with <code>previewProps</code> also fails the test on any React warning to stderr.</li>
+<li><code>demo/bench/harness/e2e-invariants.mjs</code>'s pin-stage occlusion sweep no longer flags the visually-hidden sr-only text used alongside an aria-hidden visual counter (<code>Split</code>, <code>TimelineScrub</code>'s year, <code>StatsCountup</code>'s count: <code>clip-path: inset(50%)</code>, by design the same text and position as the digit it describes): nothing on screen for it to cover or be covered by. The rendered <code>TimelineScrub</code> preview is the first page that put this pattern inside a <code>.sv-stage</code>, where the sweep actually looks.</li>
+<li>Second pass (verifier finding on 8ecd8f1): that sr-only exclusion tested <code>clip-path !== 'none'</code> alone, which also excludes a normal-sized element that only wears a decorative <code>clip-path</code> mask (a circular reveal effect, for instance), so visible text covered by a panel there would silently drop out of the sweep. Real sr-only text is pinpoint-sized (1px by 1px, matching <code>SR_ONLY_CSS</code> in <code>src/core/split.ts</code> and <code>SR_ONLY</code> in <code>src/react/index.tsx</code>) in addition to being <code>clip-path</code>'d, so the predicate now requires both. A new negative fixture (<code>demo/bench/harness/fixtures/pin-stage-clip-path-occlusion.html</code>) proves a masked, normal-sized element under an opaque panel is still examined and reported.</li>
+<li>Third pass (verifier finding on 4f637e0): the pinpoint-size half of that same predicate read <code>el.getBoundingClientRect()</code>, which measures the painted rect. A real sr-only span nested under a <code>transform: scale(2)</code> ancestor (<code>sv-tilt</code> and <code>sv-deck</code> both transform their content) paints at 2px by 2px, so it read as "not pinpoint", escaped the exclusion, and became a false occlusion candidate. The predicate now reads <code>offsetWidth</code>/<code>offsetHeight</code> instead, the layout box, which an ancestor transform never changes. The same fixture gained a positive case: a genuine sr-only span under a scaled ancestor, covered by nothing, that must be excluded outright (not examined, no false occlusion) while the existing masked, normal-sized element is still reported.</li>
+</ul>
+
+<h4>Docs</h4>
+Blind review round 3 (GPT-6 Astra), section 2: wording that had drifted
+from the code it describes.
+<ul>
+<li>README's size intro: the "min+gzip" label now reads "JS min+gzip, CSS gzip as shipped", and the "typical page" number is stamped from <code>docs-data</code>'s <code>typical</code> size instead of hand-typed; the sizes table intro reads "per module entry", not "per import"; the VARS table's velocity column reads "viewport-heights/s", not "vh/s".</li>
+<li><code>sv-auto</code>'s doc row says children beyond 10 share order 10, not "the rest". The pin helper doc says it sets <code>position: relative</code> only when the wrapper is static, keeping authored positioning otherwise. The sequenced-scrub example uses <code>data-sv-pin="320vh"</code> and a <code>sv-stage</code> child, not the empty attribute and <code>.outer</code>/<code>.sticky</code>.</li>
+<li>The slider's two return shapes are documented separately: <code>slider()</code> returns the handle itself (<code>next/prev/goTo/seek/active/state/destroy</code>); <code>useSlider()</code> returns <code>{ ref, active, next, prev, goTo, handle }</code>, where <code>handle</code> is a ref to that same handle.</li>
+<li>The no-JS "complete static page" claim lists its two exceptions by design (class-toggled panels stay closed, native <code>sv-view-*</code> still runs), and that a click-driven <code>sv-acts</code> target needs <code>toggles()</code> to start at zero. Nested scrollers documents <code>--sv-stage-height</code> and that a bordered root is measured from its client box. <code>Split</code>'s char mode documents its <code>Intl.Segmenter</code> requirement on both server and client render (Firefox 125+), or emoji and combining marks can split differently across hydration.</li>
+<li><code>&lt;Scenes></code>'s render function is documented as server-rendered inside a client component boundary, not "client-side"; and a string <code>pin</code> wins over <code>height</code>. <code>&lt;ScrollVarsBoot></code>'s pre-paint hiding is documented as gated on <code>IntersectionObserver</code> and <code>ResizeObserver</code>. The compat floor explicitly covers <code>sv-deck</code> and no longer depends on <code>Array.prototype.flatMap</code>. AGENTS.md's build line now names <code>scripts/build-styles.mjs</code>.</li>
+<li><code>scripts/docs-build.mjs</code>'s CHANGELOG-to-HTML renderer (<code>mdLite</code>) fixed two bugs: a <code>### </code> sub-heading rendered as literal text instead of a heading, and a multi-line bullet only wrapped its first line in <code>&lt;li></code>, dropping every continuation line from the rendered list. Rewritten line by line instead of by regex backtracking: <code>### </code> now renders as <code>&lt;h4></code>, and a bullet's indented continuation lines join into the same <code>&lt;li></code>.</li>
+<li>Second pass (verifier finding on 31ee8af): <code>scripts/docs-build.mjs</code>'s generated browser-support table hardcoded Firefox at 74+ (Mar 2020), contradicting README's and AGENTS's 78+ (Jun 2020, <code>:is()</code>/<code>:where()</code>), the version core.css actually needs. Fixed to 78+ (Jun 2020). The same sweep found the table's per-part CSS sizes (core, pin, slider, tilt, state, ui) hand-typed and stale against what <code>docs-stamp.mjs</code> measures and stamps into README (core read 1.9 KB against a measured 2.2, pin 1.8 against 2.5, state 1.5 against 2.1, ui 0.8 against 0.7; slider and tilt happened to still match). <code>scripts/docs-build.mjs</code> now imports <code>measureSizes</code> from <code>docs-data.mjs</code>, the same source <code>docs-stamp.mjs</code> reads, so the generated docs page and README render the same measured numbers instead of two hand-typed copies that can drift apart.</li>
+</ul>
 
 <h3>1.13.0 (2026-09-05)</h3>
 
@@ -816,184 +395,106 @@ Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
 clone): every confirmed defect fixed, plus the primitives both reviewers
 said premium sections would need.
 
-### Sections in the fx gallery
-<ul><li>New category <b>Sections</b>: <code>hero-cinematic</code>, <code>timeline-scrub</code>,</li></ul>
-  <code>sticky-steps</code>, <code>stats-countup</code>. Whole blocks built only on the presets,
-  each with CSS / Tailwind / React snippets and a CLI component
-  (<code>npx scrollvars add &lt;slug></code>). They are also the dogfooding that surfaced
-  the items below.
+<h4>Sections in the fx gallery</h4>
+<ul>
+<li>New category <b>Sections</b>: <code>hero-cinematic</code>, <code>timeline-scrub</code>, <code>sticky-steps</code>, <code>stats-countup</code>. Whole blocks built only on the presets, each with CSS / Tailwind / React snippets and a CLI component (<code>npx scrollvars add &lt;slug></code>). They are also the dogfooding that surfaced the items below.</li>
+</ul>
 
-### Driver
-<ul><li><code>--sv-page</code> (0..1 through the document) and <code>--sv-v</code> (signed velocity in</li></ul>
-  viewport-heights per second, decays to 0 after the scroll stops) are written
-  on <code>&lt;html></code> every frame: reading-progress bars and skew/stretch effects need
-  no JS.
-<ul><li><code>--sv-scenes</code> (the scene count) is written next to <code>--sv-scene</code>, so a</li></ul>
-  progress bar is <code>calc(var(--sv-scene) / (var(--sv-scenes) - 1))</code> instead of a
-  hard-coded divisor.
-<ul><li>Pin helper: <code>pin: '320vh'</code> / <code>data-sv-pin="320vh"</code> / <code>&lt;Track pin="320vh"></code></li></ul>
-  sets the wrapper's height and <code>position: relative</code>; with the new <code>.sv-stage</code>
-  preset (sticky viewport) the pinned skeleton is no longer hand-written.
-  Under reduced motion the wrapper stays in flow.
-<ul><li>Culling now gives every entry one geometry pass on a scroll jump longer than</li></ul>
-  a viewport (anchors, <code>scrollTo</code>, restored positions): an element carried from
-  far below to far above no longer keeps stale variables.
-<ul><li><code>html.sv-on</code> lands last, after every observer is built, and never if the</li></ul>
-  <code>ResizeObserver</code> constructor throws. <code>window.__scrollvars</code> marks arrival.
-<ul><li><code>scrollToScene</code> uses the rendered height (like the pin math) and takes an</li></ul>
-  optional <code>root</code> scroller; <code>useScenes().goTo</code> passes the root it tracks with.
+<h4>Driver</h4>
+<ul>
+<li><code>--sv-page</code> (0..1 through the document) and <code>--sv-v</code> (signed velocity in viewport-heights per second, decays to 0 after the scroll stops) are written on <code>&lt;html></code> every frame: reading-progress bars and skew/stretch effects need no JS.</li>
+<li><code>--sv-scenes</code> (the scene count) is written next to <code>--sv-scene</code>, so a progress bar is <code>calc(var(--sv-scene) / (var(--sv-scenes) - 1))</code> instead of a hard-coded divisor.</li>
+<li>Pin helper: <code>pin: '320vh'</code> / <code>data-sv-pin="320vh"</code> / <code>&lt;Track pin="320vh"></code> sets the wrapper's height and <code>position: relative</code>; with the new <code>.sv-stage</code> preset (sticky viewport) the pinned skeleton is no longer hand-written. Under reduced motion the wrapper stays in flow.</li>
+<li>Culling now gives every entry one geometry pass on a scroll jump longer than a viewport (anchors, <code>scrollTo</code>, restored positions): an element carried from far below to far above no longer keeps stale variables.</li>
+<li><code>html.sv-on</code> lands last, after every observer is built, and never if the <code>ResizeObserver</code> constructor throws. <code>window.__scrollvars</code> marks arrival.</li>
+<li><code>scrollToScene</code> uses the rendered height (like the pin math) and takes an optional <code>root</code> scroller; <code>useScenes().goTo</code> passes the root it tracks with.</li>
+</ul>
 
-### React
-<ul><li><code>&lt;ScrollVarsBoot /></code> renders a tiny pre-paint script: <code>html.sv-on</code> is set</li></ul>
-  before first paint (no visible-then-hidden flash on SSR entrances) and
-  removed again after 3s if the driver never booted. Place it first in
-  <code>&lt;body></code>.
-<ul><li><code>&lt;Scenes></code> forwards <code>root</code>, <code>enter</code>, <code>exit</code>; its stage is <code>.sv-stage</code> and</li></ul>
-  returns to flow under reduced motion.
-<ul><li><code>useTrack</code> only hands the driver an <code>onScene</code> when the consumer has one, so</li></ul>
-  <code>once</code> entries are actually released.
-<ul><li>Slider autoplay wraps when the rail reaches its end (multi-slide views never</li></ul>
-  make the last slide active), and pauses on focus anywhere in the shell
-  (arrows, dots, pause button), not only inside the rail.
+<h4>React</h4>
+<ul>
+<li><code>&lt;ScrollVarsBoot /></code> renders a tiny pre-paint script: <code>html.sv-on</code> is set before first paint (no visible-then-hidden flash on SSR entrances) and removed again after 3s if the driver never booted. Place it first in <code>&lt;body></code>.</li>
+<li><code>&lt;Scenes></code> forwards <code>root</code>, <code>enter</code>, <code>exit</code>; its stage is <code>.sv-stage</code> and returns to flow under reduced motion.</li>
+<li><code>useTrack</code> only hands the driver an <code>onScene</code> when the consumer has one, so <code>once</code> entries are actually released.</li>
+<li>Slider autoplay wraps when the rail reaches its end (multi-slide views never make the last slide active), and pauses on focus anywhere in the shell (arrows, dots, pause button), not only inside the rail.</li>
+</ul>
 
-### Slider
-<ul><li>Geometry is rect-based and container-local: active slide and <code>goTo</code> targets</li></ul>
-  no longer depend on which ancestor is the <code>offsetParent</code>; RTL mirrors
-  against the container's own right edge.
-<ul><li><code>goTo(i, false)</code> after <code>seek()</code>, and a plain click that interrupted a glide,</li></ul>
-  restore the authored <code>scroll-snap-type</code>.
-<ul><li>Orientation/drag classes follow the options on re-init and are removed on</li></ul>
-  <code>destroy()</code>; <code>state().position</code> is clamped to <code>count - 1</code>.
+<h4>Slider</h4>
+<ul>
+<li>Geometry is rect-based and container-local: active slide and <code>goTo</code> targets no longer depend on which ancestor is the <code>offsetParent</code>; RTL mirrors against the container's own right edge.</li>
+<li><code>goTo(i, false)</code> after <code>seek()</code>, and a plain click that interrupted a glide, restore the authored <code>scroll-snap-type</code>.</li>
+<li>Orientation/drag classes follow the options on re-init and are removed on <code>destroy()</code>; <code>state().position</code> is clamped to <code>count - 1</code>.</li>
+</ul>
 
-### Presets and no-JS
-<ul><li>Knob defaults moved from <code>.sv</code> to <code>:where(:root)</code>: an author <code>:root</code></li></ul>
-  override now wins regardless of import order.
-<ul><li><code>.sv</code> resets <code>--sv-pin</code>, so a nested tracked element never reads an</li></ul>
-  ancestor's pin clock.
-<ul><li>Split entrances get the nested-ownership guard; the reduced-motion override</li></ul>
-  now outranks the nested hide rules.
-<ul><li>SSR markup carries <code>.sv</code> before the driver runs: rail, deck, curtain,</li></ul>
-  reading, counter, spread and acts render their finished state without JS
-  (<code>html:not(.sv-on)</code> rules). <code>--sv-r</code> is a registered property (initial 1).
-<ul><li><code>.sv-tilt</code> angle is a knob: <code>--sv-tilt</code> (default 14deg).</li>
-<li>compat: the transform fallback honours <code>sv-skip</code>; the ResizeObserver shim</li></ul>
-  delivers an initial observation, so legacy canvases start.
+<h4>Presets and no-JS</h4>
+<ul>
+<li>Knob defaults moved from <code>.sv</code> to <code>:where(:root)</code>: an author <code>:root</code> override now wins regardless of import order.</li>
+<li><code>.sv</code> resets <code>--sv-pin</code>, so a nested tracked element never reads an ancestor's pin clock.</li>
+<li>Split entrances get the nested-ownership guard; the reduced-motion override now outranks the nested hide rules.</li>
+<li>SSR markup carries <code>.sv</code> before the driver runs: rail, deck, curtain, reading, counter, spread and acts render their finished state without JS (<code>html:not(.sv-on)</code> rules). <code>--sv-r</code> is a registered property (initial 1).</li>
+<li><code>.sv-tilt</code> angle is a knob: <code>--sv-tilt</code> (default 14deg).</li>
+<li>compat: the transform fallback honours <code>sv-skip</code>; the ResizeObserver shim delivers an initial observation, so legacy canvases start.</li>
+</ul>
 
-### Sticky headers, knobs, interaction
-<ul><li><code>--sv-pin-offset</code> (one CSS declaration, e.g. <code>:root { --sv-pin-offset: 64px }</code>)</li></ul>
-  is read by both <code>.sv-stage</code> and the driver's pin math, so a sticky header no
-  longer breaks pinned sections; <code>scrollToScene</code> accounts for it too.
-<ul><li><code>--sv-rail-start</code> (rail inside a narrower stage), <code>--sv-reading-floor</code></li></ul>
-  (default .55 so unread words keep a 4.5:1 contrast; was .13), and the
-  sv-range clock now lives on the container at zero specificity, so
-  <code>.mine { --sv-clock: var(--sv-t) }</code> overrides it.
-<ul><li>StickySteps marks inactive shots <code>inert</code> + <code>aria-hidden</code> after mount, so a</li></ul>
-  crossfaded shot cannot keep focusable links.
-<ul><li>e2e invariants: an SSR-shaped sweep (<code>.sv</code> already on the markup, no JS) and</li></ul>
-  a reduced-motion sweep (JS on, whole page scrolled) over every fx page.
-<ul><li>Home page: <code>&lt;main></code> landmark; the guided-reading demo passes color-contrast.</li></ul>
+<h4>Sticky headers, knobs, interaction</h4>
+<ul>
+<li><code>--sv-pin-offset</code> (one CSS declaration, e.g. <code>:root { --sv-pin-offset: 64px }</code>) is read by both <code>.sv-stage</code> and the driver's pin math, so a sticky header no longer breaks pinned sections; <code>scrollToScene</code> accounts for it too.</li>
+<li><code>--sv-rail-start</code> (rail inside a narrower stage), <code>--sv-reading-floor</code> (default .55 so unread words keep a 4.5:1 contrast; was .13), and the sv-range clock now lives on the container at zero specificity, so <code>.mine { --sv-clock: var(--sv-t) }</code> overrides it.</li>
+<li>StickySteps marks inactive shots <code>inert</code> + <code>aria-hidden</code> after mount, so a crossfaded shot cannot keep focusable links.</li>
+<li>e2e invariants: an SSR-shaped sweep (<code>.sv</code> already on the markup, no JS) and a reduced-motion sweep (JS on, whole page scrolled) over every fx page.</li>
+<li>Home page: <code>&lt;main></code> landmark; the guided-reading demo passes color-contrast.</li>
+</ul>
 
-### Canvas, debug, CLI, split
-<ul><li><code>setup()</code> may return a cleanup, called on <code>destroy()</code>; <code>resize()</code> also runs</li></ul>
-  once after <code>setup()</code>. The three-scene component disposes its GPU resources.
-<ul><li>Debug overlay renders element names as text, never markup.</li>
-<li>CLI: a flag value is not a positional (<code>add --dir src/ui marquee</code> works),</li></ul>
-  registry file names are validated as bare names, the fallback registry is
-  the real second host.
-<ul><li><code>split(…, { by: 'char' })</code> splits on grapheme clusters when</li></ul>
-  <code>Intl.Segmenter</code> exists (emoji and combining marks stay whole).
-<ul><li><code>--mx</code>/<code>--my</code> are clamped to -1..1.</li></ul>
+<h4>Canvas, debug, CLI, split</h4>
+<ul>
+<li><code>setup()</code> may return a cleanup, called on <code>destroy()</code>; <code>resize()</code> also runs once after <code>setup()</code>. The three-scene component disposes its GPU resources.</li>
+<li>Debug overlay renders element names as text, never markup.</li>
+<li>CLI: a flag value is not a positional (<code>add --dir src/ui marquee</code> works), registry file names are validated as bare names, the fallback registry is the real second host.</li>
+<li><code>split(…, { by: 'char' })</code> splits on grapheme clusters when <code>Intl.Segmenter</code> exists (emoji and combining marks stay whole).</li>
+<li><code>--mx</code>/<code>--my</code> are clamped to -1..1.</li>
+</ul>
 
-### Review round 2 (Codex gpt-6-astra, 17 findings, all fixed)
-<ul><li>Entrance presets now animate from an inherited <code>--sv-live</code> flag (0/1) owned</li></ul>
-  by the nearest tracker: nesting can no longer leak a parent's state, server
-  markup with <code>data-sv</code> hides before <code>scan()</code> runs, and the reduced-motion
-  override always wins. The compat fallback uses the same flag.
-<ul><li>Pinning: <code>--sv-pin-offset</code> is read for every pin consumer (<code>scenes</code>, <code>onPin</code></li></ul>
-  too) and re-read on <code>refresh()</code>; the pin helper remembers the inline styles
-  it replaced, restores them on untrack, and follows live reduced-motion
-  changes. <code>&lt;Scenes></code> no longer writes inline stage geometry: it uses the pin
-  helper and <code>.sv-stage</code> (needs <code>styles/pin.css</code>). <code>.sv-stage</code> gets
-  <code>--sv-stage-height</code> for inner scrollers; rails wrap under reduced motion.
-<ul><li><code>once</code> entries settle <code>--sv-view</code> before releasing (a drift child measured</li></ul>
-  below the screen stayed invisible); <code>--sv-page</code>/<code>--sv-v</code> keep following the
-  scroll after the last entry released itself.
-<ul><li>Slider: geometry from offset chains again (transform-immune, container-local,</li></ul>
-  RTL against the content width), reads batched before writes, slides observed
-  for size and childList changes, drag only on the primary button and never on
-  native controls (inputs, textareas, selects, contenteditable).
-<ul><li>React: <code>onScene</code> added later now re-tracks; <code>&lt;Split by="char"></code> renders the</li></ul>
-  graphemes it counts; <code>inert</code> is rendered as <code>inert=""</code> so React 18 keeps it;
-  Modal falls back to an open static panel without <code>showModal</code>.
-<ul><li>Toggles: <code>aria-expanded</code> synced on boot and across every trigger of a target.</li>
-<li>Gallery: every pinned preview and installed component uses the pin helper and</li></ul>
-  <code>.sv-stage</code> (no hand-written sticky skeleton anywhere); the hero stops its
-  pointer drift and exit scaling under reduced motion; StickySteps drops
-  <code>inert</code> when it stacks the shots; Tailwind tabs carry the selector classes
-  their JS/CSS needs; minimum versions bumped for the migrated components.
-<ul><li>CLI: the registry fallback is the committed copy on GitHub (an independent</li></ul>
-  host), <code>--dir</code> without a value is rejected, the registry is only fetched for
-  <code>list</code>/<code>add</code>.
-<ul><li>Docs: Firefox floor is 78 (<code>:is()</code>), the bundle ratio is computed from the</li></ul>
-  stamped sizes, throttle wording is honest (set through CDP, nominal), the
-  scroll-tracking rAF claim is scoped, pointer has two listeners, page
-  variables document their clamp and decay, the canvas example guards <code>ctx</code>.
+<h4>Review round 2 (Codex gpt-6-astra, 17 findings, all fixed)</h4>
+<ul>
+<li>Entrance presets now animate from an inherited <code>--sv-live</code> flag (0/1) owned by the nearest tracker: nesting can no longer leak a parent's state, server markup with <code>data-sv</code> hides before <code>scan()</code> runs, and the reduced-motion override always wins. The compat fallback uses the same flag.</li>
+<li>Pinning: <code>--sv-pin-offset</code> is read for every pin consumer (<code>scenes</code>, <code>onPin</code> too) and re-read on <code>refresh()</code>; the pin helper remembers the inline styles it replaced, restores them on untrack, and follows live reduced-motion changes. <code>&lt;Scenes></code> no longer writes inline stage geometry: it uses the pin helper and <code>.sv-stage</code> (needs <code>styles/pin.css</code>). <code>.sv-stage</code> gets <code>--sv-stage-height</code> for inner scrollers; rails wrap under reduced motion.</li>
+<li><code>once</code> entries settle <code>--sv-view</code> before releasing (a drift child measured below the screen stayed invisible); <code>--sv-page</code>/<code>--sv-v</code> keep following the scroll after the last entry released itself.</li>
+<li>Slider: geometry from offset chains again (transform-immune, container-local, RTL against the content width), reads batched before writes, slides observed for size and childList changes, drag only on the primary button and never on native controls (inputs, textareas, selects, contenteditable).</li>
+<li>React: <code>onScene</code> added later now re-tracks; <code>&lt;Split by="char"></code> renders the graphemes it counts; <code>inert</code> is rendered as <code>inert=""</code> so React 18 keeps it; Modal falls back to an open static panel without <code>showModal</code>.</li>
+<li>Toggles: <code>aria-expanded</code> synced on boot and across every trigger of a target.</li>
+<li>Gallery: every pinned preview and installed component uses the pin helper and <code>.sv-stage</code> (no hand-written sticky skeleton anywhere); the hero stops its pointer drift and exit scaling under reduced motion; StickySteps drops <code>inert</code> when it stacks the shots; Tailwind tabs carry the selector classes their JS/CSS needs; minimum versions bumped for the migrated components.</li>
+<li>CLI: the registry fallback is the committed copy on GitHub (an independent host), <code>--dir</code> without a value is rejected, the registry is only fetched for <code>list</code>/<code>add</code>.</li>
+<li>Docs: Firefox floor is 78 (<code>:is()</code>), the bundle ratio is computed from the stamped sizes, throttle wording is honest (set through CDP, nominal), the scroll-tracking rAF claim is scoped, pointer has two listeners, page variables document their clamp and decay, the canvas example guards <code>ctx</code>.</li>
+</ul>
 
-### One source for the shared facts
-<ul><li><code>scripts/docs-data.mjs</code> holds the variables table and measures every size at</li></ul>
-  build; <code>docs-stamp.mjs</code> writes them into README and AGENTS between markers,
-  generates <code>demo/llms.txt</code> from AGENTS.md, and <code>bench-tables.mjs</code> stamps the
-  benchmark table into README, AGENTS and the bench page from the committed
-  results. CI fails if any of those files differ from what the build produces.
-<ul><li>The gallery data (<code>EFFECTS</code>, <code>COMPONENTS</code>) lives in <code>scripts/fx-data.mjs</code></li></ul>
-  with no side effects; <code>test/cli-components.test.mjs</code> compiles all 16 CLI
-  components with esbuild, renders the React ones with <code>react-dom/server</code>, and
-  checks that each uses the preset vocabulary its preview shows.
-<ul><li>Registry entries declare <code>requires</code> (stylesheets, peer deps, minimum</li></ul>
-  scrollvars); <code>npx scrollvars add</code> prints them and checks the installed
-  version.
-<ul><li>Slider tests for a rail inside a positioned ancestor and for a vertical rail.</li></ul>
+<h4>One source for the shared facts</h4>
+<ul>
+<li><code>scripts/docs-data.mjs</code> holds the variables table and measures every size at build; <code>docs-stamp.mjs</code> writes them into README and AGENTS between markers, generates <code>demo/llms.txt</code> from AGENTS.md, and <code>bench-tables.mjs</code> stamps the benchmark table into README, AGENTS and the bench page from the committed results. CI fails if any of those files differ from what the build produces.</li>
+<li>The gallery data (<code>EFFECTS</code>, <code>COMPONENTS</code>) lives in <code>scripts/fx-data.mjs</code> with no side effects; <code>test/cli-components.test.mjs</code> compiles all 16 CLI components with esbuild, renders the React ones with <code>react-dom/server</code>, and checks that each uses the preset vocabulary its preview shows.</li>
+<li>Registry entries declare <code>requires</code> (stylesheets, peer deps, minimum scrollvars); <code>npx scrollvars add</code> prints them and checks the installed version.</li>
+<li>Slider tests for a rail inside a positioned ancestor and for a vertical rail.</li>
+</ul>
 
-### Docs and release
-<ul><li>Sizes are measured at build and stamped into every document (see README for</li></ul>
-  the current numbers; nothing is typed by hand any more). Stale claims fixed
-  across README, AGENTS, llms.txt, docs, fx
-  recipes (rotating-words <code>vertical-align</code>, split's sr-only span, "SplitText
-  gap", <code>.sv-open</code> toggle example, Parallax reads <code>--sv-view</code>, and more).
-<ul><li>e2e invariants: every fx page must render every text node without JS; the</li></ul>
-  split invariant follows the sr-only contract.
-<ul><li>Release workflow fails when CHANGELOG has no entry for the tagged version.</li>
-<li>Brand name is written ScrollVars in prose; every identifier stays</li></ul>
-  <code>scrollvars</code>.
+<h4>Docs and release</h4>
+<ul>
+<li>Sizes are measured at build and stamped into every document (see README for the current numbers; nothing is typed by hand any more). Stale claims fixed across README, AGENTS, llms.txt, docs, fx recipes (rotating-words <code>vertical-align</code>, split's sr-only span, "SplitText gap", <code>.sv-open</code> toggle example, Parallax reads <code>--sv-view</code>, and more).</li>
+<li>e2e invariants: every fx page must render every text node without JS; the split invariant follows the sr-only contract.</li>
+<li>Release workflow fails when CHANGELOG has no entry for the tagged version.</li>
+<li>Brand name is written ScrollVars in prose; every identifier stays <code>scrollvars</code>.</li>
+</ul>
 
 <h3>1.12.4 (2026-09-02)</h3>
 
-<ul><li><code>&lt;Split></code> / <code>split()</code> drop <code>aria-label</code> on the container (axe</li></ul>
-  <code>aria-prohibited-attr</code> on generic roles); the full text stays in a
-  visually-hidden span, the animated spans are <code>aria-hidden</code>.
+<ul>
+<li><code>&lt;Split></code> / <code>split()</code> drop <code>aria-label</code> on the container (axe <code>aria-prohibited-attr</code> on generic roles); the full text stays in a visually-hidden span, the animated spans are <code>aria-hidden</code>.</li>
+</ul>
 
 <h3>1.12.3 (2026-09-01)</h3>
 
 Fixes a regression from 1.7.0's drag-click fix.
 
-<ul><li><b>Slider: mouse drag no longer fights native text-selection.</b> 1.7.0</li></ul>
-  removed <code>preventDefault()</code> from <code>pointerdown</code> to stop drags from eating
-  clicks on links/buttons inside slides. But that also removed the only
-  thing killing the browser's native text-selection-drag. Without it, a
-  drag that leaves the container starts a live selection, and the browser
-  auto-scrolls toward the pointer to extend it. Fighting the slider's own
-  <code>scrollLeft</code> writes every frame (visible as jitter/trembling, plus
-  visible text selection). Fix: <code>preventDefault()</code> is back on <code>pointerdown</code>
-  for mouse (kills selection-drag at the source, same as pre-1.7.0), and
-  the one real side effect. It also suppresses the browser's native
-  focus-on-mousedown. Is repaired by manually restoring focus in <code>endDrag</code>
-  when the press turns out to be a plain click, not a drag. The click event
-  itself was never suppressed by <code>preventDefault</code> (confirmed in 1.7.0's own
-  fix notes), so link/button activation was never at risk. Only focus was.
-  Verified with a real mouse-drag test (Puppeteer, dragging 480px outside
-  the slider): zero text selection, smooth monotonic <code>scrollLeft</code>, no
-  jitter. And a unit test locks in both halves (preventDefault fires,
-  focus restores on a plain click) so this can't quietly regress again.
+<ul>
+<li><b>Slider: mouse drag no longer fights native text-selection.</b> 1.7.0 removed <code>preventDefault()</code> from <code>pointerdown</code> to stop drags from eating clicks on links/buttons inside slides. But that also removed the only thing killing the browser's native text-selection-drag. Without it, a drag that leaves the container starts a live selection, and the browser auto-scrolls toward the pointer to extend it. Fighting the slider's own <code>scrollLeft</code> writes every frame (visible as jitter/trembling, plus visible text selection). Fix: <code>preventDefault()</code> is back on <code>pointerdown</code> for mouse (kills selection-drag at the source, same as pre-1.7.0), and the one real side effect. It also suppresses the browser's native focus-on-mousedown. Is repaired by manually restoring focus in <code>endDrag</code> when the press turns out to be a plain click, not a drag. The click event itself was never suppressed by <code>preventDefault</code> (confirmed in 1.7.0's own fix notes), so link/button activation was never at risk. Only focus was. Verified with a real mouse-drag test (Puppeteer, dragging 480px outside the slider): zero text selection, smooth monotonic <code>scrollLeft</code>, no jitter. And a unit test locks in both halves (preventDefault fires, focus restores on a plain click) so this can't quietly regress again.</li>
+</ul>
 
 
 <h3>1.12.0 (2026-08-27)</h3>
@@ -1001,61 +502,31 @@ Fixes a regression from 1.7.0's drag-click fix.
 The last executable items from the review panel's path-to-9, plus launch
 readiness.
 
-<ul><li><b><code>split</code>: SplitText-lite.</b> Word/char spans carrying <code>--sv-order</code></li></ul>
-  (+ <code>--sv-count</code> on the container), aria-label kept, spans aria-hidden,
-  fully restorable. Zero-wrapper: <code>data-sv-split</code> / <code>data-sv-split="char"</code>.
-  React: <code>&lt;Split></code> renders the spans <b>on the server</b>. No client-side
-  splitting, no layout shift, no hydration flash. New presets <code>sv-split</code> /
-  <code>sv-split-rise</code>; pairs with <code>sv-reading</code> for scrubbed text. New fx entry
-  + CLI component: <code>split-reveal</code>.
-<ul><li><b>Progressive-enhancement invariants, proven.</b> <code>npm run test:e2e</code></li></ul>
-  (harness): no-JS renders complete, nothing is ever hidden before
-  <code>html.sv-on</code> exists (probed from the first frame), attribute knobs land.
-  All green; wired into CI.
-<ul><li><b>CI</b> (GitHub Actions): build + 21 unit tests + the e2e invariants on</li></ul>
-  every push/PR.
-<ul><li><b>Low-end bench profile</b>: the harness runs the 4× CPU-throttle suite</li></ul>
-  headful (headless Chrome never produces frames under throttle. Found
-  the hard way) and publishes <code>results/throttled-4x.json</code> + a table on
-  /bench/.
-<ul><li><b>Launch assets</b>: og:image social card on every page, README hero GIF</li></ul>
-  (generated by <code>harness/make-gif.mjs</code> from a real scroll), and
-  <code>article/launch-kit.md</code>, Show HN, thread, newsletter pitch, ready to
-  fire on publish day.
-<ul><li><code>ScrollVarsBoot</code> mounts the debug overlay on <code>?sv-debug</code> (code-split;</li></ul>
-  free otherwise). Release tags v1.7.0–v1.11.1 pushed.
+<ul>
+<li><b><code>split</code>: SplitText-lite.</b> Word/char spans carrying <code>--sv-order</code> (+ <code>--sv-count</code> on the container), aria-label kept, spans aria-hidden, fully restorable. Zero-wrapper: <code>data-sv-split</code> / <code>data-sv-split="char"</code>. React: <code>&lt;Split></code> renders the spans <b>on the server</b>. No client-side splitting, no layout shift, no hydration flash. New presets <code>sv-split</code> / <code>sv-split-rise</code>; pairs with <code>sv-reading</code> for scrubbed text. New fx entry + CLI component: <code>split-reveal</code>.</li>
+<li><b>Progressive-enhancement invariants, proven.</b> <code>npm run test:e2e</code> (harness): no-JS renders complete, nothing is ever hidden before <code>html.sv-on</code> exists (probed from the first frame), attribute knobs land. All green; wired into CI.</li>
+<li><b>CI</b> (GitHub Actions): build + 21 unit tests + the e2e invariants on every push/PR.</li>
+<li><b>Low-end bench profile</b>: the harness runs the 4× CPU-throttle suite headful (headless Chrome never produces frames under throttle. Found the hard way) and publishes <code>results/throttled-4x.json</code> + a table on /bench/.</li>
+<li><b>Launch assets</b>: og:image social card on every page, README hero GIF (generated by <code>harness/make-gif.mjs</code> from a real scroll), and <code>article/launch-kit.md</code>, Show HN, thread, newsletter pitch, ready to fire on publish day.</li>
+<li><code>ScrollVarsBoot</code> mounts the debug overlay on <code>?sv-debug</code> (code-split; free otherwise). Release tags v1.7.0–v1.11.1 pushed.</li>
+</ul>
 
 
 <h3>1.11.1 (2026-08-27)</h3>
 
-<ul><li><b><code>sv-words</code> aligns to the text baseline at any host line-height.</b> The</li></ul>
-  preset used <code>vertical-align: bottom</code>, which only lined up when the host
-  line-height was ~1.15. Inside a loose-leading heading the rotating word
-  sat visibly low. Now <code>vertical-align: baseline</code>: an inline flex container
-  exports its first item's baseline, so the rotator self-aligns by
-  construction (all words share the same metrics, so every word lands on
-  it).
-<ul><li>Demo: the pizzeria wheel is height-driven. Px caps removed (58vh/46vw),</li></ul>
-  and on vertical screens (<code>max-aspect-ratio: 1/1</code>) the height rules
-  (52vh radius, 48vh slices) so the wheel keeps ~60vh of presence instead
-  of shrinking with the width.
+<ul>
+<li><b><code>sv-words</code> aligns to the text baseline at any host line-height.</b> The preset used <code>vertical-align: bottom</code>, which only lined up when the host line-height was ~1.15. Inside a loose-leading heading the rotating word sat visibly low. Now <code>vertical-align: baseline</code>: an inline flex container exports its first item's baseline, so the rotator self-aligns by construction (all words share the same metrics, so every word lands on it).</li>
+<li>Demo: the pizzeria wheel is height-driven. Px caps removed (58vh/46vw), and on vertical screens (<code>max-aspect-ratio: 1/1</code>) the height rules (52vh radius, 48vh slices) so the wheel keeps ~60vh of presence instead of shrinking with the width.</li>
+</ul>
 
 
 <h3>1.11.0 (2026-08-27)</h3>
 
-<ul><li><b>Attribute knobs: the style attribute is now optional everywhere.</b></li></ul>
-  <code>data-sv-order</code>, <code>data-sv-distance</code>, <code>data-sv-from</code>, <code>data-sv-to</code> become
-  the matching CSS variables, written once on mount by <code>scan()</code> (and for
-  route-change nodes via the existing MutationObserver). Never in the
-  frame loop, zero global CSS, safe for mapped CMS content where Tailwind's
-  JIT can't interpolate classes. When typed CSS <code>attr()</code> settles, this
-  mapping becomes pure CSS.
-<ul><li>Docs: "One knob, four ways" before/after table (style attr vs attribute</li></ul>
-  vs React prop vs arbitrary class vs sv-stagger) and a Browser support
-  section on /docs/. The full matrix plus the <code>scrollvars/compat</code> legacy
-  answer (previously README-only).
-<ul><li>fx: staggered-reveal and sequenced-scrub teach the attribute path in</li></ul>
-  their Tailwind tabs; the sequenced-scrub preview dogfoods it.
+<ul>
+<li><b>Attribute knobs: the style attribute is now optional everywhere.</b> <code>data-sv-order</code>, <code>data-sv-distance</code>, <code>data-sv-from</code>, <code>data-sv-to</code> become the matching CSS variables, written once on mount by <code>scan()</code> (and for route-change nodes via the existing MutationObserver). Never in the frame loop, zero global CSS, safe for mapped CMS content where Tailwind's JIT can't interpolate classes. When typed CSS <code>attr()</code> settles, this mapping becomes pure CSS.</li>
+<li>Docs: "One knob, four ways" before/after table (style attr vs attribute vs React prop vs arbitrary class vs sv-stagger) and a Browser support section on /docs/. The full matrix plus the <code>scrollvars/compat</code> legacy answer (previously README-only).</li>
+<li>fx: staggered-reveal and sequenced-scrub teach the attribute path in their Tailwind tabs; the sequenced-scrub preview dogfoods it.</li>
+</ul>
 
 
 <h3>1.10.0 (2026-08-27)</h3>
@@ -1063,17 +534,11 @@ readiness.
 "Hitting the ceiling never means rewriting". Interop as official recipes,
 not adapter modules (no new dependencies, the scope boundary stays).
 
-<ul><li><b>Canvas harness works for WebGL/Three</b>: <code>mountEffect(canvas, { context:</li></ul>
-  null })</code> grabs no 2D context. Your renderer owns the canvas, the harness
-  keeps the lifecycle (DPR cap, resize, pause offscreen/hidden, delta-time,
-  reduced-motion, cleanup). <code>EffectFrame</code> gains <code>canvas</code>; <code>ctx</code> is null in
-  that mode. <code>useCanvasEffect</code> forwards the option.
-<ul><li><b>Two Interop fx recipes</b> (new gallery category): <code>gsap-scrub</code>: author a</li></ul>
-  GSAP timeline, scrub it via <code>onPin</code> (one listener, one writer; with the
-  honest per-page bundle note) (and <code>three-scene</code>) a Three.js torus-knot
-  scrubbed by the pin on the harness. Both ship CLI components
-  (<code>npx scrollvars add gsap-scrub|three-scene</code>).
-<ul><li>Docs interop section links both recipes; AGENTS/llms carry the pattern.</li></ul>
+<ul>
+<li><b>Canvas harness works for WebGL/Three</b>: <code>mountEffect(canvas, { context: null })</code> grabs no 2D context. Your renderer owns the canvas, the harness keeps the lifecycle (DPR cap, resize, pause offscreen/hidden, delta-time, reduced-motion, cleanup). <code>EffectFrame</code> gains <code>canvas</code>; <code>ctx</code> is null in that mode. <code>useCanvasEffect</code> forwards the option.</li>
+<li><b>Two Interop fx recipes</b> (new gallery category): <code>gsap-scrub</code>: author a GSAP timeline, scrub it via <code>onPin</code> (one listener, one writer; with the honest per-page bundle note) (and <code>three-scene</code>) a Three.js torus-knot scrubbed by the pin on the harness. Both ship CLI components (<code>npx scrollvars add gsap-scrub|three-scene</code>).</li>
+<li>Docs interop section links both recipes; AGENTS/llms carry the pattern.</li>
+</ul>
 
 
 <h3>1.9.0 (2026-08-26)</h3>
@@ -1081,25 +546,12 @@ not adapter modules (no new dependencies, the scope boundary stays).
 Driven by the third blind-review round (Kimi K3 moved 7 → 8; the remaining
 criticisms became this release).
 
-<ul><li><b>Offscreen culling.</b> Entries far outside a one-viewport margin skip the</li></ul>
-  per-frame <code>getBoundingClientRect</code> (IntersectionObserver-gated; entries
-  with a custom <code>root</code> and <code>once</code>-completed entries are handled; tested).
-  Long pages stop paying for sections nowhere near the screen. And the
-  main bench scenario's total CPU flipped in scrollvars' favor with it.
-<ul><li><b><code>scrollvars/debug</code></b>: the devtools story: a dev overlay listing every</li></ul>
-  tracked element with live variable values, live badge, tracked-element
-  outlines and click-to-scroll. <code>import('scrollvars/debug').then(m => m.debug())</code>.
-<ul><li><b>Honest numbers, mechanically enforced.</b> The demo footer version and</li></ul>
-  wire sizes are stamped at build time from the actual dist (esbuild+gzip);
-  fx pages compute the engine size from the real bundle; every stale
-  1.2/3.1 KB claim corrected to measured values (driver 1.4 KB gz, full
-  core 3.9, slider 1.7, core.css 1.8). The demo page's inline driver is
-  labeled as that page's teaching copy. The package in dist/ is the
-  source of truth.
-<ul><li><b>Benchmark: medians of 5 runs</b> (was 3) and a precisely-stated headline</li></ul>
-  claim: not faster frames: the same frames for ~12× less bundle and a
-  fraction of the heap, with total CPU trading blows (scrollvars wins
-  shallow scenarios, batched GSAP wins deep subtrees; both published).
+<ul>
+<li><b>Offscreen culling.</b> Entries far outside a one-viewport margin skip the per-frame <code>getBoundingClientRect</code> (IntersectionObserver-gated; entries with a custom <code>root</code> and <code>once</code>-completed entries are handled; tested). Long pages stop paying for sections nowhere near the screen. And the main bench scenario's total CPU flipped in scrollvars' favor with it.</li>
+<li><b><code>scrollvars/debug</code></b>: the devtools story: a dev overlay listing every tracked element with live variable values, live badge, tracked-element outlines and click-to-scroll. <code>import('scrollvars/debug').then(m => m.debug())</code>.</li>
+<li><b>Honest numbers, mechanically enforced.</b> The demo footer version and wire sizes are stamped at build time from the actual dist (esbuild+gzip); fx pages compute the engine size from the real bundle; every stale 1.2/3.1 KB claim corrected to measured values (driver 1.4 KB gz, full core 3.9, slider 1.7, core.css 1.8). The demo page's inline driver is labeled as that page's teaching copy. The package in dist/ is the source of truth.</li>
+<li><b>Benchmark: medians of 5 runs</b> (was 3) and a precisely-stated headline claim: not faster frames: the same frames for ~12× less bundle and a fraction of the heap, with total CPU trading blows (scrollvars wins shallow scenarios, batched GSAP wins deep subtrees; both published).</li>
+</ul>
 
 
 <h3>1.8.0 (2026-08-25)</h3>
@@ -1107,42 +559,15 @@ criticisms became this release).
 The "path to 8" release. Everything the external review panel said would
 move the score, minus the parts only the real world can provide.
 
-<ul><li><b><code>sv-range</code>: sequenced scrub choreography without a timeline.</b> Each</li></ul>
-  child of <code>.sv-range</code> derives <code>--sv-r</code> (0..1) from its <code>--sv-from</code>/<code>--sv-to</code>
-  slice of the parent clock (<code>--sv-pin</code>, else <code>--sv-t</code>); <code>sv-range-rise</code> is
-  the ready-made flavor; <code>mapRange(t, from, to, ease?)</code> is the JS twin for
-  <code>onPin</code>/<code>onTravel</code> consumers. Reduced motion settles ranges at the end
-  state. New fx entry + CLI component: <code>sequenced-scrub</code>.
-<ul><li><b>Custom root scroller + configurable live band.</b> <code>track(el, { root })</code></li></ul>
-  measures against an inner scroll container (root rects read once per root
-  per frame, still strictly read-then-write); <code>enter</code>/<code>exit</code> options: also
-  <code>data-sv-enter</code>/<code>data-sv-exit</code> and <code>&lt;Track></code> props. Replace the
-  hard-coded 75%/25% band.
-<ul><li><b>Reproducible benchmark.</b> <code>demo/bench/harness</code> (puppeteer-core + CDP)</li></ul>
-  reproduces every published number: symmetric pairings both directions
-  (idiomatic AND batched one-trigger-per-section GSAP), medians of N runs,
-  rotated engine order, calibrated CPU throttle, raw JSON committed. The
-  bench page tables regenerate from <code>results/latest.json</code>
-  (<code>scripts/bench-tables.mjs</code>); the inline engine resyncs from dist on
-  every build; the 900-trigger Lighthouse row is labeled a stress test.
-<ul><li><b>The style-recalc curve, published. Including where it loses.</b></li></ul>
-  <code>?deep=N</code> gives every box a realistic subtree; at 50 nodes/box the
-  batched GSAP build wins total CPU. The measured curve and the authoring
-  rule (keep tracked elements thin; static content next to, not inside,
-  animated elements) are on /bench/ and in the docs.
-<ul><li><b>APG carousel contract for <code>&lt;Slider></code>.</b> <code>role=region</code> +</li></ul>
-  <code>aria-roledescription</code> + <code>label</code> prop; per-slide "i of n" annotation in
-  place; visible pause/resume control whenever autoplay is set (<code>.sv-pause</code>,
-  arrow knob family); <code>aria-live</code> off-while-rotating / polite otherwise;
-  <code>renderDot</code> keeps focus indication. Marquee pauses on focus-within.
-<ul><li><b>First React-layer tests</b>: <code>renderToStaticMarkup</code> in plain node (also</li></ul>
-  guards SSR): carousel contract, <code>&lt;Scenes></code> prop hygiene, inert marquee
-  duplicate. react/react-dom join as devDependencies.
-<ul><li><b>Human docs</b> at /docs/: quickstart, the six variables, every export,</li></ul>
-  preset vocabulary, coming-from-GSAP mapping (with the honest "keep GSAP"
-  row), when-NOT-to-use, interop recipe, per-surface accessibility
-  contract, troubleshooting, rendered changelog. Version visible on every
-  gallery page.
+<ul>
+<li><b><code>sv-range</code>: sequenced scrub choreography without a timeline.</b> Each child of <code>.sv-range</code> derives <code>--sv-r</code> (0..1) from its <code>--sv-from</code>/<code>--sv-to</code> slice of the parent clock (<code>--sv-pin</code>, else <code>--sv-t</code>); <code>sv-range-rise</code> is the ready-made flavor; <code>mapRange(t, from, to, ease?)</code> is the JS twin for <code>onPin</code>/<code>onTravel</code> consumers. Reduced motion settles ranges at the end state. New fx entry + CLI component: <code>sequenced-scrub</code>.</li>
+<li><b>Custom root scroller + configurable live band.</b> <code>track(el, { root })</code> measures against an inner scroll container (root rects read once per root per frame, still strictly read-then-write); <code>enter</code>/<code>exit</code> options: also <code>data-sv-enter</code>/<code>data-sv-exit</code> and <code>&lt;Track></code> props. Replace the hard-coded 75%/25% band.</li>
+<li><b>Reproducible benchmark.</b> <code>demo/bench/harness</code> (puppeteer-core + CDP) reproduces every published number: symmetric pairings both directions (idiomatic AND batched one-trigger-per-section GSAP), medians of N runs, rotated engine order, calibrated CPU throttle, raw JSON committed. The bench page tables regenerate from <code>results/latest.json</code> (<code>scripts/bench-tables.mjs</code>); the inline engine resyncs from dist on every build; the 900-trigger Lighthouse row is labeled a stress test.</li>
+<li><b>The style-recalc curve, published. Including where it loses.</b> <code>?deep=N</code> gives every box a realistic subtree; at 50 nodes/box the batched GSAP build wins total CPU. The measured curve and the authoring rule (keep tracked elements thin; static content next to, not inside, animated elements) are on /bench/ and in the docs.</li>
+<li><b>APG carousel contract for <code>&lt;Slider></code>.</b> <code>role=region</code> + <code>aria-roledescription</code> + <code>label</code> prop; per-slide "i of n" annotation in place; visible pause/resume control whenever autoplay is set (<code>.sv-pause</code>, arrow knob family); <code>aria-live</code> off-while-rotating / polite otherwise; <code>renderDot</code> keeps focus indication. Marquee pauses on focus-within.</li>
+<li><b>First React-layer tests</b>: <code>renderToStaticMarkup</code> in plain node (also guards SSR): carousel contract, <code>&lt;Scenes></code> prop hygiene, inert marquee duplicate. react/react-dom join as devDependencies.</li>
+<li><b>Human docs</b> at /docs/: quickstart, the six variables, every export, preset vocabulary, coming-from-GSAP mapping (with the honest "keep GSAP" row), when-NOT-to-use, interop recipe, per-surface accessibility contract, troubleshooting, rendered changelog. Version visible on every gallery page.</li>
+</ul>
 
 
 <h3>1.7.0 (2026-08-25)</h3>
@@ -1153,294 +578,241 @@ found by at least one reviewer and verified before fixing.
 
 <p class="grp">Core driver:</p>
 
-<ul><li><b>Nested scrollers now work</b>: the scroll listener runs in the capture</li></ul>
-  phase, so scrolls inside modals and inner panels reach the driver.
-<ul><li><b>Travel/pin math uses the rendered box</b> (<code>rect.height</code>) instead of</li></ul>
-  <code>scrollHeight</code>. Progress reaches 1 on fixed-height elements with
-  overflowing content.
-<ul><li><b><code>once</code> is fire-and-forget</b>: after going live, entries with no</li></ul>
-  continuous outputs (travel/pin/scenes/callbacks) stop paying the
-  per-frame <code>getBoundingClientRect</code>. <code>--sv-view</code> freezes at its last value.
-<ul><li><code>scan()</code>/<code>toggles()</code> no longer throw during SSR (default params were</li></ul>
-  evaluated before the environment guard).
+<ul>
+<li><b>Nested scrollers now work</b>: the scroll listener runs in the capture phase, so scrolls inside modals and inner panels reach the driver.</li>
+<li><b>Travel/pin math uses the rendered box</b> (<code>rect.height</code>) instead of <code>scrollHeight</code>. Progress reaches 1 on fixed-height elements with overflowing content.</li>
+<li><b><code>once</code> is fire-and-forget</b>: after going live, entries with no continuous outputs (travel/pin/scenes/callbacks) stop paying the per-frame <code>getBoundingClientRect</code>. <code>--sv-view</code> freezes at its last value.</li>
+<li><code>scan()</code>/<code>toggles()</code> no longer throw during SSR (default params were evaluated before the environment guard).</li>
+</ul>
 
 <p class="grp">Slider:</p>
 
-<ul><li><b>RTL support</b>: positions normalize to logical coordinates (0 → range</li></ul>
-  from the content start); arrows mirror; progress/seek/goTo correct under
-  <code>dir="rtl"</code>.
-<ul><li><b>Drag no longer eats clicks</b>: a 5px movement threshold separates clicks</li></ul>
-  from drags (links and inputs inside slides work again, focus included),
-  and the accidental click after a real drag is swallowed.
-<ul><li>Arrow keys typed into inputs inside slides no longer move the carousel.</li>
-<li>A glide interrupted by touch (or with <code>drag: false</code>) no longer leaves</li></ul>
-  native snap suspended forever.
-<ul><li>The scripted glide respects <code>prefers-reduced-motion</code> (jumps instead).</li></ul>
+<ul>
+<li><b>RTL support</b>: positions normalize to logical coordinates (0 → range from the content start); arrows mirror; progress/seek/goTo correct under <code>dir="rtl"</code>.</li>
+<li><b>Drag no longer eats clicks</b>: a 5px movement threshold separates clicks from drags (links and inputs inside slides work again, focus included), and the accidental click after a real drag is swallowed.</li>
+<li>Arrow keys typed into inputs inside slides no longer move the carousel.</li>
+<li>A glide interrupted by touch (or with <code>drag: false</code>) no longer leaves native snap suspended forever.</li>
+<li>The scripted glide respects <code>prefers-reduced-motion</code> (jumps instead).</li>
+</ul>
 
 <p class="grp">React:</p>
 
-<ul><li><b><code>&lt;Slider ref></code> works</b>: the forwarded handle is a stable proxy that</li></ul>
-  delegates at call time (it was permanently <code>null</code>).
-<ul><li><b><code>&lt;Scenes></code> honors its declared props</b>: tracking options reach the</li></ul>
-  driver, <code>onScene</code>/<code>as</code>/VarProps work, and nothing leaks to the DOM.
-<ul><li><code>useSlider</code> forwards <code>onScroll</code> (it was typed but dropped).</li>
-<li>Responsive <code>perView</code> breakpoints emit in ascending order (<code>{xl: 4, md: 2}</code></li></ul>
-  no longer lets <code>md</code> win at desktop widths).
-<ul><li>Autoplay pauses while keyboard focus is inside the slider (WCAG 2.2.2)</li></ul>
-  and reads the last IntersectionObserver record, not the first.
-<ul><li>The Marquee duplicate is <code>inert</code>, so its links aren't tabbable.</li></ul>
+<ul>
+<li><b><code>&lt;Slider ref></code> works</b>: the forwarded handle is a stable proxy that delegates at call time (it was permanently <code>null</code>).</li>
+<li><b><code>&lt;Scenes></code> honors its declared props</b>: tracking options reach the driver, <code>onScene</code>/<code>as</code>/VarProps work, and nothing leaks to the DOM.</li>
+<li><code>useSlider</code> forwards <code>onScroll</code> (it was typed but dropped).</li>
+<li>Responsive <code>perView</code> breakpoints emit in ascending order (<code>{xl: 4, md: 2}</code> no longer lets <code>md</code> win at desktop widths).</li>
+<li>Autoplay pauses while keyboard focus is inside the slider (WCAG 2.2.2) and reads the last IntersectionObserver record, not the first.</li>
+<li>The Marquee duplicate is <code>inert</code>, so its links aren't tabbable.</li>
+</ul>
 
 <p class="grp">Canvas &amp; pointer:</p>
 
-<ul><li>Canvas re-applies its backing size when the monitor's DPR changes.</li>
+<ul>
+<li>Canvas re-applies its backing size when the monitor's DPR changes.</li>
 <li>Pointer tilt can't get stuck by a leave racing the queued rAF.</li>
-<li>Legacy-guard consistency: the canvas module uses the same optional</li></ul>
-  <code>matchMedia</code> listener calls as the driver.
+<li>Legacy-guard consistency: the canvas module uses the same optional <code>matchMedia</code> listener calls as the driver.</li>
+</ul>
 
 <p class="grp">Styles &amp; packaging:</p>
 
-<ul><li>Nested tracked sections: a live ancestor no longer reveals entrance</li></ul>
-  children of an inner <code>.sv</code> that hasn't gone live (plain CSS3 selectors).
-<ul><li>Reduced motion on <code>sv-deck</code> lays cards out in flow instead of leaving</li></ul>
-  them stacked in one grid cell.
-<ul><li>The compat drift preset carries an <code>opacity: 1</code> fallback where <code>max()</code></li></ul>
-  doesn't parse (the advertised Chrome 61 floor).
-<ul><li><code>sideEffects</code> glob is <code>**/*.css</code>, <code>styles/*.css</code> imports survive</li></ul>
-  tree-shaking.
-<ul><li><code>engines.node >= 18</code>; <code>pretest</code> builds before testing; <code>prepare</code> builds</li></ul>
-  on git installs (<code>npm i github:aduptive/scrollvars</code> works).
-<ul><li>README: documented stagger default corrected to 90ms (matches the CSS).</li></ul>
+<ul>
+<li>Nested tracked sections: a live ancestor no longer reveals entrance children of an inner <code>.sv</code> that hasn't gone live (plain CSS3 selectors).</li>
+<li>Reduced motion on <code>sv-deck</code> lays cards out in flow instead of leaving them stacked in one grid cell.</li>
+<li>The compat drift preset carries an <code>opacity: 1</code> fallback where <code>max()</code> doesn't parse (the advertised Chrome 61 floor).</li>
+<li><code>sideEffects</code> glob is <code>**/*.css</code>, <code>styles/*.css</code> imports survive tree-shaking.</li>
+<li><code>engines.node >= 18</code>; <code>pretest</code> builds before testing; <code>prepare</code> builds on git installs (<code>npm i github:aduptive/scrollvars</code> works).</li>
+<li>README: documented stagger default corrected to 90ms (matches the CSS).</li>
+</ul>
 
 
 <h3>1.6.0 (2026-08-24)</h3>
 
-<ul><li><b>The fx gallery</b> (/fx/ on the demo site): a growing library of</li></ul>
-  copy-paste effects. Live preview, Tailwind + CSS + React tabs with copy
-  button, knobs documented, per-gallery llms.txt for AI ingestion. Built
-  from one data file (<code>scripts/fx-build.mjs</code>); 8 seed effects.
-<ul><li><b>shadcn-style CLI</b>: <code>npx scrollvars list</code> / <code>npx scrollvars add &lt;slug></li></ul>
-  [--dir] [--force]</code>. Fetches a remote registry (registry.json on the fx
-  site) and writes a complete component file into the project; the library
-  grows without package releases.
+<ul>
+<li><b>The fx gallery</b> (/fx/ on the demo site): a growing library of copy-paste effects. Live preview, Tailwind + CSS + React tabs with copy button, knobs documented, per-gallery llms.txt for AI ingestion. Built from one data file (<code>scripts/fx-build.mjs</code>); 8 seed effects.</li>
+<li><b>shadcn-style CLI</b>: <code>npx scrollvars list</code> / <code>npx scrollvars add &lt;slug> [--dir] [--force]</code>. Fetches a remote registry (registry.json on the fx site) and writes a complete component file into the project; the library grows without package releases.</li>
+</ul>
 
 <h3>1.5.0 (2026-08-24)</h3>
 
-<ul><li><b>React component kit</b>: <code>&lt;Slider></code>/<code>&lt;Slide></code> (the Swiper replacement:</li></ul>
-  <code>perView</code> number or responsive map. Breakpoints ARE media queries; <code>gap</code>,
-  <code>span</code> per slide, arrows/dots chrome on stable classes + var knobs,
-  <code>prevIcon</code>/<code>nextIcon</code>/<code>renderDot</code>, external control via ref exposing the
-  full SliderHandle, <code>autoplay</code> that pauses on hover/offscreen/hidden),
-  <code>&lt;Marquee></code> (infinite strip, the honest answer to Swiper loop),
-  <code>&lt;Accordion></code> (native details + interpolate-size animation, exclusive
-  groups via name), <code>&lt;Modal></code> (native dialog + sv-pop).
-<ul><li>CSS: <code>sv-cols</code> column sizing (<code>--sv-per-view</code>, fractional = peek;</li></ul>
-  <code>--sv-span</code> per slide), slider chrome, <code>styles/ui.css</code> (marquee,
-  accordion). <code>useSlider</code> now returns the handle and accepts
-  duration/axis.
+<ul>
+<li><b>React component kit</b>: <code>&lt;Slider></code>/<code>&lt;Slide></code> (the Swiper replacement: <code>perView</code> number or responsive map. Breakpoints ARE media queries; <code>gap</code>, <code>span</code> per slide, arrows/dots chrome on stable classes + var knobs, <code>prevIcon</code>/<code>nextIcon</code>/<code>renderDot</code>, external control via ref exposing the full SliderHandle, <code>autoplay</code> that pauses on hover/offscreen/hidden), <code>&lt;Marquee></code> (infinite strip, the honest answer to Swiper loop), <code>&lt;Accordion></code> (native details + interpolate-size animation, exclusive groups via name), <code>&lt;Modal></code> (native dialog + sv-pop).</li>
+<li>CSS: <code>sv-cols</code> column sizing (<code>--sv-per-view</code>, fractional = peek; <code>--sv-span</code> per slide), slider chrome, <code>styles/ui.css</code> (marquee, accordion). <code>useSlider</code> now returns the handle and accepts duration/axis.</li>
+</ul>
 
 <h3>1.4.0 (2026-08-24)</h3>
 
-<ul><li><b><code>sv-spread</code></b>: the deck-to-grid pattern: children live in their final</li></ul>
-  flex row and a per-card translate collapses them onto the center (slight
-  fan) while <code>--sv-spread</code> is 0. Two clocks: <code>.sv-spread-in</code> plays on
-  arrival (sv-live + transition + stagger, re-deals on re-entry), or map
-  the variable from <code>--sv-t</code>/<code>--sv-pin</code> to scrub it. Demo case 18, zero
-  bespoke JS.
+<ul>
+<li><b><code>sv-spread</code></b>: the deck-to-grid pattern: children live in their final flex row and a per-card translate collapses them onto the center (slight fan) while <code>--sv-spread</code> is 0. Two clocks: <code>.sv-spread-in</code> plays on arrival (sv-live + transition + stagger, re-deals on re-entry), or map the variable from <code>--sv-t</code>/<code>--sv-pin</code> to scrub it. Demo case 18, zero bespoke JS.</li>
+</ul>
 
 <h3>1.3.0 (2026-08-24)</h3>
 
-<ul><li><b><code>sv-acts</code>: multi-act timelines in pure CSS</b>: a registered custom</li></ul>
-  property (<code>--sv-act</code>) transitions 0 → N when <code>sv-open</code> (click) or
-  <code>sv-live</code> (scroll) arrives; acts are the same <code>clamp()</code> slices as the
-  scroll scenes. One idiom for every timeline. Relative retiming
-  (<code>--sv-acts-duration</code> rescales all acts), reversible and interruptible
-  by construction. Older browsers snap to the finished state.
+<ul>
+<li><b><code>sv-acts</code>: multi-act timelines in pure CSS</b>: a registered custom property (<code>--sv-act</code>) transitions 0 → N when <code>sv-open</code> (click) or <code>sv-live</code> (scroll) arrives; acts are the same <code>clamp()</code> slices as the scroll scenes. One idiom for every timeline. Relative retiming (<code>--sv-acts-duration</code> rescales all acts), reversible and interruptible by construction. Older browsers snap to the finished state.</li>
+</ul>
 
 <h3>1.2.0 (2026-08-24)</h3>
 
-<ul><li><b>Click states: the third input</b>: <code>toggles()</code> (wired by ScrollVarsBoot):</li></ul>
+<ul>
+<li><b>Click states: the third input</b>: <code>toggles()</code> (wired by ScrollVarsBoot):</li>
+</ul>
 <code>data-sv-toggle</code>/<code>data-sv-target</code> flip a class, write <code>--sv-state</code> and keep
   <code>aria-expanded</code> in sync. Deliberately one click = one state change; no
   timeline engine.
-<ul><li><b>Presets</b> (<code>styles/state.css</code>): <code>sv-pop</code>: popover/dialog/panel entry-exit</li></ul>
-  via <code>@starting-style</code> + <code>allow-discrete</code>; <code>sv-words</code>: rotating words
-  (clipped column, <code>--sv-word: n</code>), promoted from the pizza demo.
+<ul>
+<li><b>Presets</b> (<code>styles/state.css</code>): <code>sv-pop</code>: popover/dialog/panel entry-exit via <code>@starting-style</code> + <code>allow-discrete</code>; <code>sv-words</code>: rotating words (clipped column, <code>--sv-word: n</code>), promoted from the pizza demo.</li>
+</ul>
 
 <h3>1.1.0 (2026-08-23)</h3>
 
-<ul><li><b>Modular stylesheets</b>: <code>scrollvars/styles/core.css</code> (1.2 KB gz.</li></ul>
+<ul>
+<li><b>Modular stylesheets</b>: <code>scrollvars/styles/core.css</code> (1.2 KB gz.</li>
+</ul>
 Entrances, stagger, drift, native view()-tier), <code>pin.css</code> (1.3 KB),
   <code>slider.css</code> (0.4 KB), <code>tilt.css</code> (0.5 KB). <code>styles.css</code> remains as the
   generated aggregate (scripts/build-styles.mjs). Fully backwards
   compatible, selector set verified identical.
-<ul><li>README "Pay for what you use": measured per-import JS costs: a typical</li></ul>
-  reveal page ships ~2.2 KB gzipped total (track + core.css).
+<ul>
+<li>README "Pay for what you use": measured per-import JS costs: a typical reveal page ships ~2.2 KB gzipped total (track + core.css).</li>
+</ul>
 
 <h3>1.0.0 (2026-08-21)</h3>
 
-<ul><li><b>API freeze.</b> The 0.x surface ships as-is: driver (<code>track</code>, <code>scan</code>,</li></ul>
-  <code>slider</code>, <code>trackPointer</code>, <code>scrollToScene</code>, <code>refresh</code>), React layer
-  (<code>Track/Reveal/Parallax/Scenes/Item</code>, <code>ScrollVarsBoot</code>, hooks, VarProps
-  attribute API), <code>scrollvars/canvas</code>, <code>scrollvars/compat</code>, styles.css presets.
-<ul><li><code>SliderState</code> type now exported from the root.</li>
-<li>Packaging: <code>sideEffects</code> scoped to CSS (bundlers no longer risk</li></ul>
-  tree-shaking the stylesheet import), repository/homepage/bugs metadata,
-  <code>prepublishOnly</code> runs build + tests. README gains a Defaults table.
-<ul><li>Demo tooling: <code>npm run demo:sync</code> / <code>demo:deploy</code> (dist-inline sync with</li></ul>
-  parse checks; deploy re-points the alias and verifies). Driver core test
-  suite added, 9 test files green.
+<ul>
+<li><b>API freeze.</b> The 0.x surface ships as-is: driver (<code>track</code>, <code>scan</code>, <code>slider</code>, <code>trackPointer</code>, <code>scrollToScene</code>, <code>refresh</code>), React layer (<code>Track/Reveal/Parallax/Scenes/Item</code>, <code>ScrollVarsBoot</code>, hooks, VarProps attribute API), <code>scrollvars/canvas</code>, <code>scrollvars/compat</code>, styles.css presets.</li>
+<li><code>SliderState</code> type now exported from the root.</li>
+<li>Packaging: <code>sideEffects</code> scoped to CSS (bundlers no longer risk tree-shaking the stylesheet import), repository/homepage/bugs metadata, <code>prepublishOnly</code> runs build + tests. README gains a Defaults table.</li>
+<li>Demo tooling: <code>npm run demo:sync</code> / <code>demo:deploy</code> (dist-inline sync with parse checks; deploy re-points the alias and verifies). Driver core test suite added, 9 test files green.</li>
+</ul>
 
 <h3>0.12.0 (2026-08-20)</h3>
 
-<ul><li><b><code>scrollvars/compat</code></b>: opt-in legacy module: ResizeObserver stub</li></ul>
-  (viewport-resize backed), always-visible IntersectionObserver stub, and a
-  <code>transform:</code>-based preset fallback stylesheet (no <code>:is()</code>/<code>clamp()</code>/
-  <code>min()</code>). Free on modern browsers (feature-checks and exits). With the
-  consumer bundler downleveling ES2020, the animated floor extends to
-  ~Chrome 61 / Firefox 60 / Safari 11.
+<ul>
+<li><b><code>scrollvars/compat</code></b>: opt-in legacy module: ResizeObserver stub (viewport-resize backed), always-visible IntersectionObserver stub, and a <code>transform:</code>-based preset fallback stylesheet (no <code>:is()</code>/<code>clamp()</code>/ <code>min()</code>). Free on modern browsers (feature-checks and exits). With the consumer bundler downleveling ES2020, the animated floor extends to ~Chrome 61 / Firefox 60 / Safari 11.</li>
+</ul>
 
 <h3>0.11.4 (2026-08-20)</h3>
 
-<ul><li>Keyboard navigation glides: arrow keys (axis-aware), Home and End go</li></ul>
-  through the same soft glide instead of native 40px key-scroll steps +
-  hard snap settle. Containers are made focusable (<code>tabindex=0</code>) so this
-  works in Safari too.
+<ul>
+<li>Keyboard navigation glides: arrow keys (axis-aware), Home and End go through the same soft glide instead of native 40px key-scroll steps + hard snap settle. Containers are made focusable (<code>tabindex=0</code>) so this works in Safari too.</li>
+</ul>
 
 <h3>0.11.3 (2026-08-20)</h3>
 
-<ul><li>Mouse drag: <code>preventDefault()</code> on pointerdown: native text selection was</li></ul>
-  starting under the drag, and selection auto-scroll inside the scrollable
-  container fought the gesture (the opposite-direction tug). Note: mousedown
-  no longer focuses elements inside slides; irrelevant for carousels.
+<ul>
+<li>Mouse drag: <code>preventDefault()</code> on pointerdown: native text selection was starting under the drag, and selection auto-scroll inside the scrollable container fought the gesture (the opposite-direction tug). Note: mousedown no longer focuses elements inside slides; irrelevant for carousels.</li>
+</ul>
 
 <h3>0.11.2 (2026-08-20)</h3>
 
-<ul><li>Wheel-assist only reacts when the gesture's dominant axis matches the</li></ul>
-  slider's axis: vertical page scrolling over the carousel (trackpad
-  gestures are always slightly diagonal) was triggering mid-gesture
-  <code>goTo(nearest)</code> and made multi-slide travel feel impossible. Quiet
-  window 160 → 200ms.
+<ul>
+<li>Wheel-assist only reacts when the gesture's dominant axis matches the slider's axis: vertical page scrolling over the carousel (trackpad gestures are always slightly diagonal) was triggering mid-gesture <code>goTo(nearest)</code> and made multi-slide travel feel impossible. Quiet window 160 → 200ms.</li>
+</ul>
 
 <h3>0.11.1 (2026-08-20)</h3>
 
-<ul><li>Mouse drag survives leaving the container: move/up listeners live on</li></ul>
-  <code>window</code> while dragging (pointer capture on scrollable containers is
-  unreliable). Release happens on the real pointerup, anywhere on the page.
+<ul>
+<li>Mouse drag survives leaving the container: move/up listeners live on <code>window</code> while dragging (pointer capture on scrollable containers is unreliable). Release happens on the real pointerup, anywhere on the page.</li>
+</ul>
 
 <h3>0.11.0 (2026-08-20)</h3>
 
-<ul><li><b>Slider state &amp; chaining</b>: <code>state()</code> and <code>onScroll(state)</code> expose</li></ul>
-  active/count/position (continuous)/progress/dragging/gliding; container
-  gets <code>--sv-progress</code>; new <code>seek(progress)</code> for followers: two sliders
-  chain in one line (Swiper controller/thumbs, unidirectional).
-<ul><li><b><code>axis: 'y'</code></b>: vertical sliders (<code>.sv-slider-y</code>), same API.</li>
-<li>Size reference measured: this module 3.1 KB min / 1.4 KB gzip vs Swiper 11</li></ul>
-  bundle 151 KB min / 42 KB gzip (+18 KB CSS).
+<ul>
+<li><b>Slider state &amp; chaining</b>: <code>state()</code> and <code>onScroll(state)</code> expose active/count/position (continuous)/progress/dragging/gliding; container gets <code>--sv-progress</code>; new <code>seek(progress)</code> for followers: two sliders chain in one line (Swiper controller/thumbs, unidirectional).</li>
+<li><b><code>axis: 'y'</code></b>: vertical sliders (<code>.sv-slider-y</code>), same API.</li>
+<li>Size reference measured: this module 3.1 KB min / 1.4 KB gzip vs Swiper 11 bundle 151 KB min / 42 KB gzip (+18 KB CSS).</li>
+</ul>
 
 <h3>0.10.3 (2026-08-20)</h3>
 
-<ul><li>Glide is now an exponential lerp (velocity ∝ remaining distance) instead of</li></ul>
-  a fixed-duration tween: short drag-release settles feel as soft as long
-  button glides. The tween front-loaded short distances and read as a dry
-  snap. Retargets stay continuous. <code>duration</code> calibrates the settle time.
+<ul>
+<li>Glide is now an exponential lerp (velocity ∝ remaining distance) instead of a fixed-duration tween: short drag-release settles feel as soft as long button glides. The tween front-loaded short distances and read as a dry snap. Retargets stay continuous. <code>duration</code> calibrates the settle time.</li>
+</ul>
 
 <h3>0.10.2 (2026-08-20)</h3>
 
-<ul><li>Rapid <code>next()</code>/<code>prev()</code> clicks accumulate: relative steps count from the</li></ul>
-  in-flight glide destination (pending target), not from the lagging active
-  index. Five fast clicks land five slides ahead.
+<ul>
+<li>Rapid <code>next()</code>/<code>prev()</code> clicks accumulate: relative steps count from the in-flight glide destination (pending target), not from the lagging active index. Five fast clicks land five slides ahead.</li>
+</ul>
 
 <h3>0.10.1 (2026-08-20)</h3>
 
-<ul><li>Drag release and trackpad pan now glide too: snap is suspended via inline</li></ul>
-  style for the whole interaction (authored inline value preserved), and a
-  wheel-quiet debounce replaces the native fast settle with the slow glide.
-  Skipped on instances authored with <code>scroll-snap-type: none</code>.
-<ul><li>Grab cursor only on draggable instances (<code>sv-draggable</code>), <code>drag: false</code></li></ul>
-  sliders no longer advertise a hand they can't honor.
+<ul>
+<li>Drag release and trackpad pan now glide too: snap is suspended via inline style for the whole interaction (authored inline value preserved), and a wheel-quiet debounce replaces the native fast settle with the slow glide. Skipped on instances authored with <code>scroll-snap-type: none</code>.</li>
+<li>Grab cursor only on draggable instances (<code>sv-draggable</code>), <code>drag: false</code> sliders no longer advertise a hand they can't honor.</li>
+</ul>
 
 <h3>0.10.0 (2026-08-20)</h3>
 
-<ul><li><b>Slider glide</b>: own eased scrollLeft animation (ease-out) with a</li></ul>
-  configurable <code>duration</code> for next/prev/goTo AND the drag release. Native
-  smooth scrolling is fast and not configurable. Snap suspends while gliding
-  (<code>sv-gliding</code>); pointerdown cancels the glide (the user takes over).
+<ul>
+<li><b>Slider glide</b>: own eased scrollLeft animation (ease-out) with a configurable <code>duration</code> for next/prev/goTo AND the drag release. Native smooth scrolling is fast and not configurable. Snap suspends while gliding (<code>sv-gliding</code>); pointerdown cancels the glide (the user takes over).</li>
+</ul>
 
 <h3>0.9.0 (2026-08-20)</h3>
 
-<ul><li><b><code>slider()</code> / <code>useSlider</code></b>: featherweight Swiper: native scroll +</li></ul>
-  scroll-snap, mouse drag, active-slide observer as <code>--sd</code> per slide (signed
-  distance from center) + <code>.sv-active</code>, <code>next/prev/goTo</code>. <code>.sv-slider</code> CSS
-  in styles.css.
-<ul><li>Demo case 10/11: regional scroll-snap (onLive toggles the magnet) and the</li></ul>
-  four snap flavors. Case 12: the treasure map: scroll drives a camera along
-  an SVG path with heading + counter-rotating stations.
+<ul>
+<li><b><code>slider()</code> / <code>useSlider</code></b>: featherweight Swiper: native scroll + scroll-snap, mouse drag, active-slide observer as <code>--sd</code> per slide (signed distance from center) + <code>.sv-active</code>, <code>next/prev/goTo</code>. <code>.sv-slider</code> CSS in styles.css.</li>
+<li>Demo case 10/11: regional scroll-snap (onLive toggles the magnet) and the four snap flavors. Case 12: the treasure map: scroll drives a camera along an SVG path with heading + counter-rotating stations.</li>
+</ul>
 
 <h3>0.8.0 (2026-08-20)</h3>
 
-<ul><li><b><code>onPin</code> callback</b> on TrackOptions and the React layer. Raw 0..1 across</li></ul>
-  the pinned stretch, for frame scrubbing and camera tours. The demo already
-  taught it; now the package has it.
-<ul><li>Demo code samples audited against the current API: <code>--sv-y</code> leftover fixed,</li></ul>
-  deck/reading/counter samples now show the official presets, <code>useScenes</code>
-  misuse replaced by <code>useTrack({ scenes })</code>.
+<ul>
+<li><b><code>onPin</code> callback</b> on TrackOptions and the React layer. Raw 0..1 across the pinned stretch, for frame scrubbing and camera tours. The demo already taught it; now the package has it.</li>
+<li>Demo code samples audited against the current API: <code>--sv-y</code> leftover fixed, deck/reading/counter samples now show the official presets, <code>useScenes</code> misuse replaced by <code>useTrack({ scenes })</code>.</li>
+</ul>
 
 <h3>0.7.0 (2026-08-19)</h3>
 
-<ul><li><b>Zero-wrapper mode</b>: <code>scan()</code> tracks every <code>[data-sv]</code> element (options</li></ul>
-  via <code>data-sv-once/pin/travel/scenes</code>) and follows DOM mutations;
-  <code>&lt;ScrollVarsBoot /></code> wraps it for Next.js layouts. Pages stay 100% RSC.
-<ul><li><b>Presets promoted from the demo</b>: <code>sv-deck</code> (pinned card pile),</li></ul>
-  <code>sv-reading</code> (guided reading), <code>sv-counter</code> (<code>@property</code> + <code>counter()</code>).
-<ul><li>ESM-correct relative imports (<code>.js</code> extensions). Dist now runs in plain</li></ul>
-  Node too, not only through bundlers.
+<ul>
+<li><b>Zero-wrapper mode</b>: <code>scan()</code> tracks every <code>[data-sv]</code> element (options via <code>data-sv-once/pin/travel/scenes</code>) and follows DOM mutations; <code>&lt;ScrollVarsBoot /></code> wraps it for Next.js layouts. Pages stay 100% RSC.</li>
+<li><b>Presets promoted from the demo</b>: <code>sv-deck</code> (pinned card pile), <code>sv-reading</code> (guided reading), <code>sv-counter</code> (<code>@property</code> + <code>counter()</code>).</li>
+<li>ESM-correct relative imports (<code>.js</code> extensions). Dist now runs in plain Node too, not only through bundlers.</li>
+</ul>
 
 <h3>0.6.0 (2026-08-19)</h3>
 
-<ul><li><b><code>--sv-view</code> reformulated</b>: now the signed position relative to the live</li></ul>
-  band. The same 75%/25% lines the <code>sv-live</code> class uses, so the variable and
-  the class always agree. −1 with the top at the viewport's bottom edge,
-  0 across the whole band, +1 once the bottom clears the exit line.
-  Entrance/exit ramps are shorter than before (0.25 vh each); <code>sv-drift</code>
-  reacts a touch snappier near the edges.
-<ul><li><code>LICENSE</code> file and this changelog.</li></ul>
+<ul>
+<li><b><code>--sv-view</code> reformulated</b>: now the signed position relative to the live band. The same 75%/25% lines the <code>sv-live</code> class uses, so the variable and the class always agree. −1 with the top at the viewport's bottom edge, 0 across the whole band, +1 once the bottom clears the exit line. Entrance/exit ramps are shorter than before (0.25 vh each); <code>sv-drift</code> reacts a touch snappier near the edges.</li>
+<li><code>LICENSE</code> file and this changelog.</li>
+</ul>
 
 <h3>0.5.0 (2026-08-19)</h3>
 
-<ul><li><b>Attribute API for React</b> (Felipe's feedback): <code>order</code>, <code>distance</code>,</li></ul>
-  <code>stagger</code>, <code>duration</code>, <code>ease</code> as props on <code>Track</code>/<code>Reveal</code>/<code>Parallax</code>.
+<ul>
+<li><b>Attribute API for React</b> (Felipe's feedback): <code>order</code>, <code>distance</code>, <code>stagger</code>, <code>duration</code>, <code>ease</code> as props on <code>Track</code>/<code>Reveal</code>/<code>Parallax</code>.</li>
+</ul>
 They compile to the CSS variables; new <code>&lt;Item effect="rise|fade|slide-l|
   slide-r|drift|tilt"></code> for children. The variables remain the real API.
-<ul><li><code>sv-rail</code> fixed on wide windows: starts one viewport offscreen right, ends</li></ul>
-  right-edge aligned (<code>min()</code> keeps it moving when the track fits).
+<ul>
+<li><code>sv-rail</code> fixed on wide windows: starts one viewport offscreen right, ends right-edge aligned (<code>min()</code> keeps it moving when the track fits).</li>
+</ul>
 
 <h3>0.4.0 (2026-08-18)</h3>
 
-<ul><li><b><code>scrollvars/canvas</code></b>: <code>mountEffect</code> / <code>useCanvasEffect</code>: lifecycle</li></ul>
-  harness for ambient (time-driven) canvas effects: resize, DPR cap (2),
-  delta-time loop, auto-pause offscreen and on hidden tab, live
-  reduced-motion flag, full cleanup. Simulations stay in userland.
-<ul><li><code>AGENTS.md</code> (agent-facing docs, shipped in the npm package) and</li></ul>
-  <code>test/canvas.test.mjs</code>.
+<ul>
+<li><b><code>scrollvars/canvas</code></b>: <code>mountEffect</code> / <code>useCanvasEffect</code>: lifecycle harness for ambient (time-driven) canvas effects: resize, DPR cap (2), delta-time loop, auto-pause offscreen and on hidden tab, live reduced-motion flag, full cleanup. Simulations stay in userland.</li>
+<li><code>AGENTS.md</code> (agent-facing docs, shipped in the npm package) and <code>test/canvas.test.mjs</code>.</li>
+</ul>
 
 <h3>0.3.0 (2026-08-18)</h3>
 
-<ul><li><b>Pointer module</b>: <code>trackPointer</code> / <code>usePointer</code> write <code>--mx</code>/<code>--my</code></li></ul>
-  (−1..1 from the element's center) with one delegated listener; <code>sv-tilt</code>
-  preset (3D tilt + glare).
+<ul>
+<li><b>Pointer module</b>: <code>trackPointer</code> / <code>usePointer</code> write <code>--mx</code>/<code>--my</code> (−1..1 from the element's center) with one delegated listener; <code>sv-tilt</code> preset (3D tilt + glare).</li>
+</ul>
 
 <h3>0.2.0 (2026-08-17)</h3>
 
-<ul><li>Vocabulary finalized: <code>--sv-view</code>, <code>--sv-t</code>, <code>--sv-pin</code>, <code>--sv-scene</code>,</li></ul>
-  <code>.sv-live</code>, <code>html.sv-on</code> guard. React layer: <code>Track</code>, <code>Reveal</code>, <code>Parallax</code>,
-  <code>Scenes</code>, <code>useTrack</code>, <code>useScenes</code>. Presets incl. <code>sv-curtain-l/r</code>,
-  <code>sv-rail</code>, <code>sv-auto</code> stagger, <code>sv-view-*</code> pure-CSS tier.
+<ul>
+<li>Vocabulary finalized: <code>--sv-view</code>, <code>--sv-t</code>, <code>--sv-pin</code>, <code>--sv-scene</code>, <code>.sv-live</code>, <code>html.sv-on</code> guard. React layer: <code>Track</code>, <code>Reveal</code>, <code>Parallax</code>, <code>Scenes</code>, <code>useTrack</code>, <code>useScenes</code>. Presets incl. <code>sv-curtain-l/r</code>, <code>sv-rail</code>, <code>sv-auto</code> stagger, <code>sv-view-*</code> pure-CSS tier.</li>
+</ul>
 
 <h3>0.1.0 (2026-08-17)</h3>
 
-<ul><li>First cut: single global driver (one passive scroll listener + one rAF,</li></ul>
-  batched read → write), CSS variables as the entire output surface, zero
-  React renders during scroll.
+<ul>
+<li>First cut: single global driver (one passive scroll listener + one rAF, batched read → write), CSS variables as the entire output surface, zero React renders during scroll.</li>
+</ul>
 
 </main>
 </body></html>
