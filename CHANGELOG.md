@@ -1252,6 +1252,25 @@ Docs read against the code merged by the five round-5 code tickets.
   the container itself (`Node.contains()` is true for the node itself), so
   the extra `match !== container` was never needed.
 
+### Testing (round 6, ADU-152 fix pass)
+- The gallery regression guard's own selector match was a false negative:
+  its `\b${cls}\b` boundaries treat a hyphen as a word edge, so a selector
+  reading `.hero` passed as long as ANY sibling class started with
+  `hero-` (`hero-orb`, `hero-inner`), even though no element carries the
+  exact class `hero`. It now splits each `class`/`className` attribute on
+  whitespace and compares tokens exactly, and requires the CSS-side match
+  to not be followed by a further word character or hyphen either. Proved
+  red by mutating `hero-cinematic`'s React selector to `.hero`, proved
+  green again on revert.
+- The same guard now also scans `previewScript`, the field `hero-cinematic`
+  actually renders through in the gallery (the exact path ADU-152 broke in
+  production); it previously scanned only `preview`, `css`, `tailwind` and
+  `react`.
+- `trackPointer()` teardown while the last hovered element IS the
+  self-matched container (the hero's own wiring) is now a locked-in test:
+  the runtime already cleared `--mx`, `--my` and `sv-pointer-leave`
+  correctly there, this closes the coverage gap.
+
 ### Scanner (blind review round 6)
 - `scan()`'s `removeSplit` now bails with the same `scope.contains(el)`
   guard as `remove()`. A retained `[data-sv-split]` node (a batch

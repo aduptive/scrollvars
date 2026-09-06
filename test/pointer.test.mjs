@@ -153,6 +153,31 @@ test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last 
   assert.equal(card.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave')
 })
 
+test('trackPointer teardown clears --mx/--my when the last hovered element IS the container (self-match, ADU-152)', async () => {
+  const rafCb = stubFrame()
+
+  // same self-targeting shape as the hero-cinematic wiring above, but here
+  // the teardown races the pointer still being "over" the container itself,
+  // so `last` and the container are the same node.
+  const container = withListeners(makeEl({ matchSelector: '.sv-hero' }))
+  const child = makeEl({ parent: container })
+
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container, { selector: '.sv-hero' })
+
+  container.fire('pointermove', { target: child, clientX: 75, clientY: 25 })
+  assert.ok(rafCb(), 'a frame was scheduled for the self-match')
+  rafCb()()
+  assert.notEqual(container.vars['--mx'], undefined, 'flushed: container mid-tilt on its own selector')
+
+  // teardown while the container is its own last hovered element
+  stop()
+
+  assert.equal(container.vars['--mx'], undefined, 'teardown clears --mx from the self-matched container')
+  assert.equal(container.vars['--my'], undefined, 'teardown clears --my from the self-matched container')
+  assert.equal(container.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave on the self-matched container')
+})
+
 // gallery regression guard (ADU-152): every explicit `selector: '...'` an
 // effect or installed component passes to trackPointer()/usePointer() must
 // resolve inside its own container, not to something outside it. Each of
@@ -161,12 +186,15 @@ test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last 
 // class appearing anywhere else in the SAME block, as a class attribute or
 // a CSS rule, is proof it targets the container itself or a descendant:
 // there is no ancestor markup described in these strings for it to hit.
+// Scans preview/css/tailwind/react/previewScript on EFFECTS and content on
+// COMPONENTS: previewScript is the exact field hero-cinematic's live-rendered
+// attach script uses (fx-data.mjs), the path that shipped the ADU-152 bug.
 test('gallery: every explicit usePointer/trackPointer selector in fx-data.mjs resolves inside its own container markup', async () => {
   const { EFFECTS, COMPONENTS } = await import('../scripts/fx-data.mjs')
 
   const blocks = []
   for (const effect of EFFECTS) {
-    for (const key of ['preview', 'css', 'tailwind', 'react']) {
+    for (const key of ['preview', 'css', 'tailwind', 'react', 'previewScript']) {
       if (typeof effect[key] === 'string') blocks.push([`EFFECTS.${effect.slug}.${key}`, effect[key]])
     }
   }
@@ -181,8 +209,19 @@ test('gallery: every explicit usePointer/trackPointer selector in fx-data.mjs re
       // strip the option itself first: it is written as '.cls' too, and
       // would otherwise "prove" its own claim
       const rest = text.replace(/selector:\s*'[^']+'/g, '')
-      const inMarkup = new RegExp(`class(?:Name)?=["'][^"']*\\b${cls}\\b`).test(rest)
-      const inCss = new RegExp(`\\.${cls}\\b`).test(rest)
+
+      // exact token match, not a substring: a plain \bcls\b regex reads a
+      // hyphen as a word boundary too, so '.hero' would "resolve" against
+      // class="hero-orb" even though the exact class hero never appears.
+      // Split every class/className attribute value on whitespace and
+      // compare tokens instead.
+      const inMarkup = [...rest.matchAll(/class(?:Name)?=["']([^"']*)["']/g)].some((attr) =>
+        attr[1].split(/\s+/).includes(cls)
+      )
+      // same trap on the CSS side (`.hero-orb` matching a `.hero` selector):
+      // the boundary after cls must also reject a following hyphen.
+      const inCss = new RegExp(`\\.${cls}(?![\\w-])`).test(rest)
+
       checked++
       assert.ok(
         inMarkup || inCss,
