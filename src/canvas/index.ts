@@ -181,21 +181,36 @@
  * cause on its very next entry, so a canvas that would otherwise need one
  * further bounded pass to settle needs none at all.
  *
- * Probing `w0`/`h0` instead of a DPR-scaled write also removes the tenth
- * pass's dpr-dependent cap special case entirely (Finding 2): a `max-width`
- * cap AT OR BELOW the natural size doubles or halves the SAME, never
- * DPR-inflated pair every time, so it reads as CSS-sized, and so is never
- * pinned, at every DPR, not only above 1; a cap ABOVE the natural size
- * still only starts to bind once doubling `w0`/`h0` pushes past it, and
- * pins at the anchor, never an already-inflated write. One narrow
- * limitation remains, inherited from the halving probe's own exactness
- * requirement: a cap strictly BETWEEN half the natural size and the
- * natural size itself can still read as a false follow if it changes AFTER
- * this canvas was already found sized (halving `w0` alone can land inside
- * that exact gap, below the new cap, while `w0` itself stays above it); a
- * cap that starts, or stays, at or below half the natural size, or above
- * the natural size entirely, is unaffected. Documented, not fixed in this
- * pass.
+ * Probing `w0`/`h0` instead of a DPR-scaled write fixes Finding 2's
+ * parity-mismatch inflation outright: a `max-width` cap AT OR BELOW the
+ * natural size doubles or halves the SAME, never DPR-inflated pair every
+ * time, so it reads as CSS-sized at every DPR in that range; a cap ABOVE
+ * the natural size still only starts to bind once doubling `w0`/`h0`
+ * pushes past it, and pins at the anchor, never an already-inflated write.
+ * It does NOT remove the tenth pass's dpr-BELOW-1 case, and should not: at
+ * dpr 1 and above, `round(cap * dpr) >= cap` always, so this harness's own
+ * write never drops the attribute below the cap either, genuinely never
+ * pinned; below dpr 1 the write CAN itself land below the cap, unclamping
+ * it for real, exactly the risk the mount-time probe (on `w0`/`h0`, never
+ * a DPR-scaled value, on purpose) cannot see coming. A SEPARATE escape
+ * check, right after computing each pass's own candidate write (below),
+ * reuses the SAME causal growth check against THAT candidate instead of
+ * `w0`/`h0`, and catches it there: if doubling the candidate itself still
+ * reads capped, nothing escaped, safe to commit as is; if the candidate
+ * now reads as following its own attribute, this canvas is pinned instead,
+ * at the size actually measured THIS pass, before the candidate write.
+ * Unlike the tenth pass, this does not also over-pin at EXACTLY dpr 1
+ * (`round(cap * 1) = cap`, doubling that stays clamped both times, the
+ * narrow "harmless over-pin" boundary case the tenth pass documented): a
+ * genuine improvement, not just a port of the old behavior. One narrow
+ * limitation remains in the mount-time probe specifically, inherited from
+ * its own halving fallback's exactness requirement: a cap strictly
+ * BETWEEN half the natural size and the natural size itself can still
+ * read as a false follow if it changes AFTER this canvas was already
+ * found sized (halving `w0` alone can land inside that exact gap, below
+ * the new cap, while `w0` itself stays above it); a cap that starts, or
+ * stays, at or below half the natural size, or above the natural size
+ * entirely, is unaffected. Documented, not fixed in this pass.
  *
  * When width follows, `applySize()` pins the WIDTH ONLY, forcing
  * `box-sizing: content-box` so an author's border-box declaration cannot
@@ -549,21 +564,24 @@ export function mountEffect(
       }
     }
 
-    // Backing-store write. Once pinned, height is now the CSS engine's own
-    // aspect-ratio derivation, never this harness's attribute ratio, so
-    // width is always the fixed axis from here on. Otherwise `freeAxis`
-    // (from the two single-axis probes above) names which axis is
-    // ratio-derived from the other, if either is: that axis is computed
-    // from the OTHER, just-rounded axis and `ratio0` instead of
-    // independently rounding its own measurement, so its error is bounded
-    // by one rounding unit, never compounding pass over pass, because it
-    // never depends on anything this harness wrote earlier. Neither axis
-    // free (both independently CSS-fixed, or undetermined past
-    // GIANT_CANVAS_LIMIT) rounds both independently, same as every earlier
-    // pass.
+    // Backing-store write. A canvas pinned this pass or earlier has both
+    // axes rounded independently: height is now the CSS engine's own
+    // `aspect-ratio` derivation, exact, never this harness's own rounded
+    // attribute ratio, so there is nothing left to anchor. A canvas still
+    // unpinned uses `freeAxis` (from the two single-axis probes above),
+    // which names the one axis, if either, that is ratio-derived from the
+    // other: that axis is computed from the OTHER, just-rounded axis and
+    // `ratio0` instead of independently rounding its own measurement, so
+    // its error is bounded by one rounding unit, never compounding pass
+    // over pass, because it never depends on anything this harness wrote
+    // earlier. Neither axis free (both independently CSS-fixed, or
+    // undetermined past GIANT_CANVAS_LIMIT) rounds both independently.
     let w: number
     let h: number
-    if (pinned || freeAxis === 'height') {
+    if (pinned) {
+      w = Math.round(size.width * fx.dpr)
+      h = Math.round(size.height * fx.dpr)
+    } else if (freeAxis === 'height') {
       w = Math.round(size.width * fx.dpr)
       h = Math.round(w / ratio0)
     } else if (freeAxis === 'width') {
@@ -573,6 +591,43 @@ export function mountEffect(
       w = Math.round(size.width * fx.dpr)
       h = Math.round(size.height * fx.dpr)
     }
+
+    // Escape check, unpinned canvases only: a `max-width` cap with no CSS
+    // width of its own still binds on THIS canvas's own intrinsic
+    // width/height attribute, and this candidate write, once committed,
+    // becomes that attribute. At a DPR below 1 the candidate can itself
+    // land BELOW the cap and unclamp it, a genuine unbounded shrink this
+    // harness exists to stop, just discovered here instead of by the
+    // mount-time probe (which deliberately checks `w0`/`h0`, never a
+    // DPR-scaled write, so a cap relationship it cannot see change).
+    // Reuses the exact same causal check as that probe (a proportional
+    // GROW, `clientWidth` before and after, immune to border, padding and
+    // transform because they cancel out of the delta), just against this
+    // candidate write instead of `w0`/`h0`: if the candidate is STILL
+    // capped at double its own size, nothing escaped, safe to commit as
+    // is; if it now reads as following its own attribute, the cap already
+    // escaped this candidate, and this canvas is pinned instead, at the
+    // size actually measured THIS pass (before this candidate write), not
+    // the candidate itself.
+    if (!pinned) {
+      canvas.width = w
+      canvas.height = h
+      const baseW = canvas.clientWidth
+      if (2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT) {
+        canvas.width = 2 * w
+        canvas.height = 2 * h
+        const grownW = canvas.clientWidth
+        canvas.width = w
+        canvas.height = h
+        if (grownW !== baseW) {
+          canvas.style.boxSizing = 'content-box'
+          canvas.style.width = `${size.width}px`
+          canvas.style.aspectRatio = `${w0} / ${h0}`
+          pinned = true
+        }
+      }
+    }
+
     canvas.width = w
     canvas.height = h
     lastWriteContent = size

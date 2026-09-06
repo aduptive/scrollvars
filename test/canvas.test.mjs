@@ -593,14 +593,15 @@ test('canvas harness: applySize() uses the entry\'s contentRect, not the canvas\
   global.window.devicePixelRatio = 2
   const { mountEffect } = await import('../dist/canvas/index.js')
 
-  // The canvas's own width/height attribute is 300x150 (ratio0 2); a
-  // manually fed entry (111x222, distinct on both axes) proves
-  // measureLayout() reads the entry directly rather than re-deriving a
-  // size from the canvas itself. This canvas is unsized (no CSS width or
-  // height at all), so it gets pinned at that entry's width (111) with
-  // `aspectRatio` set to the original 300/150: height is then the free
-  // axis, anchored to ratio0 (eleventh pass), not independently rounded
-  // from the entry's own (here synthetic, mismatched-ratio) height.
+  // The canvas's own width/height attribute is 300x150; a manually fed
+  // entry (111x222, distinct on both axes) proves measureLayout() reads
+  // the entry directly rather than re-deriving a size from the canvas
+  // itself. This canvas is unsized (no CSS width or height at all), so it
+  // gets pinned at that entry's width (111) with `aspectRatio` set to the
+  // original 300/150; once pinned, both axes round independently from
+  // what this pass measured (eleventh pass: CSS `aspect-ratio`, not this
+  // harness's own rounding, is what keeps height correct from here on, so
+  // there is nothing left to anchor height to).
   const { style } = makeStyle()
   const canvas = makeCanvas({ width: 300, height: 150, style })
 
@@ -608,7 +609,7 @@ test('canvas harness: applySize() uses the entry\'s contentRect, not the canvas\
 
   env.resize({ width: 111, height: 222 })
   assert.equal(canvas.width, 222) // 111 CSS px * dpr 2, not 600 (300 * 2)
-  assert.equal(canvas.height, 111) // round(222 / ratio0 2), anchored, not 444
+  assert.equal(canvas.height, 444) // 222 CSS px * dpr 2, independent, once pinned
 })
 
 test('canvas harness: a CSS-sized canvas with fractional padding is never pinned, even against a bit-exact entry', async () => {
@@ -981,14 +982,16 @@ test('canvas harness: the proportional probe restores the attribute exactly and 
   assert.equal(canvas.width, 400)
   assert.equal(canvas.height, 200)
   const readsAfterMount = canvas.clientReads
-  // One resize event, six reads total (eleventh pass): a baseline
+  // One resize event, eight reads total (eleventh pass): a baseline
   // clientWidth/clientHeight pair (2), doubling both attributes together
   // shows no follow so the halving tiebreaker also runs (400x200 are both
-  // even, so it is exact, +1 for its own clientWidth read), then the two
+  // even, so it is exact, +1 for its own clientWidth read), the two
   // single-axis probes that decide the free axis (height-alone, +1;
-  // width-alone, +1) each read their own axis once more. Still bounded per
-  // resize event, never per frame.
-  assert.equal(readsAfterMount, 6)
+  // width-alone, +1), and the escape check on the candidate write itself
+  // (a baseline clientWidth, +1, and a doubled one, +1: this canvas stays
+  // CSS-sized at double its own candidate too, so it commits as computed).
+  // Still bounded per resize event, never per frame.
+  assert.equal(readsAfterMount, 8)
 
   env.pump(16)
   env.pump(16)
@@ -1005,7 +1008,7 @@ test('canvas harness: the proportional probe restores the attribute exactly and 
   state.width = '210px'
   state.height = '105px'
   env.resize()
-  assert.equal(canvas.clientReads, readsAfterMount + 6)
+  assert.equal(canvas.clientReads, readsAfterMount + 8)
   assert.equal(canvas.width, 420) // 210 CSS px * dpr 2, still restored correctly
   assert.equal(canvas.height, 210)
 })
@@ -1345,20 +1348,19 @@ test('canvas harness: a max-width:100px canvas whose cap binds already at its na
   assert.equal(canvas.height, 100)
 })
 
-test('canvas harness: a max-width:100px canvas whose cap binds already at its natural size is NEVER pinned, at dpr 0.8 through 1.9 (eleventh pass, anchor design fixes the tenth-pass dpr-dependent over-pin)', async () => {
-  // The tenth pass's probe perturbed the just-written, DPR-scaled backing
-  // store: at dpr 0.8 that write (80) itself dropped below the cap (100),
-  // and at exactly dpr 1 the shrinking half of its probe could not tell
-  // "exactly at the cap" apart from "just above it", so both wrongly
-  // pinned (CHANGELOG.md, tenth pass). The eleventh-pass probe instead
-  // perturbs `w0`/`h0`, the canvas's ORIGINAL, never-yet-scaled attributes
-  // (300x150 here), before this harness ever writes to them: doubling or
-  // halving THOSE can never cross a cap that is already binding at the
-  // natural size, at any DPR, so this canvas is never pinned, at every
-  // DPR this ticket has ever swept, including the parity-mismatch range
-  // (1.2 to 1.9) where the tenth pass's first pass could write an
-  // inflated store a second pass then wrongly probed against.
-  for (const dpr of [0.8, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]) {
+test('canvas harness: a max-width:100px canvas whose cap binds already at its natural size is NEVER pinned at dpr 1 and above, including the parity-mismatch range 1.2 to 1.9 (eleventh pass)', async () => {
+  // The mount-time probe perturbs `w0`/`h0`, the canvas's ORIGINAL,
+  // never-yet-scaled attributes (300x150 here), before this harness ever
+  // writes to them: doubling or halving THOSE can never cross a cap that
+  // is already binding at the natural size, at any DPR, so it alone would
+  // never pin this canvas. At dpr 1 and above, `round(cap * dpr) >= cap`
+  // always, so this harness's own write never drops the attribute below
+  // the cap either, and the escape check below (which DOES watch the
+  // actual write, see the next test) finds nothing to catch: never
+  // pinned, including the parity-mismatch range (1.2 to 1.9) where the
+  // tenth pass's post-write probe timing could write an inflated store a
+  // second pass then wrongly probed against (CHANGELOG.md, tenth pass).
+  for (const dpr of [1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2]) {
     const env = makeEnv()
     global.window.devicePixelRatio = dpr
     const { mountEffect } = await import('../dist/canvas/index.js')
@@ -1375,6 +1377,41 @@ test('canvas harness: a max-width:100px canvas whose cap binds already at its na
 
     env.resize({ width: 100, height: 50 }) // stable: the cap keeps binding
     assert.equal(writes.length, 0, `dpr ${dpr}: still never pinned`)
+    assert.equal(canvas.width, Math.round(100 * dpr))
+    assert.equal(canvas.height, Math.round(50 * dpr))
+  }
+})
+
+test('canvas harness: the same max-width:100px canvas IS pinned below dpr 1, where this harness\'s own write would otherwise drop the attribute below the cap and unclamp it (eleventh pass, escape check)', async () => {
+  // Below dpr 1, `round(cap * dpr) < cap`: this harness's OWN candidate
+  // write (80 at dpr 0.8) would itself become an intrinsic width BELOW
+  // the cap, unclamping it for real (left unpinned, the very next pass
+  // would measure that smaller, unclamped size and shrink further every
+  // pass, the exact unbounded feedback loop this module exists to stop).
+  // The mount-time probe (on `w0`/`h0`, never a DPR-scaled value) cannot
+  // see this coming, on purpose (see the module doc): a SEPARATE escape
+  // check, right after computing this pass's own candidate write, reuses
+  // the same causal growth check against THAT candidate instead, and
+  // catches it. Unlike the tenth pass, this does NOT also over-pin at
+  // exactly dpr 1 (`round(100 * 1) = 100`, still exactly at the cap,
+  // doubling it stays clamped both times): a narrow improvement, not just
+  // a port of the old behavior.
+  for (const dpr of [0.5, 0.8]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 300, height: 150, style, maxWidth: 100 })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    env.resize({ width: 100, height: 50 })
+    assert.equal(canvas.style.width, '100px', `dpr ${dpr}: pinned at the cap's own rendered size`)
+    assert.equal(canvas.width, Math.round(100 * dpr), `dpr ${dpr}: still the crisp backing store`)
+    assert.equal(canvas.height, Math.round(50 * dpr))
+
+    env.resize({ width: 100, height: 50 }) // stable: pinned, never shrinks further
     assert.equal(canvas.width, Math.round(100 * dpr))
     assert.equal(canvas.height, Math.round(50 * dpr))
   }

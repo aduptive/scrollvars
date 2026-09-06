@@ -328,12 +328,22 @@ findings on the same round): three more defects fixed.
   pixels on both axes since the last write, unless the DPR itself changed;
   it absorbs the one small, self-induced residual the free axis's own write
   can still cause on its very next entry. Probing `w0`/`h0` instead of a
-  DPR-scaled write also removes the tenth pass's dpr-dependent cap special
-  case entirely (Finding 2): a `max-width` cap at or below the natural size
-  is never pinned at any DPR now, not only above 1; a cap above the natural
-  size still only starts to bind once doubling `w0`/`h0` pushes past it,
-  and pins at the anchor, never an already-inflated write. One narrow
-  limitation remains, inherited from the halving probe's own exactness
+  DPR-scaled write fixes Finding 2's parity-mismatch inflation outright: a
+  `max-width` cap at or below the natural size doubles or halves the SAME,
+  never DPR-inflated pair every time, so it reads as CSS-sized across that
+  whole range; a cap above the natural size still only starts to bind once
+  doubling `w0`/`h0` pushes past it, and pins at the anchor, never an
+  already-inflated write. It does not remove the tenth pass's dpr-BELOW-1
+  case, and should not: at dpr 1 and above this harness's own write never
+  drops the attribute below the cap, genuinely never pinned; below dpr 1 it
+  can, unclamping the cap for real, a risk the mount-time probe (on
+  `w0`/`h0`, never a DPR-scaled value, on purpose) cannot see coming. A
+  separate escape check, right after computing each pass's own candidate
+  write, reuses the same causal growth check against THAT candidate
+  instead, and catches it there, still never over-pinning at exactly dpr 1
+  the way the tenth pass did (a genuine improvement, not just a port of the
+  old behavior). One narrow limitation remains in the mount-time probe
+  specifically, inherited from its own halving fallback's exactness
   requirement: a cap strictly between half the natural size and the natural
   size itself can still read as a false follow if it changes AFTER this
   canvas was already found sized; documented, not fixed in this pass.
