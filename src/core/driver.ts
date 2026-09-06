@@ -416,6 +416,44 @@ function unobserveIfUnneeded(target: HTMLElement) {
   if (!stillNeeded(target)) resizeObserver?.unobserve(target)
 }
 
+/** Released elements still holding a tracked descendant: they take the marker
+ * as soon as that descendant is released too. */
+const deferredOff = new Set<HTMLElement>()
+
+/** True while `el` itself, or anything inside it, is still tracked. The
+ * released marker is read as `[data-sv-off] X`, which matches through ANY
+ * depth: marking an element settles every preset under it, a still-running
+ * nested tracker's included (nested trackers are a first-class pattern, the
+ * NEAREST tracker owns spread). `:has()` would express it in CSS but is far
+ * above the supported floor, so the driver keeps the marker honest instead. */
+function containsTracked(el: HTMLElement): boolean {
+  for (const other of entries.values()) if (other.el === el || el.contains?.(other.el)) return true
+  return false
+}
+
+/** Mark a released element for the static guards, but only once nothing
+ * tracked is left inside it. Each release also settles the ancestors that
+ * were waiting on it (stopScan() releases outer before inner). */
+function markReleased(el: HTMLElement) {
+  deferredOff.add(el)
+  deferredOff.forEach((waiting) => {
+    if (containsTracked(waiting)) return
+    deferredOff.delete(waiting)
+    waiting.setAttribute('data-sv-off', '')
+  })
+}
+
+/** Drop the released marker off an element AND its ancestors: an ancestor's
+ * marker reaches this element just as well, so a tracker starting under a
+ * released one (stopScan() then a single section re-mounting) would run its
+ * clock with every preset already settled static. */
+function clearReleased(el: HTMLElement) {
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    deferredOff.delete(node)
+    node.removeAttribute?.('data-sv-off')
+  }
+}
+
 /** Undo everything a track() call installed for one entry: written vars,
  * `--sv-scenes`, the pin helper, both observers (respecting shared roots).
  * Shared by the identity-guarded untrack and by track() replacing an
@@ -449,7 +487,7 @@ function releaseEntry(entry: Entry) {
   // `className={'sv ' + className}`), and a released element has no tracker
   // left to put a dropped class back. setAttribute, not toggleAttribute:
   // fallback-reachable code stays inside the supported floor (Safari 11).
-  el.setAttribute('data-sv-off', '')
+  markReleased(el)
 }
 
 /** Track an element. Returns an untrack function. */
@@ -473,7 +511,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // the driver.
   el.style.removeProperty?.('--sv-live')
   el.classList.remove('sv-live')
-  el.removeAttribute('data-sv-off')
+  clearReleased(el)
   const entry: Entry = {
     el,
     opts,

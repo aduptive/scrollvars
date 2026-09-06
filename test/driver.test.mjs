@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 // The driver holds module-level state (entries, initialized vh, listeners),
@@ -44,9 +44,20 @@ function makeElement(height = 400) {
     removeAttribute: (name) => el.attrs.delete(name),
     hasAttribute: (name) => el.attrs.has(name),
     getBoundingClientRect: () => ({ ...el.rect }),
+    // `[data-sv-off] X` matches at any depth, so the driver asks whether a
+    // released element still holds a tracked one. Both sides walk the real
+    // parent chain (a flat boolean would prove nothing): parentElement is
+    // set by nest() below.
+    parentElement: null,
+    contains: (other) => {
+      for (let node = other; node; node = node.parentElement) if (node === el) return true
+      return false
+    },
   }
   return el
 }
+
+const nest = (parent, child) => (child.parentElement = parent)
 
 function place(el, top, height = el.rect.height) {
   el.rect = { top, bottom: top + height, width: 800, height }
@@ -752,7 +763,11 @@ const rulesOf = (css) =>
     body: m[2].replace(/\s+/g, ' ').trim(),
   }))
 const pinCss = readCss('pin.css')
-const guardRules = [...rulesOf(pinCss), ...rulesOf(readCss('core.css'))]
+// every sheet, not the two that happen to carry guards today: a no-JS guard
+// added to a third file needs its released twin just as much
+const guardRules = readdirSync(new URL('../styles/', import.meta.url))
+  .filter((name) => name.endsWith('.css'))
+  .flatMap((name) => rulesOf(readCss(name)))
 const ruleFor = (selector) => guardRules.find((rule) => rule.selectors.includes(selector))
 
 test('driver: releasing an element settles it to its no-JS rendering, and pin.css guards every preset on that', async () => {
@@ -797,6 +812,9 @@ test('driver: releasing an element settles it to its no-JS rendering, and pin.cs
     '[data-sv-off] .sv-counter': '--sv-int: var(--sv-max, 100)',
     '[data-sv-off] .sv-stage': 'position: static',
     '[data-sv-off] .sv-spread > *': 'translate: none', // core.css, the scrub idiom settles overlapping without it
+    // and the same idiom with the tracker ON the spread container, where the
+    // marker lands on the .sv-spread itself and no ancestor carries it
+    '.sv-spread[data-sv-off] > *': 'translate: none',
   }
   for (const [selector, declaration] of Object.entries(settled)) {
     const rule = ruleFor(selector)
@@ -804,14 +822,41 @@ test('driver: releasing an element settles it to its no-JS rendering, and pin.cs
     assert.ok(rule.body.includes(declaration), `\`${selector}\` declares \`${declaration}\`, got \`${rule.body}\``)
   }
 
-  // every no-JS guard needs the released twin, or the CHANGELOG claim ("a
+  // Every no-JS guard needs the released twin, or the CHANGELOG claim ("a
   // released element settles to its no-JS rendering") holds for some presets
-  // and lies about the rest
+  // and lies about the rest. The twin must put `[data-sv-off]` where the guard
+  // puts its TRACKER, so the two match the same elements: on an ancestor when
+  // the guard demands one, and on the target's own head compound when it does
+  // not, since a guard with no ancestor requirement also fires when the tracked
+  // element IS the target (`<div class="sv sv-spread" data-sv data-sv-travel>`,
+  // the documented scrub idiom). Deriving the twin from the selector STRING
+  // gave those guards a descendant-only twin that can never fire for them.
+  const trackerAncestor = /^:is\(\.sv, \[data-sv\]\)\s+/
+  // The one guard that needs no twin, with its reason, so the exemption is a
+  // decision and not an accident: this one only re-derives --sv-act from
+  // --sv-live, and releaseEntry() writes an inline `--sv-live: 1` on the
+  // released element, which lands the same finished value the guard would
+  // (`--sv-act: calc(var(--sv-live) * var(--sv-acts-count, 3))`). The e2e
+  // release block reads the computed --sv-act against the no-JS page.
+  const noTwin = {
+    'html:not(.sv-on) .sv-acts:not(.sv-ui)':
+      'the inline --sv-live: 1 the release writes already lands the finished --sv-act',
+  }
+  for (const selector of Object.keys(noTwin)) {
+    assert.ok(ruleFor(selector), `the twin exemption names \`${selector}\`, which is not a guard in styles/ any more`)
+  }
   for (const rule of guardRules) {
     for (const selector of rule.selectors) {
-      if (!selector.startsWith('html:not(.sv-on)')) continue
-      const target = selector.replace(/^html:not\(\.sv-on\)\s*(:is\(\.sv, \[data-sv\]\)\s*)?/, '')
+      if (!selector.startsWith('html:not(.sv-on)') || noTwin[selector]) continue
+      const rest = selector.slice('html:not(.sv-on)'.length).trim()
+      const target = rest.replace(trackerAncestor, '')
       assert.ok(ruleFor(`[data-sv-off] ${target}`), `\`${selector}\` has its released twin \`[data-sv-off] ${target}\``)
+      if (trackerAncestor.test(rest)) continue
+      const self = target.replace(/^\S+/, (head) => `${head}[data-sv-off]`)
+      assert.ok(
+        ruleFor(self),
+        `\`${selector}\` needs no tracker ancestor, so it fires when the tracked element IS the target: that case needs the \`${self}\` twin too`
+      )
     }
   }
 
@@ -825,6 +870,41 @@ test('driver: releasing an element settles it to its no-JS rendering, and pin.cs
     const withIs = rule.selectors.filter((s) => s.includes(':is('))
     assert.equal(withIs.length, 0, `\`${released[0]}\` shares a rule with \`${withIs[0]}\`, which drops both pre-:is()`)
   }
+})
+
+test('driver: a released ancestor never settles a still-tracked descendant', async () => {
+  const { track } = await import('../dist/core/driver.js?nestedrelease')
+  // nested trackers are a first-class pattern (styles/core.css: the NEAREST
+  // tracker owns spread), and the released marker is read as `[data-sv-off] X`,
+  // which matches through any depth: marking the outer one would settle every
+  // preset under the inner one while its clock is still running.
+  const outer = makeElement(3000)
+  const inner = makeElement(3000)
+  nest(outer, inner)
+  place(outer, -1000)
+  place(inner, -1000)
+  const stopOuter = track(outer, {})
+  const stopInner = track(inner, { pin: true })
+  pump()
+  assert.equal(inner.vars['--sv-pin'], '0.5000', 'the inner clock runs while both are tracked')
+
+  stopOuter()
+  assert.ok(!outer.attrs.has('data-sv-off'), 'a released ancestor stays unmarked while a descendant is still tracked')
+  assert.ok(!inner.attrs.has('data-sv-off'), 'and the descendant is never marked by another entry release')
+  place(inner, -500)
+  pump()
+  assert.equal(inner.vars['--sv-pin'], '0.2500', 'the inner clock keeps running after the outer release')
+
+  stopInner()
+  assert.ok(inner.attrs.has('data-sv-off'), 'releasing the inner tracker marks it')
+  assert.ok(outer.attrs.has('data-sv-off'), 'and the ancestor waiting on it takes its marker then, or its own presets freeze for good')
+
+  // the other order: a marked ancestor must not settle a tracker that starts
+  // under it later (stopScan() then a re-mount of one section)
+  const restart = track(inner, { pin: true })
+  assert.ok(!inner.attrs.has('data-sv-off'), 'tracking takes the marker off the element')
+  assert.ok(!outer.attrs.has('data-sv-off'), 'and off its whole ancestor chain, whose marker reaches it just as well')
+  restart()
 })
 
 test('styles/pin.css: below the individual-transform floor the deck unstacks and the curtains open, with JS on', () => {
