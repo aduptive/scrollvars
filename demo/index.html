@@ -3390,7 +3390,7 @@ var SV = (() => {
     let last = null;
     const matchIn = (target) => {
       const el = target?.closest?.(selector);
-      return el && el !== container && container.contains(el) ? el : null;
+      return el && container.contains(el) ? el : null;
     };
     const flush = () => {
       raf2 = 0;
