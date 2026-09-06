@@ -14,6 +14,33 @@ jobs:
       - run: npm ci
       - run: npm test          # pretest builds the dist first
 
+  # Proves the React layer (and every `npx scrollvars add` fixture) on React
+  # 18 too, not only the React 19 the root installs. `npm run test:react18`
+  # (same script a builder runs locally) does the whole thing:
+  #   - scripts/react18-install.mjs installs react@18, react-dom@18 and
+  #     @types/react@18, @types/react-dom@18 into node_modules/.cache/react18,
+  #     its own package.json, `--no-save`: the root package.json and
+  #     package-lock.json never see React 18 and stay pinned to React 19.
+  #   - scripts/react18-tsc.mjs runs `tsc --noEmit` over src/ with a generated
+  #     tsconfig `paths` entry (TypeScript 7 here has no `baseUrl`) that
+  #     points `react` / `react/jsx-runtime` / `react/jsx-dev-runtime` at that
+  #     install's @types instead of the root's, plus a canary assertion that
+  #     fails loudly if the redirect ever silently falls back to React 19.
+  #   - scripts/react18-register.mjs registers a node --import loader hook
+  #     (scripts/react18-hooks.mjs) that redirects every `react`/`react-dom`
+  #     import for the rest of the process to that same install, so the
+  #     built dist and test/react.test.mjs + test/cli-components.test.mjs run
+  #     unmodified against React 18 at runtime (NODE_PATH does not affect ESM
+  #     resolution, hence the loader instead of an env var).
+  test-react-18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run test:react18
+
   invariants:
     runs-on: ubuntu-latest
     steps:
