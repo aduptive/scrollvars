@@ -959,14 +959,21 @@ against the code ADU-129 to ADU-132 shipped.
   `<style>` is raw text so the entity never decodes: on React 18 the server
   dropped every `[data-sv-uid="..."]` rule the responsive map emits, and
   hydration did not repair it. Same root as the gallery sections, which
-  already render their CSS this way. No CSP change, the content is built
-  from the component's own props.
+  already render their CSS this way. The raw sink also drops React's
+  `</style` escaping, which is what kept an interpolated value inert, so
+  `perViewCss` coerces every part it interpolates with `Number()`: a
+  `perView` off untyped data (a CMS) renders `--sv-per-view:NaN`, a
+  declaration the CSS parser drops, and can neither close the element nor
+  emit a tag. No CSP change, the sheet is still one inline `<style>`.
 
 ### Testing (blind review round 5)
 - `test/react.test.mjs`'s `flushFrames` rethrows what a frame scheduled by
   the running test throws, and keeps swallowing only frames left pending by
   earlier tests (queued callbacks carry the test that scheduled them). A
   driver or canvas frame that blew up could not fail a React test before.
+  A frame scheduled from inside a running frame inherits that frame's test,
+  not the flushing one, so a leftover canvas loop rescheduling itself does
+  not blow up whichever later test happens to flush it twice.
   Two harness tests pin both halves.
 
 ## 1.13.0 (2026-09-05)

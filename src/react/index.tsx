@@ -574,15 +574,23 @@ const BREAKPOINTS: Record<string, number> = {
 }
 
 /** Media-query CSS for a responsive perView map. Breakpoints ARE media
- * queries here (Tailwind-style keys or raw min-width numbers). */
+ * queries here (Tailwind-style keys or raw min-width numbers).
+ * Every interpolated part is coerced with Number(): this string goes into a
+ * <style> through dangerouslySetInnerHTML, where React's `</style` escaping
+ * no longer covers it, and perView can come from untyped data. A NaN renders
+ * a declaration the CSS parser drops, never markup. */
 function perViewCss(scope: string, perView: Record<string, number>): string {
   let css = ''
   const entries = Object.entries(perView)
     .filter(([key]) => key !== 'base')
     .sort(([a], [b]) => (BREAKPOINTS[a] ?? Number(a)) - (BREAKPOINTS[b] ?? Number(b)))
-  if ('base' in perView) css += `${scope}{--sv-per-view:${perView.base}}`
+  if ('base' in perView) css += `${scope}{--sv-per-view:${Number(perView.base)}}`
   for (const [key, value] of entries) {
-    css += `@media (min-width:${BREAKPOINTS[key] ?? Number(key)}px){${scope}{--sv-per-view:${value}}}`
+    // Number(BREAKPOINTS[key] ?? key), not BREAKPOINTS[key] ?? Number(key):
+    // a key like "constructor" hits Object.prototype and would interpolate a
+    // function's source
+    const min = Number(BREAKPOINTS[key] ?? key)
+    css += `@media (min-width:${min}px){${scope}{--sv-per-view:${Number(value)}}}`
   }
   return css
 }
@@ -772,8 +780,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         {perView && typeof perView === 'object' && (
           // raw text, not a child: react-dom 18 escapes `"` to `&quot;` inside
           // a <style>, and a raw-text entity never decodes, so the quoted uid
-          // scope would drop every rule on the server. Same CSP story as any
-          // inline <style>: the content is ours, built from the props above
+          // scope would drop every rule on the server. The raw sink also drops
+          // React's `</style` escaping, so perViewCss coerces every value it
+          // interpolates. Same CSP story as any inline <style>.
           <style dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
         )}
         {!!autoplay && autoplay > 0 && (

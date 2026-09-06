@@ -70,6 +70,47 @@ test('react: Slider responsive perView survives SSR under both React majors', as
   assert.doesNotMatch(html, /&quot;/)
 })
 
+test('react: a perView value cannot break out of the Slider <style>', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // that sheet goes through dangerouslySetInnerHTML, so React's `</style`
+  // escaping is gone: a perView off a CMS is untyped data, and only the
+  // Number() coercion in perViewCss keeps this inert
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: '1}</style><script>window.__pwned=1</script><style>a{b:c', md: 2 } },
+      React.createElement('div', null, 'one')
+    )
+  )
+  // one <style>, closed once: the value could not end the element. Before the
+  // coercion this rendered a literal </style> and a live <script> in Chrome
+  assert.equal(html.match(/<style>/g).length, 1)
+  assert.equal(html.match(/<\/style>/g).length, 1)
+  assert.doesNotMatch(html, /<script/)
+  // the declaration still renders, invalid so the parser drops it
+  assert.match(html, /--sv-per-view:NaN\}/)
+})
+
+test('react: numeric perView renders its rules unchanged, keys and values', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: 1.5, md: 3, 900: 4 } },
+      React.createElement('div', null, 'one')
+    )
+  )
+  assert.match(html, /\.sv-slider\{--sv-per-view:1\.5\}/)
+  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:3\}\}/)
+  // a raw min-width key stays that number
+  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:4\}\}/)
+  assert.doesNotMatch(html, /NaN/)
+})
+
 test('react: Scenes forwards options without leaking props to the DOM', async () => {
   const React = (await import('react')).default
   const { renderToStaticMarkup } = await import('react-dom/server')
@@ -218,6 +259,12 @@ let rafSeq = 0
 // which test scheduled a frame: a throwing frame from the test running now
 // has to fail it, one left pending by an earlier test must not
 let rafEpoch = 0
+// the epoch of the frame flushFrames is running, if any. A frame scheduled
+// from inside another frame inherits its scheduler's epoch instead of the
+// flushing test's: a self-rescheduling leftover (a canvas loop) would
+// otherwise be adopted by whichever later test flushes it twice, and blow up
+// a test that never scheduled it.
+let runningEpoch = null
 beforeEach(() => {
   rafEpoch++
 })
@@ -228,12 +275,16 @@ function flushFrames() {
   // from inside this one.
   const batch = rafQueue.splice(0)
   for (const { fn, epoch } of batch) {
+    const outer = runningEpoch
+    runningEpoch = epoch
     try {
       fn(0)
     } catch (error) {
       // frames left behind by earlier tests' torn-down widgets (a destroyed
       // slider's measure, a canvas loop) are not the flushing test's business
       if (epoch === rafEpoch) throw error
+    } finally {
+      runningEpoch = outer
     }
   }
 }
@@ -289,7 +340,7 @@ function ensureDom() {
   // next flush
   global.requestAnimationFrame = (fn) => {
     const id = ++rafSeq
-    rafQueue.push({ id, fn, epoch: rafEpoch })
+    rafQueue.push({ id, fn, epoch: runningEpoch ?? rafEpoch })
     return id
   }
   global.cancelAnimationFrame = (id) => {
@@ -816,13 +867,20 @@ test('harness: a frame this test scheduled fails it when it throws', async () =>
   })
   assert.throws(() => flushFrames(), /a driver frame blew up/)
 
-  // left pending on purpose: the next test proves a leftover stays swallowed
+  // left pending on purpose: the next test proves a leftover stays swallowed,
+  // and so does the successor it reschedules from inside that later flush
   global.requestAnimationFrame(() => {
-    throw new Error('a torn-down widget blew up')
+    global.requestAnimationFrame(() => {
+      throw new Error('a torn-down widget blew up')
+    })
   })
 })
 
 test('harness: a frame left pending by an earlier test is still swallowed', async () => {
   await ensureDomAndWarmDriver()
+  assert.doesNotThrow(() => flushFrames())
+  // the leftover rescheduled itself from inside that flush, the way a canvas
+  // loop does: the successor belongs to the test that scheduled its parent,
+  // not to whichever test happens to be flushing
   assert.doesNotThrow(() => flushFrames())
 })
