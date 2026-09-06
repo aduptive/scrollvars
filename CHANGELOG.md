@@ -144,6 +144,31 @@ findings on the same round): three more defects fixed.
   emits `<dt>` before `<dd>` (order was reversed), and renders the final
   value as visually-hidden text with the counter itself `aria-hidden`.
 
+### Slider
+Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
+Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
+wide, scrollWidth 500).
+- `slideStart()` walked the offsetParent chain and always subtracted the
+  container's own border (`clientLeft`/`clientTop`), even when the
+  container itself was the slide's offsetParent. offsetLeft is already
+  measured against the offsetParent's padding edge in that case, so the
+  border was subtracted twice: a bordered, positioned container gave -10
+  for its first slide instead of 0. The walk now stops the moment it
+  reaches the container and only falls back to the absolute-position
+  subtraction (plus the border) when the container is skipped entirely
+  (a statically positioned rail whose real offsetParent sits further up).
+- RTL mirrored the slide start against `scrollWidth` instead of
+  `clientWidth`: measured in Chrome, a position:relative RTL rail gave 200
+  for its first slide instead of 0. The mirror now uses the container's
+  own client box.
+- `measure()` tracked only the active index, not the active element. A
+  MutationObserver-driven replacement of that element (same index, new
+  node, e.g. a framework re-render) left `sv-active` on the detached old
+  node and never moved it to the new one. `measure()` now remembers the
+  active node as well: a changed node at the same index moves `sv-active`
+  and `--sv-slide` without firing `onSlide` for an index that never
+  changed.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
