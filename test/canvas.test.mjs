@@ -14,6 +14,7 @@ function makeEnv() {
       addEventListener: () => {},
       removeEventListener: () => {},
     }),
+    getComputedStyle: (el) => el.computedStyle,
   }
   global.document = {
     visibilityState: 'visible',
@@ -137,27 +138,41 @@ function makeStyle(initial = {}) {
   return { style, state, writes }
 }
 
-// clientWidth/clientHeight (content box) follow canvas.width/height (the
-// backing store) until style.width is set, then they follow the CSS size
-// instead, same as a real canvas would. getBoundingClientRect (border box)
-// adds `border` on top, so an unsized bordered canvas has a rect wider than
-// its clientWidth.
-function makeCanvas({ width, height, style, border = 0 }) {
+// The content box (canvas.width/height, or style.width/height once the
+// harness pins it, exactly like clientWidth/clientHeight track a real
+// canvas) plus `padding` is what clientWidth/clientHeight actually report:
+// clientWidth/Height always include padding, whatever box-sizing says
+// (box-sizing only changes what a specified CSS `width` means, never what
+// clientWidth reports). getBoundingClientRect (border box) adds `border`
+// on top of that too.
+function makeCanvas({ width, height, style, border = 0, padding = 0 }) {
+  const pad = typeof padding === 'number' ? { left: padding, right: padding, top: padding, bottom: padding } : padding
   return {
     width,
     height,
     style,
+    computedStyle: {
+      paddingLeft: `${pad.left}px`,
+      paddingRight: `${pad.right}px`,
+      paddingTop: `${pad.top}px`,
+      paddingBottom: `${pad.bottom}px`,
+    },
     getContext: () => ({ setTransform: () => {} }),
     get clientWidth() {
-      return this.style.width ? parseFloat(this.style.width) : this.width
+      const content = this.style.width ? parseFloat(this.style.width) : this.width
+      return content + pad.left + pad.right
     },
     get clientHeight() {
-      return this.style.height ? parseFloat(this.style.height) : this.height
+      const content = this.style.height ? parseFloat(this.style.height) : this.height
+      return content + pad.top + pad.bottom
     },
     getBoundingClientRect() {
-      const w = (this.style.width ? parseFloat(this.style.width) : this.width) + border
-      const h = (this.style.height ? parseFloat(this.style.height) : this.height) + border
-      return { width: w, height: h }
+      const contentW = this.style.width ? parseFloat(this.style.width) : this.width
+      const contentH = this.style.height ? parseFloat(this.style.height) : this.height
+      return {
+        width: contentW + pad.left + pad.right + border,
+        height: contentH + pad.top + pad.bottom + border,
+      }
     },
   }
 }
@@ -233,6 +248,60 @@ test('canvas harness: a bordered unsized canvas still stabilizes', async () => {
   env.resize()
   assert.equal(canvas.style.width, '300px')
   assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.width, 600)
+  assert.equal(canvas.height, 300)
+
+  env.resize()
+  assert.equal(canvas.width, 600) // stable
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: an unsized padded canvas pins its true content box, not the padding-inflated clientWidth (ADU-107, third pass)', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // clientWidth (320) includes the 10px padding on every side that the
+  // true content box (300) excludes: the old measureLayout() read
+  // clientWidth directly and called it the content box, pinning the
+  // inflated 320x170 instead of 300x150.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, padding: 10 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize() // one pass settles it, same as the plain and bordered cases
+  assert.equal(canvas.style.width, '300px') // the true content box, not 320
+  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.boxSizing, 'content-box')
+  assert.equal(canvas.width, 600) // 300 CSS px * dpr 2, not the inflated 320
+  assert.equal(canvas.height, 300)
+
+  env.resize()
+  assert.equal(canvas.width, 600) // stable
+  assert.equal(canvas.height, 300)
+})
+
+test('canvas harness: a bordered, padded, border-box unsized canvas still pins its true content box', async () => {
+  const env = makeEnv()
+  global.window.devicePixelRatio = 2
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // border:4px, padding:6px, box-sizing:border-box. clientWidth already
+  // excludes the border regardless of box-sizing (clientWidth is always
+  // the padding box), so the same padding subtraction recovers the true
+  // 300 content box. Forcing box-sizing:content-box on the pin is what
+  // stops the author's own border-box declaration from reinterpreting the
+  // pinned width as a border box and shrinking the content back down.
+  const { style } = makeStyle()
+  const canvas = makeCanvas({ width: 300, height: 150, style, border: 4, padding: 6 })
+
+  mountEffect(canvas, { frame: () => {} })
+
+  env.resize()
+  assert.equal(canvas.style.width, '300px')
+  assert.equal(canvas.style.height, '150px')
+  assert.equal(canvas.style.boxSizing, 'content-box')
   assert.equal(canvas.width, 600)
   assert.equal(canvas.height, 300)
 

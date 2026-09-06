@@ -97,9 +97,9 @@ Per import, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzi
 | `track` + `scan` (zero-wrapper mode) | 2.9 KB |
 | `slider` | 2.1 KB |
 | `trackPointer` | 0.5 KB |
-| `mountEffect` (canvas) | 0.9 KB |
+| `mountEffect` (canvas) | 1.0 KB |
 | everything in `scrollvars` (the core entry) | 5.5 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 10.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 10.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

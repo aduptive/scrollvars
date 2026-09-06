@@ -15,13 +15,19 @@
  * backing-store size, so resizing it feeds back into itself above DPR 1.
  * applySize() detects that by re-measuring the canvas's layout size right
  * after writing the backing store: a CSS-sized canvas never moves as a
- * result, whatever its attribute values or borders, but an unsized one
- * does, because layout follows what was just written. Only then does it
- * pin the CSS-pixel size it measured BEFORE the write to
+ * result, whatever its attribute values, borders or padding, but an
+ * unsized one does, because layout follows what was just written. Only
+ * then does it pin the CSS-pixel size it measured BEFORE the write to
  * `canvas.style.width`/`height`, once, so layout stops following the
- * backing store. A canvas with no CSS size still ends up with one pinned
- * inline by the harness: give it real CSS dimensions to keep control of
- * its own size.
+ * backing store. That measured size is the content box, border AND
+ * padding excluded: `clientWidth`/`clientHeight` already exclude border
+ * but include padding, so the harness reads computed padding and
+ * subtracts it. The pin also forces `box-sizing: content-box` inline, so
+ * the width/height it writes reproduce that same content box regardless
+ * of the canvas's own `box-sizing` (a `border-box` canvas would otherwise
+ * need padding and border added back to the content size instead). A
+ * canvas with no CSS size still ends up with one pinned inline by the
+ * harness: give it real CSS dimensions to keep control of its own size.
  */
 
 export interface EffectFrame {
@@ -114,12 +120,22 @@ export function mountEffect(
   }
 
   // Layout size in CSS pixels: content box, border and padding excluded.
-  // clientWidth/Height read 0 for a canvas not yet laid out (display:none,
-  // detached); fall back to the rect there.
+  // clientWidth/Height already exclude border, but include padding, so
+  // subtract computed padding to get the true content box (a padded
+  // unsized canvas otherwise measures its padding box, pins to that, and
+  // ends up larger than the content it was ever meant to be). clientWidth/
+  // Height read 0 for a canvas not yet laid out (display:none, detached);
+  // fall back to the rect there.
   const measureLayout = () => {
     const w = canvas.clientWidth
     const h = canvas.clientHeight
-    if (w && h) return { width: w, height: h }
+    if (w && h) {
+      const style = window.getComputedStyle(canvas)
+      return {
+        width: w - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        height: h - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
+      }
+    }
     const rect = canvas.getBoundingClientRect()
     return { width: rect.width, height: rect.height }
   }
@@ -137,13 +153,19 @@ export function mountEffect(
 
     // Detect the feedback loop directly instead of guessing from equality:
     // a CSS-sized canvas never changes layout as a consequence of its own
-    // backing store changing, whatever its attribute values or borders. An
-    // unsized canvas lays out at its own backing-store size, so the write
-    // above just moved layout again. This second read is synchronous
-    // (forces layout), but applySize() only runs once per resize/DPR-change
-    // event, never per animation frame, so it is rare.
+    // backing store changing, whatever its attribute values, borders or
+    // padding. An unsized canvas lays out at its own backing-store size, so
+    // the write above just moved layout again. This second read is
+    // synchronous (forces layout), but applySize() only runs once per
+    // resize/DPR-change event, never per animation frame, so it is rare.
     const after = measureLayout()
     if (after.width !== before.width || after.height !== before.height) {
+      // Force content-box sizing on the pin: `before` is always the pure
+      // content box (padding already subtracted above), so the pinned
+      // width/height must be interpreted as content-box too, whatever the
+      // canvas's own box-sizing says, or a border-box canvas would pin a
+      // content box smaller than the one just measured.
+      canvas.style.boxSizing = 'content-box'
       canvas.style.width = `${before.width}px`
       canvas.style.height = `${before.height}px`
       writeBackingStore(before) // re-run sizing from the pinned, pre-write size

@@ -144,6 +144,19 @@ findings on the same round): three more defects fixed.
   the write. Remaining limitation, documented in the doc comment: a canvas
   with no CSS size still gets one pinned inline by the harness, so give a
   canvas CSS dimensions to keep control of its size.
+- Third pass (verifier finding): that measured layout size used
+  `clientWidth`/`clientHeight` directly and called it the content box, but
+  `clientWidth`/`clientHeight` exclude border while still including
+  padding. An unsized `<canvas style="padding:10px">` measured 320x170
+  instead of 300x150, got pinned to that inflated size, its layout moved
+  again and a second `applySize()` pass ran, settling on 340x190, a size
+  nobody asked for; `border` plus `padding` plus `box-sizing: border-box`
+  misbehaved the same way. `applySize()` now reads computed padding and
+  subtracts it from `clientWidth`/`clientHeight` to get the true content
+  box, and forces `box-sizing: content-box` inline when it pins, so the
+  pinned width/height reproduce that content box regardless of the
+  canvas's own box-sizing. Both padding and border-box-with-padding cases
+  now settle in one `applySize()` pass at the intrinsic 300x150.
 
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine

@@ -521,7 +521,11 @@ const MIN_EXAMINED = 1
 // exists to stop still ran), and it mispinned a CSS-sized canvas whose
 // attribute values happened to equal its CSS size on first mount (a false
 // positive, freezing every later resize). Both reproduced in real Chrome
-// at deviceScaleFactor 2 ──
+// at deviceScaleFactor 2. Third pass (verifier finding): that re-measure
+// called clientWidth/clientHeight the content box, but they include
+// padding (unlike border, which they already exclude), so a padded
+// unsized canvas measured its padding box, pinned to that, and settled on
+// an even larger size after a second applySize() pass ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -578,6 +582,60 @@ const MIN_EXAMINED = 1
     'canvas: that same canvas follows a later class-driven CSS resize instead of freezing at the first size',
     sized.log.length === 2 && sized.log[1].cw === 600 && sized.log[1].ch === 320,
     JSON.stringify(sized.log)
+  )
+
+  const padded = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-padded')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: an unsized padded canvas stabilizes at one applySize() pass, not two (ADU-107, third pass)',
+    padded.log.length === 1 && padded.width === 600 && padded.height === 300,
+    `resize() calls: ${padded.log.length}, canvas.width=${padded.width}, canvas.height=${padded.height}`
+  )
+  check(
+    'canvas: the pinned CSS size is the intrinsic content box (300x150), not the padding-inflated 320x170',
+    padded.style.includes('width: 300px') && padded.style.includes('height: 150px'),
+    padded.style
+  )
+
+  const borderBox = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-border-box')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: an unsized bordered, padded, border-box canvas also stabilizes at one applySize() pass',
+    borderBox.log.length === 1 && borderBox.width === 600 && borderBox.height === 300,
+    `resize() calls: ${borderBox.log.length}, canvas.width=${borderBox.width}, canvas.height=${borderBox.height}`
+  )
+  check(
+    'canvas: that pin lands on the intrinsic content box even under the author\'s own box-sizing:border-box',
+    borderBox.style.includes('width: 300px') &&
+      borderBox.style.includes('height: 150px') &&
+      borderBox.style.includes('box-sizing: content-box'),
+    borderBox.style
   )
   await page.close()
 }
