@@ -113,6 +113,17 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Tooling
+- `npm run demo:sync` is idempotent again: the bench page's inlined engine
+  marker was lazy on the content but only matched a fixed 3-newline gap
+  before `</script>`, and the replacement kept the fresh IIFE's own
+  trailing newline on top of that gap, so every run against a live driver
+  added one more blank line and `demo/bench/scrollvars.html` never
+  settled. The marker now consumes however many blank lines already
+  accumulated instead of a fixed count, so it self-heals instead of
+  drifting. `.github/workflows/ci.yml` and `.github/workflows/release.yml`
+  now include `demo/bench/scrollvars.html` in the generated-files gate.
+
 ### Slider
 Blind review round 3 (GPT-6 Astra), findings 8, 9 and 10, verified in real
 Chrome with a puppeteer-core probe (5 slides of 100px, container 300px
@@ -157,6 +168,32 @@ wide, scrollWidth 500).
 - `<ScrollVarsBoot>`'s debug overlay (`?sv-debug`) no longer mounts if the
   component unmounts before its dynamic import resolves: the effect
   cleanup now sets a `disposed` flag the import's callback checks first.
+- `useSlider`'s `handleRef` kept pointing at a destroyed `SliderHandle`
+  after the tracked node detached (a conditional unmount, a node swap):
+  `next()`, `prev()`, `goTo()` and `handle.current` on a detached slider
+  drove a dead container, including starting a new glide `requestAnimationFrame`
+  loop nothing could stop. The `useAttachedRef` cleanup now also sets
+  `handleRef.current = null` before destroying the handle. Checked every
+  other hook built on `useAttachedRef` for the same shape (`useCanvasEffect`,
+  `usePointer`): neither keeps a handle ref beside it, so only `useSlider`
+  needed the fix.
+
+### CI
+- CI now proves the React layer on React 18, not only the React 19 the
+  root installs: a new `test-react-18` job (`npm run test:react18`, also
+  runnable locally) installs react@18, react-dom@18 and their `@types`
+  into `node_modules/.cache/react18` (its own package.json, `--no-save`,
+  never the root `package-lock.json`), type-checks `src/` against those
+  `@types` instead of the root's through a generated tsconfig `paths`
+  entry (guarded by a canary that fails loudly if the redirect ever
+  silently falls back to React 19), and runs `test/react.test.mjs` and
+  `test/cli-components.test.mjs` with a `node --import` loader hook that
+  redirects every `react`/`react-dom` import to that install for the
+  process (`NODE_PATH` does not affect ESM resolution).
+- `react: Marquee duplicate is aria-hidden and inert` now asserts the
+  literal wire format `inert=""`, not just the attribute's presence: the
+  case both React majors must agree on (`{ inert: '' }` under 18,
+  `{ inert: true }` under 19).
 
 ## 1.13.0 (2026-09-05)
 

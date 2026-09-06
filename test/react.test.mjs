@@ -76,7 +76,11 @@ test('react: Marquee duplicate is aria-hidden and inert', async () => {
   const html = renderToStaticMarkup(
     React.createElement(Marquee, null, React.createElement('a', { href: '#x' }, 'logo'))
   )
-  assert.match(html, /aria-hidden="true"[^>]*inert/)
+  // both React majors must render the same markup: React 19 knows `inert`
+  // as a boolean and React 18 does not, so the source picks `true` or `''`
+  // accordingly (see src/react/index.tsx), but the two must land on the
+  // same wire format either way.
+  assert.match(html, /aria-hidden="true"[^>]*inert=""/)
 })
 
 
