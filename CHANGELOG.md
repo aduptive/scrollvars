@@ -946,6 +946,55 @@ against the code ADU-129 to ADU-132 shipped.
   script hide entrances before paint and the pin helper write heights on
   attach.
 
+### Driver (blind review round 5)
+- The driver owns the live state of every element it tracks. It writes the
+  flag twice now, as the `sv-live` class and as an inline `--sv-live`, and
+  re-asserts both on any measured frame where the DOM disagrees. A React
+  `<Track>` renders `className={'sv ' + className}`, so a prop change
+  rewrites the whole class attribute and takes the driver-added `sv-live`
+  with it: the section faded back out (`.sv` alone declares `--sv-live: 0`),
+  and a settled `once` section, with no tracker left to put the class back,
+  stayed at opacity 0 for good. The inline flag survives the rewrite; the
+  class returns on the next frame the driver measures.
+- `track()` on an element that still carries a settled `once` `sv-live`
+  clears the class and the inline flag before the first frame, so the new
+  entry (which starts not live) and the DOM agree and the entrance replays
+  when the element enters the band again.
+- The identity guard runs after `onTravel` and after `onPin` too, not only
+  after `onLive`: a callback that untracks its own element no longer gets
+  `--sv-pin`/`--sv-scene` written inline (variables the release had already
+  cleaned up, so they stayed forever) plus one extra `onScene`.
+- The `prefers-reduced-motion` listener falls back to the deprecated
+  `addListener` when `MediaQueryList.addEventListener` is missing (Safari
+  below 14, inside the supported floor), where the optional call made the
+  whole preference a no-op.
+
+### Presets and no-JS (blind review round 5)
+- **Added: the `.sv-off` class** (public API, driver-managed). Releasing a
+  tracked element now settles it to its no-JS RENDERING, not just to a
+  visible entrance. ADU-130's inline `--sv-live: 1` covered the entrance
+  presets, but `.sv` stays and `html.sv-on` never comes off, so after
+  `stopScan()`, a `ScrollVarsBoot` unmount or an option change the pin
+  presets kept reading a clock that had stopped: `.sv-curtain-l`/`-r` sat
+  closed over the content, `.sv-deck` stayed stacked in one grid cell,
+  `.sv-range` children stayed at `--sv-r: 0` (opacity 0) and `.sv-stage`
+  kept `position: sticky`, `100vh` and `overflow: hidden`. `releaseEntry()`
+  marks the element `.sv-off` and every static guard in `styles/pin.css`
+  now lists it next to `html:not(.sv-on)`, so both class markup and
+  `[data-sv]` markup settle static. `track()` takes the marker back off.
+  The guard reaches the DESCENDANTS these presets style, which an inline
+  variable on the tracked element cannot.
+- `styles/pin.css` carries an `@supports not (translate: 0)` block: with
+  JavaScript on and no `compat()` call, an engine without individual
+  transform properties (Chrome below 104, Firefox below 72, Safari below
+  14.1) runs the driver, so `html.sv-on` is set and the no-JS guards cannot
+  fire, while the stacking half of these presets is plain layout and
+  survives. The deck unstacks and the curtains open there too. The curtains
+  open with `transform` rather than the no-JS `display: none` on purpose:
+  `scrollvars/compat`'s fallback sheet re-expresses the same panels with
+  that property and is appended later, so it still outranks this block and
+  animates them.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

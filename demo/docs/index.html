@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 2.6 · slider 1.3 · tilt 0.5 · state 2.2 · ui 0.7).</p>
+(gzipped: <code>styles/core.css</code> 2.2&nbsp;KB · pin 3.1 · slider 1.3 · tilt 0.5 · state 2.2 · ui 0.7).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -475,6 +475,20 @@ against the code ADU-129 to ADU-132 shipped.
 <li>AGENTS.md's pinned-skeleton line now states an inline static wrapper gets <code>position: relative</code> (ADU-130), matching README.</li>
 <li>The knobs sentence notes the one exception to zero-specificity defaults: <code>--sv-order</code>'s automatic-stagger value is declared on the child itself, by <code>.sv-auto > :nth-child(n)</code> and <code>.sv-stagger > :nth-child(n)</code>, and an inherited <code>:root</code> value never applies where the child declares its own. Those rules are (0,2,0), so an override needs an inline value or a rule at least as specific.</li>
 <li>The "SSR, SEO and the Lighthouse load profile stay untouched" claim is scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint script hide entrances before paint and the pin helper write heights on attach.</li>
+</ul>
+
+<h4>Driver (blind review round 5)</h4>
+<ul>
+<li>The driver owns the live state of every element it tracks. It writes the flag twice now, as the <code>sv-live</code> class and as an inline <code>--sv-live</code>, and re-asserts both on any measured frame where the DOM disagrees. A React <code>&lt;Track></code> renders <code>className={'sv ' + className}</code>, so a prop change rewrites the whole class attribute and takes the driver-added <code>sv-live</code> with it: the section faded back out (<code>.sv</code> alone declares <code>--sv-live: 0</code>), and a settled <code>once</code> section, with no tracker left to put the class back, stayed at opacity 0 for good. The inline flag survives the rewrite; the class returns on the next frame the driver measures.</li>
+<li><code>track()</code> on an element that still carries a settled <code>once</code> <code>sv-live</code> clears the class and the inline flag before the first frame, so the new entry (which starts not live) and the DOM agree and the entrance replays when the element enters the band again.</li>
+<li>The identity guard runs after <code>onTravel</code> and after <code>onPin</code> too, not only after <code>onLive</code>: a callback that untracks its own element no longer gets <code>--sv-pin</code>/<code>--sv-scene</code> written inline (variables the release had already cleaned up, so they stayed forever) plus one extra <code>onScene</code>.</li>
+<li>The <code>prefers-reduced-motion</code> listener falls back to the deprecated <code>addListener</code> when <code>MediaQueryList.addEventListener</code> is missing (Safari below 14, inside the supported floor), where the optional call made the whole preference a no-op.</li>
+</ul>
+
+<h4>Presets and no-JS (blind review round 5)</h4>
+<ul>
+<li><b>Added: the <code>.sv-off</code> class</b> (public API, driver-managed). Releasing a tracked element now settles it to its no-JS RENDERING, not just to a visible entrance. ADU-130's inline <code>--sv-live: 1</code> covered the entrance presets, but <code>.sv</code> stays and <code>html.sv-on</code> never comes off, so after <code>stopScan()</code>, a <code>ScrollVarsBoot</code> unmount or an option change the pin presets kept reading a clock that had stopped: <code>.sv-curtain-l</code>/<code>-r</code> sat closed over the content, <code>.sv-deck</code> stayed stacked in one grid cell, <code>.sv-range</code> children stayed at <code>--sv-r: 0</code> (opacity 0) and <code>.sv-stage</code> kept <code>position: sticky</code>, <code>100vh</code> and <code>overflow: hidden</code>. <code>releaseEntry()</code> marks the element <code>.sv-off</code> and every static guard in <code>styles/pin.css</code> now lists it next to <code>html:not(.sv-on)</code>, so both class markup and <code>[data-sv]</code> markup settle static. <code>track()</code> takes the marker back off. The guard reaches the DESCENDANTS these presets style, which an inline variable on the tracked element cannot.</li>
+<li><code>styles/pin.css</code> carries an <code>@supports not (translate: 0)</code> block: with JavaScript on and no <code>compat()</code> call, an engine without individual transform properties (Chrome below 104, Firefox below 72, Safari below 14.1) runs the driver, so <code>html.sv-on</code> is set and the no-JS guards cannot fire, while the stacking half of these presets is plain layout and survives. The deck unstacks and the curtains open there too. The curtains open with <code>transform</code> rather than the no-JS <code>display: none</code> on purpose: <code>scrollvars/compat</code>'s fallback sheet re-expresses the same panels with that property and is appended later, so it still outranks this block and animates them.</li>
 </ul>
 
 <h3>1.13.0 (2026-09-05)</h3>

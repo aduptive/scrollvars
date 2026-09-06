@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.4 KB gzip · full core 5.9 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.5 KB gzip · full core 6.0 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3023,11 +3023,15 @@ var SV = (() => {
     });
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     reducedMotion = media.matches;
-    media.addEventListener?.("change", (event) => {
+    const onMotionChange = (event) => {
       reducedMotion = event.matches;
       entries.forEach(applyPinHelper);
       schedule();
-    });
+    };
+    if (typeof media.addEventListener === "function")
+      media.addEventListener("change", onMotionChange);
+    else
+      media.addListener?.(onMotionChange);
     if (typeof IntersectionObserver !== "undefined") {
       culler = new IntersectionObserver((records) => {
         for (const record of records) {
@@ -3161,6 +3165,12 @@ var SV = (() => {
     entry.written[name] = serialized;
     entry.el.style.setProperty(name, serialized);
   }
+  function writeLive(entry) {
+    const flag = entry.live ? "1" : "0";
+    entry.written["--sv-live"] = flag;
+    entry.el.classList.toggle("sv-live", entry.live);
+    entry.el.style.setProperty?.("--sv-live", flag);
+  }
   function apply(entry, geo) {
     const { opts } = entry;
     const enter = opts.enter ?? LIVE_ENTER;
@@ -3168,7 +3178,7 @@ var SV = (() => {
     const isLive = geo.top < geo.vp * enter && geo.bottom > geo.vp * exit || entry.live && !!opts.once;
     if (isLive !== entry.live) {
       entry.live = isLive;
-      entry.el.classList.toggle("sv-live", isLive);
+      writeLive(entry);
       const settle = isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene;
       if (settle) {
         if (opts.view !== false)
@@ -3187,6 +3197,11 @@ var SV = (() => {
       if (entries.get(entry.el) !== entry)
         return;
     }
+    const classes = entry.el.classList;
+    if (classes.contains?.("sv") !== true || classes.contains?.("sv-live") !== entry.live) {
+      classes.add("sv");
+      writeLive(entry);
+    }
     if (opts.view !== false) {
       setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
     }
@@ -3195,12 +3210,16 @@ var SV = (() => {
       if (opts.travel)
         setVar(entry, "--sv-t", t);
       opts.onTravel?.(t);
+      if (entries.get(entry.el) !== entry)
+        return;
     }
     if (opts.pin || opts.onPin) {
       const p = computePin(geo, entry.pinOffset);
       if (opts.pin)
         setVar(entry, "--sv-pin", p);
       opts.onPin?.(p);
+      if (entries.get(entry.el) !== entry)
+        return;
     }
     if (opts.scenes && opts.scenes > 1) {
       const pin = computePin(geo, entry.pinOffset);
@@ -3238,6 +3257,7 @@ var SV = (() => {
       el.style.removeProperty?.(name);
     el.style.removeProperty?.("--sv-scenes");
     el.style.setProperty?.("--sv-live", "1");
+    el.classList.add("sv-off");
   }
   function track(el, opts = {}) {
     init();
@@ -3248,6 +3268,7 @@ var SV = (() => {
     if (existing)
       releaseEntry(existing);
     el.style.removeProperty?.("--sv-live");
+    el.classList.remove("sv-live", "sv-off");
     const entry = {
       el,
       opts,

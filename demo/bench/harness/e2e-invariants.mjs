@@ -419,6 +419,162 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3c. The driver owns the live state (ADU-140, round 5 finding 1): a
+// className rewrite that drops the driver-added `sv-live` never hides a
+// section that already went live. React's <Track> renders
+// `className={'sv ' + className}`, so a prop change rewrites the whole
+// attribute, keeps `.sv` (which declares --sv-live: 0) and takes `sv-live`
+// with it. A still-tracked element gets the class back on the next frame; a
+// settled `once` one has no tracker left at all, and only the inline
+// --sv-live the driver now writes keeps it visible ──
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>
+      <!-- tall enough to sit inside the live band (enter 75%, exit 25% of the viewport) -->
+      <section class="sv" data-sv id="tracked" style="margin-top:20vh;min-height:40vh"><p class="sv-rise">tracked, still scanning</p></section>
+      <section class="sv" data-sv data-sv-once id="settled" style="min-height:40vh"><p class="sv-rise">settled once, no tracker left</p></section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const opacity = (id) => getComputedStyle(document.querySelector(`#${id} .sv-rise`)).opacity
+    SV.scan()
+    await frame()
+    await new Promise((done) => setTimeout(done, 1200)) // --sv-duration is 800ms
+    const liveBefore = ['tracked', 'settled'].filter((id) => document.getElementById(id).classList.contains('sv-live'))
+    const visibleBefore = ['tracked', 'settled'].filter((id) => opacity(id) === '1')
+    for (const id of ['tracked', 'settled']) document.getElementById(id).className = 'sv rewritten'
+    await frame()
+    await new Promise((done) => setTimeout(done, 1200)) // long enough for a fade-out to finish
+    const visibleAfter = ['tracked', 'settled'].filter((id) => opacity(id) === '1')
+    // a class rewrite schedules no frame of its own (nothing scrolled, nothing
+    // resized): the class comes back on the next frame the driver measures,
+    // while the inline flag it wrote at the transition covers the meantime
+    scrollTo(0, 1)
+    await frame()
+    return {
+      liveBefore,
+      visibleBefore,
+      visibleAfter,
+      trackedClass: document.getElementById('tracked').classList.contains('sv-live'),
+      settledInline: document.getElementById('settled').style.getPropertyValue('--sv-live'),
+      opacities: ['tracked', 'settled'].map((id) => `${id}=${opacity(id)}`).join(' '),
+    }
+  })
+  check(
+    'live state: the fixture starts with both sections live and revealed',
+    r.liveBefore.length === 2 && r.visibleBefore.length === 2,
+    `live=${r.liveBefore.join(',')} visible=${r.visibleBefore.join(',')}`
+  )
+  check(
+    'live state: a className rewrite that drops sv-live leaves both sections visible',
+    r.visibleAfter.length === 2,
+    `visible=${r.visibleAfter.join(',')} (${r.opacities})`
+  )
+  check(
+    'live state: the still-tracked section gets sv-live back on its next measured frame, the settled once one holds the inline flag',
+    r.trackedClass && r.settledInline === '1',
+    `class=${r.trackedClass} inline=${r.settledInline || '(none)'}`
+  )
+  await page.close()
+}
+
+// ── 3d. Release settles a tracked element to its no-JS rendering (ADU-140,
+// round 5 finding 2). ADU-130 settled the ENTRANCE presets with an inline
+// --sv-live: 1, but `.sv` stays and `html.sv-on` never comes off, so every
+// pin preset kept reading a clock that had stopped: closed curtains over the
+// content, a deck stacked in one grid cell, an unfinished sv-range at
+// opacity 0, and a sticky, 100vh, overflow-hidden stage. The same markup
+// with JavaScript off is the reference rendering ──
+{
+  // SSR shape on purpose (`class="sv"` next to the data-sv attributes, what
+  // React <Track> emits): the two pages then differ only by the driver having
+  // run, which is exactly the claim under test.
+  const RELEASE_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .panel { position: absolute; top: 0; bottom: 0; width: 50%; background: #111; color: #fff }
+      .revealed { display: grid; place-items: center; height: 100% }
+      .card { padding: 2rem; background: #333; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv data-sv-pin="300vh" id="pinned">
+        <div class="sv-stage" id="stage">
+          <div class="revealed">revealed content</div>
+          <div class="panel sv-curtain-l" id="curtain-l">left</div>
+          <div class="panel sv-curtain-r" id="curtain-r" style="left:50%">right</div>
+          <div class="sv-deck" id="deck" style="--sv-count:3">
+            <div class="card" id="card">one</div><div class="card">two</div><div class="card">three</div>
+          </div>
+          <div class="sv-range sv-range-rise" id="range">
+            <p id="rise-item" style="--sv-from:0;--sv-to:.5">ranged text</p>
+          </div>
+        </div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`
+  const SETTLED_SIGNATURE = () => {
+    const read = (sel, props) => {
+      const el = document.querySelector(sel)
+      if (!el) return `MISSING ${sel}`
+      const cs = getComputedStyle(el)
+      return props.map((p) => `${p}=${cs.getPropertyValue(p)}`).join(' ')
+    }
+    return {
+      wrapper: read('#pinned', ['height', 'position']),
+      stage: read('#stage', ['position', 'height', 'overflow']),
+      curtainL: read('#curtain-l', ['display', 'translate', 'transform']),
+      curtainR: read('#curtain-r', ['display', 'translate', 'transform']),
+      deck: read('#deck', ['display']),
+      card: read('#card', ['translate', 'rotate', 'scale', 'opacity']),
+      rise: read('#rise-item', ['opacity', 'translate']),
+    }
+  }
+
+  const noJs = await browser.newPage()
+  await noJs.setJavaScriptEnabled(false)
+  await noJs.setContent(RELEASE_FIXTURE)
+  const baseline = await noJs.evaluate(SETTLED_SIGNATURE)
+  await noJs.close()
+
+  const page = await browser.newPage()
+  await page.setContent(RELEASE_FIXTURE)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan = SV.scan()
+    await frame()
+    scrollTo(0, innerHeight) // into the pinned stretch: every clock is mid-flight
+    await frame()
+  })
+  const driven = await page.evaluate(SETTLED_SIGNATURE)
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    window.__stopScan() // a ScrollVarsBoot unmount, a route teardown
+    await frame()
+    scrollTo(0, 0) // same scroll position the no-JS page is read at
+    await frame()
+  })
+  const released = await page.evaluate(SETTLED_SIGNATURE)
+
+  const differing = (a, b) => Object.keys(baseline).filter((k) => a[k] !== b[k])
+  // the comparison is only worth anything if the driver really was driving
+  const drivenDiff = differing(driven, baseline)
+  check(
+    'release: while scanning, the pinned fixture really does render differently from its no-JS state',
+    drivenDiff.length > 0,
+    `identical on every probe: ${JSON.stringify(driven)}`
+  )
+  const stillDiffering = differing(released, baseline)
+  check(
+    'release: after stopScan() the curtain, deck, sv-range and stage all render exactly as with no JS',
+    stillDiffering.length === 0,
+    stillDiffering.map((k) => `${k}: released[${released[k]}] noJS[${baseline[k]}]`).join(' | ')
+  )
+  await page.close()
+}
+
 // ── 4. Nested trackers: the nearest one, not any live ancestor, owns spread ──
 {
   const page = await browser.newPage()

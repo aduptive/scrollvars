@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 // The driver holds module-level state (entries, initialized vh, listeners),
@@ -30,6 +31,10 @@ function makeElement(height = 400) {
     classList: {
       add: (c) => el.classes.add(c),
       toggle: (c, on) => (on ? el.classes.add(c) : el.classes.delete(c)),
+      // the driver reads the class list back every frame (it owns sv-live and
+      // re-asserts it), and clears its own classes when it re-tracks
+      contains: (c) => el.classes.has(c),
+      remove: (...cs) => cs.forEach((c) => el.classes.delete(c)),
     },
     getBoundingClientRect: () => ({ ...el.rect }),
   }
@@ -693,6 +698,188 @@ test('driver: an onLive that re-tracks itself without travel leaves no --sv-t fr
   pump()
   assert.ok(!('--sv-t' in el.vars), 'the old, released entry must not write --sv-t for its replacement')
   untrackCurrent()
+})
+
+test('driver: the driver owns the live state, a className rewrite that drops sv-live is re-asserted', async () => {
+  const { track } = await import('../dist/core/driver.js?liveowner')
+  const el = makeElement(400)
+  place(el, 300) // inside the live band
+  const untrack = track(el, {})
+  pump()
+  assert.ok(el.classes.has('sv-live'))
+  assert.equal(el.vars['--sv-live'], '1', 'the flag is written inline too, where a className rewrite cannot reach it')
+
+  // React's <Track> renders className={'sv ' + className}: a prop change
+  // rewrites the whole attribute and takes the driver's classes with it
+  el.classes.clear()
+  delete el.vars['--sv-live']
+  pump()
+  assert.ok(el.classes.has('sv-live'), 'the next frame resolves the element live again')
+  assert.ok(el.classes.has('sv'), 'and puts .sv back with it')
+  assert.equal(el.vars['--sv-live'], '1', 'and re-asserts the inline flag')
+  untrack()
+
+  // a settled `once` entry has no tracker left to re-assert anything: the
+  // inline flag is the whole reason such a section survives the same rewrite
+  const once = makeElement(400)
+  place(once, 300)
+  const stop = track(once, { once: true })
+  pump()
+  assert.equal(once.vars['--sv-live'], '1', 'the settled once entry carries the flag inline')
+  once.classes.clear()
+  pump()
+  assert.equal(once.vars['--sv-live'], '1', 'and keeps it with no tracker left to help')
+  stop()
+})
+
+// styles/pin.css, comments stripped (a doc comment naming a selector is not a
+// rule), as selector-list + body pairs. Nested at-rules never match as a whole
+// (their body holds braces), so their inner rules are what land here.
+const pinCss = readFileSync(new URL('../styles/pin.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const pinRules = [...pinCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+  selectors: m[1].split(',').map((s) => s.replace(/\s+/g, ' ').trim()),
+  body: m[2].replace(/\s+/g, ' ').trim(),
+}))
+const ruleFor = (selector) => pinRules.find((rule) => rule.selectors.includes(selector))
+
+test('driver: releasing an element settles it to its no-JS rendering, and pin.css guards every preset on that', async () => {
+  const { track } = await import('../dist/core/driver.js?releasestatic')
+  const el = makeElement(3000)
+  const untrack = track(el, { pin: true })
+  place(el, -1000)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '0.5000', 'the pin clock runs while tracked')
+
+  untrack()
+  assert.ok(!('--sv-pin' in el.vars), 'the clock the presets read is gone')
+  assert.ok(el.classes.has('sv-off'), 'and the element is marked released, for the static guards in pin.css')
+  assert.ok(el.classes.has('sv'), '.sv still stays: server markup keeps its authored [data-sv] either way')
+
+  const retrack = track(el, {})
+  assert.ok(!el.classes.has('sv-off'), 'tracking it again takes the marker back off')
+  retrack()
+
+  // the marker is only half the contract: without these four guards a released
+  // element keeps closed curtains over its content, a stacked deck, an
+  // unfinished sv-range and a sticky, clipping stage, all of which the no-JS
+  // rendering does not have. The e2e invariant proves the computed values.
+  const settled = {
+    '.sv-off .sv-curtain-l': 'display: none',
+    '.sv-off .sv-curtain-r': 'display: none',
+    '.sv-off .sv-deck': 'display: block',
+    '.sv-off .sv-deck > *': 'translate: none',
+    '.sv-off .sv-range > *': '--sv-r: 1',
+    '.sv-off .sv-stage': 'position: static',
+  }
+  for (const [selector, declaration] of Object.entries(settled)) {
+    const rule = ruleFor(selector)
+    assert.ok(rule, `styles/pin.css settles the released state with a \`${selector}\` rule`)
+    assert.ok(rule.body.includes(declaration), `\`${selector}\` declares \`${declaration}\`, got \`${rule.body}\``)
+  }
+})
+
+test('styles/pin.css: below the individual-transform floor the deck unstacks and the curtains open, with JS on', () => {
+  // Chrome 88-103, Firefox 60-71, Safari 13-14.0 run the driver, so html.sv-on
+  // is on and the no-JS guards cannot fire, while translate/rotate/scale are
+  // dropped and the deck's grid stacking (plain layout) survives on its own.
+  const block = pinCss.match(/@supports\s+not\s*\(\s*translate:\s*0\s*\)\s*\{([\s\S]*?)\n\}/)
+  assert.ok(block, 'pin.css carries an `@supports not (translate: 0)` block')
+  const rules = [...block[1].matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    selectors: m[1].split(',').map((s) => s.replace(/\s+/g, ' ').trim()),
+    body: m[2].replace(/\s+/g, ' ').trim(),
+  }))
+  const deck = rules.find((rule) => rule.selectors.includes('.sv .sv-deck'))
+  assert.ok(deck && deck.body.includes('display: block'), `the deck unstacks: ${deck?.body}`)
+  for (const side of ['l', 'r']) {
+    const curtain = rules.find((rule) => rule.selectors.includes(`.sv .sv-curtain-${side}`))
+    // `transform`, not the no-JS `display: none`: scrollvars/compat's fallback
+    // sheet re-expresses these panels with the same property and is appended
+    // later, so it still outranks this and animates them down there
+    assert.ok(curtain && /transform:\s*translateX\(/.test(curtain.body), `curtain-${side} opens: ${curtain?.body}`)
+  }
+})
+
+test('driver: an onTravel or an onPin that untracks its own element gets no write and no later callback', async () => {
+  const { track } = await import('../dist/core/driver.js?callbackguard')
+
+  // onTravel runs before the pin and scene writes: an untrack there must stop
+  // the frame right where it is, or --sv-pin/--sv-scene land inline on an
+  // element releaseEntry has already cleaned up, and stay there forever
+  const travelEl = makeElement(3000)
+  place(travelEl, -1000)
+  const travelScenes = []
+  let stopTravel = () => {}
+  stopTravel = track(travelEl, {
+    travel: true,
+    pin: true,
+    scenes: 4,
+    onTravel: () => stopTravel(),
+    onScene: (i) => travelScenes.push(i),
+  })
+  pump()
+  assert.ok(!('--sv-t' in travelEl.vars), 'the release cleaned up the var written before the callback')
+  assert.ok(!('--sv-pin' in travelEl.vars), 'no --sv-pin written after the untrack returned')
+  assert.ok(!('--sv-scene' in travelEl.vars), 'no --sv-scene either')
+  assert.deepEqual(travelScenes, [], 'and no onScene for a callback that already released this entry')
+
+  // same one step later: onPin runs before the scene block
+  const pinEl = makeElement(3000)
+  place(pinEl, -1000)
+  const pinScenes = []
+  let stopPin = () => {}
+  stopPin = track(pinEl, {
+    pin: true,
+    scenes: 4,
+    onPin: () => stopPin(),
+    onScene: (i) => pinScenes.push(i),
+  })
+  pump()
+  assert.ok(!('--sv-pin' in pinEl.vars), 'the release cleaned up the pin clock it had just written')
+  assert.ok(!('--sv-scene' in pinEl.vars), 'no --sv-scene written after the untrack returned')
+  assert.deepEqual(pinScenes, [], 'and no onScene')
+})
+
+test('driver: re-tracking a settled once element clears the stale sv-live, so the entrance replays', async () => {
+  const { track } = await import('../dist/core/driver.js?onceretrackflag')
+  const el = makeElement(400)
+  place(el, 300) // inside the band on the first frame: once latches and settles
+  const stop = track(el, { once: true })
+  pump()
+  assert.ok(el.classes.has('sv-live'), 'the once entry latched live and released itself')
+  stop() // stale: the once branch already left the map, so this is a no-op
+  assert.ok(el.classes.has('sv-live'), 'the settled class survives that stale untrack')
+
+  place(el, 2000) // far below the band again, the way a route change re-mounts it
+  const stop2 = track(el, { once: true })
+  assert.ok(!el.classes.has('sv-live'), 're-tracking clears the class the settled entry left behind')
+  assert.ok(!('--sv-live' in el.vars), 'and the inline flag with it')
+  pump()
+  assert.ok(!el.classes.has('sv-live'), 'the DOM and the driver agree: outside the band, not live')
+  place(el, 300)
+  pump()
+  assert.ok(el.classes.has('sv-live'), 'so the entrance replays when it enters the band again')
+  assert.equal(el.vars['--sv-live'], '1')
+  stop2()
+})
+
+test('driver: the reduced-motion listener falls back to addListener (MediaQueryList below Safari 14)', async () => {
+  let legacyListener
+  const realMatchMedia = window.matchMedia
+  window.matchMedia = () => ({ matches: false, addListener: (fn) => (legacyListener = fn) })
+  const { track } = await import('../dist/core/driver.js?addlistener')
+  const el = makeElement(400)
+  const untrack = track(el, {}) // init() reads matchMedia here
+  assert.equal(typeof legacyListener, 'function', 'the listener landed through the legacy addListener')
+
+  place(el, 875) // halfway down the enter ramp
+  pump()
+  assert.equal(el.vars['--sv-view'], '-0.5000')
+  legacyListener({ matches: true })
+  pump()
+  assert.equal(el.vars['--sv-view'], '0.0000', 'the preference reaches the driver through that listener')
+  legacyListener({ matches: false })
+  untrack()
+  window.matchMedia = realMatchMedia
 })
 
 test('driver: scrollToScene jumps instead of gliding under reduced motion', async () => {
