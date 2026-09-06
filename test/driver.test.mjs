@@ -1110,6 +1110,24 @@ test('driver: scrollToScene jumps instead of gliding under reduced motion', asyn
   window.matchMedia = realMatchMedia
 })
 
+test('driver: prefersReducedMotion() reads the media query before the first track() (ADU-157)', async () => {
+  const realMatchMedia = window.matchMedia
+  window.matchMedia = () => ({ matches: true, addEventListener: () => {} })
+  const { prefersReducedMotion } = await import('../dist/core/driver.js?prefersbeforetrack')
+  assert.equal(prefersReducedMotion(), true, 'correct before anything is ever tracked, not the stale default')
+  window.matchMedia = realMatchMedia
+})
+
+test('driver: scrollToScene() jumps under reduced motion even before the first track() (ADU-157)', async () => {
+  const realMatchMedia = window.matchMedia
+  window.matchMedia = () => ({ matches: true, addEventListener: () => {} })
+  const { scrollToScene } = await import('../dist/core/driver.js?scrollscenebeforetrack')
+  const el = makeElement(3000)
+  scrollToScene(el, 2, 4) // smooth defaults to true, and nothing was ever tracked
+  assert.equal(window.lastScrollTo.behavior, 'instant', 'reduced motion outranks smooth before any track() too')
+  window.matchMedia = realMatchMedia
+})
+
 test('driver: below the individual-transform floor the pin helper writes no tall wrapper height (ADU-158)', async () => {
   // styles/pin.css releases `.sv-stage` there (`@supports not (translate: 0)`:
   // position static, height auto, overflow visible), so the section renders at
