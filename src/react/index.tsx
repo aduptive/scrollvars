@@ -645,6 +645,10 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       className,
       style,
       children,
+      // pulled out of rest so the spread cannot replace autoplay's hover
+      // pause: both are public props on HTMLAttributes
+      onPointerEnter,
+      onPointerLeave,
       ...rest
     },
     apiRef
@@ -755,11 +759,23 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         className={className ? `sv-slider-shell ${className}` : 'sv-slider-shell'}
         data-sv-uid={uid}
         style={{ ...style, ...styleVars } as React.CSSProperties}
-        onPointerEnter={() => (hovering.current = true)}
-        onPointerLeave={() => (hovering.current = false)}
         {...rest}
+        onPointerEnter={(event) => {
+          hovering.current = true
+          onPointerEnter?.(event)
+        }}
+        onPointerLeave={(event) => {
+          hovering.current = false
+          onPointerLeave?.(event)
+        }}
       >
-        {perView && typeof perView === 'object' && <style>{perViewCss(scope, perView)}</style>}
+        {perView && typeof perView === 'object' && (
+          // raw text, not a child: react-dom 18 escapes `"` to `&quot;` inside
+          // a <style>, and a raw-text entity never decodes, so the quoted uid
+          // scope would drop every rule on the server. Same CSP story as any
+          // inline <style>: the content is ours, built from the props above
+          <style dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
+        )}
         {!!autoplay && autoplay > 0 && (
           <button
             type="button"

@@ -946,6 +946,29 @@ against the code ADU-129 to ADU-132 shipped.
   script hide entrances before paint and the pin helper write heights on
   attach.
 
+### React (blind review round 5)
+- `<Slider>` composes a consumer `onPointerEnter` / `onPointerLeave` with
+  autoplay's hover pause instead of letting the props spread replace it.
+  Both are public props (the component extends `HTMLAttributes`), so a
+  consumer `onPointerEnter` used to silence the pause entirely, and a lone
+  consumer `onPointerLeave` left the slider hovering forever, autoplay
+  never resuming after the first hover.
+- `<Slider>`'s responsive `perView` stylesheet is rendered as raw text
+  (`dangerouslySetInnerHTML`) instead of a `<style>` child. react-dom
+  18.3.1 escapes `"` to `&quot;` inside a `<style>`, 19 does not, and
+  `<style>` is raw text so the entity never decodes: on React 18 the server
+  dropped every `[data-sv-uid="..."]` rule the responsive map emits, and
+  hydration did not repair it. Same root as the gallery sections, which
+  already render their CSS this way. No CSP change, the content is built
+  from the component's own props.
+
+### Testing (blind review round 5)
+- `test/react.test.mjs`'s `flushFrames` rethrows what a frame scheduled by
+  the running test throws, and keeps swallowing only frames left pending by
+  earlier tests (queued callbacks carry the test that scheduled them). A
+  driver or canvas frame that blew up could not fail a React test before.
+  Two harness tests pin both halves.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
