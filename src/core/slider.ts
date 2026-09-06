@@ -116,21 +116,45 @@ export function slider(
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
   // Container-local start of a slide in logical scroll units, from offset
   // chains: layout positions, so the coverflow transforms a slide carries
-  // (scale/rotate from --sd) never feed back into its own measurement, and the
-  // sums make it independent of which ancestor is the offsetParent. RTL mirrors
-  // against the container's own content width.
-  const chain = (el: HTMLElement | null, x: boolean) => {
+  // (scale/rotate from --sd) never feed back into its own measurement. RTL
+  // mirrors against the container's own client box (clientWidth), not its
+  // scrollWidth.
+  //
+  // Walks the offsetParent chain from `el`, summing offsetLeft (or offsetTop)
+  // as it goes. Stops the moment it reaches the container: offsetLeft is
+  // defined against the offsetParent's PADDING edge, so once the container
+  // itself becomes that offsetParent the running sum already sits at its
+  // padding edge and needs no further correction. If the walk never reaches
+  // the container (a statically positioned rail: some further ancestor is
+  // the real offsetParent instead), it runs all the way to the root and the
+  // caller falls back to subtracting the container's own absolute position.
+  const chainToContainer = (el: HTMLElement, x: boolean) => {
     let v = 0
-    while (el) {
-      v += x ? el.offsetLeft : el.offsetTop
-      el = el.offsetParent as HTMLElement | null
+    let node: HTMLElement | null = el
+    while (node && node !== container) {
+      v += x ? node.offsetLeft : node.offsetTop
+      node = node.offsetParent as HTMLElement | null
+    }
+    return { v, atContainer: node === container }
+  }
+  // Full walk to the root, used for the container's own absolute position
+  // in the fallback above.
+  const chain = (el: HTMLElement, x: boolean) => {
+    let v = 0
+    let node: HTMLElement | null = el
+    while (node) {
+      v += x ? node.offsetLeft : node.offsetTop
+      node = node.offsetParent as HTMLElement | null
     }
     return v
   }
   const slideStart = (el: HTMLElement) => {
-    if (!horizontal) return chain(el, false) - chain(container, false) - container.clientTop
-    const local = chain(el, true) - chain(container, true) - container.clientLeft
-    return rtl ? container.scrollWidth - local - el.offsetWidth : local
+    const x = horizontal
+    const walk = chainToContainer(el, x)
+    const local = walk.atContainer
+      ? walk.v
+      : walk.v - chain(container, x) - (x ? container.clientLeft : container.clientTop)
+    return rtl ? container.clientWidth - local - el.offsetWidth : local
   }
   const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
 
@@ -145,6 +169,11 @@ export function slider(
   }
 
   let active = -1
+  // The active DOM node, not just its index: a MutationObserver-driven
+  // replacement of that node (same index, different element) must still
+  // move sv-active and --sv-slide onto the new node, without firing onSlide
+  // for an index that never actually changed.
+  let activeEl: HTMLElement | null = null
   let position = 0
   let raf = 0
   let dragging = false
@@ -186,11 +215,14 @@ export function slider(
     )
     const progress = range() > 0 ? pos() / range() : 0
     container.style.setProperty('--sv-progress', progress.toFixed(4))
-    if (best !== active) {
+    const bestEl = list[best] ?? null
+    if (best !== active || bestEl !== activeEl) {
+      const indexChanged = best !== active
       active = best
-      slides().forEach((slide, i) => slide.classList.toggle('sv-active', i === best))
+      activeEl = bestEl
+      list.forEach((slide, i) => slide.classList.toggle('sv-active', i === best))
       container.style.setProperty('--sv-slide', String(best))
-      onSlide?.(best)
+      if (indexChanged) onSlide?.(best)
     }
     onScroll?.(state())
   }
