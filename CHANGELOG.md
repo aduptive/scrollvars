@@ -1002,6 +1002,36 @@ against the code ADU-129 to ADU-132 shipped.
   the last hovered element. It used to only remove the listeners and cancel
   the pending frame, leaving a destroyed instance's card frozen mid-tilt.
 
+### React (blind review round 5)
+- `<Slider>` composes a consumer `onPointerEnter` / `onPointerLeave` with
+  autoplay's hover pause instead of letting the props spread replace it.
+  Both are public props (the component extends `HTMLAttributes`), so a
+  consumer `onPointerEnter` used to silence the pause entirely, and a lone
+  consumer `onPointerLeave` left the slider hovering forever, autoplay
+  never resuming after the first hover.
+- `<Slider>`'s responsive `perView` stylesheet is rendered as raw text
+  (`dangerouslySetInnerHTML`) instead of a `<style>` child. react-dom
+  18.3.1 escapes `"` to `&quot;` inside a `<style>`, 19 does not, and
+  `<style>` is raw text so the entity never decodes: on React 18 the server
+  dropped every `[data-sv-uid="..."]` rule the responsive map emits, and
+  hydration did not repair it. Same root as the gallery sections, which
+  already render their CSS this way. The raw sink also drops React's
+  `</style` escaping, which is what kept an interpolated value inert, so
+  `perViewCss` coerces every part it interpolates with `Number()`: a
+  `perView` off untyped data (a CMS) renders `--sv-per-view:NaN`, a
+  declaration the CSS parser drops, and can neither close the element nor
+  emit a tag. No CSP change, the sheet is still one inline `<style>`.
+
+### Testing (blind review round 5)
+- `test/react.test.mjs`'s `flushFrames` rethrows what a frame scheduled by
+  the running test throws, and keeps swallowing only frames left pending by
+  earlier tests (queued callbacks carry the test that scheduled them). A
+  driver or canvas frame that blew up could not fail a React test before.
+  A frame scheduled from inside a running frame inherits that frame's test,
+  not the flushing one, so a leftover canvas loop rescheduling itself does
+  not blow up whichever later test happens to flush it twice.
+  Two harness tests pin both halves.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
