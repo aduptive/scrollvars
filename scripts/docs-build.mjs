@@ -277,23 +277,29 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps every pin preset in flow and readable, curtains parted and static (see below); <code>compat()</code> adds the curtains' and the rail's own scroll-linked movement, the deck stays unstacked either way</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); <code>sv-rail</code> is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code> gives it back its own scroll-linked travel, but with the stage released into flow that travel mostly happens off screen</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
 breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
-overlapping or clipped (curtains parted, deck unstacked, <code>.sv-stage</code> back in flow,
-see below); call it and the page animates instead, on roughly Chrome 61+ / Firefox 60+ /
-Safari 11+. Animation is progressive enhancement, never a dependency. Presets that lean on
-newer CSS (<code>sv-range</code>, <code>sv-counter</code>) degrade to their end state
-individually.</p>
+overlapping or clipped (curtains parted, deck unstacked, <code>.sv-stage</code> back in flow;
+<code>sv-rail</code>'s own exception is below); call it and the page animates instead, on
+roughly Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive enhancement, never a
+dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
+degrade to their end state individually.</p>
 <p>Below the transform floor, with JS still running, <code>styles/pin.css</code> carries its
-own <code>@supports not (translate: 0)</code> net for every pin preset: nothing overlaps, the
-curtains sit parted and static rather than animated, the deck unstacks to a static,
-non-overlapping layout, and the shared <code>.sv-stage</code> itself resets to flow so content
-stays in place and is readable, <code>sv-rail</code> included. What the net does not do is move
-anything: <code>compat()</code> is what gives the curtains and the rail their own scroll-linked
-travel again; the deck stays unstacked either way, its fly-away slice needs
-<code>clamp()</code>.</p>
+own <code>@supports not (translate: 0)</code> net, but only for four of its rules: the stage,
+both curtains and the deck. The curtains sit parted and static rather than animated, the deck
+unstacks to a static, non-overlapping layout, and the stage resets to flow so nothing is
+clipped by the stage itself (<code>sv-reading</code>, <code>sv-range</code> and
+<code>sv-counter</code> need no net of their own, they settle for unrelated reasons).
+<code>sv-rail</code> stays the one exception: with JS running the no-JS guard's
+<code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
+viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
+at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code> gives the rail
+back its own scroll-linked travel, but with the stage released into flow that travel mostly
+happens off screen, so wrap the rail yourself below the floor. One more caveat until ADU-150
+lands: a released stage can also leave a parked curtain panel sitting outside it, extending
+the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
 three feature checks and exits (free); on old ones it installs ResizeObserver/
 IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for the

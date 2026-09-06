@@ -227,7 +227,8 @@ next frame replays the entrance system on demand; on a tracked (or
 released) element the driver pins `--sv-live` inline (outranks a rule of
 your own without `!important`), so re-tracking is what replays the entrance
 there instead. A settled `once` entry carries that inline value too,
-without being tracked or released, so neither trick replays it.
+without being tracked or released, so the class trick alone cannot
+replay it; re-tracking still can, exactly as on a tracked element.
 **Multi-act timed sequences**: `sv-acts` preset: a registered
 custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).

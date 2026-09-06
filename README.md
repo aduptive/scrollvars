@@ -351,7 +351,8 @@ system on demand; on a tracked (or released) element the driver pins
 `--sv-live` inline, which outranks a rule of your own without `!important`,
 so re-tracking is what replays the entrance there instead. A settled
 `once` entry carries that same inline value without being tracked or
-released, so neither trick replays it there. `:has()` puts
+released, so the class trick alone cannot replay it there; re-tracking
+still can, exactly as on a tracked element. `:has()` puts
 state anywhere (`body:has(#tab-2:checked) .panel-2`); the Popover API
 opens/closes with zero JS. One-shot intros on load are plain CSS keyframes.
 Timed multi-act sequences are `sv-acts` (above); branching, physics or
@@ -494,18 +495,26 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps every pin preset in flow and readable, curtains parted and static (see below); `compat()` adds the curtains' and the rail's own scroll-linked movement, the deck stays unstacked either way |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); `sv-rail` is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()` gives it back its own scroll-linked travel, but with the stage released into flow that travel mostly happens off screen |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
 Below the transform floor, with JS still running, `styles/pin.css` carries
-its own `@supports not (translate: 0)` net for every pin preset: nothing
-overlaps, the curtains sit parted and static rather than animated, the deck
-unstacks to a static, non-overlapping layout, and the shared `.sv-stage`
-itself resets to flow so content stays in place and is readable, `sv-rail`
-included. What the net does not do is move anything: `compat()` is what
-gives the curtains and the rail their own scroll-linked travel again; the
-deck stays unstacked either way, its fly-away slice needs `clamp()`.
+its own `@supports not (translate: 0)` net, but only for four of its rules:
+the stage, both curtains and the deck. The curtains sit parted and static
+rather than animated, the deck unstacks to a static, non-overlapping
+layout, and the stage resets to flow so nothing is clipped by the stage
+itself (`sv-reading`, `sv-range` and `sv-counter` need no net of their own,
+they settle for unrelated reasons). `sv-rail` stays the one exception:
+with JS running the no-JS guard's `width: auto; flex-wrap: wrap` does not
+apply, so a track built wider than the viewport runs past the right edge,
+reachable only by a page-wide horizontal scroll, and not at all under an
+`overflow-x: hidden` ancestor. `compat()` gives the rail back its own
+scroll-linked travel, but with the stage released into flow that travel
+mostly happens off screen, so wrap the rail yourself below the floor. One
+more caveat until ADU-150 lands: a released stage can also leave a parked
+curtain panel sitting outside it, extending the document so a reader can
+scroll sideways to an empty panel.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
@@ -542,7 +551,7 @@ Firefox 78 / Safari 14.1); canvas harness adds IntersectionObserver
 that makes the table safe for companies: **below the floor nothing
 breaks.** Skip `compat()` and the page renders complete and static, nothing
 overlapping or clipped (curtains parted, deck unstacked, `.sv-stage` back
-in flow, see above); call it and the page animates instead, on roughly
+in flow; `sv-rail`'s own exception is above); call it and the page animates instead, on roughly
 Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive
 enhancement, never a dependency.
 

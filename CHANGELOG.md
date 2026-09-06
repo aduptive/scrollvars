@@ -1217,12 +1217,18 @@ Docs read against the code merged by the five round-5 code tickets.
   (`--sv-t` needs `travel`, `--sv-pin` needs `pin`, `--sv-scene` needs
   `scenes` greater than 1), and the `sv-spread` scrub recipe no longer
   reads as if `--sv-t` were always written.
-- The browser-support section documents `pin.css`'s own
-  `@supports not (translate: 0)` net: below the floor it keeps every pin
-  preset in flow and readable (curtains parted and static, deck unstacked,
-  `.sv-stage` back in flow), `sv-rail` included; `compat()` is what adds
-  the animation, the curtains and the rail travelling again, the deck
-  staying unstacked either way.
+- The browser-support section now documents `pin.css`'s own
+  `@supports not (translate: 0)` net accurately: it covers four rules (the
+  stage, both curtains, the deck), not every pin preset; the stage resets
+  to flow so nothing is clipped by the stage itself. `sv-rail` is the one
+  exception again: the no-JS wrap guard does not apply with JS running, so
+  an unwrapped track can run past the viewport edge, reachable only by a
+  page-wide horizontal scroll and not at all under an
+  `overflow-x: hidden` ancestor; `compat()` restores its travel, but with
+  the stage released into flow that travel mostly happens off screen.
+  Also noted, as a caveat pending ADU-150: a released stage can leave a
+  parked curtain panel outside it, extending the document with an empty
+  sideways scroll.
 - The "below the floor nothing breaks" design rule holds with or without
   `compat()`: skip it and the page renders complete and static, call it
   and the page animates instead.
