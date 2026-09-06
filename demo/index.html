@@ -3553,6 +3553,8 @@ var SV = (() => {
       tracked.delete(el);
     };
     const removeSplit = (el) => {
+      if (scope.contains(el))
+        return;
       splits.get(el)?.();
       splits.delete(el);
     };
