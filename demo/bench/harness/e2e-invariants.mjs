@@ -14,6 +14,10 @@
  *      as, a non-live tracker (the live-driven rule must not outrank .sv-open)
  *   6. toggles() marking a boot-present target sv-ui settles it straight
  *      from the no-JS finished value to 0, never mid-transition
+ *   7. sticky-steps: the non-active shots' inert/aria-hidden follow
+ *      prefers-reduced-motion live, not just at mount
+ *   8. Canvas: mountEffect()'s applySize() settles an unsized canvas at
+ *      its intrinsic size in one pass, never runs away above DPR 1
  *
  * Runs against the fx pages (the shipped presets, the shipped engine).
  *   node e2e-invariants.mjs
@@ -512,7 +516,49 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
-// ── 7. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
+// ── 7. StickySteps (React fx component): inert/aria-hidden on the
+// non-active shots follow prefers-reduced-motion LIVE, not just at mount
+// (ADU-108, round 3 finding 19: the effect read the media query once) ──
+{
+  const page = await browser.newPage()
+  await page.goto(`${base}/bench/harness/fixtures/sticky-steps-inert.html`, { waitUntil: 'load' })
+  const readShots = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.st-shot')].map((el) => ({
+        inert: el.inert,
+        ariaHidden: el.getAttribute('aria-hidden'),
+      }))
+    )
+  const settled = (name, shots) =>
+    check(
+      name,
+      shots[0].inert === false &&
+        shots[0].ariaHidden === null &&
+        shots.slice(1).every((s) => s.inert === true && s.ariaHidden === 'true'),
+      JSON.stringify(shots)
+    )
+
+  const before = await readShots()
+  settled('sticky-steps: on mount the non-active shots are inert + aria-hidden (scene 0 is active)', before)
+
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await new Promise((r) => setTimeout(r, 100))
+  const reduced = await readShots()
+  check(
+    'sticky-steps: switching to prefers-reduced-motion: reduce LIVE drops inert/aria-hidden from every shot',
+    reduced.every((s) => s.inert === false && s.ariaHidden === null),
+    JSON.stringify(reduced)
+  )
+
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+  await new Promise((r) => setTimeout(r, 100))
+  const restored = await readShots()
+  settled('sticky-steps: switching back restores inert + aria-hidden on the non-active shots', restored)
+
+  await page.close()
+}
+
+// ── 8. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
 // feedback loop by re-measuring layout right after writing the backing
 // store, not by guessing from a rect/backing-store equality (ADU-107,
 // second pass, verifier finding). The old equality guard compared a

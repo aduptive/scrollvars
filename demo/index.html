@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 1.9 KB gzip · full core 5.5 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.3 KB gzip · full core 5.9 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3007,8 +3007,15 @@ var SV = (() => {
   function init() {
     if (initialized || typeof window === "undefined")
       return;
-    initialized = true;
     vh = window.innerHeight;
+    try {
+      resizeObserver = new ResizeObserver(() => schedule());
+      resizeObserver.observe(document.documentElement);
+    } catch {
+      resizeObserver = null;
+      return;
+    }
+    initialized = true;
     window.addEventListener("scroll", schedule, { passive: true, capture: true });
     window.addEventListener("resize", () => {
       vh = window.innerHeight;
@@ -3021,12 +3028,6 @@ var SV = (() => {
       entries.forEach(applyPinHelper);
       schedule();
     });
-    try {
-      resizeObserver = new ResizeObserver(() => schedule());
-      resizeObserver.observe(document.documentElement);
-    } catch {
-      return;
-    }
     if (typeof IntersectionObserver !== "undefined") {
       culler = new IntersectionObserver((records) => {
         for (const record of records) {
@@ -3043,13 +3044,18 @@ var SV = (() => {
   var lastY = -1;
   var lastT = 0;
   var velTimer;
+  var lastPageStr = "";
+  var lastVStr = "";
   var pageOutputs = false;
+  var forceAll = false;
   function schedule() {
     if (!raf && (entries.size > 0 || pageOutputs))
       raf = requestAnimationFrame(update);
   }
   function update() {
     raf = 0;
+    const force = forceAll;
+    forceAll = false;
     const y = window.scrollY;
     const now = performance.now();
     const jumped = lastY >= 0 && Math.abs(y - lastY) > vh;
@@ -3058,7 +3064,7 @@ var SV = (() => {
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];
     entries.forEach((entry) => {
-      if (!entry.near && !entry.opts.root && !jumped)
+      if (!entry.near && !entry.opts.root && !jumped && !force)
         return;
       const rect = entry.el.getBoundingClientRect();
       const root = entry.opts.root;
@@ -3069,7 +3075,9 @@ var SV = (() => {
           rr = root.getBoundingClientRect();
           rootRects.set(root, rr);
         }
-        geo = { top: rect.top - rr.top, bottom: rect.bottom - rr.top, height: rect.height, vp: rr.height };
+        const originTop = rr.top + root.clientTop;
+        const vp = root.clientHeight;
+        geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp };
       } else {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
       }
@@ -3080,10 +3088,14 @@ var SV = (() => {
     }
     const dt = now - lastT;
     const v = lastY < 0 || dt <= 0 ? 0 : (y - lastY) / dt * 1e3 / vh;
-    docEl.style?.setProperty("--sv-page", clamp(y / pageSpan, 0, 1).toFixed(4));
-    docEl.style?.setProperty("--sv-v", (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3));
+    const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4);
+    if (pageStr !== lastPageStr)
+      docEl.style?.setProperty("--sv-page", lastPageStr = pageStr);
+    const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3);
+    if (vStr !== lastVStr)
+      docEl.style?.setProperty("--sv-v", lastVStr = vStr);
     clearTimeout(velTimer);
-    velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", "0"), 80);
+    velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", lastVStr = "0"), 80);
     lastY = y;
     lastT = now;
   }
@@ -3108,7 +3120,26 @@ var SV = (() => {
   function readPinOffset(el) {
     if (typeof getComputedStyle !== "function")
       return 0;
-    return parseFloat(getComputedStyle(el).getPropertyValue("--sv-pin-offset")) || 0;
+    const raw = getComputedStyle(el).getPropertyValue("--sv-pin-offset").trim();
+    const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i);
+    const value = match ? parseFloat(match[1]) : parseFloat(raw);
+    if (!value)
+      return 0;
+    switch (match?.[2]?.toLowerCase()) {
+      case "rem":
+        return value * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      case "em":
+        return value * parseFloat(getComputedStyle(el).fontSize);
+      case "vh":
+      case "svh":
+      case "lvh":
+      case "dvh":
+        return value / 100 * window.innerHeight;
+      case "vw":
+        return value / 100 * window.innerWidth;
+      default:
+        return value;
+    }
   }
   function computeScene(pin, count, snap) {
     const raw = pin * (count - 1);
@@ -3141,7 +3172,9 @@ var SV = (() => {
         if (opts.view !== false)
           setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
         entries.delete(entry.el);
-        resizeObserver?.unobserve(entry.el);
+        unobserveIfUnneeded(entry.el);
+        if (opts.root)
+          unobserveIfUnneeded(opts.root);
         culler?.unobserve(entry.el);
         return;
       }
@@ -3173,8 +3206,38 @@ var SV = (() => {
       }
     }
   }
+  function stillNeeded(target) {
+    for (const other of entries.values()) {
+      if (other.el === target || other.opts.root === target)
+        return true;
+    }
+    return false;
+  }
+  function unobserveIfUnneeded(target) {
+    if (!stillNeeded(target))
+      resizeObserver?.unobserve(target);
+  }
+  function releaseEntry(entry) {
+    const { el } = entry;
+    entries.delete(el);
+    culler?.unobserve(el);
+    unobserveIfUnneeded(el);
+    if (entry.opts.root)
+      unobserveIfUnneeded(entry.opts.root);
+    restorePinHelper(entry);
+    el.classList.toggle("sv-live", false);
+    for (const name of Object.keys(entry.written))
+      el.style.removeProperty?.(name);
+    el.style.removeProperty?.("--sv-scenes");
+  }
   function track(el, opts = {}) {
     init();
+    if (!initialized)
+      return () => {
+      };
+    const existing = entries.get(el);
+    if (existing)
+      releaseEntry(existing);
     const entry = {
       el,
       opts,
@@ -3194,14 +3257,15 @@ var SV = (() => {
     }
     pageOutputs = true;
     resizeObserver?.observe(el);
+    if (opts.root)
+      resizeObserver?.observe(opts.root);
     if (!opts.root)
       culler?.observe(el);
     schedule();
     return () => {
-      entries.delete(el);
-      resizeObserver?.unobserve(el);
-      culler?.unobserve(el);
-      restorePinHelper(entry);
+      if (entries.get(el) !== entry)
+        return;
+      releaseEntry(entry);
     };
   }
   function applyPinHelper(entry) {
@@ -3228,6 +3292,7 @@ var SV = (() => {
       if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin)
         entry.pinOffset = readPinOffset(entry.el);
     });
+    forceAll = true;
     schedule();
   }
   function scrollToScene(el, index, count, smooth = true, root) {
@@ -3240,7 +3305,10 @@ var SV = (() => {
     const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
     const behavior = smooth ? "smooth" : "instant";
     if (root) {
-      root.scrollTo({ top: root.scrollTop + rect.top - root.getBoundingClientRect().top + offset, behavior });
+      root.scrollTo({
+        top: root.scrollTop + rect.top - root.getBoundingClientRect().top - root.clientTop + offset,
+        behavior
+      });
     } else {
       window.scrollTo({ top: window.scrollY + rect.top + offset, behavior });
     }

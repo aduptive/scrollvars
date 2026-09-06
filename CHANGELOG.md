@@ -6,6 +6,69 @@ Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
 enhancement contract holds in every documented case. Second pass (verifier
 findings on the same round): three more defects fixed.
 
+### Driver
+- `track()`'s returned untrack is identity-guarded: it deletes and unobserves
+  only if it is still the current entry for that element
+  (`entries.get(el) === entry`), so tracking the same element twice and
+  calling the first untrack no longer deletes the replacement. An explicit
+  untrack now also removes `sv-live` and every variable that entry wrote
+  (plus `--sv-scenes`); `.sv` stays, and the `once` fire-and-forget path
+  keeps `sv-live` (its self-delete already left the entry map, so the guard
+  makes the later untrack call a no-op there, which is the intended
+  behavior).
+- `init()` is transactional: it constructs the `ResizeObserver` before
+  installing any listener, so a throwing constructor leaves nothing to undo.
+  `track()` checks `initialized` after calling `init()` and returns a no-op
+  (no entry, no pin helper, no schedule, no `.sv` class) when it failed,
+  so the page stays static until `compat()` shims a `ResizeObserver` in and
+  a later `track()` call retries `init()` clean.
+- `refresh()` now forces one geometry pass through every entry on the very
+  next frame, including culled ones (`near === false`): content changes that
+  do not fire a resize (an accordion opening, an image swapped for a taller
+  one) previously left offscreen trackers stale until they scrolled back
+  into the culling margin.
+- A tracked element with a `root` now measures against `root.clientTop` and
+  `root.clientHeight` instead of the root's bounding rect, so a bordered
+  scroll container shares one origin between `track()`'s pin math and
+  `scrollToScene()`'s scroll target. `track()` also observes the `root`
+  with the `ResizeObserver`, so a resize of the scroller itself
+  reschedules a measure.
+- `--sv-pin-offset` now resolves `rem` (root font-size), `em` (the
+  element's own font-size), `vh`/`svh`/`lvh`/`dvh` (`window.innerHeight`)
+  and `vw` (`window.innerWidth`) to pixels; a bare number still reads as px.
+- `--sv-page` and `--sv-v` skip the style write when the serialized value
+  did not change from the previous frame.
+- Second pass (verifier findings on 00436db): `track()` on an element that
+  is already tracked replaced its entry in place, which left the identity
+  guard on the first entry's untrack blocking forever, so a variable only
+  the first entry ever wrote (`--sv-t` from `{travel: true}` followed by
+  `{}`) stayed inline. A replacing `track()` now releases the previous
+  entry's outputs first (its written vars, `--sv-scenes`, its pin helper,
+  both observers), so it is exactly untrack then track. A root element
+  that is also tracked standalone lost its `ResizeObserver` watch the
+  moment the standalone entry was untracked, because `unobserve(el)` fired
+  for the shared element with no regard for the entries still using it as
+  their `root`. `untrack()` now checks whether any other live entry still
+  needs that element watched, either as its own tracked element or as its
+  `root`, before unobserving it.
+- Third pass (verifier finding on 130395a): the `once` fire-and-forget branch
+  in `apply()` still unconditionally unobserved its own element on the
+  ResizeObserver when it self-released, bypassing the `stillNeeded()` guard
+  the second pass added elsewhere. An element that is both a `once` entry
+  and another entry's `root` lost that other entry's resize watch the
+  moment the `once` entry went live and settled. The branch now checks
+  `stillNeeded()` before unobserving, same as `releaseEntry()`, but keeps
+  settling `--sv-view` and latching `sv-live` itself: it still does not
+  route through `releaseEntry()`.
+- Fourth pass (verifier finding on 293b1dc): the third pass guarded the
+  `once` branch's unobserve of its own element, but never released its own
+  `root`. A `{ once: true, root }` entry that self-released kept the
+  root's `ResizeObserver` watch forever, since `releaseEntry()` is never
+  called on that path. The two guarded unobserves (the tracked element and
+  its `root`) are now one `unobserveIfUnneeded()` helper, used by both
+  `releaseEntry()` and the `once` branch, so the two paths cannot drift
+  apart again.
+
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so
   `sv-split-rise` can actually apply `translate` to them (non-replaced
@@ -181,6 +244,102 @@ findings on the same round): three more defects fixed.
   (`Math.round(size * dpr)`), and the CSS pin still comes from that same
   now-exact measure. Every prior case (plain, bordered, padded,
   border-box-with-padding) settles the same as before.
+
+### Installed components (blind review round 3)
+- `StickySteps`'s `inert` spread now casts like the core does
+  (`as unknown as Record<string, never>`): the previous inline ternary put a
+  `string | boolean` into a `boolean` prop, failing `tsc` under React 19
+  types. It also now subscribes to the `prefers-reduced-motion` media
+  query's `change` event instead of reading it once, so a live switch drops,
+  or restores, `inert`/`aria-hidden` on the stacked shots immediately.
+- `GsapScrub` and `ThreeScene` declare their mutable refs as
+  `useRef<T | null>(null)`, not `useRef<T>(null)`: read-only under React 18
+  types. `GsapScrub` also drives the timeline through
+  `prefersReducedMotion()` (imported from `scrollvars`), so a
+  reduced-motion visitor gets the finished frame instead of a scrubbed one.
+- `gsap-scrub` and `three-scene` declare `min: '1.13.0'`: the string pin
+  helper and `.sv-stage` they both use are 1.13.0 features, not the
+  1.9.0/1.11.0 previously declared.
+- `curtain`, `horizontal-rail` and `pointer-tilt` declare
+  `requires.tailwind: true`: their installed content leans on Tailwind
+  utility classes with no component-owned CSS backing them. The CLI prints
+  "Tailwind utilities: required" for these effects; the registry gains the
+  `tailwind` flag.
+- `CoverflowSlider`'s coverflow transform moved from an inline `style`
+  object into a `.cf-slide` class with a `prefers-reduced-motion: reduce`
+  override, matching the preset policy that scroll-linked transforms return
+  to flow under reduced motion. The Tailwind tab of `hero-cinematic` gained
+  matching `motion-reduce:` variants for the orb and the inner block.
+- `TimelineScrub` renders the year as visually-hidden real text plus an
+  aria-hidden counter span, instead of `aria-label` on a bare `<span>`
+  (prohibited on generic roles, Axe `aria-prohibited-attr`). `StatsCountup`
+  emits `<dt>` before `<dd>` (order was reversed), and renders the final
+  value as visually-hidden text with the counter itself `aria-hidden`.
+
+### Installed components (blind review round 3, second pass)
+- The CLI component `tsc` gate was vacuous under a config-level error: a
+  bad `moduleResolution` prints as `tsconfig.json(9,25): error TS6046`,
+  which never matches the per-file `<name>.tsx(line,col)` regex, so every
+  fixture reported "type-checks: pass" while tsc never actually checked
+  any of them. The gate now counts every `error TS\d+` line in the raw
+  output against the lines it can attribute to a fixture file and fails
+  loudly, with the raw output, on any mismatch or on a non-zero exit with
+  no per-file diagnostics. Proved red on a deliberately invalid
+  `moduleResolution` before landing, green again after reverting it.
+- `hero-cinematic`'s Tailwind tab: the `motion-reduce:` override for
+  `.inner` sat on the `.inner` div itself (`[opacity:1]`/`[scale:none]`,
+  a one-class selector, specificity 0,1,0) while the base rule reaches
+  `.inner` through the section's `[&_.inner]:` variants (a two-class
+  selector, 0,2,0), so the override never won and reduced-motion visitors
+  still got the scroll-driven fade and scale. The override now lives on
+  the section in the same `[&_.inner]:` shape, after the base variants,
+  so equal specificity lets source order settle it.
+- The condensed `react:` doc snippets for `timeline-scrub` and
+  `stats-countup` referenced `<span style={SR_ONLY}>` without defining
+  it, unlike every other self-contained snippet (`SR_ONLY` is not
+  exported from `scrollvars`). Both now inline the sr-only style object
+  literal at the point of use.
+
+### Installed components (blind review round 3, third pass)
+- The second pass's `tsc` gate fix counted every `error TS\d+` line against
+  the lines it could attribute to a fixture file, but the ambient stubs
+  `gsap.d.ts` / `three.d.ts` compile in the same scope (needed to
+  type-check `gsap-scrub`/`three-scene`) and are not one of the EFFECTS
+  fixtures the per-file loop asserts on: a syntax error injected into
+  `AMBIENT_GSAP` attributed cleanly to `gsap.d.ts(line,col)`, so the count
+  matched, the "not vacuous" meta-test passed, and all 17 fixture tests
+  reported "type-checks: pass" while tsc had exited 1 the whole time. The
+  gate now fails the whole test file on any non-zero tsc exit, no matter
+  how the diagnostics are attributed, printing the raw output; per-fixture
+  attribution stays for the nicer message. Proved red by injecting a
+  syntax error into the ambient stub (the gate failed with the raw
+  `gsap.d.ts` diagnostics, every fixture test still green), green again
+  after removing it; a per-file error (injected into `marquee`) still
+  fails only that fixture's test plus the file-level gate.
+
+### Installed components (blind review round 3, fourth pass)
+- The CLI component `tsc` gate spawned `tsc` with a generated tsconfig that
+  had no `paths` redirect for `react`, so the subprocess always resolved the
+  root's React 19 `@types`, even under `npm run test:react18`: the
+  `--import` loader hook only redirects the parent process's own runtime
+  imports, never a subprocess it spawns. No `tsc` run anywhere checked the
+  installed fixtures against React 18 types, so reverting `GsapScrub`'s
+  `useRef<T | null>(null)` fix stayed green everywhere. `react18-register.mjs`
+  now sets `SV_REACT18_DIR` (its value read straight from
+  `react18-paths.mjs`, the same module `react18-tsc.mjs` already used for
+  `src/`), and the gate adds the same `paths` redirect and canary when that
+  variable is set. Proved red by reverting the `GsapScrub` fix under
+  `npm run test:react18` (the gate failed with "Cannot assign to 'current'
+  because it is a read-only property"), green again after restoring it.
+- With the gate actually checking React 18 types, four more fixtures failed
+  it: `HeroCinematic`, `PointerTiltGrid`, `StickySteps` and `ThreeScene` all
+  pass a hook's `RefObject<T | null>` (the same shape `GsapScrub` needed to
+  satisfy both majors) straight into a host element's `ref`. React 18's
+  types compare that generic argument literally against `RefObject<T>`
+  instead of expanding both to `{ current: T | null }`, so `T | null` fails
+  where `T` succeeds even though the two are structurally identical. Each
+  now casts the ref to `React.RefObject<T>` at the JSX call site, the same
+  shape `GsapScrub` already needed for its own mutable `useRef`.
 
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
