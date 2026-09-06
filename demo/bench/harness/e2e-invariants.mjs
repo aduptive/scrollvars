@@ -17,9 +17,11 @@
  *   7. sticky-steps: the non-active shots' inert/aria-hidden follow
  *      prefers-reduced-motion live, not just at mount
  *   8. Canvas: mountEffect()'s applySize() settles an unsized canvas at
- *      its intrinsic size in one pass, even a small one at a barely
- *      fractional DPR, never runs away above DPR 1, and never mistakes a
- *      CSS-sized canvas (fractional padding, a transform) for one that moved
+ *      its intrinsic size, even a small one at a barely fractional DPR,
+ *      never runs away whatever direction the device pixel ratio moves the
+ *      backing store (above 1, or a zoomed-out page's dpr below 1), and
+ *      never mistakes a CSS-sized canvas (padding, a transform, or both
+ *      together) for one that moved
  *   9. The pin-stage occlusion sweep is not blind to clip-path: a real
  *      sr-only span is pinpoint-sized (1px by 1px) AND clip-path'd, so a
  *      normal-sized element that only has clip-path (a decorative reveal
@@ -582,40 +584,41 @@ const MIN_EXAMINED = 1
 }
 
 // ── 8. Canvas: mountEffect()'s applySize() detects the unsized-canvas DPR
-// feedback loop by re-measuring layout right after writing the backing
-// store, not by guessing from a rect/backing-store equality (ADU-107,
-// second pass, verifier finding). The old equality guard compared a
-// border-box rect against a content-box attribute: it missed a bordered
-// unsized canvas entirely (a false negative, the runaway loop this ticket
-// exists to stop still ran), and it mispinned a CSS-sized canvas whose
-// attribute values happened to equal its CSS size on first mount (a false
-// positive, freezing every later resize). Both reproduced in real Chrome
-// at deviceScaleFactor 2. Third pass (verifier finding): that re-measure
-// called clientWidth/clientHeight the content box, but they include
-// padding (unlike border, which they already exclude), so a padded
-// unsized canvas measured its padding box, pinned to that, and settled on
-// an even larger size after a second applySize() pass. Fourth pass
-// (verifier finding, reproduced in Chrome): that fix subtracted
-// subpixel-precise computed padding from clientWidth/clientHeight, which
-// round to an integer, so a canvas with fractional padding (0.3px, as
-// common from a percentage/calc() padding or a non-100% zoom) still
-// landed a fraction of a pixel off the intrinsic size on its first read
-// and needed a second applySize() pass to settle. Swapping in
-// getBoundingClientRect() minus computed border/padding did not fully
-// close it either: Chrome's computed padding can report the authored
-// value, not the sub-pixel value layout actually used, so the same
-// residual (300 measured as 299.99375) remained. measureLayout() now
-// reads the content box straight from the ResizeObserver entry's own
-// contentRect, the layout engine's own measurement, bit-exact. Fifth pass
-// (verifier and panel findings, reproduced in Chrome): that bit-exact
-// entry then got compared, in the feedback-loop check itself, against a
-// fallback (getBoundingClientRect-derived) re-measure, which disagrees
-// with it for reasons that have nothing to do with feedback: a sub-pixel
-// residual for a CSS-sized canvas with fractional padding, or a whole
-// scale factor for one under a CSS transform. Both got pinned on first
-// mount and then ignored every later CSS resize. The check now takes both
-// readings the same way, the fallback, once right before and once right
-// after the backing-store write, with a 1px tolerance ──
+// feedback loop (ADU-107). First through sixth pass, each one a verifier or
+// panel finding reproduced in real Chrome, are in CHANGELOG.md's Canvas
+// section: a border-box-rect-vs-content-box-attribute equality guard that
+// both missed a bordered unsized canvas and mispinned a legitimately
+// CSS-sized one; a padding-inflated read; a fractional-padding rounding
+// residual; a fallback re-measure that disagreed with a bit-exact
+// ResizeObserverEntry for reasons that had nothing to do with feedback
+// (fractional padding, a transform); a flat 1px tolerance that took dozens
+// of passes to notice a small canvas's small move.
+//
+// Seventh pass (design change): the sixth pass's ratio check
+// (`after / before >= 1 + (dpr - 1) / 2`, guarded by `dpr > 1`) still had
+// two regressions, both reproduced in real Chrome: the `dpr > 1` guard
+// disabled detection entirely on a page zoomed out to a DPR below 1 (0.8,
+// 0.5), so an unsized canvas there shrank a little further every pass,
+// unbounded; and an unsized canvas with padding AND its own transform read
+// through getBoundingClientRect() (inflated by the transform, deflated back
+// down by the padding subtraction) dampened the ratio below what the check
+// needed, pinning it inflated instead of at its true content box. Every
+// measurement heuristic (ratio, tolerance, the dpr guard) is gone. Instead:
+// after applySize() writes the backing store, an unsized canvas's own
+// layout content box becomes exactly that write (W by H CSS px), so the
+// ResizeObserver delivers another entry reporting it, in the same frame,
+// the echo of the harness's own write; a CSS-sized canvas's box never
+// moves this way, so no such entry ever comes. applySize() remembers what
+// it wrote and the CSS size it measured right before writing, clears that
+// on the next animation frame (the echo has to land within the same
+// frame), and on a match pins the pre-write CSS size. See the module doc
+// in src/canvas/index.ts for the full reasoning. A settle now takes one
+// extra ResizeObserver round trip compared to the sixth pass's fully
+// synchronous check (the initial entry's `resize()` callback fires once
+// with the correct, non-inflated size; the echo pins with no callback; a
+// third, post-pin entry confirms with the same size again), so `log.length`
+// below is 2 for a case that settles, not 1 — the consumer only ever sees
+// the correct size, twice, never an inflated one. ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 })
@@ -638,8 +641,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: an unsized bordered canvas stabilizes at one applySize() pass instead of running away',
-    border.log.length === 1 && border.width === 600 && border.height === 300,
+    'canvas: an unsized bordered canvas settles at its intrinsic size instead of running away',
+    border.log.length === 2 && border.width === 600 && border.height === 300,
     `resize() calls: ${border.log.length}, canvas.width=${border.width}, canvas.height=${border.height}`
   )
   check(
@@ -690,8 +693,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: an unsized padded canvas stabilizes at one applySize() pass, not two (ADU-107, third pass)',
-    padded.log.length === 1 && padded.width === 600 && padded.height === 300,
+    'canvas: an unsized padded canvas settles at its intrinsic size, the padding never enters the pin',
+    padded.log.length === 2 && padded.width === 600 && padded.height === 300,
     `resize() calls: ${padded.log.length}, canvas.width=${padded.width}, canvas.height=${padded.height}`
   )
   check(
@@ -716,8 +719,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: an unsized bordered, padded, border-box canvas also stabilizes at one applySize() pass',
-    borderBox.log.length === 1 && borderBox.width === 600 && borderBox.height === 300,
+    'canvas: an unsized bordered, padded, border-box canvas also settles at its intrinsic size',
+    borderBox.log.length === 2 && borderBox.width === 600 && borderBox.height === 300,
     `resize() calls: ${borderBox.log.length}, canvas.width=${borderBox.width}, canvas.height=${borderBox.height}`
   )
   check(
@@ -744,8 +747,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: an unsized canvas with fractional (0.3px) padding stabilizes at one applySize() pass, not two (ADU-107, fourth pass)',
-    fractional.log.length === 1 && fractional.width === 600 && fractional.height === 300,
+    'canvas: an unsized canvas with fractional (0.3px) padding settles at its exact intrinsic size',
+    fractional.log.length === 2 && fractional.width === 600 && fractional.height === 300,
     `resize() calls: ${fractional.log.length}, canvas.width=${fractional.width}, canvas.height=${fractional.height}`
   )
   check(
@@ -805,17 +808,42 @@ const MIN_EXAMINED = 1
     sizedScaled.log.length === 2 && sizedScaled.log[1].cw === 500 && sizedScaled.log[1].ch === 240,
     JSON.stringify(sizedScaled.log)
   )
+
+  const paddedScaled = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const canvas = document.querySelector('#unsized-padded-scaled')
+        const log = []
+        window.mountEffect(canvas, {
+          frame: () => {},
+          resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+        })
+        setTimeout(
+          () => resolve({ log, style: canvas.style.cssText, width: canvas.width, height: canvas.height }),
+          200
+        )
+      })
+  )
+  check(
+    'canvas: an unsized canvas with padding AND its own transform still settles at its true 300x150 content box (ADU-107, seventh pass)',
+    paddedScaled.log.length === 2 && paddedScaled.width === 600 && paddedScaled.height === 300,
+    `resize() calls: ${paddedScaled.log.length}, canvas.width=${paddedScaled.width}, canvas.height=${paddedScaled.height}`
+  )
+  check(
+    'canvas: that pin is the true content box (300x150), not a transform/padding-dampened inflated size',
+    paddedScaled.style.includes('width: 300px') && paddedScaled.style.includes('height: 150px'),
+    paddedScaled.style
+  )
   await page.close()
 }
 
 // ── 8b. Canvas: a small unsized canvas at a fractional deviceScaleFactor
-// pins on its very first applySize() pass (ADU-107, sixth pass, panel
-// finding). A real feedback loop moves an unsized canvas by
-// size * (dpr - 1) CSS pixels per pass: for a 4x4 canvas at dpr 1.25 that
-// is exactly 1px, which the fifth pass's flat 1px tolerance needed to grow
-// PAST, not just reach, so it took many passes to notice, pinning 50-100%
-// inflated first. The check now compares the two readings by ratio, which
-// scales with size and DPR (see src/canvas/index.ts) ──
+// settles at its intrinsic size (ADU-107, sixth pass, panel finding). A
+// real feedback loop moves an unsized canvas by size * (dpr - 1) CSS
+// pixels per applySize() pass: for a 4x4 canvas at dpr 1.25 that is exactly
+// 1px. The seventh-pass echo check catches this the same as any other
+// gap: a plain integer equality against the exact backing store it wrote,
+// no ratio or tolerance needed (see src/canvas/index.ts) ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 1.25 })
@@ -838,8 +866,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: a 4x4 unsized canvas at deviceScaleFactor 1.25 stabilizes at one applySize() pass, not several (ADU-107, sixth pass)',
-    tiny.log.length === 1 && tiny.width === 5 && tiny.height === 5,
+    'canvas: a 4x4 unsized canvas at deviceScaleFactor 1.25 settles at its intrinsic size, not several passes inflated (ADU-107, sixth pass)',
+    tiny.log.length === 2 && tiny.width === 5 && tiny.height === 5,
     `resize() calls: ${tiny.log.length}, canvas.width=${tiny.width}, canvas.height=${tiny.height}`
   )
   check(
@@ -851,8 +879,8 @@ const MIN_EXAMINED = 1
 }
 
 // ── 8c. Same finding, a barely-fractional DPR and a larger (still small)
-// canvas, to prove the ratio scales with both size and DPR instead of one
-// hard-coded pair of numbers (ADU-107, sixth pass) ──
+// canvas, to prove the echo check catches a 1px gap regardless of the
+// canvas's size or the exact DPR (ADU-107, sixth pass) ──
 {
   const page = await browser.newPage()
   await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 1.05 })
@@ -875,8 +903,8 @@ const MIN_EXAMINED = 1
       })
   )
   check(
-    'canvas: a 20x20 unsized canvas at deviceScaleFactor 1.05 stabilizes at one applySize() pass, not several (ADU-107, sixth pass)',
-    tiny20.log.length === 1 && tiny20.width === 21 && tiny20.height === 21,
+    'canvas: a 20x20 unsized canvas at deviceScaleFactor 1.05 settles at its intrinsic size, not several passes inflated (ADU-107, sixth pass)',
+    tiny20.log.length === 2 && tiny20.width === 21 && tiny20.height === 21,
     `resize() calls: ${tiny20.log.length}, canvas.width=${tiny20.width}, canvas.height=${tiny20.height}`
   )
   check(
@@ -901,6 +929,100 @@ const MIN_EXAMINED = 1
 // this way in Puppeteer. Covered by a unit test instead
 // (test/canvas.test.mjs, "onDprChange() reuses the last
 // ResizeObserver-measured content size...").
+
+// ── 8e. Whole-fixture sweep, every unsized canvas on the page settles at
+// its own intrinsic content size and every CSS-sized one is never pinned,
+// across every DPR direction this ticket found a regression at: above 1
+// (2), just over 1 (1.25, 1.05, the sixth pass's small-canvas findings),
+// and below 1 (0.8, 0.5, a zoomed-out page, the seventh-pass regression the
+// sixth pass's `dpr > 1` guard missed entirely) ──
+{
+  const UNSIZED_INTRINSIC = {
+    'unsized-border': [300, 150],
+    'unsized-padded': [300, 150],
+    'unsized-border-box': [300, 150],
+    'unsized-fractional-padding': [300, 150],
+    'unsized-tiny': [4, 4],
+    'unsized-tiny-20': [20, 20],
+    'unsized-padded-scaled': [300, 150],
+  }
+  const CSS_SIZED = ['css-sized', 'css-sized-fractional', 'css-sized-scaled']
+  const ids = [...Object.keys(UNSIZED_INTRINSIC), ...CSS_SIZED]
+
+  for (const dpr of [2, 1.25, 1.05, 0.8, 0.5]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: dpr })
+    await page.goto(`${base}/bench/harness/fixtures/canvas-unsized-dpr.html`, { waitUntil: 'load' })
+    await page.addScriptTag({ content: CANVAS_JS })
+
+    const result = await page.evaluate(
+      (ids) =>
+        new Promise((resolve) => {
+          const state = {}
+          for (const id of ids) {
+            const canvas = document.querySelector('#' + id)
+            const log = []
+            window.mountEffect(canvas, {
+              frame: () => {},
+              resize: (fx) => log.push({ w: fx.width, h: fx.height }),
+            })
+            state[id] = { canvas, log }
+          }
+          setTimeout(() => {
+            resolve({
+              // Chrome's actual window.devicePixelRatio at an emulated
+              // deviceScaleFactor is not always bit-exact to the literal
+              // number passed to page.setViewport() (measured: 1.05 reads
+              // back a hair under that), which changes which way
+              // `size * dpr` rounds: read the real value instead of
+              // assuming it back in Node.
+              dpr: window.devicePixelRatio,
+              canvases: Object.fromEntries(
+                ids.map((id) => [
+                  id,
+                  {
+                    log: state[id].log,
+                    style: state[id].canvas.style.cssText,
+                    width: state[id].canvas.width,
+                    height: state[id].canvas.height,
+                  },
+                ])
+              ),
+            })
+          }, 200)
+        }),
+      ids
+    )
+
+    for (const [id, [w, h]] of Object.entries(UNSIZED_INTRINSIC)) {
+      const r = result.canvases[id]
+      const bw = Math.round(w * result.dpr)
+      const bh = Math.round(h * result.dpr)
+      // A backing store that rounds back to the exact same integer as the
+      // canvas's own intrinsic size (a coincidence at some size/DPR pairs,
+      // e.g. a 4x4 canvas at ~1.05) never moves the canvas's own layout box
+      // in the first place: there is no echo to catch because nothing
+      // changed, and nothing needed pinning either, since the size was
+      // already correct. Only assert the echo/pin cascade (log.length 2)
+      // when the write actually would have moved the box.
+      const moves = bw !== w || bh !== h
+      check(
+        `canvas: #${id} settles at its intrinsic ${w}x${h} at deviceScaleFactor ${dpr} (actual dpr ${result.dpr}), backing store ${bw}x${bh}`,
+        r.log.length === (moves ? 2 : 1) &&
+          r.width === bw &&
+          r.height === bh &&
+          (!moves || (r.style.includes(`width: ${w}px`) && r.style.includes(`height: ${h}px`))),
+        `resize() calls: ${r.log.length}, canvas.width=${r.width} (want ${bw}), canvas.height=${r.height} (want ${bh}), style=${r.style}`
+      )
+    }
+    for (const id of CSS_SIZED) {
+      const r = result.canvases[id]
+      check(`canvas: #${id} is never pinned at deviceScaleFactor ${dpr}`, r.style === '', r.style)
+    }
+
+    await page.close()
+  }
+}
 
 // ── 9. Occlusion sweep negative cases: a decorative clip-path mask is not
 // the sr-only technique by itself. Real sr-only text is pinpoint-sized

@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, fifth pass)</title>
+<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, seventh pass)</title>
 <style>
   /* CSS-sized canvas whose attribute values happen to equal its CSS size,
      the exact shape the old border-box-rect-vs-content-box-attribute
@@ -80,10 +80,32 @@
      itself only a pixel or two (4x4 at dpr 1.25, or 20x20 at dpr 1.05, both
      move by exactly 1px on the very first pass). The fifth pass's flat 1px
      tolerance needed that gap to grow PAST a pixel, so it took many passes
-     to notice, pinning 50-100% inflated first. The check now compares the
-     two readings by ratio instead, which scales with size and DPR (see
-     src/canvas/index.ts). Loaded on their own page below at a fractional
-     deviceScaleFactor.
+     to notice, pinning 50-100% inflated first. Loaded on their own page
+     below at a fractional deviceScaleFactor, and again as part of the
+     whole-fixture sweep at deviceScaleFactor 0.8 and 0.5 (seventh pass).
+
+     #unsized-padded-scaled: seventh pass (design change). Padding AND its
+     own transform together, at a deliberately large padding (350px):
+     reproduced in Chrome against the sixth-pass ratio check, this canvas
+     pins at 600x300 (2x, at deviceScaleFactor 2) instead of its true
+     300x150 content box. The ratio check reads both its readings through
+     getBoundingClientRect(), which the transform inflates by a constant
+     factor that a large padding subtraction does not fully cancel: the
+     before/after ratio undershoots the threshold on the first pass or two
+     (the canvas keeps growing, each pass's write feeding the next pass's
+     "before" reading), and by the time it finally crosses the threshold
+     the canvas has already grown past its true size, and that grown size
+     is what gets pinned. The seventh-pass design replaces every
+     measurement heuristic (ratio, tolerance, dpr guard) with the
+     platform's own feedback signal: after
+     applySize() writes the backing store, an unsized canvas's layout
+     content box becomes exactly that write, and the ResizeObserver
+     delivers another entry reporting it, in the same frame, an echo of the
+     harness's own write. That entry's contentRect already excludes padding
+     and ignores transform, so this combination (and every other case on
+     this page, including a page zoomed out to deviceScaleFactor 0.8 or
+     0.5, which the sixth pass's `dpr > 1` guard never even looked at) needs
+     no special-casing at all: see src/canvas/index.ts.
 
      onDprChange()'s own sixth-pass fix (a transformed CSS-sized canvas no
      longer mis-sizing itself on a real DPR change, see src/canvas/index.ts
@@ -99,5 +121,6 @@
 <canvas id="css-sized-scaled"></canvas>
 <canvas id="unsized-tiny" width="4" height="4"></canvas>
 <canvas id="unsized-tiny-20" width="20" height="20"></canvas>
+<canvas id="unsized-padded-scaled" style="padding: 350px; transform: scale(2)"></canvas>
 </body>
 </html>

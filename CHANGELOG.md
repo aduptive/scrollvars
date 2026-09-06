@@ -284,6 +284,36 @@ findings on the same round): three more defects fixed.
   now remembers the last content size a real ResizeObserver entry reported
   (bit-exact, a transform never touches it) and reuses that on the
   DPR-change path instead of re-deriving it from the rect.
+- Seventh pass (design change, panel finding, reproduced in Chrome): the
+  sixth pass's ratio check had two more regressions. Its `dpr > 1` guard
+  disabled detection entirely on a page zoomed out to a devicePixelRatio
+  below 1 (0.8, 0.5): an unsized canvas there shrank a little further every
+  pass, unbounded, never pinning. And an unsized canvas with padding AND its
+  own transform read both ratio readings through `getBoundingClientRect()`,
+  which the transform inflates by a roughly constant factor a padding
+  subtraction does not fully cancel: the ratio undershot the threshold for
+  a few passes (each one's write feeding the next pass's reading), and by
+  the time it finally crossed the threshold the canvas had already grown
+  past its true size, and that grown size is what got pinned (measured: a
+  300x150 canvas with 350px padding and `transform: scale(2)`, at
+  devicePixelRatio 2, pinned at 600x300, not 300x150). `applySize()` no
+  longer measures anything to guess whether a canvas moved: it detects the
+  platform's own feedback signal instead. Writing the backing store IS the
+  new CSS layout size for an unsized canvas, so the ResizeObserver delivers
+  another entry reporting exactly that, an echo of the harness's own
+  write, in the following frame; a CSS-sized canvas's box never moves this
+  way, so no such entry ever comes. `applySize()` now remembers the exact
+  W/H it just wrote plus the CSS size it measured before writing, and
+  checks the next ResizeObserver entry's own `contentRect` (rounded, exact,
+  already excludes padding and border, ignores transform) against that
+  exact W/H: a match is the echo, and pins the pre-write CSS size. No
+  ratio, no tolerance, no dpr guard, so a DPR below 1 is detected exactly
+  the same way as one above it. The echo window closes two animation
+  frames after the write (measured against real Chrome: a single frame
+  fires the harness's own requestAnimationFrame callback moments before
+  that same frame's ResizeObserver step, where the echo actually lands,
+  clearing the window a step too early), so a coincidental later resize
+  landing on the same size is never mistaken for one.
 
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does

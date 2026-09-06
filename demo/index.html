@@ -4192,42 +4192,54 @@ var SV = (() => {
  * `fx.width`/`fx.height` match the element's layout size.
  *
  * Give the canvas CSS dimensions. A canvas with none lays out at its own
- * backing-store size, so resizing it feeds back into itself above DPR 1.
- * applySize() detects that by measuring the canvas's own layout size, the
- * fallback method below, once right before and once right after writing
- * the backing store, then comparing the two by RATIO, not an absolute
- * delta: a CSS-sized canvas never moves as a result of its own
- * backing-store write, whatever its attribute values, borders, padding or
- * transform, so the two readings sit within a sub-pixel-noise factor of
- * each other (at most `1 + 0.02 / size`, the rounding residual noted
- * below, never a real move). An unsized one does move, by a factor of the
- * device pixel ratio (`size * (dpr - 1)` CSS pixels), which for a small
- * canvas at a DPR just over 1 is itself only a pixel or two: a 4x4 canvas
- * at dpr 1.25, or a 20x20 at dpr 1.05, both move by exactly 1px on the
- * very first tick, which a flat absolute tolerance either misses outright
- * or only catches after dozens of ticks accumulate past it. A ratio has no
- * such floor: `after / before >= 1 + (dpr - 1) / 2`, the midpoint between
- * "no move" (ratio 1) and "a full DPR move" (ratio dpr), checked on either
- * axis and only when `dpr > 1` (at dpr 1 there is no feedback to detect),
- * scales with both size and DPR and needs no absolute threshold. Both
- * readings deliberately use the SAME method: comparing a bit-exact
- * ResizeObserver contentRect against the fallback's sub-pixel residual
- * instead would read a CSS-sized canvas with fractional padding, or one
- * under a CSS `transform: scale()` (which inflates what
- * getBoundingClientRect() reports without moving layout), as having moved
- * when it never did, pinning it on first mount and then making it ignore
- * every later CSS resize. Only when the two readings disagree by that
- * ratio does applySize() pin the CSS-pixel size it measured BEFORE the
- * write (read straight from the ResizeObserver entry's own `contentRect`
- * when applySize() runs as its callback, bit-exact, no arithmetic, or
- * otherwise from that same fallback) to `canvas.style.width`/`height`,
- * once, so layout stops following the backing store. The pin also forces
- * `box-sizing: content-box` inline, so the width/height it writes
- * reproduce that same content box regardless of the canvas's own
- * `box-sizing` (a `border-box` canvas would otherwise need padding and
- * border added back to the content size instead). A canvas with no CSS
- * size still ends up with one pinned inline by the harness: give it real
- * CSS dimensions to keep control of its own size.
+ * width/height attribute values, read as CSS pixels: that is the whole
+ * feedback loop this harness has to stop. applySize() writes
+ * `canvas.width = W` / `canvas.height = H` (the backing store) after
+ * measuring the CSS size. On an unsized canvas that write IS the new CSS
+ * layout size, W by H CSS px, so the ResizeObserver delivers another entry
+ * for it in the very same frame, reporting exactly that (this is the
+ * runaway loop itself, the platform handing it right back). A CSS-sized
+ * canvas's box never moves as a result of its own backing-store write,
+ * whatever its attribute values, borders, padding, transform or the
+ * current device pixel ratio, so no such entry ever comes.
+ *
+ * (seventh pass, design change) applySize() detects that directly, the
+ * platform's own signal, instead of measuring and guessing. After every
+ * backing-store write it remembers `pending`: the exact W/H it just wrote,
+ * plus the CSS content size it measured right before writing. It clears
+ * `pending` two animation frames later, not one (verified against real
+ * Chrome): a write made during frame N's ResizeObserver callback does not
+ * echo back until frame N+1's own ResizeObserver step, and within a single
+ * "update the rendering" cycle the browser runs that frame's
+ * requestAnimationFrame callbacks BEFORE its ResizeObserver step, so a
+ * callback scheduled with a single `requestAnimationFrame` fires at the
+ * start of frame N+1, one step too early, clearing `pending` moments
+ * before the echo it was supposed to catch arrives in that same frame. A
+ * second, nested `requestAnimationFrame` pushes the clear out to frame
+ * N+2, safely after frame N+1's echo has already been handled, while still
+ * bounding the window (a user resize that happens to land on the same
+ * size only after that must not be mistaken for one). When the
+ * ResizeObserver callback next runs with `pending` still set, it rounds
+ * the new entry's own `contentRect`
+ * (a layout engine can report a fractional content box) and compares it
+ * against `pending`'s W/H. An exact match is the echo of the write this
+ * harness itself just made, nothing else: `contentRect` is the layout
+ * engine's own content-box measurement, so it already excludes padding and
+ * border, ignores any CSS `transform` (which never touches layout), and is
+ * exact. No ratio, no tolerance, no `dpr > 1` guard: the comparison is a
+ * plain equality against the actual W/H this harness wrote, whichever way
+ * the device pixel ratio moved it, so a page zoomed out to a DPR below 1
+ * (0.8, 0.5, shrinking the backing store) produces the same echo signal a
+ * DPR above 1 does. On a match, applySize() pins the CSS size it measured
+ * before the write to `canvas.style.width`/`height`, forcing
+ * `box-sizing: content-box` inline so a `border-box` canvas doesn't
+ * reinterpret the pinned width as a smaller content box, and returns
+ * without touching the backing store again. That pin itself changes the
+ * canvas's own layout box, which fires one more ResizeObserver entry; that
+ * entry takes the normal path below and writes the correct, stable backing
+ * store. A canvas with no CSS size still ends up with one pinned inline by
+ * the harness: give it real CSS dimensions to keep control of its own
+ * size.
  *
  * onDprChange() (a fixed-CSS-size canvas moving to a monitor with a
  * different DPR, no ResizeObserver callback involved) has no entry to
@@ -4290,26 +4302,25 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // hand (applySize() runs as the ResizeObserver callback below, so it
     // usually is). The fallback, getBoundingClientRect() minus computed
     // border and padding (never clientWidth/Height, which round to an
-    // integer), covers the two calls applySize() makes around the
-    // backing-store write to check for the feedback loop, and onDprChange()
-    // before its first ResizeObserver entry has ever arrived (afterwards it
-    // reuses that entry's remembered size, see `lastContent` below, instead
-    // of this fallback, which would otherwise include a CSS
-    // `transform: scale()` the entry never sees). That fallback is close but
-    // not bit-exact for fractional values: computed border and padding can
-    // report the AUTHORED px value, not the sub-pixel value layout actually
-    // snapped to, so subtracting it from the border-box rect can land a
-    // thousandth of a pixel off the true content box (verified in Chrome: an
-    // unsized canvas with `padding: 0.3px` measures its contentRect at
-    // exactly 300, but rect.width minus computed padding lands on
-    // 299.99375). That residual is harmless: applySize()'s feedback check
-    // compares two fallback reads against each other by ratio, and a
-    // rounding residual that small never approaches the ratio a real
-    // feedback loop produces. The subtraction can also go negative, a
-    // display:none canvas (rect all zero) with real padding: clamp to 0 so
-    // it reads as "not laid out yet", same as a canvas with no rect at all,
-    // instead of a negative size that would round through dpr into a
-    // negative backing-store write.
+    // integer), covers onDprChange() before its first ResizeObserver entry
+    // has ever arrived (afterwards it reuses that entry's remembered size,
+    // see `lastContent` below, instead of this fallback, which would
+    // otherwise include a CSS `transform: scale()` the entry never sees).
+    // That fallback is close but not bit-exact for fractional values:
+    // computed border and padding can report the AUTHORED px value, not the
+    // sub-pixel value layout actually snapped to, so subtracting it from the
+    // border-box rect can land a thousandth of a pixel off the true content
+    // box (verified in Chrome: an unsized canvas with `padding: 0.3px`
+    // measures its contentRect at exactly 300, but rect.width minus computed
+    // padding lands on 299.99375). That residual only matters here, never in
+    // applySize()'s own feedback check (seventh pass: that check now
+    // compares the ResizeObserver entry's own bit-exact contentRect against
+    // the exact integer backing-store size the harness itself wrote, not two
+    // fallback reads against each other). The subtraction can also go
+    // negative, a display:none canvas (rect all zero) with real padding:
+    // clamp to 0 so it reads as "not laid out yet", same as a canvas with no
+    // rect at all, instead of a negative size that would round through dpr
+    // into a negative backing-store write.
     const measureLayout = (entry) => {
         if (entry)
             return { width: entry.contentRect.width, height: entry.contentRect.height };
@@ -4334,61 +4345,56 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // doc and measureLayout() above): set only when applySize() runs with an
     // actual entry, so it stays undefined until the first one arrives.
     let lastContent;
+    // Set right after every backing-store write, cleared two animation
+    // frames later (see the module doc for why one frame fires too early
+    // against real Chrome): the window in which a ResizeObserver entry
+    // reporting exactly `w`/`h` (the backing store just written, integer CSS
+    // pixels) counts as the echo of that write rather than a coincidental
+    // real resize landing on the same number. `cssW`/`cssH` is the CSS
+    // content size measured BEFORE the write, what gets pinned if the echo
+    // arrives.
+    let pending;
     const applySize = (entries) => {
         const entry = entries?.[0];
+        // The echo check: only a real ResizeObserver delivery can be one (a
+        // direct call, from onDprChange(), never is), and only while `pending`
+        // is still set. Round the entry's contentRect: a layout engine can
+        // report a fractional content box even though the backing store this
+        // harness wrote is always a whole number of device pixels.
+        if (entry && pending) {
+            const w = Math.round(entry.contentRect.width);
+            const h = Math.round(entry.contentRect.height);
+            if (w === pending.w && h === pending.h) {
+                // This canvas has no CSS size of its own: pin the content size
+                // measured before the write. Force content-box sizing: `cssW`/
+                // `cssH` are always the pure content box, so the pinned width/
+                // height must be interpreted as content-box too, whatever the
+                // canvas's own box-sizing says, or a border-box canvas would pin a
+                // content box smaller than the one just measured.
+                canvas.style.boxSizing = 'content-box';
+                canvas.style.width = `${pending.cssW}px`;
+                canvas.style.height = `${pending.cssH}px`;
+                pending = undefined;
+                return; // the pin itself fires one more entry; that one takes the
+                // normal path below and writes the correct, stable backing store.
+            }
+        }
         const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout());
         if (entry)
             lastContent = size;
         if (!size.width || !size.height)
             return;
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-        // Detect the feedback loop directly instead of guessing from equality,
-        // and by RATIO rather than an absolute delta, with two readings taken
-        // the SAME way so a canvas that never moved cannot look like it did. A
-        // CSS-sized canvas never changes layout as a consequence of its own
-        // backing store changing, whatever its attribute values, borders,
-        // padding or transform: the fallback read right before the write and
-        // the one right after sit within a sub-pixel-noise factor of each
-        // other, at most `1 + 0.02 / size` (the residual noted in
-        // measureLayout()), never the whole-DPR-factor jump a real feedback
-        // loop produces. An unsized canvas lays out at its own backing-store
-        // size, so the write moves it `size * (dpr - 1)` CSS pixels, a factor
-        // of `dpr` on the axis that moved: for a small canvas at a DPR just
-        // over 1 that is only a pixel or two (a 4x4 canvas at dpr 1.25, or a
-        // 20x20 at dpr 1.05, both move by exactly 1px on the very first tick),
-        // which a flat absolute tolerance either misses outright or only
-        // catches after dozens of ticks accumulate past it. A ratio has no
-        // such floor: `after / before >= 1 + (dpr - 1) / 2`, the midpoint
-        // between "no move" (ratio 1) and "a full DPR move" (ratio dpr), scales
-        // with both size and DPR and needs no absolute threshold. Guarded by
-        // `dpr > 1`: at dpr 1 there is no feedback to detect (a canvas cannot
-        // move by a factor of 1), so the check cannot false-positive there
-        // either. Comparing `size` (bit-exact off the ResizeObserver entry when
-        // one is on hand) against a fallback read instead would fail this the
-        // other way: a CSS-sized canvas with fractional padding, or one under a
-        // CSS transform: scale() that inflates getBoundingClientRect() without
-        // moving layout, would disagree with the fallback for reasons that
-        // have nothing to do with feedback, and get pinned on first mount for
-        // it. Both reads force layout, but applySize() only runs once per
-        // resize/DPR-change event, never per animation frame, so it is rare.
-        const beforeWrite = measureLayout();
         writeBackingStore(size);
-        const afterWrite = measureLayout();
-        const feedbackRatio = 1 + (fx.dpr - 1) / 2;
-        const moved = fx.dpr > 1 &&
-            ((beforeWrite.width > 0 && afterWrite.width / beforeWrite.width >= feedbackRatio) ||
-                (beforeWrite.height > 0 && afterWrite.height / beforeWrite.height >= feedbackRatio));
-        if (moved) {
-            // Force content-box sizing on the pin: `size` is always the pure
-            // content box (padding already subtracted above), so the pinned
-            // width/height must be interpreted as content-box too, whatever the
-            // canvas's own box-sizing says, or a border-box canvas would pin a
-            // content box smaller than the one just measured.
-            canvas.style.boxSizing = 'content-box';
-            canvas.style.width = `${size.width}px`;
-            canvas.style.height = `${size.height}px`;
-            writeBackingStore(size); // re-run sizing from the pinned, pre-write size
-        }
+        pending = { w: canvas.width, h: canvas.height, cssW: size.width, cssH: size.height };
+        // Nested, not a single requestAnimationFrame: see the module doc and
+        // the `pending` comment above for why one frame clears this a step
+        // too early against real Chrome's rAF-then-ResizeObserver ordering.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                pending = undefined;
+            });
+        });
         fx.width = size.width;
         fx.height = size.height;
         ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
