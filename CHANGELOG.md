@@ -1286,6 +1286,19 @@ Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
   function shared by both spellings of a section rather than two that drift.
   Proved red in Chrome on both mutations, the wrong value and the wrong
   cascade position, each of which leaves the selector-text gate green.
+- Third pass (verifier finding on the same round): `splitPane` in
+  `demo/bench/harness/installed-gate.mjs` sliced a gallery CSS tab into
+  markup and CSS on the first blank line without checking that one was
+  found. If a reformat of `scripts/fx-data.mjs` ever collapses that blank
+  line, `markup` becomes nearly the whole pane, CSS text included as
+  unstyled nodes, `css` becomes one character, and the rendered page
+  carries no applied stylesheet at all, so the reduced-motion probe passed
+  by coincidence rather than by the behavior it claims to check, exactly
+  the silent failure the file's own comment promised could not happen.
+  `splitPane` now throws a named error when the separator is missing.
+  Proved red by collapsing the blank line in `sticky-steps`'s CSS tab and
+  green again once restored; a unit test (`test/installed-gate.test.mjs`)
+  covers both the throw and the ordinary split.
 
 ## 1.13.0 (2026-09-05)
 

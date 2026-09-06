@@ -242,11 +242,16 @@ const REDUCED_BEHAVIOR = {
 
 // A gallery CSS tab is one string: the markup a reader copies, a blank line,
 // then the CSS they paste into their stylesheet (the pane-pairing gate in
-// test/cli-components.test.mjs leans on the same shape). If the split ever
-// goes wrong the rendered page carries no markup at all, and the probes above
-// fail on their empty-list guard rather than passing on nothing.
-const splitPane = (pane) => {
+// test/cli-components.test.mjs leans on the same shape). A collapsed blank
+// line is not a survivable input here: without it `css` would be almost
+// nothing and `markup` would carry the CSS text as unstyled nodes, so every
+// probe below would pass for having no stylesheet applied rather than for
+// the behavior it claims to check. splitPane throws instead of guessing.
+export const splitPane = (pane) => {
   const at = pane.search(/\n[ \t]*\n/)
+  if (at === -1) {
+    throw new Error('splitPane: no blank line separating markup from CSS in this pane')
+  }
   return { markup: pane.slice(0, at), css: pane.slice(at) }
 }
 
