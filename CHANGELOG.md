@@ -721,6 +721,55 @@ from the code it describes.
   reads, so the generated docs page and README render the same measured
   numbers instead of two hand-typed copies that can drift apart.
 
+### React (blind review round 4)
+- `<Modal>` without native `<dialog>` support now closes. The effect
+  branches once on `showModal`: where the element is unknown there is no
+  `open` PROPERTY, so the old `!open && dialog.open` guard could only ever
+  open it. The fallback drives the attribute in both directions with
+  `setAttribute`/`removeAttribute`, never `toggleAttribute`: the engines
+  that reach that branch are the ones without `<dialog>` (Safari below
+  15.4, Firefox below 98), and Safari 11 and Firefox 60 to 62 are inside
+  the supported floor while predating `toggleAttribute`, where the effect
+  would throw and React would unmount the tree.
+- `useScenes()` clamps its scene to `count - 1` when the count changes. The
+  driver emits nothing at all for `scenes <= 1`, so a count going from N to
+  1 used to keep reporting the last index forever, and a consumer marked
+  its only shot inert.
+
+### Slider (blind review round 4)
+- The wheel assist now reads the container's COMPUTED `scroll-snap-type` at
+  init, not only the inline style: an instance set to `none` by a
+  stylesheet or a utility class (Tailwind's `snap-none`) is left alone,
+  same as an inline one, instead of being snap-suspended and scripted to
+  the nearest slide.
+- `state().progress` and `--sv-progress` are clamped to 0..1. Elastic
+  overscroll drove them past both ends, and a follower chained through
+  `onScroll` + `seek(progress)` was seeked outside its own range.
+
+### Click driver (blind review round 4)
+- `toggles()` writes `--sv-state` at boot from the target's class, so
+  markup that ships open no longer disagrees with its own class until the
+  first click.
+- Triggers are grouped by the PAIR (resolved target element, toggled
+  class) instead of by the `data-sv-target` string, so two triggers naming
+  the same panel through different selectors keep each other's
+  `aria-expanded` in sync, while two controls toggling different classes
+  on that same panel (a hamburger on `open`, a second control on `pinned`)
+  keep separate states. Grouping by the element alone made one click
+  report `aria-expanded="true"` for both, the second one with its class
+  absent.
+
+### Presets and no-JS (blind review round 4)
+- `.sv-counter`'s `counter-reset` and `::after` are keyed on
+  `:is(.sv, [data-sv])`, like the no-JS guard that feeds them `--sv-int`:
+  attribute-only markup used to get the variable but render an empty
+  element without JS. The no-JS e2e sweep asserts the digits, not just the
+  variable.
+- `dialog.sv-pop:not([open])`'s fade is wrapped in
+  `@supports selector(dialog:modal)`: the type selector also matches the
+  unknown element an engine without `<dialog>` parses, which hid the
+  documented static fallback panel with no UA `display: none` behind it.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.4 KB, full core incl. the slider 5.9 KB, styles 7.9 KB for every preset or 2.2 KB for the core part. A typical page ships ~4.6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.4 KB, full core incl. the slider 5.9 KB, styles 8.1 KB for every preset or 2.2 KB for the core part. A typical page ships ~4.6 KB on the wire.
 
 ## Why
 
@@ -84,10 +84,10 @@ npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.2 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 2.5 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 2.6 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.5 KB gz
-import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 2.1 KB gz
+import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts, 2.2 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
 ```
 
@@ -105,7 +105,7 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.5 KB |
 | everything in `scrollvars` (the core entry) | 5.9 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 11.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 11.3 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

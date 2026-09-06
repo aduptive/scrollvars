@@ -70,12 +70,14 @@
   initial-value: 0;
   inherits: true;
 }
-.sv .sv-counter {
+/* :is(.sv, [data-sv]) here too: the no-JS guard below feeds --sv-int to
+   attribute-only markup, whose digits come from these two rules */
+:is(.sv, [data-sv]) .sv-counter {
   font-variant-numeric: tabular-nums;
   --sv-int: calc(var(--sv-pin, 0) * var(--sv-max, 100));
   counter-reset: sv-counter var(--sv-int);
 }
-.sv .sv-counter::after {
+:is(.sv, [data-sv]) .sv-counter::after {
   content: counter(sv-counter);
 }
 

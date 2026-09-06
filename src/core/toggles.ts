@@ -8,7 +8,8 @@
  *
  * - `data-sv-toggle="class"`. Class to toggle ('sv-open' when empty)
  * - `data-sv-target="sel"`. What receives it (the trigger itself when absent)
- * - the target also gets `--sv-state: 1|0` for continuous CSS use
+ * - the target also gets `--sv-state: 1|0` for continuous CSS use, written at
+ *   boot from the class so markup that ships open agrees from the first frame
  * - the trigger gets `aria-expanded` kept in sync. The accessibility the
  *   old checkbox hack never gave you
  *
@@ -66,14 +67,26 @@ export function toggles(root?: Document | HTMLElement): () => void {
     const target = selector ? (scope.querySelector(selector) as HTMLElement | null) : trigger
     return { className, selector, target }
   }
-  // every trigger of a target reflects its state: on boot, and after any click
-  const sync = (selector: string | null, target: HTMLElement, on: boolean) => {
-    const triggers = selector
-      ? [...scope.querySelectorAll<HTMLElement>('[data-sv-toggle]')].filter(
-          (t) => t.getAttribute('data-sv-target') === selector
-        )
-      : [target]
-    triggers.forEach((t) => t.setAttribute('aria-expanded', String(on)))
+  // every trigger of the same state reflects it: on boot, and after any
+  // click. The state is the PAIR (resolved element, class), not the
+  // data-sv-target string: two triggers can name the same panel through
+  // different selectors ('#menu' and 'nav.menu'), and a trigger with no
+  // target at all resolves to itself, which is the old selector-less case.
+  // The class is half the key, not decoration: a hamburger toggling 'open'
+  // and a second control toggling 'pinned' on the same nav are two
+  // independent states, and grouping by the element alone made one click
+  // claim aria-expanded="true" for both.
+  const sync = (target: HTMLElement, className: string, on: boolean) => {
+    scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((t) => {
+      const other = resolve(t)
+      if (other.target === target && other.className === className)
+        t.setAttribute('aria-expanded', String(on))
+    })
+  }
+  // the target's own state, written wherever the class flips
+  const write = (target: HTMLElement, className: string, on: boolean) => {
+    target.style.setProperty('--sv-state', on ? '1' : '0')
+    sync(target, className, on)
   }
   // targets currently inside their boot settle: cancellable by a click that
   // lands inside the two-frame hold, so it still gets its transition
@@ -98,7 +111,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
-    const { className, selector, target } = resolve(trigger)
+    const { className, target } = resolve(trigger)
     if (!target) return
     if (!target.classList.contains('sv-ui')) {
       target.classList.add('sv-ui')
@@ -129,7 +142,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
         })
       }
     }
-    sync(selector, target, target.classList.contains(className))
+    // markup that ships open (the class already on the target) must agree
+    // with --sv-state from the first frame: a continuous CSS rule reading
+    // var(--sv-state, 0) otherwise renders the closed value against an open
+    // class until the first click.
+    write(target, className, target.classList.contains(className))
   })
 
   const onClick = (event: Event) => {
@@ -137,7 +154,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
       '[data-sv-toggle]'
     ) as HTMLElement | null
     if (!trigger) return
-    const { className, selector, target } = resolve(trigger)
+    const { className, target } = resolve(trigger)
     if (!target) return
     // a target that appeared after boot (e.g. inserted later) is marked here
     // instead: its first click shows the finished state with no transition,
@@ -151,9 +168,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
       target.style.removeProperty('--sv-acts-settle')
       restoreDuration(target)
     }
-    const on = target.classList.toggle(className)
-    target.style.setProperty('--sv-state', on ? '1' : '0')
-    sync(selector, target, on)
+    write(target, className, target.classList.toggle(className))
   }
 
   scope.addEventListener('click', onClick)

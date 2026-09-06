@@ -114,6 +114,10 @@ export function slider(
   const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
   const range = () =>
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
+  // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
+  // trackpads) pushes pos() past both ends, and a follower chained through
+  // `onScroll` + `seek(progress)` would be sent outside its own range.
+  const progress = () => (range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0)
   // Container-local start of a slide in logical scroll units, from offset
   // chains: layout positions, so the coverflow transforms a slide carries
   // (scale/rotate from --sd) never feed back into its own measurement. RTL
@@ -161,6 +165,14 @@ export function slider(
   // Snap suspension via inline style. One source of truth. The authored
   // inline value (e.g. 'none' on scroll-driven instances) is preserved.
   const authoredSnap = container.style.scrollSnapType
+  // Authored none is not always inline: a stylesheet rule or a utility class
+  // (Tailwind's snap-none) reaches the same state, and an instance that
+  // owns its own position must be left alone whichever way it got there.
+  // Read once at init, before suspend/resume start writing the inline value.
+  const snapIsNone =
+    authoredSnap === 'none' ||
+    (typeof getComputedStyle === 'function' &&
+      getComputedStyle(container).scrollSnapType === 'none')
   const suspendSnap = () => {
     container.style.scrollSnapType = 'none'
   }
@@ -185,7 +197,7 @@ export function slider(
     active: Math.max(active, 0),
     count: slides().length,
     position,
-    progress: range() > 0 ? pos() / range() : 0,
+    progress: progress(),
     dragging,
     gliding: anim !== 0,
   })
@@ -213,8 +225,7 @@ export function slider(
       Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0),
       Math.max(slides().length - 1, 0)
     )
-    const progress = range() > 0 ? pos() / range() : 0
-    container.style.setProperty('--sv-progress', progress.toFixed(4))
+    container.style.setProperty('--sv-progress', progress().toFixed(4))
     const bestEl = list[best] ?? null
     if (best !== active || bestEl !== activeEl) {
       const indexChanged = best !== active
@@ -420,7 +431,7 @@ export function slider(
   // instances authored with snap none (scroll-driven ones own their position).
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
   const onWheel = (event: WheelEvent) => {
-    if (authoredSnap === 'none') return
+    if (snapIsNone) return
     // only react when the gesture's dominant axis is OUR axis. Otherwise
     // this is the page scrolling past the carousel (trackpad gestures are
     // always slightly diagonal) and assisting would yank the slider around
