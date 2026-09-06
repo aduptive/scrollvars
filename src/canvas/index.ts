@@ -347,17 +347,41 @@ export function mountEffect(
     }
   }
 
-  const writeBackingStore = (size: { width: number; height: number }) => {
-    canvas.width = Math.round(size.width * fx.dpr)
-    canvas.height = Math.round(size.height * fx.dpr)
-  }
-
   // The last content size a real ResizeObserver entry reported, bit-exact
   // and never touched by a CSS transform. onDprChange() reads this instead
   // of re-deriving the size from getBoundingClientRect() (see the module
   // doc and measureLayout() above): set only when applySize() runs with an
   // actual entry, so it stays undefined until the first one arrives.
   let lastContent: { width: number; height: number } | undefined
+
+  // (eleventh pass; see the module doc) The anchor, set once on the very
+  // first applySize() call and never touched again: `anchor` is the CSS
+  // content size the author's own CSS and attributes already produced,
+  // before this harness writes anything; `ratio0` (from `w0`/`h0`, the
+  // ORIGINAL width/height attributes) is the ratio every later pin and
+  // every free-axis derivation below is anchored to, never a later pass's
+  // own, possibly already-perturbed, reading.
+  let mounted = false
+  let anchor = { width: 0, height: 0 }
+  let w0 = 0
+  let h0 = 0
+  let ratio0 = 1
+  // Which axis is free (ratio-derived from the other through `ratio0`):
+  // 'width', 'height', or undefined (neither: both axes are independently
+  // CSS-fixed, or a giant canvas left this undetermined, see
+  // GIANT_CANVAS_LIMIT below; either way the write below rounds both axes
+  // independently, same as ever). Cached from two single-axis probes,
+  // refreshed every pass the probe still runs (any pass before this canvas
+  // is pinned).
+  let freeAxis: 'width' | 'height' | undefined
+  // Set once, the moment this canvas is judged unsized and pinned; the
+  // probe never runs again afterward.
+  let pinned = false
+  // The measured content size (and DPR) that produced the LAST actual
+  // backing-store write, for the dead band below: undefined until the
+  // first write, so the dead band never fires on mount.
+  let lastWriteContent: { width: number; height: number } | undefined
+  let lastWriteDpr: number | undefined
 
   const applySize = (entries?: ResizeObserverEntry[]) => {
     const entry = entries?.[0]
@@ -367,60 +391,165 @@ export function mountEffect(
     if (!size.width || !size.height) return
     fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap)
 
-    writeBackingStore(size)
-
-    // The proportional probe (tenth pass; see the module doc for the full
-    // reasoning): two readings, each an EXACT integer multiple of the
-    // just-written W/H so their ratio holds exactly (immune to finding 1's
-    // parity bug, whichever reading runs), ORed together. GROWING (double
-    // W and H together) catches an axis that is unsized or whose cap has
-    // not engaged yet, including a cap ABOVE the just-written value that a
-    // further DPR increase would push past (the inflation case): it alone
-    // cannot catch a cap that is ALREADY binding on the just-written value,
-    // since growing further only stays behind that cap, both readings
-    // identical. SHRINKING (halve W and H together) catches that case
-    // instead, revealing the uncapped relationship below it, but only when
-    // exact: both W and H even, so dividing by 2 has no `Math.floor`
-    // residue, the same exactness growing already relies on. When the cap
-    // sits EXACTLY on the just-written value (only possible when the DPR
-    // does not scale it away from the cap, i.e. dpr <= 1: a display at or
-    // below 1x, or a page not zoomed in), halving still crosses below it
-    // and reads a follow: a documented, narrow over-pin, harmless (the
-    // pinned width still equals what the cap already renders, and a cap
-    // that shrinks further is still honored, see CHANGELOG.md); it would
-    // only matter for a cap that later widens past this exact value, which
-    // is not among this ticket's swept cases. Growing is skipped past the
-    // browser's own canvas-size limit (doubling could itself trip it);
-    // shrinking is skipped when W and H have different parity; if neither
-    // is safe, the canvas is treated as already sized (documented
-    // limitation, alongside the one below for a canvas with no CSS size on
-    // either axis).
-    const w = canvas.width
-    const h = canvas.height
-    const canGrow = 2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT
-    const canShrink = w % 2 === 0 && h % 2 === 0
-
-    const probes = (canGrow ? [{ w: 2 * w, h: 2 * h }] : []).concat(
-      canShrink ? [{ w: w / 2, h: h / 2 }] : []
-    )
-    const widthFollows = probes.some((p) => {
-      canvas.width = p.w
-      canvas.height = p.h
-      const probed = canvas.clientWidth
-      canvas.width = w
-      canvas.height = h
-      const restored = canvas.clientWidth
-      return probed !== restored
-    })
-
-    if (widthFollows) {
-      // Width only: height stays free to keep tracking the intrinsic
-      // ratio (see the module doc for why that is correct, not a gap).
-      // Force content-box sizing so a border-box canvas doesn't
-      // reinterpret the pinned width as a smaller content box.
-      canvas.style.boxSizing = 'content-box'
-      canvas.style.width = `${size.width}px`
+    // Dead band (eleventh pass): a sub-pixel content change never needs a
+    // new bitmap. Skipping the whole pass here, before the probe or the
+    // write below ever run, is what stops a bounded, self-induced residual
+    // (the free axis moving a fraction of a CSS pixel as a side effect of
+    // this harness's own previous write) from ever having a next pass to
+    // ping-pong in. A DPR change always needs a new bitmap even when the
+    // CSS content size did not move at all, so it never counts as dead.
+    if (
+      lastWriteContent &&
+      fx.dpr === lastWriteDpr &&
+      Math.abs(size.width - lastWriteContent.width) < 0.5 &&
+      Math.abs(size.height - lastWriteContent.height) < 0.5
+    ) {
+      return
     }
+
+    if (!mounted) {
+      mounted = true
+      anchor = size
+      w0 = canvas.width
+      h0 = canvas.height
+      ratio0 = w0 / h0
+    }
+
+    // The causal probe (see the module doc for the full reasoning): tries
+    // up to two perturbations of `w0`/`h0`, the canvas's ORIGINAL width/
+    // height attributes (never this harness's own later, DPR-scaled
+    // write: probing THAT instead can itself drift once a cap changes
+    // after this canvas was already found sized, see the module doc), and
+    // never runs again once this canvas is pinned. GROWING (double both
+    // together) preserves whatever ratio they have exactly, for any pair
+    // of integers: if clientWidth still follows it, this axis is unsized
+    // (or a cap not yet binding on it) and gets pinned. SHRINKING (halve
+    // both together, only when both are even, so the halving stays exact)
+    // is the fallback that also catches a cap already binding on `w0`/`h0`.
+    // The canvas's REAL current attributes are restored once, after every
+    // perturbation below is done, never left at `w0`/`h0`.
+    if (!pinned) {
+      const current = { width: canvas.width, height: canvas.height }
+      canvas.width = w0
+      canvas.height = h0
+      const baseW = canvas.clientWidth
+      const baseH = canvas.clientHeight
+      const canGrow = 2 * w0 <= GIANT_CANVAS_LIMIT && 2 * h0 <= GIANT_CANVAS_LIMIT
+      const canShrink = w0 % 2 === 0 && h0 % 2 === 0
+
+      let widthFollows = false
+      if (canGrow) {
+        canvas.width = 2 * w0
+        canvas.height = 2 * h0
+        const grownW = canvas.clientWidth
+        if (grownW !== baseW) widthFollows = true
+        canvas.width = w0
+        canvas.height = h0
+      }
+      if (!widthFollows && canShrink) {
+        canvas.width = w0 / 2
+        canvas.height = h0 / 2
+        const shrunkW = canvas.clientWidth
+        if (shrunkW !== baseW) widthFollows = true
+        canvas.width = w0
+        canvas.height = h0
+      }
+
+      // Two SEPARATE, single-axis perturbations decide which axis (if
+      // either) this canvas's write derives from the other through
+      // `ratio0` below. Doubling BOTH attributes together, above, cannot
+      // answer this: it is proportional on purpose (so it never perturbs a
+      // ratio-tracking axis, which is what makes it immune to the
+      // eighth-pass false-positive bug), so it leaves a genuinely
+      // independent axis and a ratio-derived one reading identically,
+      // unchanged either way. Changing ONE attribute alone, the other
+      // untouched, tells them apart: an axis truly independent of the
+      // attributes never moves for ANY attribute change, while one derived
+      // from the ratio moves whenever the OTHER attribute perturbs that
+      // ratio. `wFixed`/`hFixed` end up true when the corresponding axis
+      // stayed put; exactly one false, the other true, names the free
+      // axis; both true (or both false, undetermined) means neither axis
+      // derives from the other, so the write below rounds them
+      // independently, same as ever. Skipped once this canvas is unsized
+      // (`widthFollows`, pinned below): height then becomes the CSS
+      // engine's own `aspect-ratio` derivation, not this harness's
+      // attribute ratio, so nothing here still applies to it.
+      if (!widthFollows) {
+        let hFixed: boolean | undefined
+        if (2 * h0 <= GIANT_CANVAS_LIMIT) {
+          canvas.height = 2 * h0
+          const grownHAlone = canvas.clientHeight
+          canvas.height = h0
+          hFixed = grownHAlone === baseH
+        } else if (h0 > 1) {
+          canvas.height = h0 - 1
+          const shrunkHAlone = canvas.clientHeight
+          canvas.height = h0
+          hFixed = shrunkHAlone === baseH
+        }
+
+        let wFixed: boolean | undefined
+        if (2 * w0 <= GIANT_CANVAS_LIMIT) {
+          canvas.width = 2 * w0
+          const grownWAlone = canvas.clientWidth
+          canvas.width = w0
+          wFixed = grownWAlone === baseW
+        } else if (w0 > 1) {
+          canvas.width = w0 - 1
+          const shrunkWAlone = canvas.clientWidth
+          canvas.width = w0
+          wFixed = shrunkWAlone === baseW
+        }
+
+        if (wFixed === true && hFixed === false) freeAxis = 'height'
+        else if (wFixed === false && hFixed === true) freeAxis = 'width'
+        else freeAxis = undefined
+      }
+
+      canvas.width = current.width
+      canvas.height = current.height
+
+      if (widthFollows) {
+        // Unsized: pin at the anchor, not this pass's own size (which,
+        // past mount, could already be a value this harness's earlier
+        // writes helped produce). `aspectRatio` lets the CSS engine derive
+        // height from the ORIGINAL attribute ratio directly, never from
+        // rounding this harness's own backing-store attributes.
+        canvas.style.boxSizing = 'content-box'
+        canvas.style.width = `${anchor.width}px`
+        canvas.style.aspectRatio = `${w0} / ${h0}`
+        pinned = true
+      }
+    }
+
+    // Backing-store write. Once pinned, height is now the CSS engine's own
+    // aspect-ratio derivation, never this harness's attribute ratio, so
+    // width is always the fixed axis from here on. Otherwise `freeAxis`
+    // (from the two single-axis probes above) names which axis is
+    // ratio-derived from the other, if either is: that axis is computed
+    // from the OTHER, just-rounded axis and `ratio0` instead of
+    // independently rounding its own measurement, so its error is bounded
+    // by one rounding unit, never compounding pass over pass, because it
+    // never depends on anything this harness wrote earlier. Neither axis
+    // free (both independently CSS-fixed, or undetermined past
+    // GIANT_CANVAS_LIMIT) rounds both independently, same as every earlier
+    // pass.
+    let w: number
+    let h: number
+    if (pinned || freeAxis === 'height') {
+      w = Math.round(size.width * fx.dpr)
+      h = Math.round(w / ratio0)
+    } else if (freeAxis === 'width') {
+      h = Math.round(size.height * fx.dpr)
+      w = Math.round(h * ratio0)
+    } else {
+      w = Math.round(size.width * fx.dpr)
+      h = Math.round(size.height * fx.dpr)
+    }
+    canvas.width = w
+    canvas.height = h
+    lastWriteContent = size
+    lastWriteDpr = fx.dpr
 
     fx.width = size.width
     fx.height = size.height
