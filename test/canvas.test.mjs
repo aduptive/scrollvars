@@ -325,6 +325,27 @@ function makeCanvas({ width, height, style, border = 0, padding = 0, scale = 1, 
   }
 }
 
+// Redelivers `canvas`'s OWN current content box (its clientWidth/Height,
+// which for a mirror-style canvas keeps moving a little as a side effect
+// of this harness's own writes) as a fresh ResizeObserverEntry, one pass
+// per call, until two consecutive deliveries land on the exact same
+// backing-store attributes (a real fixed point, not just a small enough
+// diff), or `maxPasses` is reached, whichever comes first. Returns the
+// number of DELIVERIES that changed the backing store before it stopped
+// moving (0 if the very first delivery already settled it); a test that
+// gets `maxPasses` back never converged.
+function driveToFixedPoint(env, canvas, maxPasses = 100) {
+  let prevW = canvas.width
+  let prevH = canvas.height
+  for (let pass = 1; pass <= maxPasses; pass++) {
+    env.resize({ width: canvas.clientWidth, height: canvas.clientHeight })
+    if (canvas.width === prevW && canvas.height === prevH) return pass - 1
+    prevW = canvas.width
+    prevH = canvas.height
+  }
+  return maxPasses
+}
+
 test('canvas harness: an unsized canvas stabilizes after one pass (dpr 2)', async () => {
   const env = makeEnv()
   global.window.devicePixelRatio = 2
@@ -1048,6 +1069,54 @@ test('canvas harness: the parity sweep, a fixed-CSS-height/auto-width mirror can
           writes.length,
           0,
           `intrinsic width ${widthAttr}, CSS height ${heightCss}, dpr ${dpr}: expected never pinned, style writes: ${JSON.stringify(writes)}`
+        )
+      }
+    }
+  }
+})
+
+test('canvas harness: the mirror sweep, driven to a fixed point, converges within 3 passes and never pins (ADU-107, eleventh pass, verifier finding: mirror case never settles)', async () => {
+  // The tenth pass's mirror-case fix (doubling instead of halving, proved
+  // never-pinned above) was not the whole bug: even correctly UNPINNED,
+  // width and height were each rounded independently every pass, and the
+  // free width was re-derived from whatever ratio the JUST-ROUNDED
+  // backing store happened to have, so the error could accumulate over
+  // many ResizeObserver passes instead of settling (the verifier's
+  // eleventh-pass finding: 51 to 77 passes at dpr 0.5, sometimes
+  // diverging outright at dpr 0.8). The eleventh pass anchors the free
+  // axis (width here) to `ratio0`, the ORIGINAL intrinsic attribute ratio,
+  // computed fresh from the fixed axis (height) every pass, never from the
+  // free axis's own prior, possibly-drifted reading: driven to a fixed
+  // point, this converges in at most one or two passes instead of dozens,
+  // and never pins.
+  for (const widthAttr of [300, 301]) {
+    for (let heightCss = 99; heightCss <= 151; heightCss += 2) {
+      for (const dpr of [0.5, 0.8, 1, 1.05, 1.25, 1.5, 2]) {
+        const env = makeEnv()
+        global.window.devicePixelRatio = dpr
+        const { mountEffect } = await import('../dist/canvas/index.js')
+
+        const { style, writes } = makeStyle({ height: `${heightCss}px` })
+        const canvas = makeCanvas({ width: widthAttr, height: 150, style })
+        const ratio0 = widthAttr / 150
+
+        mountEffect(canvas, { frame: () => {} })
+        env.resize({ width: heightCss * ratio0, height: heightCss }) // mount
+
+        const passes = driveToFixedPoint(env, canvas)
+
+        assert.ok(
+          passes <= 3,
+          `intrinsic width ${widthAttr}, CSS height ${heightCss}, dpr ${dpr}: expected to converge within 3 passes, took ${passes}`
+        )
+        assert.equal(
+          writes.length,
+          0,
+          `intrinsic width ${widthAttr}, CSS height ${heightCss}, dpr ${dpr}: expected never pinned`
+        )
+        assert.ok(
+          Math.abs(canvas.clientWidth - canvas.clientHeight * ratio0) < 1,
+          `intrinsic width ${widthAttr}, CSS height ${heightCss}, dpr ${dpr}: final clientWidth ${canvas.clientWidth} not within 1px of clientHeight ${canvas.clientHeight} * ratio0 ${ratio0}`
         )
       }
     }
