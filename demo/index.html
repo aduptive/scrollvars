@@ -3172,8 +3172,9 @@ var SV = (() => {
         if (opts.view !== false)
           setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
         entries.delete(entry.el);
-        if (!stillNeeded(entry.el))
-          resizeObserver?.unobserve(entry.el);
+        unobserveIfUnneeded(entry.el);
+        if (opts.root)
+          unobserveIfUnneeded(opts.root);
         culler?.unobserve(entry.el);
         return;
       }
@@ -3212,14 +3213,17 @@ var SV = (() => {
     }
     return false;
   }
+  function unobserveIfUnneeded(target) {
+    if (!stillNeeded(target))
+      resizeObserver?.unobserve(target);
+  }
   function releaseEntry(entry) {
     const { el } = entry;
     entries.delete(el);
     culler?.unobserve(el);
-    if (!stillNeeded(el))
-      resizeObserver?.unobserve(el);
-    if (entry.opts.root && !stillNeeded(entry.opts.root))
-      resizeObserver?.unobserve(entry.opts.root);
+    unobserveIfUnneeded(el);
+    if (entry.opts.root)
+      unobserveIfUnneeded(entry.opts.root);
     restorePinHelper(entry);
     el.classList.toggle("sv-live", false);
     for (const name of Object.keys(entry.written))

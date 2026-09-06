@@ -307,9 +307,11 @@ function apply(entry: Entry, geo: Geometry) {
       // --sv-view at -1 forever (sv-drift would stay invisible)
       if (opts.view !== false) setVar(entry, '--sv-view', reducedMotion ? 0 : computeView(geo, enter, exit))
       entries.delete(entry.el)
-      // entry.el can be another live entry's root (a shared scroll container):
-      // only drop the resize watch once no other entry still needs it.
-      if (!stillNeeded(entry.el)) resizeObserver?.unobserve(entry.el)
+      // entry.el can be another live entry's root (a shared scroll container),
+      // and this entry can declare its own root: only drop each resize watch
+      // once no other entry still needs it.
+      unobserveIfUnneeded(entry.el)
+      if (opts.root) unobserveIfUnneeded(opts.root)
       culler?.unobserve(entry.el)
       return
     }
@@ -356,6 +358,15 @@ function stillNeeded(target: HTMLElement): boolean {
   return false
 }
 
+/** Drop the resize watch on `target` (a tracked element or a `root`), but
+ * only once no other live entry still needs it. Shared by releaseEntry()
+ * and the once fire-and-forget branch in apply() so the two release paths
+ * cannot drift apart again: both must release the tracked element AND its
+ * `root`, or a `{ once: true, root }` entry leaks the root's watch. */
+function unobserveIfUnneeded(target: HTMLElement) {
+  if (!stillNeeded(target)) resizeObserver?.unobserve(target)
+}
+
 /** Undo everything a track() call installed for one entry: written vars,
  * `--sv-scenes`, the pin helper, both observers (respecting shared roots).
  * Shared by the identity-guarded untrack and by track() replacing an
@@ -365,8 +376,8 @@ function releaseEntry(entry: Entry) {
   const { el } = entry
   entries.delete(el)
   culler?.unobserve(el)
-  if (!stillNeeded(el)) resizeObserver?.unobserve(el)
-  if (entry.opts.root && !stillNeeded(entry.opts.root)) resizeObserver?.unobserve(entry.opts.root)
+  unobserveIfUnneeded(el)
+  if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
   restorePinHelper(entry)
   el.classList.toggle('sv-live', false)
   for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)

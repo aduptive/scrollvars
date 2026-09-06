@@ -60,6 +60,14 @@ findings on the same round): three more defects fixed.
   `stillNeeded()` before unobserving, same as `releaseEntry()`, but keeps
   settling `--sv-view` and latching `sv-live` itself: it still does not
   route through `releaseEntry()`.
+- Fourth pass (verifier finding on 293b1dc): the third pass guarded the
+  `once` branch's unobserve of its own element, but never released its own
+  `root`. A `{ once: true, root }` entry that self-released kept the
+  root's `ResizeObserver` watch forever, since `releaseEntry()` is never
+  called on that path. The two guarded unobserves (the tracked element and
+  its `root`) are now one `unobserveIfUnneeded()` helper, used by both
+  `releaseEntry()` and the `once` branch, so the two paths cannot drift
+  apart again.
 
 ### Presets and no-JS
 - `.sv-split` word/char spans compute to `display: inline-block`, so

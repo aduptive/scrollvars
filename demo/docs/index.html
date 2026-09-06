@@ -311,6 +311,14 @@ findings on the same round): three more defects fixed.
   <code>stillNeeded()</code> before unobserving, same as <code>releaseEntry()</code>, but keeps
   settling <code>--sv-view</code> and latching <code>sv-live</code> itself: it still does not
   route through <code>releaseEntry()</code>.
+<ul><li>Fourth pass (verifier finding on 293b1dc): the third pass guarded the</li></ul>
+  <code>once</code> branch's unobserve of its own element, but never released its own
+  <code>root</code>. A <code>{ once: true, root }</code> entry that self-released kept the
+  root's <code>ResizeObserver</code> watch forever, since <code>releaseEntry()</code> is never
+  called on that path. The two guarded unobserves (the tracked element and
+  its <code>root</code>) are now one <code>unobserveIfUnneeded()</code> helper, used by both
+  <code>releaseEntry()</code> and the <code>once</code> branch, so the two paths cannot drift
+  apart again.
 
 ### Presets and no-JS
 <ul><li><code>.sv-split</code> word/char spans compute to <code>display: inline-block</code>, so</li></ul>

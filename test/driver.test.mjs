@@ -431,6 +431,45 @@ test('driver: a once entry that is also another entry\'s root keeps that root ob
   untrackRoot() // no-op: the once entry already deleted itself from entries on the frame above
 })
 
+test('driver: a once entry that declares its own root releases that root once nothing else needs it', async () => {
+  const { track } = await import('../dist/core/driver.js?oncedeclaresroot')
+  const rootRect = { top: 100, bottom: 620, height: 520 }
+  const rootEl = {
+    clientTop: 10, // bordered root, same shape as the offsetParent-chain test above
+    clientHeight: 500,
+    scrollTop: 0,
+    getBoundingClientRect: () => ({ ...rootRect }),
+    scrollTo(opts) {
+      rootEl.lastScrollTo = opts
+    },
+  }
+
+  const child = makeElement(200)
+  place(child, 300) // geo.top = 300-110 = 190, geo.bottom = 500-110 = 390: live from the first frame
+  const untrackOnce = track(child, { once: true, root: rootEl })
+  pump()
+  assert.ok(child.classes.has('sv-live'), 'the once entry latches live on the first frame')
+  assert.ok(
+    !observed.has(rootEl),
+    'nothing else uses the root: it is released the same frame the once entry self-releases'
+  )
+
+  // same leak, but this time another entry still needs the root observed
+  const other = makeElement(200)
+  const untrackOther = track(other, { root: rootEl, travel: true })
+  const child2 = makeElement(200)
+  place(child2, 300)
+  const untrackOnce2 = track(child2, { once: true, root: rootEl })
+  pump()
+  assert.ok(child2.classes.has('sv-live'), 'the second once entry also latches live on the first frame')
+  assert.ok(observed.has(rootEl), 'another entry still declares the same root: it stays observed after the once entry self-releases')
+
+  untrackOther()
+  assert.ok(!observed.has(rootEl), 'nothing references the root any more, so it may now be released')
+  untrackOnce() // no-op: already self-released on the frame above
+  untrackOnce2() // no-op: already self-released on the frame above
+})
+
 test('driver: init() is transactional, a throwing ResizeObserver leaves track() a no-op until it succeeds', async () => {
   global.ResizeObserver = class {
     constructor() {
