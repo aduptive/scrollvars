@@ -1709,3 +1709,68 @@ test('canvas harness: a width="0" attribute is treated as CSS-sized instead of p
   assert.equal(Number.isNaN(canvas.width), false)
   assert.equal(Number.isFinite(canvas.height), true)
 })
+
+test('canvas harness: an unsized canvas at a non-integer w0 * dpr converges to the exact backing store in one pass, never drifting (ADU-107, thirteenth pass, verifier finding)', async () => {
+  // The twelfth pass's `aspectRatio === 'auto'` guard never fired in real
+  // Chrome (see the module doc and CHANGELOG, thirteenth pass): height then
+  // derived from this harness's own rounded, DPR-scaled attributes instead
+  // of the fixed w0/h0 CSS ratio, and the rounding remainder reapplied on
+  // every later pass whenever w0 * dpr was not already an integer. Every
+  // shipped fixture before this one used a w0/dpr pair whose product WAS
+  // always an integer, so nothing could see it. These three do not:
+  // portrait shapes, both axes fractional, one axis fractional, and a small
+  // canvas where the effect compounds fastest. Driven to a fixed point,
+  // startsWith('auto') fixes the pin on the very first pass, at the exact
+  // rounded backing store, forever: no cascade, no drift.
+  const cases = [
+    [30, 61, 0.51], // both axes fractional (w0*dpr 15.3, h0*dpr 31.11)
+    [8, 60, 1.9], // width fractional, height an exact integer product
+    [12, 50, 1.15], // both fractional, small canvas
+  ]
+  for (const [w0, h0, dpr] of cases) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = dpr
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: w0, height: h0, style })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    const passes = driveToFixedPoint(env, canvas)
+
+    assert.equal(passes, 1, `w0 ${w0}x${h0}, dpr ${dpr}: expected to pin on the very first pass, took ${passes}`)
+    assert.equal(canvas.style.width, `${w0}px`, `w0 ${w0}x${h0}, dpr ${dpr}: pinned width`)
+    assert.equal(canvas.style.aspectRatio, `${w0} / ${h0}`, `w0 ${w0}x${h0}, dpr ${dpr}: aspect-ratio set`)
+    assert.equal(canvas.width, Math.round(w0 * dpr), `w0 ${w0}x${h0}, dpr ${dpr}: exact backing width`)
+    assert.equal(canvas.height, Math.round(h0 * dpr), `w0 ${w0}x${h0}, dpr ${dpr}: exact backing height`)
+  }
+})
+
+test('canvas harness: the verifier\'s threshold map at w0 30, dpr 0.51 converges at h0 50 and h0 55, both previously diverging (ADU-107, thirteenth pass)', async () => {
+  // The verifier drove <canvas width="30" height="61"> at dpr 0.51 for 668
+  // passes before it gave up at a 33-million-pixel backing height; the same
+  // shape at other h0 values around it, still at w0 30 and dpr 0.51 (so
+  // w0 * dpr is always the same non-integer 15.3), diverged too. Every one
+  // of them converges in one pass now, at the exact rounded backing store,
+  // because startsWith('auto') lets the fix anchor height to the fixed
+  // w0/h0 CSS ratio instead of this harness's own rounded attributes.
+  for (const h0 of [50, 55]) {
+    const env = makeEnv()
+    global.window.devicePixelRatio = 0.51
+    const { mountEffect } = await import('../dist/canvas/index.js')
+
+    const { style } = makeStyle()
+    const canvas = makeCanvas({ width: 30, height: h0, style })
+
+    mountEffect(canvas, { frame: () => {} })
+
+    const passes = driveToFixedPoint(env, canvas)
+
+    assert.equal(passes, 1, `w0 30x${h0}, dpr 0.51: expected to pin on the very first pass, took ${passes}`)
+    assert.equal(canvas.style.width, '30px', `w0 30x${h0}, dpr 0.51: pinned width`)
+    assert.equal(canvas.style.aspectRatio, `30 / ${h0}`, `w0 30x${h0}, dpr 0.51: aspect-ratio set`)
+    assert.equal(canvas.width, Math.round(30 * 0.51), `w0 30x${h0}, dpr 0.51: exact backing width`)
+    assert.equal(canvas.height, Math.round(h0 * 0.51), `w0 30x${h0}, dpr 0.51: exact backing height`)
+  }
+})
