@@ -209,29 +209,55 @@ export function slider(
     let bestSd = Infinity
     const list = slides()
     // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
-    const sds = list.map((slide) => {
-      const size = Math.max(slideSize(slide), 1)
-      return (slideStart(slide) + size / 2 - center) / size
-    })
+    const sizes = list.map((slide) => Math.max(slideSize(slide), 1))
+    const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2)
     list.forEach((slide, i) => {
-      const sd = sds[i]
+      const sd = (centers[i] - center) / sizes[i]
       slide.style.setProperty('--sd', sd.toFixed(4))
       if (Math.abs(sd) < Math.abs(bestSd)) {
         bestSd = sd
         best = i
       }
     })
-    position = Math.min(
-      Math.max(best - (bestSd === Infinity ? 0 : bestSd), 0),
-      Math.max(slides().length - 1, 0)
-    )
+    // Continuous position: interpolate between the two adjacent slide CENTRES
+    // the viewport centre sits between. The old `best - bestSd` normalized by
+    // one slide's own size, so any gap made it jump BACKWARDS at every
+    // midpoint (two 100px slides 16px apart read 0.580, then 0.430 one pixel
+    // later), against the documented contract.
+    position = 0
+    if (centers.length > 1) {
+      let seg = 0
+      while (seg + 2 < centers.length && centers[seg + 1] <= center) seg++
+      const span = centers[seg + 1] - centers[seg]
+      const raw = span > 0 ? seg + (center - centers[seg]) / span : seg
+      position = Math.min(Math.max(raw, 0), centers.length - 1)
+    }
     container.style.setProperty('--sv-progress', progress().toFixed(4))
+    // Something outside the slider can rewrite the class attribute of the rail
+    // or of a slide (React committing `className`), dropping what the engine
+    // owns with no retrack and no index change to re-toggle on. Re-assert on
+    // every measure, the way the driver does for its live flag: one classList
+    // read each, an actual write only when the DOM disagrees.
+    const classes = container.classList
+    if (
+      classes.contains?.('sv-slider') !== true ||
+      classes.contains?.('sv-slider-y') !== !horizontal ||
+      classes.contains?.('sv-draggable') !== !!drag
+    ) {
+      classes.add('sv-slider')
+      classes.toggle('sv-slider-y', !horizontal)
+      classes.toggle('sv-draggable', !!drag)
+    }
+    list.forEach((slide, i) => {
+      const wanted = i === best
+      if (slide.classList.contains?.('sv-active') !== wanted)
+        slide.classList.toggle('sv-active', wanted)
+    })
     const bestEl = list[best] ?? null
     if (best !== active || bestEl !== activeEl) {
       const indexChanged = best !== active
       active = best
       activeEl = bestEl
-      list.forEach((slide, i) => slide.classList.toggle('sv-active', i === best))
       container.style.setProperty('--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
     }
@@ -305,7 +331,21 @@ export function slider(
     anim = requestAnimationFrame(step)
   }
 
+  // The wheel settle (below) glides to the nearest slide 200 ms after the last
+  // wheel event, with snap suspended until then. Any other writer that takes
+  // over inside that window has to drop it, or the settle wakes up mid drag
+  // and fights the input that replaced it. Returns whether one was pending:
+  // the wheel had suspended snap and only its own glide would have resumed it.
+  let wheelTimer: ReturnType<typeof setTimeout> | undefined
+  const clearWheel = () => {
+    if (wheelTimer === undefined) return false
+    clearTimeout(wheelTimer)
+    wheelTimer = undefined
+    return true
+  }
+
   const goTo = (index: number, smooth = true) => {
+    clearWheel() // this call owns the position now, not the pending settle
     const all = slides()
     const clamped = Math.max(0, Math.min(index, all.length - 1))
     const slide = all[clamped]
@@ -323,6 +363,7 @@ export function slider(
   }
 
   const seek = (progress: number) => {
+    clearWheel()
     stopGlide()
     target = -1
     suspendSnap() // the driver owns this instance's position
@@ -398,13 +439,15 @@ export function slider(
   container.addEventListener('dragstart', onDragStart)
   const onDown = (event: PointerEvent) => {
     const wasGliding = anim !== 0
+    const wheelPending = clearWheel() // the press owns the position now
     stopGlide() // the user takes over
     target = -1
     const native = (event.target as Element).closest?.('input, textarea, select, [contenteditable]')
     if (!drag || event.pointerType !== 'mouse' || (event.button ?? 0) !== 0 || native) {
-      // an interrupted glide must not leave snap suspended forever; a range
-      // input, a text field or a right click keep their native gesture
-      if (wasGliding) resumeSnap()
+      // an interrupted glide (or a dropped wheel settle) must not leave snap
+      // suspended forever; a range input, a text field or a right click keep
+      // their native gesture
+      if (wasGliding || wheelPending) resumeSnap()
       return
     }
     pressed = true
@@ -429,7 +472,6 @@ export function slider(
   // slowed, so replace it. Suspend snap while wheeling, then glide to the
   // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
   // instances authored with snap none (scroll-driven ones own their position).
-  let wheelTimer: ReturnType<typeof setTimeout> | undefined
   const onWheel = (event: WheelEvent) => {
     if (snapIsNone) return
     // only react when the gesture's dominant axis is OUR axis. Otherwise
@@ -441,8 +483,11 @@ export function slider(
     stopGlide()
     target = -1
     suspendSnap()
-    clearTimeout(wheelTimer)
-    wheelTimer = setTimeout(() => goTo(active), 200)
+    clearWheel()
+    wheelTimer = setTimeout(() => {
+      wheelTimer = undefined
+      goTo(active)
+    }, 200)
   }
   container.addEventListener('wheel', onWheel, { passive: true })
 
@@ -477,7 +522,7 @@ export function slider(
       stopGlide()
       resumeSnap()
       container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging')
-      clearTimeout(wheelTimer)
+      clearWheel()
       container.removeEventListener('wheel', onWheel)
       container.removeEventListener('keydown', onKey)
       container.removeEventListener('scroll', schedule)
