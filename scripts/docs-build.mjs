@@ -217,7 +217,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
 <tr><td>pin (scrub)</td><td><code>sv-stage sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
-<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code></td></tr>
+<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code> (a scroll-driven acts clock needs core.css too)</td></tr>
 <tr><td>ui</td><td><code>sv-marquee sv-accordion</code></td></tr>
 <tr><td>tilt</td><td><code>sv-tilt</code> + <code>--sv-tilt</code> (angle)</td></tr>
 </table>
@@ -285,13 +285,21 @@ dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-coun
 degrade to their end state individually.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
 three feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
-curtain, rail and drift, written without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>
-(the one <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
-declaration that old parsers keep); <code>sv-deck</code> unstacks to a static,
-non-overlapping layout instead, its fly-away slice needs <code>clamp()</code>. With your
-bundler downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets
-animate on roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for the
+reveal presets (<code>sv-rise</code>, <code>sv-fade</code>, <code>sv-slide-l</code>,
+<code>sv-slide-r</code>, <code>sv-auto</code>, <code>sv-drift</code>) and the pin presets
+<code>sv-curtain-l</code>, <code>sv-curtain-r</code> and <code>sv-rail</code>, written
+without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
+<code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
+declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
+non-overlapping layout instead of animating (its fly-away slice needs
+<code>clamp()</code>); <code>sv-split-rise</code> and <code>sv-spread</code> stay static
+below the floor too, no fallback rule for either. <code>sv-split-rise</code> because its
+animating rule is written with <code>:is()</code>, dropped whole by a parser that predates
+it; <code>sv-spread</code> because its rule parses fine and has no
+<code>translate</code>/<code>rotate</code> to apply down there. With your bundler downleveling the
+ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
+<b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 

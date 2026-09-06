@@ -907,6 +907,45 @@ from the code it describes.
   unknown element an engine without `<dialog>` parses, which hid the
   documented static fallback panel with no UA `display: none` behind it.
 
+### Docs (blind review round 4)
+Blind review round 4 (Astra on 7489a11), section 2: eight docs mismatches
+against the code ADU-129 to ADU-132 shipped.
+- The docs page's "Preset vocabulary" table now notes that a scroll-driven `sv-acts`
+  clock needs `core.css` as well as `state.css`, matching the import
+  comments ADU-129 already fixed in README and AGENTS.
+- The no-JS exception list now includes the marquee: `ui.css` animates it
+  via a plain `@keyframes` rule that never depends on the driver.
+- The compat floor sentence separates what the fallback animates (reveal
+  presets `sv-rise`/`sv-fade`/`sv-slide-l`/`sv-slide-r`/`sv-auto`/`sv-drift`
+  and pin presets `sv-curtain-l`/`sv-curtain-r`/`sv-rail`) from what stays
+  static below the floor, with the real cause per preset: `sv-split-rise`
+  has no fallback rule and its animating selector is an `:is()` those
+  parsers drop whole, `sv-spread` has no fallback rule either but its
+  selector parses fine and simply has no `translate`/`rotate` to apply.
+  `src/compat`'s header comment named only curtain, rail and drift as the
+  covered presets: it lists the same nine now, plus `sv-deck`,
+  `sv-split-rise` and `sv-spread` with a reason each.
+- `sv-deck`'s fallback is documented as ADU-131 shipped it: a static,
+  non-overlapping unstack, no `max()` involved.
+- Modal without `<dialog>` support is documented as an open static panel:
+  `styles/state.css` scopes the closed-dialog fade to
+  `@supports selector(dialog:modal)` and keeps the type selector out of the
+  `display: none` rule, so nothing there hides the element in either state.
+  The `open` attribute still tracks state in both directions (ADU-132), so
+  the consumer's own CSS can hide it.
+- AGENTS.md's pinned-skeleton line now states an inline static wrapper
+  gets `position: relative` (ADU-130), matching README.
+- The knobs sentence notes the one exception to zero-specificity defaults:
+  `--sv-order`'s automatic-stagger value is declared on the child itself,
+  by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and an
+  inherited `:root` value never applies where the child declares its own.
+  Those rules are (0,2,0), so an override needs an inline value or a rule
+  at least as specific.
+- The "SSR, SEO and the Lighthouse load profile stay untouched" claim is
+  scoped to the no-JS path: a JS-enabled Lighthouse run sees the pre-paint
+  script hide entrances before paint and the pin helper write heights on
+  attach.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
