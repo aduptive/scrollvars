@@ -185,6 +185,30 @@ findings on the same round): three more defects fixed.
   after removing it; a per-file error (injected into `marquee`) still
   fails only that fixture's test plus the file-level gate.
 
+### Installed components (blind review round 3, fourth pass)
+- The CLI component `tsc` gate spawned `tsc` with a generated tsconfig that
+  had no `paths` redirect for `react`, so the subprocess always resolved the
+  root's React 19 `@types`, even under `npm run test:react18`: the
+  `--import` loader hook only redirects the parent process's own runtime
+  imports, never a subprocess it spawns. No `tsc` run anywhere checked the
+  installed fixtures against React 18 types, so reverting `GsapScrub`'s
+  `useRef<T | null>(null)` fix stayed green everywhere. `react18-register.mjs`
+  now sets `SV_REACT18_DIR` (its value read straight from
+  `react18-paths.mjs`, the same module `react18-tsc.mjs` already used for
+  `src/`), and the gate adds the same `paths` redirect and canary when that
+  variable is set. Proved red by reverting the `GsapScrub` fix under
+  `npm run test:react18` (the gate failed with "Cannot assign to 'current'
+  because it is a read-only property"), green again after restoring it.
+- With the gate actually checking React 18 types, four more fixtures failed
+  it: `HeroCinematic`, `PointerTiltGrid`, `StickySteps` and `ThreeScene` all
+  pass a hook's `RefObject<T | null>` (the same shape `GsapScrub` needed to
+  satisfy both majors) straight into a host element's `ref`. React 18's
+  types compare that generic argument literally against `RefObject<T>`
+  instead of expanding both to `{ current: T | null }`, so `T | null` fails
+  where `T` succeeds even though the two are structurally identical. Each
+  now casts the ref to `React.RefObject<T>` at the JSX call site, the same
+  shape `GsapScrub` already needed for its own mutable `useRef`.
+
 ### Tooling
 - `npm run demo:sync` is idempotent again: the bench page's inlined engine
   marker was lazy on the content but only matched a fixed 3-newline gap

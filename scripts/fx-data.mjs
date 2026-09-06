@@ -1030,7 +1030,9 @@ export function HeroCinematic({
 }) {
   const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    <section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}>
+    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
       <style>{css}</style>
       <div className="hero-orb a" />
       <div className="hero-orb b" />
@@ -1217,7 +1219,9 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
     return () => mq.removeEventListener?.('change', sync)
   }, [])
   return (
-    <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+    // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style>{css}</style>
       <div className="sv-stage st-grid">
         <div className="st-media">
@@ -1467,7 +1471,10 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
   return (
     <Track pin={height} onPin={(p) => (progress.current = p)} className={className}>
       <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
-        <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
+        {/* the cast satisfies React 18's stricter ref types: useCanvasEffect returns
+        RefObject<T | null> so the same hook fits React 19 too, and React 18 wants a
+        bare RefObject<T> on a host element */}
+        <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
   )
@@ -1660,7 +1667,9 @@ export function PointerTiltGrid({
 }) {
   const ref = usePointer<HTMLDivElement>()
   return (
-    <div ref={ref} className={className}>
+    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <div ref={ref as React.RefObject<HTMLDivElement>} className={className}>
       {children}
     </div>
   )

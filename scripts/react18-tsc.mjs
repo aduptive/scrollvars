@@ -10,25 +10,15 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { REACT18_ROOT, REACT18_MODULES } from './react18-paths.mjs'
+import { REACT18_ROOT, react18TypesPaths, REACT18_CANARY } from './react18-paths.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const configDir = join(REACT18_ROOT, 'tsc')
 mkdirSync(configDir, { recursive: true })
 
 const rel = (p) => relative(configDir, p).split(sep).join('/')
-const typesReact = join(REACT18_MODULES, '@types', 'react')
 
-// Canary: useRef<T>(null) returns a read-only RefObject under React 18's
-// types, a mutable one under React 19's. `@ts-expect-error` flips the
-// direction of the proof: it is itself an error ("unused directive") if the
-// following line does NOT fail, so this file stays green only when the
-// paths redirect below is genuinely serving React 18 types, and turns the
-// whole tsc run red if it silently fell back to the root's React 19 ones.
-writeFileSync(
-  join(configDir, 'canary.ts'),
-  `import { useRef } from 'react'\nconst ref = useRef<number>(null)\n// @ts-expect-error react18-tsc: proves React 18 types are really loaded (readonly current)\nref.current = 5\n`
-)
+writeFileSync(join(configDir, 'canary.ts'), REACT18_CANARY)
 
 writeFileSync(
   join(configDir, 'tsconfig.json'),
@@ -43,11 +33,7 @@ writeFileSync(
         strict: true,
         skipLibCheck: true,
         noEmit: true,
-        paths: {
-          react: [rel(join(typesReact, 'index.d.ts'))],
-          'react/jsx-runtime': [rel(join(typesReact, 'jsx-runtime.d.ts'))],
-          'react/jsx-dev-runtime': [rel(join(typesReact, 'jsx-dev-runtime.d.ts'))],
-        },
+        paths: react18TypesPaths(configDir),
       },
       include: [rel(join(root, 'src')) + '/**/*', 'canary.ts'],
     },

@@ -9,6 +9,7 @@ import { build } from 'esbuild'
 import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
+import { react18TypesPaths, REACT18_CANARY } from '../scripts/react18-paths.mjs'
 
 // Every `npx scrollvars add <slug>` file must compile against the built dist,
 // type-check on its own (a consumer's `tsc` run is the real gate, not ours),
@@ -130,6 +131,18 @@ if (NEEDS_STUB.three) {
   writeFileSync(join(tscDir, 'three.d.ts'), AMBIENT_THREE)
   tscFiles.push('three.d.ts')
 }
+// Under `npm run test:react18`, react18-register.mjs sets SV_REACT18_DIR (a
+// subprocess never sees its parent's --import hook, so this is the fixtures'
+// own signal): redirect `react` to the isolated React 18 @types the same way
+// react18-tsc.mjs does for src/, and add its canary, so reverting a
+// React-19-only API in an installed fixture (GsapScrub's useRef typing, say)
+// fails this gate instead of quietly staying green against the root's
+// React 19 types.
+const react18 = Boolean(process.env.SV_REACT18_DIR)
+if (react18) {
+  writeFileSync(join(tscDir, 'react18-canary.ts'), REACT18_CANARY)
+  tscFiles.push('react18-canary.ts')
+}
 // tsc 7 dropped `baseUrl`: paths must be relative to this tsconfig's own folder
 const distRel = relative(tscDir, join(root, 'dist')).split(sep).join('/')
 writeFileSync(
@@ -145,7 +158,11 @@ writeFileSync(
         strict: true,
         skipLibCheck: true,
         noEmit: true,
-        paths: { scrollvars: [`${distRel}/index.d.ts`], 'scrollvars/*': [`${distRel}/*`] },
+        paths: {
+          scrollvars: [`${distRel}/index.d.ts`],
+          'scrollvars/*': [`${distRel}/*`],
+          ...(react18 ? react18TypesPaths(tscDir) : {}),
+        },
       },
       include: tscFiles,
     },

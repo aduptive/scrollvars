@@ -436,6 +436,30 @@ findings on the same round): three more defects fixed.
   after removing it; a per-file error (injected into <code>marquee</code>) still
   fails only that fixture's test plus the file-level gate.
 
+### Installed components (blind review round 3, fourth pass)
+<ul><li>The CLI component <code>tsc</code> gate spawned <code>tsc</code> with a generated tsconfig that</li></ul>
+  had no <code>paths</code> redirect for <code>react</code>, so the subprocess always resolved the
+  root's React 19 <code>@types</code>, even under <code>npm run test:react18</code>: the
+  <code>--import</code> loader hook only redirects the parent process's own runtime
+  imports, never a subprocess it spawns. No <code>tsc</code> run anywhere checked the
+  installed fixtures against React 18 types, so reverting <code>GsapScrub</code>'s
+  <code>useRef&lt;T | null>(null)</code> fix stayed green everywhere. <code>react18-register.mjs</code>
+  now sets <code>SV_REACT18_DIR</code> (its value read straight from
+  <code>react18-paths.mjs</code>, the same module <code>react18-tsc.mjs</code> already used for
+  <code>src/</code>), and the gate adds the same <code>paths</code> redirect and canary when that
+  variable is set. Proved red by reverting the <code>GsapScrub</code> fix under
+  <code>npm run test:react18</code> (the gate failed with "Cannot assign to 'current'
+  because it is a read-only property"), green again after restoring it.
+<ul><li>With the gate actually checking React 18 types, four more fixtures failed</li></ul>
+  it: <code>HeroCinematic</code>, <code>PointerTiltGrid</code>, <code>StickySteps</code> and <code>ThreeScene</code> all
+  pass a hook's <code>RefObject&lt;T | null></code> (the same shape <code>GsapScrub</code> needed to
+  satisfy both majors) straight into a host element's <code>ref</code>. React 18's
+  types compare that generic argument literally against <code>RefObject&lt;T></code>
+  instead of expanding both to <code>{ current: T | null }</code>, so <code>T | null</code> fails
+  where <code>T</code> succeeds even though the two are structurally identical. Each
+  now casts the ref to <code>React.RefObject&lt;T></code> at the JSX call site, the same
+  shape <code>GsapScrub</code> already needed for its own mutable <code>useRef</code>.
+
 ### Tooling
 <ul><li><code>npm run demo:sync</code> is idempotent again: the bench page's inlined engine</li></ul>
   marker was lazy on the content but only matched a fixed 3-newline gap
