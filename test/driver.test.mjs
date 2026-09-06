@@ -348,6 +348,21 @@ test('driver: --sv-pin-offset applies to onPin consumers, and the pin helper res
   assert.equal(wrapper.style.position, 'sticky', 'an authored position is kept')
   stop()
   assert.equal(wrapper.style.height, '10px', 'untrack restores the authored height')
+
+  // an inline `position: static` is not a position to keep: the helper promises
+  // a containing block, so absolute children (curtains) stay inside the stage
+  const flat = makeElement(100)
+  flat.style.position = 'static'
+  const stopFlat = track(flat, { pin: '300vh' })
+  assert.equal(flat.style.position, 'relative', 'an inline static wrapper still gets the containing block')
+  stopFlat()
+  assert.equal(flat.style.position, 'static', 'untrack restores the authored inline static')
+
+  const floated = makeElement(100)
+  floated.style.position = 'absolute'
+  const stopFloated = track(floated, { pin: '300vh' })
+  assert.equal(floated.style.position, 'absolute', 'a non-static inline position is kept')
+  stopFloated()
   delete global.getComputedStyle
 })
 
@@ -374,6 +389,13 @@ test('driver: untrack is identity-guarded, a stale untrack cannot delete a repla
   assert.ok(!('--sv-view' in el.vars), 'no --sv-view left inline')
   assert.ok(!('--sv-t' in el.vars), 'no --sv-t left inline')
   assert.ok(el.classes.has('sv'), '.sv stays')
+  // .sv (and [data-sv]) declare --sv-live: 0 and html.sv-on never comes off:
+  // a released element must settle VISIBLE, not at the entrance rules' opacity 0
+  assert.equal(el.vars['--sv-live'], '1', 'released elements settle visible')
+
+  const untrackThird = track(el, {})
+  assert.ok(!('--sv-live' in el.vars), 're-tracking hands the live flag back to the class')
+  untrackThird()
 })
 
 test('driver: re-tracking an element releases the previous entry, so a var only it wrote does not stay inline', async () => {
@@ -590,4 +612,66 @@ test('driver: readPinOffset resolves rem, em, vh/svh/lvh/dvh, vw and bare number
   }
   delete global.getComputedStyle
   delete window.innerWidth
+})
+
+test('driver: a once entry releases by identity, so an onLive that re-tracks keeps its replacement', async () => {
+  const { track } = await import('../dist/core/driver.js?onceretrack')
+  const el = makeElement(400)
+  place(el, 300) // inside the live band on the first frame, so once fires immediately
+  let untrackReplacement = () => {}
+  const untrackOnce = track(el, {
+    once: true,
+    onLive: (live) => {
+      if (live) untrackReplacement = track(el, { travel: true })
+    },
+  })
+  pump()
+  assert.ok(observed.has(el), 'the replacement entry installed by onLive is observed')
+
+  place(el, 1000)
+  pump()
+  assert.equal(el.vars['--sv-t'], '0.0000', 'the replacement keeps being measured after the once entry self-released')
+  place(el, 300)
+  pump()
+  assert.equal(el.vars['--sv-t'], '0.5000', 'and keeps updating on later frames')
+
+  untrackOnce() // stale: the once entry deleted itself before calling onLive
+  assert.ok(observed.has(el), 'the stale untrack must not unobserve the replacement')
+  untrackReplacement()
+})
+
+test('driver: an untrack from one callback cancels the same frame\'s write to the entry it released', async () => {
+  const { track } = await import('../dist/core/driver.js?sameframeuntrack')
+  const first = makeElement(400)
+  const second = makeElement(400)
+  place(first, 300) // both inside the live band on the first frame
+  place(second, 300)
+
+  const secondLog = []
+  let untrackSecond = () => {}
+  const untrackFirst = track(first, { onLive: () => untrackSecond() })
+  untrackSecond = track(second, { travel: true, onLive: (v) => secondLog.push(v) })
+  pump()
+
+  assert.ok(first.classes.has('sv-live'), 'the first entry went live and released the second one')
+  assert.ok(!('--sv-t' in second.vars), 'the released entry gets no further write in the same frame')
+  assert.ok(!second.classes.has('sv-live'), 'and no sv-live it would never take off again')
+  assert.deepEqual(secondLog, [], 'and no onLive after its untrack returned')
+  assert.equal(second.vars['--sv-live'], '1', 'the released entry settled visible')
+  untrackFirst()
+})
+
+test('driver: scrollToScene jumps instead of gliding under reduced motion', async () => {
+  const realMatchMedia = window.matchMedia
+  window.matchMedia = () => ({ matches: true, addEventListener: () => {} })
+  const { track, scrollToScene } = await import('../dist/core/driver.js?reducedscene')
+  const el = makeElement(3000)
+  const untrack = track(el, {}) // init() reads matchMedia here
+  pump()
+
+  scrollToScene(el, 2, 4) // smooth defaults to true
+  assert.equal(window.lastScrollTo.behavior, 'instant', 'reduced motion outranks the caller\'s smooth')
+
+  untrack()
+  window.matchMedia = realMatchMedia
 })

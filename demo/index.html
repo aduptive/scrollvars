@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.3 KB gzip · full core 5.9 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.4 KB gzip · full core 5.9 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3084,6 +3084,8 @@ var SV = (() => {
       frames.push({ entry, geo });
     });
     for (const { entry, geo } of frames) {
+      if (entries.get(entry.el) !== entry)
+        continue;
       apply(entry, geo);
     }
     const dt = now - lastT;
@@ -3167,17 +3169,21 @@ var SV = (() => {
     if (isLive !== entry.live) {
       entry.live = isLive;
       entry.el.classList.toggle("sv-live", isLive);
-      opts.onLive?.(isLive);
-      if (isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene) {
+      const settle = isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene;
+      if (settle) {
         if (opts.view !== false)
           setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
-        entries.delete(entry.el);
-        unobserveIfUnneeded(entry.el);
-        if (opts.root)
-          unobserveIfUnneeded(opts.root);
-        culler?.unobserve(entry.el);
-        return;
+        if (entries.get(entry.el) === entry) {
+          entries.delete(entry.el);
+          unobserveIfUnneeded(entry.el);
+          if (opts.root)
+            unobserveIfUnneeded(opts.root);
+          culler?.unobserve(entry.el);
+        }
       }
+      opts.onLive?.(isLive);
+      if (settle)
+        return;
     }
     if (opts.view !== false) {
       setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
@@ -3229,6 +3235,7 @@ var SV = (() => {
     for (const name of Object.keys(entry.written))
       el.style.removeProperty?.(name);
     el.style.removeProperty?.("--sv-scenes");
+    el.style.setProperty?.("--sv-live", "1");
   }
   function track(el, opts = {}) {
     init();
@@ -3238,6 +3245,7 @@ var SV = (() => {
     const existing = entries.get(el);
     if (existing)
       releaseEntry(existing);
+    el.style.removeProperty?.("--sv-live");
     const entry = {
       el,
       opts,
@@ -3277,8 +3285,9 @@ var SV = (() => {
       el.style.position = authored.position;
     } else {
       el.style.height = opts.pin;
+      const keep = authored.position && authored.position !== "static" ? authored.position : "";
       const computed = typeof getComputedStyle === "function" ? getComputedStyle(el).position : void 0;
-      el.style.position = authored.position || (!computed || computed === "static" ? "relative" : "");
+      el.style.position = keep || (!computed || computed === "static" ? "relative" : "");
     }
   }
   function restorePinHelper(entry) {
@@ -3303,7 +3312,7 @@ var SV = (() => {
     const pinOffset = readPinOffset(el);
     const span = Math.max(rect.height - vp + pinOffset, 1);
     const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
-    const behavior = smooth ? "smooth" : "instant";
+    const behavior = smooth && !reducedMotion ? "smooth" : "instant";
     if (root) {
       root.scrollTo({
         top: root.scrollTop + rect.top - root.getBoundingClientRect().top - root.clientTop + offset,
@@ -3533,15 +3542,16 @@ var SV = (() => {
       const target = selector ? scope.querySelector(selector) : trigger;
       return { className, selector, target };
     };
-    const sync = (target, on) => {
+    const sync = (target, className, on) => {
       scope.querySelectorAll("[data-sv-toggle]").forEach((t) => {
-        if (resolve(t).target === target)
+        const other = resolve(t);
+        if (other.target === target && other.className === className)
           t.setAttribute("aria-expanded", String(on));
       });
     };
-    const write = (target, on) => {
+    const write = (target, className, on) => {
       target.style.setProperty("--sv-state", on ? "1" : "0");
-      sync(target, on);
+      sync(target, className, on);
     };
     const settling = /* @__PURE__ */ new WeakSet();
     const longhandHold = /* @__PURE__ */ new WeakMap();
@@ -3581,7 +3591,7 @@ var SV = (() => {
           });
         }
       }
-      write(target, target.classList.contains(className));
+      write(target, className, target.classList.contains(className));
     });
     const onClick = (event) => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
@@ -3596,7 +3606,7 @@ var SV = (() => {
         target.style.removeProperty("--sv-acts-settle");
         restoreDuration(target);
       }
-      write(target, target.classList.toggle(className));
+      write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener("click", onClick);
     return () => scope.removeEventListener("click", onClick);
@@ -5678,21 +5688,26 @@ function toggles(root) {
         const target = selector ? scope.querySelector(selector) : trigger;
         return { className, selector, target };
     };
-    // every trigger of a target reflects its state: on boot, and after any
-    // click. Grouped by the RESOLVED element, not by the data-sv-target
-    // string: two triggers can name the same panel through different
-    // selectors ('#menu' and 'nav.menu'), and a trigger with no target at all
-    // resolves to itself, which is the old selector-less case.
-    const sync = (target, on) => {
+    // every trigger of the same state reflects it: on boot, and after any
+    // click. The state is the PAIR (resolved element, class), not the
+    // data-sv-target string: two triggers can name the same panel through
+    // different selectors ('#menu' and 'nav.menu'), and a trigger with no
+    // target at all resolves to itself, which is the old selector-less case.
+    // The class is half the key, not decoration: a hamburger toggling 'open'
+    // and a second control toggling 'pinned' on the same nav are two
+    // independent states, and grouping by the element alone made one click
+    // claim aria-expanded="true" for both.
+    const sync = (target, className, on) => {
         scope.querySelectorAll('[data-sv-toggle]').forEach((t) => {
-            if (resolve(t).target === target)
+            const other = resolve(t);
+            if (other.target === target && other.className === className)
                 t.setAttribute('aria-expanded', String(on));
         });
     };
     // the target's own state, written wherever the class flips
-    const write = (target, on) => {
+    const write = (target, className, on) => {
         target.style.setProperty('--sv-state', on ? '1' : '0');
-        sync(target, on);
+        sync(target, className, on);
     };
     // targets currently inside their boot settle: cancellable by a click that
     // lands inside the two-frame hold, so it still gets its transition
@@ -5754,7 +5769,7 @@ function toggles(root) {
         // with --sv-state from the first frame: a continuous CSS rule reading
         // var(--sv-state, 0) otherwise renders the closed value against an open
         // class until the first click.
-        write(target, target.classList.contains(className));
+        write(target, className, target.classList.contains(className));
     });
     const onClick = (event) => {
         const trigger = event.target.closest?.('[data-sv-toggle]');
@@ -5775,7 +5790,7 @@ function toggles(root) {
             target.style.removeProperty('--sv-acts-settle');
             restoreDuration(target);
         }
-        write(target, target.classList.toggle(className));
+        write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener('click', onClick);
     return () => scope.removeEventListener('click', onClick);
