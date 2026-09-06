@@ -1,0 +1,293 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>fixture: mountEffect() applySize() feedback-loop guard (ADU-107, tenth pass)</title>
+<style>
+  /* CSS-sized canvas whose attribute values happen to equal its CSS size,
+     the exact shape the old border-box-rect-vs-content-box-attribute
+     equality guard mistook for the unsized case on first mount. .grown
+     is a later, legitimate, class-driven resize: applySize() must follow
+     it, not stay frozen at the first size. */
+  #css-sized { width: 150px; height: 80px; }
+  #css-sized.grown { width: 300px; height: 160px; }
+
+  /* CSS-sized, fractional padding: the feedback-loop check comparing a
+     bit-exact ResizeObserver contentRect against the fallback's sub-pixel
+     residual (Chrome's computed padding can report the authored value, not
+     the sub-pixel value layout actually used) mistook this for having
+     moved too, on first mount, fifth-pass verifier finding. */
+  #css-sized-fractional { width: 300px; height: 150px; padding: 0.3px; }
+  #css-sized-fractional.grown { width: 400px; height: 200px; }
+
+  /* CSS-sized under transform: scale(): getBoundingClientRect() (the
+     fallback) reports the transformed, inflated box; a ResizeObserver
+     entry's contentRect is layout size, unaffected by transform. Comparing
+     the two read this never-moved canvas as having moved, fifth-pass
+     panel finding. */
+  #css-sized-scaled { width: 200px; height: 100px; transform: scale(1.3); }
+  #css-sized-scaled.grown { width: 250px; height: 120px; }
+
+  /* CSS-sized, doubled by a class one requestAnimationFrame after mount:
+     the exact verifier scenario, eighth pass. At devicePixelRatio 2 the
+     harness writes the backing store to 600x300 (300x150 CSS px * 2) right
+     at mount; this class then lands the CSS size on exactly that same
+     number, one frame later, an ordinary responsive breakpoint pattern. A
+     value- or timing-based echo check (sixth/seventh pass) cannot tell
+     that coincidence apart from its own echo; see src/canvas/index.ts. */
+  #css-sized-rebound { width: 300px; height: 150px; }
+  #css-sized-rebound.doubled { width: 600px; height: 300px; }
+
+  /* width:100%, height:auto (no CSS height at all), wrapped in a container
+     of a known width: the ordinary responsive canvas, ninth pass, the
+     verifier's finding 1. The eighth pass's probe bumped width and height
+     by a flat +1 each, perturbing the ratio the auto height derives from;
+     at some dpr/rounding combinations that read this fully-responsive
+     canvas as having moved on height and pinned it, permanently losing the
+     ability to follow the container. .grown simulates the container
+     growing later. */
+  #percent-container { width: 400px; }
+  #percent-container.grown { width: 600px; }
+  #width-percent-height-auto { width: 100%; height: auto; }
+
+  /* max-width:100%, not binding at mount (a wide container): behaves like a
+     fully unsized canvas on width for now, so it correctly gets pinned.
+     Ninth pass, the verifier's finding 2: the eighth pass pinned
+     style.height too, at that moment's value; a later container shrink
+     that re-engages the cap on width left height frozen at the old number,
+     distorting the box instead of scaling it. .shrunk simulates the
+     container shrinking below the pinned width. */
+  #maxwidth-container { width: 1000px; }
+  #maxwidth-container.shrunk { width: 150px; }
+  #maxwidth-percent { max-width: 100%; }
+
+  /* A bare max-width, no CSS width or height at all. Ninth pass, the
+     verifier's finding 3: at devicePixelRatio 2 the backing-store write
+     inflates the intrinsic size past this 400px cap; the eighth pass's
+     probe read the harness's own just-written, already-capped size and
+     never detected a follow at all, so this canvas settled visually
+     inflated at 400x200 and was never pinned. */
+  #maxwidth-bare { max-width: 400px; }
+
+  /* Tenth pass, the verifier's finding 1: a fixed CSS height, auto width
+     derived through the canvas's own 300x150 (2:1) intrinsic ratio, the
+     mirror of #height-fixed-width-auto's sibling case above but at an ODD
+     height (101px, not 100px): the ninth pass's halving probe
+     (Math.floor(W / 2)) does not preserve the W:H ratio when the
+     just-written backing store has mismatched parity, so this ordinary,
+     fully-responsive canvas read as "width follows" and got wrongly pinned
+     at some DPRs, distorting the box on the next CSS height change. */
+  #height-fixed-odd-width-auto { height: 101px; }
+
+  /* Tenth pass, the verifier's finding 2 (cap semantics): a max-width BELOW
+     the natural 300x150 intrinsic size, binding already at mount, at every
+     DPR: the opposite of #maxwidth-bare above (cap 400 is ABOVE the natural
+     300). This canvas renders crisp at the cap (100), its backing store the
+     cap scaled by dpr, and must never be pinned: pinning it would freeze it
+     away from the cap it is correctly, permanently bound to. */
+  #maxwidth-binding { max-width: 100px; }
+
+  /* Twelfth pass, the verifier's finding 1: a max-width cap "in the gap"
+     (strictly between half w0 and w0, the range the mount-time shrink
+     probe DOES detect and pin) used to pin at the MEASURED, capped value,
+     freezing there even once the cap widened past the natural size and
+     stopped binding at all. w0=160, h0=80 (both even: the shrink probe's
+     halving stays exact); max-width:100px sits between half (80) and w0
+     (160). .widened removes the cap's own bind entirely (200 > 160). */
+  #gap-cap-removed { max-width: 100px; }
+  #gap-cap-removed.widened { max-width: 200px; }
+
+  /* Same shape, the HTML default 300x150 attributes: max-width:220px sits
+     between half (150) and w0 (300). .widened loosens the cap but keeps it
+     binding (260 < 300): the box must FOLLOW the new cap, not stay frozen
+     at 220. */
+  #gap-cap-loosened { max-width: 220px; }
+  #gap-cap-loosened.widened { max-width: 260px; }
+
+  /* A percentage cap, the same shape modeled with a real percentage
+     instead of a fixed px cap: w0=200, h0=100 (both even). max-width:60%
+     inside a 200px container resolves to 120 (in the gap, half 100, w0
+     200); .grown widens the container to 400px, so the SAME 60% now
+     resolves to 240, past w0, no longer binding at all. */
+  #percent-cap-container { width: 200px; }
+  #percent-cap-container.grown { width: 400px; }
+  #percent-cap-canvas { max-width: 60%; }
+
+  /* Twelfth pass, the verifier's finding 2: an author's own aspect-ratio on
+     an unsized canvas. Attributes are 300x150 (a 2:1 intrinsic ratio); the
+     eleventh pass set style.aspectRatio to w0/h0 unconditionally, which
+     would render this SQUARE authored ratio as 2:1 instead. */
+  #authored-aspect-ratio { aspect-ratio: 1; }
+
+  /* Thirteenth pass, the verifier's finding: pinAtW0() only wrote
+     style.aspectRatio when getComputedStyle(canvas).aspectRatio was
+     exactly 'auto'. A real browser always reports it as 'auto W / H' (the
+     intrinsic ratio appended), never the bare keyword, so that guard never
+     fired for ANY canvas, authored or not; height then kept deriving from
+     this harness's own rounded, DPR-scaled attributes, drifting further on
+     every later ResizeObserver pass whenever w0 * dpr was not already an
+     integer. Portrait, 30x61 (no CSS at all, purely unsized): every
+     fixture on this page before it used a w0 whose product with the
+     tested DPRs was always an exact integer, so nothing here could see
+     it. */
+</style>
+</head>
+<body>
+<!-- Not shipped, not generated: loaded directly by
+     demo/bench/harness/e2e-invariants.mjs, which injects the built
+     dist/canvas/index.js itself (no <script> here on purpose).
+
+     #unsized-border: no CSS size at all, plus a border. clientWidth
+     excludes the border, the border-box rect does not, so the old
+     rect-vs-attribute equality guard never fired here and the DPR
+     feedback loop this ticket exists to stop ran unchecked (the false
+     negative). #css-sized: attribute width/height equal to its CSS size,
+     which used to trip the same guard into pinning it on first mount (the
+     false positive), freezing every later stylesheet-driven resize.
+
+     #unsized-padded: no CSS size, 10px padding. clientWidth includes
+     padding (unlike border), so measureLayout() calling clientWidth itself
+     the content box measured 320x170 instead of the intrinsic 300x150, got
+     pinned to that, and settled on 340x190 after a second applySize() pass
+     (third pass, verifier finding). #unsized-border-box: border, padding
+     and box-sizing:border-box together, the same failure mode plus the
+     pinned width/height needing box-sizing:content-box forced inline to
+     land on the content box instead of a border-box interpretation.
+
+     #unsized-fractional-padding: no CSS size, 0.3px padding (a percentage
+     or calc() padding, or a non-100% zoom, land here just as easily).
+     clientWidth/clientHeight round to an integer before computed padding
+     (subpixel-precise) is subtracted, so the third-pass fix still landed a
+     fraction of a pixel off the intrinsic 300x150 on its first read and
+     needed a second applySize() pass to settle, at 300.4x150.4 instead of
+     300x150 (fourth pass, verifier finding). getBoundingClientRect() minus
+     computed border/padding did not fully close it either (Chrome's
+     computed padding can report the authored value, not the sub-pixel
+     value layout actually used): measureLayout() now reads the
+     ResizeObserver entry's own contentRect instead, the layout engine's
+     own bit-exact measurement.
+
+     #css-sized-fractional, #css-sized-scaled: fifth pass. Once
+     measureLayout() started reading the entry's contentRect, the
+     feedback-loop check itself started comparing that bit-exact value
+     against a fallback read, which disagrees with it for reasons that have
+     nothing to do with feedback: a sub-pixel residual for fractional
+     padding, or a whole scale factor for a CSS transform. Both got pinned
+     on first mount and then ignored every later CSS resize. The check now
+     takes both readings the same way, the fallback, once right before and
+     once right after the backing-store write.
+
+     #unsized-tiny, #unsized-tiny-20: sixth pass (panel finding). A real
+     feedback loop moves an unsized canvas by size * (dpr - 1) CSS pixels
+     per applySize() pass: for a small canvas at a DPR just over 1 that is
+     itself only a pixel or two (4x4 at dpr 1.25, or 20x20 at dpr 1.05, both
+     move by exactly 1px on the very first pass). The fifth pass's flat 1px
+     tolerance needed that gap to grow PAST a pixel, so it took many passes
+     to notice, pinning 50-100% inflated first. Loaded on their own page
+     below at a fractional deviceScaleFactor, and again as part of the
+     whole-fixture sweep at deviceScaleFactor 0.8 and 0.5 (seventh pass).
+
+     #unsized-padded-scaled: seventh pass (design change). Padding AND its
+     own transform together, at a deliberately large padding (350px):
+     reproduced in Chrome against the sixth-pass ratio check, this canvas
+     pins at 600x300 (2x, at deviceScaleFactor 2) instead of its true
+     300x150 content box. The ratio check reads both its readings through
+     getBoundingClientRect(), which the transform inflates by a constant
+     factor that a large padding subtraction does not fully cancel: the
+     before/after ratio undershoots the threshold on the first pass or two
+     (the canvas keeps growing, each pass's write feeding the next pass's
+     "before" reading), and by the time it finally crosses the threshold
+     the canvas has already grown past its true size, and that grown size
+     is what gets pinned. The seventh-pass design replaces every
+     measurement heuristic (ratio, tolerance, dpr guard) with the
+     platform's own feedback signal: after
+     applySize() writes the backing store, an unsized canvas's layout
+     content box becomes exactly that write, and the ResizeObserver
+     delivers another entry reporting it, in the same frame, an echo of the
+     harness's own write. That entry's contentRect already excludes padding
+     and ignores transform, so this combination (and every other case on
+     this page, including a page zoomed out to deviceScaleFactor 0.8 or
+     0.5, which the sixth pass's `dpr > 1` guard never even looked at) needs
+     no special-casing at all: see src/canvas/index.ts.
+
+     onDprChange()'s own sixth-pass fix (a transformed CSS-sized canvas no
+     longer mis-sizing itself on a real DPR change, see src/canvas/index.ts
+     and test/canvas.test.mjs) has no fixture here: Puppeteer's
+     page.setViewport() cannot trigger it (see the note in
+     e2e-invariants.mjs), so it is unit-tested only.
+
+     #css-sized-rebound: eighth pass (final design, verifier finding). A
+     genuine CSS resize landing exactly on the backing size the harness
+     itself last wrote, one frame after mount: the sixth/seventh pass's
+     value- and timing-based echo check took that for its own echo and
+     pinned this canvas at 300x150 forever, never following the resize to
+     600x300. See src/canvas/index.ts for the causal-probe design that
+     replaces it.
+
+     #width-percent-height-auto, #maxwidth-percent, #maxwidth-bare: ninth
+     pass (final design, three verifier findings on the eighth pass, all
+     reproduced in real Chrome). The eighth pass's probe bumped
+     canvas.width/height by a flat +1 EACH and pinned style.width AND
+     style.height together whenever either axis followed: a value- shape
+     defect, not a coincidence one. See src/canvas/index.ts for the
+     proportional, width-only probe that replaces it.
+
+     #height-fixed-odd-width-auto, #maxwidth-binding: tenth pass, two
+     verifier findings on the ninth pass, both reproduced in real Chrome.
+     Finding 1: the ninth pass's HALVING probe does not preserve the W:H
+     ratio when the just-written backing store has mismatched parity, so
+     this fixed-CSS-height, auto-width canvas (odd height, unlike its
+     100px sibling above) read as following and got wrongly pinned at some
+     DPR/rounding combinations. Finding 2: a max-width cap that already
+     binds at the canvas's natural (uncapped) size, at every DPR, is the
+     crisp cap semantics documented in CHANGELOG.md and src/canvas/index.ts,
+     not inflation, and must never be pinned. See src/canvas/index.ts for
+     the doubling probe (with an exact-halving fallback for a cap already
+     binding on the just-written attribute) that fixes both.
+
+     #gap-cap-removed, #gap-cap-loosened, #percent-cap-canvas: twelfth
+     pass, verifier finding 1. The eleventh pass's pin used the MEASURED,
+     capped content size (`anchor.width`), not the natural attribute size:
+     a cap that widens later, or a percentage cap whose container grows,
+     left the box frozen at that stale, capped number forever. Pinned at
+     w0 (the attribute width) instead, CSS keeps clamping it live, at
+     mount and on every later cap change, the same as any ordinary
+     CSS-sized element under the same cap. #authored-aspect-ratio:
+     verifier finding 2. The eleventh pass set style.aspectRatio to w0/h0
+     unconditionally, silently overriding an author's own aspect-ratio;
+     this canvas's attributes (300x150, a 2:1 ratio) would render as 2:1
+     under that bug even though its own CSS asks for a perfect square. See
+     src/canvas/index.ts for the fix.
+
+     #unsized-fractional-dpr: thirteenth pass, the verifier's finding. The
+     twelfth pass's own fix for the case right above never actually fired:
+     getComputedStyle(canvas).aspectRatio is 'auto W / H' in real Chrome,
+     never the bare 'auto' the guard checked for, so style.aspectRatio was
+     never written for any canvas, authored or not. Height then kept
+     deriving from this harness's own rounded, DPR-scaled attributes,
+     drifting further on every later ResizeObserver pass whenever
+     w0 * dpr was not already an integer, unlike every w0/DPR pair used
+     anywhere else on this page. See src/canvas/index.ts for the fix. -->
+<canvas id="unsized-border" style="border: 4px solid red"></canvas>
+<canvas id="css-sized" width="150" height="80"></canvas>
+<canvas id="unsized-padded" style="padding: 10px"></canvas>
+<canvas id="unsized-border-box" style="border: 4px solid blue; padding: 6px; box-sizing: border-box"></canvas>
+<canvas id="unsized-fractional-padding" style="padding: 0.3px"></canvas>
+<canvas id="css-sized-fractional"></canvas>
+<canvas id="css-sized-scaled"></canvas>
+<canvas id="unsized-tiny" width="4" height="4"></canvas>
+<canvas id="unsized-tiny-20" width="20" height="20"></canvas>
+<canvas id="unsized-padded-scaled" style="padding: 350px; transform: scale(2)"></canvas>
+<canvas id="css-sized-rebound"></canvas>
+<div id="percent-container"><canvas id="width-percent-height-auto" width="300" height="150"></canvas></div>
+<div id="maxwidth-container"><canvas id="maxwidth-percent" width="300" height="150"></canvas></div>
+<canvas id="maxwidth-bare" width="300" height="150"></canvas>
+<canvas id="height-fixed-odd-width-auto" width="300" height="150"></canvas>
+<canvas id="maxwidth-binding" width="300" height="150"></canvas>
+<canvas id="gap-cap-removed" width="160" height="80"></canvas>
+<canvas id="gap-cap-loosened" width="300" height="150"></canvas>
+<div id="percent-cap-container"><canvas id="percent-cap-canvas" width="200" height="100"></canvas></div>
+<canvas id="authored-aspect-ratio" width="300" height="150"></canvas>
+<canvas id="unsized-fractional-dpr" width="30" height="61"></canvas>
+</body>
+</html>

@@ -176,6 +176,228 @@ findings on the same round): three more defects fixed.
   a target with no inline longhand never has one written, and that a click
   inside the hold restores it immediately alongside the knob.
 
+### Canvas
+- `mountEffect()`'s `applySize()` stops the unsized-canvas DPR feedback loop
+  (ADU-107): a canvas with no CSS width/height lays out at its own
+  backing-store size, so writing `canvas.width`/`height` after every resize
+  would otherwise feed straight back into the next resize, unbounded. Eight
+  earlier passes (each one a verifier or panel finding, reproduced in real
+  Chrome) all tried to catch that loop by measuring: a border-box-rect-vs-
+  content-box-attribute equality guard that both missed a bordered unsized
+  canvas and mispinned a legitimately CSS-sized one; a padding-inflated
+  read; a fractional-padding rounding residual; a fallback re-measure that
+  disagreed with a bit-exact ResizeObserverEntry for reasons that had
+  nothing to do with feedback (fractional padding, a transform); a flat 1px
+  tolerance that took dozens of passes to notice a small canvas's small
+  move; a ratio check whose `dpr > 1` guard missed a zoomed-out page
+  entirely and whose transform-inflated fallback read mispinned a padded,
+  transformed canvas; a value- and timing-based "echo window" (matching a
+  later ResizeObserverEntry's `contentRect` against the exact size just
+  written, within two animation frames) that could not tell a genuine CSS
+  resize landing on that same number apart from its own echo (a 300x150
+  canvas at dpr 2, doubled to 600x300 by a class applied a frame after
+  mount, lands exactly on the 600x300 the harness itself had just written),
+  because a comparison of two numbers never asks WHY they match, only THAT
+  they do; and (eighth pass) a causal probe that bumped `canvas.width`/
+  `height` up by a flat `+1` EACH and read `canvas.clientWidth`/
+  `clientHeight`, pinning both `style.width` and `style.height` together
+  whenever either axis followed. That probe was genuinely causal, not a
+  coincidence check, but three more verifier findings on it (all reproduced
+  in real Chrome) showed it asked the wrong shape of question: a flat,
+  per-axis `+1` perturbs the RATIO between width and height, not just their
+  size, so an ordinary `width: 100%; height: auto` canvas (no CSS height at
+  all, the auto height derived from the intrinsic ratio) could read as
+  having moved on height and get wrongly pinned, at dpr 0.5, 0.8 and 1.25;
+  pinning both axes together assumes both need it, so a `max-width: 100%`
+  canvas not yet at its cap correctly got pinned on mount, but a later
+  container shrink that engaged the cap left the pinned height frozen,
+  distorting a 150x150 box instead of scaling it to 150x75; and a bare
+  `<canvas width="300" height="150" style="max-width: 400px">` at dpr 2 had
+  its backing-store write (600) clamped by the cap (400) before the probe
+  ever ran, so it read no follow at all and settled visually inflated at
+  400x200, never pinned to its true, uncapped 300x150.
+  The ninth-pass design narrowed the question: PROPORTIONAL, and about ONE
+  axis. Right after `applySize()` writes the backing store
+  (`canvas.width = W`, `canvas.height = H`), it perturbed both attributes
+  together by the same factor (so the ratio between them holds steady) and
+  forced one layout read (`canvas.clientWidth`), then restored `W`/`H` and
+  read again. If the two readings differ, WIDTH follows the attribute
+  (unsized on width, whatever height does, which is what catches the
+  `max-width` cases above); if they are equal, width is CSS-sized, whatever
+  its literal source (a percentage, a fixed px value, or itself derived
+  from a fixed CSS height through the intrinsic ratio), and nothing about
+  height enters that conclusion. Only WIDTH gets pinned, to the CSS content
+  width `applySize()` measured right before the write, forcing
+  `box-sizing: content-box`; height is left alone, deliberately, so it
+  keeps deriving from the intrinsic ratio exactly as this harness's own
+  proportional writes keep it stable, and a later `max-width` shrink
+  correctly recomputes it from the new width instead of fighting a frozen
+  number. The ninth pass chose `Math.floor(W / 2)`/`Math.floor(H / 2)`
+  (halving) as that factor.
+  Tenth pass, two more verifier findings on the ninth pass, both reproduced
+  in real Chrome. Finding 1: `Math.floor` on a halved value does not
+  preserve the ratio between `W` and `H` when they have different parity
+  (one odd, one even), so a fixed-CSS-height, auto-width canvas (the mirror
+  case: the auto width derives from the fixed height through exactly that
+  ratio, e.g. `style="height: 101px"`) could have its floored ratio read
+  back a fraction off the true one, flipping the before/after comparison
+  even though the CSS height never moved; swept across heights 99-151 and
+  dprs 0.5-2, this hit 27 of 42 combinations, wrongly pinning an ordinary,
+  fully-responsive canvas and then distorting it on the next CSS height
+  change. Finding 2: `<canvas style="max-width: 100px">` with the default
+  300x150 attributes settles unpinned with a crisp backing store (the cap
+  scaled by dpr) at every DPR above 1, which is CORRECT, not inflation: a
+  cap at or below the canvas's natural size binds before the harness ever
+  touches the attributes, so the box is already the cap's own size, and
+  pinning it would be the bug, not the fix (the opposite of a bare
+  `max-width: 400px` above the natural size, which stays the inflation
+  case and must still be pinned). The probe now tries GROWING first
+  (double `W`/`H` together: exact for any pair of integers, whatever their
+  parity, which is what fixes finding 1) and, only if that shows no follow,
+  also tries SHRINKING (halve `W`/`H` together, exact only when both are
+  even, so it can never reintroduce finding 1's flooring bug) to catch a
+  cap already binding on the just-written, dpr-inflated attribute that
+  growing alone cannot reveal (growing further only stays behind a cap
+  already behind it). At or below dpr 1, a cap at or below the natural
+  size is a narrower guarantee: below 1 the just-written attribute can
+  itself land below the cap, a genuine risk (the same unbounded loop this
+  module exists to stop, just shrinking instead of growing), correctly
+  pinned; at exactly dpr 1 the attribute lands exactly on the cap,
+  genuinely stable, but the shrinking probe cannot tell that apart from
+  just above it and pins here too, a narrow, documented, harmless over-pin
+  (the pin lands on exactly what the cap already renders). Growing is
+  skipped past the browser's own canvas-size limit (8192: doubling could
+  itself trip it), and shrinking needs even parity, so a giant canvas with
+  an odd dimension on either axis has no safe direction to probe in at all
+  and is treated as already sized.
+  A canvas with a genuine CSS size on both axes is never pinned and always
+  follows a later resize, whatever its border, padding (integer or
+  fractional), transform, or the current device pixel ratio (above 1,
+  below 1, or exactly 1). Cost: two forced layouts per probe run, up to
+  four per resize event when growing alone does not already decide it,
+  never per animation frame, measured against real Chrome to settle in
+  exactly one `resize()` callback for most size/DPR pairs, the pin running
+  synchronously inside the same callback that delivered the entry, before
+  the browser ever renders the unpinned intermediate box.
+  One remaining trade-off, documented in the module doc: a canvas with no
+  CSS size on either axis still gets its width pinned inline by the harness
+  (give it real CSS dimensions to keep control of its own size).
+  Eleventh pass, two more verifier findings on the tenth pass, both
+  reproduced in real Chrome. Finding 1: the tenth pass's probe ran AFTER
+  the backing-store write and rounded width and height independently every
+  pass, each from whatever the LAST pass had already produced; a
+  mirror-case canvas (fixed CSS height, auto width) has its free width
+  computed by the CSS engine through the intrinsic ratio, which IS this
+  harness's own backing-store attributes, so independent rounding nudged
+  that ratio a fraction every pass and the error compounded instead of
+  settling: swept at dpr 0.5 this took 51 to 77 ResizeObserver passes to
+  reach a WRONG fixed point (a square box instead of the true 2:1 one), and
+  at dpr 0.8 it never reached one at all (a 103px fixed height diverged to
+  a 422 backing height instead of the true 206). Finding 2: the same
+  post-write probe timing perturbed the just-written, DPR-scaled attribute,
+  so at a DPR that does not divide evenly (roughly 1.2 to 1.9) a first pass
+  could already write a backing store past a `max-width` cap before the
+  probe ever ran against the canvas's true, natural size, and a second
+  pass's probe then perturbed that already-inflated value and pinned at the
+  inflated number instead of the true one (`max-width: 100px` false-pinned
+  across that range; a bare `max-width: 400px`, natural size 300x150,
+  pinned at an inflated 450x225 at dpr 1.5 instead of the true 300x150).
+  The design anchors every pin, and every free-axis derivation, to values
+  captured on the very first `applySize()` call (mount), before this
+  harness ever writes anything: the CSS content size the author's own CSS
+  and attributes already produced (`anchor`), and the ORIGINAL width/height
+  attribute ratio (`ratio0`, from `w0`/`h0`). The causal probe now runs
+  BEFORE this pass's own write, on `w0`/`h0` specifically, never on this
+  harness's own evolving backing store, and never runs again once a canvas
+  is pinned; when width follows, `style.width` is set to `anchor.width` and
+  `style.aspectRatio` to `w0 / h0`, so the CSS engine derives height
+  directly from the ORIGINAL attribute ratio from then on, never through
+  this harness's own rounded backing-store attributes again (this also
+  fixes the tenth pass's own documented sub-pixel residual on the free
+  height axis: CSS `aspect-ratio` is computed exactly, not through a
+  rounded attribute ratio). For a canvas that stays unpinned, a second kind
+  of probe, two single-axis perturbations (width alone, height alone),
+  decides which axis, if either, is ratio-derived from the other (the
+  proportional, both-together probe cannot answer this on purpose: it never
+  perturbs a ratio-tracking axis, which is what keeps it immune to the
+  eighth pass's false-positive bug). That free axis is always computed from
+  the OTHER, just-rounded axis and `ratio0`, never independently rounded
+  from its own, possibly-drifted measurement, which is what stops Finding
+  1's error from compounding. A dead band skips the whole pass, probe
+  included, when the measured content size moved by less than 0.5 CSS
+  pixels on both axes since the last write, unless the DPR itself changed;
+  it absorbs the one small, self-induced residual the free axis's own write
+  can still cause on its very next entry. Probing `w0`/`h0` instead of a
+  DPR-scaled write fixes Finding 2's parity-mismatch inflation outright: a
+  `max-width` cap at or below the natural size doubles or halves the SAME,
+  never DPR-inflated pair every time, so it reads as CSS-sized across that
+  whole range; a cap above the natural size still only starts to bind once
+  doubling `w0`/`h0` pushes past it, and pins at the anchor, never an
+  already-inflated write. It does not remove the tenth pass's dpr-BELOW-1
+  case, and should not: at dpr 1 and above this harness's own write never
+  drops the attribute below the cap, genuinely never pinned; below dpr 1 it
+  can, unclamping the cap for real, a risk the mount-time probe (on
+  `w0`/`h0`, never a DPR-scaled value, on purpose) cannot see coming. A
+  separate escape check, right after computing each pass's own candidate
+  write, reuses the same causal growth check against THAT candidate
+  instead, and catches it there, still never over-pinning at exactly dpr 1
+  the way the tenth pass did (a genuine improvement, not just a port of the
+  old behavior). One narrow limitation remains in the mount-time probe
+  specifically, inherited from its own halving fallback's exactness
+  requirement: a cap strictly between half the natural size and the natural
+  size itself can still read as a false follow if it changes AFTER this
+  canvas was already found sized; documented, not fixed in this pass.
+  Twelfth pass, two more verifier findings on the eleventh pass, both on
+  its pin. Finding 1: the pin used `anchor.width`, the CSS content size
+  MEASURED at the moment this canvas was judged unsized, which, for a
+  canvas whose cap was already binding right then, IS the capped value,
+  not the natural one (a `max-width: 120px` cap on a natural-300 canvas
+  pinned at 120); fixed at that measured value forever, the box never grew
+  back when the cap later widened, or a percentage cap's container grew, a
+  symptom the eleventh pass's own "gap" limitation was really this bug
+  wearing a different value. Finding 2: `style.aspectRatio` was set
+  unconditionally to `w0 / h0`, silently overriding an author's own
+  `aspect-ratio` (a square 300x300 canvas with `aspect-ratio: 1` snapped to
+  2:1 on mount). The fix is simpler than the mechanism it replaces: an
+  unsized canvas wants its intrinsic size, which is the attribute size in
+  CSS px, `w0` by `h0`, and nothing measured. `style.width` is now pinned
+  to `w0` always, never a measurement, so CSS caps clamp it exactly as they
+  always clamp an intrinsic size, LIVE, at mount and on every later change,
+  no different from an ordinary CSS-sized element under the same cap;
+  `style.aspectRatio` is set to `w0 / h0` only when `getComputedStyle`
+  reports a ratio that still starts with the `auto` keyword, so an
+  authored ratio is kept. This removes the
+  eleventh pass's "gap" limitation outright: it existed only because the
+  pin froze at a measured value a cap could later escape, and pinned at
+  `w0` there is no stale value to escape from. It does not remove the
+  escape check (a DPR below 1 landing a pass's own candidate write below a
+  cap the mount-time `w0`/`h0` probe cannot see because the cap sits below
+  half `w0`, a separate blind spot, unrelated to the gap): a test proved
+  that case still shrinks unboundedly without it, so it stays, retargeted
+  to pin at `w0` like every other pin here instead of the candidate value.
+  Also guards `ratio0` (`w0 / h0`) against a `width="0"` or `height="0"`
+  attribute, which would otherwise make it 0, Infinity or NaN: such a
+  canvas now skips the probe and the free-axis derivation entirely and is
+  treated as CSS-sized, both axes rounded independently from the measured
+  size. Stated plainly: an unsized canvas renders at its attribute size in
+  CSS pixels, with a device-pixel backing store for a crisp bitmap; CSS
+  caps and percentages still apply on top of that size, exactly as they
+  would on any other element; give a canvas real CSS dimensions to size it
+  any other way. Thirteenth pass, one verifier finding on the twelfth
+  pass's own fix, live in Chrome: the `aspectRatio === 'auto'` guard never
+  fired, for any canvas, authored or not. Chrome always reports a canvas's
+  computed `aspectRatio` as `auto W / H`, the intrinsic width/height
+  attributes appended to the keyword, never the bare `auto` string, so
+  `style.aspectRatio` was never written and height kept deriving from this
+  harness's own DPR-scaled attributes instead; whenever `w0 * dpr` was not
+  already an integer, the rounding remainder reapplied to the current
+  height on every later pass (`<canvas width="30" height="61">` at dpr 0.51
+  reached a 33-million-pixel backing height after 668 passes). Fixed by
+  testing `startsWith('auto')` instead of exact equality: an authored
+  `aspect-ratio` computes to a bare number pair with no `auto` keyword at
+  all, so the new check still fires only when the author left the ratio
+  alone, and now actually fires.
+
 ### Installed components (blind review round 3)
 - `StickySteps`'s `inert` spread now casts like the core does
   (`as unknown as Record<string, never>`): the previous inline ternary put a
