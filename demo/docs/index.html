@@ -648,6 +648,17 @@ wide, scrollWidth 500).
   cover or be covered by. The rendered <code>TimelineScrub</code> preview is the first
   page that put this pattern inside a <code>.sv-stage</code>, where the sweep actually
   looks.
+<ul><li>Second pass (verifier finding on 8ecd8f1): that sr-only exclusion tested</li></ul>
+  <code>clip-path !== 'none'</code> alone, which also excludes a normal-sized element
+  that only wears a decorative <code>clip-path</code> mask (a circular reveal effect,
+  for instance), so visible text covered by a panel there would silently
+  drop out of the sweep. Real sr-only text is pinpoint-sized (1px by 1px,
+  matching <code>SR_ONLY_CSS</code> in <code>src/core/split.ts</code> and <code>SR_ONLY</code> in
+  <code>src/react/index.tsx</code>) in addition to being <code>clip-path</code>'d, so the
+  predicate now requires both. A new negative fixture
+  (<code>demo/bench/harness/fixtures/pin-stage-clip-path-occlusion.html</code>) proves
+  a masked, normal-sized element under an opaque panel is still examined
+  and reported.
 
 <h3>1.13.0 (2026-09-05)</h3>
 
