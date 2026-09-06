@@ -408,6 +408,17 @@ wide, scrollWidth 500).
   (`demo/bench/harness/fixtures/pin-stage-clip-path-occlusion.html`) proves
   a masked, normal-sized element under an opaque panel is still examined
   and reported.
+- Third pass (verifier finding on 4f637e0): the pinpoint-size half of that
+  same predicate read `el.getBoundingClientRect()`, which measures the
+  painted rect. A real sr-only span nested under a `transform: scale(2)`
+  ancestor (`sv-tilt` and `sv-deck` both transform their content) paints
+  at 2px by 2px, so it read as "not pinpoint", escaped the exclusion, and
+  became a false occlusion candidate. The predicate now reads
+  `offsetWidth`/`offsetHeight` instead, the layout box, which an ancestor
+  transform never changes. The same fixture gained a positive case: a
+  genuine sr-only span under a scaled ancestor, covered by nothing, that
+  must be excluded outright (not examined, no false occlusion) while the
+  existing masked, normal-sized element is still reported.
 
 ## 1.13.0 (2026-09-05)
 

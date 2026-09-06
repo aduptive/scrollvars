@@ -15,6 +15,21 @@
      clip-path, covered by an opaque #panel: the sweep must still examine
      it and report the occlusion.
 
+     Second negative case (ADU-102, third pass finding): the pinpoint-size
+     half of that same exclusion used el.getBoundingClientRect(), which
+     measures the painted rect. A real sr-only span (1px by 1px,
+     clip-path: inset(50%)) nested under a transform: scale(2) ancestor
+     (sv-tilt and sv-deck transform their content the same way) paints at
+     2px by 2px, so it read as "not pinpoint" and escaped the exclusion,
+     turning a genuine sr-only span into a false occlusion candidate.
+     .genuine-sr-only below sits inside #tilted (transform: scale(2)),
+     covered by nothing: the sweep must exclude it outright (not examine
+     it, no false occlusion), the same way #masked must still be examined
+     and reported. #tilted pins transform-origin to top left only to keep
+     the scaled box on screen (the default center origin pushes part of
+     it past the viewport edge, which would exclude it for the unrelated
+     off-viewport reason and hide the bug this fixture is for).
+
      Not shipped, not generated: loaded directly by
      demo/bench/harness/e2e-invariants.mjs, which injects the built
      styles.css itself (no <link> here on purpose). -->
@@ -23,6 +38,9 @@
     visible text under a decorative reveal mask
   </p>
   <div id="panel" style="position:absolute;top:0;left:0;width:300px;height:100px;background:#000"></div>
+  <div id="tilted" style="position:absolute;top:150px;left:0;width:300px;height:100px;transform:scale(2);transform-origin:top left">
+    <span class="genuine-sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">genuine sr-only text under a scaled ancestor</span>
+  </div>
 </div>
 </body>
 </html>
