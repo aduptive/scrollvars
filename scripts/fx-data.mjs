@@ -607,35 +607,23 @@ el.style.setProperty('--sv-word', nextIndex)`,
     tagline: 'Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).',
     when: 'Landing pages, studio reels, product launches. The first fold that has to land.',
     knobs: '--sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video',
-    preview: `<style>
-.sv-hero { position: relative; min-height: 86vh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; padding: 0; }
-.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
-  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
-.hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
-.hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
-.hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
-@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
-.hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
-.hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
-.hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
-.hero-cta { display: inline-block; padding: 12px 22px; border-radius: 999px; background: var(--accent); color: #121118; font-weight: 700; text-decoration: none; }
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid var(--line); font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.hero-strip span { margin: 0 18px; }
-</style>
-<section data-sv data-sv-travel class="sv-hero fxstage" id="fxhero" style="--sv-stagger: 70ms">
-  <div class="hero-orb a"></div><div class="hero-orb b"></div>
-  <div class="hero-inner">
-    <p class="hero-eyebrow sv-rise">Studio · 2026 reel</p>
-    <h3 class="hero-title sv-split-rise" data-sv-split>Sites that move with intent</h3>
-    <p class="hero-sub sv-rise" data-sv-order="6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p>
-    <p class="sv-rise" data-sv-order="7"><a class="hero-cta" href="#">See the work</a></p>
-  </div>
-  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
-    <span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span>
-  </div></div>
-</section>
-<script>addEventListener('load', () => SV.trackPointer(document.getElementById('fxhero'), { selector: '.sv-hero' }))</script>`,
+    // The preview is the installed component itself, rendered (see
+    // scripts/fx-render.mjs): no second, hand-typed preview string to drift
+    // from HeroCinematic below. usePointer/<Track> attach imperatively (no
+    // scannable data-sv attribute lands in server markup), so the gallery
+    // page keeps this tiny attach script, deferred to `load` so `window.SV`
+    // (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      eyebrow: 'Studio · 2026 reel',
+      title: 'Sites that move with intent',
+      copy: 'One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.',
+      cta: 'See the work',
+      className: 'fxstage',
+    },
+    previewScript: `addEventListener('load', () => {
+  SV.track(document.querySelector('.sv-hero > .sv'), { travel: true })
+  SV.trackPointer(document.querySelector('.sv-hero'), { selector: '.sv-hero' })
+})`,
     css: `<section data-sv data-sv-travel class="sv-hero" id="hero">   <!-- travel: --sv-t 0..1 through the viewport -->
   <div class="hero-orb a"></div><div class="hero-orb b"></div>
   <div class="hero-inner">
@@ -707,37 +695,20 @@ function Hero() {
     tagline: 'Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.',
     when: 'Company history, case-study process, roadmap, "how we got here". Any ordered story.',
     knobs: '--tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)',
-    preview: `<style>
-.tl { --tl-from: 2019; --tl-span: 7; }
-.tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
-.tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
-  counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
-.tl-year::after { content: counter(tl-year); }
-.tl-cap { display: block; margin-top: 10px; color: var(--muted); font: 600 12px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
-.tl-track { position: relative; padding-left: 34px; }
-.tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
-.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
-.tl-items { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(18px, 4vh, 40px); text-align: left; }
-.tl-items > li { position: relative; --sv-distance: 1.6rem; }
-.tl-items > li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
-  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); box-shadow: 0 0 0 4px #17151f; }
-.tl-items b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--accent); margin-bottom: 4px; }
-.tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
-@media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
-</style>
-<div data-sv data-sv-pin="320vh" class="fxouter tl">
-  <div class="sv-stage fxsticky tl-sticky">
-    <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
-    <div class="tl-track"><i class="tl-line"></i>
-      <ol class="sv-range sv-range-rise tl-items">
-        <li data-sv-from="0" data-sv-to=".28"><b>2019</b><p>First client site on a hand-rolled scroll engine.</p></li>
-        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>The engine becomes a package; five sites share one codebase.</p></li>
-        <li data-sv-from=".46" data-sv-to=".76"><b>2024</b><p>Benchmarks published, CSS-variable API frozen.</p></li>
-        <li data-sv-from=".7" data-sv-to="1"><b>2026</b><p>ScrollVars ships on npm. This timeline is one pinned block and four ranges.</p></li>
-      </ol>
-    </div>
-  </div>
-</div>`,
+    // Rendered from TimelineScrub itself (see scripts/fx-render.mjs). <Track
+    // pin> attaches imperatively, so the gallery page keeps the same tiny
+    // attach script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      steps: [
+        { year: 2019, text: 'First client site on a hand-rolled scroll engine.' },
+        { year: 2021, text: 'The engine becomes a package; five sites share one codebase.' },
+        { year: 2024, text: 'Benchmarks published, CSS-variable API frozen.' },
+        { year: 2026, text: 'ScrollVars ships on npm. This timeline is one pinned block and four ranges.' },
+      ],
+      className: 'fxouter',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-timeline'), { pin: '320vh' }))`,
     css: `<div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
   <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
     <span class="tl-year"></span>
@@ -814,41 +785,23 @@ function Timeline() {
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
     when: 'Product features, "how it works", case-study walkthroughs, onboarding explainers.',
     knobs: 'data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)',
-    preview: `<style>
-.st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
-.st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
-.st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
-.st-shot:nth-child(2) { background: linear-gradient(160deg, #1f2a3a, #17151f 70%); color: #7dd3fc; }
-.st-shot:nth-child(3) { background: linear-gradient(160deg, #3a2a1f, #17151f 70%); color: #ffb454; }
-/* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
-.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
-.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
-.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
-.st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
-.st-steps h4 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
-.st-steps p { margin: 0; color: var(--muted); max-width: 36ch; }
-.st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
-.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); background: var(--accent); }
-html:not(.sv-on) .st-steps > li { opacity: 1; }
-@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
-</style>
-<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="fxouter st">
-  <div class="sv-stage fxsticky st-grid">
-    <div class="st-media">
-      <figure class="st-shot" style="--i: 0">01</figure>
-      <figure class="st-shot" style="--i: 1">02</figure>
-      <figure class="st-shot" style="--i: 2">03</figure>
-    </div>
-    <ol class="st-steps">
-      <li style="--i: 0"><b>Step 1</b><h4>Track the section</h4><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li>
-      <li style="--i: 1"><b>Step 2</b><h4>Give each piece an index</h4><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li>
-      <li style="--i: 2"><b>Step 3</b><h4>Ship it</h4><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li>
-    </ol>
-    <div class="st-dots"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i></div>
-  </div>
-</div>`,
+    // Rendered from StickySteps itself (see scripts/fx-render.mjs). useScenes
+    // attaches imperatively, so the gallery page keeps the same tiny attach
+    // script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it
+    // runs. The rendered markup never hydrates, so the scene-driven
+    // inert/aria-hidden swap (tested live in
+    // demo/bench/harness/fixtures/sticky-steps-inert.html) is out of scope
+    // here: the static preview stays in its initial, fully reachable state.
+    previewProps: {
+      steps: [
+        { title: 'Track the section', text: 'One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.', media: '01' },
+        { title: 'Give each piece an index', text: 'Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.', media: '02' },
+        { title: 'Ship it', text: 'No observers per step, no timeline library. Three scenes here; make it thirty.', media: '03' },
+      ],
+      className: 'fxouter',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-steps'), { pin: '300vh', scenes: 3 }))`,
     css: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
   <div class="sv-stage st-sticky">
     <div class="st-media">
@@ -920,24 +873,19 @@ function StickySteps() {
     when: 'Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.',
     knobs: '--sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1',
     runway: true,
-    preview: `<style>
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 10px 0; }
-.stats > div { padding: 22px 12px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, #221f31, #17151f 80%); }
-.stats dt { order: 2; color: var(--muted); font-size: 13px; margin-top: 8px; }
-.stats dd { margin: 0; font: 800 clamp(34px, 6vw, 64px)/1 var(--mono); letter-spacing: -.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
-.stats > div { display: flex; flex-direction: column; }
-.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
-html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
-@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
-</style>
-<section data-sv data-sv-once class="fxstage sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
-  <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
-    <div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max: 4"></dd></div>
-  </dl>
-</section>`,
+    // Rendered from StatsCountup itself (see scripts/fx-render.mjs). <Track
+    // once> attaches imperatively, so the gallery page keeps the same tiny
+    // attach script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      stats: [
+        { label: 'client sites shipped', value: 248, suffix: '+' },
+        { label: 'median Lighthouse performance', value: 99 },
+        { label: 'KB of engine, gzipped', value: 4 },
+      ],
+      className: 'fxstage',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))`,
     css: `<section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
   <dl class="stats">
     <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>

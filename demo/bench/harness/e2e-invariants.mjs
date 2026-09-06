@@ -81,11 +81,16 @@ const HIDDEN_TEXT = () => {
 // a regression back to zero coverage can be asserted instead of passing by omission.
 const OCCLUDED_TEXT = () => {
   const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+  // the sr-only technique (Split, TimelineScrub's year, StatsCountup's count:
+  // clip-path: inset(50%), same text as an adjacent aria-hidden visual digit,
+  // by design): nothing is on screen for it to cover or be covered by, so it
+  // is not a candidate, the same way an aria-hidden sibling is not one.
+  const srOnly = (el) => getComputedStyle(el).clipPath !== 'none'
   const bad = []
   let examined = 0
   for (const stage of document.querySelectorAll('.sv-stage')) {
     for (const el of stage.querySelectorAll('*')) {
-      if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
+      if (!own(el) || srOnly(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) continue
       el.scrollIntoView({ block: 'center', inline: 'center' })
       const r = el.getBoundingClientRect()
       if (r.width === 0 || r.height === 0) continue

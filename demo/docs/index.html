@@ -605,6 +605,33 @@ wide, scrollWidth 500).
   case both React majors must agree on (<code>{ inert: '' }</code> under 18,
   <code>{ inert: true }</code> under 19).
 
+### Gallery
+<ul><li>The gallery preview for the four Sections (<code>hero-cinematic</code>, <code>timeline-scrub</code>,</li></ul>
+  <code>sticky-steps</code>, <code>stats-countup</code>) is no longer a hand-typed HTML string: it is
+  the installed component itself, compiled with esbuild and rendered with
+  <code>react-dom/server</code> (the same pipeline <code>test/cli-components.test.mjs</code> already
+  proves every fixture against), with a small <code>previewProps</code> object per
+  Section (<code>scripts/fx-data.mjs</code>) standing in for real content. Preview and
+  component now share one source, so they cannot drift. A component that
+  attaches via a client hook (<code>usePointer</code>, <code>useScenes</code>, a bare <code>&lt;Track pin></code>)
+  has no scannable <code>data-sv</code> attribute in its server markup, so its gallery
+  page keeps a tiny <code>previewScript</code> (documented on the effect entry) that
+  calls the vanilla driver directly once <code>sv.js</code> loads.
+<ul><li><code>test/cli-components.test.mjs</code>'s class-token parity check (installed</li></ul>
+  component vs. hand-written preview) is replaced, for these four, by an
+  assertion that <code>demo/fx/&lt;slug>.html</code> literally contains the component's own
+  render; the check for every effect that still has a hand-written preview
+  is unchanged. Rendering with <code>previewProps</code> also fails the test on any
+  React warning to stderr.
+<ul><li><code>demo/bench/harness/e2e-invariants.mjs</code>'s pin-stage occlusion sweep no</li></ul>
+  longer flags the visually-hidden sr-only text used alongside an
+  aria-hidden visual counter (<code>Split</code>, <code>TimelineScrub</code>'s year,
+  <code>StatsCountup</code>'s count: <code>clip-path: inset(50%)</code>, by design the same text
+  and position as the digit it describes): nothing on screen for it to
+  cover or be covered by. The rendered <code>TimelineScrub</code> preview is the first
+  page that put this pattern inside a <code>.sv-stage</code>, where the sweep actually
+  looks.
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

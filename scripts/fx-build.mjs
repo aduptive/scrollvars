@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EFFECTS, COMPONENTS } from './fx-data.mjs'
 import { measureSizes } from './docs-data.mjs'
+import { SECTION_PREVIEW_SLUGS, renderSectionPreview } from './fx-render.mjs'
 
 // Resyncs the bench page's inlined engine block. Pure (no I/O), so it is
 // unit-tested directly; everything else in this file only runs when the
@@ -210,6 +211,15 @@ const footer = `<footer class="fx">
   <div><b>ScrollVars</b> v${VERSION}. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>`
+
+// Section previews (whole premium blocks) are not hand-typed: they are the
+// installed component itself, compiled and rendered (scripts/fx-render.mjs),
+// so preview and component cannot drift.
+for (const fx of EFFECTS) {
+  if (SECTION_PREVIEW_SLUGS.has(fx.slug)) {
+    fx.preview = await renderSectionPreview(fx, COMPONENTS[fx.slug])
+  }
+}
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>

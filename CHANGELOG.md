@@ -354,6 +354,33 @@ wide, scrollWidth 500).
   case both React majors must agree on (`{ inert: '' }` under 18,
   `{ inert: true }` under 19).
 
+### Gallery
+- The gallery preview for the four Sections (`hero-cinematic`, `timeline-scrub`,
+  `sticky-steps`, `stats-countup`) is no longer a hand-typed HTML string: it is
+  the installed component itself, compiled with esbuild and rendered with
+  `react-dom/server` (the same pipeline `test/cli-components.test.mjs` already
+  proves every fixture against), with a small `previewProps` object per
+  Section (`scripts/fx-data.mjs`) standing in for real content. Preview and
+  component now share one source, so they cannot drift. A component that
+  attaches via a client hook (`usePointer`, `useScenes`, a bare `<Track pin>`)
+  has no scannable `data-sv` attribute in its server markup, so its gallery
+  page keeps a tiny `previewScript` (documented on the effect entry) that
+  calls the vanilla driver directly once `sv.js` loads.
+- `test/cli-components.test.mjs`'s class-token parity check (installed
+  component vs. hand-written preview) is replaced, for these four, by an
+  assertion that `demo/fx/<slug>.html` literally contains the component's own
+  render; the check for every effect that still has a hand-written preview
+  is unchanged. Rendering with `previewProps` also fails the test on any
+  React warning to stderr.
+- `demo/bench/harness/e2e-invariants.mjs`'s pin-stage occlusion sweep no
+  longer flags the visually-hidden sr-only text used alongside an
+  aria-hidden visual counter (`Split`, `TimelineScrub`'s year,
+  `StatsCountup`'s count: `clip-path: inset(50%)`, by design the same text
+  and position as the digit it describes): nothing on screen for it to
+  cover or be covered by. The rendered `TimelineScrub` preview is the first
+  page that put this pattern inside a `.sv-stage`, where the sweep actually
+  looks.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

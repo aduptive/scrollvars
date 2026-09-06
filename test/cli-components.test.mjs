@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -10,6 +10,7 @@ import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 import { react18TypesPaths, REACT18_CANARY } from '../scripts/react18-paths.mjs'
+import { SECTION_PREVIEW_SLUGS, renderSectionPreview, renderStatic } from '../scripts/fx-render.mjs'
 
 // Every `npx scrollvars add <slug>` file must compile against the built dist,
 // type-check on its own (a consumer's `tsc` run is the real gate, not ours),
@@ -23,11 +24,10 @@ const dir = mkdtempSync(join(tmpdir(), 'sv-cli-'))
 const outDir = join(root, 'node_modules', '.cache', 'sv-cli')
 mkdirSync(outDir, { recursive: true })
 const COMPILE_ONLY = new Set(['gsap-scrub', 'three-scene']) // peer libraries are not installed here
+// hero-cinematic, timeline-scrub, sticky-steps, stats-countup are not fixtured
+// here: their gallery preview IS this component, rendered with fx.previewProps
+// (scripts/fx-render.mjs), so there is only one props source, not two.
 const FIXTURES = {
-  'hero-cinematic': { title: 'Sites that move with intent', eyebrow: 'Studio', copy: 'One listener.', cta: 'See the work' },
-  'timeline-scrub': { steps: [{ year: 2019, text: 'a' }, { year: 2026, text: 'b' }] },
-  'sticky-steps': { steps: [{ title: 'A', text: 'a', media: '01' }, { title: 'B', media: '02' }] },
-  'stats-countup': { stats: [{ label: 'sites', value: 248, suffix: '+' }, { label: 'score', value: 99 }] },
   'sequenced-scrub': { children: [h('p', { key: 1 }, 'first'), h('p', { key: 2 }, 'second')] },
   'split-reveal': { children: 'Words arrive one by one' },
   'staggered-reveal': { children: [h('h2', { key: 1 }, 'Title'), h('p', { key: 2 }, 'Copy')] },
@@ -238,6 +238,28 @@ for (const fx of EFFECTS) {
     const mod = await import(pathToFileURL(out).href)
     const name = content.match(/export function (\w+)/)[1]
     assert.equal(typeof mod[name], 'function', `${file} exports ${name}`)
+
+    if (SECTION_PREVIEW_SLUGS.has(fx.slug)) {
+      // The preview IS this component, rendered (scripts/fx-render.mjs), not a
+      // second, hand-typed string. renderStatic itself throws on any React
+      // warning on stderr, under either React version.
+      const markup = renderStatic(mod[name], fx.previewProps)
+      assert.ok(markup.length > 50, 'renders markup on the server')
+      // demo/fx/<slug>.html is generated once, under the repo's default React
+      // (19, `npm run demo:sync`): React 18's renderToStaticMarkup escapes a
+      // <style> child's text differently (`>` becomes `&gt;`), so the
+      // byte-for-byte drift check below only holds outside test:react18,
+      // which instead proves the component itself still renders, warning-free.
+      if (react18) return
+      const expected = await renderSectionPreview(fx, { file, content })
+      const page = readFileSync(join(root, 'demo', 'fx', `${fx.slug}.html`), 'utf8')
+      assert.ok(
+        page.includes(expected),
+        `demo/fx/${fx.slug}.html has drifted from ${file}'s render; run npm run demo:sync`
+      )
+      return
+    }
+
     const markup = renderToStaticMarkup(h(mod[name], FIXTURES[fx.slug]))
     assert.ok(markup.length > 50, 'renders markup on the server')
     const want = tokens(fx.preview)
