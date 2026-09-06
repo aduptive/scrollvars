@@ -701,3 +701,105 @@ test('slider: elastic overscroll never drives progress outside 0..1', async () =
 
   handle.destroy()
 })
+
+test('slider: position never goes backwards across the gap between slides', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  // two 100px slides 16px apart: their centres sit 116px apart, not 100.
+  // Normalizing the distance by ONE slide's own size read 0.580 just before
+  // the midpoint and 0.430 just after it, walking the reported position
+  // backwards while the scroll only ever moved forwards.
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 116 })]
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 216, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?gap')
+  const handle = slider(c, { duration: 0 })
+
+  let previous = -Infinity
+  for (let scroll = 0; scroll <= 116; scroll++) {
+    c.scrollLeft = scroll
+    pumpSlider(listeners, rafQueue)
+    const { position } = handle.state()
+    assert.ok(
+      position >= previous,
+      `position must not decrease: ${position} at scrollLeft ${scroll}, after ${previous}`
+    )
+    previous = position
+  }
+  assert.equal(handle.state().position, 1, 'the walk ends centered on the second slide')
+
+  c.scrollLeft = 0
+  pumpSlider(listeners, rafQueue)
+  assert.equal(handle.state().position, 0, 'and starts centered on the first')
+  handle.destroy()
+})
+
+test('slider: a press inside the wheel settle window drops the pending glide', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr', scrollSnapType: 'x mandatory' })
+
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?wheelhandoff')
+  const handle = slider(c, { duration: 600 })
+
+  // the 200 ms settle timer, on demand instead of on the clock
+  const pending = new Map()
+  let seq = 0
+  const realSetTimeout = global.setTimeout
+  const realClearTimeout = global.clearTimeout
+  global.setTimeout = (fn) => {
+    pending.set(++seq, fn)
+    return seq
+  }
+  global.clearTimeout = (id) => pending.delete(id)
+  const settle = () => {
+    const fns = [...pending.values()]
+    pending.clear()
+    fns.forEach((fn) => fn())
+  }
+  const press = () =>
+    listeners.pointerdown({
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 50,
+      target: { closest: () => null },
+      preventDefault: () => {},
+    })
+
+  try {
+    // control: with nothing else taking over, the settle does glide here
+    c.scrollLeft = 40
+    listeners.wheel({ deltaX: 40, deltaY: 0 })
+    settle()
+    assert.ok(rafQueue.length > 0, 'the wheel settle glides when it keeps ownership')
+
+    // a drag starting inside the window owns the position: no settle behind it
+    rafQueue.length = 0
+    c.scrollLeft = 40
+    listeners.wheel({ deltaX: 40, deltaY: 0 })
+    press()
+    settle()
+    assert.equal(rafQueue.length, 0, 'a press inside the window leaves no glide to fight it')
+
+    // same for an explicit move (arrow click, autoplay, keyboard: all goTo)
+    c.scrollLeft = 40
+    listeners.wheel({ deltaX: 40, deltaY: 0 })
+    handle.next()
+    rafQueue.length = 0
+    settle()
+    assert.equal(rafQueue.length, 0, 'a goTo inside the window replaces the settle')
+  } finally {
+    global.setTimeout = realSetTimeout
+    global.clearTimeout = realClearTimeout
+  }
+  handle.destroy()
+})

@@ -1260,6 +1260,43 @@ Docs read against the code merged by the five round-5 code tickets.
   (the two hand-kept copies) stay in agreement; this pass added text next
   to them without touching that pairing.
 
+### Slider (blind review round 6)
+- The slider re-asserts the classes it owns on every measure, the way the
+  driver does for its live flag: `sv-slider`, `sv-slider-y` and
+  `sv-draggable` on the rail, `sv-active` on the slide nearest the centre.
+  A framework that owns the rail's `className` (React re-rendering it when
+  a prop like `perView` changes, with no retrack behind it) used to drop the
+  first three, and a consumer restyling a slide dropped `sv-active` until
+  the active index happened to change. Each is one `classList` read per
+  measure, with a write only when the DOM disagrees.
+- `state().position` interpolates between adjacent slide CENTRES, so the
+  documented continuous position never goes backwards. It normalized the
+  distance by a single slide's own size before, which made it jump back at
+  every midpoint as soon as the slides had a gap: two 100px slides 16px
+  apart read 0.580 and then 0.430 one pixel of scroll later. Measured old
+  against new on the same fixture: gapless sliders with equal-size slides
+  read exactly as before (max difference 0.0000 over 121 samples across
+  the whole range). Gapless sliders with unequal slides (`--sv-span`
+  making slides different widths, `--sv-gap: 0`, a real configuration)
+  differ: 0.75 old against 0.6667 new at scrollLeft 0, maximum difference
+  0.0833. The new value is the one that is monotone and centre to centre;
+  unequal gapless slides now reading centre to centre is the intended
+  contract, not a regression.
+- The wheel settle (the glide 200 ms after the last wheel event) is dropped
+  by whatever takes the position over inside that window: a pointerdown,
+  `goTo` and everything routed through it (arrows, keyboard, autoplay), and
+  `seek`. It only listened to the next wheel event and to `destroy` before,
+  so a drag started right after a trackpad pan had a glide fighting it. A
+  press that drops a pending settle also resumes the snap the wheel had
+  suspended, since the settle it replaced is no longer there to do it.
+
+### React (blind review round 6)
+- `<Slider>`'s engine classes survive a re-render: `perView` is not an
+  attach dep, so React rewrites the rail's class attribute with no retrack,
+  and a consumer's own slide `className` rewrite drops `sv-active`. Fixed
+  in the core slider (above), so plain `slider()` consumers whose framework
+  owns the class attribute get it too.
+
 ### Scanner (blind review round 6)
 - `scan()`'s `removeSplit` now bails with the same `scope.contains(el)`
   guard as `remove()`. A retained `[data-sv-split]` node (a batch
