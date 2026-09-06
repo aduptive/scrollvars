@@ -389,6 +389,23 @@ wide, scrollWidth 500).
   and <code>--sv-slide</code> without firing <code>onSlide</code> for an index that never
   changed.
 
+### CI
+<ul><li>CI now proves the React layer on React 18, not only the React 19 the</li></ul>
+  root installs: a new <code>test-react-18</code> job (<code>npm run test:react18</code>, also
+  runnable locally) installs react@18, react-dom@18 and their <code>@types</code>
+  into <code>node_modules/.cache/react18</code> (its own package.json, <code>--no-save</code>,
+  never the root <code>package-lock.json</code>), type-checks <code>src/</code> against those
+  <code>@types</code> instead of the root's through a generated tsconfig <code>paths</code>
+  entry (guarded by a canary that fails loudly if the redirect ever
+  silently falls back to React 19), and runs <code>test/react.test.mjs</code> and
+  <code>test/cli-components.test.mjs</code> with a <code>node --import</code> loader hook that
+  redirects every <code>react</code>/<code>react-dom</code> import to that install for the
+  process (<code>NODE_PATH</code> does not affect ESM resolution).
+<ul><li><code>react: Marquee duplicate is aria-hidden and inert</code> now asserts the</li></ul>
+  literal wire format <code>inert=""</code>, not just the attribute's presence: the
+  case both React majors must agree on (<code>{ inert: '' }</code> under 18,
+  <code>{ inert: true }</code> under 19).
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
