@@ -271,7 +271,9 @@ export const EFFECTS = [
   </div>
 </div>
 <!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
-     Older engines settle at the end state (consume as var(--sv-r, 1)). -->`,
+     --sv-r is a registered property (initial-value: 1), so an engine
+     that can't compute the division settles there instead of turning
+     invalid; still consume it as var(--sv-r, 1). -->`,
     react: `<Track pin="250vh">
   <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">

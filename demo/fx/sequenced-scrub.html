@@ -169,7 +169,9 @@
   &lt;/div&gt;
 &lt;/div&gt;
 &lt;!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
-     Older engines settle at the end state (consume as var(--sv-r, 1)). --&gt;</code></pre>
+     --sv-r is a registered property (initial-value: 1), so an engine
+     that can't compute the division settles there instead of turning
+     invalid; still consume it as var(--sv-r, 1). --&gt;</code></pre>
     <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
   &lt;div class="sv-stage"&gt;                &lt;!-- the sticky viewport, from pin.css --&gt;
     &lt;div class="sv-range sv-range-rise"&gt;

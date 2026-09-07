@@ -45,8 +45,9 @@ interface Entry {
   live: boolean
   scene: number
   /** px the pinned stage sits below the viewport top (a sticky header): read once
-   * from the element's computed `--sv-pin-offset`, so one CSS declaration drives
-   * both the layout (.sv-stage) and the math. */
+   * from the stage's computed `--sv-pin-offset` (the tracked element's, when
+   * there is no `.sv-stage`), so one CSS declaration drives both the layout
+   * (.sv-stage) and the math. */
   pinOffset: number
   /** inline height/position the pin helper replaced, restored on untrack */
   authored?: { height: string; position: string }

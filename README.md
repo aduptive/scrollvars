@@ -157,7 +157,7 @@ Anything that reads them is a preset. The shipped ones:
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. Only px, rem, em, vh (svh, lvh and dvh resolve like vh) and vw resolve there today: `calc()` reads as 0, `vmin` and `%` are read as if they were px, so an offset in either silently comes out wrong. Real length resolution for the rest is on ADU-100.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. Only px, rem (root font-size), em (the stage's font-size, not the wrapper's), vh (svh, lvh and dvh resolve like vh) and vw resolve there today: `calc()` reads as 0, `vmin` and `%` are read as if they were px, so an offset in either silently comes out wrong. Real length resolution for the rest is on ADU-100.
 
 ## React
 
@@ -359,7 +359,12 @@ system on demand; on a tracked (or released) element the driver pins
 so re-tracking is what replays the entrance there instead. A settled
 `once` entry carries that same inline value without being tracked or
 released, so the class trick alone cannot replay it there; re-tracking
-still can, exactly as on a tracked element. `:has()` puts
+still can, exactly as on a tracked element. Two shapes it cannot replay:
+entrance CSS of your own that hard-codes its duration instead of reading
+`--sv-duration`/`--sv-stagger`, and a knob declared on a DESCENDANT rather
+than inherited from the tracked element, which is what the kit's own
+`<Item duration>` and `<Split>` emit; both dip and reverse instead of
+entering. `:has()` puts
 state anywhere (`body:has(#tab-2:checked) .panel-2`); the Popover API
 opens/closes with zero JS. One-shot intros on load are plain CSS keyframes.
 Timed multi-act sequences are `sv-acts` (above); branching, physics or
@@ -451,8 +456,12 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 
 `sv-range-rise` is the ready-made flavor (rise + fade per range); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
-division by a variable (Chrome 112 / Safari 16.4 / FF 112), and the fallback
-makes older engines settle at the end state. The JS twin is
+division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
+registered property (`@property`, `initial-value: 1`), so an engine that
+can't compute the division resolves it to that initial value instead of
+turning invalid; the `var(--sv-r, 1)` you write is a backstop for engines
+without `@property` at all, not the reason older engines settle at the end
+state. The JS twin is
 `mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
 WebGL uniforms). Overlapping ranges are fine: that is the point.
 

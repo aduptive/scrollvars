@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### Docs (round 8, ADU-192)
+Docs read against the code merged by the four round-8 code tickets.
+- README's and AGENTS' `sv-range` paragraphs no longer say a `var()`
+  fallback makes older engines settle at the end state: `var()`'s fallback
+  fires only for a guaranteed-invalid property, and `--sv-r` is set. It is
+  the registered property's own `@property --sv-r { initial-value: 1 }`
+  that resolves an engine that cannot compute the calc() division to that
+  initial value instead of turning invalid; `var(--sv-r, 1)` is a backstop
+  for an engine without `@property` at all, not the mechanism. Same fix in
+  the gallery's `sv-range` Tailwind pane comment (`scripts/fx-data.mjs`).
+- README's and AGENTS' `--sv-pin-offset` unit lists now say what `em`
+  resolves against: the pinned stage's font-size, not the tracked
+  wrapper's, per ADU-191. `rem` gained its own parenthetical (root
+  font-size) for the same reason: a unit list that only names tokens
+  cannot tell a reader which element a relative unit is measured from.
+- README's and AGENTS' entrance-replay paragraphs now name the two shapes
+  ADU-191 left unreplayable, since the promise is true enough now that a
+  reader relying on it hits them: entrance CSS of your own that hard-codes
+  its duration instead of reading `--sv-duration`/`--sv-stagger`, and a
+  knob declared on a descendant instead of inherited, which is what the
+  kit's own `<Item duration>` and `<Split>` emit. Both dip and reverse
+  instead of entering.
+- AGENTS' zero-wrapper paragraph no longer says the pre-paint script
+  "removes it again if the driver never boots": ADU-188 made the release
+  final, so it also removes `sv-on` when the driver boots LATE, after the
+  3 second watchdog, reverting the class through a MutationObserver
+  installed only once the watchdog fires, instead of re-hiding content the
+  visitor is already reading.
+- `src/core/driver.ts`'s `Entry.pinOffset` field comment said the offset
+  is read once from the tracked element's computed `--sv-pin-offset`. True
+  in outcome (the property is inherited), but `readPinOffset` reads it
+  from `.sv-stage` since ADU-191; the comment now says so, the wrapper
+  only when there is no stage.
+
 ### Driver (blind review round 8, ADU-191)
 - `--sv-pin-offset` in `em` now resolves against `.sv-stage`, the element
   styles/pin.css applies it to, instead of the tracked wrapper: `top:` and
