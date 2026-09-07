@@ -828,6 +828,168 @@ test('react: ScrollVarsBoot debug overlay never mounts if unmounted before the d
   assert.equal(appended, 0, 'the debug overlay never appended to document.body')
 })
 
+test('react: a Modal rendered open carries the open attribute in the SSR markup', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Modal } = await import('../dist/react/index.js')
+
+  // without this attribute the server markup is a CLOSED dialog: a no-JS or
+  // pre-hydration modal renders nothing, against README's "open ones open"
+  const open = renderToStaticMarkup(React.createElement(Modal, { open: true }, 'hello'))
+  assert.match(open, /<dialog[^>]*\sopen=""/)
+  assert.match(open, /hello/)
+
+  const closed = renderToStaticMarkup(React.createElement(Modal, { open: false }, 'hello'))
+  assert.doesNotMatch(closed, /\sopen=""/)
+})
+
+// A <dialog> modelled on the spec, close enough for the promotion to matter.
+// `open` reflects the attribute both ways (react-dom may write either) and
+// only showModal() sets `modal` (the top layer). Its first step is "if the
+// dialog is open AND modal, return", so a repeated showModal() is a harmless
+// no-op: it is dropping the attribute first that walks past that early return
+// and reaches step two, InvalidStateError on an open NON-modal dialog.
+// showModal() also records the previously focused element and moves focus
+// into the dialog, and close() puts focus back. That is the only surface a
+// second promotion shows on: it captures a node INSIDE the dialog, and a
+// closed dialog is display:none, so focus falls to the body.
+function installSpecDialog() {
+  const doc = global.document
+  const realCreate = doc.createElement
+  const state = {
+    promotions: 0,
+    closeCalls: 0,
+    restore() { doc.createElement = realCreate },
+  }
+  doc.createElement = (tag) => {
+    const el = realCreate(tag)
+    if (tag !== 'dialog') return el
+    el.modal = false
+    el.previouslyFocused = null
+    Object.defineProperty(el, 'open', {
+      configurable: true,
+      get: () => el.hasAttribute('open'),
+      set: (on) => (on ? el.setAttribute('open', '') : el.removeAttribute('open')),
+    })
+    el.showModal = () => {
+      if (el.open && el.modal) return
+      if (el.open) throw new Error('InvalidStateError: showModal on an open non-modal dialog')
+      state.promotions++
+      el.previouslyFocused = doc.activeElement
+      el.setAttribute('open', '')
+      el.modal = true
+      // the dialog focusing steps: focus lands on the first focusable
+      // descendant, the dialog itself when it has none
+      doc.activeElement = el.children.find((child) => child.tagName === 'BUTTON') ?? el
+    }
+    el.close = () => {
+      state.closeCalls++
+      el.removeAttribute('open')
+      el.modal = false
+      const back = el.previouslyFocused
+      el.previouslyFocused = null
+      doc.activeElement = back && !el.contains(back) ? back : doc.body
+    }
+    return el
+  }
+  return state
+}
+
+test('react: a Modal that mounts open ends up MODAL, not merely open', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Modal } = await import('../dist/react/index.js')
+
+  // React sets the rendered attribute while it commits the element, before
+  // any effect runs, so this mount hands the effect the same DOM a hydrated
+  // server-rendered modal does.
+  const dom = installSpecDialog()
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  try {
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: true }, 'hello'))
+    })
+    const dialog = container.firstChild
+    assert.equal(dialog.hasAttribute('open'), true, 'still open after mount')
+    assert.equal(dialog.modal, true, 'promoted into the top layer by showModal()')
+    // close() would fire a close event, and a controlled parent answers that
+    // by setting open back to false: the promotion drops the attribute instead
+    assert.equal(dom.closeCalls, 0, 'nothing called close() while promoting')
+
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: false }, 'hello'))
+    })
+    assert.equal(dom.closeCalls, 1, 'open={false} closes it')
+    assert.equal(dialog.modal, false, 'and it leaves the top layer')
+    assert.equal(dialog.hasAttribute('open'), false)
+
+    await act(async () => {
+      root.render(React.createElement(Modal, { open: true }, 'hello'))
+    })
+    assert.equal(dialog.modal, true, 'and it can be opened again')
+  } finally {
+    dom.restore()
+    await act(async () => { root.unmount() })
+  }
+})
+
+test('react: a Modal open under StrictMode promotes once and hands focus back', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act, StrictMode } = React
+  const { Modal } = await import('../dist/react/index.js')
+
+  // StrictMode double-invokes effects in development, and it is the default
+  // in Next.js and in the Vite and CRA templates: an unguarded promotion
+  // drops the attribute and calls showModal() a second time, and that call
+  // records a node INSIDE the dialog as the one to restore focus to.
+  const dom = installSpecDialog()
+  const doc = global.document
+  const activeBefore = doc.activeElement
+  const trigger = doc.createElement('button')
+  doc.body.appendChild(trigger)
+  doc.activeElement = trigger
+
+  const container = doc.createElement('div')
+  const root = createRoot(container)
+  const tree = (open) =>
+    React.createElement(
+      StrictMode,
+      null,
+      React.createElement(Modal, { open }, React.createElement('button', null, 'ok'))
+    )
+  try {
+    await act(async () => {
+      root.render(tree(true))
+    })
+    const dialog = container.firstChild
+    assert.equal(dialog.modal, true, 'modal after mount')
+    assert.equal(dom.promotions, 1, 'promoted exactly once, double-invoked effect and all')
+    assert.equal(doc.activeElement.tagName, 'BUTTON', 'focus moved into the dialog')
+    assert.notEqual(doc.activeElement, trigger)
+
+    await act(async () => {
+      root.render(tree(false))
+    })
+    assert.equal(dom.closeCalls, 1, 'open={false} closes it')
+    assert.equal(dialog.modal, false, 'and it leaves the top layer')
+    // the whole point of promoting once: a second showModal() would have
+    // captured the button inside the dialog, and closing a display:none
+    // dialog drops focus on the body instead of the control that opened it
+    assert.equal(doc.activeElement, trigger, 'focus went back to the trigger')
+  } finally {
+    dom.restore()
+    doc.body.removeChild(trigger)
+    doc.activeElement = activeBefore
+    await act(async () => { root.unmount() })
+  }
+})
+
 test('react: Modal without <dialog> support opens AND closes through the attribute', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

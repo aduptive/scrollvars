@@ -925,6 +925,15 @@ export interface ModalProps extends React.DialogHTMLAttributes<HTMLDialogElement
 /** Native <dialog> + the sv-pop entry/exit preset. */
 export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children, ...rest }) => {
   const ref = useRef<HTMLDialogElement>(null)
+  // Rendered, so a modal that starts open IS open in the server markup and
+  // stays open before hydration and without JS (README: open ones open).
+  // Frozen at the first render on purpose: from mount on the effect owns the
+  // attribute, and React writing it would strip `open` off a modal dialog
+  // without taking it out of the top layer, leaving an invisible dialog that
+  // still blocks the page.
+  const initialOpen = useRef(open).current
+  // Whether THIS effect already promoted the dialog into the top layer.
+  const promoted = useRef(false)
 
   useEffect(() => {
     const dialog = ref.current
@@ -944,14 +953,41 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
       else dialog.removeAttribute('open')
       return
     }
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
+    if (open) {
+      // An `open` attribute (the server markup, or React's own first client
+      // render) leaves the dialog open but NOT modal, and showModal() throws
+      // on an open NON-modal one: a `!dialog.open` guard would skip it and
+      // leave it non-modal forever. Drop the attribute, then promote it.
+      // removeAttribute, never close(): close() fires a close event, and a
+      // controlled parent answers that by setting open back to false, which
+      // closes the modal it just server-rendered open.
+      // Exactly once, though. showModal() on an already modal dialog returns
+      // early by spec, but dropping the attribute first walks past that early
+      // return, and the second call records whatever is focused INSIDE the
+      // dialog as the element to restore: close() then aims focus at a hidden
+      // node and it falls to the body instead of the trigger. StrictMode
+      // double-invokes this effect in development, which is the default in
+      // Next.js and in the Vite and CRA templates.
+      // A ref, not `dialog.matches(':modal')`: that selector throws a
+      // SyntaxError in Chrome 61 to 104, which have <dialog> without `:modal`
+      // and are inside the README floor.
+      if (!dialog.open) dialog.showModal()
+      else if (!promoted.current) {
+        dialog.removeAttribute('open')
+        dialog.showModal()
+      }
+      promoted.current = true
+    } else {
+      promoted.current = false
+      if (dialog.open) dialog.close()
+    }
   }, [open])
 
   return (
     <dialog
       ref={ref}
       className={className ? `sv-pop ${className}` : 'sv-pop'}
+      open={initialOpen}
       onClose={onClose}
       {...rest}
     >

@@ -358,6 +358,41 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 1b. A Modal rendered open is open in the SERVER markup: with JS off (or
+// before hydration) its content is on screen, and a closed one is still
+// hidden. The real component's own renderToStaticMarkup output, not a
+// hand-copied dialog, so dropping the `open` attribute fails here (ADU-156) ──
+{
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Modal } = await import('../../../dist/react/index.js')
+  const markup =
+    renderToStaticMarkup(
+      React.createElement(Modal, { open: true }, React.createElement('p', { id: 'shown' }, 'a server-rendered modal'))
+    ) +
+    renderToStaticMarkup(
+      React.createElement(Modal, { open: false }, React.createElement('p', { id: 'gone' }, 'a closed modal'))
+    )
+  const page = await browser.newPage()
+  await page.setJavaScriptEnabled(false)
+  await page.setContent(
+    `<!doctype html><html><head><style>${STYLES_CSS}</style></head><body>${markup}</body></html>`
+  )
+  await new Promise((done) => setTimeout(done, 600)) // --sv-pop-duration is 350ms
+  const r = await page.evaluate(() => {
+    const visible = (id) => {
+      const el = document.getElementById(id)
+      const cs = getComputedStyle(el)
+      const box = el.getBoundingClientRect()
+      return cs.visibility !== 'hidden' && cs.opacity !== '0' && box.width > 0 && box.height > 0
+    }
+    return { open: visible('shown'), closed: visible('gone') }
+  })
+  check('no-JS: a Modal rendered open shows its content', r.open === true)
+  check('no-JS: a Modal rendered closed keeps its content hidden', r.closed === false)
+  await page.close()
+}
+
 // ── 2. With JS → hiding only ever happens under html.sv-on ──
 {
   const page = await browser.newPage()
