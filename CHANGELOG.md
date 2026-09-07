@@ -1338,6 +1338,56 @@ Docs read against the code merged by the five round-5 code tickets.
   lines down. `removeSplit` was the only other early-exit path that guard
   had skipped.
 
+### Gallery (blind review round 6)
+Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
+- `sticky-steps`'s CSS tab now resets `.st-steps > li` to opacity 1 under
+  reduced motion too, not only `.st-shot`: ADU-144 fixed this in
+  the installed component but never in the tab the docs tell a reader to
+  paste, so pasted code left every non-active step at 30% opacity forever
+  under reduce. The reset sits in its own
+  `@media (prefers-reduced-motion: reduce)` block placed AFTER
+  `.st-steps > li { opacity: calc(...) }`, mirroring the installed
+  component: both selectors are `.st-steps > li`, so with equal specificity
+  the later rule in source order wins whichever one the media query matches,
+  and a reset written into the existing media block above the base rule
+  never applies. A gate (`test/cli-components.test.mjs`) compares, for
+  every Section with both a CSS tab and an installed component, the
+  selectors inside each side's `@media (prefers-reduced-motion: reduce)`
+  block, past the installed component's own wrapper-class scoping
+  (`.sv-hero`, `.sv-steps`, ...) and past chrome the installed component
+  renders that the tab never documents (sticky-steps' dots), and fails on
+  any drift. Audited every other effect for the same split: `hero-cinematic`
+  already agreed on both sides; `timeline-scrub` and `stats-countup` carry
+  no reduced-motion block on either side; `coverflow-slider`'s tab and
+  installed component reset the same three properties under its own,
+  differently named class (`.slide` against `.cf-slide`), a naming choice
+  the Sliders category is free to make, not drift, so the gate is scoped to
+  Sections the same way the CSS/React pane-pairing gate above already is.
+- Second pass (verifier findings on 29669c0): that selector-text gate could
+  not see either half of the defect it was written for, because it reads
+  selectors and never declarations or cascade position. The e2e harness now
+  judges the rendered result instead. `demo/bench/harness/installed-gate.mjs`
+  renders every Section's CSS tab on its own (the tab's markup, only the
+  tab's CSS, `html.sv-on` and the driver's own variables set by hand, under
+  `prefers-reduced-motion: reduce`) and runs the identical probe the
+  installed component passes: the reduced-motion assertion is now one
+  function shared by both spellings of a section rather than two that drift.
+  Proved red in Chrome on both mutations, the wrong value and the wrong
+  cascade position, each of which leaves the selector-text gate green.
+- Third pass (verifier finding on the same round): `splitPane` in
+  `demo/bench/harness/installed-gate.mjs` sliced a gallery CSS tab into
+  markup and CSS on the first blank line without checking that one was
+  found. If a reformat of `scripts/fx-data.mjs` ever collapses that blank
+  line, `markup` becomes nearly the whole pane, CSS text included as
+  unstyled nodes, `css` becomes one character, and the rendered page
+  carries no applied stylesheet at all, so the reduced-motion probe passed
+  by coincidence rather than by the behavior it claims to check, exactly
+  the silent failure the file's own comment promised could not happen.
+  `splitPane` now throws a named error when the separator is missing.
+  Proved red by collapsing the blank line in `sticky-steps`'s CSS tab and
+  green again once restored; a unit test (`test/installed-gate.test.mjs`)
+  covers both the throw and the ordinary split.
+
 ### Canvas (blind review round 6)
 - An engine whose CSSOM has no `aspect-ratio` at all (below the README's
   Safari 12.1 canvas gate) no longer has its canvas marked `pinned`. The

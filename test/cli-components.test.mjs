@@ -421,6 +421,60 @@ for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.r
   })
 }
 
+// ---- ADU-155: the CSS tab's reduced-motion block is what a reader pastes;
+// ADU-144 fixed the installed component's own block and stopped there, so the
+// tab kept resetting `.st-shot` only and every non-active step stayed at 30%
+// opacity forever under reduce. Installed components scope every selector
+// under their own root class (`.sv-hero`, `.sv-steps`, ...), the only allowed
+// spelling difference from the CSS tab's bare selectors, stripped before
+// comparing. Chrome the installed component adds beyond what the CSS tab
+// documents (sticky-steps' dots) is exempt: the tab's own markup never
+// renders it, so there is nothing there to reset. Sections only, same reason
+// as the pane-pairing gate above: a Slider's installed component can rename
+// its own class entirely (coverflow-slider's `.slide` becomes `.cf-slide`),
+// which is a naming choice, not drift.
+const reducedMotionSelectors = (pane, scope) => {
+  const selectors = new Set()
+  for (const [, block] of stripComments(pane).matchAll(
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+  ))
+    for (const [, sel] of block.matchAll(/([^{}]+)\{[^{}]*\}/g))
+      for (const one of sel.split(','))
+        selectors.add(
+          one
+            .trim()
+            .split(/\s+/)
+            .filter((t) => t !== `.${scope}`)
+            .join(' ')
+        )
+  return selectors
+}
+const wrapperScope = (content) => content.match(/className=\{className \? '([\w-]+) ' \+ className : '\1'\}/)?.[1]
+const documentedClasses = (pane) => new Set([...classesIn(pane), ...cssPaneClasses(pane)])
+// keep only selectors whose class the OTHER pane documents too: a class one
+// pane never renders has nothing there to compare a reset against
+const sharedSelectors = (selectors, otherDocumented) =>
+  [...selectors].filter((sel) => selectorClasses(sel).some((c) => otherDocumented.has(c)))
+
+for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && COMPONENTS[e.slug])) {
+  test(`gallery ${fx.slug}: the CSS tab and the installed component reset the same classes under reduced motion`, () => {
+    const installed = COMPONENTS[fx.slug].content
+    const cssSelectors = sharedSelectors(reducedMotionSelectors(fx.css), documentedClasses(installed))
+    const installedSelectors = sharedSelectors(
+      reducedMotionSelectors(installed, wrapperScope(installed)),
+      documentedClasses(fx.css)
+    )
+    const missing = installedSelectors.filter((s) => !cssSelectors.includes(s))
+    const extra = cssSelectors.filter((s) => !installedSelectors.includes(s))
+    assert.deepEqual(
+      { missing, extra },
+      { missing: [], extra: [] },
+      `installed component resets \`${missing.join('`, `')}\` under reduced motion, the CSS tab does not; ` +
+        `the CSS tab resets \`${extra.join('`, `')}\`, the installed component does not`
+    )
+  })
+}
+
 // ---- ADU-144: a "paste the preset" block is copied by a reader with no
 // core.css installed: every var(--sv-*) it reads needs its own fallback, or
 // the whole declaration (or, worse, the transition shorthand around it) is
