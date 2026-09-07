@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Tooling (blind review round 6)
+- Git pushes no longer create Vercel deployments. Production is deployed by
+  `npm run demo:deploy`, which runs `vercel deploy --prod` from `demo/` and
+  reads `demo/vercel.json`, so the public site is unaffected. Every push of a
+  work branch used to create a preview deployment that the project's
+  ignored-build-step cancelled straight away, and a cancelled deployment
+  still counts against the account's shared daily quota: 61 of the last 100
+  deployments were cancelled scrollvars builds, which exhausted the
+  allowance and blocked another project's production deploys.
+
 Blind review round 3 (Codex gpt-6-astra on commit 677656b): the CSS
 enhancement contract holds in every documented case. Second pass (verifier
 findings on the same round): three more defects fixed.
