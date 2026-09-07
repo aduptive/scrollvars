@@ -681,7 +681,7 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
   </div>
   <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
     <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
   </div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->

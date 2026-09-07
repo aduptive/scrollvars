@@ -17,6 +17,11 @@
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite;
 }
+/* the duplicate copy: a class, not inline style, so reduced motion below
+   overrides it without !important. */
+.sv-marquee-track > .sv-marquee-dup {
+  display: contents;
+}
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track {
   animation-play-state: var(--sv-marquee-hover, paused);
@@ -56,11 +61,10 @@
     width: auto;
     flex-wrap: wrap;
   }
-  /* The duplicate copy carries an inline display: contents (see Marquee in
-     src/react/index.tsx and the vanilla markup), which outranks any
-     selector-based display without !important. */
-  .sv-marquee-track > [aria-hidden] {
-    display: none !important;
+  /* wins on source order, no !important; narrower than [aria-hidden] so
+     a consumer's own aria-hidden child is not caught. */
+  .sv-marquee-track > .sv-marquee-dup {
+    display: none;
   }
   .sv-accordion::details-content {
     transition: none;

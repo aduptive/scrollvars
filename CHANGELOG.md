@@ -34,6 +34,32 @@ which is what let two rounds of tests pass on broken code.
   fixture actually replaces a child, and `destroy()` disconnecting it is
   asserted rather than assumed.
 
+### Toggles (round 7 follow-up, ADU-172)
+- A trigger nested inside two `toggles()` scopes is now toggled exactly
+  once per click, by the nearest scope. `toggles(root?)` is public
+  two-argument API and the documented setup runs two instances at once:
+  `<ScrollVarsBoot />` calls it unscoped while a consumer calls it on
+  their own root. A trigger inside both was contained by both, since
+  containment is inclusive rather than nearest-exclusive, so both
+  instances flipped the same class on one click and the toggle netted to
+  nothing: after one click and after two clicks alike the panel was
+  closed, `--sv-state` was 0 and `aria-expanded` was false. The user saw
+  a button that does nothing. The first instance that acts on a click now
+  claims it and every later one bails, which is the nearest scope by
+  dispatch order: a scope containing the trigger is an ancestor-or-self
+  of it, so it sits on the event's bubble path, and that path runs inner
+  to outer. Two unscoped instances (the same bug without nesting) tie on
+  registration order and still toggle once. The claim is keyed by the
+  event object and taken on action rather than on sight, so a scope that
+  cannot resolve the trigger's target still passes the click on to a
+  wider scope that can, and `stop()` needs no bookkeeping: the claim lives
+  exactly as long as the event object does, and a re-dispatched Event
+  object is a silent no-op. One consequence, and the price of single
+  ownership: only the owning scope's sync runs, so a duplicate trigger of
+  the same target and class outside that scope keeps its previous
+  aria-expanded until a click the wider scope owns. Pre-existing since
+  scoped `toggles()`, not a regression. No public surface change.
+
 ### Docs (round 7, ADU-170)
 Docs read against the code merged by the five round-7 code tickets.
 - README's and the docs page's below-the-floor paragraphs no longer say
@@ -237,10 +263,27 @@ Docs read against the code merged by the five round-7 code tickets.
   the first screen was unreachable for a reduce user while everyone else
   saw the whole strip. The reduce block now wraps the track
   (`width: auto; flex-wrap: wrap`, matching the rail's own reduce-mode
-  wrap in `styles/pin.css`) and hides the aria-hidden duplicate copy
-  (`.sv-marquee-track > [aria-hidden] { display: none !important }`, the
-  `!important` needed because the duplicate carries its own inline
-  `display: contents`, which outranks any plain selector).
+  wrap in `styles/pin.css`), a genuine accessibility fix, and hides the
+  duplicate copy. Measured, the duplicate already carried `inert` and
+  reached the accessibility tree with zero extra nodes before this fix:
+  hiding it is a visual correction, not an accessibility one, without it
+  the duplicate's children wrap into view and the marquee's height goes
+  from 96 to 240px.
+
+### Presets, React and Gallery (round 7 follow-up, ADU-171)
+- The marquee's duplicate copy is hidden by a class, not by an inline
+  style: `styles/ui.css` now declares
+  `.sv-marquee-track > .sv-marquee-dup { display: contents }`, reset to
+  `display: none` under `prefers-reduced-motion: reduce` with no
+  `!important` needed. The React `Marquee` (`src/react/index.tsx`) and
+  the gallery's vanilla markup (`scripts/fx-data.mjs`) drop the inline
+  `style="display: contents"` on the duplicate and carry the class
+  instead.
+- The reduce rule targeted `.sv-marquee-track > [aria-hidden]`, matched
+  by attribute presence: a consumer's own direct child of the track
+  carrying `aria-hidden="false"` was hidden too. The selector is now
+  `.sv-marquee-track > .sv-marquee-dup`, which only ever matches the
+  duplicate.
 
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by

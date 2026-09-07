@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.6 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.6 KB, styles 9.0 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.2 KB on the wire.
 
 ## Why
 

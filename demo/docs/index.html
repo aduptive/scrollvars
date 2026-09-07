@@ -306,6 +306,11 @@ which is what let two rounds of tests pass on broken code.
 <li>The slider suite installed a ResizeObserver at 18 sites and a MutationObserver at one, though MutationObserver is from 2012 and ResizeObserver from 2018, which left the re-render resync (a childList record re-observes the slides and re-measures) off for the whole file bar one test. It is file-wide now, delivering only when a fixture actually replaces a child, and <code>destroy()</code> disconnecting it is asserted rather than assumed.</li>
 </ul>
 
+<h4>Toggles (round 7 follow-up, ADU-172)</h4>
+<ul>
+<li>A trigger nested inside two <code>toggles()</code> scopes is now toggled exactly once per click, by the nearest scope. <code>toggles(root?)</code> is public two-argument API and the documented setup runs two instances at once: <code>&lt;ScrollVarsBoot /></code> calls it unscoped while a consumer calls it on their own root. A trigger inside both was contained by both, since containment is inclusive rather than nearest-exclusive, so both instances flipped the same class on one click and the toggle netted to nothing: after one click and after two clicks alike the panel was closed, <code>--sv-state</code> was 0 and <code>aria-expanded</code> was false. The user saw a button that does nothing. The first instance that acts on a click now claims it and every later one bails, which is the nearest scope by dispatch order: a scope containing the trigger is an ancestor-or-self of it, so it sits on the event's bubble path, and that path runs inner to outer. Two unscoped instances (the same bug without nesting) tie on registration order and still toggle once. The claim is keyed by the event object and taken on action rather than on sight, so a scope that cannot resolve the trigger's target still passes the click on to a wider scope that can, and <code>stop()</code> needs no bookkeeping: the claim lives exactly as long as the event object does, and a re-dispatched Event object is a silent no-op. One consequence, and the price of single ownership: only the owning scope's sync runs, so a duplicate trigger of the same target and class outside that scope keeps its previous aria-expanded until a click the wider scope owns. Pre-existing since scoped <code>toggles()</code>, not a regression. No public surface change.</li>
+</ul>
+
 <h4>Docs (round 7, ADU-170)</h4>
 Docs read against the code merged by the five round-7 code tickets.
 <ul>
@@ -361,7 +366,13 @@ Docs read against the code merged by the five round-7 code tickets.
 
 <h4>Presets (round 7, ADU-166)</h4>
 <ul>
-<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>) and hides the aria-hidden duplicate copy (<code>.sv-marquee-track > [aria-hidden] { display: none !important }</code>, the <code>!important</code> needed because the duplicate carries its own inline <code>display: contents</code>, which outranks any plain selector).</li>
+<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>), a genuine accessibility fix, and hides the duplicate copy. Measured, the duplicate already carried <code>inert</code> and reached the accessibility tree with zero extra nodes before this fix: hiding it is a visual correction, not an accessibility one, without it the duplicate's children wrap into view and the marquee's height goes from 96 to 240px.</li>
+</ul>
+
+<h4>Presets, React and Gallery (round 7 follow-up, ADU-171)</h4>
+<ul>
+<li>The marquee's duplicate copy is hidden by a class, not by an inline style: <code>styles/ui.css</code> now declares <code>.sv-marquee-track > .sv-marquee-dup { display: contents }</code>, reset to <code>display: none</code> under <code>prefers-reduced-motion: reduce</code> with no <code>!important</code> needed. The React <code>Marquee</code> (<code>src/react/index.tsx</code>) and the gallery's vanilla markup (<code>scripts/fx-data.mjs</code>) drop the inline <code>style="display: contents"</code> on the duplicate and carry the class instead.</li>
+<li>The reduce rule targeted <code>.sv-marquee-track > [aria-hidden]</code>, matched by attribute presence: a consumer's own direct child of the track carrying <code>aria-hidden="false"</code> was hidden too. The selector is now <code>.sv-marquee-track > .sv-marquee-dup</code>, which only ever matches the duplicate.</li>
 </ul>
 
 <h4>Tooling (blind review round 6)</h4>

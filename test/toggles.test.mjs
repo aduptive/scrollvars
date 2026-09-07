@@ -417,3 +417,114 @@ test('toggles: a trigger above the scope root is ignored, even when closest() wa
   assert.ok(!outerTrigger.classes.has('open'), 'a trigger outside the scope is never toggled by this scope\'s click handler')
   assert.equal(outerTrigger.attrs['aria-expanded'], undefined, 'and never gets aria-expanded from a scope that does not own it')
 })
+
+// a scope root that knows its own members: contains() answers from them, and
+// the two queries toggles() makes (the '#menu' target and every trigger) see
+// only what is inside. A flat `contains: () => true` cannot model nesting.
+function makeRoot(members) {
+  const listeners = {}
+  return {
+    listeners,
+    contains: (el) => members.includes(el),
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: (t) => delete listeners[t],
+    querySelector: (sel) =>
+      sel === '#menu' ? members.find((m) => m.attrs.id === 'menu') ?? null : null,
+    querySelectorAll: (sel) =>
+      sel === '[data-sv-toggle]' ? members.filter((m) => 'data-sv-toggle' in m.attrs) : [],
+  }
+}
+// one event object down the bubble path, innermost scope first: a scope that
+// contains the trigger is an ancestor-or-self of it, so it is on the path,
+// and the browser runs the path inner to outer. Roots are passed in that
+// order, and a stopped instance simply has no listener left to call.
+const bubble = (target, roots) => {
+  const event = { target }
+  roots.forEach((root) => root.listeners.click?.(event))
+}
+
+test('toggles: a trigger inside two nested scopes toggles exactly once per click (ADU-172)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?nested-scopes')
+
+  // the library's own documented setup: <ScrollVarsBoot /> boots one instance
+  // unscoped, a consumer boots a second one on their own root. A trigger
+  // nested inside both is contained by both, and containment is inclusive,
+  // so both instances used to flip the same class on one click and the user
+  // saw a button that does nothing.
+  const menu = makeElement({ id: 'menu' })
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const outer = makeRoot([menu, trigger])
+  const inner = makeRoot([menu, trigger])
+
+  toggles(outer)
+  toggles(inner)
+
+  bubble(trigger, [inner, outer])
+  assert.ok(menu.classes.has('open'), 'one click opens the panel instead of netting to nothing')
+  assert.equal(menu.vars['--sv-state'], '1', 'and the state variable is visible, not toggled back to 0')
+  assert.equal(trigger.attrs['aria-expanded'], 'true')
+
+  bubble(trigger, [inner, outer])
+  assert.ok(!menu.classes.has('open'), 'the second click closes it')
+  assert.equal(menu.vars['--sv-state'], '0')
+  assert.equal(trigger.attrs['aria-expanded'], 'false')
+
+  bubble(trigger, [inner, outer])
+  assert.ok(menu.classes.has('open'), 'and the third opens it again: one click, one state change, forever')
+})
+
+test('toggles: each scope alone owns the trigger, and stopping one hands it over without leaking (ADU-172)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?nested-scopes-destroy')
+
+  const menu = makeElement({ id: 'menu' })
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const outer = makeRoot([menu, trigger])
+  const inner = makeRoot([menu, trigger])
+
+  // the outer scope alone
+  const stopOuter = toggles(outer)
+  bubble(trigger, [outer])
+  assert.ok(menu.classes.has('open'), 'the outer scope alone still toggles')
+  bubble(trigger, [outer])
+  assert.ok(!menu.classes.has('open'))
+  stopOuter()
+
+  // the inner scope alone
+  const stopInnerOnly = toggles(inner)
+  bubble(trigger, [inner])
+  assert.ok(menu.classes.has('open'), 'the inner scope alone still toggles')
+  bubble(trigger, [inner])
+  assert.ok(!menu.classes.has('open'))
+  stopInnerOnly()
+
+  // both live, then the nearer one is destroyed: the outer takes the trigger
+  // over on the very next click, with nothing left over from the instance
+  // that used to claim it
+  const stopOuterAgain = toggles(outer)
+  const stopInner = toggles(inner)
+  bubble(trigger, [inner, outer])
+  assert.ok(menu.classes.has('open'), 'nested: one click, one toggle')
+  stopInner()
+  assert.equal(inner.listeners.click, undefined, 'the destroyed instance stops listening')
+  bubble(trigger, [inner, outer])
+  assert.ok(!menu.classes.has('open'), 'the surviving outer scope owns the trigger now')
+  bubble(trigger, [inner, outer])
+  assert.ok(menu.classes.has('open'), 'and keeps owning it')
+
+  // both destroyed: no listener anywhere, and no leftover ownership state to
+  // poison the next instance
+  stopOuterAgain()
+  assert.equal(outer.listeners.click, undefined, 'nothing is registered once both instances are stopped')
+  assert.equal(inner.listeners.click, undefined)
+  bubble(trigger, [inner, outer])
+  assert.ok(menu.classes.has('open'), 'a click with no live instance changes nothing')
+
+  const stopFresh = toggles(inner)
+  bubble(trigger, [inner])
+  assert.ok(!menu.classes.has('open'), 'a fresh instance after every stop() works from the first click')
+  stopFresh()
+})

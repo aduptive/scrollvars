@@ -319,8 +319,10 @@ const MIN_EXAMINED = 1
 // clipping (ADU-166). A reduce user gets no animation and no scroller, so
 // leaving width: max-content inside overflow: hidden traps everything past
 // the first screen; the reduce block must wrap the track and hide the
-// aria-hidden duplicate copy, matching the rail's own reduce-mode wrap in
-// styles/pin.css.
+// duplicate copy, matching the rail's own reduce-mode wrap in
+// styles/pin.css. The duplicate is hidden by the .sv-marquee-dup class, not
+// by an [aria-hidden] attribute selector (ADU-171): a consumer's own direct
+// child of .sv-marquee-track carrying aria-hidden="false" must stay visible.
 {
   const page = await browser.newPage()
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
@@ -329,7 +331,8 @@ const MIN_EXAMINED = 1
   await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
     <body><div class="sv-marquee" id="marq"><div class="sv-marquee-track" id="track">
       ${item()}${item()}${item()}${item('last')}
-      <span aria-hidden="true" inert style="display:contents">${item()}${item()}${item()}${item()}</span>
+      <span id="consumer" aria-hidden="false">note</span>
+      <span class="sv-marquee-dup" aria-hidden="true" inert>${item()}${item()}${item()}${item()}</span>
     </div></div></body></html>`)
   const r = await page.evaluate(() => {
     const marquee = document.getElementById('marq')
@@ -341,7 +344,8 @@ const MIN_EXAMINED = 1
       rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
       innerWidth,
       innerHeight,
-      duplicateDisplay: getComputedStyle(track.querySelector('[aria-hidden]')).display,
+      duplicateDisplay: getComputedStyle(track.querySelector('.sv-marquee-dup')).display,
+      consumerDisplay: getComputedStyle(document.getElementById('consumer')).display,
     }
   })
   const lastInViewport =
@@ -357,9 +361,14 @@ const MIN_EXAMINED = 1
     `rect=${JSON.stringify(r.rect)} viewport=${r.innerWidth}x${r.innerHeight}`
   )
   check(
-    'reduced motion: the aria-hidden duplicate copy is hidden, not just paused (ADU-166)',
+    'reduced motion: the duplicate copy (.sv-marquee-dup) is hidden, not just paused (ADU-166)',
     r.duplicateDisplay === 'none',
     r.duplicateDisplay
+  )
+  check(
+    'reduced motion: a consumer\'s own aria-hidden="false" child of .sv-marquee-track is not caught by the duplicate rule (ADU-171)',
+    r.consumerDisplay !== 'none',
+    r.consumerDisplay
   )
   await page.close()
 }
