@@ -8,7 +8,13 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { varsMarkdown, measureSizes } from './docs-data.mjs'
+import {
+  varsMarkdown,
+  measureSizes,
+  compatPresetsFlat,
+  compatPresetsGrouped,
+  COMPAT_PRESET_NOTES,
+} from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const sizes = measureSizes(root)
@@ -21,6 +27,32 @@ const STYLE_NOTES = {
   // only stylesheet that declares it: state.css alone leaves it at act zero
   state: 'toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too)',
   ui: 'marquee, accordion',
+}
+
+/** Greedy wrap to `width` columns, `prefix` on every line. */
+const wrap = (text, prefix = '', width = 76) => {
+  const lines = []
+  let line = ''
+  for (const word of text.split(/\s+/)) {
+    if (line && prefix.length + line.length + 1 + word.length > width) {
+      lines.push(prefix + line)
+      line = word
+    } else line = line ? `${line} ${word}` : word
+  }
+  if (line) lines.push(prefix + line)
+  return lines.join('\n')
+}
+
+/**
+ * Replaces the text between two anchors, throwing when an anchor moves.
+ * Used where a marker comment cannot go: inside a Markdown paragraph (an
+ * HTML comment on its own line would split it) and inside shipped source.
+ */
+const between = (text, before, after, body, label) => {
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`(${esc(before)})[\\s\\S]*?(${esc(after)})`)
+  if (!re.test(text)) throw new Error(`${label}: anchor text not found, wording moved`)
+  return text.replace(re, (m, a, b) => a + body + b)
 }
 
 const stamp = (text, name, body) => {
@@ -54,6 +86,14 @@ const intro = /Measured \(JS min\+gzip, CSS gzip as shipped\): driver [\d.]+ KB,
 if (!intro.test(readme)) throw new Error('README intro sizes sentence not found')
 readme = readme.replace(intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`)
 readme = readme.replace(/Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`)
+// compat's fallback preset list, one of three surfaces rendered from COMPAT_PRESETS
+readme = between(
+  readme,
+  'stylesheet for\n',
+  '\n(written without',
+  wrap(compatPresetsGrouped((n) => `\`${n}\``)),
+  'README.md Extended floor paragraph'
+)
 writeFileSync(join(root, 'README.md'), readme)
 
 // AGENTS
@@ -63,6 +103,21 @@ agents = agents.replace(/^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*
 agents = agents.replace(/^\/\/ also styles\/pin\.css[^\n]*$/m,
   `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`)
 writeFileSync(join(root, 'AGENTS.md'), agents)
+
+// src/compat/index.ts: the header comment ships to npm inside dist, and its
+// copy of the preset list is the one that escaped in ADU-159. Stamped from the
+// same data, so it cannot say something README does not. The build ahead of
+// this step used the pre-stamp comment; comments never reach the measured
+// (minified) sizes, and `npm test` rebuilds before it runs.
+const compatPath = join(root, 'src', 'compat', 'index.ts')
+const compat = between(
+  readFileSync(compatPath, 'utf8'),
+  'the same presets README lists:\n',
+  '\n *     Written without',
+  wrap(`${compatPresetsFlat(COMPAT_PRESET_NOTES)}.`, ' *     '),
+  'src/compat/index.ts header comment'
+)
+writeFileSync(compatPath, compat)
 
 // llms.txt = AGENTS.md with the machine-facing header
 const body = agents.split('\n').slice(1).join('\n')

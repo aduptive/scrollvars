@@ -260,10 +260,8 @@ lands: a released stage can also leave a parked curtain panel sitting outside it
 the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
 three feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for the
-reveal presets (<code>sv-rise</code>, <code>sv-fade</code>, <code>sv-slide-l</code>,
-<code>sv-slide-r</code>, <code>sv-auto</code>, <code>sv-drift</code>) and the pin presets
-<code>sv-curtain-l</code>, <code>sv-curtain-r</code> and <code>sv-rail</code>, written
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
+the reveal presets (<code>sv-rise</code>, <code>sv-fade</code>, <code>sv-slide-l</code>, <code>sv-slide-r</code>, <code>sv-auto</code>, <code>sv-drift</code>) and the pin presets <code>sv-curtain-l</code>, <code>sv-curtain-r</code> and <code>sv-rail</code>, written
 without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
 <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
 declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
@@ -299,7 +297,8 @@ compat()   // once, before anything else</code></pre>
 
 <h4>Tooling (round 7 follow-up, ADU-176)</h4>
 <ul>
-<li>Three prose claims that live in both a shipped source comment (tsc emits it verbatim into dist) and README.md now have a test holding them in step, instead of a CLAUDE.md rule nobody enforced: the compat fallback preset list (<code>src/compat/index.ts</code>'s header vs README's Extended floor paragraph), the driver's pin-helper release condition (<code>src/core/driver.ts</code>'s <code>track()</code> comment vs README's pinning paragraph), and the <code>--sv-pin-offset</code> resolved-unit list (the same two files). The same pair escaped three times: ADU-159 shipped a false sentence through the compat header, ADU-168's narrowing missed the driver's own pin comment, ADU-170's first pass missed it again. Each test extracts the claim from both real files and compares them to each other, never to a copy hand-typed a third time in the test, so a claim that changes on one side only fails loudly instead of drifting silently. No behavior change.</li>
+<li>The compat fallback preset list had THREE hand-typed copies, not two: <code>src/compat/index.ts</code>'s header comment (which tsc emits verbatim into dist and npm ships), README's Extended floor paragraph, and the "Older targets" paragraph in <code>scripts/docs-build.mjs</code> that renders /docs/. Nothing held them together, and the list already escaped once that way (ADU-159 shipped a false sentence to npm). All three now render from a single <code>COMPAT_PRESETS</code> in <code>scripts/docs-data.mjs</code>: <code>docs-stamp.mjs</code> writes the first two, <code>docs-build.mjs</code> interpolates the third, and the CI gate diffs <code>src/compat/index.ts</code> alongside the other generated files. Editing the prose by hand is now the thing that fails, and the second and third edits stop being needed at all.</li>
+<li>Two prose claims that live in both a shipped source comment and README.md now have a test holding them to the code they describe, instead of a CLAUDE.md rule nobody enforced: the driver's pin-helper release condition (<code>src/core/driver.ts</code>'s <code>track()</code> comment vs README's pinning paragraph, compared as full normalised text), and <code>--sv-pin-offset</code>'s unit resolution, where both prose copies are now checked against <code>readPinOffset</code>'s own <code>switch</code> rather than against a list of unit names. A unit list keeps every token when a unit changes MEANING: a comment that resolved <code>vh</code>, <code>svh</code>, <code>lvh</code> and <code>dvh</code> against <code>window.innerWidth</code> instead of <code>innerHeight</code> passed a token comparison clean, and fails now. Same for <code>COMPAT_PRESETS</code>: its reveal/pin split is checked against the fallback stylesheet, since a preset in the wrong group is a wrong claim about which module a consumer needs. No behavior change.</li>
 </ul>
 
 <h4>Toggles (round 7 follow-up, ADU-172)</h4>

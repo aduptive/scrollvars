@@ -3,19 +3,30 @@
 ## Unreleased
 
 ### Tooling (round 7 follow-up, ADU-176)
-- Three prose claims that live in both a shipped source comment (tsc
-  emits it verbatim into dist) and README.md now have a test holding
-  them in step, instead of a CLAUDE.md rule nobody enforced: the compat
-  fallback preset list (`src/compat/index.ts`'s header vs README's
-  Extended floor paragraph), the driver's pin-helper release condition
-  (`src/core/driver.ts`'s `track()` comment vs README's pinning
-  paragraph), and the `--sv-pin-offset` resolved-unit list (the same two
-  files). The same pair escaped three times: ADU-159 shipped a false
-  sentence through the compat header, ADU-168's narrowing missed the
-  driver's own pin comment, ADU-170's first pass missed it again. Each
-  test extracts the claim from both real files and compares them to each
-  other, never to a copy hand-typed a third time in the test, so a claim
-  that changes on one side only fails loudly instead of drifting silently.
+- The compat fallback preset list had THREE hand-typed copies, not two:
+  `src/compat/index.ts`'s header comment (which tsc emits verbatim into
+  dist and npm ships), README's Extended floor paragraph, and the "Older
+  targets" paragraph in `scripts/docs-build.mjs` that renders /docs/.
+  Nothing held them together, and the list already escaped once that way
+  (ADU-159 shipped a false sentence to npm). All three now render from a
+  single `COMPAT_PRESETS` in `scripts/docs-data.mjs`: `docs-stamp.mjs`
+  writes the first two, `docs-build.mjs` interpolates the third, and the
+  CI gate diffs `src/compat/index.ts` alongside the other generated
+  files. Editing the prose by hand is now the thing that fails, and the
+  second and third edits stop being needed at all.
+- Two prose claims that live in both a shipped source comment and
+  README.md now have a test holding them to the code they describe,
+  instead of a CLAUDE.md rule nobody enforced: the driver's pin-helper
+  release condition (`src/core/driver.ts`'s `track()` comment vs README's
+  pinning paragraph, compared as full normalised text), and
+  `--sv-pin-offset`'s unit resolution, where both prose copies are now
+  checked against `readPinOffset`'s own `switch` rather than against a
+  list of unit names. A unit list keeps every token when a unit changes
+  MEANING: a comment that resolved `vh`, `svh`, `lvh` and `dvh` against
+  `window.innerWidth` instead of `innerHeight` passed a token comparison
+  clean, and fails now. Same for `COMPAT_PRESETS`: its reveal/pin split
+  is checked against the fallback stylesheet, since a preset in the wrong
+  group is a wrong claim about which module a consumer needs.
   No behavior change.
 
 ### Toggles (round 7 follow-up, ADU-172)

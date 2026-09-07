@@ -541,9 +541,11 @@ scroll sideways to an empty panel.
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
 on old ones it installs a ResizeObserver stub (viewport-resize backed), an
 always-visible IntersectionObserver stub, and a `transform:`-based fallback
-stylesheet for the reveal presets (`sv-rise`, `sv-fade`, `sv-slide-l`,
-`sv-slide-r`, `sv-auto`, `sv-drift`) and the pin presets `sv-curtain-l`,
-`sv-curtain-r` and `sv-rail` (written without `:is()`/`clamp()`/`min()`;
+stylesheet for
+the reveal presets (`sv-rise`, `sv-fade`, `sv-slide-l`, `sv-slide-r`,
+`sv-auto`, `sv-drift`) and the pin presets `sv-curtain-l`, `sv-curtain-r`
+and `sv-rail`
+(written without `:is()`/`clamp()`/`min()`;
 the one `max()` left, drift's fade, sits behind a plain `opacity`
 declaration that old parsers keep). `sv-deck` unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs

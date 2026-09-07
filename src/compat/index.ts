@@ -17,11 +17,11 @@
 *     the canvas harness simply never auto-pauses offscreen.
  *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
- *     re-expresses with `transform:` the same nine presets README lists:
+ *     re-expresses with `transform:` the same presets README lists:
  *     sv-rise, sv-fade, sv-slide-l, sv-slide-r, sv-auto (its auto-ordered
- *     children), sv-drift, sv-curtain-l, sv-curtain-r, sv-rail. Written
- *     without :is(), clamp() or min() so the old parser accepts it; the
- *     one max() left, drift's fade, sits behind a plain opacity
+ *     children), sv-drift, sv-curtain-l, sv-curtain-r, sv-rail.
+ *     Written without :is(), clamp() or min() so the old parser accepts
+ *     it; the one max() left, drift's fade, sits behind a plain opacity
  *     declaration that parser keeps. Two presets stay static, one
  *     reason each:
  *       sv-deck, unstacked here to a static, non-overlapping layout
