@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+### Docs (ADU-181)
+- The "fully animated" browser floor had FIVE hand-typed copies and two of
+  them had drifted: `docs/integration.md` and `demo/index.html` said
+  Firefox 74+ (Mar 2020), which is not a bound anything in the code sets.
+  README, AGENTS.md and `scripts/docs-build.mjs`'s /docs/ template already
+  agreed on the true number, Firefox 78+ (Jun 2020): Firefox shipped
+  individual transform properties (`translate:`/`rotate:`/`scale:` as
+  their own CSS properties, the other half of the floor) in 72, Jan 2020,
+  but `:is()`/`:where()` only in 78; without `:is()`/`:where()` a parser
+  drops the whole `.sv-on :is(.sv, [data-sv]) ...` selector list that
+  core.css, pin.css and state.css write for every enhanced-path rule, so
+  78 is Firefox's real binding constraint, not 72 or 74. Chrome (104, Aug
+  2022) and Safari (14.1, Apr 2021) are bound by individual transforms
+  either way, both already past their own `:is()`/`:where()` floors. Fixed
+  the two wrong copies to Firefox 78+.
+
+### Tooling (ADU-181)
+- The browser floor's five copies now render from one `BROWSER_FLOOR` in
+  `scripts/docs-data.mjs`, next to `COMPAT_PRESETS` (ADU-176's pattern):
+  `scripts/docs-stamp.mjs` splices README's and AGENTS' cells (the
+  anchor-based splice, since a floor cell sits inside a Markdown table row
+  and a prose sentence, neither of which can carry a `<!-- name:start -->`
+  marker) and now also owns `docs/integration.md`, previously untouched by
+  any generator; `scripts/demo-sync.mjs` splices `demo/index.html`'s table
+  row and footer sentence, the two spots that had drifted; and
+  `scripts/docs-build.mjs` interpolates the /docs/ template directly from
+  the same data, no regex needed there since that file is rendered fresh
+  every run. `docs/integration.md` and `demo/index.html` were not on
+  either gate's file list, so both `.github/workflows/ci.yml` and
+  `.github/workflows/release.yml` now diff them too, alongside the
+  surfaces already covered. No behavior change.
+
 ### Docs (round 8, ADU-192)
 Docs read against the code merged by the four round-8 code tickets.
 - README's and AGENTS' `sv-range` paragraphs no longer say a `var()`

@@ -14,6 +14,7 @@ import {
   compatPresetsFlat,
   compatPresetsGrouped,
   COMPAT_PRESET_NOTES,
+  BROWSER_FLOOR,
 } from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -61,6 +62,29 @@ const stamp = (text, name, body) => {
   return text.replace(re, () => `<!-- ${name}:start -->\n${body}\n<!-- ${name}:end -->`)
 }
 
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Splices a `| label | CELL |` markdown table row's browser-floor cell,
+ * throwing when the row moved. `cell` is the whole replacement (bold
+ * markers included where the surface wants them); the row's other
+ * columns (notes, extra gates) are untouched.
+ */
+const floorRow = (text, label, cell, surface) => {
+  // [^|]* (not [^)]*): the reason parenthetical can nest its own parens
+  // (`:is()`), so bound on the next table-cell pipe, not the next `)`.
+  const re = new RegExp(`(\\| ${escRe(label)} \\| )(?:\\*\\*)?[\\d.]+\\+(?:\\*\\*)? \\([^|]*\\)`)
+  if (!re.test(text)) throw new Error(`${surface}: browser floor row for "${label}" not found`)
+  return text.replace(re, (m, pre) => pre + cell)
+}
+
+/** "**104+** (Aug 2022)"; with `reason: true` and Firefox, "**78+** (Jun 2020, `:is()`/`:where()`)". */
+const floorMd = (key, { reason = false } = {}) => {
+  const b = BROWSER_FLOOR[key]
+  const why = reason && b.reason ? `, ${b.reason.map((s) => `\`${s}\``).join('/')}` : ''
+  return `**${b.version}** (${b.date}${why})`
+}
+
 // README
 let readme = readFileSync(join(root, 'README.md'), 'utf8')
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
@@ -94,6 +118,10 @@ readme = between(
   wrap(compatPresetsGrouped((n) => `\`${n}\``)),
   'README.md Extended floor paragraph'
 )
+// the "fully animated" browser floor table, one of five surfaces rendered from BROWSER_FLOOR
+readme = floorRow(readme, 'Chrome / Edge', floorMd('chrome'), 'README.md')
+readme = floorRow(readme, 'Firefox', floorMd('firefox', { reason: true }), 'README.md')
+readme = floorRow(readme, 'Safari / iOS', floorMd('safari'), 'README.md')
 writeFileSync(join(root, 'README.md'), readme)
 
 // AGENTS
@@ -102,7 +130,18 @@ agents = stamp(agents, 'vars', varsMarkdown())
 agents = agents.replace(/^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`)
 agents = agents.replace(/^\/\/ also styles\/pin\.css[^\n]*$/m,
   `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`)
+// the "fully animated" browser floor headline, one of five surfaces rendered from BROWSER_FLOOR
+const agentsFloor = /Fully animated: Chrome\/Edge [\d.]+\+, Firefox [\d.]+\+, Safari\/iOS [\d.]+\+/
+if (!agentsFloor.test(agents)) throw new Error('AGENTS.md browser floor headline not found')
+agents = agents.replace(agentsFloor, `Fully animated: Chrome/Edge ${BROWSER_FLOOR.chrome.version}, Firefox ${BROWSER_FLOOR.firefox.version}, Safari/iOS ${BROWSER_FLOOR.safari.version}`)
 writeFileSync(join(root, 'AGENTS.md'), agents)
+
+// docs/integration.md: the client-facing browser support table, plain (no bold, no reason)
+let integration = readFileSync(join(root, 'docs', 'integration.md'), 'utf8')
+integration = floorRow(integration, 'Chrome / Edge', `${BROWSER_FLOOR.chrome.version} (${BROWSER_FLOOR.chrome.date})`, 'docs/integration.md')
+integration = floorRow(integration, 'Firefox', `${BROWSER_FLOOR.firefox.version} (${BROWSER_FLOOR.firefox.date})`, 'docs/integration.md')
+integration = floorRow(integration, 'Safari / iOS', `${BROWSER_FLOOR.safari.version} (${BROWSER_FLOOR.safari.date})`, 'docs/integration.md')
+writeFileSync(join(root, 'docs', 'integration.md'), integration)
 
 // src/compat/index.ts: the header comment ships to npm inside dist, and its
 // copy of the preset list is the one that escaped in ADU-159. Stamped from the

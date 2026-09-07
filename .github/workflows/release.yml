@@ -22,7 +22,7 @@ jobs:
       - run: npm test                    # pretest builds, then the unit suite
       - run: npm run demo:sync
       - name: generated docs and pages are committed, not hand-patched
-        run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts
+        run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts demo/index.html docs/integration.md
       - run: npm run test:e2e            # progressive-enhancement invariants
         env: { CHROME: /usr/bin/google-chrome }
       - name: CHANGELOG has an entry for this version

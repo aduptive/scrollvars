@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { varsHtml, measureSizes, compatPresetsGrouped } from './docs-data.mjs'
+import { varsHtml, measureSizes, compatPresetsGrouped, BROWSER_FLOOR } from './docs-data.mjs'
 
 /* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold).
  * Bullets group their indented continuation lines into one <li>, and a run
@@ -274,9 +274,9 @@ plug in what's missing.</p>
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
-<tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
-<tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
-<tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
+<tr><td>Chrome / Edge</td><td><b>${BROWSER_FLOOR.chrome.version}</b> (${BROWSER_FLOOR.chrome.date})</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
+<tr><td>Firefox</td><td><b>${BROWSER_FLOOR.firefox.version}</b> (${BROWSER_FLOOR.firefox.date}, ${BROWSER_FLOOR.firefox.reason.map((s) => `<code>${s}</code>`).join('/')})</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Safari / iOS</td><td><b>${BROWSER_FLOOR.safari.version}</b> (${BROWSER_FLOOR.safari.date})</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
 <tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); with <code>compat()</code> installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); <code>sv-rail</code> is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing

@@ -41,6 +41,28 @@ export const COMPAT_PRESETS = {
 // Asides the shipped source comment carries and the docs leave to the selector.
 export const COMPAT_PRESET_NOTES = { 'sv-auto': 'its auto-ordered children' }
 
+/**
+ * The "fully animated" floor: oldest version per engine where the ES2020
+ * dist, individual transform properties (`translate:`/`rotate:`/`scale:`
+ * as their own CSS properties) and `:is()`/`:where()` (the enhanced-path
+ * `.sv-on :is(.sv, [data-sv])` selectors core.css, pin.css and state.css
+ * write) all work. Firefox shipped individual transforms first (72, Jan
+ * 2020) but `:is()`/`:where()` later (78, Jun 2020), so `:is()`/`:where()`
+ * is Firefox's binding constraint; Chrome and Safari are bound by
+ * individual transforms either way. Five hand-typed prose copies of this
+ * floor drifted (ADU-181): README, AGENTS and the docs-build.mjs template
+ * already agreed here; docs/integration.md and demo/index.html said
+ * Firefox 74+ (Mar 2020), which matches nothing this floor depends on.
+ * All five render from here now. Separate from `scrollvars/compat`'s
+ * fallback floor (~Chrome 61 / Firefox 60 / Safari 11), which this does
+ * not touch.
+ */
+export const BROWSER_FLOOR = {
+  chrome: { label: 'Chrome / Edge', version: '104+', date: 'Aug 2022' },
+  firefox: { label: 'Firefox', version: '78+', date: 'Jun 2020', reason: [':is()', ':where()'] },
+  safari: { label: 'Safari / iOS', version: '14.1+', date: 'Apr 2021' },
+}
+
 const andList = (items) =>
   items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
 
