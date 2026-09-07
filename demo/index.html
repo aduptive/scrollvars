@@ -3813,11 +3813,11 @@ var SV = (() => {
     let anim = 0;
     let destroyed = false;
     const slides = () => Array.from(container.children);
-    const state = () => ({
+    const state = (p) => ({
       active: Math.max(active, 0),
       count: slides().length,
       position,
-      progress: progress(),
+      progress: p ?? progress(),
       dragging,
       gliding: anim !== 0
     });
@@ -3829,6 +3829,7 @@ var SV = (() => {
       const list = slides();
       const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
       const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
+      const p = progress();
       list.forEach((slide, i) => {
         const sd = (centers[i] - center) / sizes[i];
         slide.style.setProperty("--sd", sd.toFixed(4));
@@ -3847,7 +3848,7 @@ var SV = (() => {
         const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
         position = Math.min(Math.max(raw, 0), centers.length - 1);
       }
-      container.style.setProperty("--sv-progress", progress().toFixed(4));
+      container.style.setProperty("--sv-progress", p.toFixed(4));
       const classes = container.classList;
       if (classes.contains?.("sv-slider") !== true || classes.contains?.("sv-slider-y") !== !horizontal || classes.contains?.("sv-draggable") !== !!drag) {
         classes.add("sv-slider");
@@ -3868,7 +3869,7 @@ var SV = (() => {
         if (indexChanged)
           onSlide?.(best);
       }
-      onScroll?.(state());
+      onScroll?.(state(p));
     };
     const schedule2 = () => {
       if (!raf2 && !destroyed)
@@ -5027,8 +5028,19 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         if (!ready) {
             ready = true;
             const dispose = setup?.(fx);
-            if (typeof dispose === 'function')
-                cleanup = dispose;
+            if (typeof dispose === 'function') {
+                // A consumer that calls handle.destroy() from inside its own
+                // setup() (bailing out before it has returned this dispose, a
+                // WebGL context that failed to create) already ran destroy()'s
+                // body above with `cleanup` still undefined: nothing will ever
+                // read `cleanup` again once `destroyed` is true, so stashing
+                // `dispose` there orphans it for the life of the page. Run it now
+                // instead (ADU-189).
+                if (destroyed)
+                    dispose();
+                else
+                    cleanup = dispose;
+            }
             resize?.(fx); // sizing that lives in resize() must also run once
         }
         else {
@@ -5083,15 +5095,29 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             sync();
         },
         destroy: () => {
+            // Idempotent: a second call is a no-op, not a second run of the
+            // consumer's own setup() cleanup (a WebGL context or a renderer
+            // disposed twice can itself throw). Exception-safe: the observers and
+            // listener removals below run in the `finally`, so a throwing cleanup
+            // still cannot leak them for the life of the page (ADU-189, the
+            // untouched twin of ADU-165).
+            if (destroyed)
+                return;
             destroyed = true;
-            cleanup?.();
-            sync();
-            ro.disconnect();
-            io.disconnect();
-            document.removeEventListener('visibilitychange', onVisibility);
-            offMediaChange(motionQuery, onMotion);
-            if (dprQuery)
-                offMediaChange(dprQuery, onDprChange);
+            const dispose = cleanup;
+            cleanup = undefined;
+            try {
+                dispose?.();
+            }
+            finally {
+                sync();
+                ro.disconnect();
+                io.disconnect();
+                document.removeEventListener('visibilitychange', onVisibility);
+                offMediaChange(motionQuery, onMotion);
+                if (dprQuery)
+                    offMediaChange(dprQuery, onDprChange);
+            }
         },
     };
 }
@@ -5522,11 +5548,16 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // interval kept calling next() on one).
     let destroyed = false;
     const slides = () => Array.from(container.children);
-    const state = () => ({
+    // `p` lets measure() hand in the progress it already snapshotted during
+    // its read phase, so the onScroll call at the end of a measure pass never
+    // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
+    // that same pass. Called with no argument (the public `state()`, any time
+    // outside a measure pass) it reads fresh, same as before.
+    const state = (p) => ({
         active: Math.max(active, 0),
         count: slides().length,
         position,
-        progress: progress(),
+        progress: p ?? progress(),
         dragging,
         gliding: anim !== 0,
     });
@@ -5539,6 +5570,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
         const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
         const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
+        // Snapshot progress() here, still inside the read phase: it reads
+        // scrollLeft and scrollWidth (through pos()/range()), and the write loop
+        // right below writes --sd on every slide. Calling progress() again after
+        // that loop (for the --sv-progress write) or after the class writes
+        // further down (through state(), for onScroll) would read that same
+        // geometry back AFTER this pass has already started writing to the DOM.
+        const p = progress();
         list.forEach((slide, i) => {
             // --sd stays normalized by the slide's OWN size (that is what the CSS
             // reads), but the active slide is the nearest in PIXELS: comparing the
@@ -5569,7 +5607,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
             position = Math.min(Math.max(raw, 0), centers.length - 1);
         }
-        container.style.setProperty('--sv-progress', progress().toFixed(4));
+        container.style.setProperty('--sv-progress', p.toFixed(4));
         // Something outside the slider can rewrite the class attribute of the rail
         // or of a slide (React committing `className`), dropping what the engine
         // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -5597,7 +5635,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             if (indexChanged)
                 onSlide?.(best);
         }
-        onScroll?.(state());
+        onScroll?.(state(p));
     };
     const schedule = () => {
         if (!raf && !destroyed)
