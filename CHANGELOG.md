@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Tooling (round 7 follow-up, ADU-176)
+- Three prose claims that live in both a shipped source comment (tsc
+  emits it verbatim into dist) and README.md now have a test holding
+  them in step, instead of a CLAUDE.md rule nobody enforced: the compat
+  fallback preset list (`src/compat/index.ts`'s header vs README's
+  Extended floor paragraph), the driver's pin-helper release condition
+  (`src/core/driver.ts`'s `track()` comment vs README's pinning
+  paragraph), and the `--sv-pin-offset` resolved-unit list (the same two
+  files). The same pair escaped three times: ADU-159 shipped a false
+  sentence through the compat header, ADU-168's narrowing missed the
+  driver's own pin comment, ADU-170's first pass missed it again. Each
+  test extracts the claim from both real files and compares them to each
+  other, never to a copy hand-typed a third time in the test, so a claim
+  that changes on one side only fails loudly instead of drifting silently.
+  No behavior change.
+
 ### Toggles (round 7 follow-up, ADU-172)
 - A trigger nested inside two `toggles()` scopes is now toggled exactly
   once per click, by the nearest scope. `toggles(root?)` is public
