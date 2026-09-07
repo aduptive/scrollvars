@@ -1435,6 +1435,43 @@ Blind review round 6 (Astra on 3e2c18b), finding 8a. Successor of ADU-144.
   `reducedMotion` flag once `init()` has wired its change listener (the
   `addListener` fallback for pre-Safari-14 `MediaQueryList` is untouched).
 
+### Docs (round 6, ADU-159)
+Docs read against the code merged by the seven round-6 code tickets.
+- The TypeScript import block that pulls in the CSS is no longer labeled
+  `app/globals.css`, a CSS file that cannot hold `import` statements: it
+  now points at `app/layout.tsx` (or any entry file).
+- "React renders zero times during scroll" is scoped to what actually
+  never re-renders: `useScenes` and `useSlider` hold the current index in
+  state and re-render on a discrete change, never per frame.
+- `sv-split-rise` is documented as static only below `:is()` support,
+  where its `:is()`-written rule is dropped whole; between `:is()`
+  support and the individual-transform floor the rule still matches and
+  its `opacity` declaration still transitions, so the text fades in
+  without rising.
+- The pin helper's "returns to flow" list gained a third case: below the
+  individual-transform floor, matching ADU-158 (it already covered no-JS
+  and reduced motion).
+- `compat()`'s `sv-rail` fallback is documented as it actually behaves:
+  it ignores `--sv-rail-start`, starts at `translateX(0)` instead of
+  entering from offscreen, and is stationary whenever the track's own
+  width equals the viewport, instead of the previous "gives it back its
+  own scroll-linked travel" claim.
+- Checked against the round-6 code tickets: the Modal SSR sentence
+  ("open ones open") and the pin-helper wrapper description already
+  match ADU-156 and ADU-158, no further change needed there beyond the
+  floor case above.
+- Second pass (verifier finding on 213c15b): the compat header comment in
+  `src/compat/index.ts`, which `tsc` emits verbatim into the published
+  `dist/compat/index.js`, still opened with the old flat claim, three
+  presets stay static, one reason each, including `sv-split-rise` with
+  no fallback rule at all. It now carries the same two-band split as the
+  README sentence above: `sv-deck` and `sv-spread` stay static, one
+  reason each; `sv-split-rise` is static only below `:is()` support and
+  fades in without rising above it. The README's closing "stay static or
+  progressive" list also still named `sv-split-rise`, reading like the
+  old flat claim; it is dropped from that list now that the paragraph
+  above it already carries the nuance.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

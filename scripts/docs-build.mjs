@@ -277,7 +277,7 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); <code>sv-rail</code> is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code> gives it back its own scroll-linked travel, but with the stage released into flow that travel mostly happens off screen</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); <code>sv-rail</code> is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
 breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
@@ -295,9 +295,11 @@ clipped by the stage itself (<code>sv-reading</code>, <code>sv-range</code> and
 <code>sv-rail</code> stays the one exception: with JS running the no-JS guard's
 <code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
 viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
-at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code> gives the rail
-back its own scroll-linked travel, but with the stage released into flow that travel mostly
-happens off screen, so wrap the rail yourself below the floor. One more caveat until ADU-150
+at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code>'s own
+<code>sv-rail</code> fallback does not really fix that: it ignores <code>--sv-rail-start</code>,
+starts at <code>translateX(0)</code> instead of entering from offscreen, and is stationary
+whenever the track's own width equals the viewport, so wrap the rail yourself below the floor
+regardless. One more caveat until ADU-150
 lands: a released stage can also leave a parked curtain panel sitting outside it, extending
 the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
@@ -310,12 +312,14 @@ without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
 <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
 declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs
-<code>clamp()</code>); <code>sv-split-rise</code> and <code>sv-spread</code> stay static
-below the floor too, no fallback rule for either. <code>sv-split-rise</code> because its
-animating rule is written with <code>:is()</code>, dropped whole by a parser that predates
-it; <code>sv-spread</code> because its rule parses fine and has no
-<code>translate</code>/<code>rotate</code> to apply down there. With your bundler downleveling the
-ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
+<code>clamp()</code>); <code>sv-spread</code> stays static below the floor too, no fallback
+rule, its rule parses fine but has no <code>translate</code>/<code>rotate</code> to apply
+down there. <code>sv-split-rise</code> has no fallback rule either, but its floor is not one
+line: below <code>:is()</code> support its animating rule, written with <code>:is()</code>, is
+dropped whole by a parser that predates it, fully static; between <code>:is()</code> support
+and the individual-transform floor the rule still matches and its <code>opacity</code>
+declaration still transitions, so the text fades in without rising. With your bundler
+downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>

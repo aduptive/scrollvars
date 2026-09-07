@@ -22,14 +22,16 @@
  *     children), sv-drift, sv-curtain-l, sv-curtain-r, sv-rail. Written
  *     without :is(), clamp() or min() so the old parser accepts it; the
  *     one max() left, drift's fade, sits behind a plain opacity
- *     declaration that parser keeps. Three presets stay static, one
+ *     declaration that parser keeps. Two presets stay static, one
  *     reason each:
  *       sv-deck, unstacked here to a static, non-overlapping layout
  *         because its fly-away slice needs clamp();
- *       sv-split-rise, no fallback rule, its animating selector is an
- *         :is() the old parser drops whole;
- *       sv-spread, no fallback rule either, its selector parses fine and
+ *       sv-spread, no fallback rule, its selector parses fine and
  *         there is simply no translate/rotate left to apply.
+ *     sv-split-rise has no fallback rule either, but its floor is not
+ *     one line: below :is() support the rule is dropped whole and it
+ *     is fully static, above it the opacity declaration still
+ *     transitions, so it fades in without rising.
  *     sv-reading falls back to fully-visible text; sv-counter and
  *     sv-view-* stay progressive.
  *
