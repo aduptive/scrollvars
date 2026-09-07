@@ -41,6 +41,17 @@
   not a walk. `src/react`, `src/canvas`, `src/compat` and `src/core/scan.ts`
   have no ancestor-walking call at all.
 
+### Presets (round 7, ADU-166)
+- `.sv-marquee-track` under `prefers-reduced-motion: reduce` no longer
+  leaves `width: max-content` inside `overflow: hidden`: everything past
+  the first screen was unreachable for a reduce user while everyone else
+  saw the whole strip. The reduce block now wraps the track
+  (`width: auto; flex-wrap: wrap`, matching the rail's own reduce-mode
+  wrap in `styles/pin.css`) and hides the aria-hidden duplicate copy
+  (`.sv-marquee-track > [aria-hidden] { display: none !important }`, the
+  `!important` needed because the duplicate carries its own inline
+  `display: contents`, which outranks any plain selector).
+
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by
   `npm run demo:deploy`, which runs `vercel deploy --prod` from `demo/` and
@@ -1510,6 +1521,29 @@ Docs read against the code merged by the seven round-6 code tickets.
   progressive" list also still named `sv-split-rise`, reading like the
   old flat claim; it is dropped from that list now that the paragraph
   above it already carries the nuance.
+
+### Slider (blind review round 7)
+- The active slide is the one nearest the viewport centre in PIXELS. The
+  argmin divided each distance by that slide's OWN width first, so a wide
+  slide always looked nearer than a narrow neighbour: with a 100px slide
+  beside a 300px one (centres 50 and 250, midpoint 150) the active flipped
+  to the wide slide at centre 101. `sv-active`, `--sv-slide`, `onSlide`,
+  the glide a drag release lands on and the wheel settle all took that
+  index. `--sd` is unchanged, still normalized by each slide's own size,
+  which is what the CSS reads; an exact tie still keeps the first slide.
+  Sliders whose slides are all the same width read exactly as before.
+- A destroyed slider stops moving. `destroy()` set no flag, so `next`,
+  `prev`, `goTo` and `seek` still scrolled the container from a frame of
+  their own, on geometry nothing measures any more. Every command is a
+  no-op after `destroy()` and nothing schedules a frame, so a scroll or an
+  observer record already in flight measures nothing either.
+
+### React (blind review round 7)
+- `<Slider>`'s imperative `destroy()` drops its handle instead of keeping
+  it, so the autoplay interval (which reads the handle on every tick and
+  returns when there is none) stops advancing a slider the consumer has
+  destroyed. With the core fix above, a destroyed slider is inert from
+  either side.
 
 ## 1.13.0 (2026-09-05)
 
