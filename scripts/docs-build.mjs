@@ -277,7 +277,7 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); <code>sv-rail</code> is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); with <code>compat()</code> installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); <code>sv-rail</code> is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
 breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
@@ -289,10 +289,21 @@ degrade to their end state individually.</p>
 <p>Below the transform floor, with JS still running, <code>styles/pin.css</code> carries its
 own <code>@supports not (translate: 0)</code> net, but only for four of its rules: the stage,
 both curtains and the deck. The curtains sit parted and static rather than animated, the deck
-unstacks to a static, non-overlapping layout, and the stage resets to flow so nothing is
-clipped by the stage itself (<code>sv-reading</code>, <code>sv-range</code> and
-<code>sv-counter</code> need no net of their own, they settle for unrelated reasons).
-<code>sv-rail</code> stays the one exception: with JS running the no-JS guard's
+unstacks to a static, non-overlapping layout, and, without <code>compat()</code> installed,
+the stage resets to flow so nothing is clipped by the stage itself (<code>sv-reading</code>,
+<code>sv-range</code> and <code>sv-counter</code> need no net of their own, they settle for
+unrelated reasons). With <code>compat()</code> installed the net exempts
+<code>.sv-stage</code> instead (its own <code>data-sv-compat</code> marker on
+<code>&lt;html&gt;</code> is the switch): the module's fallback sheet still animates the
+curtains and rail from <code>--sv-pin</code>, measured off that stage, so releasing it there
+would snap them over one pixel instead. The trade is real: measured on a four-card
+<code>sv-deck</code> pinned below the floor with <code>compat()</code> installed, the stage
+stayed a fixed height while the deck unstacked to its full static column, so cards three and
+four sat past the clip, unreachable, for the roughly 1800px of scroll the pin still consumed
+doing nothing visible. A page whose below-floor deck matters more than its below-floor
+animation gets the flow layout back by not calling <code>compat()</code> there, the same
+escape the design rule above already promises.
+<code>sv-rail</code> stays the one exception either way: with JS running the no-JS guard's
 <code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
 viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
 at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code>'s own

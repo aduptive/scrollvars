@@ -222,7 +222,7 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>78+</b> (Jun 2020, <code>:is()</code>/<code>:where()</code>)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); <code>sv-rail</code> is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); with <code>compat()</code> installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); <code>sv-rail</code> is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
 breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
@@ -234,10 +234,21 @@ degrade to their end state individually.</p>
 <p>Below the transform floor, with JS still running, <code>styles/pin.css</code> carries its
 own <code>@supports not (translate: 0)</code> net, but only for four of its rules: the stage,
 both curtains and the deck. The curtains sit parted and static rather than animated, the deck
-unstacks to a static, non-overlapping layout, and the stage resets to flow so nothing is
-clipped by the stage itself (<code>sv-reading</code>, <code>sv-range</code> and
-<code>sv-counter</code> need no net of their own, they settle for unrelated reasons).
-<code>sv-rail</code> stays the one exception: with JS running the no-JS guard's
+unstacks to a static, non-overlapping layout, and, without <code>compat()</code> installed,
+the stage resets to flow so nothing is clipped by the stage itself (<code>sv-reading</code>,
+<code>sv-range</code> and <code>sv-counter</code> need no net of their own, they settle for
+unrelated reasons). With <code>compat()</code> installed the net exempts
+<code>.sv-stage</code> instead (its own <code>data-sv-compat</code> marker on
+<code>&lt;html&gt;</code> is the switch): the module's fallback sheet still animates the
+curtains and rail from <code>--sv-pin</code>, measured off that stage, so releasing it there
+would snap them over one pixel instead. The trade is real: measured on a four-card
+<code>sv-deck</code> pinned below the floor with <code>compat()</code> installed, the stage
+stayed a fixed height while the deck unstacked to its full static column, so cards three and
+four sat past the clip, unreachable, for the roughly 1800px of scroll the pin still consumed
+doing nothing visible. A page whose below-floor deck matters more than its below-floor
+animation gets the flow layout back by not calling <code>compat()</code> there, the same
+escape the design rule above already promises.
+<code>sv-rail</code> stays the one exception either way: with JS running the no-JS guard's
 <code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
 viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
 at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code>'s own
@@ -285,6 +296,21 @@ compat()   // once, before anything else</code></pre>
 
 
 <h3>Unreleased</h3>
+
+<h4>Docs (round 7, ADU-170)</h4>
+Docs read against the code merged by the five round-7 code tickets.
+<ul>
+<li>README's and the docs page's below-the-floor paragraphs no longer say the pin net keeps the stage in flow and nothing clipped unconditionally: that guarantee holds only without <code>compat()</code>. With it installed (ADU-168) the stage stays pinned so the module's fallback can keep animating the curtains and rail, and content taller than the stage clips there, measured on a four-card <code>sv-deck</code> with cards three and four unreachable past the clip and about 1800px of scroll doing nothing visible. Skipping <code>compat()</code> on that page is the escape.</li>
+<li><code>data-sv-compat</code>, the marker <code>compat()</code> writes on <code>&lt;html></code>, is now documented next to <code>html.sv-on</code> and <code>data-sv-off</code> in README, and in AGENTS' browser support paragraph.</li>
+<li>AGENTS and llms.txt gained README's <code>sv-rail</code> below-the-floor exception (its track stays unwrapped and can run past the viewport edge); they had the general "static but 100% visible" claim without it.</li>
+<li><code>--sv-pin-offset</code> is documented for what resolves today: px, rem, em, vh (svh, lvh and dvh resolve like vh) and vw. <code>calc()</code> reads as 0 and <code>vmin</code>/<code>%</code> are read as if they were px; full length resolution is ADU-100. Round 5 asked for this and ADU-159 missed it.</li>
+<li>AGENTS' slider breakpoint map now says a raw min-width key must be a bare number (<code>900: 4</code>): a string with a unit (<code>'900px'</code>) is coerced with <code>Number()</code> into <code>@media (min-width:NaNpx)</code>, an invalid query that never matches. Repeat of round 6's row 8, untouched by ADU-159's docs pass.</li>
+<li><code>toggles()</code> is documented for exactly what it ships: a class, <code>--sv-state</code> and <code>aria-expanded</code>, no focus trap, Escape, <code>aria-modal</code> or tab semantics. AGENTS now points a real modal at the kit's <code>&lt;Modal></code> instead of implying <code>toggles()</code> alone covers it.</li>
+<li>AGENTS' SSR section no longer claims <code>&lt;Scenes></code> cannot hold RSC-only children: the slot pattern (pass already-rendered server content down as a prop, close over it in the client render function) still works, the same trick that lets any client component host RSC <code>children</code>.</li>
+<li>AGENTS' repo layout no longer claims most of <code>test/</code> runs with no DOM via <code>renderToStaticMarkup</code>: that helper backs only 3 of the 15 test files. It now says what the rest use, hand-rolled element and global stubs, plus <code>test/react.test.mjs</code>'s fake DOM for <code>react-dom/client</code> (ref and effect tests) and <code>test/canvas.test.mjs</code>'s canvas/observer stubs.</li>
+<li>README's pin-helper paragraph and its hand-kept twin, the <code>track()</code> comment in <code>src/core/driver.ts</code>, said the wrapper returns to flow "under reduced motion, or below the individual-transform floor" with no <code>compat()</code> qualifier, the same unconditional claim already fixed in the table row and the paragraph below it. Measured with <code>compat()</code> installed: the wrapper keeps <code>height: 320vh; position: relative</code> and the stage stays sticky, clipped. Both now read "below the individual-transform floor without <code>compat()</code>".</li>
+<li>AGENTS' browser-support paragraph dropped a leftover <code>(html.sv-on guard)</code> parenthetical on the below-the-floor-without-<code>compat()</code> sentence: that guard is <code>html:not(.sv-on)</code>, scoped to the no-JS case, not to below-floor-with-JS, which <code>pin.css</code>'s own <code>@supports not (translate: 0)</code> net covers instead.</li>
+</ul>
 
 <h4>Compat (blind review round 7, ADU-168)</h4>
 <ul>

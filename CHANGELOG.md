@@ -2,6 +2,59 @@
 
 ## Unreleased
 
+### Docs (round 7, ADU-170)
+Docs read against the code merged by the five round-7 code tickets.
+- README's and the docs page's below-the-floor paragraphs no longer say
+  the pin net keeps the stage in flow and nothing clipped unconditionally:
+  that guarantee holds only without `compat()`. With it installed
+  (ADU-168) the stage stays pinned so the module's fallback can keep
+  animating the curtains and rail, and content taller than the stage
+  clips there, measured on a four-card `sv-deck` with cards three and
+  four unreachable past the clip and about 1800px of scroll doing nothing
+  visible. Skipping `compat()` on that page is the escape.
+- `data-sv-compat`, the marker `compat()` writes on `<html>`, is now
+  documented next to `html.sv-on` and `data-sv-off` in README, and in
+  AGENTS' browser support paragraph.
+- AGENTS and llms.txt gained README's `sv-rail` below-the-floor exception
+  (its track stays unwrapped and can run past the viewport edge); they
+  had the general "static but 100% visible" claim without it.
+- `--sv-pin-offset` is documented for what resolves today: px, rem, em,
+  vh (svh, lvh and dvh resolve like vh) and vw. `calc()` reads as 0 and
+  `vmin`/`%` are read as if they were px; full length resolution is
+  ADU-100. Round 5 asked for this and ADU-159 missed it.
+- AGENTS' slider breakpoint map now says a raw min-width key must be a
+  bare number (`900: 4`): a string with a unit (`'900px'`) is coerced
+  with `Number()` into `@media (min-width:NaNpx)`, an invalid query that
+  never matches. Repeat of round 6's row 8, untouched by ADU-159's docs
+  pass.
+- `toggles()` is documented for exactly what it ships: a class,
+  `--sv-state` and `aria-expanded`, no focus trap, Escape, `aria-modal`
+  or tab semantics. AGENTS now points a real modal at the kit's `<Modal>`
+  instead of implying `toggles()` alone covers it.
+- AGENTS' SSR section no longer claims `<Scenes>` cannot hold RSC-only
+  children: the slot pattern (pass already-rendered server content down
+  as a prop, close over it in the client render function) still works,
+  the same trick that lets any client component host RSC `children`.
+- AGENTS' repo layout no longer claims most of `test/` runs with no DOM
+  via `renderToStaticMarkup`: that helper backs only 3 of the 15 test
+  files. It now says what the rest use, hand-rolled element and global
+  stubs, plus `test/react.test.mjs`'s fake DOM for `react-dom/client`
+  (ref and effect tests) and `test/canvas.test.mjs`'s canvas/observer
+  stubs.
+- README's pin-helper paragraph and its hand-kept twin, the `track()`
+  comment in `src/core/driver.ts`, said the wrapper returns to flow
+  "under reduced motion, or below the individual-transform floor" with
+  no `compat()` qualifier, the same unconditional claim already fixed in
+  the table row and the paragraph below it. Measured with `compat()`
+  installed: the wrapper keeps `height: 320vh; position: relative` and
+  the stage stays sticky, clipped. Both now read "below the
+  individual-transform floor without `compat()`".
+- AGENTS' browser-support paragraph dropped a leftover `(html.sv-on
+  guard)` parenthetical on the below-the-floor-without-`compat()`
+  sentence: that guard is `html:not(.sv-on)`, scoped to the no-JS case,
+  not to below-floor-with-JS, which `pin.css`'s own
+  `@supports not (translate: 0)` net covers instead.
+
 ### Compat (blind review round 7, ADU-168)
 - `compat()` marks `<html>` with `data-sv-compat` when it installs its
   fallback stylesheet, and the two below-the-floor releases added in round 6

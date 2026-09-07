@@ -157,7 +157,7 @@ Anything that reads them is a preset. The shipped ones:
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. Only px, rem, em, vh (svh, lvh and dvh resolve like vh) and vw resolve there today: `calc()` reads as 0, `vmin` and `%` are read as if they were px, so an offset in either silently comes out wrong. Real length resolution for the rest is on ADU-100.
 
 ## React
 
@@ -223,6 +223,11 @@ it only takes the marker once nothing inside it is tracked any more. A
 settled `once` entry never takes this marker either: it keeps `sv-live` and
 the inline `--sv-live: 1`, so it stays live and untracked instead of
 released.
+
+`scrollvars/compat`'s `compat()` writes one more, `data-sv-compat` on
+`<html>`, only when its fallback stylesheet actually installs (never a
+marker you set by hand). It changes what the below-the-floor net in
+`styles/pin.css` releases: see Browser support.
 
 ## The fx gallery: copy-paste effects (+ shadcn-style CLI)
 
@@ -497,7 +502,7 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); `sv-rail` is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()`'s rail fallback ignores `--sv-rail-start` and starts at `translateX(0)` instead of offscreen, so it is stationary whenever the track's own width equals the viewport |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor and without `compat()`, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); with `compat()` installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); `sv-rail` is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()`'s rail fallback ignores `--sv-rail-start` and starts at `translateX(0)` instead of offscreen, so it is stationary whenever the track's own width equals the viewport |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
@@ -505,9 +510,21 @@ Below the transform floor, with JS still running, `styles/pin.css` carries
 its own `@supports not (translate: 0)` net, but only for four of its rules:
 the stage, both curtains and the deck. The curtains sit parted and static
 rather than animated, the deck unstacks to a static, non-overlapping
-layout, and the stage resets to flow so nothing is clipped by the stage
-itself (`sv-reading`, `sv-range` and `sv-counter` need no net of their own,
-they settle for unrelated reasons). `sv-rail` stays the one exception:
+layout, and, without `compat()` installed, the stage resets to flow so
+nothing is clipped by the stage itself (`sv-reading`, `sv-range` and
+`sv-counter` need no net of their own, they settle for unrelated reasons).
+With `compat()` installed the net exempts `.sv-stage` instead (its own
+`data-sv-compat` marker on `<html>` is the switch): the module's fallback
+sheet still animates the curtains and rail from `--sv-pin`, measured off
+that stage, so releasing it there would snap them over one pixel instead.
+The trade is real: measured on a four-card `sv-deck` pinned below the
+floor with `compat()` installed, the stage stayed a fixed height while the
+deck unstacked to its full static column, so cards three and four sat
+past the clip, unreachable, for the roughly 1800px of scroll the pin
+still consumed doing nothing visible. A page whose below-floor deck
+matters more than its below-floor animation gets the flow layout back by
+not calling `compat()` there, the same escape the closing paragraph below
+already promises. `sv-rail` stays the one exception either way:
 with JS running the no-JS guard's `width: auto; flex-wrap: wrap` does not
 apply, so a track built wider than the viewport runs past the right edge,
 reachable only by a page-wide horizontal scroll, and not at all under an
