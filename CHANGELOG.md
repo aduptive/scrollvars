@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+### Docs (round 8, ADU-192)
+Docs read against the code merged by the four round-8 code tickets.
+- README's and AGENTS' `sv-range` paragraphs no longer say a `var()`
+  fallback makes older engines settle at the end state: `var()`'s fallback
+  fires only for a guaranteed-invalid property, and `--sv-r` is set. It is
+  the registered property's own `@property --sv-r { initial-value: 1 }`
+  that resolves an engine that cannot compute the calc() division to that
+  initial value instead of turning invalid. The `var(--sv-r, 1)` a
+  consumer writes never fires on a range child at all, with `@property` or
+  without it: `--sv-r` is set either way, so an engine that cannot compute
+  the division turns the declaration consuming it invalid at
+  computed-value time instead of substituting the fallback. The paragraphs
+  say that rather than calling the fallback a backstop, which reads as
+  protection it does not give. Same fix in the gallery's `sv-range`
+  Tailwind pane comment (`scripts/fx-data.mjs`) and in `styles/pin.css`'s
+  own `sv-range` comment, which derived its "always consume it with a
+  fallback" advice from the same wrong mechanism: the advice and the
+  outcome stay, the causal claim goes.
+- README's and AGENTS' `--sv-pin-offset` unit lists now say what `em`
+  resolves against: the pinned stage's font-size, not the tracked
+  wrapper's, per ADU-191. `rem` gained its own parenthetical (root
+  font-size) for the same reason: a unit list that only names tokens
+  cannot tell a reader which element a relative unit is measured from.
+  AGENTS' copy of the list also names the `svh`, `lvh` and `dvh` group
+  README carries, which it had been missing.
+- README's and AGENTS' entrance-replay paragraphs now name the two shapes
+  ADU-191 left unreplayable, since the promise is true enough now that a
+  reader relying on it hits them: entrance CSS of your own that hard-codes
+  its duration instead of reading `--sv-duration`/`--sv-stagger`, and
+  `--sv-duration` or `--sv-stagger` declared on a descendant instead of
+  inherited, which is what `<Item duration>` and `<Split duration>` emit.
+  Only those two knobs: a bare `<Split>` emits a count and per-word orders
+  and no timing knob at all, and a descendant `--sv-order` or
+  `--sv-distance` replays perfectly. Both surviving shapes stay flat, with
+  no visible change at all, when the re-track runs in a plain task (a
+  React effect, a click handler), which is the common case; the dip and
+  reverse needs a re-track from inside a rAF callback, since in a plain
+  task the transition's start time is the next frame's and the driver
+  re-asserts the flag in that frame before the clock advances.
+- AGENTS' zero-wrapper paragraph no longer says the pre-paint script
+  "removes it again if the driver never boots": ADU-188 made the release
+  final, so it also removes `sv-on` when the driver boots LATE, after the
+  3 second watchdog, reverting the class through a MutationObserver
+  installed only once the watchdog fires, instead of re-hiding content the
+  visitor is already reading.
+- `src/core/driver.ts`'s `Entry.pinOffset` field comment said the offset
+  is read once from the tracked element's computed `--sv-pin-offset`. That
+  held only for the units resolving identically on either element: `4em`
+  reads 40 on a wrapper where the stage gives 80, and custom properties
+  inherit downward only, so an offset declared on the stage itself is
+  invisible to a read on the wrapper. `readPinOffset` reads it from
+  `.sv-stage` since ADU-191; the comment now says so, the wrapper only
+  when there is no stage.
+
 ### Driver (blind review round 8, ADU-191)
 - `--sv-pin-offset` in `em` now resolves against `.sv-stage`, the element
   styles/pin.css applies it to, instead of the tracked wrapper: `top:` and

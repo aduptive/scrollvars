@@ -117,7 +117,7 @@ when the track fits the viewport:
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
-`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton (an inline static wrapper gets `position: relative` to give the stage a containing block; any other authored position is kept); a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math (only px, rem, em, vh and vw resolve today; `calc()` reads as 0, `vmin` and `%` read as if they were px, so stick to those five units until real length resolution lands, ADU-100). No client components
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton (an inline static wrapper gets `position: relative` to give the stage a containing block; any other authored position is kept); a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math (only px, rem (root font-size), em (the stage's font-size, not the wrapper's), vh (svh, lvh and dvh resolve like vh) and vw resolve today; `calc()` reads as 0, `vmin` and `%` read as if they were px, so stick to those five units until real length resolution lands, ADU-100). No client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
@@ -145,9 +145,7 @@ flash.
 **Sequenced scrub (choreography: do NOT add GSAP for this):** `sv-range`.
 Each child gets `--sv-r` (0..1) over its own slice of the pin: set
 `--sv-from`/`--sv-to` per child, add `sv-range-rise` for the ready-made
-flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so unsupported math settles at the finished state; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }`. The calc
-division needs Chrome 112/Safari 16.4/FF 112 and the fallback settles old
-engines at the end state). JS twin: `mapRange(t, from, to, ease?)` inside
+flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so an engine that can't compute the calc division (needs Chrome 112/Safari 16.4/FF 112) resolves the property to that initial value instead of turning invalid; `var(--sv-r, 1)` is habit, not the reason older engines settle at the end state, and never fires on your range children either way, since `--sv-r` is always set; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }`). JS twin: `mapRange(t, from, to, ease?)` inside
 `onPin`/`onTravel` for canvas/WebGL.
 
 
@@ -224,7 +222,14 @@ released) element the driver pins `--sv-live` inline (outranks a rule of
 your own without `!important`), so re-tracking is what replays the entrance
 there instead. A settled `once` entry carries that inline value too,
 without being tracked or released, so the class trick alone cannot
-replay it; re-tracking still can, exactly as on a tracked element.
+replay it; re-tracking still can, exactly as on a tracked element. Two
+shapes it cannot replay: entrance CSS that hard-codes its duration
+instead of reading `--sv-duration`/`--sv-stagger`, and `--sv-duration` or
+`--sv-stagger` declared on a descendant instead of inherited, which is
+what `<Item duration>` and `<Split duration>` emit (a bare `<Split>`, or a
+descendant `--sv-order`/`--sv-distance`, replays fine). Neither one
+enters: re-tracked from a plain task (a click handler, an effect body)
+nothing visibly changes, from inside a rAF callback they dip and reverse.
 **Multi-act timed sequences**: `sv-acts` preset: a registered
 custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
@@ -271,8 +276,12 @@ passes the already-rendered result down as an ordinary prop into a small
 client wrapper, which closes over that prop inside the render function it
 hands to `<Scenes>` and returns it there, the same trick that lets any
 client component host RSC content as `props.children`). `<ScrollVarsBoot />` (first child of `<body>`) sets
-`sv-on` before first paint and removes it again if the driver never boots, so
-entrances neither flash nor fail hidden. That pre-paint hiding depends on
+`sv-on` before first paint and removes it again if the driver has not
+booted within 3 seconds. That release is final: a driver that still boots
+after the deadline (slow network, a bundle behind a long task) has its own
+`sv-on` reverted by a watchdog-installed observer instead of re-hiding
+content the visitor is already reading, so entrances neither flash nor
+fail hidden. That pre-paint hiding depends on
 the inline script itself running: it is gated on `IntersectionObserver` and
 `ResizeObserver` both existing, so without JS, or on an engine missing
 either, `sv-on` is never added and the page stays fully visible from the

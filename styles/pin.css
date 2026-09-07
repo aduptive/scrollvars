@@ -88,8 +88,8 @@
    parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
    when pinned, else --sv-t; override --sv-clock to choose explicitly.
    Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
-   on older engines --sv-r is invalid at computed-value time, so ALWAYS
-   consume it as var(--sv-r, 1). Content settles at the end state. */
+   an engine that cannot compute it settles --sv-r at the registered
+   initial value (1), the end state; consume it as var(--sv-r, 1) anyway. */
 /* the clock lives on the container at zero specificity: any author rule on it
    (`.mine { --sv-clock: var(--sv-t) }`) or an inline style wins */
 :where(.sv .sv-range) {
