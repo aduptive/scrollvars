@@ -38,14 +38,26 @@ function makeEnv() {
   }
 
   let roCallback, ioCallback, observedCanvas
+  // A real ResizeObserver delivers ONCE on its own, right after observe(),
+  // with the element's current size: that first entry is what sizes a canvas
+  // in a real browser, and mountEffect's callback for it is applySize. A stub
+  // that recorded the element and delivered nothing left the mount-time sizing
+  // happening only because a test called env.resize() by hand (ADU-177).
+  // observe() queues it here, and pump() below runs it after that frame's rAF
+  // callbacks, which is Chrome's order; disconnect() drops it, as the spec has
+  // it (the observation targets go, so nothing is left to deliver).
+  let roPending = false
   global.ResizeObserver = class {
     constructor(cb) {
       roCallback = cb
     }
     observe(target) {
       observedCanvas = target
+      roPending = true
     }
-    disconnect() {}
+    disconnect() {
+      roPending = false
+    }
   }
   global.IntersectionObserver = class {
     constructor(cb) {
@@ -124,9 +136,7 @@ function makeEnv() {
     },
   }
 
-  return {
-    canvas,
-    // Delivers a ResizeObserverEntry to the harness. Given an explicit
+  // Delivers a ResizeObserverEntry to the harness. Given an explicit
     // `contentRect`, exactly that one entry is delivered (a single,
     // isolated event: a manual/bit-exact entry, or a later class- or
     // stylesheet-driven resize a test wants to examine on its own). With
@@ -142,19 +152,28 @@ function makeEnv() {
     // this cascade settles in one iteration there too; it stays as a
     // safety net, a capped loop (not an unbounded one), so a bug that never
     // converges fails the test instead of hanging it.
-    resize: (contentRect) => {
-      if (contentRect) {
-        roCallback([{ contentRect }])
-        return
-      }
-      let rect = contentBoxOf(observedCanvas)
-      for (let i = 0; i < 10; i++) {
-        roCallback([{ contentRect: rect }])
-        const next = contentBoxOf(observedCanvas)
-        if (next.width === rect.width && next.height === rect.height) break
-        rect = next
-      }
-    },
+  function deliverResize(contentRect) {
+    // Whatever fires first IS the observer's first delivery: a fixture that
+    // calls resize() before it ever pumps has just delivered it by hand, and a
+    // real observer has nothing left to send after that (no box moved). Only a
+    // fixture that reaches a frame first gets it from pump() below.
+    roPending = false
+    if (contentRect) {
+      roCallback([{ contentRect }])
+      return
+    }
+    let rect = contentBoxOf(observedCanvas)
+    for (let i = 0; i < 10; i++) {
+      roCallback([{ contentRect: rect }])
+      const next = contentBoxOf(observedCanvas)
+      if (next.width === rect.width && next.height === rect.height) break
+      rect = next
+    }
+  }
+
+  return {
+    canvas,
+    resize: deliverResize,
     // Simulates a real DPR change (moving window to another monitor): the
     // media query's 'change' event fires with no ResizeObserver entry
     // involved at all, same as onDprChange()'s own trigger in a real
@@ -176,10 +195,19 @@ function makeEnv() {
     // the NEXT pump() call, not this one): `splice` snapshots the queue
     // before firing so a callback that reschedules itself (the tick loop)
     // doesn't get invoked twice in the same batch.
+    //
+    // A frame is also where the ResizeObserver's first delivery lands, after
+    // that frame's rAF callbacks (Chrome's order, see the stub above): a
+    // fixture that mounts and then pumps gets the mount-time sizing on its
+    // own, exactly like a page that just paints.
     pump: (ms) => {
       now += ms
       const batch = rafQueue.splice(0, rafQueue.length)
       batch.forEach((fn) => fn(now))
+      if (roPending) {
+        roPending = false
+        deliverResize()
+      }
     },
     pending: () => rafQueue.length,
   }
@@ -234,6 +262,34 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
 
   handle.destroy()
   assert.equal(env.pending(), 0)
+})
+
+test('canvas harness: the observer\'s first delivery sizes the canvas with nothing else happening', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // Every other fixture in this file fires the first entry by hand
+  // (env.resize()). A real page never has to: observing the canvas is itself
+  // what makes the ResizeObserver deliver its current size, one frame later,
+  // and mountEffect's callback for it is applySize. Nothing here scrolls,
+  // resizes or changes DPR, so the mount frame is the only thing that can
+  // size this canvas at all (ADU-177).
+  const frames = []
+  const handle = mountEffect(env.canvas, { frame: () => frames.push(1) })
+
+  assert.equal(env.canvas.width, 300, 'the HTML default: nothing is sized before that frame')
+  assert.equal(env.pending(), 0, 'and no loop is running yet')
+
+  env.pump(16) // a frame: rAF callbacks, then the ResizeObserver step
+
+  assert.equal(env.canvas.width, 800, '400 CSS px x dpr capped at 2, from the first delivery')
+  assert.equal(env.canvas.height, 600)
+  assert.equal(frames.length, 0, 'the sizing pass itself paints through the loop, not before it')
+  assert.equal(env.pending(), 1, 'and the loop it started is what runs from here')
+
+  env.pump(16)
+  assert.equal(frames.length, 1)
+  handle.destroy()
 })
 
 test('canvas harness: a resize while paused repaints once without resuming the loop', async () => {

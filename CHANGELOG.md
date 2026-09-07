@@ -47,6 +47,37 @@
   the resulting diff, but its message will not say why. Noted here for
   whoever lands on that diff next.
 
+### Testing (round 7 follow-up, ADU-177)
+No behavior change: a stub modelled a ResizeObserver that never delivers,
+which left the mount-time schedule untested rather than passing.
+- Every `ResizeObserver` stub in the slider suite (18 of them, one per
+  fixture) recorded the observed element and delivered nothing. A real one
+  delivers once, on its own, right after `observe()`, with the element's
+  current size, and `src/core/slider.ts` is written against that: its
+  callback is `schedule()`, so the frame that measures a rail whose box was
+  not ready at mount comes from that first delivery and from nothing else.
+  One shared stub now delivers it, batched into one callback per frame,
+  dropped by `disconnect()`, the way the spec has it. The delivery is a
+  frame, not a microtask: a real one runs in the rendering step, and these
+  fixtures drive their own rAF queue as their only clock, so a microtask
+  would land after the whole test body had run.
+- All 18 fixtures now reach that delivery, up from 8: two drove
+  `requestAnimationFrame` as `() => 1`, which throws the callback away and
+  with it any observer delivery, and eight never ran a frame at all. A new
+  test covers what the missing delivery hid, a rail mounted with no box
+  (a tab just revealed, a font not yet swapped): the synchronous mount
+  measure reads a zero viewport and parks on slide 0, and only the
+  observer's first delivery re-measures it onto the real active slide.
+  Proved red against the old do-nothing stub.
+- The canvas harness's stub had the same hole. It queues the first delivery
+  on `observe()` now and `pump()` runs it after that frame's rAF callbacks,
+  Chrome's order. A fixture that calls `env.resize()` before it ever pumps
+  has delivered that first entry by hand, so nothing is delivered twice and
+  the other 51 canvas tests are untouched. The new test mounts and pumps
+  with no `resize()` call at all: the canvas sizes itself from the first
+  delivery and starts its loop, and stays at the HTML default 300x150
+  without it.
+
 ### Testing (round 6 follow-up, ADU-161)
 No behavior change: three fixtures modelled a browser state no engine is in,
 which is what let two rounds of tests pass on broken code.

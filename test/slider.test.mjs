@@ -38,6 +38,61 @@ function fireChildList(target) {
   return delivered
 }
 
+// A real ResizeObserver delivers ONCE right after observe(), with the
+// element's current size, and src/core/slider.ts is written against that: its
+// callback is schedule(), so the mount-time frame comes from that first
+// delivery, not from anything the page does. A stub that records the element
+// and delivers nothing left that path untested in all 18 fixtures below
+// (ADU-177).
+//
+// The delivery is a frame, not a microtask: a real one runs in the rendering
+// step of the next frame, and these fixtures drive their own rAF queue as
+// their only clock, so a microtask would land after the whole test body ran.
+// Chrome runs a frame's rAF callbacks before that frame's ResizeObserver
+// step; queueing the delivery on the same rAF queue keeps that order for
+// every fixture here (the delivery is the first thing queued at mount, and
+// the measure it schedules lands behind it). Entries are batched into one
+// callback per frame, and disconnect() drops the ones still pending, both the
+// way the spec has it.
+class ResizeObserverStub {
+  constructor(cb) {
+    this.cb = cb
+    this.pending = []
+    this.frame = 0
+  }
+  observe(target) {
+    this.pending = this.pending.filter((entry) => entry.target !== target)
+    this.pending.push({
+      target,
+      // contentRect is a LAYOUT box: clientWidth/clientHeight, never a rect
+      contentRect: { width: target.clientWidth ?? 0, height: target.clientHeight ?? 0 },
+    })
+    if (!this.frame)
+      this.frame = requestAnimationFrame(() => {
+        this.frame = 0
+        const entries = this.pending
+        this.pending = []
+        if (entries.length) this.cb(entries, this)
+      })
+  }
+  unobserve(target) {
+    this.pending = this.pending.filter((entry) => entry.target !== target)
+  }
+  disconnect() {
+    this.pending = []
+  }
+}
+
+// Runs every frame callback queued as of now, and the ones those queue in
+// turn: the mount-time ResizeObserver delivery lands on the first frame after
+// slider() returns, and the measure() it schedules on the one behind it.
+// Fixtures that already pump their own queue (pumpSlider below) get this for
+// free; the ones that never pumped call this once, so the mount frame a real
+// browser always runs is not skipped.
+const runFrames = (rafQueue) => {
+  while (rafQueue.length) rafQueue.shift()(0)
+}
+
 // Geometry stubs: 3 slides of 100px in a 300px container, gapless.
 function makeSlide(offsetLeft) {
   return {
@@ -73,10 +128,7 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class {
-    observe() {}
-    disconnect() {}
-  }
+  global.ResizeObserver = ResizeObserverStub
 
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
   slides.forEach((s) => {
@@ -131,6 +183,12 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.ok(slides[1].classes.has('sv-active'))
   assert.ok(!slides[0].classes.has('sv-active'))
 
+  // one frame later the ResizeObserver's first delivery re-measures: every
+  // command below runs against that state, the one a real page is ever in
+  runFrames(rafQueue)
+  assert.equal(handle.active(), 1, 'the mount frame re-measures to the same place')
+  assert.deepEqual(onSlideCalls, [1], 'and does not re-fire onSlide')
+
   // next(): centers slide 3 → left = 200 - (300-100)/2 = 100
   // (duration: 0 → the glide short-circuits to a direct position write)
   handle.next()
@@ -157,10 +215,7 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
   global.performance = { now: () => now }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class {
-    observe() {}
-    disconnect() {}
-  }
+  global.ResizeObserver = ResizeObserverStub
 
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
   slides.forEach((s) => {
@@ -197,6 +252,9 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
 
   const { slider } = await import('../dist/core/slider.js')
   const handle = slider(container, { duration: 100 })
+  // the mount frame first: this fixture's cancelAnimationFrame drops the whole
+  // queue, so a glide started before it would swallow the observer's delivery
+  runFrames(rafQueue)
 
   // active starts at 1 (center). Two rapid clicks: 1 → 2 → clamped 2,
   // but the second must count from the PENDING target, not stale active.
@@ -213,13 +271,14 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
 })
 
 test('slider: RTL normalizes to logical coordinates', async () => {
+  const rafQueue = []
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
-  global.requestAnimationFrame = (fn) => 1
-  global.cancelAnimationFrame = () => {}
-  global.ResizeObserver = class {
-    observe() {}
-    disconnect() {}
-  }
+  // a queue, not `() => 1`: a rAF stub that throws its callback away also
+  // throws away the ResizeObserver's first delivery, so the mount frame that
+  // every real browser runs could never happen here
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
   // direction: rtl — slides laid out right-to-left; raw scrollLeft is 0..-range.
   // offsetLeft values measured in real Chrome (container position:relative,
   // so offsetParent = container): 200, 100, 0, -100, -200 for a 300px client
@@ -265,6 +324,7 @@ test('slider: RTL normalizes to logical coordinates', async () => {
 
   const { slider } = await import('../dist/core/slider.js')
   const handle = slider(container, { duration: 0 })
+  runFrames(rafQueue) // the mount-time observer delivery re-measures
 
   // at raw 0 (start, rightmost) logical pos is 0 → progress 0; the slide
   // nearest the 300px viewport's center is index 1, same as the LTR case
@@ -293,12 +353,12 @@ test('slider: RTL normalizes to logical coordinates', async () => {
 })
 
 test('slider: mouse drag kills native text-selection at pointerdown, and restores focus on a plain click', async () => {
-  global.requestAnimationFrame = () => 1
-  global.cancelAnimationFrame = () => {}
-  global.ResizeObserver = class {
-    observe() {}
-    disconnect() {}
-  }
+  const rafQueue = []
+  // a real queue, so the ResizeObserver's first delivery has a frame to land
+  // on (see the RTL fixture above)
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
   global.getSelection = () => ({ removeAllRanges: () => {} })
   global.matchMedia = undefined
 
@@ -345,6 +405,7 @@ test('slider: mouse drag kills native text-selection at pointerdown, and restore
 
   const { slider } = await import('../dist/core/slider.js')
   const handle = slider(container, { duration: 0 })
+  runFrames(rafQueue) // the mount-time observer delivery re-measures
 
   // --- a plain click: pointerdown, no movement, pointerup ---
   let prevented = false
@@ -385,7 +446,7 @@ test('slider: goTo(i, false) after seek() restores the authored snap; position c
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
@@ -464,7 +525,7 @@ test('slider: geometry is container-local even when the rail sits far from the v
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
   const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
   // the rail is 250px from the left of a positioned ancestor and 900px down the page
@@ -484,7 +545,7 @@ test('slider: vertical rail (axis y) measures with tops and scrollTop', async ()
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
   const slides = [makeSlideBox({ y: 0, w: 300 }), makeSlideBox({ y: 100, w: 300 }), makeSlideBox({ y: 200, w: 300 }), makeSlideBox({ y: 300, w: 300 })]
   const c = makeBox(slides, { rect: { left: 40, top: 500 }, clientWidth: 300, clientHeight: 200, scrollWidth: 300, scrollHeight: 400, listeners, rafQueue })
@@ -509,7 +570,7 @@ test('slider: a transformed slide (coverflow scale/rotate) does not move its own
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
   const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
   // a coverflow transform would shift the painted rect of slide 1 by 40px; offsets are layout, not paint
@@ -529,7 +590,7 @@ test('slider: native controls and non-primary buttons keep their gesture (no pre
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
   slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
@@ -546,6 +607,7 @@ test('slider: native controls and non-primary buttons keep their gesture (no pre
   }
   const { slider } = await import('../dist/core/slider.js?native')
   const handle = slider(container, { duration: 0, drag: true })
+  runFrames(rafQueue) // the mount-time observer delivery re-measures
   let prevented = 0
   const down = (extra) => containerHandlers.pointerdown({ pointerType: 'mouse', button: 0, clientX: 10, clientY: 10, target: { closest: () => null }, preventDefault: () => prevented++, ...extra })
   down({ target: { closest: (sel) => (sel.includes('input') ? {} : null) } }) // a range input inside a slide
@@ -561,7 +623,7 @@ test('slider: a bordered positioned container (offsetParent = container) does no
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   // offsetLeft is already measured against the offsetParent's PADDING edge
@@ -585,6 +647,10 @@ test('slider: a bordered positioned container (offsetParent = container) does no
   assert.equal(slides[0].vars['--sd'], '-1.0000')
   assert.equal(slides[1].vars['--sd'], '0.0000')
   assert.equal(handle.active(), 1)
+  // the observer's first delivery, one frame later: the same border must not
+  // be subtracted on the re-measure either
+  runFrames(rafQueue)
+  assert.equal(slides[0].vars['--sd'], '-1.0000', 'the mount frame re-measures to the same place')
   handle.destroy()
 })
 
@@ -593,7 +659,7 @@ test('slider: a statically positioned container falls back to absolute offsets w
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   // container is static: neither it nor its slide is positioned, so both are
@@ -624,6 +690,9 @@ test('slider: a statically positioned container falls back to absolute offsets w
   const handle = slider(container, { duration: 0 })
   assert.equal(slide.vars['--sd'], '0.0000')
   assert.equal(handle.active(), 0)
+  // and again on the observer's first delivery one frame later
+  runFrames(rafQueue)
+  assert.equal(slide.vars['--sd'], '0.0000', 'the mount frame re-measures to the same place')
   handle.destroy()
 })
 
@@ -632,7 +701,7 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
@@ -677,7 +746,7 @@ test('slider: snap none from a stylesheet (not inline) keeps the wheel assist of
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
 
   const slidesA = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
   const slidesB = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
@@ -694,6 +763,7 @@ test('slider: snap none from a stylesheet (not inline) keeps the wheel assist of
   const { slider } = await import('../dist/core/slider.js?computedsnap')
   const off = slider(styled, { duration: 0 })
   const on = slider(snapped, { duration: 0 })
+  runFrames(rafQueue) // both mount-time observer deliveries, before the gesture
   const wheel = { deltaX: 40, deltaY: 0 }
   listeners.wheel(wheel)
   control.wheel(wheel)
@@ -711,7 +781,7 @@ test('slider: elastic overscroll never drives progress outside 0..1', async () =
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
@@ -738,7 +808,7 @@ test('slider: position never goes backwards across the gap between slides', asyn
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   // two 100px slides 16px apart: their centres sit 116px apart, not 100.
@@ -774,13 +844,15 @@ test('slider: a press inside the wheel settle window drops the pending glide', a
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr', scrollSnapType: 'x mandatory' })
 
   const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
   const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
   const { slider } = await import('../dist/core/slider.js?wheelhandoff')
   const handle = slider(c, { duration: 600 })
+  // the mount-time observer delivery, before anything counts frames below
+  runFrames(rafQueue)
 
   // the 200 ms settle timer, on demand instead of on the clock
   const pending = new Map()
@@ -840,7 +912,7 @@ test('slider: the active slide is the nearest one in pixels, not in slide widths
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   // a 100px slide followed by a 300px one: centres at 50 and 250, midpoint 150.
@@ -885,13 +957,14 @@ test('slider: a destroyed slider stops moving', async () => {
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }
   global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
-  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = ResizeObserverStub
   global.getComputedStyle = () => ({ direction: 'ltr' })
 
   const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
   const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
   const { slider } = await import('../dist/core/slider.js?destroyed')
   const handle = slider(c, { duration: 0 })
+  runFrames(rafQueue) // the mount-time observer delivery re-measures
 
   handle.goTo(1, false)
   const parked = c.scrollLeft
@@ -908,4 +981,64 @@ test('slider: a destroyed slider stops moving', async () => {
   rafQueue.length = 0
   listeners.scroll()
   assert.equal(rafQueue.length, 0, 'a destroyed slider schedules no frame')
+})
+
+test('slider: the observer\'s first delivery measures a container that had no box at mount', async () => {
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  // The rail is mounted before it has a box: inside a display:none ancestor a
+  // tab has just revealed, a details that is still closed, a web font that has
+  // not swapped. slider() measures synchronously anyway and reads a zero
+  // viewport; nothing scrolls, nothing resizes afterwards. What corrects it in
+  // a real browser is the ResizeObserver's FIRST delivery, which arrives on
+  // its own right after observe() with the element's current size, and whose
+  // callback here is schedule(). Without that delivery this rail stays parked
+  // on slide 0 forever (ADU-177).
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => {
+    s.style._owner = s
+    s.classList._owner = s
+  })
+  const container = {
+    get children() {
+      slides.forEach((sl) => {
+        sl._c = this
+        sl.offsetParent = this
+      })
+      return slides
+    },
+    clientLeft: 0, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 0, width: this.clientWidth, height: 0 } },
+    scrollLeft: 0,
+    clientWidth: 0, // no layout yet
+    vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?mountframe')
+  const onSlideCalls = []
+  const handle = slider(container, { duration: 0, onSlide: (i) => onSlideCalls.push(i) })
+
+  // zero viewport: the centre sits at 0, so the first slide is the nearest
+  assert.equal(handle.active(), 0, 'the synchronous mount measure sees no box')
+  assert.deepEqual(onSlideCalls, [0])
+  assert.equal(rafQueue.length, 1, 'observing the rail queued the mount frame, and nothing else did')
+
+  // layout happens, then the observer delivers its first entry on that frame
+  container.clientWidth = 300
+  runFrames(rafQueue)
+
+  assert.equal(handle.active(), 1, 'the first delivery re-measures against the real box')
+  assert.deepEqual(onSlideCalls, [0, 1], 'and reports the slide that actually became active')
+  assert.equal(container.vars['--sv-slide'], '1')
+  assert.equal(slides[1].vars['--sd'], '0.0000')
+  assert.ok(slides[1].classes.has('sv-active'))
+  handle.destroy()
 })
