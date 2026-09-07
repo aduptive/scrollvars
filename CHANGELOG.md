@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Toggles (round 7 follow-up, ADU-172)
+- A trigger nested inside two `toggles()` scopes is now toggled exactly
+  once per click, by the nearest scope. `toggles(root?)` is public
+  two-argument API and the documented setup runs two instances at once:
+  `<ScrollVarsBoot />` calls it unscoped while a consumer calls it on
+  their own root. A trigger inside both was contained by both, since
+  containment is inclusive rather than nearest-exclusive, so both
+  instances flipped the same class on one click and the toggle netted to
+  nothing: after one click and after two clicks alike the panel was
+  closed, `--sv-state` was 0 and `aria-expanded` was false. The user saw
+  a button that does nothing. The first instance that acts on a click now
+  claims it and every later one bails, which is the nearest scope by
+  dispatch order: a scope containing the trigger is an ancestor-or-self
+  of it, so it sits on the event's bubble path, and that path runs inner
+  to outer. Two unscoped instances (the same bug without nesting) tie on
+  registration order and still toggle once. The claim is keyed by the
+  event object and taken on action rather than on sight, so a scope that
+  cannot resolve the trigger's target still passes the click on to a
+  wider scope that can, `stop()` needs no bookkeeping, and no state
+  outlives a dispatch. Pre-existing since scoped `toggles()`, not a
+  regression. No public surface change.
+
 ### Docs (round 7, ADU-170)
 Docs read against the code merged by the five round-7 code tickets.
 - README's and the docs page's below-the-floor paragraphs no longer say
