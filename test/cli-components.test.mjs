@@ -475,6 +475,119 @@ for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && COM
   })
 }
 
+// ---- ADU-167, successor of ADU-155: the gate above compares a CSS tab
+// against an installed component, so a pane whose effect ships no component
+// (staggered-reveal, split-reveal, marquee) had nothing to be compared to and
+// kept a preset copy that stops right before the stylesheet's own
+// `@media (prefers-reduced-motion: reduce)` override. Pasted, a reveal
+// transitions under reduce and a marquee never stops. The other side here is
+// the QUOTED STYLESHEET: a pane that re-declares a preset rule for class C
+// re-declares C's reduced-motion override too, whether or not an installed
+// component exists.
+// Compared per CLASS, not per selector string: a sheet resets a whole family
+// in one rule (`:is(.sv-rise, .sv-fade, .sv-slide-l, ...)`) and a pane
+// legitimately quotes only the preset it documents.
+const stripHtmlComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '')
+// a pane is markup, CSS and sometimes a <script>: JS braces would read as
+// rules (`.from('.sv-stage > *', { ... })` is not a selector) and pin.css
+// resets .sv-stage under reduce, so an unstripped script invents a finding
+const stripScripts = (s) => stripHtmlComments(s.replace(/<script[\s\S]*?<\/script>/g, ''))
+// tilt.css's block is `(prefers-reduced-motion: reduce), (hover: none)`: match
+// the rest of the query too, or that sheet reads as having no override at all
+const REDUCE_BLOCK = /@media\s*\(prefers-reduced-motion:\s*reduce\)[^{]*\{(?:[^{}]|\{[^{}]*\})*\}/g
+// The class a rule DECLARES ON is the subject of its selector, the last
+// compound: `.sv-stage .panel` styles .panel and only scopes it under the
+// stage, so a pane that scopes its own boxes under .sv-stage is not
+// re-declaring the stage preset. A subject with no class of its own
+// (`.sv-spread > *`, `.sv-split-rise > span`, `:not(.sv-skip)`) belongs to the
+// nearest ancestor compound that has one, which is the preset being quoted.
+const targetClasses = (selectorList) =>
+  selectorList.split(/,(?![^(]*\))/).flatMap((sel) => {
+    const parts = sel.trim().split(/(?![^(]*\))[\s>+~]+/).filter(Boolean)
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const found = selectorClasses(parts[i].replace(/:not\([^)]*\)/g, ''))
+      if (found.length) return found
+    }
+    return []
+  })
+// the classes a chunk of CSS gives rules to, ignoring the engine classes every
+// tracked element carries anyway
+const ruleClasses = (css) =>
+  new Set([...stripComments(stripScripts(css)).matchAll(/([^{}]+)\{[^{}]*\}/g)].flatMap((m) => targetClasses(m[1])))
+const reduceBlocks = (css) => stripComments(stripScripts(css)).match(REDUCE_BLOCK) ?? []
+const reducedClasses = (css) => new Set(reduceBlocks(css).flatMap((block) => [...ruleClasses(block)]))
+const sheetResets = Object.fromEntries(STYLESHEETS.map((name) => [name, reducedClasses(styleSource[name])]))
+
+for (const fx of EFFECTS.filter((e) => e.css)) {
+  test(`gallery ${fx.slug}: the CSS tab carries the reduced-motion override of every preset rule it quotes`, () => {
+    const pane = stripComments(stripScripts(fx.css))
+    const blocks = pane.match(REDUCE_BLOCK) ?? []
+    const reset = reducedClasses(fx.css)
+    const missing = []
+    for (const cls of ruleClasses(pane.replace(REDUCE_BLOCK, ''))) {
+      const sheet = [...(classOwners.get(cls) ?? [])].find((name) => sheetResets[name].has(cls))
+      if (sheet && !reset.has(cls))
+        missing.push(
+          `${fx.slug}: the CSS tab quotes a rule for .${cls} but not styles/${sheet}.css's ` +
+            `reduced-motion override for it: pasted as shown, .${cls} keeps animating under reduce`
+        )
+    }
+    // ADU-155's second pass, which no set comparison can see: at equal
+    // specificity the LATER rule wins, so a preset rule re-declared BELOW the
+    // reduce block silently outranks it and the block is decoration.
+    const last = blocks.length ? pane.lastIndexOf(blocks[blocks.length - 1]) + blocks[blocks.length - 1].length : -1
+    const after = last === -1 ? new Set() : ruleClasses(pane.slice(last))
+    for (const cls of after)
+      if (reset.has(cls))
+        missing.push(
+          `${fx.slug}: the CSS tab re-declares .${cls} AFTER its reduced-motion block, ` +
+            `which at equal specificity wins on source order: move the block below it`
+        )
+    assert.deepEqual(missing, [], missing.join('\n'))
+  })
+}
+
+// ---- ADU-167: a pin pane pasted as shown must pin. The Curtain, Horizontal
+// rail and Sequenced scrub CSS tabs shipped `class="outer"` and
+// `class="sticky"` with the geometry in an HTML comment ("height: 250vh",
+// "sticky; top:0") and a VALUELESS `data-sv-pin`, so a reader who pasted them
+// got a wrapper with no height, a stage that never stuck and no motion at all,
+// while the same effects' Tailwind and React tabs used the real helper. gsap
+// and three-scene carried the same skeleton with `pin: true` in JS.
+// A comment is prose, so the check reads the pane with comments stripped: the
+// two things a pin needs are a length on the helper (it sets the wrapper
+// height) and a sticky stage, which is `.sv-stage` unless the pane ships its
+// own `position: sticky` rule.
+// a length, literal ('250vh') or computed (`{steps.length * 100 + 'vh'}`), and
+// never `pin: true`, which pins whatever height the wrapper already has: none,
+// when the pane's wrapper is an empty div
+const PIN_LENGTH = /["'][\d.]*(?:vh|vw|px|rem|em|%)["']/
+const PIN_OPTION = /(?<![\w-])pin\s*[:=]\s*([^,\n}]+)/g
+for (const fx of EFFECTS.filter((e) => (e.requires?.styles ?? []).includes('pin'))) {
+  test(`gallery ${fx.slug}: every pane that pins carries the pin helper, not a comment about it`, () => {
+    const problems = []
+    for (const [tab, pane] of [
+      ['css', fx.css],
+      ['tailwind', fx.tailwind],
+      ['react', fx.react],
+    ]) {
+      if (!pane) continue
+      const src = stripComments(stripHtmlComments(pane))
+      const attr = /data-sv-pin/.test(src)
+      const options = [...src.matchAll(PIN_OPTION)]
+      if (!attr && !options.length) continue // this pane claims no pin of its own
+      if (attr && !/data-sv-pin\s*=\s*["'][^"']+["']/.test(src))
+        problems.push(`${fx.slug} ${tab}: bare data-sv-pin, so the wrapper keeps its natural height and nothing pins`)
+      for (const [, value] of options)
+        if (!PIN_LENGTH.test(value))
+          problems.push(`${fx.slug} ${tab}: pin ${value.trim()} sets no height; the helper takes a length ('250vh')`)
+      if (!/(?<![\w-])sv-stage(?![\w-])/.test(src) && !/position:\s*sticky/.test(src))
+        problems.push(`${fx.slug} ${tab}: pins without .sv-stage and without a position: sticky rule of its own`)
+    }
+    assert.deepEqual(problems, [], problems.join('\n'))
+  })
+}
+
 // ---- ADU-144: a "paste the preset" block is copied by a reader with no
 // core.css installed: every var(--sv-*) it reads needs its own fallback, or
 // the whole declaration (or, worse, the transition shorthand around it) is

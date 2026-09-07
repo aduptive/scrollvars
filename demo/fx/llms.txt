@@ -41,6 +41,13 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
   transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
               translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
+
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 ```
 
 ### React
@@ -93,6 +100,13 @@ Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread your
 
 /* scrub instead of play: */
 .mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
+    translate: none; rotate: none; transition: none; }
+}
 ```
 
 ### React
@@ -128,17 +142,25 @@ Knobs: outer height = scroll length; panel content/colors are yours
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">                        <!-- sticky; top:0; h:100vh; overflow:hidden -->
-    <div class="revealed-content">…</div>
-    <div class="panel-left sv-curtain-l">…</div>
-    <div class="panel-right sv-curtain-r">…</div>
+<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
+    <div class="revealed">…</div>
+    <div class="panel sv-curtain-l">…</div>
+    <div class="panel sv-curtain-r">…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
+/* the preset (styles/pin.css), plus the two panels, which are yours: */
+.sv-stage .panel { position: absolute; inset: 0; width: 50%; background: #14141a; }
+.sv-stage .sv-curtain-r { left: 50%; }
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
 .sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r { display: none; }
+}
 ```
 
 ### React
@@ -172,15 +194,21 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 300vh -->
-  <div class="sticky">                        <!-- sticky stage, flex center -->
+<div data-sv data-sv-pin="300vh">        <!-- the pin helper owns the height -->
+  <div class="sv-stage rail-stage">      <!-- the sticky viewport, from pin.css -->
     <div class="sv-rail">…cards…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
-.sv .sv-rail { width: max-content;
+/* the preset (styles/pin.css), plus the stage layout, which is yours: */
+.rail-stage { display: flex; align-items: center; }
+.sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
   translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
+}
 ```
 
 ### React
@@ -216,8 +244,8 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">
+<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
     <div class="sv-range sv-range-rise">
       <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
       <p style="--sv-from: .3; --sv-to: .7">Second</p>
@@ -234,6 +262,11 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-range > * { --sv-r: 1; }
+}
 ```
 
 ### React
@@ -271,17 +304,17 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP
 
 ### CSS
 ```html
-<div class="outer">          <!-- height: 250vh; position: relative -->
-  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+<div class="scene">                     <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
 </div>
 
 <script>
   // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
-    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
-  track(document.querySelector('.outer'), {
-    pin: true,
+  track(document.querySelector('.scene'), {
+    pin: '250vh',                 // the helper owns the wrapper height
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
@@ -321,8 +354,8 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
 
 ### CSS
 ```html
-<div class="outer">              <!-- height: 250vh -->
-  <div class="sticky"><canvas id="scene"></canvas></div>
+<div id="outer">                       <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage"><canvas id="scene"></canvas></div>   <!-- from pin.css -->
 </div>
 
 <script type="module">
@@ -337,7 +370,7 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
+  track(document.getElementById('outer'), { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>
@@ -398,6 +431,12 @@ Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-d
               translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->
@@ -450,6 +489,10 @@ Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an inter
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-words > * { transition-duration: .01ms; }
+}
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)
@@ -578,6 +621,12 @@ Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running d
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   without it a pasted marquee never stops */
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track { animation: none; }
+}
 ```
 
 ### React

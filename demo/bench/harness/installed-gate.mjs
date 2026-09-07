@@ -240,6 +240,62 @@ const REDUCED_BEHAVIOR = {
   },
 }
 
+// ---- ADU-167: the paste-the-preset panes whose effect ships no component.
+// `setup` writes by hand what the engine would write (the driver's classes,
+// the spans data-sv-split creates), so the assertion is about the cascade and
+// nothing else; `moves` runs under no-preference and `still` under reduce.
+const PASTED_PRESET = {
+  'staggered-reveal': {
+    whenLive: 'a live .sv-rise transitions',
+    whenReduced: 'the same .sv-rise has no transition and no translate',
+    setup: () => {
+      document.documentElement.classList.add('sv-on')
+      document.querySelector('[data-sv]').classList.add('sv', 'sv-live')
+    },
+    probe: () => {
+      const cs = getComputedStyle(document.querySelector('.sv-rise'))
+      return { duration: cs.transitionDuration, translate: cs.translate, opacity: cs.opacity }
+    },
+    moves: (r) => parseFloat(r.duration) > 0 && r.opacity === '1',
+    still: (r) => parseFloat(r.duration) === 0 && r.translate === 'none' && r.opacity === '1',
+  },
+  'split-reveal': {
+    whenLive: 'a live word span transitions',
+    whenReduced: 'the same span has no transition and no translate',
+    // data-sv-split's own output: the animated words are aria-hidden spans
+    // carrying --sv-order, under a .sv-split headline
+    setup: () => {
+      document.documentElement.classList.add('sv-on')
+      const root = document.querySelector('[data-sv]')
+      root.classList.add('sv', 'sv-live')
+      const h = root.querySelector('.sv-split-rise')
+      h.classList.add('sv-split')
+      h.innerHTML = h.textContent
+        .trim()
+        .split(/\s+/)
+        .map((w, i) => `<span aria-hidden="true" style="--sv-order: ${i}">${w} </span>`)
+        .join('')
+    },
+    probe: () => {
+      const cs = getComputedStyle(document.querySelector('.sv-split-rise > span'))
+      return { duration: cs.transitionDuration, translate: cs.translate, opacity: cs.opacity, display: cs.display }
+    },
+    moves: (r) => parseFloat(r.duration) > 0 && r.opacity === '1' && r.display === 'inline-block',
+    still: (r) => parseFloat(r.duration) === 0 && r.translate === 'none' && r.opacity === '1',
+  },
+  marquee: {
+    whenLive: 'the strip runs',
+    whenReduced: 'the strip stops instead of scrolling forever',
+    setup: () => {}, // pure CSS: no driver, no engine, nothing to write
+    probe: () => {
+      const cs = getComputedStyle(document.querySelector('.sv-marquee-track'))
+      return { name: cs.animationName, duration: cs.animationDuration }
+    },
+    moves: (r) => r.name === 'sv-marquee' && parseFloat(r.duration) > 0,
+    still: (r) => r.name === 'none',
+  },
+}
+
 // A gallery CSS tab is one string: the markup a reader copies, a blank line,
 // then the CSS they paste into their stylesheet (the pane-pairing gate in
 // test/cli-components.test.mjs leans on the same shape). A collapsed blank
@@ -429,6 +485,38 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
       const result = await t.evaluate(reduced.probe, '[data-sv]')
       check(`gallery tab ${fx.slug}: reduced motion, ${reduced.what}`, result.ok, result.detail)
       await t.close()
+    }
+
+    // ---- ADU-167: the same probe for panes with no installed component -----
+    // The loop above needs a component to have been rendered, and these three
+    // effects ship none: nothing compared them to anything, which is how all
+    // three kept a preset copy that stopped right before the sheet's
+    // reduced-motion override. The unit gate proves the block is present and
+    // last in the source; only a browser proves it WINS, the half ADU-155
+    // shipped broken twice. Each pane is loaded TWICE, and the no-preference
+    // run is not decoration: "no transition" is also what a rule that never
+    // matched looks like, so without the control a probe would pass on a pane
+    // whose preset does nothing at all.
+    for (const [slug, spec] of Object.entries(PASTED_PRESET)) {
+      const fx = EFFECTS.find((e) => e.slug === slug)
+      const pane = splitPane(fx.css)
+      const url = `/pasted/${slug}`
+      pages.set(url, page({ css: pane.css, markup: pane.markup, engine: '', script: '' }))
+      for (const motion of ['no-preference', 'reduce']) {
+        const p = await newPage()
+        await p.setViewport({ width: 1200, height: 800 })
+        await p.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: motion }])
+        await p.goto(base + url, { waitUntil: 'load' })
+        await p.evaluate(spec.setup)
+        const result = await p.evaluate(spec.probe)
+        const reduce = motion === 'reduce'
+        check(
+          `pasted ${slug}: ${reduce ? `under reduce, ${spec.whenReduced}` : spec.whenLive}`,
+          (reduce ? spec.still : spec.moves)(result),
+          JSON.stringify(result)
+        )
+        await p.close()
+      }
     }
   } finally {
     server.close()

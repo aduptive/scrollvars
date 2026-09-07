@@ -170,8 +170,8 @@
 &lt;/div&gt;
 &lt;!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
      Older engines settle at the end state (consume as var(--sv-r, 1)). --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin class="outer"&gt;   &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
+  &lt;div class="sv-stage"&gt;                &lt;!-- the sticky viewport, from pin.css --&gt;
     &lt;div class="sv-range sv-range-rise"&gt;
       &lt;h2 style="--sv-from: 0; --sv-to: .4"&gt;First&lt;/h2&gt;
       &lt;p style="--sv-from: .3; --sv-to: .7"&gt;Second&lt;/p&gt;
@@ -187,7 +187,12 @@
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }</code></pre>
+.mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-range &gt; * { --sv-r: 1; }
+}</code></pre>
     <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
   &lt;div className="sv-stage grid place-items-center"&gt;
     &lt;div className="sv-range sv-range-rise grid gap-3"&gt;

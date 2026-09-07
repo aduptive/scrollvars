@@ -286,6 +286,13 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
+<h4>Gallery (blind review round 7)</h4>
+<ul>
+<li>Every paste-the-preset CSS tab now carries the reduced-motion override its stylesheet ships, placed after the rule it overrides. Eight tabs (staggered reveal, deck spread, curtain, horizontal rail, sequenced scrub, split reveal, rotating words, marquee) quoted the animating rule and stopped before the sheet's <code>@media (prefers-reduced-motion: reduce)</code> block, so a reader who pasted them got a reveal that still transitioned and a marquee that never stopped. Importing the stylesheet was always fine; only the pasted copies were short.</li>
+<li>The Curtain, Horizontal rail, Sequenced scrub, GSAP and Three.js CSS tabs use the pin helper the other tabs already used: <code>data-sv-pin="250vh"</code> (or <code>pin: '250vh'</code> in JS) plus <code>.sv-stage</code>, instead of an invented <code>class="outer"</code> / <code>class="sticky"</code> skeleton whose height and stickiness lived only in HTML comments next to a valueless <code>data-sv-pin</code>. Pasted as shown, those four effects pinned nothing at all.</li>
+<li>Two new gates keep both true: every CSS tab that quotes a preset rule must quote that preset's reduced-motion override and keep it below the rule it beats, and every pane of a pin effect must carry a length on the helper and a real sticky stage. The three tabs with no installed component to compare against are now also loaded in Chrome twice, under no preference and under reduce, so the override is proved to win rather than merely to be present.</li>
+</ul>
+
 <h4>Tooling (blind review round 6)</h4>
 <ul>
 <li>Git pushes no longer create Vercel deployments. Production is deployed by <code>npm run demo:deploy</code>, which runs <code>vercel deploy --prod</code> from <code>demo/</code> and reads <code>demo/vercel.json</code>, so the public site is unaffected. Every push of a work branch used to create a preview deployment that the project's ignored-build-step cancelled straight away, and a cancelled deployment still counts against the account's shared daily quota: 61 of the last 100 deployments were cancelled scrollvars builds, which exhausted the allowance and blocked another project's production deploys.</li>

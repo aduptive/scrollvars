@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Gallery (blind review round 7)
+- Every paste-the-preset CSS tab now carries the reduced-motion override its
+  stylesheet ships, placed after the rule it overrides. Eight tabs
+  (staggered reveal, deck spread, curtain, horizontal rail, sequenced scrub,
+  split reveal, rotating words, marquee) quoted the animating rule and
+  stopped before the sheet's `@media (prefers-reduced-motion: reduce)` block,
+  so a reader who pasted them got a reveal that still transitioned and a
+  marquee that never stopped. Importing the stylesheet was always fine; only
+  the pasted copies were short.
+- The Curtain, Horizontal rail, Sequenced scrub, GSAP and Three.js CSS tabs
+  use the pin helper the other tabs already used: `data-sv-pin="250vh"` (or
+  `pin: '250vh'` in JS) plus `.sv-stage`, instead of an invented
+  `class="outer"` / `class="sticky"` skeleton whose height and stickiness
+  lived only in HTML comments next to a valueless `data-sv-pin`. Pasted as
+  shown, those four effects pinned nothing at all.
+- Two new gates keep both true: every CSS tab that quotes a preset rule must
+  quote that preset's reduced-motion override and keep it below the rule it
+  beats, and every pane of a pin effect must carry a length on the helper and
+  a real sticky stage. The three tabs with no installed component to compare
+  against are now also loaded in Chrome twice, under no preference and under
+  reduce, so the override is proved to win rather than merely to be present.
+
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by
   `npm run demo:deploy`, which runs `vercel deploy --prod` from `demo/` and

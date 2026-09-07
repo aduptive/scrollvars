@@ -165,15 +165,21 @@
     &lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin class="outer"&gt;   &lt;!-- height: 300vh --&gt;
-  &lt;div class="sticky"&gt;                        &lt;!-- sticky stage, flex center --&gt;
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="300vh"&gt;        &lt;!-- the pin helper owns the height --&gt;
+  &lt;div class="sv-stage rail-stage"&gt;      &lt;!-- the sticky viewport, from pin.css --&gt;
     &lt;div class="sv-rail"&gt;…cards…&lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 
-/* the preset (styles/pin.css): */
-.sv .sv-rail { width: max-content;
-  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }</code></pre>
+/* the preset (styles/pin.css), plus the stage layout, which is yours: */
+.rail-stage { display: flex; align-items: center; }
+.sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
+  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
+}</code></pre>
     <pre data-pane="react"><code>&lt;Track pin="300vh"&gt;
   &lt;div className="sv-stage flex items-center"&gt;
     &lt;div className="sv-rail flex gap-4 px-[10vw]"&gt;{cards}&lt;/div&gt;
