@@ -11,7 +11,9 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 
 - **One global driver**: a single passive scroll listener, one rAF for all scroll tracking; slider, pointer and canvas schedule their own.
 - **Batched read → write phases**. All rects first, all CSS variables after.
-- **No framework in the hot path**, React renders zero times during scroll.
+- **No framework in the hot path**, React renders zero times per frame
+  during scroll (`useScenes`/`useSlider` re-render only on a discrete index
+  change).
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
 - **`prefers-reduced-motion`** respected by driver and presets.
 
@@ -83,7 +85,7 @@ npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 ```
 
 ```ts
-// app/globals.css or layout. Everything:
+// app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.4 KB gz
@@ -155,7 +157,7 @@ Anything that reads them is a preset. The shipped ones:
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS and under reduced motion. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there.
 
 ## React
 
@@ -495,7 +497,7 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); `sv-rail` is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()` gives it back its own scroll-linked travel, but with the stage released into flow that travel mostly happens off screen |
+| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); `sv-rail` is the one exception, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()`'s rail fallback ignores `--sv-rail-start` and starts at `translateX(0)` instead of offscreen, so it is stationary whenever the track's own width equals the viewport |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
@@ -509,9 +511,11 @@ they settle for unrelated reasons). `sv-rail` stays the one exception:
 with JS running the no-JS guard's `width: auto; flex-wrap: wrap` does not
 apply, so a track built wider than the viewport runs past the right edge,
 reachable only by a page-wide horizontal scroll, and not at all under an
-`overflow-x: hidden` ancestor. `compat()` gives the rail back its own
-scroll-linked travel, but with the stage released into flow that travel
-mostly happens off screen, so wrap the rail yourself below the floor. One
+`overflow-x: hidden` ancestor. `compat()`'s own `sv-rail` fallback does
+not really fix that: it ignores `--sv-rail-start`, starts at
+`translateX(0)` instead of entering from offscreen, and is stationary
+whenever the track's own width equals the viewport, so wrap the rail
+yourself below the floor regardless. One
 more caveat until ADU-150 lands: a released stage can also leave a parked
 curtain panel sitting outside it, extending the document so a reader can
 scroll sideways to an empty panel.
@@ -526,11 +530,14 @@ stylesheet for the reveal presets (`sv-rise`, `sv-fade`, `sv-slide-l`,
 the one `max()` left, drift's fade, sits behind a plain `opacity`
 declaration that old parsers keep). `sv-deck` unstacks to a static,
 non-overlapping layout instead of animating (its fly-away slice needs
-`clamp()`); `sv-split-rise` and `sv-spread` stay static below the floor
-too, no fallback rule for either. `sv-split-rise` because its animating
-rule is written with `:is()`, dropped whole by a parser that predates it;
-`sv-spread` because its rule parses fine and has no `translate`/`rotate`
-to apply down there.
+`clamp()`); `sv-spread` stays static below the floor too, no fallback
+rule, its rule parses fine but has no `translate`/`rotate` to apply down
+there. `sv-split-rise` has no fallback rule either, but its floor is not
+one line: below `:is()` support its animating rule, written with `:is()`,
+is dropped whole by a parser that predates it, fully static; between
+`:is()` support and the individual-transform floor the rule still
+matches and its `opacity` declaration still transitions, so the text
+fades in without rising.
 Text splitting itself still works down to the same floor: `split()`
 no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
 Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
