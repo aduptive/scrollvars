@@ -190,6 +190,11 @@ export function slider(
   let raf = 0
   let dragging = false
   let anim = 0
+  // After destroy() every command is a no-op and nothing schedules a frame:
+  // the container is no longer measured, and a glide on stale geometry would
+  // scroll a slider the page has already let go of (the React kit's autoplay
+  // interval kept calling next() on one).
+  let destroyed = false
 
   const slides = () => Array.from(container.children) as HTMLElement[]
 
@@ -206,24 +211,32 @@ export function slider(
     raf = 0
     const center = pos() + viewport() / 2
     let best = 0
-    let bestSd = Infinity
+    let bestDist = Infinity
     const list = slides()
     // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
     const sizes = list.map((slide) => Math.max(slideSize(slide), 1))
     const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2)
     list.forEach((slide, i) => {
+      // --sd stays normalized by the slide's OWN size (that is what the CSS
+      // reads), but the active slide is the nearest in PIXELS: comparing the
+      // normalized values made a wide slide look nearer than a narrow one
+      // beside it, so with a 100px and a 300px slide the active flipped at
+      // centre 101 instead of their midpoint, 150.
       const sd = (centers[i] - center) / sizes[i]
       slide.style.setProperty('--sd', sd.toFixed(4))
-      if (Math.abs(sd) < Math.abs(bestSd)) {
-        bestSd = sd
+      // an exact tie keeps the first slide, as before
+      const dist = Math.abs(centers[i] - center)
+      if (dist < bestDist) {
+        bestDist = dist
         best = i
       }
     })
     // Continuous position: interpolate between the two adjacent slide CENTRES
-    // the viewport centre sits between. The old `best - bestSd` normalized by
-    // one slide's own size, so any gap made it jump BACKWARDS at every
-    // midpoint (two 100px slides 16px apart read 0.580, then 0.430 one pixel
-    // later), against the documented contract.
+    // the viewport centre sits between. The old formula (`best` minus the
+    // active slide's own `sd`) normalized by one slide's own size, so any gap
+    // made it jump BACKWARDS at every midpoint (two 100px slides 16px apart
+    // read 0.580, then 0.430 one pixel later), against the documented
+    // contract.
     position = 0
     if (centers.length > 1) {
       let seg = 0
@@ -265,7 +278,7 @@ export function slider(
   }
 
   const schedule = () => {
-    if (!raf) raf = requestAnimationFrame(measure)
+    if (!raf && !destroyed) raf = requestAnimationFrame(measure)
   }
 
   container.addEventListener('scroll', schedule, { passive: true })
@@ -344,7 +357,10 @@ export function slider(
     return true
   }
 
+  // next, prev and the keyboard all route through goTo; seek is the other
+  // writer. Two guards cover every command.
   const goTo = (index: number, smooth = true) => {
+    if (destroyed) return
     clearWheel() // this call owns the position now, not the pending settle
     const all = slides()
     const clamped = Math.max(0, Math.min(index, all.length - 1))
@@ -363,6 +379,7 @@ export function slider(
   }
 
   const seek = (progress: number) => {
+    if (destroyed) return
     clearWheel()
     stopGlide()
     target = -1
@@ -519,6 +536,7 @@ export function slider(
     active: () => Math.max(active, 0),
     state,
     destroy: () => {
+      destroyed = true
       stopGlide()
       resumeSnap()
       container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging')
