@@ -18,7 +18,6 @@ import {
 } from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const sizes = measureSizes(root)
 const STYLE_NOTES = {
   core: 'entrances, stagger, drift, spread, native view()-tier',
   pin: 'sv-stage, curtain, rail, deck, reading, counter, range',
@@ -44,19 +43,31 @@ const wrap = (text, prefix = '', width = 76) => {
   return lines.join('\n')
 }
 
+/** Counts literal, non-overlapping occurrences of `needle` in `text`. */
+const countLiteral = (text, needle) => text.split(needle).length - 1
+
 /**
  * Replaces the text between two anchors, throwing when an anchor moves.
  * Used where a marker comment cannot go: inside a Markdown paragraph (an
  * HTML comment on its own line would split it) and inside shipped source.
+ * The `before` anchor is checked for uniqueness first: a non-greedy match
+ * starting at a repeated `before` silently absorbs the other occurrences
+ * and reports the count of the compound match as one, so counting the
+ * compound regex would not catch it (ADU-195).
  */
-const between = (text, before, after, body, label) => {
+export const between = (text, before, after, body, label) => {
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const beforeCount = countLiteral(text, before)
+  if (beforeCount > 1) throw new Error(`${label}: anchor "${before}" is ambiguous, found ${beforeCount} times`)
   const re = new RegExp(`(${esc(before)})[\\s\\S]*?(${esc(after)})`)
   if (!re.test(text)) throw new Error(`${label}: anchor text not found, wording moved`)
   return text.replace(re, (m, a, b) => a + body + b)
 }
 
-const stamp = (text, name, body) => {
+export const stamp = (text, name, body) => {
+  const startMarker = `<!-- ${name}:start -->`
+  const startCount = countLiteral(text, startMarker)
+  if (startCount > 1) throw new Error(`${name} markers ambiguous: "${startMarker}" found ${startCount} times`)
   const re = new RegExp(`<!-- ${name}:start -->[\\s\\S]*?<!-- ${name}:end -->`)
   if (!re.test(text)) throw new Error(`${name} markers missing`)
   return text.replace(re, () => `<!-- ${name}:start -->\n${body}\n<!-- ${name}:end -->`)
@@ -68,12 +79,17 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  * Splices a `| label | CELL |` markdown table row's browser-floor cell,
  * throwing when the row moved. `cell` is the whole replacement (bold
  * markers included where the surface wants them); the row's other
- * columns (notes, extra gates) are untouched.
+ * columns (notes, extra gates) are untouched. The uniqueness check counts
+ * the WHOLE regex (label plus the cell shape it requires), not the bare
+ * label: a label can repeat across tables with a different cell shape and
+ * still be unambiguous for this splice (ADU-195).
  */
-const floorRow = (text, label, cell, surface) => {
+export const floorRow = (text, label, cell, surface) => {
   // [^|]* (not [^)]*): the reason parenthetical can nest its own parens
   // (`:is()`), so bound on the next table-cell pipe, not the next `)`.
   const re = new RegExp(`(\\| ${escRe(label)} \\| )(?:\\*\\*)?[\\d.]+\\+(?:\\*\\*)? \\([^|]*\\)`)
+  const matches = text.match(new RegExp(re.source, 'g')) || []
+  if (matches.length > 1) throw new Error(`${surface}: browser floor row for "${label}" is ambiguous, found ${matches.length} times`)
   if (!re.test(text)) throw new Error(`${surface}: browser floor row for "${label}" not found`)
   return text.replace(re, (m, pre) => pre + cell)
 }
@@ -84,6 +100,13 @@ const floorMd = (key, { reason = false } = {}) => {
   const why = reason && b.reason ? `, ${b.reason.map((s) => `\`${s}\``).join('/')}` : ''
   return `**${b.version}** (${b.date}${why})`
 }
+
+// Everything below only runs when this script is executed directly, not
+// when a test imports the splice functions above (between, stamp, floorRow).
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
+
+const sizes = measureSizes(root)
 
 // README
 let readme = readFileSync(join(root, 'README.md'), 'utf8')
@@ -177,3 +200,5 @@ const header = `# ScrollVars: llms.txt (guide for AI coding agents)
 `
 writeFileSync(join(root, 'demo', 'llms.txt'), header + body)
 console.log(`docs stamped (core ${sizes.everything} KB, driver ${sizes.driver} KB); llms.txt generated from AGENTS.md`)
+
+}
