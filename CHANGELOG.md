@@ -2,6 +2,59 @@
 
 ## Unreleased
 
+### Docs (ADU-194)
+- The bench page's own headline contradicted the measured table two screens
+  below it: "15× less JavaScript" against a stamped bundle ratio of ~7×
+  (46.3 / 6.7), and "three engines" as the whole page's frame, above a
+  table that now has four rows. Fixed the ratio, which is unambiguously
+  wrong regardless of framing; left "three engines" as written both times
+  it appears, since each instance describes the interactive live-run
+  section immediately below it, which genuinely only ever exercises three
+  builds (ScrollVars, idiomatic gsap, framer-motion; the batched gsap
+  variant is the harness-only fourth row, never added to the interactive
+  tool, which would be a behavior change this ticket does not ask for).
+- The home page repeated the same numbers by hand in five more places, all
+  drifted: the og/twitter meta descriptions ("1.4 KB driver" against the
+  footer's own stamped "2.9 KB"; a bare, uncaveated "Lighthouse 100" claim
+  nothing in the repo sources, handled the same way ADU-193 handled the
+  identical claim in the launch draft: it goes rather than getting carried
+  forward stale), the slider case's headline and body prose ("30× lighter
+  than Swiper" against 42 / 2.3 ≈ 18×), a demo slide reading "3 KB, not
+  150", "the receipts" section's own weight and CPU tables (a "6.1 KB"
+  ScrollVars-everything row one screen above the footer's correct "6.7 KB"
+  full core; a driver-alone row still reading a size from before the
+  driver grew; a CPU table with numbers from an earlier benchmark run
+  entirely), and a footer honesty note's "< 6 KB" bound, false now that
+  the full core is 6.7 KB. Every number above is now derived, not typed:
+  see the Tooling entry below.
+
+### Tooling (ADU-194)
+- `scripts/docs-data.mjs`'s `measureSizes()` now also exposes minified
+  (pre-gzip) sizes for the driver, the core entry and the slider module
+  (`driverMin`, `everythingMin`, `sliderMin`), the two figures the home
+  page states side by side with a competitor's own minified size; a new
+  `benchMainEngines()` reads the committed harness output
+  (`demo/bench/results/latest.json`) the same way `scripts/bench-tables.mjs`
+  already does, and `cpuTotalMs()` is the site's own definition of "CPU
+  total" (script + style recalc + layout, the same formula the ADU-193
+  article fix already established). gsap + ScrollTrigger's bundle size
+  (46.3 KB, from its public CDN build, ours to cite but not to measure)
+  moves to a single exported `GSAP_KB`; `scripts/bench-tables.mjs` reads it
+  instead of carrying its own copy.
+- `scripts/bench-tables.mjs` now also stamps the bench page's own headline
+  ratio and bundle-ratio sentence from the same `ratio` it already computes
+  for README and AGENTS, so a future driver-size change moves all three
+  the same way instead of two of three.
+- `scripts/demo-sync.mjs` gained a `between()` anchor splice (docs-stamp.mjs's
+  idiom, copied rather than imported cross-module) and now stamps every
+  number named in the Docs entry above on `demo/index.html`: the meta
+  descriptions, the slider case's headline and body prose, the hero
+  carousel's driver-size card, the slider demo slide, and "the receipts"
+  section's three ScrollVars rows in the weight table plus its whole CPU
+  table. No new path outside what `.github/workflows/ci.yml` and
+  `release.yml` already diff (`demo/index.html` was already on both
+  lists). No behavior change.
+
 ### Docs (ADU-193)
 - `article/launch-kit.md` and `article/why-i-built-scrollvars.md` (the
   launch drafts, not shipped by npm or served by the site, so no CI gate

@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { measureSizes } from './docs-data.mjs'
+import { measureSizes, GSAP_KB } from './docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
@@ -78,7 +78,7 @@ console.log('bench tables regenerated from results/latest.json')
 
 // ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
 const sizes = measureSizes(root)
-const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': '46.3 KB', 'gsap-batched.html': '46.3 KB', 'framer.html': '46.9 KB (+ React)' }
+const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': `${GSAP_KB} KB`, 'gsap-batched.html': `${GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
 const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
 const md = ['| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
@@ -95,9 +95,21 @@ for (const file of ['README.md', 'AGENTS.md']) {
 // the bench page's runner config carries the same measured bundle size
 writeFileSync(pagePath, readFileSync(pagePath, 'utf8').replace(/(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/g, `$1${sizes.everything} KB'`))
 // the bundle ratio in the prose is arithmetic on the same numbers
-const ratio = Math.round(46.3 / parseFloat(sizes.everything))
+const ratio = Math.round(GSAP_KB / parseFloat(sizes.everything))
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)
   writeFileSync(path, readFileSync(path, 'utf8').replace(/~\d+× less bundle/g, `~${ratio}× less bundle`))
+}
+// the bench page's own headline claim (ADU-194: "15× less JavaScript" had drifted
+// against the very table it sits above; both mentions are the same arithmetic)
+{
+  let bench = readFileSync(pagePath, 'utf8')
+  const h1Re = /Same workload, three engines\. Same frames, ~?\d+× less JavaScript/
+  if (!h1Re.test(bench)) throw new Error('bench page h1 claim not found')
+  bench = bench.replace(h1Re, `Same workload, three engines. Same frames, ~${ratio}× less JavaScript`)
+  const claimRe = /the same frames for a ~\d+× smaller bundle/
+  if (!claimRe.test(bench)) throw new Error('bench page bundle-ratio sentence not found')
+  bench = bench.replace(claimRe, `the same frames for a ~${ratio}× smaller bundle`)
+  writeFileSync(pagePath, bench)
 }
 console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)

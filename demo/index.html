@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 1.4 KB driver. Same frames as the 46 KB engines. Measured: Lighthouse 100, 2× less CPU than Framer Motion. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 2.9 KB driver. Same frames as the 46 KB engines. Measured: ~2.6× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 1.4 KB driver. Lighthouse 100 on the PageSpeed profile. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 2.9 KB driver, ~7× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1720,7 +1720,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 1.2 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 2.9 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2411,7 +2411,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 1.4&nbsp;KB carousel, 30× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 2.3&nbsp;KB carousel, 18× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2423,8 +2423,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 3.1&nbsp;KB minified,
-<strong>1.4&nbsp;KB gzipped, ~30× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.6&nbsp;KB minified,
+<strong>2.3&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2435,7 +2435,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         <div>03<br>--sd drives the CSS</div>
         <div>04<br>drag me (mouse too)</div>
         <div>05<br>.sv-active for state</div>
-        <div>06<br>3 KB, not 150</div>
+        <div>06<br>2 KB, not 150</div>
       </div>
       <div class="slider-thumbs" id="slider-thumbs" style="scroll-snap-type: none;">
         <div>01</div><div>02</div><div>03</div>
@@ -2756,9 +2756,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>15.8 KB / 6.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~2.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>2.3 KB / 1.2 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 15.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.3 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.2 KB / 2.9 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2766,9 +2766,9 @@ the full API, recipes and performance rules, ready to ingest.
     <table class="sv-rise" style="--sv-order: 4">
       <thead><tr><th>engine</th><th>JS script</th><th>CPU total</th><th>JS heap</th></tr></thead>
       <tbody>
-        <tr><td><b>ScrollVars</b></td><td class="range"><b>155 ms</b></td><td class="range"><b>421 ms</b></td><td class="range"><b>1.3 MB</b></td></tr>
-        <tr><td>GSAP + ScrollTrigger</td><td class="range">358 ms</td><td class="range">476 ms</td><td class="range">7.2 MB</td></tr>
-        <tr><td>framer-motion</td><td class="range">854 ms</td><td class="range">918 ms</td><td class="range">10.8 MB</td></tr>
+        <tr><td><b>ScrollVars</b></td><td class="range"><b>100 ms</b></td><td class="range"><b>302 ms</b></td><td class="range"><b>1.4 MB</b></td></tr>
+        <tr><td>GSAP + ScrollTrigger</td><td class="range">233 ms</td><td class="range">325 ms</td><td class="range">6.2 MB</td></tr>
+        <tr><td>framer-motion</td><td class="range">740 ms</td><td class="range">796 ms</td><td class="range">11.1 MB</td></tr>
       </tbody>
     </table>
 
@@ -2917,7 +2917,7 @@ the full API, recipes and performance rules, ready to ingest.
 <footer>
   <p><code>npm i scrollvars</code> · zero dependencies · driver 2.9 KB gzip · full core 6.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
+<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 7 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->

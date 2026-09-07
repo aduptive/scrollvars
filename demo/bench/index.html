@@ -18,7 +18,7 @@
            border: 1px solid #a78bfa; background: transparent; color: #a78bfa; cursor: pointer; }
   small { color: #8f8ca6; display: block; margin-top: 14px; max-width: 720px; }
 </style></head><body>
-<h1>Same workload, three engines. Same frames, 15× less JavaScript</h1>
+<h1>Same workload, three engines. Same frames, ~7× less JavaScript</h1>
 <p class="sub">Scroll-scrubbed elements (translate + opacity), scroll driven top→bottom→top over 12&nbsp;s.
 Three passes: 150 elements, 900, and 900 with 12&nbsp;ms of synthetic "app work" burned
 per frame. The headroom test. Frame delivery is flat until the main thread saturates, so on
@@ -47,7 +47,7 @@ identically. <b>Keep this tab visible</b>: browsers freeze background tabs.</p>
 <h1 style="font-size:17px; margin-top:26px;">The CPU cost for the same frames. Measured, reproducible</h1>
 <p class="sub"><b>The claim, stated precisely:</b> ScrollVars does not promise faster frames.
 Frame delivery ties at 60 fps in every row, because every competent engine animates only the
-viewport. The claim is: the same frames for a ~12× smaller bundle, a fraction of the heap,
+viewport. The claim is: the same frames for a ~7× smaller bundle, a fraction of the heap,
 zero React re-renders, and a fail-visible no-JS story. With total CPU trading blows
 (ScrollVars wins the shallow scenarios, batched GSAP wins deep subtrees; both are below).
 Both GSAP variants are included: the idiomatic one-trigger-per-box page people actually
