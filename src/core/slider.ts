@@ -198,11 +198,16 @@ export function slider(
 
   const slides = () => Array.from(container.children) as HTMLElement[]
 
-  const state = (): SliderState => ({
+  // `p` lets measure() hand in the progress it already snapshotted during
+  // its read phase, so the onScroll call at the end of a measure pass never
+  // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
+  // that same pass. Called with no argument (the public `state()`, any time
+  // outside a measure pass) it reads fresh, same as before.
+  const state = (p?: number): SliderState => ({
     active: Math.max(active, 0),
     count: slides().length,
     position,
-    progress: progress(),
+    progress: p ?? progress(),
     dragging,
     gliding: anim !== 0,
   })
@@ -216,6 +221,13 @@ export function slider(
     // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
     const sizes = list.map((slide) => Math.max(slideSize(slide), 1))
     const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2)
+    // Snapshot progress() here, still inside the read phase: it reads
+    // scrollLeft and scrollWidth (through pos()/range()), and the write loop
+    // right below writes --sd on every slide. Calling progress() again after
+    // that loop (for the --sv-progress write) or after the class writes
+    // further down (through state(), for onScroll) would read that same
+    // geometry back AFTER this pass has already started writing to the DOM.
+    const p = progress()
     list.forEach((slide, i) => {
       // --sd stays normalized by the slide's OWN size (that is what the CSS
       // reads), but the active slide is the nearest in PIXELS: comparing the
@@ -245,7 +257,7 @@ export function slider(
       const raw = span > 0 ? seg + (center - centers[seg]) / span : seg
       position = Math.min(Math.max(raw, 0), centers.length - 1)
     }
-    container.style.setProperty('--sv-progress', progress().toFixed(4))
+    container.style.setProperty('--sv-progress', p.toFixed(4))
     // Something outside the slider can rewrite the class attribute of the rail
     // or of a slide (React committing `className`), dropping what the engine
     // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -274,7 +286,7 @@ export function slider(
       container.style.setProperty('--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
     }
-    onScroll?.(state())
+    onScroll?.(state(p))
   }
 
   const schedule = () => {
