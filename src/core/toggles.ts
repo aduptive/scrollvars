@@ -57,6 +57,33 @@
  * landed inside the hold window.
  */
 
+// One click, one state change, across every live instance. `toggles(root?)`
+// is public two-argument API and the documented setup runs two instances at
+// once: `<ScrollVarsBoot />` calls it unscoped and a consumer calls it on
+// their own root. A trigger nested inside both is contained by both, since
+// containment is inclusive and not nearest-exclusive, so both handlers used
+// to flip the same class on one click and the toggle netted to nothing: the
+// panel stayed closed, --sv-state stayed 0, aria-expanded stayed false, and
+// the user saw a button that does nothing (ADU-172).
+// The first instance that ACTS on an event claims it, and every later one
+// bails. Claimed on action rather than on sight, so a scope that cannot
+// resolve the trigger's target still passes the event on to a wider scope
+// that can, exactly as before.
+// That first instance is the NEAREST scope, by dispatch order rather than by
+// a lookup: any scope containing the trigger is an ancestor-or-self of it, so
+// it sits on the event's propagation path, and the bubble phase runs the path
+// inner to outer. Two instances rooted on the same node (two unscoped calls,
+// the other half of this bug) tie and the first registered wins, which is
+// still exactly one toggle.
+// Keyed by the event object, so the claim lives exactly as long as the
+// event does, and a re-dispatched Event object is a silent no-op: dispatch
+// the SAME MouseEvent twice and only the first opens the panel, measured
+// in Chrome (re-dispatch is rare enough not to need code for it). No
+// registry of live scopes to keep in step with stop(), no instance whose
+// destruction leaves a stale entry that silently disowns a trigger, and
+// nothing to leak.
+const claimed = new WeakSet<Event>()
+
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
@@ -150,6 +177,9 @@ export function toggles(root?: Document | HTMLElement): () => void {
   })
 
   const onClick = (event: Event) => {
+    // a nearer scope already owned this click: not our trigger, and nothing
+    // here runs, not even the sv-ui marking or the settle cancel
+    if (claimed.has(event)) return
     const trigger = (event.target as HTMLElement).closest?.(
       '[data-sv-toggle]'
     ) as HTMLElement | null
@@ -159,12 +189,21 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // only ever queries within scope (scope.querySelectorAll), so resolving
     // and toggling that outer trigger here would flip its target's class and
     // --sv-state while its own aria-expanded, and every other trigger of the
-    // same (target, class) pair, is left stale: whichever toggles() instance
-    // actually contains that trigger owns it (ADU-169, successor of ADU-152
-    // which widened the match without widening this containment check).
+    // same (target, class) pair, is left stale: an instance that does not
+    // contain the trigger never owns it (ADU-169, successor of ADU-152 which
+    // widened the match without widening this containment check).
+    // Containment is the floor here, not the whole rule. It is inclusive, so
+    // nested scopes both pass it for the same trigger; the claim above picks
+    // exactly one of them, the nearest (ADU-172). One consequence, and the
+    // price of single ownership: a second trigger of the same (target, class)
+    // pair living OUTSIDE the owning scope keeps the aria-expanded it was
+    // synced to at boot, since only the owner's sync() runs.
     if (!trigger || !scope.contains(trigger)) return
     const { className, target } = resolve(trigger)
     if (!target) return
+    // this scope is the nearest one that can act on this click: it owns the
+    // trigger, and every outer instance still to come bails above
+    claimed.add(event)
     // a target that appeared after boot (e.g. inserted later) is marked here
     // instead: its first click shows the finished state with no transition,
     // since it was covered by the no-JS/no-boot fallback up to this instant
