@@ -794,6 +794,14 @@ html:not(.sv-on) .sv-acts:not(.sv-ui) {
 @media (prefers-reduced-motion: reduce) {
   .sv-marquee-track {
     animation: none;
+    width: auto;
+    flex-wrap: wrap;
+  }
+  /* The duplicate copy carries an inline display: contents (see Marquee in
+     src/react/index.tsx and the vanilla markup), which outranks any
+     selector-based display without !important. */
+  .sv-marquee-track > [aria-hidden] {
+    display: none !important;
   }
   .sv-accordion::details-content {
     transition: none;

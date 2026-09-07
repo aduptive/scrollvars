@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.0 · slider 1.3 · tilt 0.6 · state 2.2 · ui 0.7).</p>
+(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.0 · slider 1.3 · tilt 0.6 · state 2.2 · ui 0.9).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -293,6 +293,22 @@ compat()   // once, before anything else</code></pre>
 <li>Two new gates keep both true: every CSS tab that quotes a preset rule must quote that preset's reduced-motion override and keep it below the rule it beats, and every pane of a pin effect must carry a length on the helper and a real sticky stage. The three tabs with no installed component to compare against are now also loaded in Chrome twice, under no preference and under reduce, so the override is proved to win rather than merely to be present.</li>
 <li>The Horizontal rail and Sequenced scrub CSS tabs quote the shape <code>styles/pin.css</code> ships, not a simplified one. The rail spelled its start offset as a literal <code>100vw</code> where the sheet reads <code>var(--sv-rail-start, 100vw)</code> twice in the same declaration, so a reader who pasted the tab and then set the documented knob got nothing: at a 600px stage the preset travels 600 to -32, the pasted copy 1200 to 0. The sequenced-scrub tab declared <code>--sv-clock</code> on <code>.sv .sv-range > *</code>, where the sheet puts it on <code>:where(.sv .sv-range)</code> at zero specificity precisely so an author rule on the container wins; with such a rule the pasted copy rendered a child at opacity 0 that the preset renders at .5.</li>
 <li>The three gates of the round above now hold what they claimed to: the pin helper's ATTRIBUTE is held to a length like the JS option already was (<code>data-sv-pin="true"</code> passed, and the driver drops an invalid length and leaves the wrapper at its natural height), the sticky-stage check reads the pane's markup with <code>&lt;script></code> blocks stripped (a <code>.sv-stage</code> inside a gsap selector satisfied it), and the source-order half anchors per class on the last reduce block that resets THAT class (anchoring on the pane's last block left everything above it unchecked, and sticky-steps ships two blocks with the second below the rule it beats by design).</li>
+</ul>
+
+<h4>Click driver (ADU-169)</h4>
+<ul>
+<li><code>toggles()</code>'s click handler now requires the resolved trigger to be inside its own scope (<code>scope.contains(trigger)</code>). <code>event.target.closest('[data-sv-toggle]')</code> walks the real DOM past the scope's own root: a click on a scope-internal element with no <code>data-sv-toggle</code> of its own could bubble to an ANCESTOR trigger outside the scope, which this scope's own <code>sync()</code> (scoped to <code>scope.querySelectorAll</code>) then had no way to reach, so that outer trigger's <code>aria-expanded</code>, and every sibling trigger of the same (target, class) pair, never updated even though its target class and <code>--sv-state</code> did flip. Successor of ADU-152, which widened <code>trackPointer</code>'s match the same way without widening this module's own containment check.</li>
+</ul>
+
+<h4>Pointer (ADU-169)</h4>
+<ul>
+<li><code>trackPointer()</code> clears every element it has written <code>--mx</code>/<code>--my</code> to on handover, not just the single most recently written one. ADU-152 widened <code>matchIn</code> to accept nested and self matches (a <code>.sv-tilt</code> inside another <code>.sv-tilt</code>); a single remembered <code>last</code> element could not represent that handover, so the element being left behind was written once and never touched again, not even by <code>destroy()</code>, which also only ever cleared <code>last</code>. A real <code>pointerout</code> cannot cover this either: matchIn/onOut's own containment check treats a move onto a contained descendant as still hovering the same widget. The driver now tracks the full set of written elements and relaxes (<code>sv-pointer-leave</code>, <code>--mx</code>/<code>--my</code> back to <code>0</code>) whichever ones a move's new match does not include, and <code>destroy()</code> clears whatever is left in that set instead of one element.</li>
+<li>Audited every other ancestor-walking call in <code>src/</code> for the same shape (a scoped module resolving past its own root): <code>slider.ts</code>'s two <code>closest()</code> calls (native-control detection under a press, and focus-restore after a non-drag press) are both deliberately unscoped, mirroring real unscoped browser focus/activation behavior rather than resolving ownership of a JS-scoped instance, so they are not the same bug. <code>driver.ts</code>'s <code>clearReleased()</code> walks every ancestor up to the document root by design (it is a singleton engine with no scoped-root concept to violate). <code>debug/index.ts</code> reads one direct <code>parentElement</code>, not a walk. <code>src/react</code>, <code>src/canvas</code>, <code>src/compat</code> and <code>src/core/scan.ts</code> have no ancestor-walking call at all.</li>
+</ul>
+
+<h4>Presets (round 7, ADU-166)</h4>
+<ul>
+<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>) and hides the aria-hidden duplicate copy (<code>.sv-marquee-track > [aria-hidden] { display: none !important }</code>, the <code>!important</code> needed because the duplicate carries its own inline <code>display: contents</code>, which outranks any plain selector).</li>
 </ul>
 
 <h4>Tooling (blind review round 6)</h4>
@@ -644,6 +660,17 @@ Docs read against the code merged by the seven round-6 code tickets.
 <li><code>compat()</code>'s <code>sv-rail</code> fallback is documented as it actually behaves: it ignores <code>--sv-rail-start</code>, starts at <code>translateX(0)</code> instead of entering from offscreen, and is stationary whenever the track's own width equals the viewport, instead of the previous "gives it back its own scroll-linked travel" claim.</li>
 <li>Checked against the round-6 code tickets: the Modal SSR sentence ("open ones open") and the pin-helper wrapper description already match ADU-156 and ADU-158, no further change needed there beyond the floor case above.</li>
 <li>Second pass (verifier finding on 213c15b): the compat header comment in <code>src/compat/index.ts</code>, which <code>tsc</code> emits verbatim into the published <code>dist/compat/index.js</code>, still opened with the old flat claim, three presets stay static, one reason each, including <code>sv-split-rise</code> with no fallback rule at all. It now carries the same two-band split as the README sentence above: <code>sv-deck</code> and <code>sv-spread</code> stay static, one reason each; <code>sv-split-rise</code> is static only below <code>:is()</code> support and fades in without rising above it. The README's closing "stay static or progressive" list also still named <code>sv-split-rise</code>, reading like the old flat claim; it is dropped from that list now that the paragraph above it already carries the nuance.</li>
+</ul>
+
+<h4>Slider (blind review round 7)</h4>
+<ul>
+<li>The active slide is the one nearest the viewport centre in PIXELS. The argmin divided each distance by that slide's OWN width first, so a wide slide always looked nearer than a narrow neighbour: with a 100px slide beside a 300px one (centres 50 and 250, midpoint 150) the active flipped to the wide slide at centre 101. <code>sv-active</code>, <code>--sv-slide</code>, <code>onSlide</code>, the glide a drag release lands on and the wheel settle all took that index. <code>--sd</code> is unchanged, still normalized by each slide's own size, which is what the CSS reads; an exact tie still keeps the first slide. Sliders whose slides are all the same width read exactly as before.</li>
+<li>A destroyed slider stops moving. <code>destroy()</code> set no flag, so <code>next</code>, <code>prev</code>, <code>goTo</code> and <code>seek</code> still scrolled the container from a frame of their own, on geometry nothing measures any more. Every command is a no-op after <code>destroy()</code> and nothing schedules a frame, so a scroll or an observer record already in flight measures nothing either.</li>
+</ul>
+
+<h4>React (blind review round 7)</h4>
+<ul>
+<li><code>&lt;Slider></code>'s imperative <code>destroy()</code> drops its handle instead of keeping it, so the autoplay interval (which reads the handle on every tick and returns when there is none) stops advancing a slider the consumer has destroyed. With the core fix above, a destroyed slider is inert from either side.</li>
 </ul>
 
 <h3>1.13.0 (2026-09-05)</h3>
