@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.8 KB, full core incl. the slider 6.7 KB, styles 9.0 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 6.7 KB, styles 9.0 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
 
 ## Why
 
@@ -104,13 +104,13 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 2.8 KB |
+| `track` (the driver) | 2.9 KB |
 | `track` + `scan` (zero-wrapper mode) | 3.8 KB |
-| `slider` | 2.2 KB |
+| `slider` | 2.3 KB |
 | `trackPointer` | 0.5 KB |
-| `mountEffect` (canvas) | 1.5 KB |
+| `mountEffect` (canvas) | 1.6 KB |
 | everything in `scrollvars` (the core entry) | 6.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 12.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 12.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -315,7 +315,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.2 KB gzip; Swiper 11 bundle
+Size, measured: this module 2.3 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)

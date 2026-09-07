@@ -48,13 +48,13 @@
   any browser, the re-scan's N style recalcs against the base's one are fine
   at realistic N, and the stage lookup takes the first `.sv-stage` at any
   depth, which no shipped page can reach.
-- Size, measured, because these are published numbers: both fixes take
-  `track` (min+gzip) from 2.7 to 2.8 KB, `track` + `scan` from 3.7 to
-  3.8 KB, the core entry from 6.6 to 6.7 KB, `scrollvars/react` from 12.0
-  to 12.1 KB and the headline typical page from ~5.2 to ~5.3 KB. The
-  driver lands at 2918 bytes with the 2.9 KB rounding boundary at 2919, so
-  the next byte added there moves the stamp again. No public surface
-  change: no new export, no new class, no new variable.
+- Size, measured against the base, because these are published numbers: the
+  fixes above take `track` (min+gzip) from 2.7 to 2.9 KB, `track` + `scan`
+  from 3.7 to 3.8 KB, the core entry from 6.6 to 6.7 KB, `scrollvars/react`
+  from 12.1 to 12.2 KB and the headline typical page from ~5.2 to ~5.3 KB.
+  The driver bundle lands at 2946 bytes, 74 short of the 3.0 KB rounding
+  boundary at 3021. No public surface change: no new export, no new class,
+  no new variable.
 
 ### Slider (blind review round 8, ADU-190)
 - `measure()` declared a read phase then a write phase in its own comment,
