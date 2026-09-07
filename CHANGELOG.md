@@ -2,6 +2,68 @@
 
 ## Unreleased
 
+### Driver (blind review round 8, ADU-191)
+- `--sv-pin-offset` in `em` now resolves against `.sv-stage`, the element
+  styles/pin.css applies it to, instead of the tracked wrapper: `top:` and
+  `height:` consume the variable on the stage, so that is the font size the
+  CSS resolves it against and the element an author can redeclare it on.
+  Measured in Chrome, a wrapper at `font-size: 10px` around a stage at
+  `20px` renders `--sv-pin-offset: 4em` as `top: 80px`, while the pin math
+  used 40 and the pinned stretch started 40px off. Every other unit is
+  unchanged, and the whole read moves to the stage, so a value declared on
+  the stage itself is the one the math sees too. No stage in the markup
+  (`onPin` alone, custom skeletons): the wrapper, as before.
+- Re-tracking replays the entrance again, on an element that never left the
+  viewport. README, AGENTS and llms.txt all name re-tracking as the way to
+  replay it, and it did nothing: the presets are CSS transitions off the
+  inherited `--sv-live`, and a frame's rAF callbacks run BEFORE that frame's
+  style update, so between the release (which settles the element visible
+  with an inline `--sv-live: 1`) and the first frame writing that flag back,
+  the computed value went 1 to 1 and no transition was ever generated.
+  Measured in Chrome: opacity flat at 1 for six frames and 400 ms. A forced
+  style update on its own is not the fix either, it starts the fade OUT and
+  the next frame reverses it from wherever it got to, measured 0.938, a dip
+  rather than an entrance. `track()` now zeroes `--sv-duration` and
+  `--sv-stagger` on the element, forces the update, and hands both knobs
+  back with the priority they were authored at, `!important` included: the
+  reset lands in one step with no transition to reverse, and the entrance
+  runs from a real 0 at the authored duration and stagger. Only for an
+  element the driver had settled (released, or a settled `once`), so a first
+  track pays nothing at boot. Two shapes are not covered, and behave as they
+  did before: entrance CSS of your own that hard-codes its duration instead
+  of reading the knobs, and a knob declared on a DESCENDANT of the tracked
+  element rather than inherited from it (`<Item duration>`, `Split` and the
+  staggered-reveal pane all emit one that way), since a descendant's own
+  declaration beats an inherited value at any priority. Both keep the old
+  behaviour exactly: a 0.938 dip and reverse when the untrack and the track
+  sit a frame apart, no visible change at all when they sit in the same
+  tick. One narrow cost the other way: the knobs are inherited, so for the
+  single flush the zeroes reach every other consumer in the subtree, and an
+  unrelated transition created in that same tick (an accordion opened right
+  there and then) is created with duration 0 and snaps. Proved in Chrome by
+  e2e invariants, red on the old engine: the replay itself (lowest opacity 1,
+  no replay at all) and the handback half of the round trip, that the
+  authored priority survives it (computed `--sv-duration` back at the
+  authored 400ms against a sheet rule's 3000ms `!important`, not taken over).
+  The zeroing half of that same round trip, that the zero itself needs
+  `!important` too or the sheet rule outranks it mid-flush and the reset
+  never lands, is proved in Chrome as well (the knob's own rise child dips
+  below 0.1 under that exact conflict, not just the final value round
+  tripping) and, structurally, by a unit test on the knob round trip that
+  reads the priority a stub was handed mid-flush rather than whether it won
+  a real cascade.
+  Left alone on purpose: the forced read cannot throw on a live element in
+  any browser, the re-scan's N style recalcs against the base's one are fine
+  at realistic N, and the stage lookup takes the first `.sv-stage` at any
+  depth, which no shipped page can reach.
+- Size, measured against the base, because these are published numbers: the
+  fixes above take `track` (min+gzip) from 2.7 to 2.9 KB, `track` + `scan`
+  from 3.7 to 3.8 KB, the core entry from 6.6 to 6.7 KB, `scrollvars/react`
+  from 12.1 to 12.2 KB and the headline typical page from ~5.2 to ~5.3 KB.
+  The driver bundle lands at 2946 bytes, 74 short of the 3.0 KB rounding
+  boundary at 3021. No public surface change: no new export, no new class,
+  no new variable.
+
 ### React (blind review round 8, ADU-188)
 No public surface change: no new export, prop, class or `--sv-*` variable.
 - `<Slider>` counted its children with `React.Children.count`, which counts

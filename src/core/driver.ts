@@ -255,14 +255,22 @@ function computePin(geo: Geometry, offset = 0): number {
 }
 
 /** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
- * Resolves rem (root font-size), em (the element's own font-size), vh/svh/lvh/dvh
+ * Resolves rem (root font-size), em (the stage's font-size), vh/svh/lvh/dvh
  * (window.innerHeight) and vw (window.innerWidth); anything else, including a
  * bare number, falls back to parseFloat as px. svh/lvh/dvh resolve like vh:
  * there is no JS API for the small/large viewport height without an actual
- * probe element, so all three read window.innerHeight like vh does. */
+ * probe element, so all three read window.innerHeight like vh does.
+ *
+ * Read on `.sv-stage`, not on the tracked wrapper: styles/pin.css consumes
+ * the variable in `top:` and `height:` THERE, so that is the element a
+ * relative unit resolves against and the element an author can redeclare it
+ * on. Resolving `4em` against the wrapper disagreed with the CSS by the ratio
+ * of the two font sizes. No stage (onPin alone, or custom markup): the
+ * wrapper is the best reference left. */
 function readPinOffset(el: HTMLElement): number {
   if (typeof getComputedStyle !== 'function') return 0
-  const raw = getComputedStyle(el).getPropertyValue('--sv-pin-offset').trim()
+  const stage = (el.querySelector?.('.sv-stage') as HTMLElement | null) ?? el
+  const raw = getComputedStyle(stage).getPropertyValue('--sv-pin-offset').trim()
   const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i)
   const value = match ? parseFloat(match[1]) : parseFloat(raw)
   if (!value) return 0
@@ -270,7 +278,7 @@ function readPinOffset(el: HTMLElement): number {
     case 'rem':
       return value * parseFloat(getComputedStyle(document.documentElement).fontSize)
     case 'em':
-      return value * parseFloat(getComputedStyle(el).fontSize)
+      return value * parseFloat(getComputedStyle(stage).fontSize)
     case 'vh':
     case 'svh':
     case 'lvh':
@@ -523,6 +531,58 @@ function releaseEntry(entry: Entry) {
   markReleased(el)
 }
 
+/** Replay the entrance of an element the driver had settled visible.
+ *
+ * The presets are CSS transitions off the inherited `--sv-live`, so the 0
+ * state has to be COMMITTED between the release and the first frame's write
+ * of 1. Nothing commits it on its own: a frame's rAF callbacks run BEFORE
+ * that frame's style update, so the computed value goes 1 to 1 and no
+ * transition is ever generated (measured in Chrome: opacity flat at 1 for
+ * six frames after `stop()` then `track()`). A bare forced update is not
+ * enough either, it only starts the fade OUT, which the next frame reverses
+ * from wherever it got to (measured 0.938, a dip, not an entrance).
+ *
+ * So: zero the two knobs every preset builds its transition from, force the
+ * update, hand them back. They are inherited custom properties, so zeroing
+ * them on the tracked element reaches its whole subtree without the driver
+ * writing on a descendant. That reach is also the cost: for this one flush
+ * every OTHER knob consumer in the subtree reads 0s too, so an unrelated
+ * transition created in the same tick (an accordion opened right there and
+ * then) is created with duration 0 and snaps instead of animating. The reset
+ * itself lands in one step with no transition to reverse, and the first
+ * frame's 1 transitions from a real 0 at the authored duration and stagger.
+ * An empty value on `setProperty` removes the declaration, and the authored
+ * priority is carried back with the value, which is how an author's own
+ * inline knobs survive the round trip (`!important` included: without it a
+ * `!important` sheet rule would take the knob over from the author's inline
+ * declaration, permanently). The zeroing is `!important` for the same
+ * reason, so an important sheet rule cannot outrank it mid-replay.
+ *
+ * Only for an element carrying the inline `--sv-live: 1` the driver settles
+ * with (released, or a settled `once`): a first track has nothing to replay
+ * and must not pay a forced style update per element at boot. Two shapes are
+ * not covered: entrance CSS of your own that hard-codes its duration instead
+ * of reading the knobs, and a DESCENDANT that declares its own
+ * `--sv-duration` (which `<Item duration>`, `Split` and the staggered-reveal
+ * pane all do), since a descendant's own declaration beats an inherited
+ * value at any priority. Both then behave as they did before this fix: in
+ * the frame-apart shape they dip and reverse (measured 0.938), in the
+ * same-tick shape they stay flat at 1 with no visible change at all. */
+function replayEntrance(el: HTMLElement) {
+  if (typeof getComputedStyle !== 'function') return
+  const duration = el.style.getPropertyValue?.('--sv-duration') ?? ''
+  const durationPriority = el.style.getPropertyPriority?.('--sv-duration') ?? ''
+  const stagger = el.style.getPropertyValue?.('--sv-stagger') ?? ''
+  const staggerPriority = el.style.getPropertyPriority?.('--sv-stagger') ?? ''
+  el.style.setProperty?.('--sv-duration', '0s', 'important')
+  el.style.setProperty?.('--sv-stagger', '0s', 'important')
+  // reading a property is what flushes the pending style update, not the
+  // getComputedStyle() call itself
+  void getComputedStyle(el).opacity
+  el.style.setProperty?.('--sv-duration', duration, durationPriority)
+  el.style.setProperty?.('--sv-stagger', stagger, staggerPriority)
+}
+
 /** Track an element. Returns an untrack function. */
 export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   init()
@@ -542,6 +602,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // keeps the class with no tracker behind it, and a new entry starts at
   // live:false, so leaving it would skip the entrance and desync the DOM from
   // the driver.
+  const settled = el.style.getPropertyValue?.('--sv-live') === '1'
   el.style.removeProperty?.('--sv-live')
   el.classList.remove('sv-live')
   clearReleased(el)
@@ -565,6 +626,10 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     entry.authored = { height: el.style.height, position: el.style.position }
     applyPinHelper(entry)
   }
+  // Everything this call writes is in place: commit the `--sv-live: 0` reset
+  // before the first frame writes 1 back, or an element the driver had
+  // settled visible never replays its entrance.
+  if (settled) replayEntrance(el)
   pageOutputs = true
   resizeObserver?.observe(el)
   // a root scrolls its own content; watch it too so a resize of the scroller

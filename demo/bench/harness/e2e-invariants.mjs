@@ -545,6 +545,114 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3b bis. Re-tracking REPLAYS the entrance of an element that never left
+// the viewport (ADU-191). README, AGENTS and llms.txt all promise it and it
+// did not happen: the presets are CSS transitions off the inherited
+// --sv-live, so the 0 state has to be COMMITTED between the release and the
+// first frame's write of 1. A frame's rAF callbacks run BEFORE that frame's
+// style update, so the computed value went 1 to 1 and no transition was ever
+// generated (measured: flat at 1 for six frames and 400 ms), and a forced
+// update on its own only starts the fade OUT, which the next frame reverses
+// from wherever it got to (measured 0.938: a dip, not an entrance). track()
+// now zeroes --sv-duration/--sv-stagger around that forced update and hands
+// them back, so the reset lands in one step and the entrance runs from a real
+// 0. The stagger has to come back with it, or every child arrives together.
+// The knob comes back with its PRIORITY too: getPropertyValue answers with the
+// value alone, so handing it back through a bare setProperty rewrote an
+// author's `!important` declaration as a normal one and any important sheet
+// rule took the knob over from there on, permanently. Hence the #knob section:
+// an inline important 400ms against a sheet rule at 3000ms important.
+{
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}
+      #knob { --sv-duration: 3000ms !important }
+    </style></head>
+    <body>
+      <!-- tall enough, and offset enough, to sit inside the live band -->
+      <section data-sv class="sv-auto" style="margin-top:20vh;min-height:40vh">
+        <p id="first">first</p><p id="second">second</p>
+      </section>
+      <section data-sv id="knob" style="--sv-duration:400ms !important;min-height:20vh"><p class="sv-rise">own duration</p></section>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(done))
+    const wait = (ms) => new Promise((done) => setTimeout(done, ms))
+    const opacity = (id) => Number(getComputedStyle(document.getElementById(id)).opacity)
+    const knobOpacity = () => Number(getComputedStyle(document.querySelector('#knob .sv-rise')).opacity)
+    let stop = SV.scan()
+    await wait(1200) // --sv-duration is 800ms: let the first entrance finish
+    const settled = opacity('first')
+    // the shape a React re-track (or a route teardown and remount) makes:
+    // both calls in ONE tick, so the browser never renders the released state
+    stop()
+    stop = SV.scan()
+    let lowest = opacity('first')
+    // the knob's own rise child: this is the element actually sitting under
+    // the important-against-important conflict (its section carries the
+    // inline !important duration), so this is the sample that proves the
+    // zeroing itself wins the cascade, not only that the final value returns
+    let knobLowest = knobOpacity()
+    for (let i = 0; i < 6; i++) {
+      await frame()
+      lowest = Math.min(lowest, opacity('first'))
+      knobLowest = Math.min(knobLowest, knobOpacity())
+    }
+    await wait(200) // mid-flight: the stagger still separates the two children
+    const midFirst = opacity('first')
+    const midSecond = opacity('second')
+    await wait(1200)
+    return {
+      settled,
+      lowest,
+      knobLowest,
+      midFirst,
+      midSecond,
+      finished: opacity('first'),
+      authoredKnob: document.getElementById('knob').style.getPropertyValue('--sv-duration'),
+      // the cascade's answer, the only place the lost priority is visible:
+      // the sheet rule is important, so a normal inline declaration loses
+      knobWins: getComputedStyle(document.getElementById('knob'))
+        .getPropertyValue('--sv-duration')
+        .trim(),
+      leftBehind: document.querySelector('.sv-auto').style.getPropertyValue('--sv-duration'),
+    }
+  })
+  // the fixture only proves anything if the entrance had really finished first
+  check(
+    're-track replay: the fixture is settled at opacity 1 before the re-track',
+    r.settled === 1,
+    String(r.settled)
+  )
+  check(
+    're-track replay: an element that never left the viewport starts its entrance from 0 again (ADU-191)',
+    r.lowest < 0.1,
+    `lowest opacity ${r.lowest}`
+  )
+  check('re-track replay: and it finishes back at 1', r.finished === 1, String(r.finished))
+  check(
+    're-track replay: --sv-stagger comes back too, so the second child still trails the first',
+    r.midSecond < r.midFirst,
+    `first ${r.midFirst}, second ${r.midSecond}`
+  )
+  check(
+    're-track replay: the zeroed knobs are handed back, an authored inline one included',
+    r.authoredKnob === '400ms' && r.leftBehind === '',
+    `authored "${r.authoredKnob}", left behind "${r.leftBehind}"`
+  )
+  check(
+    're-track replay: the authored knob keeps its !important, so a sheet rule does not take it over (ADU-191)',
+    r.knobWins === '400ms',
+    `computed --sv-duration after the re-track: "${r.knobWins}"`
+  )
+  check(
+    `re-track replay: the knob's own rise child starts its entrance from 0 again too, so the zeroing itself wins the important-against-important conflict, not just the final handed-back value (ADU-191)`,
+    r.knobLowest < 0.1,
+    `lowest opacity ${r.knobLowest}`
+  )
+  await page.close()
+}
+
 // ── 3c. The driver owns the live state (ADU-140, round 5 finding 1): a
 // className rewrite that drops the driver-added `sv-live` never hides a
 // section that already went live. React's <Track> renders

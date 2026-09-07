@@ -133,8 +133,11 @@ function switchGroups() {
     }
     const ret = line.match(/^\s*return (.+)$/)
     if (!ret || pending.length === 0) continue // `default:` falls through to here
+    // `stage` is the `.sv-stage` the CSS applies the offset to, the wrapper
+    // itself when there is none: em resolves there, not on the tracked
+    // element (ADU-191)
     const target = ret[1].match(
-      /window\.inner(?:Height|Width)|document\.documentElement\)\.fontSize|getComputedStyle\(el\)\.fontSize/
+      /window\.inner(?:Height|Width)|document\.documentElement\)\.fontSize|getComputedStyle\(stage\)\.fontSize/
     )
     assert.ok(target, `readPinOffset: unknown resolution target in "${ret[1]}"`)
     ;(groups[target[0]] ??= []).push(...pending)
