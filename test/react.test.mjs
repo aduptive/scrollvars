@@ -614,6 +614,64 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
   }
 })
 
+test('react: a destroyed Slider handle stops the autoplay interval', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  const realSetInterval = global.setInterval
+  let tick = () => {}
+  global.setInterval = (fn) => {
+    tick = fn
+    return 0
+  }
+  // same probe as the hover test: a tick that reaches the handle starts a
+  // glide, which schedules a frame
+  const advanced = () => {
+    const frames = []
+    const realRaf = global.requestAnimationFrame
+    global.requestAnimationFrame = (fn) => {
+      frames.push(fn)
+      return realRaf(fn)
+    }
+    try {
+      tick()
+    } finally {
+      global.requestAnimationFrame = realRaf
+    }
+    return frames.length > 0
+  }
+
+  try {
+    const api = React.createRef()
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(
+        React.createElement(
+          Slider,
+          { autoplay: 50, ref: api },
+          React.createElement('div', null, 'one'),
+          React.createElement('div', null, 'two')
+        )
+      )
+    })
+
+    assert.ok(api.current.state().count > 0, 'the live handle reports the real slides')
+    assert.equal(advanced(), true, 'autoplay rotates while the slider is alive')
+
+    api.current.destroy()
+    assert.equal(api.current.state().count, 0, 'destroy drops the handle instead of keeping it')
+    assert.equal(advanced(), false, 'the interval no longer advances a destroyed slider')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.setInterval = realSetInterval
+  }
+})
+
 test('react: a className rewrite cannot strip the classes the slider owns', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

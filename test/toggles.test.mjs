@@ -63,6 +63,7 @@ test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const listeners = {}
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: (t) => delete listeners[t],
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -112,6 +113,7 @@ test('toggles: aria-expanded reflects the target on boot and across every trigge
   const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const listeners = {}
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: (t) => delete listeners[t],
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -137,6 +139,7 @@ test('toggles: marks each resolved target with sv-ui at boot, document.documentE
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const solo = makeElement({ 'data-sv-toggle': '' }) // no data-sv-target: the trigger is its own target
   const root = {
+    contains: () => true,
     addEventListener: () => {},
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -160,6 +163,7 @@ test('toggles: sets --sv-acts-settle with the class at boot, removes it after tw
   const a = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const b = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' }) // shares the same target as a
   const root = {
+    contains: () => true,
     addEventListener: () => {},
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -196,6 +200,7 @@ test('toggles: an inline transition-duration longhand is held at 0s for the sett
   menu.style.setProperty('transition-duration', '400ms', 'important')
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const root = {
+    contains: () => true,
     addEventListener: () => {},
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -231,6 +236,7 @@ test('toggles: a target without .sv-acts never gets the settle, even carrying an
   menu.style.setProperty('transition-duration', '300ms')
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const root = {
+    contains: () => true,
     addEventListener: () => {},
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -261,6 +267,7 @@ test('toggles: a click inside the boot settle window drops the hold immediately,
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const listeners = {}
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: (t) => delete listeners[t],
     querySelector: (sel) => (sel === '#menu' ? menu : null),
@@ -294,6 +301,7 @@ test('toggles: a target added after boot gets sv-ui on its first click', async (
   const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#late' })
   let inserted = false
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (root.click = fn),
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#late' && inserted ? late : null),
@@ -322,6 +330,7 @@ test('toggles: boot writes --sv-state from the class, and triggers group by the 
   const other = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#shut' })
   const listeners = {}
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: () => {},
     querySelector: (sel) =>
@@ -354,6 +363,7 @@ test('toggles: two triggers on one target with different classes keep separate a
   const pinner = makeElement({ 'data-sv-toggle': 'pinned', 'data-sv-target': 'nav.menu' })
   const listeners = {}
   const root = {
+    contains: () => true,
     addEventListener: (t, fn) => (listeners[t] = fn),
     removeEventListener: () => {},
     querySelector: (sel) => (sel === '#menu' || sel === 'nav.menu' ? nav : null),
@@ -377,4 +387,33 @@ test('toggles: two triggers on one target with different classes keep separate a
   listeners.click({ target: pinner })
   assert.equal(pinner.attrs['aria-expanded'], 'true')
   assert.equal(hamburger.attrs['aria-expanded'], 'true', 'the open state survives the other control')
+})
+
+test('toggles: a trigger above the scope root is ignored, even when closest() walks up to it (ADU-169)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?scope-containment')
+
+  // outerTrigger lives ABOVE this scope's root: closest() from a click
+  // inside the scope walks straight past the root and would still find it,
+  // but this scope's own click handler must never resolve/toggle it. It
+  // belongs to whichever toggles() instance actually contains it (ADU-152
+  // widened the match itself; the bookkeeping around scope was never
+  // widened with a containment check to match).
+  const outerTrigger = makeElement({ 'data-sv-toggle': 'open' })
+  const inner = makeElement() // clicked directly, no data-sv-toggle of its own
+  inner.closest = (sel) => (sel === '[data-sv-toggle]' ? outerTrigger : null)
+  const listeners = {}
+  const root = {
+    contains: (el) => el !== outerTrigger, // outerTrigger is an ancestor of the scope root, not inside it
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: () => {},
+    querySelector: () => null,
+    querySelectorAll: () => [], // this scope has no triggers of its own
+  }
+
+  toggles(root)
+  listeners.click({ target: inner })
+  assert.ok(!outerTrigger.classes.has('open'), 'a trigger outside the scope is never toggled by this scope\'s click handler')
+  assert.equal(outerTrigger.attrs['aria-expanded'], undefined, 'and never gets aria-expanded from a scope that does not own it')
 })

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.5 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.6 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.2 KB on the wire.
 
 ## Why
 
@@ -28,7 +28,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 6.5 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 6.6 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -109,8 +109,8 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | `slider` | 2.2 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.5 KB |
-| everything in `scrollvars` (the core entry) | 6.5 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 11.9 KB |
+| everything in `scrollvars` (the core entry) | 6.6 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 12.0 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

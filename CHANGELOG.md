@@ -26,6 +26,10 @@
   the skeleton, and a page that would rather have the flow layout than the
   fallback animation gets it by not calling `compat()`: without the marker
   both halves release as they did in round 6.
+- Size, measured: the marker rule's comment in `styles/pin.css` is trimmed
+  to what a reader of that file needs, 122 bytes gzipped instead of 155,
+  which takes the file's stamp from 3.2 back to 3.1 KB and `styles.css`
+  from 9.0 to 8.9 KB. The rules themselves cost 69 bytes gzipped.
 
 ### Presets and no-JS (blind review round 7, ADU-168)
 - Every released guard in `styles/pin.css` gained the twin that fires when the
@@ -56,6 +60,50 @@
   on every pass and never cached on the entry, since an author media query
   can hand the element a `sticky` a stale read would overwrite with
   `relative`.
+- Size, measured, because these are published numbers: the read pass takes
+  the core entry (`scrollvars`, min+gzip) from 6.4 to 6.5 KB, `track` +
+  `scan` from 3.6 to 3.7 KB and the headline typical page from ~5.1 to
+  ~5.2 KB. The stamps read 6.6 KB once round-3's own driver work is merged
+  in, and the stamped bundle ratio against gsap + ScrollTrigger stays ~7×.
+
+### Click driver (ADU-169)
+- `toggles()`'s click handler now requires the resolved trigger to be
+  inside its own scope (`scope.contains(trigger)`).
+  `event.target.closest('[data-sv-toggle]')` walks the real DOM past the
+  scope's own root: a click on a scope-internal element with no
+  `data-sv-toggle` of its own could bubble to an ANCESTOR trigger outside
+  the scope, which this scope's own `sync()` (scoped to
+  `scope.querySelectorAll`) then had no way to reach, so that outer
+  trigger's `aria-expanded`, and every sibling trigger of the same
+  (target, class) pair, never updated even though its target class and
+  `--sv-state` did flip. Successor of ADU-152, which widened
+  `trackPointer`'s match the same way without widening this module's own
+  containment check.
+
+### Pointer (ADU-169)
+- `trackPointer()` clears every element it has written `--mx`/`--my` to on
+  handover, not just the single most recently written one. ADU-152 widened
+  `matchIn` to accept nested and self matches (a `.sv-tilt` inside another
+  `.sv-tilt`); a single remembered `last` element could not represent that
+  handover, so the element being left behind was written once and never
+  touched again, not even by `destroy()`, which also only ever cleared
+  `last`. A real `pointerout` cannot cover this either: matchIn/onOut's own
+  containment check treats a move onto a contained descendant as still
+  hovering the same widget. The driver now tracks the full set of written
+  elements and relaxes (`sv-pointer-leave`, `--mx`/`--my` back to `0`)
+  whichever ones a move's new match does not include, and `destroy()`
+  clears whatever is left in that set instead of one element.
+- Audited every other ancestor-walking call in `src/` for the same shape
+  (a scoped module resolving past its own root): `slider.ts`'s two
+  `closest()` calls (native-control detection under a press, and
+  focus-restore after a non-drag press) are both deliberately unscoped,
+  mirroring real unscoped browser focus/activation behavior rather than
+  resolving ownership of a JS-scoped instance, so they are not the same
+  bug. `driver.ts`'s `clearReleased()` walks every ancestor up to the
+  document root by design (it is a singleton engine with no scoped-root
+  concept to violate). `debug/index.ts` reads one direct `parentElement`,
+  not a walk. `src/react`, `src/canvas`, `src/compat` and `src/core/scan.ts`
+  have no ancestor-walking call at all.
 
 ### Presets (round 7, ADU-166)
 - `.sv-marquee-track` under `prefers-reduced-motion: reduce` no longer
@@ -1540,6 +1588,29 @@ Docs read against the code merged by the seven round-6 code tickets.
   progressive" list also still named `sv-split-rise`, reading like the
   old flat claim; it is dropped from that list now that the paragraph
   above it already carries the nuance.
+
+### Slider (blind review round 7)
+- The active slide is the one nearest the viewport centre in PIXELS. The
+  argmin divided each distance by that slide's OWN width first, so a wide
+  slide always looked nearer than a narrow neighbour: with a 100px slide
+  beside a 300px one (centres 50 and 250, midpoint 150) the active flipped
+  to the wide slide at centre 101. `sv-active`, `--sv-slide`, `onSlide`,
+  the glide a drag release lands on and the wheel settle all took that
+  index. `--sd` is unchanged, still normalized by each slide's own size,
+  which is what the CSS reads; an exact tie still keeps the first slide.
+  Sliders whose slides are all the same width read exactly as before.
+- A destroyed slider stops moving. `destroy()` set no flag, so `next`,
+  `prev`, `goTo` and `seek` still scrolled the container from a frame of
+  their own, on geometry nothing measures any more. Every command is a
+  no-op after `destroy()` and nothing schedules a frame, so a scroll or an
+  observer record already in flight measures nothing either.
+
+### React (blind review round 7)
+- `<Slider>`'s imperative `destroy()` drops its handle instead of keeping
+  it, so the autoplay interval (which reads the handle on every tick and
+  returns when there is none) stops advancing a slider the consumer has
+  destroyed. With the core fix above, a destroyed slider is inert from
+  either side.
 
 ## 1.13.0 (2026-09-05)
 
