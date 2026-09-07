@@ -3394,7 +3394,7 @@ var SV = (() => {
       };
     let pending = null;
     let raf2 = 0;
-    let last = null;
+    const written = /* @__PURE__ */ new Set();
     const matchIn = (target) => {
       const el = target?.closest?.(selector);
       return el && container.contains(el) ? el : null;
@@ -3410,11 +3410,20 @@ var SV = (() => {
       el.style.setProperty("--mx", unit((x - rect.left) / rect.width * 2 - 1));
       el.style.setProperty("--my", unit((y - rect.top) / rect.height * 2 - 1));
     };
+    const leave = (el) => {
+      written.delete(el);
+      el.classList.add("sv-pointer-leave");
+      el.style.setProperty("--mx", "0");
+      el.style.setProperty("--my", "0");
+    };
     const onMove = (event) => {
       const el = matchIn(event.target);
       if (!el)
         return;
-      last = el;
+      if (!written.has(el)) {
+        written.forEach(leave);
+        written.add(el);
+      }
       el.classList.remove("sv-pointer-leave");
       pending = { el, x: event.clientX, y: event.clientY };
       if (!raf2)
@@ -3426,9 +3435,7 @@ var SV = (() => {
         return;
       if (pending?.el === el)
         pending = null;
-      el.classList.add("sv-pointer-leave");
-      el.style.setProperty("--mx", "0");
-      el.style.setProperty("--my", "0");
+      leave(el);
     };
     container.addEventListener("pointermove", onMove);
     container.addEventListener("pointerout", onOut);
@@ -3437,11 +3444,12 @@ var SV = (() => {
       container.removeEventListener("pointerout", onOut);
       if (raf2)
         cancelAnimationFrame(raf2);
-      if (last) {
-        last.style.removeProperty("--mx");
-        last.style.removeProperty("--my");
-        last.classList.remove("sv-pointer-leave");
-      }
+      written.forEach((el) => {
+        el.style.removeProperty("--mx");
+        el.style.removeProperty("--my");
+        el.classList.remove("sv-pointer-leave");
+      });
+      written.clear();
     };
   }
 
@@ -3671,7 +3679,7 @@ var SV = (() => {
     });
     const onClick = (event) => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
-      if (!trigger)
+      if (!trigger || !scope.contains(trigger))
         return;
       const { className, target } = resolve(trigger);
       if (!target)
@@ -5976,7 +5984,16 @@ function toggles(root) {
     });
     const onClick = (event) => {
         const trigger = event.target.closest?.('[data-sv-toggle]');
-        if (!trigger)
+        // closest() walks the real DOM past this scope's own root: a click on a
+        // descendant with no data-sv-toggle of its own can bubble past scope to
+        // an ancestor trigger that lives OUTSIDE it. This scope's own sync()
+        // only ever queries within scope (scope.querySelectorAll), so resolving
+        // and toggling that outer trigger here would flip its target's class and
+        // --sv-state while its own aria-expanded, and every other trigger of the
+        // same (target, class) pair, is left stale: whichever toggles() instance
+        // actually contains that trigger owns it (ADU-169, successor of ADU-152
+        // which widened the match without widening this containment check).
+        if (!trigger || !scope.contains(trigger))
             return;
         const { className, target } = resolve(trigger);
         if (!target)

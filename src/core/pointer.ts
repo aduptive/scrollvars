@@ -21,7 +21,12 @@ export function trackPointer(
 
   let pending: { el: HTMLElement; x: number; y: number } | null = null
   let raf = 0
-  let last: HTMLElement | null = null
+  // every element currently holding written --mx/--my, usually one. ADU-152
+  // widened matchIn to accept nested/self matches (a .sv-tilt inside another
+  // .sv-tilt); a single remembered element could not represent a handover
+  // between two of those, so the one being left never got cleared: it was
+  // written once and then forgotten, on the very next move (ADU-169).
+  const written = new Set<HTMLElement>()
 
   // the container itself or any descendant matching selector, never an
   // ancestor closest() walked past the container to find. container.contains
@@ -46,10 +51,29 @@ export function trackPointer(
     el.style.setProperty('--my', unit(((y - rect.top) / rect.height) * 2 - 1))
   }
 
+  // relax el back to center and drop it from the written set: the same
+  // reset a genuine pointerout applies, reused for a handover so a nested
+  // match (never seeing its own pointerout, see onOut below) still relaxes
+  const leave = (el: HTMLElement) => {
+    written.delete(el)
+    el.classList.add('sv-pointer-leave')
+    el.style.setProperty('--mx', '0')
+    el.style.setProperty('--my', '0')
+  }
+
   const onMove = (event: PointerEvent) => {
     const el = matchIn(event.target)
     if (!el) return
-    last = el
+    if (!written.has(el)) {
+      // handover: whatever was written up to now stops receiving updates
+      // the instant a different element becomes the closest match. A move
+      // onto a NESTED match (a .sv-tilt inside another .sv-tilt) never
+      // fires a usable pointerout for the outer one either: matchIn/onOut's
+      // own containment check treats it as still hovering the same widget.
+      // Leave every previously written element right here instead.
+      written.forEach(leave)
+      written.add(el)
+    }
     el.classList.remove('sv-pointer-leave')
     pending = { el, x: event.clientX, y: event.clientY }
     if (!raf) raf = requestAnimationFrame(flush)
@@ -59,9 +83,7 @@ export function trackPointer(
     const el = matchIn(event.target)
     if (!el || el.contains(event.relatedTarget as Node)) return
     if (pending?.el === el) pending = null // drop queued move. It's stale now
-    el.classList.add('sv-pointer-leave')
-    el.style.setProperty('--mx', '0')
-    el.style.setProperty('--my', '0')
+    leave(el)
   }
 
   container.addEventListener('pointermove', onMove)
@@ -71,12 +93,15 @@ export function trackPointer(
     container.removeEventListener('pointermove', onMove)
     container.removeEventListener('pointerout', onOut)
     if (raf) cancelAnimationFrame(raf)
-    // a destroyed instance must not leave the last hovered element frozen
-    // mid-tilt: drop its inline vars and the leave class, back to CSS defaults
-    if (last) {
-      last.style.removeProperty('--mx')
-      last.style.removeProperty('--my')
-      last.classList.remove('sv-pointer-leave')
-    }
+    // a destroyed instance must not leave a still-hovered element frozen
+    // mid-tilt: drop inline vars and the leave class from every element
+    // still tracked, not just one, a nested match can leave more than one
+    // written between handovers (ADU-169)
+    written.forEach((el) => {
+      el.style.removeProperty('--mx')
+      el.style.removeProperty('--my')
+      el.classList.remove('sv-pointer-leave')
+    })
+    written.clear()
   }
 }

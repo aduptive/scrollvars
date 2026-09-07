@@ -153,7 +153,16 @@ export function toggles(root?: Document | HTMLElement): () => void {
     const trigger = (event.target as HTMLElement).closest?.(
       '[data-sv-toggle]'
     ) as HTMLElement | null
-    if (!trigger) return
+    // closest() walks the real DOM past this scope's own root: a click on a
+    // descendant with no data-sv-toggle of its own can bubble past scope to
+    // an ancestor trigger that lives OUTSIDE it. This scope's own sync()
+    // only ever queries within scope (scope.querySelectorAll), so resolving
+    // and toggling that outer trigger here would flip its target's class and
+    // --sv-state while its own aria-expanded, and every other trigger of the
+    // same (target, class) pair, is left stale: whichever toggles() instance
+    // actually contains that trigger owns it (ADU-169, successor of ADU-152
+    // which widened the match without widening this containment check).
+    if (!trigger || !scope.contains(trigger)) return
     const { className, target } = resolve(trigger)
     if (!target) return
     // a target that appeared after boot (e.g. inserted later) is marked here
