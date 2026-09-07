@@ -87,6 +87,24 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   html = html.replace(/ · v[\d.]+ · MIT · /, ` · v${version} · MIT · `)
 }
 
+// "fully animated" browser floor, two of five surfaces rendered from BROWSER_FLOOR
+// (README/AGENTS/docs-build.mjs's copy; docs/integration.md's is stamped in docs-stamp.mjs)
+{
+  const { BROWSER_FLOOR } = await import('./docs-data.mjs')
+  const row = (key) => {
+    const b = BROWSER_FLOOR[key]
+    const re = new RegExp(`(<td>${b.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<\\/td><td class="range">)[\\d.]+\\+ · \\w+ \\d{4}(<\\/td>)`)
+    if (!re.test(html)) throw new Error(`demo/index.html: browser floor table row for "${b.label}" not found`)
+    html = html.replace(re, (m, pre, post) => `${pre}${b.version} · ${b.date}${post}`)
+  }
+  row('chrome')
+  row('firefox')
+  row('safari')
+  const prose = /Chrome [\d.]+ \/ Firefox [\d.]+ \/ Safari [\d.]+\+/
+  if (!prose.test(html)) throw new Error('demo/index.html: browser floor footer sentence not found')
+  html = html.replace(prose, `Chrome ${BROWSER_FLOOR.chrome.version.replace('+', '')} / Firefox ${BROWSER_FLOOR.firefox.version.replace('+', '')} / Safari ${BROWSER_FLOOR.safari.version}`)
+}
+
 if (html !== before) {
   writeFileSync(demoPath, html)
   console.log('demo synced from dist')
