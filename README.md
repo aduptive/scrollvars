@@ -106,9 +106,9 @@ Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, C
 | --- | --- |
 | `track` (the driver) | 2.7 KB |
 | `track` + `scan` (zero-wrapper mode) | 3.7 KB |
-| `slider` | 2.2 KB |
+| `slider` | 2.3 KB |
 | `trackPointer` | 0.5 KB |
-| `mountEffect` (canvas) | 1.5 KB |
+| `mountEffect` (canvas) | 1.6 KB |
 | everything in `scrollvars` (the core entry) | 6.6 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 12.2 KB |
 <!-- sizes:end -->
@@ -315,7 +315,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.2 KB gzip; Swiper 11 bundle
+Size, measured: this module 2.3 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)

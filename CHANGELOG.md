@@ -57,6 +57,21 @@ No public surface change: no new export, prop, class or `--sv-*` variable.
   kit: it owns no slot in the fan, no slice of the pin and no dot, but it
   still renders.
 
+### Slider (blind review round 8, ADU-190)
+- `measure()` declared a read phase then a write phase in its own comment,
+  then broke it: `progress()` (which reads `scrollLeft` and `scrollWidth`
+  through `pos()`/`range()`) ran again after the `--sd` writes, for the
+  `--sv-progress` write, and again after the class writes, inside `state()`,
+  for `onScroll`. The twin of the ADU-168 driver fix, same shape, in the
+  slider: `progress()` is now snapshotted once, still inside the read
+  phase, before the write loop starts, and both the `--sv-progress` write
+  and the `onScroll` state hand in that snapshot instead of reading fresh.
+  `state()` itself is unchanged for any caller outside a measure pass; it
+  still reads `progress()` fresh when called with no argument. No API
+  change, and not the round-6 value-consistency claim, which stays
+  rejected: this is about the interleaving, not about the value read.
+- Size, measured: `slider` (min+gzip) goes from 2.2 to 2.3 KB.
+
 ### Tooling (round 7 follow-up, ADU-176)
 - The compat fallback preset list had THREE hand-typed copies, not two:
   `src/compat/index.ts`'s header comment (which tsc emits verbatim into
@@ -1926,6 +1941,32 @@ Docs read against the code merged by the seven round-6 code tickets.
   returns when there is none) stops advancing a slider the consumer has
   destroyed. With the core fix above, a destroyed slider is inert from
   either side.
+
+### Canvas (round 8, ADU-189)
+- `destroy()` was neither idempotent nor exception-safe. A second call ran
+  the consumer's own `setup()` cleanup again (disposing a renderer or a GPU
+  buffer twice can itself throw), and a cleanup that threw skipped both the
+  `ResizeObserver`/`IntersectionObserver` disconnects and all three
+  listener removals (`visibilitychange`, the reduced-motion query, the DPR
+  query), leaking them for the life of the page. `destroy()` now returns
+  early on a second call, nulls the stored cleanup before running it, and
+  runs the teardown in a `finally`, so a throwing cleanup can no longer
+  skip it. The untouched twin of ADU-165, which fixed the same shape in
+  the slider; no other module carries a consumer-supplied dispose callback
+  a destroy path can re-run or skip past.
+- The idempotency guard above had its own gap: a consumer calling
+  `destroy()` reentrantly from inside its own `setup()`, before `setup()`
+  has returned a cleanup (bailing out of a WebGL context that failed to
+  create is exactly this shape), ran `destroy()` with nothing yet stored to
+  clean up, and then had the cleanup `setup()` went on to return stashed
+  into the same slot regardless, where nothing ever reads it again: a
+  second, explicit `destroy()` hit the early return above and the consumer's
+  dispose never ran. Fixed by running that cleanup immediately when
+  `destroyed` is already true instead of stashing it. The `finally` above is
+  still a flat sequence, so a throwing teardown step would skip the ones
+  after it and mask the original error; documented, not fixed, since the
+  observers' `disconnect`, `removeEventListener` and the media query removal
+  are all specified never to throw.
 
 ## 1.13.0 (2026-09-05)
 
