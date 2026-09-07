@@ -814,7 +814,7 @@ test('slider: the active slide is the nearest one in pixels, not in slide widths
 
   // a 100px slide followed by a 300px one: centres at 50 and 250, midpoint 150.
   // Dividing each distance by the slide's OWN width made the wide one look
-  // nearer from centre 110 on, where it is 140px away and its neighbour 60px.
+  // nearer from centre 101 on, where it is 149px away and its neighbour 51px.
   const slides = [makeSlideBox({ x: 0, w: 100 }), makeSlideBox({ x: 100, w: 300 })]
   const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 400, scrollHeight: 100, listeners, rafQueue })
   const { slider } = await import('../dist/core/slider.js?uneven')
@@ -827,11 +827,16 @@ test('slider: the active slide is the nearest one in pixels, not in slide widths
     // the flip sits on the midpoint 150, where the two are equidistant and the
     // first one keeps it (same tie rule as the vertical rail test above)
     assert.equal(active, centre <= 150 ? 0 : 1, `centre ${centre} belongs to the nearest slide in pixels`)
-    // active is the slide the continuous position rounds to: they can only
-    // ever be half a slide apart, at that exact midpoint
+    // active follows the code's own tie rule, ceil(position - 0.5), which
+    // rounds an exact tie DOWN to the earlier slide. Stronger than a plain
+    // distance span (|position - active| <= 0.5): the span form also allows
+    // a tie to resolve to the LATER slide, which the code never does.
+    // assert.ok with === (not assert.equal, which strict mode backs with
+    // Object.is): active 0 and Math.ceil's -0 for a value just under a
+    // whole number are the same under === and must read as a pass.
     assert.ok(
-      Math.abs(position - active) <= 0.5,
-      `position ${position} and active ${active} disagree at centre ${centre}`
+      active === Math.ceil(position - 0.5),
+      `active ${active} breaks the tie rule for position ${position} at centre ${centre}`
     )
   }
 

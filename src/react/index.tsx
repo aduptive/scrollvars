@@ -684,8 +684,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
             dragging: false,
             gliding: false,
           },
-        // dropping the ref is half the fix: the autoplay interval below reads
-        // handle.current on every tick and stops the moment it is null
+        // dropping the ref is half the fix: the autoplay interval below keeps
+        // firing on its own schedule, but its callback reads handle.current
+        // on every tick and early-returns as a no-op the moment it is null
         destroy: () => {
           handle.current?.destroy()
           handle.current = null
