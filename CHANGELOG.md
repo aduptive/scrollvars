@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Slider (blind review round 8, ADU-190)
+- `measure()` declared a read phase then a write phase in its own comment,
+  then broke it: `progress()` (which reads `scrollLeft` and `scrollWidth`
+  through `pos()`/`range()`) ran again after the `--sd` writes, for the
+  `--sv-progress` write, and again after the class writes, inside `state()`,
+  for `onScroll`. The twin of the ADU-168 driver fix, same shape, in the
+  slider: `progress()` is now snapshotted once, still inside the read
+  phase, before the write loop starts, and both the `--sv-progress` write
+  and the `onScroll` state hand in that snapshot instead of reading fresh.
+  `state()` itself is unchanged for any caller outside a measure pass; it
+  still reads `progress()` fresh when called with no argument. No API
+  change, and not the round-6 value-consistency claim, which stays
+  rejected: this is about the interleaving, not about the value read.
+- Size, measured: `slider` (min+gzip) goes from 2.2 to 2.3 KB.
+
 ### Tooling (round 7 follow-up, ADU-176)
 - The compat fallback preset list had THREE hand-typed copies, not two:
   `src/compat/index.ts`'s header comment (which tsc emits verbatim into

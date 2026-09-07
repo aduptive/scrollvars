@@ -1048,3 +1048,105 @@ test('slider: the observer\'s first delivery measures a container that had no bo
   assert.ok(slides[1].classes.has('sv-active'))
   handle.destroy()
 })
+
+test('slider: measure() reads scrollLeft and scrollWidth before it writes anything, never after (ADU-190)', async () => {
+  // Same shape as the driver's ADU-168 test: a read/write log, and the
+  // assertion is about ORDER, not about the values read staying consistent
+  // (that claim was rejected twice in round 6 and stays rejected). measure()
+  // declares a read phase then a write phase; progress() (through pos() and
+  // range()) reads scrollLeft and scrollWidth, and used to be called again
+  // after the --sd writes (for --sv-progress) and again after the class
+  // writes (inside state(), for onScroll). Both must land in the read phase.
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  const log = []
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => {
+    s.style._owner = s
+    s.classList._owner = s
+    const rawSetProperty = s.style.setProperty.bind(s.style)
+    s.style.setProperty = (k, v) => {
+      log.push(`write slide ${k}`)
+      rawSetProperty(k, v)
+    }
+  })
+
+  let scrollLeftValue = 100
+  let scrollHandler
+  const container = {
+    get children() {
+      slides.forEach((sl) => {
+        sl._c = this
+        sl.offsetParent = this
+      })
+      return slides
+    },
+    clientLeft: 0,
+    clientTop: 0,
+    scrollTop: 0,
+    offsetLeft: 0,
+    offsetTop: 0,
+    offsetParent: null,
+    getBoundingClientRect() {
+      return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
+    },
+    get scrollLeft() {
+      log.push('read scrollLeft')
+      return scrollLeftValue
+    },
+    set scrollLeft(v) {
+      scrollLeftValue = v
+    },
+    get scrollWidth() {
+      log.push('read scrollWidth')
+      return 500
+    },
+    get clientWidth() {
+      log.push('read clientWidth')
+      return 300
+    },
+    vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+    style: {
+      setProperty(k, v) {
+        log.push(`write container ${k}`)
+        container.vars[k] = v
+      },
+    },
+    addEventListener: (type, fn) => {
+      if (type === 'scroll') scrollHandler = fn
+    },
+    removeEventListener: () => {},
+    scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?readorder')
+  const scrollStates = []
+  const handle = slider(container, { duration: 0, onScroll: (s) => scrollStates.push(s) })
+  assert.equal(typeof scrollHandler, 'function', 'mount registered the scroll listener this test fires')
+
+  // The mount-time measure already ran synchronously, mixed in with the
+  // container's own setup writes before it (--sv-snap et al). Clear the log
+  // and re-measure the way a real scroll does, so what gets inspected below
+  // is exactly one clean measure() pass.
+  log.length = 0
+  scrollStates.length = 0
+  scrollHandler()
+  runFrames(rafQueue)
+
+  assert.ok(log.some((step) => step.startsWith('read')), 'the measure pass really did read geometry')
+  assert.ok(log.some((step) => step.startsWith('write')), 'and really did write --sd/--sv-progress')
+  assert.equal(scrollStates.length, 1, 'onScroll fired once for this measure pass')
+  const lastRead = log.reduce((acc, step, i) => (step.startsWith('read') ? i : acc), -1)
+  const firstWrite = log.findIndex((step) => step.startsWith('write'))
+  assert.ok(
+    lastRead < firstWrite,
+    `every read happens before the first write of the whole pass, got ${log.join(' → ')}`
+  )
+  handle.destroy()
+})
