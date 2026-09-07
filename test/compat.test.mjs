@@ -2,7 +2,19 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 function makeDocument(appended) {
+  // documentElement carries the marker compat() leaves for styles/pin.css and
+  // for the driver's pin helper, so it models the attribute pair, never one
+  // half of it
+  const documentElement = {
+    attrs: new Map(),
+    classList: { add: () => {} },
+    scrollHeight: 4000,
+    setAttribute: (name, value) => documentElement.attrs.set(name, value),
+    removeAttribute: (name) => documentElement.attrs.delete(name),
+    hasAttribute: (name) => documentElement.attrs.has(name),
+  }
   return {
+    documentElement,
     querySelector: () => null,
     createElement: () => {
       const el = { attrs: {}, textContent: '' }
@@ -112,4 +124,82 @@ test('compat: patches old browsers, no-ops on modern ones', async () => {
   global.document = makeDocument(appended2)
   assert.equal(compat(), false)
   assert.equal(appended2.length, 0)
+  assert.equal(
+    document.documentElement.hasAttribute('data-sv-compat'),
+    false,
+    'and no marker either: a modern page must keep the plain, unpatched rendering'
+  )
+})
+
+test('compat: with the fallback sheet installed the pin skeleton stays whole below the floor (ADU-168)', async () => {
+  // Two fixes that were each right alone. styles/pin.css releases `.sv-stage`
+  // below the individual-transform floor (ADU-149) and the pin helper withholds
+  // the tall wrapper height there (ADU-158), because nothing down there
+  // animates and a pinned skeleton would be dead scroll. With compat() the
+  // curtains and the rail DO animate, from --sv-pin, which is computed from
+  // exactly that skeleton: without it the clock jumps 0 to 1 over a single
+  // pixel and the fallback sheet README sells snaps instead of animating.
+  // Both releases read compat's marker, so the CSS and the JS agree.
+  const appended = []
+  // a browser in the compat band with observers of its own (Chrome 64-103,
+  // Safari 13.1-14.0): the fallback sheet is the only patch it needs
+  const observer = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  global.window = {
+    innerHeight: 1000,
+    scrollY: 0,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    matchMedia: () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }),
+    ResizeObserver: observer,
+    IntersectionObserver: observer,
+    CSS: { supports: (prop) => prop !== 'translate' },
+  }
+  global.document = makeDocument(appended)
+  global.ResizeObserver = observer
+  global.IntersectionObserver = observer
+  global.requestAnimationFrame = () => 1
+
+  const { compat } = await import('../dist/compat/index.js')
+  assert.equal(compat(), true, 'the fallback sheet goes in')
+  assert.equal(appended.length, 1, 'and it is the only patch this browser needs')
+  assert.ok(
+    appended[0].textContent.includes('var(--sv-pin'),
+    'the sheet really does animate the pin presets from --sv-pin, which is what needs the skeleton'
+  )
+  assert.equal(
+    document.documentElement.hasAttribute('data-sv-compat'),
+    true,
+    'the marker lands where BOTH readers can see it: pin.css on <html>, the driver on documentElement'
+  )
+
+  const { track } = await import('../dist/core/driver.js?compatpin')
+  const el = {
+    style: { height: '', position: '', setProperty: () => {}, removeProperty: () => {} },
+    classes: new Set(),
+    attrs: new Set(),
+    classList: {
+      add: (c) => el.classes.add(c),
+      remove: (c) => el.classes.delete(c),
+      toggle: () => {},
+      contains: (c) => el.classes.has(c),
+    },
+    setAttribute: (name) => el.attrs.add(name),
+    removeAttribute: (name) => el.attrs.delete(name),
+    hasAttribute: (name) => el.attrs.has(name),
+    getBoundingClientRect: () => ({ top: 0, bottom: 400, height: 400, width: 800 }),
+    parentElement: null,
+    contains: () => false,
+  }
+  const untrack = track(el, { pin: '320vh' })
+  assert.equal(
+    el.style.height,
+    '320vh',
+    'the tall wrapper is written again: the fallback curtains and rail have a clock to animate on'
+  )
+  untrack()
+  assert.equal(el.style.height, '', 'and untrack still restores the authored height')
 })

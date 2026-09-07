@@ -110,7 +110,7 @@ function init() {
   reducedMotion = media.matches
   const onMotionChange = (event: MediaQueryListEvent) => {
     reducedMotion = event.matches
-    entries.forEach(applyPinHelper)
+    applyPinHelperAll()
     schedule()
   }
   // addEventListener on a MediaQueryList is Safari 14; inside the supported
@@ -585,7 +585,8 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
 }
 
 // Below the individual-transform floor (Chrome 104 / Firefox 72 / Safari
-// 14.1) the `@supports not (translate: 0)` net in styles/pin.css releases
+// 14.1), and on a page that did not call compat(), the `@supports not
+// (translate: 0)` net in styles/pin.css releases
 // `.sv-stage` (position static, height auto, overflow visible), so a pinned
 // section renders at its natural height with JS on. The tall wrapper height
 // on top of that would be two blank viewports under the content, which is
@@ -595,21 +596,55 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
 // and the CSS then always agree on which side of the floor the page is.
 const belowTransformFloor = () => window.CSS?.supports?.('translate', '0px') === false
 
-function applyPinHelper(entry: Entry) {
+// scrollvars/compat's marker, written on <html> with its fallback sheet. That
+// sheet re-expresses the curtains and the rail with `transform:` and animates
+// them from --sv-pin, which the driver computes from the pinned skeleton: with
+// it installed the skeleton is exactly what must NOT be released, or the clock
+// runs 0 to 1 over a single pixel and those presets snap. styles/pin.css reads
+// the same marker to keep `.sv-stage` sticky, so the CSS and the JS release
+// together or not at all.
+const compatInstalled = () => document.documentElement?.hasAttribute?.('data-sv-compat') === true
+
+// The helper's only computed-style read, split out so a loop over several
+// entries can take every read before any write. Reading after a write on the
+// SAME element is free (the height cannot change the computed position), but
+// the write on entry N invalidates the style the read on entry N+1 asks for,
+// so a read-write-read-write loop still flushes a recalc for all but the
+// first. This is never cached on the entry: an author media query can change
+// the stylesheet position after track(), and a stale read would write
+// `relative` over a sticky the sheet just applied.
+function readPinPosition(entry: Entry): string | undefined {
+  const { el, opts, authored } = entry
+  if (typeof opts.pin !== 'string' || !authored) return undefined
+  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) return undefined
+  // an authored inline position outranks the computed one: no read is owed
+  if (authored.position && authored.position !== 'static') return undefined
+  return typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
+}
+
+// Every read first, then every write, so N pinned entries cost one style
+// flush instead of N. Never `entries.forEach(applyPinHelper)`: that hands the
+// element in as `computed` (and the compiler says so).
+function applyPinHelperAll() {
+  const positions = new Map<Entry, string | undefined>()
+  entries.forEach((entry) => positions.set(entry, readPinPosition(entry)))
+  entries.forEach((entry) => applyPinHelper(entry, positions.get(entry)))
+}
+
+function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
-  if (reducedMotion || belowTransformFloor()) {
+  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) {
     el.style.height = authored.height
     el.style.position = authored.position
   } else {
-    el.style.height = opts.pin
     // only a static element needs the positioning context; one positioned by a
     // stylesheet or inline (absolute, fixed, sticky) keeps it. An authored
     // inline `static` is exactly the case that needs replacing: keeping it
     // means the containing block the helper promises never exists, and an
     // absolutely positioned curtain escapes the stage.
     const keep = authored.position && authored.position !== 'static' ? authored.position : ''
-    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
+    el.style.height = opts.pin
     el.style.position = keep || (!computed || computed === 'static' ? 'relative' : '')
   }
 }

@@ -65,7 +65,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.4 KB gz)
-// also styles/pin.css (3.0), slider.css (1.3), tilt.css (0.6), state.css (2.2, scroll-driven acts need core too), ui.css (0.9), per page needs
+// also styles/pin.css (3.1), slider.css (1.3), tilt.css (0.6), state.css (2.2, scroll-driven acts need core too), ui.css (0.9), per page needs
 ```
 
 ## The fx gallery (prefer for common patterns)
@@ -303,7 +303,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 6.5 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 6.6 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |

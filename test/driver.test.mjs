@@ -1005,7 +1005,11 @@ test('styles/pin.css: below the individual-transform floor the deck unstacks, th
   // guards, never this block: an unstacked deck taller than one viewport
   // still clipped past the first card. The block must release the stage
   // the same way its reduced-motion twin already does.
-  const stage = rules.find((rule) => rule.selectors.includes('.sv-stage'))
+  // ADU-168: scoped to a page WITHOUT compat() since round 7. compat's fallback
+  // sheet animates the curtains and the rail from --sv-pin, which is computed
+  // from the very skeleton this rule releases, so a release that ignored the
+  // marker disarmed the module it shares the floor with.
+  const stage = rules.find((rule) => rule.selectors.includes('html:not([data-sv-compat]) .sv-stage'))
   assert.ok(stage, 'the block resets `.sv-stage`, or an unstacked deck taller than one viewport still clips')
   for (const declaration of ['position: static', 'height: auto', 'overflow: visible']) {
     assert.ok(stage.body.includes(declaration), `\`.sv-stage\` declares \`${declaration}\`, got \`${stage.body}\``)
@@ -1159,4 +1163,102 @@ test('driver: below the individual-transform floor the pin helper writes no tall
   const stopAncient = track(ancient, { pin: '320vh' })
   assert.equal(ancient.style.height, '320vh', 'no answer is not a false: the tall wrapper stays')
   stopAncient()
+})
+
+test('driver: every released guard also fires when the tracked element IS the target (ADU-168)', async () => {
+  // `data-sv-off` lands on the element whose tracker stopped. A guard written
+  // only as `[data-sv-off] X` asks for the marker on an ANCESTOR, so a tracked
+  // element carrying the preset class itself (a nested tracker on a `.sv-deck`,
+  // the documented scrub idiom on a `.sv-spread`) never settles: its cards stay
+  // stacked over each other with the clock gone. `.sv-stage[data-sv-off]`
+  // already carried the shape, alone, for the one guard whose animated rule
+  // needs no tracker ancestor either.
+  let audited = 0
+  for (const rule of guardRules) {
+    for (const selector of rule.selectors) {
+      if (!selector.startsWith('[data-sv-off] ')) continue
+      const target = selector.slice('[data-sv-off] '.length).trim()
+      const self = target.replace(/^\S+/, (head) => `${head}[data-sv-off]`)
+      const twin = ruleFor(self)
+      assert.ok(twin, `\`${selector}\` needs its self twin \`${self}\`, or a tracker released ON the target never settles`)
+      assert.equal(twin.body, rule.body, `\`${self}\` settles exactly what \`${selector}\` settles`)
+      audited++
+    }
+  }
+  assert.ok(audited >= 9, `the audit found ${audited} released guards, so it is reading the sheets`)
+})
+
+test('driver: a motion flip reads every pinned position before it writes any of them (ADU-168)', async () => {
+  // README: "inside the driver, layout thrashing is impossible by construction".
+  // A computed-style read after an inline write in the same tick flushes a style
+  // recalc. Reading before writing on the SAME element is free (the height
+  // cannot change the computed position), but the pin helper runs once per
+  // entry in a loop when the motion preference changes, and there the write on
+  // entry N invalidates the style the read on entry N+1 asks for: ordering
+  // inside the helper takes N flushes to N-1, not to zero. Three entries, so
+  // the difference is visible; one entry cannot tell the two apart.
+  window.CSS = { supports: () => true }
+  const log = []
+  global.getComputedStyle = () => {
+    log.push('read')
+    return { getPropertyValue: () => '', position: 'static' }
+  }
+  let motionListener
+  const realMatchMedia = window.matchMedia
+  // both listener pairs, like every real MediaQueryList
+  window.matchMedia = () => ({
+    matches: false,
+    addEventListener: (_type, fn) => (motionListener = fn),
+    removeEventListener: () => {},
+    addListener: (fn) => (motionListener = fn),
+    removeListener: () => {},
+  })
+  const { track } = await import('../dist/core/driver.js?pinreadorder')
+  const instrument = (el, name) => {
+    let height = ''
+    let position = ''
+    Object.defineProperty(el.style, 'height', {
+      configurable: true,
+      get: () => height,
+      set: (value) => {
+        log.push(`write ${name} height`)
+        height = value
+      },
+    })
+    Object.defineProperty(el.style, 'position', {
+      configurable: true,
+      get: () => position,
+      set: (value) => {
+        log.push(`write ${name} position`)
+        position = value
+      },
+    })
+    return el
+  }
+  const els = [instrument(makeElement(400), 'p1'), instrument(makeElement(400), 'p2'), instrument(makeElement(400), 'p3')]
+  const untracks = els.map((el) => track(el, { pin: '320vh' }))
+  assert.equal(typeof motionListener, 'function', 'init() registered the motion listener this test flips')
+  for (const el of els) {
+    assert.equal(el.style.height, '320vh', 'the helper still writes the skeleton it is being timed on')
+    assert.equal(el.style.position, 'relative', 'and still gives a static wrapper its containing block')
+  }
+  assert.ok(log.includes('read'), 'the helper really did ask for the computed position')
+
+  log.length = 0
+  motionListener({ matches: true }) // reduce: restore the authored skeleton, no read is owed
+  assert.equal(log.filter((step) => step === 'read').length, 0, `reduce needs no computed position, got ${log.join(' → ')}`)
+
+  log.length = 0
+  motionListener({ matches: false }) // back to motion: the loop that used to interleave
+  assert.equal(log.filter((step) => step === 'read').length, 3, `one read per pinned entry, got ${log.join(' → ')}`)
+  assert.ok(
+    log.lastIndexOf('read') < log.findIndex((step) => step.startsWith('write')),
+    `every read happens before the first write of the whole pass, got ${log.join(' → ')}`
+  )
+  for (const el of els) assert.equal(el.style.height, '320vh', 'and the pass still rebuilt every skeleton')
+
+  untracks.forEach((untrack) => untrack())
+  window.matchMedia = realMatchMedia
+  delete global.getComputedStyle
+  delete window.CSS
 })

@@ -2,6 +2,70 @@
 
 ## Unreleased
 
+### Compat (blind review round 7, ADU-168)
+- `compat()` marks `<html>` with `data-sv-compat` when it installs its
+  fallback stylesheet, and the two below-the-floor releases added in round 6
+  now stand down on that marker. Each was right on its own for a page that
+  calls no `compat()`: `styles/pin.css` released `.sv-stage` under
+  `@supports not (translate: 0)` (ADU-149) and the pin helper stopped writing
+  the tall wrapper height there (ADU-158), so a pinned section renders at its
+  natural height instead of two blank viewports. Neither asked whether
+  `compat()` was installed, and the fallback sheet has no stage rule of its
+  own, so with the module present `--sv-pin` jumped from 0 to 1 over a single
+  pixel and the `sv-curtain-l`, `sv-curtain-r` and `sv-rail` fallbacks snapped
+  instead of animating, which is the one thing the module exists to do. The
+  marker is the only new surface: an attribute on the root element, written
+  next to the `data-sv-compat` attribute the injected `<style>` already
+  carried.
+- The cost, stated plainly: this is a trade, not a free win. On a page that
+  calls `compat()` the round-6 releases no longer fire, so below the
+  individual-transform floor the stage keeps `position: sticky`, `100vh` and
+  `overflow: hidden`, and stage content taller than the stage clips again,
+  which is exactly the defect ADU-149 measured in Chrome and fixed for
+  everyone. The presets that module exists to animate are the ones that need
+  the skeleton, and a page that would rather have the flow layout than the
+  fallback animation gets it by not calling `compat()`: without the marker
+  both halves release as they did in round 6.
+- Size, measured: the marker rule's comment in `styles/pin.css` is trimmed
+  to what a reader of that file needs, 122 bytes gzipped instead of 155,
+  which takes the file's stamp from 3.2 back to 3.1 KB and `styles.css`
+  from 9.0 to 8.9 KB. The rules themselves cost 69 bytes gzipped.
+
+### Presets and no-JS (blind review round 7, ADU-168)
+- Every released guard in `styles/pin.css` gained the twin that fires when the
+  tracked element IS the preset element: `.sv-curtain-l[data-sv-off]`,
+  `.sv-curtain-r[data-sv-off]`, `.sv-rail[data-sv-off]`,
+  `.sv-deck[data-sv-off]` (and its `> *`), `.sv-reading[data-sv-off] > *`,
+  `.sv-range[data-sv-off] > *` and `.sv-counter[data-sv-off]`. `data-sv-off`
+  lands on the element whose tracker stopped, and a descendant-only guard asks
+  for it on an ancestor, so a nested tracker on a `.sv-deck` kept its cards
+  piled in one grid cell with the clock already gone, where the same markup
+  without JS gives a plain block. `.sv-stage[data-sv-off]` carried the shape
+  alone since round 5.
+
+### Driver (blind review round 7, ADU-168)
+- A motion-preference change now reads every pinned entry's computed
+  position first and writes all the skeletons after, instead of reading and
+  writing one entry at a time. The reversed order inside the helper made
+  each read flush a style recalc of the write just made, against the
+  README's "inside the driver, layout thrashing is impossible by
+  construction". Ordering the read before the write is only half of it: the
+  height cannot change the same element's computed position, so that read is
+  free, but the write on one entry does invalidate the style the next
+  entry's read asks for. Instrumented in Chrome with three pinned entries
+  and a real preference flip, the per-entry order was read p1, write p1,
+  read p2, write p2, and so on, so 2 of the 3 reads still landed with
+  another entry's inline write pending: the reorder alone took N flushes to
+  N-1, the hoisted read pass takes them to one. The position is read fresh
+  on every pass and never cached on the entry, since an author media query
+  can hand the element a `sticky` a stale read would overwrite with
+  `relative`.
+- Size, measured, because these are published numbers: the read pass takes
+  the core entry (`scrollvars`, min+gzip) from 6.4 to 6.5 KB, `track` +
+  `scan` from 3.6 to 3.7 KB and the headline typical page from ~5.1 to
+  ~5.2 KB. The stamps read 6.6 KB once round-3's own driver work is merged
+  in, and the stamped bundle ratio against gsap + ScrollTrigger stays ~7×.
+
 ### Gallery (blind review round 7)
 - Every paste-the-preset CSS tab now carries the reduced-motion override its
   stylesheet ships, placed after the rule it overrides. Eight tabs
@@ -1231,7 +1295,10 @@ against the code ADU-129 to ADU-132 shipped.
   entirely outside the clip box and the third was half gone. The block now
   resets the stage the same way its reduced-motion twin already does, and
   its own comment states exactly what it guarantees: the curtains sit
-  parted and static, nothing overlaps, content stays in flow.
+  parted and static, nothing overlaps, content stays in flow. Narrowed in
+  round 7 (ADU-168): with `compat()` installed the release stands down, so
+  the stage stays pinned below the floor and stage content taller than the
+  stage clips again there, and not calling `compat()` is the escape.
 - Size, measured: the stage reset takes `styles/pin.css` from 2.9 to 3.0 KB
   gzip (2995 to 3030 bytes; the new selector alone costs one byte against
   the file's existing repetition, the comment the rest) and `styles.css`
