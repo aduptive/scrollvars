@@ -1887,6 +1887,32 @@ Docs read against the code merged by the seven round-6 code tickets.
   destroyed. With the core fix above, a destroyed slider is inert from
   either side.
 
+### Canvas (round 8, ADU-189)
+- `destroy()` was neither idempotent nor exception-safe. A second call ran
+  the consumer's own `setup()` cleanup again (disposing a renderer or a GPU
+  buffer twice can itself throw), and a cleanup that threw skipped both the
+  `ResizeObserver`/`IntersectionObserver` disconnects and all three
+  listener removals (`visibilitychange`, the reduced-motion query, the DPR
+  query), leaking them for the life of the page. `destroy()` now returns
+  early on a second call, nulls the stored cleanup before running it, and
+  runs the teardown in a `finally`, so a throwing cleanup can no longer
+  skip it. The untouched twin of ADU-165, which fixed the same shape in
+  the slider; no other module carries a consumer-supplied dispose callback
+  a destroy path can re-run or skip past.
+- The idempotency guard above had its own gap: a consumer calling
+  `destroy()` reentrantly from inside its own `setup()`, before `setup()`
+  has returned a cleanup (bailing out of a WebGL context that failed to
+  create is exactly this shape), ran `destroy()` with nothing yet stored to
+  clean up, and then had the cleanup `setup()` went on to return stashed
+  into the same slot regardless, where nothing ever reads it again: a
+  second, explicit `destroy()` hit the early return above and the consumer's
+  dispose never ran. Fixed by running that cleanup immediately when
+  `destroyed` is already true instead of stashing it. The `finally` above is
+  still a flat sequence, so a throwing teardown step would skip the ones
+  after it and mask the original error; documented, not fixed, since the
+  observers' `disconnect`, `removeEventListener` and the media query removal
+  are all specified never to throw.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

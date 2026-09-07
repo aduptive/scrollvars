@@ -726,7 +726,17 @@ export function mountEffect(
     if (!ready) {
       ready = true
       const dispose = setup?.(fx)
-      if (typeof dispose === 'function') cleanup = dispose
+      if (typeof dispose === 'function') {
+        // A consumer that calls handle.destroy() from inside its own
+        // setup() (bailing out before it has returned this dispose, a
+        // WebGL context that failed to create) already ran destroy()'s
+        // body above with `cleanup` still undefined: nothing will ever
+        // read `cleanup` again once `destroyed` is true, so stashing
+        // `dispose` there orphans it for the life of the page. Run it now
+        // instead (ADU-189).
+        if (destroyed) dispose()
+        else cleanup = dispose
+      }
       resize?.(fx) // sizing that lives in resize() must also run once
     } else {
       resize?.(fx)
@@ -784,14 +794,26 @@ export function mountEffect(
       sync()
     },
     destroy: () => {
+      // Idempotent: a second call is a no-op, not a second run of the
+      // consumer's own setup() cleanup (a WebGL context or a renderer
+      // disposed twice can itself throw). Exception-safe: the observers and
+      // listener removals below run in the `finally`, so a throwing cleanup
+      // still cannot leak them for the life of the page (ADU-189, the
+      // untouched twin of ADU-165).
+      if (destroyed) return
       destroyed = true
-      cleanup?.()
-      sync()
-      ro.disconnect()
-      io.disconnect()
-      document.removeEventListener('visibilitychange', onVisibility)
-      offMediaChange(motionQuery, onMotion)
-      if (dprQuery) offMediaChange(dprQuery, onDprChange)
+      const dispose = cleanup
+      cleanup = undefined
+      try {
+        dispose?.()
+      } finally {
+        sync()
+        ro.disconnect()
+        io.disconnect()
+        document.removeEventListener('visibilitychange', onVisibility)
+        offMediaChange(motionQuery, onMotion)
+        if (dprQuery) offMediaChange(dprQuery, onDprChange)
+      }
     },
   }
 }
