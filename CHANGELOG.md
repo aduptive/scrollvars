@@ -21,12 +21,31 @@
   across three runner-config entries, the same ratio across README and
   AGENTS). `bench-tables.mjs` also gained the `isMain` guard the other two
   scripts already had, so `spliceAll()` can be imported by a test without
-  running the whole script's file I/O. Every other regex-driven write in
-  `scripts/` was audited and is already guarded (missing-only or full
-  ambiguity checks); `scripts/fx-render.mjs`'s unguarded `fxsticky` class
-  splice was reviewed and left alone, it is a legitimate no-op for the
-  Section previews that are not pin-based. No output changes: `npm run
-  demo:sync` produces a byte-identical tree.
+  running the whole script's file I/O.
+- Fix pass on the above: the audit that closed this ticket was itself
+  incomplete on two counts. `spliceAll()`'s "at least one" check accepted
+  PARTIAL coverage: on the bench page's three-entry runner config, breaking
+  one of the three matches (a moved anchor, a stray quote) still exited 0,
+  with the other two silently rewritten and the third silently left stale.
+  It now takes the caller's own expected count (3 for the runner config)
+  and throws on anything else. The README/AGENTS "less bundle" ratio
+  sentence never shared that repeat shape, it runs once per file and
+  expects exactly one match each, so it moves to `spliceOne()` instead:
+  an accidental second mention in either file now throws rather than
+  being double-patched. And "every other regex-driven write in `scripts/`
+  was audited and is already guarded" was false: four more `.test()` then
+  bare `.replace()` calls, the same shape the five calls above had before
+  this ticket, sat unguarded beside the ones that were fixed, README's
+  per-style styles-import loop, README's intro sizes sentence, and
+  AGENTS's "Fully animated" browser-floor headline in `docs-stamp.mjs`,
+  and the bench page's `h1` headline and body ratio claim in
+  `bench-tables.mjs`. All four now go through `spliceOne()`.
+  `scripts/fx-render.mjs`'s `fxsticky` class splice stays a no-op for
+  Section previews that are not pin-based (hero-cinematic, stats-countup
+  render no `.sv-stage` by design), but is no longer unconditional: a
+  pin-based Section (`requires.styles` includes `pin`) that loses its
+  `.sv-stage` now throws instead of silently shipping without it. No
+  output changes: `npm run demo:sync` produces a byte-identical tree.
 
 ### Tooling (ADU-195)
 - The anchor splices in `scripts/docs-stamp.mjs` and `scripts/demo-sync.mjs`

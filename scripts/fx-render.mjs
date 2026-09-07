@@ -93,15 +93,28 @@ export function renderStatic(Component, props) {
  * inline attach script the hand-written preview used, documented on the fx
  * entry as `previewScript` so it never goes missing silently.
  */
+/**
+ * Splices the gallery-only `fxsticky` chrome onto a Section's `.sv-stage`.
+ * Not every Section in SECTION_PREVIEW_SLUGS is pin-based (hero-cinematic
+ * and stats-countup use usePointer/counters instead, no .sv-stage by
+ * design), so a missing anchor is a legitimate no-op there. It stops being
+ * legitimate for a pin-based entry (requires.styles includes 'pin'), which
+ * ships .sv-stage by contract: losing it there throws, the stale-anchor
+ * defect ADU-196 guards against everywhere else (fix pass, this call was
+ * still unconditional). Exported standalone so the branch is testable
+ * without the esbuild + react-dom/server pipeline renderSectionPreview runs.
+ */
+export const spliceStage = (markup, fx) => {
+  const anchor = 'class="sv-stage'
+  if (markup.includes(anchor)) return markup.replace(anchor, 'class="sv-stage fxsticky')
+  if (fx.requires?.styles?.includes('pin')) {
+    throw new Error(`${fx.slug}: pin-based Section preview lost its .sv-stage`)
+  }
+  return markup
+}
+
 export async function renderSectionPreview(fx, componentEntry) {
   const Component = await loadComponent(fx.slug, componentEntry)
-  let markup = renderStatic(Component, fx.previewProps)
-  // gallery-only chrome for the pinned sticky viewport (the other fx pages'
-  // preview markup gets this from a hand-written class; the component has
-  // no slot for it, so it lands here, once, deterministically). Not every
-  // Section in SECTION_PREVIEW_SLUGS is pin-based (hero-cinematic and
-  // stats-countup use usePointer/counters instead), so a missing .sv-stage
-  // is a legitimate no-op here, not the stale-anchor defect ADU-196 guards.
-  markup = markup.replace('class="sv-stage', 'class="sv-stage fxsticky')
+  const markup = spliceStage(renderStatic(Component, fx.previewProps), fx)
   return fx.previewScript ? `${markup}\n<script>${fx.previewScript}</script>` : markup
 }

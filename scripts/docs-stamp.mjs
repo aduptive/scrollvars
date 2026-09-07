@@ -141,13 +141,11 @@ readme = stamp(readme, 'sizes', [
 readme = spliceOne(readme, /\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`, 'README.md: total size stamp')
 for (const [name, note] of Object.entries(STYLE_NOTES)) {
   const re = new RegExp(`^(import 'scrollvars/styles/${name}\\.css'\\s+// )[^\\n]*$`, 'm')
-  if (!re.test(readme)) throw new Error(`README styles line for ${name} missing`)
-  readme = readme.replace(re, `$1${note}, ${sizes.css[name]} KB gz`)
+  readme = spliceOne(readme, re, `$1${note}, ${sizes.css[name]} KB gz`, `README.md: styles import line for ${name}`)
 }
 // prose mentions: the intro line and the slider section carry one number each
 const intro = /Measured \(JS min\+gzip, CSS gzip as shipped\): driver [\d.]+ KB, full core incl\. the slider [\d.]+ KB, styles [\d.]+ KB for every preset or [\d.]+ KB for the core part\. A typical page ships ~[\d.]+ KB on the wire\./
-if (!intro.test(readme)) throw new Error('README intro sizes sentence not found')
-readme = readme.replace(intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`)
+readme = spliceOne(readme, intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`, 'README.md: intro sizes sentence')
 readme = spliceOne(readme, /Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`, 'README.md: slider module size stamp')
 // compat's fallback preset list, one of three surfaces rendered from COMPAT_PRESETS
 readme = between(
@@ -172,8 +170,7 @@ agents = spliceOne(agents, /^\/\/ also styles\/pin\.css[^\n]*$/m,
   'AGENTS.md: "also styles/pin.css" line')
 // the "fully animated" browser floor headline, one of five surfaces rendered from BROWSER_FLOOR
 const agentsFloor = /Fully animated: Chrome\/Edge [\d.]+\+, Firefox [\d.]+\+, Safari\/iOS [\d.]+\+/
-if (!agentsFloor.test(agents)) throw new Error('AGENTS.md browser floor headline not found')
-agents = agents.replace(agentsFloor, `Fully animated: Chrome/Edge ${BROWSER_FLOOR.chrome.version}, Firefox ${BROWSER_FLOOR.firefox.version}, Safari/iOS ${BROWSER_FLOOR.safari.version}`)
+agents = spliceOne(agents, agentsFloor, `Fully animated: Chrome/Edge ${BROWSER_FLOOR.chrome.version}, Firefox ${BROWSER_FLOOR.firefox.version}, Safari/iOS ${BROWSER_FLOOR.safari.version}`, 'AGENTS.md: browser floor headline')
 writeFileSync(join(root, 'AGENTS.md'), agents)
 
 // docs/integration.md: the client-facing browser support table, plain (no bold, no reason)

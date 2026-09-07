@@ -8,20 +8,22 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { measureSizes, GSAP_KB } from './docs-data.mjs'
+import { spliceOne } from './docs-stamp.mjs'
 
 /**
- * Replaces every match of `re` in `text`, throwing only when there are zero
- * matches. Unlike docs-stamp.mjs's spliceOne, a repeated match is the
- * intended shape here (the same measured number legitimately repeats
- * across the bench page's runner config, or the same ratio sentence across
- * README and AGENTS), so ambiguity is not an error, only silence is
- * (ADU-196: these two calls used to run with no guard at all and would
- * write the file back unchanged when the pattern moved).
+ * Replaces every match of `re` in `text`, throwing unless the match count
+ * is exactly `count`. A repeat is the intended shape here (the bench
+ * page's runner config states the same bundle size in three engine
+ * entries), so the caller states its own expected count instead of the
+ * old "any count greater than zero" check: that check accepted PARTIAL
+ * coverage, where one of the three matches breaks (a stray quote, an
+ * anchor that moved) while the other two are silently rewritten and the
+ * third is silently left stale, exit 0 either way (ADU-196 fix pass).
  */
-export const spliceAll = (text, re, replacement, label) => {
+export const spliceAll = (text, re, replacement, count, label) => {
   const globalRe = re.global ? re : new RegExp(re.source, `${re.flags}g`)
-  const count = (text.match(globalRe) || []).length
-  if (count === 0) throw new Error(`${label} not found`)
+  const matches = (text.match(globalRe) || []).length
+  if (matches !== count) throw new Error(`${label}: expected ${count} matches, found ${matches}`)
   return text.replace(globalRe, replacement)
 }
 
@@ -113,24 +115,26 @@ for (const file of ['README.md', 'AGENTS.md']) {
   writeFileSync(path, text.replace(mre, () => `<!-- bench:start -->\n${md.join('\n')}\n<!-- bench:end -->`))
 }
 // the bench page's runner config carries the same measured bundle size
-// (three engine entries share this cell shape, so a repeat is intended)
-writeFileSync(pagePath, spliceAll(readFileSync(pagePath, 'utf8'), /(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/, `$1${sizes.everything} KB'`, 'demo/bench/index.html: scrollvars.html bundle config line'))
-// the bundle ratio in the prose is arithmetic on the same numbers
+// (three engine entries share this cell shape, so an exact repeat is
+// intended: a broken match on any one of them must throw, not silently
+// leave that entry stale while the other two update, ADU-196 fix pass)
+writeFileSync(pagePath, spliceAll(readFileSync(pagePath, 'utf8'), /(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/, `$1${sizes.everything} KB'`, 3, 'demo/bench/index.html: scrollvars.html bundle config line'))
+// the bundle ratio in the prose is arithmetic on the same numbers, exactly
+// one match expected per file (spliceOne, not spliceAll: an accidental
+// second mention in either file must throw, not be double-patched)
 const ratio = Math.round(GSAP_KB / parseFloat(sizes.everything))
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)
-  writeFileSync(path, spliceAll(readFileSync(path, 'utf8'), /~\d+× less bundle/, `~${ratio}× less bundle`, `${file}: "less bundle" ratio sentence`))
+  writeFileSync(path, spliceOne(readFileSync(path, 'utf8'), /~\d+× less bundle/, `~${ratio}× less bundle`, `${file}: "less bundle" ratio sentence`))
 }
 // the bench page's own headline claim (ADU-194: "15× less JavaScript" had drifted
 // against the very table it sits above; both mentions are the same arithmetic)
 {
   let bench = readFileSync(pagePath, 'utf8')
   const h1Re = /Same workload, three engines\. Same frames, ~?\d+× less JavaScript/
-  if (!h1Re.test(bench)) throw new Error('bench page h1 claim not found')
-  bench = bench.replace(h1Re, `Same workload, three engines. Same frames, ~${ratio}× less JavaScript`)
+  bench = spliceOne(bench, h1Re, `Same workload, three engines. Same frames, ~${ratio}× less JavaScript`, 'demo/bench/index.html: h1 claim')
   const claimRe = /the same frames for a ~\d+× smaller bundle/
-  if (!claimRe.test(bench)) throw new Error('bench page bundle-ratio sentence not found')
-  bench = bench.replace(claimRe, `the same frames for a ~${ratio}× smaller bundle`)
+  bench = spliceOne(bench, claimRe, `the same frames for a ~${ratio}× smaller bundle`, 'demo/bench/index.html: bundle-ratio sentence')
   writeFileSync(pagePath, bench)
 }
 console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)

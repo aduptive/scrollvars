@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { between as docsBetween, stamp, floorRow, spliceOne as docsSpliceOne } from '../scripts/docs-stamp.mjs'
 import { between as demoBetween, spliceOne as demoSpliceOne } from '../scripts/demo-sync.mjs'
 import { spliceAll } from '../scripts/bench-tables.mjs'
+import { spliceStage } from '../scripts/fx-render.mjs'
 
 // ADU-195: a between()-style splice starts its non-greedy match at the
 // FIRST occurrence of `before`. If `before` repeats, that first match can
@@ -137,20 +138,56 @@ test('demo-sync spliceOne(): splices correctly when the pattern is unique', () =
   assert.equal(result, 'driver 5 KB total')
 })
 
-// bench-tables.mjs's two unguarded calls (the runner config's repeated
-// bundle-size cell, the README/AGENTS ratio sentence) are the mirror image:
-// a repeated match there is the intended shape (all occurrences are meant
-// to update together), so spliceAll() only guards against zero matches,
-// and replaces every match it does find rather than requiring exactly one.
+// bench-tables.mjs's runner config splice (the bench page's three per-engine
+// bundle-size cells) is the mirror image of spliceOne: a repeated match
+// there is the intended shape (all three occurrences are meant to update
+// together), so spliceAll() takes its own expected count instead of
+// requiring exactly one. The fix-pass defect it exists to close is PARTIAL
+// coverage: the old "any count greater than zero" check let one of the
+// three matches break (a stray quote, a moved anchor) while the other two
+// silently updated and the third was silently left stale, exit 0 either
+// way. `count !== matches` (not `matches === 0`) is what catches that.
 
-test('bench-tables spliceAll(): throws when the pattern is not found', () => {
+test('bench-tables spliceAll(): throws when no match is found', () => {
   assert.throws(
-    () => spliceAll('no numbers here', /\d+ KB/, '5 KB', 'fixture label'),
-    /^Error: fixture label not found$/
+    () => spliceAll('no numbers here', /\d+ KB/, '5 KB', 3, 'fixture label'),
+    /^Error: fixture label: expected 3 matches, found 0$/
   )
 })
 
-test('bench-tables spliceAll(): replaces every match, not only the first', () => {
-  const result = spliceAll('driver 2 KB, core 3 KB', /\d+ KB/, '5 KB', 'fixture label')
+test('bench-tables spliceAll(): throws on partial coverage, not only on zero matches', () => {
+  assert.throws(
+    () => spliceAll('driver 2 KB, core 3 KB', /\d+ KB/, '5 KB', 3, 'fixture label'),
+    /^Error: fixture label: expected 3 matches, found 2$/
+  )
+})
+
+test('bench-tables spliceAll(): replaces every match when the count matches exactly', () => {
+  const result = spliceAll('driver 2 KB, core 3 KB', /\d+ KB/, '5 KB', 2, 'fixture label')
   assert.equal(result, 'driver 5 KB, core 5 KB')
+})
+
+// fx-render.mjs's sv-stage splice (fix pass, was unconditional): a missing
+// anchor is a legitimate no-op for a Section that never renders .sv-stage
+// (hero-cinematic, stats-countup), but throws for a pin-based one, which
+// ships .sv-stage by contract.
+
+test('fx-render spliceStage(): no-op when the anchor is missing on a non-pin Section', () => {
+  const fx = { slug: 'hero-cinematic', requires: { styles: ['core', 'ui'] } }
+  const result = spliceStage('<div class="sv-hero">x</div>', fx)
+  assert.equal(result, '<div class="sv-hero">x</div>')
+})
+
+test('fx-render spliceStage(): throws when the anchor is missing on a pin-based Section', () => {
+  const fx = { slug: 'timeline-scrub', requires: { styles: ['pin'] } }
+  assert.throws(
+    () => spliceStage('<div class="sv-hero">x</div>', fx),
+    /^Error: timeline-scrub: pin-based Section preview lost its \.sv-stage$/
+  )
+})
+
+test('fx-render spliceStage(): splices the fxsticky class when the anchor is present', () => {
+  const fx = { slug: 'timeline-scrub', requires: { styles: ['pin'] } }
+  const result = spliceStage('<div class="sv-stage">x</div>', fx)
+  assert.equal(result, '<div class="sv-stage fxsticky">x</div>')
 })
