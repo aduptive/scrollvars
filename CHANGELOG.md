@@ -64,6 +64,61 @@
   boundary at 3021. No public surface change: no new export, no new class,
   no new variable.
 
+### React (blind review round 8, ADU-188)
+No public surface change: no new export, prop, class or `--sv-*` variable.
+- `<Slider>` counted its children with `React.Children.count`, which counts
+  what the caller wrote and not what React renders. A conditional slide
+  (`{show && <Slide/>}`) counts as one child and renders none, so
+  `[<Slide/>, false, null, <Slide/>]` drew four dots for two slides, two of
+  them calling `goTo(2)` and `goTo(3)` on a two-slide engine, with labels
+  reading "1 of 4" and "4 of 4". A fragment counts as one child and renders
+  two, so one dot covered two slides and `cloneElement` put `role`,
+  `aria-roledescription` and `aria-label` on the Fragment, where React drops
+  them: neither slide carried any of the annotation the component promises.
+  Both shapes are ordinary React. One normalized list now feeds rendering,
+  counting and annotation alike, so the dots, the labels and the engine
+  agree on the same slides. `Children.toArray` does not open fragments on
+  its own (measured under React 19.2.8, a fragment comes back as one
+  element), so the list recurses into them and keys each level under its
+  parent, joined with a `:`. That separator is the one React itself escapes
+  (`:` becomes `=2`, `=` becomes `=0`) while `.` and `$` pass through a key
+  untouched, so a fragment's children cannot collide with their uncles:
+  joined on nothing, `<Fragment key="a"><b/></Fragment>` and a sibling keyed
+  `a.$b` both flattened to `.$a.$b`, and a reorder then matched the two by
+  position and swapped their state.
+  A child that is not an element keeps its place in the rail: it carries no
+  annotation and the engine cannot count it, but it renders. That matters
+  most for a portal, which `Children.map` hands back untouched and
+  `toArray().filter(isValidElement)` deletes from the document with no
+  warning anywhere.
+- The responsive `perView` stylesheet scoped its rules with a descendant
+  selector, `[data-sv-uid="..."] .sv-slider`. The rail of a Slider nested
+  inside a slide is a descendant of the outer shell too, so the outer map
+  declared `--sv-per-view` directly on the inner rail, which reads its own
+  value only by inheritance from its own shell: the outer number won every
+  nesting. It is a child combinator now, `[data-sv-uid="..."] > .sv-slider`.
+- The pre-paint script releases the page after 3s so a bundle that never
+  arrives still fails visible. A driver that booted after that deadline
+  found the page released, added `sv-on` back, and every offscreen entrance
+  went to `opacity: 0`: content appeared and then disappeared. The release
+  is final now, held by a MutationObserver that is installed only once the
+  watchdog has fired, so the normal path pays nothing for it.
+
+### Gallery (blind review round 8, ADU-188)
+- Three installed components carried the same pair, `React.Children.count`
+  for the geometry and `React.Children.map` for the render, and
+  `Children.map` calls its callback for `false` and `null` too. Given
+  `[<Card/>, false, null, <Card/>]`, `CoverflowSlider` wrapped a conditional
+  card in a real `<Slide>`, so the rail carried an empty slide and the Slider
+  drew a dot wired past the end of the engine; `DeckSpread` emitted four
+  cells, two of them empty, and set `--sv-mid` to 1.5 where two cards need
+  0.5, fanning the deck around a card that is not there; `SequencedScrub`
+  emitted four slices and gave the second real card the scrub window
+  0.75 to 1 instead of 0.5 to 1. All three now count the elements they
+  render. A child that is not an element passes through unwrapped, as in the
+  kit: it owns no slot in the fan, no slice of the pin and no dot, but it
+  still renders.
+
 ### Slider (blind review round 8, ADU-190)
 - `measure()` declared a read phase then a write phase in its own comment,
   then broke it: `progress()` (which reads `scrollLeft` and `scrollWidth`
