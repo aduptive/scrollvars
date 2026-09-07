@@ -41,9 +41,17 @@
   single flush the zeroes reach every other consumer in the subtree, and an
   unrelated transition created in that same tick (an accordion opened right
   there and then) is created with duration 0 and snaps. Proved in Chrome by
-  an e2e invariant, red on the old engine (lowest opacity 1, no replay at
-  all), and by a unit test on the knob round trip, red on the old one
-  (`!important` dropped, so a sheet rule took the knob over permanently).
+  e2e invariants, red on the old engine: the replay itself (lowest opacity 1,
+  no replay at all) and the handback half of the round trip, that the
+  authored priority survives it (computed `--sv-duration` back at the
+  authored 400ms against a sheet rule's 3000ms `!important`, not taken over).
+  The zeroing half of that same round trip, that the zero itself needs
+  `!important` too or the sheet rule outranks it mid-flush and the reset
+  never lands, is proved in Chrome as well (the knob's own rise child dips
+  below 0.1 under that exact conflict, not just the final value round
+  tripping) and, structurally, by a unit test on the knob round trip that
+  reads the priority a stub was handed mid-flush rather than whether it won
+  a real cascade.
   Left alone on purpose: the forced read cannot throw on a live element in
   any browser, the re-scan's N style recalcs against the base's one are fine
   at realistic N, and the stage lookup takes the first `.sv-stage` at any

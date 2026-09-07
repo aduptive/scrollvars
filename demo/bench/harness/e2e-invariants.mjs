@@ -579,6 +579,7 @@ const MIN_EXAMINED = 1
     const frame = () => new Promise((done) => requestAnimationFrame(done))
     const wait = (ms) => new Promise((done) => setTimeout(done, ms))
     const opacity = (id) => Number(getComputedStyle(document.getElementById(id)).opacity)
+    const knobOpacity = () => Number(getComputedStyle(document.querySelector('#knob .sv-rise')).opacity)
     let stop = SV.scan()
     await wait(1200) // --sv-duration is 800ms: let the first entrance finish
     const settled = opacity('first')
@@ -587,9 +588,15 @@ const MIN_EXAMINED = 1
     stop()
     stop = SV.scan()
     let lowest = opacity('first')
+    // the knob's own rise child: this is the element actually sitting under
+    // the important-against-important conflict (its section carries the
+    // inline !important duration), so this is the sample that proves the
+    // zeroing itself wins the cascade, not only that the final value returns
+    let knobLowest = knobOpacity()
     for (let i = 0; i < 6; i++) {
       await frame()
       lowest = Math.min(lowest, opacity('first'))
+      knobLowest = Math.min(knobLowest, knobOpacity())
     }
     await wait(200) // mid-flight: the stagger still separates the two children
     const midFirst = opacity('first')
@@ -598,6 +605,7 @@ const MIN_EXAMINED = 1
     return {
       settled,
       lowest,
+      knobLowest,
       midFirst,
       midSecond,
       finished: opacity('first'),
@@ -636,6 +644,11 @@ const MIN_EXAMINED = 1
     're-track replay: the authored knob keeps its !important, so a sheet rule does not take it over (ADU-191)',
     r.knobWins === '400ms',
     `computed --sv-duration after the re-track: "${r.knobWins}"`
+  )
+  check(
+    `re-track replay: the knob's own rise child starts its entrance from 0 again too, so the zeroing itself wins the important-against-important conflict, not just the final handed-back value (ADU-191)`,
+    r.knobLowest < 0.1,
+    `lowest opacity ${r.knobLowest}`
   )
   await page.close()
 }
