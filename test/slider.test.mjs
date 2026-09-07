@@ -1,6 +1,43 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
+// MutationObserver is from 2012 (Chrome 18, Firefox 14, Safari 6) and
+// ResizeObserver from 2018 (Chrome 64, Firefox 69, Safari 13.1): every engine
+// that has the ResizeObserver these fixtures install everywhere has had this
+// one for six years. Installing it in a single test left the re-render resync
+// in src/core/slider.ts (a childList record re-observes the slides and
+// re-measures) switched off for the whole rest of the file, a state no engine
+// is in (ADU-161). One observer for the file, delivering only when a fixture
+// actually replaces a child, the way a real one does.
+const mutationObservers = []
+global.MutationObserver = class {
+  constructor(cb) {
+    this.cb = cb
+    this.targets = new Set()
+    mutationObservers.push(this)
+  }
+  observe(target, options) {
+    this.targets.add(target)
+    this.options = options
+  }
+  disconnect() {
+    this.targets.clear()
+  }
+}
+
+// Deliver a childList record for `target`, what a real observer does after a
+// re-render swaps a slide node. Returns how many live observers took it, so a
+// test can prove the slider really is watching that container.
+function fireChildList(target) {
+  let delivered = 0
+  for (const mo of mutationObservers) {
+    if (!mo.targets.has(target)) continue
+    delivered++
+    mo.cb([{ type: 'childList', target }], mo)
+  }
+  return delivered
+}
+
 // Geometry stubs: 3 slides of 100px in a 300px container, gapless.
 function makeSlide(offsetLeft) {
   return {
@@ -597,12 +634,6 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   global.cancelAnimationFrame = () => (rafQueue.length = 0)
   global.ResizeObserver = class { observe() {} disconnect() {} }
   global.getComputedStyle = () => ({ direction: 'ltr' })
-  let moCallback
-  global.MutationObserver = class {
-    constructor(cb) { moCallback = cb }
-    observe() {}
-    disconnect() {}
-  }
 
   const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
   slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
@@ -631,14 +662,14 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   replacement.classList._owner = replacement
   slides[1] = replacement
 
-  moCallback() // simulate the MutationObserver firing on the childList change
+  assert.equal(fireChildList(container), 1, 'the slider observes the container for childList records')
   while (rafQueue.length) rafQueue.shift()(0)
 
   assert.ok(replacement.classes.has('sv-active'), 'the new node at the active index carries sv-active')
   assert.equal(container.vars['--sv-slide'], '1')
   assert.deepEqual(onSlideCalls, [1], 'the index did not change: onSlide must not fire again')
   handle.destroy()
-  delete global.MutationObserver
+  assert.equal(fireChildList(container), 0, 'destroy() disconnects the observer')
 })
 
 test('slider: snap none from a stylesheet (not inline) keeps the wheel assist off', async () => {

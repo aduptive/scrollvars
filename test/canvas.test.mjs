@@ -1821,6 +1821,54 @@ test('canvas harness: the verifier\'s threshold map at w0 30, dpr 0.51 converges
   }
 })
 
+// The engine compat() exists for, modelled as ONE engine instead of a mix no
+// browser was ever in (ADU-161): Safari 12 has no ResizeObserver (13.1), no
+// IntersectionObserver (12.1), no individual transform properties (`translate:`,
+// 14.1) and no `aspect-ratio` in the CSSOM (15). The old fixture claimed the
+// first two while answering `CSS.supports()` like Chrome 104 and reporting a
+// computed `aspectRatio` like Chrome 88, so compat()'s fallback stylesheet
+// never ran and the canvas below the aspect-ratio floor never did either.
+// `CSS.supports` itself IS in that engine (Safari 9), it just answers no.
+//
+// Returns the sheets compat() installed, the attributes it set on <html>, and
+// a `fireResize()` that dispatches the viewport resize its ResizeObserver stub
+// is driven by (its only trigger: window resize and orientationchange).
+function installOldEngine() {
+  const winListeners = {}
+  global.window.CSS = { supports: () => false }
+  global.window.addEventListener = (type, fn) => (winListeners[type] ??= []).push(fn)
+  global.window.removeEventListener = (type, fn) => {
+    const i = winListeners[type]?.indexOf(fn) ?? -1
+    if (i >= 0) winListeners[type].splice(i, 1)
+  }
+  const sheets = []
+  const htmlAttrs = {}
+  global.document.createElement = (tag) => ({
+    tag,
+    attrs: {},
+    textContent: '',
+    setAttribute(name, value) {
+      this.attrs[name] = value
+    },
+  })
+  global.document.querySelector = (selector) =>
+    selector === 'style[data-sv-compat]' ? (sheets.find((s) => 'data-sv-compat' in s.attrs) ?? null) : null
+  global.document.head = { appendChild: (el) => sheets.push(el) }
+  global.document.documentElement = { setAttribute: (name, value) => (htmlAttrs[name] = value) }
+  return {
+    sheets,
+    htmlAttrs,
+    // Returns how many listeners took it, so a test can prove the shim really
+    // is the thing driving its passes instead of asserting a canvas that
+    // nothing ever touched again.
+    fireResize: () => {
+      const fns = (winListeners.resize ?? []).slice()
+      fns.forEach((fn) => fn())
+      return fns.length
+    },
+  }
+}
+
 test('canvas harness: mountEffect under the compat() ResizeObserver shim does not throw and sizes the canvas', async () => {
   const env = makeEnv()
   const { compat } = await import('../dist/compat/index.js')
@@ -1835,16 +1883,20 @@ test('canvas harness: mountEffect under the compat() ResizeObserver shim does no
   // so this bridge just restores that identity for this one test).
   delete global.window.ResizeObserver
   delete global.window.IntersectionObserver
-  global.window.CSS = { supports: () => true } // individual transforms supported: no fallback stylesheet, unrelated to this fix
-  // compat()'s RO stub also listens for viewport resizes/orientation changes
-  global.window.addEventListener = () => {}
-  global.window.removeEventListener = () => {}
+  const engine = installOldEngine()
   assert.equal(compat(), true, 'compat patches the missing observers')
+  assert.equal(engine.sheets.length, 1, 'and installs the fallback stylesheet this engine needs')
+  assert.equal(engine.htmlAttrs['data-sv-compat'], '', 'and marks <html> for styles/pin.css')
   global.ResizeObserver = global.window.ResizeObserver
   global.IntersectionObserver = global.window.IntersectionObserver
 
   const { style } = makeStyle({ width: '400px', height: '300px' })
   const canvas = makeCanvas({ width: 300, height: 150, style })
+  // Same engine on this surface too: a CSSOM with no `aspect-ratio` reports
+  // the property as absent. Inert for THIS canvas (CSS-sized on both axes, so
+  // it never reaches pinAtW0()), which is exactly why the mixed fixture could
+  // sit here unnoticed; the test below is the one that needs it.
+  delete canvas.computedStyle.aspectRatio
 
   const frames = []
   assert.doesNotThrow(() => {
@@ -1861,6 +1913,50 @@ test('canvas harness: mountEffect under the compat() ResizeObserver shim does no
   assert.equal(frames.length, 1)
   assert.equal(frames[0].w, 400)
   assert.equal(frames[0].h, 300)
+})
+
+test('canvas harness: the compat() ResizeObserver shim drives an UNSIZED canvas below the aspect-ratio floor, pinning width, writing no ratio and never growing (ADU-161)', async () => {
+  // The case the old mixed fixture could not reach: on the engine compat()
+  // actually exists for, an unsized canvas takes BOTH the shim's layout-box
+  // measurement and the below-floor unpinned path of ADU-158, and neither had
+  // a test. The shim measures clientWidth minus padding, which for an unsized
+  // canvas follows the backing store the harness itself writes: if the pin
+  // did not land, or if `pinned` were set on a ratio this CSSOM cannot take,
+  // the height would walk 2 CSS px a pass, unbounded, exactly the ADU-158
+  // runaway.
+  const env = makeEnv()
+  global.window.devicePixelRatio = 0.51
+  const engine = installOldEngine()
+  const { compat } = await import('../dist/compat/index.js')
+  const { mountEffect } = await import('../dist/canvas/index.js')
+  delete global.window.ResizeObserver
+  delete global.window.IntersectionObserver
+  assert.equal(compat(), true)
+  global.ResizeObserver = global.window.ResizeObserver
+  global.IntersectionObserver = global.window.IntersectionObserver
+
+  const { style, writes } = makeStyle()
+  const canvas = makeCanvas({ width: 30, height: 61, style })
+  delete canvas.computedStyle.aspectRatio // no aspect-ratio in this CSSOM, and none in its layout either
+
+  assert.doesNotThrow(() => {
+    mountEffect(canvas, { frame: () => {} })
+  }, 'the shim delivers its initial observation synchronously inside observe()')
+
+  // The shim's only trigger is a viewport resize, so that is what drives the
+  // later passes here (the native fixture redelivers from the canvas's own
+  // box instead; the numbers must come out the same either way).
+  const heights = []
+  for (let pass = 0; pass < 5; pass++) {
+    assert.equal(engine.fireResize(), 1, `pass ${pass}: the shim's own resize listener is what drives this`)
+    heights.push(Math.round(canvas.clientHeight * 1e6) / 1e6)
+  }
+
+  assert.deepEqual(heights, [62, 62, 62, 62, 62], 'the laid-out height is stable over five viewport resizes')
+  assert.equal(canvas.style.width, '30px', 'width is pinned at w0 through the shim too')
+  assert.ok(!writes.includes('aspectRatio'), 'nothing is written where the property cannot take effect')
+  assert.equal(canvas.width, 15, 'backing width: 30 CSS px * dpr 0.51')
+  assert.equal(canvas.height, 31, 'backing height: anchored to the 30/61 attribute ratio, never its own last write')
 })
 
 test('canvas harness: a computed style with no aspectRatio support does not throw and sizes the canvas without pinning it (ADU-143, ADU-158)', async () => {
