@@ -1450,6 +1450,17 @@ Docs read against the code merged by the seven round-6 code tickets.
   ("open ones open") and the pin-helper wrapper description already
   match ADU-156 and ADU-158, no further change needed there beyond the
   floor case above.
+- Second pass (verifier finding on 213c15b): the compat header comment in
+  `src/compat/index.ts`, which `tsc` emits verbatim into the published
+  `dist/compat/index.js`, still opened with the old flat claim, three
+  presets stay static, one reason each, including `sv-split-rise` with
+  no fallback rule at all. It now carries the same two-band split as the
+  README sentence above: `sv-deck` and `sv-spread` stay static, one
+  reason each; `sv-split-rise` is static only below `:is()` support and
+  fades in without rising above it. The README's closing "stay static or
+  progressive" list also still named `sv-split-rise`, reading like the
+  old flat claim; it is dropped from that list now that the paragraph
+  above it already carries the nuance.
 
 ## 1.13.0 (2026-09-05)
 

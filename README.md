@@ -543,7 +543,7 @@ no longer depends on `Array.prototype.flatMap`, missing on Chrome 61-68 and
 Safari 11. Combined with your bundler downleveling the ES2020 dist (Next.js
 already does per browserslist), the reveal and pin presets above animate
 on roughly Chrome 61+ / Firefox 60+ / Safari 11+; `sv-deck`,
-`sv-split-rise`, `sv-spread`, `sv-counter` and `sv-view-*` stay static or
+`sv-spread`, `sv-counter` and `sv-view-*` stay static or
 progressive. Call it once, before anything else:
 
 ```ts
