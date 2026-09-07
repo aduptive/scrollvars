@@ -231,10 +231,27 @@ Docs read against the code merged by the five round-7 code tickets.
   the first screen was unreachable for a reduce user while everyone else
   saw the whole strip. The reduce block now wraps the track
   (`width: auto; flex-wrap: wrap`, matching the rail's own reduce-mode
-  wrap in `styles/pin.css`) and hides the aria-hidden duplicate copy
-  (`.sv-marquee-track > [aria-hidden] { display: none !important }`, the
-  `!important` needed because the duplicate carries its own inline
-  `display: contents`, which outranks any plain selector).
+  wrap in `styles/pin.css`), a genuine accessibility fix, and hides the
+  duplicate copy. Measured, the duplicate already carried `inert` and
+  reached the accessibility tree with zero extra nodes before this fix:
+  hiding it is a visual correction, not an accessibility one, without it
+  the duplicate's children wrap into view and the marquee's height goes
+  from 96 to 240px.
+
+### Presets, React and Gallery (round 7 follow-up, ADU-171)
+- The marquee's duplicate copy is hidden by a class, not by an inline
+  style: `styles/ui.css` now declares
+  `.sv-marquee-track > .sv-marquee-dup { display: contents }`, reset to
+  `display: none` under `prefers-reduced-motion: reduce` with no
+  `!important` needed. The React `Marquee` (`src/react/index.tsx`) and
+  the gallery's vanilla markup (`scripts/fx-data.mjs`) drop the inline
+  `style="display: contents"` on the duplicate and carry the class
+  instead.
+- The reduce rule targeted `.sv-marquee-track > [aria-hidden]`, matched
+  by attribute presence: a consumer's own direct child of the track
+  carrying `aria-hidden="false"` was hidden too. The selector is now
+  `.sv-marquee-track > .sv-marquee-dup`, which only ever matches the
+  duplicate.
 
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by

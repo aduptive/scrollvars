@@ -889,7 +889,7 @@ export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, child
   >
     <div className="sv-marquee-track">
       {children}
-      <span aria-hidden="true" {...INERT} style={{ display: 'contents' }}>
+      <span className="sv-marquee-dup" aria-hidden="true" {...INERT}>
         {children}
       </span>
     </div>

@@ -357,7 +357,13 @@ Docs read against the code merged by the five round-7 code tickets.
 
 <h4>Presets (round 7, ADU-166)</h4>
 <ul>
-<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>) and hides the aria-hidden duplicate copy (<code>.sv-marquee-track > [aria-hidden] { display: none !important }</code>, the <code>!important</code> needed because the duplicate carries its own inline <code>display: contents</code>, which outranks any plain selector).</li>
+<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>), a genuine accessibility fix, and hides the duplicate copy. Measured, the duplicate already carried <code>inert</code> and reached the accessibility tree with zero extra nodes before this fix: hiding it is a visual correction, not an accessibility one, without it the duplicate's children wrap into view and the marquee's height goes from 96 to 240px.</li>
+</ul>
+
+<h4>Presets, React and Gallery (round 7 follow-up, ADU-171)</h4>
+<ul>
+<li>The marquee's duplicate copy is hidden by a class, not by an inline style: <code>styles/ui.css</code> now declares <code>.sv-marquee-track > .sv-marquee-dup { display: contents }</code>, reset to <code>display: none</code> under <code>prefers-reduced-motion: reduce</code> with no <code>!important</code> needed. The React <code>Marquee</code> (<code>src/react/index.tsx</code>) and the gallery's vanilla markup (<code>scripts/fx-data.mjs</code>) drop the inline <code>style="display: contents"</code> on the duplicate and carry the class instead.</li>
+<li>The reduce rule targeted <code>.sv-marquee-track > [aria-hidden]</code>, matched by attribute presence: a consumer's own direct child of the track carrying <code>aria-hidden="false"</code> was hidden too. The selector is now <code>.sv-marquee-track > .sv-marquee-dup</code>, which only ever matches the duplicate.</li>
 </ul>
 
 <h4>Tooling (blind review round 6)</h4>
