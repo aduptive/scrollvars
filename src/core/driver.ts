@@ -559,8 +559,8 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // constants CSS can read: how many scenes, so progress bars need no hard-coded count
   if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
   // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
-  // under reduced motion, and below the individual-transform floor, the
-  // wrapper stays in flow instead of an empty scroll
+  // under reduced motion, or below the individual-transform floor without
+  // compat(), the wrapper stays in flow instead of an empty scroll
   if (typeof opts.pin === 'string') {
     entry.authored = { height: el.style.height, position: el.style.position }
     applyPinHelper(entry)

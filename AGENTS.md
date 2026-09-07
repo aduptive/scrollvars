@@ -299,9 +299,9 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor and
-without `compat()`, the page is static but 100% visible (`html.sv-on`
-guard); `sv-rail` is the one exception, its track stays unwrapped and can
-run past the viewport edge, reachable by a page-wide horizontal scroll.
+without `compat()`, the page is static but 100% visible; `sv-rail` is
+the one exception, its track stays unwrapped and can run past the
+viewport edge, reachable by a page-wide horizontal scroll.
 With `compat()` installed (`data-sv-compat` on `<html>`) the stage stays
 pinned instead so the module's own fallback can keep animating the
 curtains and rail from `--sv-pin`, and content taller than the stage
@@ -379,9 +379,9 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 (28 live patterns, self-contained, slider/canvas inline blocks are synced
 from the built dist by `npm run demo:sync`; NEVER hand-edit them. Deploy
 with `npm run demo:deploy`: it builds, syncs, deploys and re-points the
-alias in one step), `test/` (node:test; most of it runs with no DOM via
-`renderToStaticMarkup`, but `test/react.test.mjs` hand-rolls a fake DOM to
-mount `react-dom/client` for ref and effect tests, and `test/canvas.test.mjs`
-stubs the canvas/observer APIs). Build: `npm run build` (tsc, then
-`scripts/build-styles.mjs` regenerates `styles.css`). Node version: respect
-`.nvmrc`.
+alias in one step), `test/` (node:test; most of it runs with no DOM against
+hand-rolled element and global stubs, `test/react.test.mjs` hand-rolls a
+fake DOM to mount `react-dom/client` for ref and effect tests, and
+`test/canvas.test.mjs` stubs the canvas/observer APIs). Build: `npm run build`
+(tsc, then `scripts/build-styles.mjs` regenerates `styles.css`). Node
+version: respect `.nvmrc`.
