@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+### Click driver (ADU-169)
+- `toggles()`'s click handler now requires the resolved trigger to be
+  inside its own scope (`scope.contains(trigger)`).
+  `event.target.closest('[data-sv-toggle]')` walks the real DOM past the
+  scope's own root: a click on a scope-internal element with no
+  `data-sv-toggle` of its own could bubble to an ANCESTOR trigger outside
+  the scope, which this scope's own `sync()` (scoped to
+  `scope.querySelectorAll`) then had no way to reach, so that outer
+  trigger's `aria-expanded`, and every sibling trigger of the same
+  (target, class) pair, never updated even though its target class and
+  `--sv-state` did flip. Successor of ADU-152, which widened
+  `trackPointer`'s match the same way without widening this module's own
+  containment check.
+
+### Pointer (ADU-169)
+- `trackPointer()` clears every element it has written `--mx`/`--my` to on
+  handover, not just the single most recently written one. ADU-152 widened
+  `matchIn` to accept nested and self matches (a `.sv-tilt` inside another
+  `.sv-tilt`); a single remembered `last` element could not represent that
+  handover, so the element being left behind was written once and never
+  touched again, not even by `destroy()`, which also only ever cleared
+  `last`. A real `pointerout` cannot cover this either: matchIn/onOut's own
+  containment check treats a move onto a contained descendant as still
+  hovering the same widget. The driver now tracks the full set of written
+  elements and relaxes (`sv-pointer-leave`, `--mx`/`--my` back to `0`)
+  whichever ones a move's new match does not include, and `destroy()`
+  clears whatever is left in that set instead of one element.
+- Audited every other ancestor-walking call in `src/` for the same shape
+  (a scoped module resolving past its own root): `slider.ts`'s two
+  `closest()` calls (native-control detection under a press, and
+  focus-restore after a non-drag press) are both deliberately unscoped,
+  mirroring real unscoped browser focus/activation behavior rather than
+  resolving ownership of a JS-scoped instance, so they are not the same
+  bug. `driver.ts`'s `clearReleased()` walks every ancestor up to the
+  document root by design (it is a singleton engine with no scoped-root
+  concept to violate). `debug/index.ts` reads one direct `parentElement`,
+  not a walk. `src/react`, `src/canvas`, `src/compat` and `src/core/scan.ts`
+  have no ancestor-walking call at all.
+
 ### Presets (round 7, ADU-166)
 - `.sv-marquee-track` under `prefers-reduced-motion: reduce` no longer
   leaves `width: max-content` inside `overflow: hidden`: everything past
