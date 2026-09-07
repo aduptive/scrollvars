@@ -179,5 +179,5 @@ are their own paradigm; ScrollVars only offers them a lifecycle harness
 The demo: 26 live patterns, each with its skeleton and source:
 **https://scrollvars.dev**
 
-`npm i scrollvars`: MIT, zero dependencies, Chrome/Edge 104+, Firefox 74+,
+`npm i scrollvars`: MIT, zero dependencies, Chrome/Edge 104+, Firefox 78+,
 Safari 14.1+ fully animated; everything older gets the complete page, static.
