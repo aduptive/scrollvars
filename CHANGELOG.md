@@ -33,13 +33,16 @@
   expects exactly one match each, so it moves to `spliceOne()` instead:
   an accidental second mention in either file now throws rather than
   being double-patched. And "every other regex-driven write in `scripts/`
-  was audited and is already guarded" was false: four more `.test()` then
-  bare `.replace()` calls, the same shape the five calls above had before
-  this ticket, sat unguarded beside the ones that were fixed, README's
-  per-style styles-import loop, README's intro sizes sentence, and
-  AGENTS's "Fully animated" browser-floor headline in `docs-stamp.mjs`,
-  and the bench page's `h1` headline and body ratio claim in
-  `bench-tables.mjs`. All four now go through `spliceOne()`.
+  was audited and is already guarded" was false: four more calls sat
+  beside the ones that were fixed, each guarded less than that sentence
+  claimed. Unlike the five above, which had no guard at all, these did
+  check for a missing anchor, then wrote through a bare non-global
+  `.replace()`: an ambiguous anchor silently patched the first match and
+  left the rest stale, the narrower case ADU-195 exists to close. They are
+  README's per-style styles-import loop, README's intro sizes sentence,
+  and AGENTS's "Fully animated" browser-floor headline in
+  `docs-stamp.mjs`, and the bench page's `h1` headline and body ratio
+  claim in `bench-tables.mjs`. All four now go through `spliceOne()`.
   `scripts/fx-render.mjs`'s `fxsticky` class splice stays a no-op for
   Section previews that are not pin-based (hero-cinematic, stats-countup
   render no `.sv-stage` by design), but is no longer unconditional: a
