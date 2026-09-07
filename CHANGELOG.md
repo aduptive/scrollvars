@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+### Testing (round 6 follow-up, ADU-161)
+No behavior change: three fixtures modelled a browser state no engine is in,
+which is what let two rounds of tests pass on broken code.
+- The canvas suite's `compat()` fixture claimed an engine with no
+  ResizeObserver and no IntersectionObserver (Safari below 13.1 and 12.1)
+  while answering `CSS.supports()` like Chrome 104 and reporting a computed
+  `aspectRatio` like Chrome 88. It is one engine now, Safari 12: the fallback
+  stylesheet path runs, `<html>` takes `data-sv-compat`, and the CSSOM has no
+  `aspect-ratio`. A new test covers what that mix hid, `compat()`'s
+  ResizeObserver shim driving an UNSIZED canvas below the aspect-ratio floor:
+  width pinned at `w0`, no ratio written where it cannot take effect, and a
+  laid-out height stable over five viewport resizes instead of the ADU-158
+  runaway. Proved red against that defect.
+- The driver suite ran with no global IntersectionObserver, so `culler` was
+  null and every entry stayed permanently `near`: 175 of its 184 assertions
+  never touched the offscreen culling path (the other 9 sit inside the two
+  tests that already drove their own IntersectionObserver by hand).
+  IntersectionObserver ships before
+  ResizeObserver in every engine (Chrome 51 vs 64, Firefox 55 vs 69, Safari
+  12.1 vs 13.1), so the file now installs one that delivers an initial record
+  per observed target and one per crossing, after that frame's animation
+  frame callbacks, the order the HTML rendering steps run them in. Every
+  existing assertion still holds. A new test drives a real cull through that
+  observer, so an always-intersecting stub cannot come back unnoticed.
+- The slider suite installed a ResizeObserver at 18 sites and a
+  MutationObserver at one, though MutationObserver is from 2012 and
+  ResizeObserver from 2018, which left the re-render resync
+  (a childList record re-observes the slides and re-measures) off for the
+  whole file bar one test. It is file-wide now, delivering only when a
+  fixture actually replaces a child, and `destroy()` disconnecting it is
+  asserted rather than assumed.
+
 ### Toggles (round 7 follow-up, ADU-172)
 - A trigger nested inside two `toggles()` scopes is now toggled exactly
   once per click, by the nearest scope. `toggles(root?)` is public

@@ -12,6 +12,82 @@ const listeners = {}
 const observed = new Set()
 let mediaChange
 
+// IntersectionObserver ships BEFORE ResizeObserver in every engine (Chrome
+// 51 vs 64, Firefox 55 vs 69, Safari 12.1 vs 13.1), and the driver's own
+// floor is the ResizeObserver one: a browser that runs this driver at all
+// always has an IntersectionObserver too. Without one here, src/core/driver.ts
+// left `culler` null and every entry stayed permanently `near`, a state no
+// supported engine is in, so nearly every assertion in this file ran with the
+// offscreen culling path switched off (ADU-161). One observer for the file
+// puts it back on; the two tests below that drive records by hand still
+// install their own and restore this one afterwards.
+const cullers = []
+global.IntersectionObserver = class {
+  constructor(cb, options) {
+    this.cb = cb
+    this.rootMargin = options?.rootMargin ?? '0px'
+    // target -> the last isIntersecting reported for it, null until the
+    // initial observation a real observer always delivers.
+    this.targets = new Map()
+    cullers.push(this)
+  }
+  observe(el) {
+    if (!this.targets.has(el)) this.targets.set(el, null)
+  }
+  unobserve(el) {
+    this.targets.delete(el)
+  }
+  disconnect() {
+    this.targets.clear()
+  }
+}
+
+// rootMargin against the implicit root, the viewport: `100% 0px 100% 0px`
+// (what the driver passes) expands it by one full viewport height on each
+// side, so at vh 1000 the culler's band is -1000..2000. The fixture's rects
+// carry no horizontal coordinates and the driver's horizontal margin is 0,
+// so only the vertical axis can ever decide this.
+function cullerBand(rootMargin) {
+  const vh = window.innerHeight
+  const parts = String(rootMargin).trim().split(/\s+/)
+  const px = (v) => (v.endsWith('%') ? (parseFloat(v) / 100) * vh : parseFloat(v))
+  const top = px(parts[0] ?? '0px')
+  const bottom = px(parts[2] ?? parts[0] ?? '0px')
+  return { top: -top, bottom: vh + bottom }
+}
+
+// One frame's "update intersection observations" step. A real observer
+// delivers an initial record for every newly observed target and then one
+// record per crossing, never one per frame, and always AFTER that frame's
+// requestAnimationFrame callbacks (HTML runs the animation frame callbacks,
+// then the resize observations, then the intersection observations). Edge
+// adjacency counts as intersecting, per the spec's "even if the intersection
+// has zero area", which is why an element whose top sits exactly on the band
+// (makeElement's default rect: top 2000 at vh 1000) is still near.
+// Returns true when anything was delivered, so pump() can let the page settle
+// over the frames those records schedule.
+function intersectionStep() {
+  let delivered = false
+  for (const io of cullers) {
+    const band = cullerBand(io.rootMargin)
+    const records = []
+    io.targets.forEach((last, el) => {
+      // The observer reads LAYOUT, never the element's getBoundingClientRect
+      // accessor: a test that counts rect reads must not see this step's own.
+      const rect = el.rect ?? el.getBoundingClientRect()
+      const now = rect.bottom >= band.top && rect.top <= band.bottom
+      if (last === now) return
+      io.targets.set(el, now)
+      records.push({ target: el, isIntersecting: now })
+    })
+    if (records.length) {
+      delivered = true
+      io.cb(records)
+    }
+  }
+  return delivered
+}
+
 function makeElement(height = 400) {
   const el = {
     rect: { top: 2000, bottom: 2000 + height, width: 800, height },
@@ -64,9 +140,17 @@ function place(el, top, height = el.rect.height) {
 }
 
 function pump() {
-  // a scroll event schedules one rAF; run the queue to completion
+  // a scroll event schedules one rAF; run the queue to completion, then run
+  // that frame's intersection step, and keep rendering while its records keep
+  // scheduling frames. A culled element that moves back into the band goes
+  // near on the step and is measured on the frame the callback schedules,
+  // exactly one frame later, the same way a real page settles.
   listeners.scroll?.()
-  while (rafQueue.length) rafQueue.shift()(performance.now())
+  for (let frame = 0; frame < 10; frame++) {
+    while (rafQueue.length) rafQueue.shift()(performance.now())
+    if (!intersectionStep()) return
+  }
+  throw new Error('the intersection step never settled in 10 frames')
 }
 
 test('driver: view band, live latch, travel, pin, scenes, dedup, cleanup', async () => {
@@ -236,6 +320,7 @@ test('driver: custom live band and custom root geometry', async () => {
 test('driver: offscreen culling skips the rect read, IO wakes it back up', async () => {
   let ioCallback
   const observedByIO = new Set()
+  const fileObserver = global.IntersectionObserver // restored at the end: the rest of the file needs it
   global.IntersectionObserver = class {
     constructor(cb) { ioCallback = cb }
     observe(el) { observedByIO.add(el) }
@@ -277,7 +362,7 @@ test('driver: offscreen culling skips the rect read, IO wakes it back up', async
   assert.ok(reads > beforeJump + 1)
   untrack()
   assert.ok(!observedByIO.has(el))
-  delete global.IntersectionObserver
+  global.IntersectionObserver = fileObserver
 })
 
 test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', async () => {
@@ -547,6 +632,7 @@ test('driver: init() is transactional, a throwing ResizeObserver leaves track() 
 
 test('driver: refresh() forces one geometry pass through culled entries', async () => {
   let ioCallback
+  const fileObserver = global.IntersectionObserver // restored at the end: the rest of the file needs it
   global.IntersectionObserver = class {
     constructor(cb) {
       ioCallback = cb
@@ -571,7 +657,7 @@ test('driver: refresh() forces one geometry pass through culled entries', async 
   pump()
   assert.ok(el.classes.has('sv-live'), 'refresh() forces one geometry pass through the culled entry')
   untrack()
-  delete global.IntersectionObserver
+  global.IntersectionObserver = fileObserver
 })
 
 test('driver: a bordered root shares one origin between update() pin progress and scrollToScene()', async () => {
@@ -1261,4 +1347,47 @@ test('driver: a motion flip reads every pinned position before it writes any of 
   window.matchMedia = realMatchMedia
   delete global.getComputedStyle
   delete window.CSS
+})
+
+test('driver: the file-wide culler culls for real, past the band the rect read stops and one frame after it re-enters it resumes (ADU-161)', async () => {
+  // The file's own IntersectionObserver, not a hand-driven one: this is what
+  // proves the stub every other test in this file now runs under is a working
+  // culler and not an always-intersecting no-op. Weaken it back and this test
+  // is the one that goes red.
+  const { track } = await import('../dist/core/driver.js?filecull')
+  const el = makeElement(400)
+  let reads = 0
+  const origGet = el.getBoundingClientRect
+  el.getBoundingClientRect = () => (reads++, origGet())
+
+  place(el, 300)
+  const untrack = track(el, {})
+  pump()
+  assert.ok(el.classes.has('sv-live'), 'in the band and measured')
+
+  // rootMargin 100% 0px 100% 0px at vh 1000 is a -1000..2000 band: one pixel
+  // past its bottom edge is out (edge-adjacent still counts as intersecting,
+  // which is why 2000 exactly would not be).
+  place(el, 2001)
+  pump()
+  assert.ok(!el.classes.has('sv-live'), 'the frame before the cull still measured it')
+  const culled = reads
+  pump()
+  pump()
+  assert.equal(reads, culled, 'culled by the file observer: no rect read on later frames')
+
+  // exactly on the bottom edge (band.bottom is 2000 at vh 1000): the spec's
+  // "even if the intersection has zero area" makes this count as intersecting,
+  // so it must come back into measurement here, not only once it clears the
+  // edge. A stub written with strict inequality (`>`/`<` instead of `>=`/`<=`
+  // in intersectionStep above) leaves it culled and this goes red.
+  place(el, 2000)
+  pump()
+  assert.ok(reads > culled, 'the band edge is inclusive, the rect read resumes exactly at 2000')
+
+  place(el, 300)
+  pump()
+  assert.ok(reads > culled, 'back inside the band, the rect read resumes')
+  assert.ok(el.classes.has('sv-live'), 'and the frame the record schedules measures it live again')
+  untrack()
 })
