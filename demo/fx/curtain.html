@@ -164,17 +164,25 @@
     &lt;div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin class="outer"&gt;   &lt;!-- height: 250vh --&gt;
-  &lt;div class="sticky"&gt;                        &lt;!-- sticky; top:0; h:100vh; overflow:hidden --&gt;
-    &lt;div class="revealed-content"&gt;…&lt;/div&gt;
-    &lt;div class="panel-left sv-curtain-l"&gt;…&lt;/div&gt;
-    &lt;div class="panel-right sv-curtain-r"&gt;…&lt;/div&gt;
+    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
+  &lt;div class="sv-stage"&gt;                &lt;!-- the sticky viewport, from pin.css --&gt;
+    &lt;div class="revealed"&gt;…&lt;/div&gt;
+    &lt;div class="panel sv-curtain-l"&gt;…&lt;/div&gt;
+    &lt;div class="panel sv-curtain-r"&gt;…&lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 
-/* the preset (styles/pin.css): */
+/* the preset (styles/pin.css), plus the two panels, which are yours: */
+.sv-stage .panel { position: absolute; inset: 0; width: 50%; background: #14141a; }
+.sv-stage .sv-curtain-r { left: 50%; }
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
-.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }</code></pre>
+.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r { display: none; }
+}</code></pre>
     <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
   &lt;div className="sv-stage"&gt;
     &lt;Revealed /&gt;

@@ -173,6 +173,10 @@
 .sv-words &gt; * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-words &gt; * { transition-duration: .01ms; }
+}
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)</code></pre>

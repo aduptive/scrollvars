@@ -66,6 +66,47 @@
   ~5.2 KB. The stamps read 6.6 KB once round-3's own driver work is merged
   in, and the stamped bundle ratio against gsap + ScrollTrigger stays ~7×.
 
+### Gallery (blind review round 7)
+- Every paste-the-preset CSS tab now carries the reduced-motion override its
+  stylesheet ships, placed after the rule it overrides. Eight tabs
+  (staggered reveal, deck spread, curtain, horizontal rail, sequenced scrub,
+  split reveal, rotating words, marquee) quoted the animating rule and
+  stopped before the sheet's `@media (prefers-reduced-motion: reduce)` block,
+  so a reader who pasted them got a reveal that still transitioned and a
+  marquee that never stopped. Importing the stylesheet was always fine; only
+  the pasted copies were short.
+- The Curtain, Horizontal rail, Sequenced scrub, GSAP and Three.js CSS tabs
+  use the pin helper the other tabs already used: `data-sv-pin="250vh"` (or
+  `pin: '250vh'` in JS) plus `.sv-stage`, instead of an invented
+  `class="outer"` / `class="sticky"` skeleton whose height and stickiness
+  lived only in HTML comments next to a valueless `data-sv-pin`. Pasted as
+  shown, those four effects pinned nothing at all.
+- Two new gates keep both true: every CSS tab that quotes a preset rule must
+  quote that preset's reduced-motion override and keep it below the rule it
+  beats, and every pane of a pin effect must carry a length on the helper and
+  a real sticky stage. The three tabs with no installed component to compare
+  against are now also loaded in Chrome twice, under no preference and under
+  reduce, so the override is proved to win rather than merely to be present.
+- The Horizontal rail and Sequenced scrub CSS tabs quote the shape
+  `styles/pin.css` ships, not a simplified one. The rail spelled its start
+  offset as a literal `100vw` where the sheet reads
+  `var(--sv-rail-start, 100vw)` twice in the same declaration, so a reader
+  who pasted the tab and then set the documented knob got nothing: at a 600px
+  stage the preset travels 600 to -32, the pasted copy 1200 to 0. The
+  sequenced-scrub tab declared `--sv-clock` on `.sv .sv-range > *`, where the
+  sheet puts it on `:where(.sv .sv-range)` at zero specificity precisely so an
+  author rule on the container wins; with such a rule the pasted copy rendered
+  a child at opacity 0 that the preset renders at .5.
+- The three gates of the round above now hold what they claimed to: the pin
+  helper's ATTRIBUTE is held to a length like the JS option already was
+  (`data-sv-pin="true"` passed, and the driver drops an invalid length and
+  leaves the wrapper at its natural height), the sticky-stage check reads the
+  pane's markup with `<script>` blocks stripped (a `.sv-stage` inside a gsap
+  selector satisfied it), and the source-order half anchors per class on the
+  last reduce block that resets THAT class (anchoring on the pane's last block
+  left everything above it unchecked, and sticky-steps ships two blocks with
+  the second below the rule it beats by design).
+
 ### Click driver (ADU-169)
 - `toggles()`'s click handler now requires the resolved trigger to be
   inside its own scope (`scope.contains(trigger)`).
