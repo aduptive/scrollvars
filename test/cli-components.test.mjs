@@ -535,14 +535,22 @@ for (const fx of EFFECTS.filter((e) => e.css)) {
     // ADU-155's second pass, which no set comparison can see: at equal
     // specificity the LATER rule wins, so a preset rule re-declared BELOW the
     // reduce block silently outranks it and the block is decoration.
-    const last = blocks.length ? pane.lastIndexOf(blocks[blocks.length - 1]) + blocks[blocks.length - 1].length : -1
-    const after = last === -1 ? new Set() : ruleClasses(pane.slice(last))
-    for (const cls of after)
-      if (reset.has(cls))
+    // Anchored per CLASS, never on the pane's last block: sticky-steps ships
+    // two reduce blocks and places the second, by design, below the rule it
+    // beats, so one anchor at the end leaves every rule between them unchecked.
+    let cursor = 0
+    const placed = blocks.map((block) => {
+      cursor = pane.indexOf(block, cursor) + block.length
+      return { classes: ruleClasses(block), end: cursor }
+    })
+    for (const cls of reset) {
+      const own = placed.filter((b) => b.classes.has(cls)).pop()
+      if (own && ruleClasses(pane.slice(own.end)).has(cls))
         missing.push(
           `${fx.slug}: the CSS tab re-declares .${cls} AFTER its reduced-motion block, ` +
             `which at equal specificity wins on source order: move the block below it`
         )
+    }
     assert.deepEqual(missing, [], missing.join('\n'))
   })
 }
@@ -576,12 +584,23 @@ for (const fx of EFFECTS.filter((e) => (e.requires?.styles ?? []).includes('pin'
       const attr = /data-sv-pin/.test(src)
       const options = [...src.matchAll(PIN_OPTION)]
       if (!attr && !options.length) continue // this pane claims no pin of its own
-      if (attr && !/data-sv-pin\s*=\s*["'][^"']+["']/.test(src))
-        problems.push(`${fx.slug} ${tab}: bare data-sv-pin, so the wrapper keeps its natural height and nothing pins`)
-      for (const [, value] of options)
-        if (!PIN_LENGTH.test(value))
-          problems.push(`${fx.slug} ${tab}: pin ${value.trim()} sets no height; the helper takes a length ('250vh')`)
-      if (!/(?<![\w-])sv-stage(?![\w-])/.test(src) && !/position:\s*sticky/.test(src))
+      // the attribute takes the same length the JS option takes: scan() hands
+      // the driver whatever string is there, an invalid length is dropped and
+      // the wrapper keeps its natural height, so `data-sv-pin="true"` pins as
+      // little as a bare one
+      const value = /data-sv-pin\s*=\s*(["'][^"']*["'])/.exec(src)
+      if (attr && !(value && PIN_LENGTH.test(value[1])))
+        problems.push(
+          `${fx.slug} ${tab}: data-sv-pin=${value ? value[1] : '(bare)'} sets no height; ` +
+            `the helper takes a length ("250vh"), so the wrapper keeps its natural height and nothing pins`
+        )
+      for (const [, opt] of options)
+        if (!PIN_LENGTH.test(opt))
+          problems.push(`${fx.slug} ${tab}: pin ${opt.trim()} sets no height; the helper takes a length ('250vh')`)
+      // the stage lives in the MARKUP: a `.sv-stage` inside the pane's own
+      // <script> (a gsap selector) is not a sticky element on the page
+      const markup = stripScripts(src)
+      if (!/(?<![\w-])sv-stage(?![\w-])/.test(markup) && !/position:\s*sticky/.test(markup))
         problems.push(`${fx.slug} ${tab}: pins without .sv-stage and without a position: sticky rule of its own`)
     }
     assert.deepEqual(problems, [], problems.join('\n'))

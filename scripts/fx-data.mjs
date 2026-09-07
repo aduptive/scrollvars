@@ -194,8 +194,10 @@ export const EFFECTS = [
 
 /* the preset (styles/pin.css), plus the stage layout, which is yours: */
 .rail-stage { display: flex; align-items: center; }
+/* --sv-rail-start: the stage width when it is narrower than the viewport */
 .sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
-  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {
@@ -243,8 +245,12 @@ export const EFFECTS = [
 </div>
 
 /* styles/pin.css ships it; the mechanism, if you want it inline: */
-.sv .sv-range > * {
+/* the clock lives on the container at zero specificity, so your own rule on
+   that container (--sv-clock: var(--sv-t)) or an inline style wins */
+:where(.sv .sv-range) {
   --sv-clock: var(--sv-pin, var(--sv-t, 0));
+}
+.sv .sv-range > * {
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }

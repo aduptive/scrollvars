@@ -23,6 +23,25 @@
   a real sticky stage. The three tabs with no installed component to compare
   against are now also loaded in Chrome twice, under no preference and under
   reduce, so the override is proved to win rather than merely to be present.
+- The Horizontal rail and Sequenced scrub CSS tabs quote the shape
+  `styles/pin.css` ships, not a simplified one. The rail spelled its start
+  offset as a literal `100vw` where the sheet reads
+  `var(--sv-rail-start, 100vw)` twice in the same declaration, so a reader
+  who pasted the tab and then set the documented knob got nothing: at a 600px
+  stage the preset travels 600 to -32, the pasted copy 1200 to 0. The
+  sequenced-scrub tab declared `--sv-clock` on `.sv .sv-range > *`, where the
+  sheet puts it on `:where(.sv .sv-range)` at zero specificity precisely so an
+  author rule on the container wins; with such a rule the pasted copy rendered
+  a child at opacity 0 that the preset renders at .5.
+- The three gates of the round above now hold what they claimed to: the pin
+  helper's ATTRIBUTE is held to a length like the JS option already was
+  (`data-sv-pin="true"` passed, and the driver drops an invalid length and
+  leaves the wrapper at its natural height), the sticky-stage check reads the
+  pane's markup with `<script>` blocks stripped (a `.sv-stage` inside a gsap
+  selector satisfied it), and the source-order half anchors per class on the
+  last reduce block that resets THAT class (anchoring on the pane's last block
+  left everything above it unchecked, and sticky-steps ships two blocks with
+  the second below the rule it beats by design).
 
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by
