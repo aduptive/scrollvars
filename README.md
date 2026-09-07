@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.4 KB, styles 8.7 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.1 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.7 KB, full core incl. the slider 6.4 KB, styles 8.8 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.1 KB on the wire.
 
 ## Why
 
@@ -93,7 +93,7 @@ import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.6 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.2 KB gz
-import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.7 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.9 KB gz
 ```
 
 ## Pay for what you use

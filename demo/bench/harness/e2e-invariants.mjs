@@ -315,6 +315,55 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 0c-3. Reduced motion, dedicated fixture: the marquee track stops
+// clipping (ADU-166). A reduce user gets no animation and no scroller, so
+// leaving width: max-content inside overflow: hidden traps everything past
+// the first screen; the reduce block must wrap the track and hide the
+// aria-hidden duplicate copy, matching the rail's own reduce-mode wrap in
+// styles/pin.css.
+{
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  const item = (id) =>
+    `<span${id ? ` id="${id}"` : ''} style="width:220px;height:24px">item</span>`
+  await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
+    <body><div class="sv-marquee" id="marq"><div class="sv-marquee-track" id="track">
+      ${item()}${item()}${item()}${item('last')}
+      <span aria-hidden="true" inert style="display:contents">${item()}${item()}${item()}${item()}</span>
+    </div></div></body></html>`)
+  const r = await page.evaluate(() => {
+    const marquee = document.getElementById('marq')
+    const track = document.getElementById('track')
+    const rect = document.getElementById('last').getBoundingClientRect()
+    return {
+      scrollWidth: track.scrollWidth,
+      clientWidth: marquee.clientWidth,
+      rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      innerWidth,
+      innerHeight,
+      duplicateDisplay: getComputedStyle(track.querySelector('[aria-hidden]')).display,
+    }
+  })
+  const lastInViewport =
+    r.rect.left >= 0 && r.rect.top >= 0 && r.rect.right <= r.innerWidth && r.rect.bottom <= r.innerHeight
+  check(
+    'reduced motion: .sv-marquee-track no longer overflows its box (ADU-166)',
+    r.scrollWidth <= r.clientWidth,
+    `scrollWidth=${r.scrollWidth} clientWidth=${r.clientWidth}`
+  )
+  check(
+    "reduced motion: the marquee's last original item sits inside the viewport, not trapped past the first screen (ADU-166)",
+    lastInViewport,
+    `rect=${JSON.stringify(r.rect)} viewport=${r.innerWidth}x${r.innerHeight}`
+  )
+  check(
+    'reduced motion: the aria-hidden duplicate copy is hidden, not just paused (ADU-166)',
+    r.duplicateDisplay === 'none',
+    r.duplicateDisplay
+  )
+  await page.close()
+}
+
 // ── 0d. No JS, attribute-only markup: the counter renders DIGITS ──
 // The no-JS guard feeds --sv-int to [data-sv] markup as well as .sv, but the
 // digits themselves come from counter-reset + ::after: keyed on .sv alone,
