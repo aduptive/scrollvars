@@ -9,6 +9,15 @@ import { gzipSync } from 'node:zlib'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+/**
+ * gsap + ScrollTrigger's own gzipped bundle size, from its public CDN build
+ * (small print at the bottom of /bench/). Not ours to measure at build time,
+ * so it stays a hand-kept constant, but a single one: bench-tables.mjs and
+ * demo-sync.mjs both divide by it instead of each carrying their own copy
+ * (ADU-194, the bundle ratio drifted independently in three places).
+ */
+export const GSAP_KB = 46.3
+
 export const VARS = [
   ['`--sv-view`', '−1 → 0 → 1', 'Below the live band → inside it (flat at 0) → gone above'],
   ['`--sv-t`', '0 → 1', 'Travel through the viewport (same semantics as native `view()`)'],
@@ -91,22 +100,42 @@ export function varsHtml() {
 
 /** min+gzip KB per entry point, measured from dist with esbuild (what a bundler ships). */
 export function measureSizes(root) {
-  const build = (opts) =>
-    gzipSync(buildSync({ bundle: true, minify: true, format: 'esm', write: false, logLevel: 'silent', external: ['react', 'react-dom'], ...opts }).outputFiles[0].contents).length / 1024
+  const raw = (opts) =>
+    buildSync({ bundle: true, minify: true, format: 'esm', write: false, logLevel: 'silent', external: ['react', 'react-dom'], ...opts }).outputFiles[0].contents
+  const build = (opts) => gzipSync(raw(opts)).length / 1024
+  const entryRaw = (rel) => raw({ entryPoints: [join(root, 'dist', rel)] })
   const entry = (rel) => build({ entryPoints: [join(root, 'dist', rel)] })
   const cssKb = (name) => gzipSync(readFileSync(join(root, 'styles', `${name}.css`))).length / 1024
   const kb = (n) => n.toFixed(1)
-  const driver = entry('core/driver.js')
+  // minified (pre-gzip) buffers, kept for the two figures the home page states
+  // side by side with a competitor's own minified size (the carousel section,
+  // "the receipts" table): everything else on the site only ever cites gzip.
+  const driverBuf = entryRaw('core/driver.js')
+  const everythingBuf = entryRaw('index.js')
+  const sliderBuf = entryRaw('core/slider.js')
+  const driver = gzipSync(driverBuf).length / 1024
   return {
     driver: kb(driver),
+    driverMin: kb(driverBuf.length / 1024),
     driverScan: kb(build({ stdin: { contents: "export * from './dist/core/driver.js'; export * from './dist/core/scan.js'", resolveDir: root }, })),
-    slider: kb(entry('core/slider.js')),
+    slider: kb(gzipSync(sliderBuf).length / 1024),
+    sliderMin: kb(sliderBuf.length / 1024),
     pointer: kb(entry('core/pointer.js')),
     canvas: kb(entry('canvas/index.js')),
-    everything: kb(entry('index.js')),
+    everything: kb(gzipSync(everythingBuf).length / 1024),
+    everythingMin: kb(everythingBuf.length / 1024),
     react: kb(entry('react/index.js')),
     typical: kb(driver + cssKb('core')),
     stylesAll: kb(gzipSync(readFileSync(join(root, 'styles.css'))).length / 1024),
     css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui'].map((n) => [n, kb(cssKb(n))])),
   }
 }
+
+/** The "main-900" scenario's per-engine CDP metrics from the committed bench harness output. */
+export function benchMainEngines(root) {
+  const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
+  return results.scenarios.find((s) => s.name === 'main-900').engines
+}
+
+/** CPU total the way the site states it: script + style recalc + layout (excludes idle/other). */
+export const cpuTotalMs = (m) => m.scriptMs + m.recalcMs + m.layoutMs
