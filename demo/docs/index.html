@@ -295,6 +295,12 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
+<h4>Slider (blind review round 8, ADU-190)</h4>
+<ul>
+<li><code>measure()</code> declared a read phase then a write phase in its own comment, then broke it: <code>progress()</code> (which reads <code>scrollLeft</code> and <code>scrollWidth</code> through <code>pos()</code>/<code>range()</code>) ran again after the <code>--sd</code> writes, for the <code>--sv-progress</code> write, and again after the class writes, inside <code>state()</code>, for <code>onScroll</code>. The twin of the ADU-168 driver fix, same shape, in the slider: <code>progress()</code> is now snapshotted once, still inside the read phase, before the write loop starts, and both the <code>--sv-progress</code> write and the <code>onScroll</code> state hand in that snapshot instead of reading fresh. <code>state()</code> itself is unchanged for any caller outside a measure pass; it still reads <code>progress()</code> fresh when called with no argument. No API change, and not the round-6 value-consistency claim, which stays rejected: this is about the interleaving, not about the value read.</li>
+<li>Size, measured: <code>slider</code> (min+gzip) goes from 2.2 to 2.3 KB.</li>
+</ul>
+
 <h4>Tooling (round 7 follow-up, ADU-176)</h4>
 <ul>
 <li>The compat fallback preset list had THREE hand-typed copies, not two: <code>src/compat/index.ts</code>'s header comment (which tsc emits verbatim into dist and npm ships), README's Extended floor paragraph, and the "Older targets" paragraph in <code>scripts/docs-build.mjs</code> that renders /docs/. Nothing held them together, and the list already escaped once that way (ADU-159 shipped a false sentence to npm). All three now render from a single <code>COMPAT_PRESETS</code> in <code>scripts/docs-data.mjs</code>: <code>docs-stamp.mjs</code> writes the first two, <code>docs-build.mjs</code> interpolates the third, and both the CI and the release gate diff <code>src/compat/index.ts</code> alongside the other generated files. Editing the prose by hand is now the thing that fails, and the second and third edits stop being needed at all.</li>
