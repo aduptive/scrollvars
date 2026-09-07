@@ -1402,15 +1402,26 @@ export function SequencedScrub({
   height?: string
   className?: string
 }) {
-  const count = React.Children.count(children)
+  // toArray, not Children.map: a conditional step ({show && <Card/>}) is
+  // false, and Children.map still calls back for it, so the stack got an
+  // empty slice and every step after it scrubbed on the wrong window.
+  // Anything that is not an element (a portal renders elsewhere) passes
+  // through: it owns no slice of the pin.
+  const items = React.Children.toArray(children)
+  const count = items.filter(React.isValidElement).length
+  let step = -1
   return (
     <Track pin={height} className={className}>
       <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="sv-range sv-range-rise" style={{ display: 'grid', gap: 12 }}>
-          {React.Children.map(children, (child, i) => {
+          {items.map((child) => {
+            if (!React.isValidElement(child)) return child
+            const i = ++step
             const [from, to] = ranges?.[i] ?? [i / count, Math.min((i + 1.6) / count, 1)]
             return (
-              <div style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>{child}</div>
+              <div key={child.key} style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>
+                {child}
+              </div>
             )
           })}
         </div>
@@ -1596,16 +1607,29 @@ export function DeckSpread({
   gap?: number
   className?: string
 }) {
-  const count = React.Children.count(children)
+  // toArray, not Children.map: a conditional card ({show && <Card/>}) is
+  // false, and Children.map still calls back for it, so the deck got an empty
+  // cell and --sv-mid centred the fan on a card that is not there. Anything
+  // that is not an element (a portal renders elsewhere) passes through: it
+  // holds no place in the fan.
+  const items = React.Children.toArray(children)
+  const count = items.filter(React.isValidElement).length
+  let order = -1
   return (
     <Track className={className}>
       <div
         className="sv-spread sv-spread-in"
         style={{ '--sv-gap': gap + 'px', '--sv-mid': (count - 1) / 2 } as React.CSSProperties}
       >
-        {React.Children.map(children, (child, i) => (
-          <div style={{ '--sv-order': i } as React.CSSProperties}>{child}</div>
-        ))}
+        {items.map((child) =>
+          React.isValidElement(child) ? (
+            <div key={child.key} style={{ '--sv-order': ++order } as React.CSSProperties}>
+              {child}
+            </div>
+          ) : (
+            child
+          )
+        )}
       </div>
     </Track>
   )
@@ -1767,14 +1791,19 @@ export function CoverflowSlider({
       <Slider perView={perView} gap={16} arrows dots {...rest}>
         {/* toArray, not Children.map: a conditional child ({show && <Card/>})
             is false, and Children.map still calls back for it, so the rail
-            got an empty slide and a dot wired past the end of the engine */}
-        {React.Children.toArray(children)
-          .filter(React.isValidElement)
-          .map((child) => (
+            got an empty slide and a dot wired past the end of the engine.
+            Anything that is not an element (a portal renders elsewhere) is
+            handed to the Slider untouched: it is not a card, and dropping it
+            would delete content the caller wrote. */}
+        {React.Children.toArray(children).map((child) =>
+          React.isValidElement(child) ? (
             <Slide key={child.key} className="cf-slide">
               {child}
             </Slide>
-          ))}
+          ) : (
+            child
+          )
+        )}
       </Slider>
     </>
   )

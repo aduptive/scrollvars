@@ -302,6 +302,19 @@ test('<Split by="char"> renders one span per grapheme, matching --sv-count', asy
 // One process (module-level driver state, ResizeObserver singleton on
 // documentElement), so these run as one sequential group, like driver.test.mjs.
 
+// A node has exactly ONE position in the tree: appendChild and insertBefore
+// MOVE a node that already has a parent, they never copy it. A stub that only
+// splices the new position in leaves the node listed twice, and a reorder (the
+// only thing that exercises keys) reads as a tree that grew instead of one
+// whose children swapped places.
+function detach(child) {
+  const parent = child?.parentNode
+  if (!parent) return
+  const i = parent.childNodes.indexOf(child)
+  if (i !== -1) parent.childNodes.splice(i, 1)
+  child.parentNode = null
+}
+
 function makeNode(tag) {
   const node = {
     nodeType: 1,
@@ -326,11 +339,15 @@ function makeNode(tag) {
     ownerDocument: null,
     _listeners: {},
     appendChild(child) {
+      detach(child)
       node.childNodes.push(child)
       child.parentNode = node
       return child
     },
     insertBefore(child, ref) {
+      // detach first, then read the reference's index: removing a preceding
+      // sibling shifts it, exactly as it does in a real DOM
+      detach(child)
       const i = ref ? node.childNodes.indexOf(ref) : -1
       if (i === -1) node.childNodes.push(child)
       else node.childNodes.splice(i, 0, child)
@@ -854,6 +871,116 @@ test('react: a className rewrite cannot strip the classes the slider owns', asyn
   assert.ok(!second.classes.has('sv-active'), 'and only there')
 
   await act(async () => { root.unmount() })
+})
+
+// ---- ADU-188: the normalized list feeds rendering, so anything that is not
+// an element has to come out of it untouched. A portal is the case that bites:
+// Children.map hands it back and React renders it into its own container,
+// while toArray().filter(isValidElement) deletes it from the document with no
+// warning anywhere. renderToStaticMarkup cannot see this, portals are a
+// client-only construct.
+test('react: a Slider child that is not an element still renders, portal included', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { createPortal } = await import('react-dom')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  const sink = global.document.createElement('div')
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  await act(async () => {
+    root.render(
+      React.createElement(
+        Slider,
+        { dots: true },
+        React.createElement('div', { key: 'a' }, 'one'),
+        createPortal(React.createElement('p', null, 'PORTALED'), sink),
+        'plain text',
+        React.createElement('div', { key: 'b' }, 'two')
+      )
+    )
+  })
+
+  const shell = container.firstChild
+  const rail = shell.children.find((child) => child.classes.has('sv-slider'))
+  assert.equal(sink.children.length, 1, 'the portal renders into its own container')
+  assert.equal(sink.children[0].tagName, 'P')
+  assert.ok(
+    rail.childNodes.some((node) => node.nodeType === 3 && node.textContent === 'plain text'),
+    'a bare string child stays in the rail'
+  )
+  // only the elements are slides: two of them, annotated 1 and 2 of 2
+  assert.equal(rail.children.length, 2, 'the portal is not an empty slide in the rail')
+  assert.deepEqual(
+    rail.children.map((slide) => slide.attributes['aria-label']),
+    ['1 of 2', '2 of 2']
+  )
+  const dots = shell.children.find((child) => child.classes.has('sv-dots'))
+  assert.equal(dots.children.length, 2, 'and the dots count the same slides')
+
+  await act(async () => { root.unmount() })
+})
+
+// ---- ADU-188: keying a fragment's children under their parent joins two
+// React keys into one string. React escapes `=` and `:` in an element key and
+// only `/` in a user key, so `.` and `$` pass through: joined on nothing,
+// <Fragment key="a"><b/></Fragment> and a sibling keyed "a.$b" both flatten to
+// ".$a.$b", which React calls unsupported and warns about in dev and prod.
+test('react: a fragment slide and its uncle keep distinct keys across a reorder', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  let seq = 0
+  function Card({ label }) {
+    // the instance number moves only if React remounts this component: state
+    // surviving the reorder is what "the keys matched" looks like from outside
+    const [n] = React.useState(() => ++seq)
+    // an attribute, not a text child: react-dom writes a lone string child
+    // straight to textContent, which this DOM models as a bare property
+    return React.createElement('div', { 'data-card': label + '#' + n })
+  }
+  const inner = React.createElement(
+    React.Fragment,
+    { key: 'a' },
+    React.createElement(Card, { key: 'b', label: 'inner' })
+  )
+  const uncle = React.createElement(Card, { key: 'a.$b', label: 'uncle' })
+  const view = (order) => React.createElement(Slider, { dots: true }, order)
+
+  const warnings = []
+  const realError = console.error
+  console.error = (...args) => warnings.push(String(args[0]))
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => { root.render(view([inner, uncle])) })
+
+    const shell = container.firstChild
+    const rail = shell.children.find((child) => child.classes.has('sv-slider'))
+    const text = () => rail.children.map((slide) => slide.attributes['data-card'])
+    assert.deepEqual(text(), ['inner#1', 'uncle#2'], 'both slides render, each its own instance')
+    const [firstNode, secondNode] = rail.children
+
+    await act(async () => { root.render(view([uncle, inner])) })
+    assert.deepEqual(text(), ['uncle#2', 'inner#1'], 'the reorder moved the instances, it did not rebuild them')
+    assert.equal(rail.children[0], secondNode, 'the uncle kept its DOM node')
+    assert.equal(rail.children[1], firstNode, 'and so did the fragment slide')
+    assert.equal(seq, 2, 'no third instance: nothing remounted')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    console.error = realError
+  }
+  assert.deepEqual(
+    warnings.filter((message) => /same key|unique "key"/i.test(message)),
+    [],
+    'the fragment child and its uncle are two keys, not one'
+  )
 })
 
 test('react: useTrack settles to one tracked node under StrictMode double-invocation, no leak on unmount', async () => {

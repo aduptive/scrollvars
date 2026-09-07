@@ -17,10 +17,18 @@ No public surface change: no new export, prop, class or `--sv-*` variable.
   counting and annotation alike, so the dots, the labels and the engine
   agree on the same slides. `Children.toArray` does not open fragments on
   its own (measured under React 19.2.8, a fragment comes back as one
-  element), so the list recurses into them, keying each level under its
-  parent so a fragment's children cannot collide with their uncles. A child
-  that is not an element (a bare string) is no longer rendered into the
-  rail: it was never a slide the engine could count.
+  element), so the list recurses into them and keys each level under its
+  parent, joined with a `:`. That separator is the one React itself escapes
+  (`:` becomes `=2`, `=` becomes `=0`) while `.` and `$` pass through a key
+  untouched, so a fragment's children cannot collide with their uncles:
+  joined on nothing, `<Fragment key="a"><b/></Fragment>` and a sibling keyed
+  `a.$b` both flattened to `.$a.$b`, and a reorder then matched the two by
+  position and swapped their state.
+  A child that is not an element keeps its place in the rail: it carries no
+  annotation and the engine cannot count it, but it renders. That matters
+  most for a portal, which `Children.map` hands back untouched and
+  `toArray().filter(isValidElement)` deletes from the document with no
+  warning anywhere.
 - The responsive `perView` stylesheet scoped its rules with a descendant
   selector, `[data-sv-uid="..."] .sv-slider`. The rail of a Slider nested
   inside a slide is a descendant of the outer shell too, so the outer map
@@ -35,11 +43,19 @@ No public surface change: no new export, prop, class or `--sv-*` variable.
   watchdog has fired, so the normal path pays nothing for it.
 
 ### Gallery (blind review round 8, ADU-188)
-- The installed `CoverflowSlider` wrapped its children with
-  `React.Children.map`, which calls the callback for `false` and `null` too:
-  a conditional card was wrapped in a real `<Slide>`, so the rail carried an
-  empty slide and the Slider drew a dot wired past the end of the engine. It
-  maps the same normalized list now, `toArray` filtered to elements.
+- Three installed components carried the same pair, `React.Children.count`
+  for the geometry and `React.Children.map` for the render, and
+  `Children.map` calls its callback for `false` and `null` too. Given
+  `[<Card/>, false, null, <Card/>]`, `CoverflowSlider` wrapped a conditional
+  card in a real `<Slide>`, so the rail carried an empty slide and the Slider
+  drew a dot wired past the end of the engine; `DeckSpread` emitted four
+  cells, two of them empty, and set `--sv-mid` to 1.5 where two cards need
+  0.5, fanning the deck around a card that is not there; `SequencedScrub`
+  emitted four slices and gave the second real card the scrub window
+  0.75 to 1 instead of 0.5 to 1. All three now count the elements they
+  render. A child that is not an element passes through unwrapped, as in the
+  kit: it owns no slot in the fan, no slice of the pin and no dot, but it
+  still renders.
 
 ### Tooling (round 7 follow-up, ADU-176)
 - The compat fallback preset list had THREE hand-typed copies, not two:

@@ -601,24 +601,31 @@ function perViewCss(scope: string, perView: Record<string, number>): string {
   return css
 }
 
-type SlideElement = React.ReactElement<Record<string, unknown>>
-
 /**
- * The children that actually reach the rail as elements, which is what the
- * engine counts. `Children.count` counts what the caller wrote instead: a
- * conditional slide (`{show && <Slide/>}`) counts as one and renders none, a
- * fragment counts as one and renders its children, and `cloneElement` on a
- * Fragment drops role and aria-* on the floor. One list feeds rendering,
+ * Everything the rail renders, fragments opened, in render order. What the
+ * ENGINE counts is the elements in it, which is what `Children.count` gets
+ * wrong: a conditional slide (`{show && <Slide/>}`) counts as one and renders
+ * none, a fragment counts as one and renders its children, and `cloneElement`
+ * on a Fragment drops role and aria-* on the floor. One list feeds rendering,
  * counting and annotation, so the dots, the labels and the engine agree.
  * A child COMPONENT that itself returns a fragment still counts as one slide:
  * only rendering could tell, and the engine reads the real DOM anyway.
+ * A child that is not an element (a bare string, a portal) stays in the list
+ * untouched: it can carry no annotation and the engine cannot count it, but
+ * dropping it would delete content the caller wrote. A portal in particular
+ * renders somewhere else entirely, and `toArray().filter(isValidElement)`
+ * would have removed it from the document.
  */
-function slideList(children: React.ReactNode, prefix = ''): SlideElement[] {
-  return React.Children.toArray(children).flatMap((child): SlideElement[] => {
-    if (!React.isValidElement<Record<string, unknown>>(child)) return []
-    // toArray keys each level from ".0": a fragment's children would collide
-    // with their uncles without the parent's key in front
-    const key = `${prefix}${child.key ?? ''}`
+function slideList(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  return React.Children.toArray(children).flatMap((child): React.ReactNode[] => {
+    if (!React.isValidElement<Record<string, unknown>>(child)) return [child]
+    // toArray keys each level from ".0", so a fragment's children would
+    // collide with their uncles without the parent's key in front. The
+    // separator is `:` because React escapes `:` (to `=2`) in an element key
+    // and never leaves a bare one behind, while `.` and `$` pass through
+    // untouched: joined on those, <Fragment key="a"><b/></Fragment> and a
+    // sibling keyed "a.$b" both flatten to ".$a.$b".
+    const key = prefix ? `${prefix}:${child.key ?? ''}` : (child.key ?? '')
     if (child.type === React.Fragment)
       return slideList((child.props as { children?: React.ReactNode }).children, key)
     return [key === child.key ? child : React.cloneElement(child, { key })]
@@ -694,7 +701,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis })
     const uid = React.useId()
     const items = slideList(children)
-    const count = items.length
+    const count = items.filter(React.isValidElement).length
 
     React.useImperativeHandle(
       apiRef,
@@ -788,14 +795,19 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     const rotating = !!autoplay && autoplay > 0 && !paused
     // APG slide semantics without breaking layout: annotate each child in
-    // place (no wrapper, sv-cols and --sv-span target direct children)
-    const slides = items.map((child, i) =>
-      React.cloneElement(child, {
+    // place (no wrapper, sv-cols and --sv-span target direct children).
+    // The position is counted over elements only: whatever else is in the
+    // list renders where the caller put it and is not a slide.
+    let position = 0
+    const slides = items.map((child) => {
+      if (!React.isValidElement<Record<string, unknown>>(child)) return child
+      position += 1
+      return React.cloneElement(child, {
         role: (child.props.role as string) ?? 'group',
         'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
-        'aria-label': child.props['aria-label'] ?? `${i + 1} of ${count}`,
+        'aria-label': child.props['aria-label'] ?? `${position} of ${count}`,
       })
-    )
+    })
 
     return (
       <div
