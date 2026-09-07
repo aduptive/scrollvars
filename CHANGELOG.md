@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Tooling (ADU-195)
+- The anchor splices in `scripts/docs-stamp.mjs` and `scripts/demo-sync.mjs`
+  (`between()`, `stamp()`, `floorRow()`, and every regex-based row splice in
+  demo-sync's browser floor and CPU tables) now throw when their anchor is
+  AMBIGUOUS, the same way they already throw when it is missing. `between()`
+  counts the literal `before` anchor rather than the compound regex: a
+  non-greedy match starting at a repeated `before` silently absorbs the
+  other occurrences, so counting the compound match reports one and misses
+  it, which is exactly the failure that let ADU-194 nearly ship a splice
+  that matched the wrong occurrence, caught only because the NEXT splice
+  threw on the anchor the first one had already swallowed. Structural
+  splices (`stamp()`, `floorRow()`, demo-sync's marker blocks and table
+  rows) count the whole constructed regex instead, since a bare label can
+  legitimately repeat across two tables with different cell shapes
+  (demo-sync's CPU table and the Lighthouse table both have a "ScrollVars"
+  row) without being ambiguous for that splice. Every anchor in the tree
+  today was audited against its real target file and found unique; no
+  splice needed widening. `between()` and `stamp()` are now exported from
+  their scripts (guarded behind an `isMain` check, `scripts/fx-build.mjs`'s
+  existing pattern) so tests can call them without triggering the scripts'
+  file I/O. No output changes: `npm run demo:sync` produces a byte-identical
+  tree.
+
 ### Docs (ADU-194)
 - The bench page's own headline contradicted the measured table two screens
   below it: "15× less JavaScript" against a stamped bundle ratio of ~7×

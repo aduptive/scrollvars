@@ -12,13 +12,29 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const demoPath = join(root, 'demo', 'index.html')
 
-/** Replaces text between two fixed anchors, throwing when an anchor moves (docs-stamp.mjs's idiom). */
-const between = (text, before, after, body, label) => {
+/** Counts literal, non-overlapping occurrences of `needle` in `text`. */
+const countLiteral = (text, needle) => text.split(needle).length - 1
+
+/**
+ * Replaces text between two fixed anchors, throwing when an anchor moves
+ * (docs-stamp.mjs's idiom). The `before` anchor is checked for uniqueness
+ * first: a non-greedy match starting at a repeated `before` silently
+ * absorbs the other occurrences, so counting the compound match would
+ * report one and miss it (ADU-195).
+ */
+export const between = (text, before, after, body, label) => {
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const beforeCount = countLiteral(text, before)
+  if (beforeCount > 1) throw new Error(`demo/index.html: ${label}, anchor "${before}" is ambiguous, found ${beforeCount} times`)
   const re = new RegExp(`(${esc(before)})[\\s\\S]*?(${esc(after)})`)
   if (!re.test(text)) throw new Error(`demo/index.html: ${label}, anchor text not found`)
   return text.replace(re, (m, a, b) => a + body + b)
 }
+
+// Everything below only runs when this script is executed directly, not
+// when a test imports `between` above.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const BLOCKS = [
   {
@@ -51,6 +67,8 @@ for (const block of BLOCKS) {
   }
   const marker = `/* ═══════ ${block.label}, inlined from the built dist, verbatim ═══════ */`
   const wrapped = `${marker}\n  var ${block.name} = (function () {\n${dist}\n  return ${block.name};\n  })();`
+  const markerCount = countLiteral(html, marker)
+  if (markerCount > 1) throw new Error(`demo/index.html: marker block for "${block.label}" is ambiguous, found ${markerCount} times`)
   const re = new RegExp(
     `${escapeRe(marker)}\\n  var ${block.name} = \\(function \\(\\) \\{[\\s\\S]*?\\n  return ${block.name};\\n  \\}\\)\\(\\);`
   )
@@ -69,6 +87,8 @@ for (const block of BLOCKS) {
   new Function(iife) // throws on syntax errors
   const start = '/* ═══════ scrollvars engine, inlined from the built dist, verbatim (esbuild IIFE, global `SV`) ═══════ */'
   const end = '/* ═══════ end scrollvars engine ═══════ */'
+  const startCount = countLiteral(html, start)
+  if (startCount > 1) throw new Error(`demo/index.html: engine marker is ambiguous, found ${startCount} times`)
   const re = new RegExp(`${escapeRe(start)}\\n[\\s\\S]*?${escapeRe(end)}`)
   if (!re.test(html)) throw new Error('engine marker block not found')
   // replacer function: dist code must land verbatim, immune to $-patterns
@@ -90,6 +110,8 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   const driverKB = sizes.driver
   const coreKB = sizes.everything
   const footer = /<code>npm i scrollvars<\/code> · zero dependencies · driver [\d.]+ KB gzip · (?:whole lib|full core) [^·]+·/
+  const footerMatches = html.match(new RegExp(footer.source, 'g')) || []
+  if (footerMatches.length > 1) throw new Error(`demo/index.html: footer size marker is ambiguous, found ${footerMatches.length} times`)
   if (!footer.test(html)) throw new Error('demo footer size marker not found (it drifted silently once; never again)')
   html = html.replace(footer, `<code>npm i scrollvars</code> · zero dependencies · driver ${driverKB} KB gzip · full core ${coreKB} KB ·`)
   html = html.replace(/ · v[\d.]+ · MIT · /, ` · v${version} · MIT · `)
@@ -102,6 +124,8 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   const row = (key) => {
     const b = BROWSER_FLOOR[key]
     const re = new RegExp(`(<td>${b.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<\\/td><td class="range">)[\\d.]+\\+ · \\w+ \\d{4}(<\\/td>)`)
+    const matches = html.match(new RegExp(re.source, 'g')) || []
+    if (matches.length > 1) throw new Error(`demo/index.html: browser floor table row for "${b.label}" is ambiguous, found ${matches.length} times`)
     if (!re.test(html)) throw new Error(`demo/index.html: browser floor table row for "${b.label}" not found`)
     html = html.replace(re, (m, pre, post) => `${pre}${b.version} · ${b.date}${post}`)
   }
@@ -109,6 +133,8 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   row('firefox')
   row('safari')
   const prose = /Chrome [\d.]+ \/ Firefox [\d.]+ \/ Safari [\d.]+\+/
+  const proseMatches = html.match(new RegExp(prose.source, 'g')) || []
+  if (proseMatches.length > 1) throw new Error(`demo/index.html: browser floor footer sentence is ambiguous, found ${proseMatches.length} times`)
   if (!prose.test(html)) throw new Error('demo/index.html: browser floor footer sentence not found')
   html = html.replace(prose, `Chrome ${BROWSER_FLOOR.chrome.version.replace('+', '')} / Firefox ${BROWSER_FLOOR.firefox.version.replace('+', '')} / Safari ${BROWSER_FLOOR.safari.version}`)
 }
@@ -172,14 +198,20 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
 
   // "the receipts": CPU cost table. Matched by cell shape (script/total in ms,
   // heap in MB), which is what tells this table's ScrollVars/framer-motion rows
-  // apart from the Lighthouse table's rows just below, same labels, different units.
+  // apart from the Lighthouse table's rows just below, same labels, different
+  // units: the uniqueness check below counts the FULL regex, not the bare
+  // label, or it would flag a correct regex as ambiguous (ADU-195).
   const cpuRow = (label, m) => {
     const re = new RegExp(`(<td><b>${label}</b></td><td class="range"><b>)[\\d.]+( ms</b></td><td class="range"><b>)[\\d.]+( ms</b></td><td class="range"><b>)[\\d.]+( MB</b></td>)`)
+    const matches = html.match(new RegExp(re.source, 'g')) || []
+    if (matches.length > 1) throw new Error(`demo/index.html: receipts CPU row for "${label}" is ambiguous, found ${matches.length} times`)
     if (!re.test(html)) throw new Error(`demo/index.html: receipts CPU row for "${label}" not found`)
     html = html.replace(re, (m0, a, b, c, d) => `${a}${m.scriptMs}${b}${cpuTotalMs(m)}${c}${m.heapMB}${d}`)
   }
   const gsapRow = (label, m) => {
     const re = new RegExp(`(<td>${label}</td><td class="range">)[\\d.]+( ms</td><td class="range">)[\\d.]+( ms</td><td class="range">)[\\d.]+( MB</td>)`)
+    const matches = html.match(new RegExp(re.source, 'g')) || []
+    if (matches.length > 1) throw new Error(`demo/index.html: receipts CPU row for "${label}" is ambiguous, found ${matches.length} times`)
     if (!re.test(html)) throw new Error(`demo/index.html: receipts CPU row for "${label}" not found`)
     html = html.replace(re, (m0, a, b, c, d) => `${a}${m.scriptMs}${b}${cpuTotalMs(m)}${c}${m.heapMB}${d}`)
   }
@@ -193,4 +225,6 @@ if (html !== before) {
   console.log('demo synced from dist')
 } else {
   console.log('demo already in sync')
+}
+
 }
