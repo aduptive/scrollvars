@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.7 KB gzip · full core 6.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.8 KB gzip · full core 6.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 74 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 6 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3132,7 +3132,8 @@ var SV = (() => {
   function readPinOffset(el) {
     if (typeof getComputedStyle !== "function")
       return 0;
-    const raw = getComputedStyle(el).getPropertyValue("--sv-pin-offset").trim();
+    const stage = el.querySelector?.(".sv-stage") ?? el;
+    const raw = getComputedStyle(stage).getPropertyValue("--sv-pin-offset").trim();
     const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i);
     const value = match ? parseFloat(match[1]) : parseFloat(raw);
     if (!value)
@@ -3141,7 +3142,7 @@ var SV = (() => {
       case "rem":
         return value * parseFloat(getComputedStyle(document.documentElement).fontSize);
       case "em":
-        return value * parseFloat(getComputedStyle(el).fontSize);
+        return value * parseFloat(getComputedStyle(stage).fontSize);
       case "vh":
       case "svh":
       case "lvh":
@@ -3295,6 +3296,17 @@ var SV = (() => {
     el.style.setProperty?.("--sv-live", "1");
     markReleased(el);
   }
+  function replayEntrance(el) {
+    if (typeof getComputedStyle !== "function")
+      return;
+    const duration = el.style.getPropertyValue?.("--sv-duration") ?? "";
+    const stagger = el.style.getPropertyValue?.("--sv-stagger") ?? "";
+    el.style.setProperty?.("--sv-duration", "0s");
+    el.style.setProperty?.("--sv-stagger", "0s");
+    void getComputedStyle(el).opacity;
+    el.style.setProperty?.("--sv-duration", duration);
+    el.style.setProperty?.("--sv-stagger", stagger);
+  }
   function track(el, opts = {}) {
     init();
     if (!initialized)
@@ -3303,6 +3315,7 @@ var SV = (() => {
     const existing = entries.get(el);
     if (existing)
       releaseEntry(existing);
+    const settled = el.style.getPropertyValue?.("--sv-live") === "1";
     el.style.removeProperty?.("--sv-live");
     el.classList.remove("sv-live");
     clearReleased(el);
@@ -3323,6 +3336,8 @@ var SV = (() => {
       entry.authored = { height: el.style.height, position: el.style.position };
       applyPinHelper(entry);
     }
+    if (settled)
+      replayEntrance(el);
     pageOutputs = true;
     resizeObserver?.observe(el);
     if (opts.root)

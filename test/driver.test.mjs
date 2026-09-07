@@ -98,12 +98,19 @@ function makeElement(height = 400) {
     attrs: new Map(),
     style: {
       setProperty(name, value) {
+        // CSSOM: setting the empty string removes the declaration, which is
+        // how the entrance replay hands a knob back that was never authored
+        if (value === '') return void delete el.vars[name]
         el.vars[name] = value
         el.setCalls++
       },
       removeProperty(name) {
         delete el.vars[name]
       },
+      // the driver reads its own inline `--sv-live` back on track() to tell a
+      // settled element from a fresh one: one store behind both halves, or
+      // the read would answer for a state the writes never reached
+      getPropertyValue: (name) => el.vars[name] ?? '',
     },
     classList: {
       add: (c) => el.classes.add(c),
@@ -129,6 +136,12 @@ function makeElement(height = 400) {
       for (let node = other; node; node = node.parentElement) if (node === el) return true
       return false
     },
+    // readPinOffset reads `--sv-pin-offset` on the sticky `.sv-stage` inside
+    // the wrapper, the element the CSS consumes it on; a test that needs one
+    // sets `el.stage`. No stage: the driver falls back to the wrapper, so the
+    // rest of this file keeps reading its own computed style.
+    stage: null,
+    querySelector: (selector) => (selector === '.sv-stage' ? el.stage : null),
   }
   return el
 }
@@ -721,6 +734,27 @@ test('driver: readPinOffset resolves rem, em, vh/svh/lvh/dvh, vw and bare number
   }
   delete global.getComputedStyle
   delete window.innerWidth
+})
+
+test('driver: em in --sv-pin-offset resolves against the stage, the element the CSS applies it to', async () => {
+  const { track } = await import('../dist/core/driver.js?pinstage')
+  // The CSS puts the value in `top:` and `height:` on `.sv-stage`, so `em`
+  // resolves against the STAGE's font size. Measured in Chrome: a wrapper at
+  // font-size 10px around a stage at 20px, `--sv-pin-offset: 4em` declared on
+  // the wrapper, renders the stage at top: 80px. Reading the wrapper's own
+  // font size gave the math 40px and the two disagreed (ADU-191).
+  const el = makeElement(1720) // span = 1720 - 1000 + 80 = 800
+  el.stage = makeElement(600)
+  global.getComputedStyle = (target) => ({
+    getPropertyValue: (n) => (n === '--sv-pin-offset' ? '4em' : ''),
+    fontSize: target === el.stage ? '20px' : '10px',
+  })
+  const untrack = track(el, { pin: true })
+  place(el, 0) // progress = offset / span: 80/800 with the stage, 40/760 without
+  pump()
+  assert.equal(el.vars['--sv-pin'], '0.1000', '4em is 4 * the stage font size')
+  untrack()
+  delete global.getComputedStyle
 })
 
 test('driver: a once entry releases by identity, so an onLive that re-tracks keeps its replacement', async () => {

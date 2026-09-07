@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Driver (blind review round 8, ADU-191)
+- `--sv-pin-offset` in `em` now resolves against `.sv-stage`, the element
+  styles/pin.css applies it to, instead of the tracked wrapper: `top:` and
+  `height:` consume the variable on the stage, so that is the font size the
+  CSS resolves it against and the element an author can redeclare it on.
+  Measured in Chrome, a wrapper at `font-size: 10px` around a stage at
+  `20px` renders `--sv-pin-offset: 4em` as `top: 80px`, while the pin math
+  used 40 and the pinned stretch started 40px off. Every other unit is
+  unchanged, and the whole read moves to the stage, so a value declared on
+  the stage itself is the one the math sees too. No stage in the markup
+  (`onPin` alone, custom skeletons): the wrapper, as before.
+- Re-tracking replays the entrance again, on an element that never left the
+  viewport. README, AGENTS and llms.txt all name re-tracking as the way to
+  replay it, and it did nothing: the presets are CSS transitions off the
+  inherited `--sv-live`, and a frame's rAF callbacks run BEFORE that frame's
+  style update, so between the release (which settles the element visible
+  with an inline `--sv-live: 1`) and the first frame writing that flag back,
+  the computed value went 1 to 1 and no transition was ever generated.
+  Measured in Chrome: opacity flat at 1 for six frames and 400 ms. A forced
+  style update on its own is not the fix either, it starts the fade OUT and
+  the next frame reverses it from wherever it got to, measured 0.938, a dip
+  rather than an entrance. `track()` now zeroes `--sv-duration` and
+  `--sv-stagger` on the element, forces the update, and hands both knobs
+  back (an authored inline value included): the reset lands in one step with
+  no transition to reverse, and the entrance runs from a real 0 at the
+  authored duration and stagger. Only for an element the driver had settled
+  (released, or a settled `once`), so a first track pays nothing at boot,
+  and entrance CSS of your own that hard-codes its duration instead of
+  reading the knobs is not covered. Proved in Chrome by an e2e invariant,
+  red on the old engine (lowest opacity 1, no replay at all).
+- Size, measured, because these are published numbers: both fixes take
+  `track` (min+gzip) from 2.7 to 2.8 KB, `track` + `scan` from 3.7 to
+  3.8 KB, the core entry from 6.6 to 6.7 KB, `scrollvars/react` from 12.0
+  to 12.1 KB and the headline typical page from ~5.2 to ~5.3 KB. The
+  driver lands at 2918 bytes with the 2.9 KB rounding boundary at 2919, so
+  the next byte added there moves the stamp again. No public surface
+  change: no new export, no new class, no new variable.
+
 ### Tooling (round 7 follow-up, ADU-176)
 - The compat fallback preset list had THREE hand-typed copies, not two:
   `src/compat/index.ts`'s header comment (which tsc emits verbatim into
