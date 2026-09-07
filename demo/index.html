@@ -5012,8 +5012,19 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         if (!ready) {
             ready = true;
             const dispose = setup?.(fx);
-            if (typeof dispose === 'function')
-                cleanup = dispose;
+            if (typeof dispose === 'function') {
+                // A consumer that calls handle.destroy() from inside its own
+                // setup() (bailing out before it has returned this dispose, a
+                // WebGL context that failed to create) already ran destroy()'s
+                // body above with `cleanup` still undefined: nothing will ever
+                // read `cleanup` again once `destroyed` is true, so stashing
+                // `dispose` there orphans it for the life of the page. Run it now
+                // instead (ADU-189).
+                if (destroyed)
+                    dispose();
+                else
+                    cleanup = dispose;
+            }
             resize?.(fx); // sizing that lives in resize() must also run once
         }
         else {

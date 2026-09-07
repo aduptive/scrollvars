@@ -2199,3 +2199,34 @@ test('canvas harness: a throwing cleanup still disconnects both observers and re
   assert.equal(docRemovals.length, 1, 'the visibilitychange listener is removed')
   assert.equal(mqRemovals.length, 2, 'both the reduced-motion and dpr media query listeners are removed')
 })
+
+test('canvas harness: destroy() called reentrantly from inside setup() still runs the cleanup setup() returns (ADU-189)', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // A consumer that bails out of its own setup() before it has returned a
+  // cleanup (a WebGL context that failed to create, a renderer already
+  // disposed once) can call destroy() reentrantly. At that moment `cleanup`
+  // is still undefined (this call hasn't returned yet), so the guard that
+  // makes a SECOND destroy() a no-op must not also orphan the dispose
+  // function setup() is about to return: nothing ever reads `cleanup` again
+  // once `destroyed` is true.
+  let cleanupCalls = 0
+  const handle = mountEffect(env.canvas, {
+    setup: () => {
+      handle.destroy()
+      return () => {
+        cleanupCalls++
+      }
+    },
+    frame: () => {},
+  })
+
+  env.resize()
+  env.pump(16)
+
+  assert.equal(cleanupCalls, 1, 'the just-returned cleanup runs instead of being orphaned')
+
+  handle.destroy()
+  assert.equal(cleanupCalls, 1, 'a later explicit destroy() must not re-run it')
+})
