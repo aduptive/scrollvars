@@ -5953,9 +5953,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 // inner to outer. Two instances rooted on the same node (two unscoped calls,
 // the other half of this bug) tie and the first registered wins, which is
 // still exactly one toggle.
-// Keyed by the event object, so nothing outlives a dispatch: no registry of
-// live scopes to keep in step with stop(), no instance whose destruction
-// leaves a stale entry that silently disowns a trigger, and nothing to leak.
+// Keyed by the event object, so the claim lives exactly as long as the
+// event does, and a re-dispatched Event object is a silent no-op: dispatch
+// the SAME MouseEvent twice and only the first opens the panel, measured
+// in Chrome (re-dispatch is rare enough not to need code for it). No
+// registry of live scopes to keep in step with stop(), no instance whose
+// destruction leaves a stale entry that silently disowns a trigger, and
+// nothing to leak.
 const claimed = new WeakSet();
 function toggles(root) {
     if (typeof window === 'undefined')

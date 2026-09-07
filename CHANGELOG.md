@@ -20,9 +20,13 @@
   registration order and still toggle once. The claim is keyed by the
   event object and taken on action rather than on sight, so a scope that
   cannot resolve the trigger's target still passes the click on to a
-  wider scope that can, `stop()` needs no bookkeeping, and no state
-  outlives a dispatch. Pre-existing since scoped `toggles()`, not a
-  regression. No public surface change.
+  wider scope that can, and `stop()` needs no bookkeeping: the claim lives
+  exactly as long as the event object does, and a re-dispatched Event
+  object is a silent no-op. One consequence, and the price of single
+  ownership: only the owning scope's sync runs, so a duplicate trigger of
+  the same target and class outside that scope keeps its previous
+  aria-expanded until a click the wider scope owns. Pre-existing since
+  scoped `toggles()`, not a regression. No public surface change.
 
 ### Docs (round 7, ADU-170)
 Docs read against the code merged by the five round-7 code tickets.
