@@ -16,15 +16,17 @@ which is what let two rounds of tests pass on broken code.
   laid-out height stable over five viewport resizes instead of the ADU-158
   runaway. Proved red against that defect.
 - The driver suite ran with no global IntersectionObserver, so `culler` was
-  null and every entry stayed permanently `near`: about 78 of its assertions
-  never touched the offscreen culling path. IntersectionObserver ships before
+  null and every entry stayed permanently `near`: 175 of its 184 assertions
+  never touched the offscreen culling path (the other 9 sit inside the two
+  tests that already drove their own IntersectionObserver by hand).
+  IntersectionObserver ships before
   ResizeObserver in every engine (Chrome 51 vs 64, Firefox 55 vs 69, Safari
   12.1 vs 13.1), so the file now installs one that delivers an initial record
   per observed target and one per crossing, after that frame's animation
   frame callbacks, the order the HTML rendering steps run them in. Every
   existing assertion still holds. A new test drives a real cull through that
   observer, so an always-intersecting stub cannot come back unnoticed.
-- The slider suite installed a ResizeObserver at 14 sites and a
+- The slider suite installed a ResizeObserver at 18 sites and a
   MutationObserver at one, though MutationObserver is from 2012 and
   ResizeObserver from 2018, which left the re-render resync
   (a childList record re-observes the slides and re-measures) off for the

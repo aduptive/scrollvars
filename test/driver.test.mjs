@@ -1376,6 +1376,15 @@ test('driver: the file-wide culler culls for real, past the band the rect read s
   pump()
   assert.equal(reads, culled, 'culled by the file observer: no rect read on later frames')
 
+  // exactly on the bottom edge (band.bottom is 2000 at vh 1000): the spec's
+  // "even if the intersection has zero area" makes this count as intersecting,
+  // so it must come back into measurement here, not only once it clears the
+  // edge. A stub written with strict inequality (`>`/`<` instead of `>=`/`<=`
+  // in intersectionStep above) leaves it culled and this goes red.
+  place(el, 2000)
+  pump()
+  assert.ok(reads > culled, 'the band edge is inclusive, the rect read resumes exactly at 2000')
+
   place(el, 300)
   pump()
   assert.ok(reads > culled, 'back inside the band, the rect read resumes')
