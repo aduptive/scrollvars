@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { varsHtml, measureSizes } from './docs-data.mjs'
+import { varsHtml, measureSizes, compatPresetsGrouped } from './docs-data.mjs'
 
 /* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold).
  * Bullets group their indented continuation lines into one <li>, and a run
@@ -315,10 +315,8 @@ lands: a released stage can also leave a parked curtain panel sitting outside it
 the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
 three feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for the
-reveal presets (<code>sv-rise</code>, <code>sv-fade</code>, <code>sv-slide-l</code>,
-<code>sv-slide-r</code>, <code>sv-auto</code>, <code>sv-drift</code>) and the pin presets
-<code>sv-curtain-l</code>, <code>sv-curtain-r</code> and <code>sv-rail</code>, written
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
+${compatPresetsGrouped((n) => `<code>${n}</code>`)}, written
 without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
 <code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
 declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,

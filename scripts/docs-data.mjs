@@ -25,6 +25,39 @@ export const DERIVED =
 export function varsMarkdown() {
   return ['| output | range | meaning |', '| --- | --- | --- |', ...VARS.map((r) => `| ${r.join(' | ')} |`)].join('\n') + '\n\n' + DERIVED
 }
+/**
+ * The presets `scrollvars/compat`'s fallback sheet re-expresses with
+ * `transform:`, split by the variable that drives them. Three prose copies
+ * used to be hand-typed (src/compat/index.ts's header, README's Extended
+ * floor paragraph, the /docs/ "Older targets" paragraph) and drifted; all
+ * three render from here now, docs-stamp.mjs writing the first two and
+ * docs-build.mjs the third. test/claim-pairs.test.mjs checks this list
+ * against the stylesheet it describes.
+ */
+export const COMPAT_PRESETS = {
+  reveal: ['sv-rise', 'sv-fade', 'sv-slide-l', 'sv-slide-r', 'sv-auto', 'sv-drift'],
+  pin: ['sv-curtain-l', 'sv-curtain-r', 'sv-rail'],
+}
+// Asides the shipped source comment carries and the docs leave to the selector.
+export const COMPAT_PRESET_NOTES = { 'sv-auto': 'its auto-ordered children' }
+
+const andList = (items) =>
+  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+
+/** Flat "a, b, c" for the source comment, which keeps the per-preset asides. */
+export function compatPresetsFlat(notes = {}) {
+  const name = (n) => (notes[n] ? `${n} (${notes[n]})` : n)
+  return [...COMPAT_PRESETS.reveal, ...COMPAT_PRESETS.pin].map(name).join(', ')
+}
+
+/** Grouped, for README (`fmt` = backticks) and /docs/ (`fmt` = <code>). */
+export function compatPresetsGrouped(fmt) {
+  return (
+    `the reveal presets (${COMPAT_PRESETS.reveal.map(fmt).join(', ')})` +
+    ` and the pin presets ${andList(COMPAT_PRESETS.pin.map(fmt))}`
+  )
+}
+
 const code = (s) => s.replace(/`([^`]+)`/g, (m, c) => `<code>${c.replace(/</g, '&lt;')}</code>`)
 export function varsHtml() {
   return (

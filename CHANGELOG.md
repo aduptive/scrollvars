@@ -2,6 +2,51 @@
 
 ## Unreleased
 
+### Tooling (round 7 follow-up, ADU-176)
+- The compat fallback preset list had THREE hand-typed copies, not two:
+  `src/compat/index.ts`'s header comment (which tsc emits verbatim into
+  dist and npm ships), README's Extended floor paragraph, and the "Older
+  targets" paragraph in `scripts/docs-build.mjs` that renders /docs/.
+  Nothing held them together, and the list already escaped once that way
+  (ADU-159 shipped a false sentence to npm). All three now render from a
+  single `COMPAT_PRESETS` in `scripts/docs-data.mjs`: `docs-stamp.mjs`
+  writes the first two, `docs-build.mjs` interpolates the third, and both
+  the CI and the release gate diff `src/compat/index.ts` alongside the
+  other generated files. Editing the prose by hand is now the thing that
+  fails, and the second and third edits stop being needed at all.
+- Two prose claims that live in both a shipped source comment and
+  README.md now have a test holding them to the code they describe,
+  instead of a CLAUDE.md rule nobody enforced: the driver's pin-helper
+  release condition (`src/core/driver.ts`'s `track()` comment vs README's
+  pinning paragraph, compared as full normalised text), and
+  `--sv-pin-offset`'s unit resolution, where both prose copies are now
+  checked against `readPinOffset`'s own `switch` rather than against a
+  list of unit names. A unit list keeps every token when a unit changes
+  MEANING: a comment that resolved `vh`, `svh`, `lvh` and `dvh` against
+  `window.innerWidth` instead of `innerHeight` passed a token comparison
+  clean, and fails now. Same for `COMPAT_PRESETS`: its reveal/pin split
+  is checked against the fallback stylesheet, since a preset in the wrong
+  group is a wrong claim about which module a consumer needs.
+  No behavior change.
+- The stylesheet-vs-list test above only checked the list against the
+  sheet, so a rule added for a NEW preset would leave the source comment,
+  README and /docs/ stale with everything green: added the inverse, every
+  class the fallback stylesheet has a rule for is named by `COMPAT_PRESETS`
+  or on a two-name exception list (`sv-deck` and `sv-reading`, which get
+  fallback rules on purpose but are not entrance/pin presets). Proved red
+  by adding a rule for a preset the list did not name.
+- The README paragraph and the `src/compat/index.ts` header comment that
+  carry the stamped `COMPAT_PRESETS` text sit inside a Markdown paragraph
+  and a JSDoc block, neither of which can carry a `<!-- name:start -->`
+  marker on its own line (that splits the surrounding prose, see
+  CLAUDE.md's anchor-splice rule), so the span itself has no visible sign
+  that it is generated: a sentence added by hand between "stylesheet for"
+  and "(written without" in README.md, or between "the same presets
+  README lists:" and " * Written without" in the source comment, is
+  silently overwritten by the next `demo:sync`. The CI gate still catches
+  the resulting diff, but its message will not say why. Noted here for
+  whoever lands on that diff next.
+
 ### Testing (round 6 follow-up, ADU-161)
 No behavior change: three fixtures modelled a browser state no engine is in,
 which is what let two rounds of tests pass on broken code.
