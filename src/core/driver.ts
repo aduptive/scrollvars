@@ -544,29 +544,43 @@ function releaseEntry(entry: Entry) {
  *
  * So: zero the two knobs every preset builds its transition from, force the
  * update, hand them back. They are inherited custom properties, so zeroing
- * them on the tracked element covers its whole subtree and no rule of the
- * driver's has to reach a descendant. The reset lands in one step with no
- * transition to reverse, and the first frame's 1 transitions from a real 0 at
- * the authored duration and stagger. An empty value on `setProperty` removes
- * the declaration, which is how an author's own inline knobs survive the
- * round trip.
+ * them on the tracked element reaches its whole subtree without the driver
+ * writing on a descendant. That reach is also the cost: for this one flush
+ * every OTHER knob consumer in the subtree reads 0s too, so an unrelated
+ * transition created in the same tick (an accordion opened right there and
+ * then) is created with duration 0 and snaps instead of animating. The reset
+ * itself lands in one step with no transition to reverse, and the first
+ * frame's 1 transitions from a real 0 at the authored duration and stagger.
+ * An empty value on `setProperty` removes the declaration, and the authored
+ * priority is carried back with the value, which is how an author's own
+ * inline knobs survive the round trip (`!important` included: without it a
+ * `!important` sheet rule would take the knob over from the author's inline
+ * declaration, permanently). The zeroing is `!important` for the same
+ * reason, so an important sheet rule cannot outrank it mid-replay.
  *
  * Only for an element carrying the inline `--sv-live: 1` the driver settles
  * with (released, or a settled `once`): a first track has nothing to replay
- * and must not pay a forced style update per element at boot. Entrance CSS
- * of your own that hard-codes its duration instead of reading the knobs is
- * not covered, it reverses as before. */
+ * and must not pay a forced style update per element at boot. Two shapes are
+ * not covered: entrance CSS of your own that hard-codes its duration instead
+ * of reading the knobs, and a DESCENDANT that declares its own
+ * `--sv-duration` (which `<Item duration>`, `Split` and the staggered-reveal
+ * pane all do), since a descendant's own declaration beats an inherited
+ * value at any priority. Both then behave as they did before this fix: in
+ * the frame-apart shape they dip and reverse (measured 0.938), in the
+ * same-tick shape they stay flat at 1 with no visible change at all. */
 function replayEntrance(el: HTMLElement) {
   if (typeof getComputedStyle !== 'function') return
   const duration = el.style.getPropertyValue?.('--sv-duration') ?? ''
+  const durationPriority = el.style.getPropertyPriority?.('--sv-duration') ?? ''
   const stagger = el.style.getPropertyValue?.('--sv-stagger') ?? ''
-  el.style.setProperty?.('--sv-duration', '0s')
-  el.style.setProperty?.('--sv-stagger', '0s')
+  const staggerPriority = el.style.getPropertyPriority?.('--sv-stagger') ?? ''
+  el.style.setProperty?.('--sv-duration', '0s', 'important')
+  el.style.setProperty?.('--sv-stagger', '0s', 'important')
   // reading a property is what flushes the pending style update, not the
   // getComputedStyle() call itself
   void getComputedStyle(el).opacity
-  el.style.setProperty?.('--sv-duration', duration)
-  el.style.setProperty?.('--sv-stagger', stagger)
+  el.style.setProperty?.('--sv-duration', duration, durationPriority)
+  el.style.setProperty?.('--sv-stagger', stagger, staggerPriority)
 }
 
 /** Track an element. Returns an untrack function. */

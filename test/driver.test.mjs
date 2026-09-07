@@ -93,24 +93,38 @@ function makeElement(height = 400) {
     rect: { top: 2000, bottom: 2000 + height, width: 800, height },
     scrollHeight: height,
     vars: {},
+    // CSSOM keeps a declaration's priority next to its value, and hands it
+    // back only through getPropertyPriority: a stub with the value alone
+    // cannot tell `400ms` from `400ms !important` and would be green on a
+    // round trip that drops the author's `!important` (ADU-191).
+    priorities: {},
     setCalls: 0,
     classes: new Set(),
     attrs: new Map(),
     style: {
-      setProperty(name, value) {
+      setProperty(name, value, priority = '') {
         // CSSOM: setting the empty string removes the declaration, which is
         // how the entrance replay hands a knob back that was never authored
-        if (value === '') return void delete el.vars[name]
+        if (value === '') {
+          delete el.priorities[name]
+          return void delete el.vars[name]
+        }
         el.vars[name] = value
+        // a set REPLACES the declaration, priority included: no third
+        // argument means the declaration comes back normal, which is exactly
+        // how the `!important` was lost before it was carried explicitly
+        el.priorities[name] = priority
         el.setCalls++
       },
       removeProperty(name) {
         delete el.vars[name]
+        delete el.priorities[name]
       },
       // the driver reads its own inline `--sv-live` back on track() to tell a
       // settled element from a fresh one: one store behind both halves, or
       // the read would answer for a state the writes never reached
       getPropertyValue: (name) => el.vars[name] ?? '',
+      getPropertyPriority: (name) => el.priorities[name] ?? '',
     },
     classList: {
       add: (c) => el.classes.add(c),
@@ -1197,6 +1211,70 @@ test('driver: re-tracking a settled once element clears the stale sv-live, so th
   assert.ok(el.classes.has('sv-live'), 'so the entrance replays when it enters the band again')
   assert.equal(el.vars['--sv-live'], '1')
   stop2()
+})
+
+test('driver: the entrance replay hands an authored knob back with its !important (ADU-191)', async () => {
+  // The knob round trip reads with getPropertyValue, which answers with the
+  // VALUE only. Handing it back through a bare setProperty rewrites the
+  // author's declaration as a normal one, so any `!important` rule in a sheet
+  // takes the knob over from that point on: measured in Chrome, an inline
+  // `--sv-duration: 400ms !important` against a sheet rule at 3000ms
+  // important computed 0.4s before the re-track and 3s after, permanently.
+  // The priority travels with the value now, on both knobs.
+  const { track } = await import('../dist/core/driver.js?replaypriority')
+  const el = makeElement(400)
+  // what the flush sees, captured inside the forced read the replay makes
+  const duringFlush = []
+  global.getComputedStyle = () => {
+    duringFlush.push({
+      duration: el.vars['--sv-duration'],
+      durationPriority: el.priorities['--sv-duration'],
+      stagger: el.vars['--sv-stagger'],
+      staggerPriority: el.priorities['--sv-stagger'],
+    })
+    return { opacity: '1', getPropertyValue: () => '' }
+  }
+  // the author's own knobs, one important, one not: both shapes round-trip
+  el.style.setProperty('--sv-duration', '400ms', 'important')
+  el.style.setProperty('--sv-stagger', '60ms')
+
+  place(el, 300) // inside the band on the first frame: once latches and settles
+  track(el, { once: true })
+  pump()
+  assert.equal(el.vars['--sv-live'], '1', 'the once entry settled visible, so a re-track has an entrance to replay')
+
+  const stop = track(el, { once: true }) // the replay runs here
+  assert.equal(duringFlush.length, 1, 'exactly one forced style update, and it happened')
+  assert.equal(duringFlush[0].duration, '0s', 'the knob really was zeroed for the flush')
+  assert.equal(
+    duringFlush[0].durationPriority,
+    'important',
+    'and zeroed as !important, or an important sheet rule outranks the zero mid-replay'
+  )
+  assert.equal(duringFlush[0].stagger, '0s', 'the stagger too')
+  assert.equal(duringFlush[0].staggerPriority, 'important', 'and it too as !important')
+
+  assert.equal(el.vars['--sv-duration'], '400ms', 'the authored duration is back')
+  assert.equal(el.priorities['--sv-duration'], 'important', 'with the !important the author declared it at')
+  assert.equal(el.vars['--sv-stagger'], '60ms', 'and the authored stagger')
+  assert.equal(el.priorities['--sv-stagger'], '', 'which was normal, and stays normal')
+  stop()
+  delete global.getComputedStyle
+})
+
+test('driver: an entrance replay leaves no knob behind on an element that authored none (ADU-191)', async () => {
+  const { track } = await import('../dist/core/driver.js?replaynoknob')
+  const el = makeElement(400)
+  global.getComputedStyle = () => ({ opacity: '1', getPropertyValue: () => '' })
+  place(el, 300)
+  track(el, { once: true })
+  pump()
+  const stop = track(el, { once: true })
+  assert.ok(!('--sv-duration' in el.vars), 'the empty value removed the declaration instead of pinning 0s')
+  assert.ok(!('--sv-stagger' in el.vars), 'the stagger too')
+  assert.ok(!('--sv-duration' in el.priorities), 'and no orphan priority left in the declaration block')
+  stop()
+  delete global.getComputedStyle
 })
 
 test('driver: the reduced-motion listener falls back to addListener (MediaQueryList below Safari 14)', async () => {

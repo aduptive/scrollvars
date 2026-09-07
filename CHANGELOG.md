@@ -25,13 +25,29 @@
   the next frame reverses it from wherever it got to, measured 0.938, a dip
   rather than an entrance. `track()` now zeroes `--sv-duration` and
   `--sv-stagger` on the element, forces the update, and hands both knobs
-  back (an authored inline value included): the reset lands in one step with
-  no transition to reverse, and the entrance runs from a real 0 at the
-  authored duration and stagger. Only for an element the driver had settled
-  (released, or a settled `once`), so a first track pays nothing at boot,
-  and entrance CSS of your own that hard-codes its duration instead of
-  reading the knobs is not covered. Proved in Chrome by an e2e invariant,
-  red on the old engine (lowest opacity 1, no replay at all).
+  back with the priority they were authored at, `!important` included: the
+  reset lands in one step with no transition to reverse, and the entrance
+  runs from a real 0 at the authored duration and stagger. Only for an
+  element the driver had settled (released, or a settled `once`), so a first
+  track pays nothing at boot. Two shapes are not covered, and behave as they
+  did before: entrance CSS of your own that hard-codes its duration instead
+  of reading the knobs, and a knob declared on a DESCENDANT of the tracked
+  element rather than inherited from it (`<Item duration>`, `Split` and the
+  staggered-reveal pane all emit one that way), since a descendant's own
+  declaration beats an inherited value at any priority. Both keep the old
+  behaviour exactly: a 0.938 dip and reverse when the untrack and the track
+  sit a frame apart, no visible change at all when they sit in the same
+  tick. One narrow cost the other way: the knobs are inherited, so for the
+  single flush the zeroes reach every other consumer in the subtree, and an
+  unrelated transition created in that same tick (an accordion opened right
+  there and then) is created with duration 0 and snaps. Proved in Chrome by
+  an e2e invariant, red on the old engine (lowest opacity 1, no replay at
+  all), and by a unit test on the knob round trip, red on the old one
+  (`!important` dropped, so a sheet rule took the knob over permanently).
+  Left alone on purpose: the forced read cannot throw on a live element in
+  any browser, the re-scan's N style recalcs against the base's one are fine
+  at realistic N, and the stage lookup takes the first `.sv-stage` at any
+  depth, which no shipped page can reach.
 - Size, measured, because these are published numbers: both fixes take
   `track` (min+gzip) from 2.7 to 2.8 KB, `track` + `scan` from 3.7 to
   3.8 KB, the core entry from 6.6 to 6.7 KB, `scrollvars/react` from 12.0

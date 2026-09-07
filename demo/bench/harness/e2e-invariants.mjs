@@ -557,15 +557,22 @@ const MIN_EXAMINED = 1
 // now zeroes --sv-duration/--sv-stagger around that forced update and hands
 // them back, so the reset lands in one step and the entrance runs from a real
 // 0. The stagger has to come back with it, or every child arrives together.
+// The knob comes back with its PRIORITY too: getPropertyValue answers with the
+// value alone, so handing it back through a bare setProperty rewrote an
+// author's `!important` declaration as a normal one and any important sheet
+// rule took the knob over from there on, permanently. Hence the #knob section:
+// an inline important 400ms against a sheet rule at 3000ms important.
 {
   const page = await browser.newPage()
-  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}
+      #knob { --sv-duration: 3000ms !important }
+    </style></head>
     <body>
       <!-- tall enough, and offset enough, to sit inside the live band -->
       <section data-sv class="sv-auto" style="margin-top:20vh;min-height:40vh">
         <p id="first">first</p><p id="second">second</p>
       </section>
-      <section data-sv id="knob" style="--sv-duration:400ms;min-height:20vh"><p class="sv-rise">own duration</p></section>
+      <section data-sv id="knob" style="--sv-duration:400ms !important;min-height:20vh"><p class="sv-rise">own duration</p></section>
     </body></html>`)
   await page.addScriptTag({ content: SV_IIFE_JS })
   const r = await page.evaluate(async () => {
@@ -595,6 +602,11 @@ const MIN_EXAMINED = 1
       midSecond,
       finished: opacity('first'),
       authoredKnob: document.getElementById('knob').style.getPropertyValue('--sv-duration'),
+      // the cascade's answer, the only place the lost priority is visible:
+      // the sheet rule is important, so a normal inline declaration loses
+      knobWins: getComputedStyle(document.getElementById('knob'))
+        .getPropertyValue('--sv-duration')
+        .trim(),
       leftBehind: document.querySelector('.sv-auto').style.getPropertyValue('--sv-duration'),
     }
   })
@@ -619,6 +631,11 @@ const MIN_EXAMINED = 1
     're-track replay: the zeroed knobs are handed back, an authored inline one included',
     r.authoredKnob === '400ms' && r.leftBehind === '',
     `authored "${r.authoredKnob}", left behind "${r.leftBehind}"`
+  )
+  check(
+    're-track replay: the authored knob keeps its !important, so a sheet rule does not take it over (ADU-191)',
+    r.knobWins === '400ms',
+    `computed --sv-duration after the re-track: "${r.knobWins}"`
   )
   await page.close()
 }
