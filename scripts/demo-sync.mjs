@@ -31,8 +31,22 @@ export const between = (text, before, after, body, label) => {
   return text.replace(re, (m, a, b) => a + body + b)
 }
 
+/**
+ * Replaces a single regex match in `text`, throwing when it matches zero or
+ * more than one time (docs-stamp.mjs's spliceOne, this file's own copy,
+ * ADU-196: the version line used to run with no guard at all, worse than a
+ * "missing" throw: a bare `.replace()` reports success and writes the file
+ * back unchanged when the anchor moved).
+ */
+export const spliceOne = (text, re, replacement, label) => {
+  const matches = text.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`)) || []
+  if (matches.length > 1) throw new Error(`demo/index.html: ${label} is ambiguous, found ${matches.length} times`)
+  if (matches.length === 0) throw new Error(`demo/index.html: ${label} not found`)
+  return text.replace(re, replacement)
+}
+
 // Everything below only runs when this script is executed directly, not
-// when a test imports `between` above.
+// when a test imports `between`/`spliceOne` above.
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
 
@@ -114,7 +128,7 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   if (footerMatches.length > 1) throw new Error(`demo/index.html: footer size marker is ambiguous, found ${footerMatches.length} times`)
   if (!footer.test(html)) throw new Error('demo footer size marker not found (it drifted silently once; never again)')
   html = html.replace(footer, `<code>npm i scrollvars</code> · zero dependencies · driver ${driverKB} KB gzip · full core ${coreKB} KB ·`)
-  html = html.replace(/ · v[\d.]+ · MIT · /, ` · v${version} · MIT · `)
+  html = spliceOne(html, / · v[\d.]+ · MIT · /, ` · v${version} · MIT · `, 'version line')
 }
 
 // "fully animated" browser floor, two of five surfaces rendered from BROWSER_FLOOR

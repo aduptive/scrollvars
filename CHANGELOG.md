@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+### Tooling (ADU-196)
+- Three `.replace()` calls in `scripts/docs-stamp.mjs` (README's total size
+  stamp, README's slider module size stamp) and `scripts/demo-sync.mjs`
+  (`demo/index.html`'s version line) ran with no guard at all: worse than
+  the "missing anchor" case ADU-195 already covered, since a bare
+  `.replace()` that matches zero times reports success and silently writes
+  the target file back unchanged, the old number still on the page. A
+  sweep of every other `.replace()`/`.match()` in `scripts/` for the same
+  defect found two more in `docs-stamp.mjs` (AGENTS.md's two styles-import
+  lines) and two in `scripts/bench-tables.mjs` (the bench page's runner
+  config bundle size, the README/AGENTS "less bundle" ratio sentence), all
+  fixed the same way. `docs-stamp.mjs` and `demo-sync.mjs` gain a
+  `spliceOne()` (throws on zero or more than one match, ADU-195's
+  `floorRow()` shape generalized to a plain regex); `bench-tables.mjs`
+  gains `spliceAll()`, which throws only on zero matches since a repeat is
+  the intended shape there (the same bundle size legitimately repeats
+  across three runner-config entries, the same ratio across README and
+  AGENTS). `bench-tables.mjs` also gained the `isMain` guard the other two
+  scripts already had, so `spliceAll()` can be imported by a test without
+  running the whole script's file I/O.
+- Fix pass on the above: the audit that closed this ticket was itself
+  incomplete on two counts. `spliceAll()`'s "at least one" check accepted
+  PARTIAL coverage: on the bench page's three-entry runner config, breaking
+  one of the three matches (a moved anchor, a stray quote) still exited 0,
+  with the other two silently rewritten and the third silently left stale.
+  It now takes the caller's own expected count (3 for the runner config)
+  and throws on anything else. The README/AGENTS "less bundle" ratio
+  sentence never shared that repeat shape, it runs once per file and
+  expects exactly one match each, so it moves to `spliceOne()` instead:
+  an accidental second mention in either file now throws rather than
+  being double-patched. And "every other regex-driven write in `scripts/`
+  was audited and is already guarded" was false: four more calls sat
+  beside the ones that were fixed, each guarded less than that sentence
+  claimed. Unlike the five above, which had no guard at all, these did
+  check for a missing anchor, then wrote through a bare non-global
+  `.replace()`: an ambiguous anchor silently patched the first match and
+  left the rest stale, the narrower case ADU-195 exists to close. They are
+  README's per-style styles-import loop, README's intro sizes sentence,
+  and AGENTS's "Fully animated" browser-floor headline in
+  `docs-stamp.mjs`, and the bench page's `h1` headline and body ratio
+  claim in `bench-tables.mjs`. All four now go through `spliceOne()`.
+  `scripts/fx-render.mjs`'s `fxsticky` class splice stays a no-op for
+  Section previews that are not pin-based (hero-cinematic, stats-countup
+  render no `.sv-stage` by design), but is no longer unconditional: a
+  pin-based Section (`requires.styles` includes `pin`) that loses its
+  `.sv-stage` now throws instead of silently shipping without it. No
+  output changes: `npm run demo:sync` produces a byte-identical tree.
+
 ### Tooling (ADU-195)
 - The anchor splices in `scripts/docs-stamp.mjs` and `scripts/demo-sync.mjs`
   (`between()`, `stamp()`, `floorRow()`, and every regex-based row splice in
