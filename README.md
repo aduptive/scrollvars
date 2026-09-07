@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 6.7 KB, styles 9.0 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 6.7 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
 
 ## Why
 
@@ -361,10 +361,13 @@ so re-tracking is what replays the entrance there instead. A settled
 released, so the class trick alone cannot replay it there; re-tracking
 still can, exactly as on a tracked element. Two shapes it cannot replay:
 entrance CSS of your own that hard-codes its duration instead of reading
-`--sv-duration`/`--sv-stagger`, and a knob declared on a DESCENDANT rather
-than inherited from the tracked element, which is what the kit's own
-`<Item duration>` and `<Split>` emit; both dip and reverse instead of
-entering. `:has()` puts
+`--sv-duration`/`--sv-stagger`, and `--sv-duration` or `--sv-stagger`
+declared on a DESCENDANT rather than inherited from the tracked element,
+which is what `<Item duration>` and `<Split duration>` emit (a bare
+`<Split>`, or a descendant `--sv-order`/`--sv-distance`, replays fine).
+Neither one enters: re-tracked from a plain task (a click handler, an
+effect body) nothing visibly changes, and from inside a rAF callback they
+dip and reverse instead. `:has()` puts
 state anywhere (`body:has(#tab-2:checked) .panel-2`); the Popover API
 opens/closes with zero JS. One-shot intros on load are plain CSS keyframes.
 Timed multi-act sequences are `sv-acts` (above); branching, physics or
@@ -459,9 +462,9 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
 registered property (`@property`, `initial-value: 1`), so an engine that
 can't compute the division resolves it to that initial value instead of
-turning invalid; the `var(--sv-r, 1)` you write is a backstop for engines
-without `@property` at all, not the reason older engines settle at the end
-state. The JS twin is
+turning invalid; the `var(--sv-r, 1)` you write is habit, not the reason
+older engines settle at the end state, and never fires on your range
+children either way, since `--sv-r` is always set. The JS twin is
 `mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
 WebGL uniforms). Overlapping ranges are fine: that is the point.
 
