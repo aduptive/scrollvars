@@ -54,7 +54,8 @@
     "pretest": "npm run build",
     "dev": "tsc -w",
     "test": "node --test test/",
-    "test:e2e": "cd demo/bench/harness && npm i --silent && node e2e-invariants.mjs",
+    "test:react18": "npm run build && node scripts/react18-install.mjs && node scripts/react18-tsc.mjs && node --import ./scripts/react18-register.mjs --test test/react.test.mjs test/cli-components.test.mjs",
+    "test:e2e": "node scripts/react18-install.mjs && cd demo/bench/harness && npm i --silent && node e2e-invariants.mjs",
     "prepublishOnly": "npm run build && npm test",
     "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/bench-tables.mjs && node scripts/docs-stamp.mjs && node scripts/docs-build.mjs",
     "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"

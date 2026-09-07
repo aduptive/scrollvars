@@ -143,35 +143,24 @@
   <h1>Cinematic hero</h1>
   <p class="tag">Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).</p>
   <p class="meta"><b>Use it for:</b> Landing pages, studio reels, product launches. The first fold that has to land.<br><b>Knobs:</b> --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video</p>
-  <style>
-.sv-hero { position: relative; min-height: 86vh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; padding: 0; }
-.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  <section class="sv-hero fxstage"><style>
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; }
+.sv-hero .hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
   translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
-.hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
-.hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
-.hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
-@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
-.hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
-.hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
-.hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
-.hero-cta { display: inline-block; padding: 12px 22px; border-radius: 999px; background: var(--accent); color: #121118; font-weight: 700; text-decoration: none; }
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid var(--line); font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.hero-strip span { margin: 0 18px; }
-</style>
-<section data-sv data-sv-travel class="sv-hero fxstage" id="fxhero" style="--sv-stagger: 70ms">
-  <div class="hero-orb a"></div><div class="hero-orb b"></div>
-  <div class="hero-inner">
-    <p class="hero-eyebrow sv-rise">Studio · 2026 reel</p>
-    <h3 class="hero-title sv-split-rise" data-sv-split>Sites that move with intent</h3>
-    <p class="hero-sub sv-rise" data-sv-order="6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p>
-    <p class="sv-rise" data-sv-order="7"><a class="hero-cta" href="#">See the work</a></p>
-  </div>
-  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
-    <span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span>
-  </div></div>
-</section>
-<script>addEventListener('load', () => SV.trackPointer(document.getElementById('fxhero'), { selector: '.sv-hero' }))</script>
+.sv-hero .hero-orb.a { background: var(--hero-glow, #a78bfa); top: -14%; left: -8%; }
+.sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
+.sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+.sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
+.sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
+.sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip span { margin: 0 18px; }
+</style><div class="hero-orb a"></div><div class="hero-orb b"></div><div class="sv"><div class="hero-inner"><p class="hero-eyebrow sv-rise">Studio · 2026 reel</p><h1 class="sv-split hero-title sv-split-rise" style="--sv-count:5"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Sites that move with intent</span><span aria-hidden="true" style="--sv-order:0">Sites</span> <span aria-hidden="true" style="--sv-order:1">that</span> <span aria-hidden="true" style="--sv-order:2">move</span> <span aria-hidden="true" style="--sv-order:3">with</span> <span aria-hidden="true" style="--sv-order:4">intent</span></h1><p class="hero-sub sv-rise" style="--sv-order:6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p><p class="sv-rise" style="--sv-order:7">See the work</p></div></div><div class="sv-marquee hero-strip"><div class="sv-marquee-track"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span><span class="sv-marquee-dup" aria-hidden="true" inert=""><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span></div></div></section>
+<script>addEventListener('load', () => {
+  SV.track(document.querySelector('.sv-hero > .sv'), { travel: true })
+  SV.trackPointer(document.querySelector('.sv-hero'), { selector: '.sv-hero' })
+})</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -180,9 +169,13 @@
   <div class="code">
     <button class="copy">copy</button>
     <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]"&gt;
+  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&amp;_.inner]:[opacity:1] motion-reduce:[&amp;_.inner]:[scale:none]"&gt;
+  &lt;!-- the motion-reduce override is written on the section, same [&amp;_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order --&gt;
   &lt;div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"&gt;&lt;/div&gt;
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"&gt;&lt;/div&gt;
   &lt;div class="inner text-center"&gt;
     &lt;p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400"&gt;Eyebrow&lt;/p&gt;
     &lt;h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
@@ -201,7 +194,7 @@
   &lt;/div&gt;
   &lt;div class="sv-marquee hero-strip"&gt;&lt;div class="sv-marquee-track"&gt;
     &lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;
-    &lt;span aria-hidden="true" style="display:contents"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/span&gt;
+    &lt;span class="sv-marquee-dup" aria-hidden="true"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/span&gt;
   &lt;/div&gt;&lt;/div&gt;
 &lt;/section&gt;
 &lt;script&gt;SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })&lt;/script&gt;   &lt;!-- --mx/--my (-1..1) on the section itself --&gt;
@@ -237,7 +230,7 @@ function Hero() {
 }
 // npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

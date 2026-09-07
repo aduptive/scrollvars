@@ -165,16 +165,26 @@
      style attr, works with mapped CMS content, adds zero global CSS.
      Also fine: [--sv-order:1] arbitrary classes for static one-offs;
      sv-stagger on the parent for sequential lists (no attrs at all). --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; gets .sv-live in the band --&gt;
+    <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; sets --sv-live in the band --&gt;
   &lt;h2 class="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p class="sv-rise" style="--sv-order: 1"&gt;Copy&lt;/p&gt;
 &lt;/section&gt;
 
 /* needs styles/core.css (or paste the preset): */
-.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+.sv-on .sv .sv-rise { opacity: var(--sv-live);
+  translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
-.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }</code></pre>
+
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}</code></pre>
     <pre data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
   &lt;h2&gt;Title&lt;/h2&gt;
   &lt;p&gt;Copy&lt;/p&gt;
@@ -186,7 +196,7 @@
   &lt;Item order={1} effect="slide-l" distance="4rem"&gt;second&lt;/Item&gt;
 &lt;/Reveal&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

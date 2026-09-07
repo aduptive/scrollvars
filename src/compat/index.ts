@@ -10,14 +10,35 @@
  *
  *   - ResizeObserver missing (Safari < 13.1): a window-resize-backed stub:
 *     re-measures on viewport changes (misses pure content growth; the page
- *     still works, call `refresh()` after big DOM swaps if needed).
+ *     still works, call `refresh()` after big DOM swaps if needed). Its
+ *     `contentRect` is measured from the layout box, like the native
+ *     observer, so an ancestor `transform: scale()` never inflates it.
  *   - IntersectionObserver missing (Safari < 12.1): an always-visible stub:
 *     the canvas harness simply never auto-pauses offscreen.
  *   - Individual transform properties missing (`translate:`, Chrome < 104,
  *     Firefox < 72, Safari < 14.1): injects a fallback stylesheet that
- *     re-expresses the presets with `transform:`. Written without :is(),
- *     clamp() or min() so the old parser accepts it. sv-reading falls back
- *     to fully-visible text; sv-counter and sv-view-* stay progressive.
+ *     re-expresses with `transform:` the same presets README lists:
+ *     sv-rise, sv-fade, sv-slide-l, sv-slide-r, sv-auto (its auto-ordered
+ *     children), sv-drift, sv-curtain-l, sv-curtain-r, sv-rail.
+ *     Written without :is(), clamp() or min() so the old parser accepts
+ *     it; the one max() left, drift's fade, sits behind a plain opacity
+ *     declaration that parser keeps. Two presets stay static, one
+ *     reason each:
+ *       sv-deck, unstacked here to a static, non-overlapping layout
+ *         because its fly-away slice needs clamp();
+ *       sv-spread, no fallback rule, its selector parses fine and
+ *         there is simply no translate/rotate left to apply.
+ *     sv-split-rise has no fallback rule either, but its floor is not
+ *     one line: below :is() support the rule is dropped whole and it
+ *     is fully static, above it the opacity declaration still
+ *     transitions, so it fades in without rising.
+ *     sv-reading falls back to fully-visible text; sv-counter and
+ *     sv-view-* stay progressive.
+ *     Installing the sheet also marks <html> with data-sv-compat: the pin
+ *     presets above animate from --sv-pin, so styles/pin.css keeps the
+ *     stage pinned and the driver keeps writing the tall wrapper height
+ *     instead of releasing both, which is what a page with no compat()
+ *     wants down here.
  *
  * Syntax floor stays the consumer's job: the dist ships ES2020; if you must
  * PARSE on very old engines, let your bundler downlevel it (Next.js already
@@ -49,16 +70,98 @@ const FALLBACK_CSS = `
 .sv .sv-curtain-r { transform: translateX(calc(var(--sv-pin, 0) * 101%)); }
 .sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * (100vw - 100%))); }
 .sv .sv-reading > * { opacity: 1; }
+/* The fly-away slice (--sv-slice, pin.css) is bounded 0..1 by a comparison
+   function; below the floor that function ships on, it is unparseable and
+   drops the whole transform, which leaves every card stacked in pin.css's
+   shared grid cell (sv-deck's stacking mechanism, not the transform).
+   Unstack statically instead: no comparison function needed, no animation
+   either. */
+.sv .sv-deck { display: block; }
+.sv .sv-deck > * { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),
-  .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail {
+  .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail,
+  .sv .sv-deck > * {
     opacity: 1;
     transform: none;
     transition: none;
   }
 }
 `
+
+interface RoEntryStub {
+  target: Element
+  contentRect: { width: number; height: number }
+  contentBoxSize: Array<{ inlineSize: number; blockSize: number }>
+}
+
+// Content box in CSS pixels, from the LAYOUT box like a real
+// ResizeObserverEntry: clientWidth/clientHeight exclude the border and
+// include the padding, so one padding subtraction is the content box.
+// getBoundingClientRect() is the PAINT box and scales with an ancestor
+// `transform: scale()`: a canvas under `scale(2)` reported a doubled
+// content box and settled its backing store there forever. clientWidth is
+// transform-immune, which is why the canvas harness's causal probe reads
+// it too. The cost is rounding to whole pixels, where a native contentRect
+// keeps fractions.
+function measureContentRect(el: Element) {
+  const style = window.getComputedStyle(el)
+  const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+  const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+  return {
+    width: Math.max(0, (el as HTMLElement).clientWidth - paddingX),
+    height: Math.max(0, (el as HTMLElement).clientHeight - paddingY),
+    // contentBoxSize is logical, contentRect physical: a vertical writing
+    // mode runs the inline axis down the block box, swapping the two.
+    vertical: (style.writingMode || '').indexOf('vertical') === 0,
+  }
+}
+
+function measureEntry(el: Element): RoEntryStub {
+  const { width, height, vertical } = measureContentRect(el)
+  return {
+    target: el,
+    contentRect: { width, height },
+    contentBoxSize: [
+      vertical ? { inlineSize: height, blockSize: width } : { inlineSize: width, blockSize: height },
+    ],
+  }
+}
+
+// viewport-resize-backed stand-in: enough for the driver's re-measures.
+// Ships a contentRect/contentBoxSize on every entry (mountEffect's
+// measureLayout() reads entry.contentRect.width/height directly and would
+// throw on a bare `{ target }` record).
+function makeResizeObserverStub() {
+  return class ResizeObserverStub {
+    private cb: (entries: RoEntryStub[]) => void
+    private els = new Set<Element>()
+    private fire: () => void
+    constructor(cb: (entries: RoEntryStub[]) => void) {
+      this.cb = cb
+      this.fire = () => {
+        const entries: RoEntryStub[] = []
+        this.els.forEach((el) => entries.push(measureEntry(el)))
+        this.cb(entries)
+      }
+      window.addEventListener('resize', this.fire)
+      window.addEventListener('orientationchange', this.fire)
+    }
+    observe(el: Element) {
+      this.els.add(el)
+      this.cb([measureEntry(el)]) // like the real one: an initial observation
+    }
+    unobserve(el: Element) {
+      this.els.delete(el)
+    }
+    disconnect() {
+      this.els.clear()
+      window.removeEventListener('resize', this.fire)
+      window.removeEventListener('orientationchange', this.fire)
+    }
+  }
+}
 
 /** Apply the patches this browser needs. Returns true if anything was patched. */
 export function compat(): boolean {
@@ -67,35 +170,7 @@ export function compat(): boolean {
   const w = window as any
 
   if (!('ResizeObserver' in w)) {
-    // viewport-resize-backed stand-in: enough for the driver's re-measures
-    class ResizeObserverStub {
-      private cb: (entries: Array<{ target: Element }>) => void
-      private els = new Set<Element>()
-      private fire: () => void
-      constructor(cb: (entries: Array<{ target: Element }>) => void) {
-        this.cb = cb
-        this.fire = () => {
-          const entries: Array<{ target: Element }> = []
-          this.els.forEach((el) => entries.push({ target: el }))
-          this.cb(entries)
-        }
-        window.addEventListener('resize', this.fire)
-        window.addEventListener('orientationchange', this.fire)
-      }
-      observe(el: Element) {
-        this.els.add(el)
-        this.cb([{ target: el }]) // like the real one: an initial observation
-      }
-      unobserve(el: Element) {
-        this.els.delete(el)
-      }
-      disconnect() {
-        this.els.clear()
-        window.removeEventListener('resize', this.fire)
-        window.removeEventListener('orientationchange', this.fire)
-      }
-    }
-    w.ResizeObserver = ResizeObserverStub
+    w.ResizeObserver = makeResizeObserverStub()
     patched = true
   }
 
@@ -124,6 +199,13 @@ export function compat(): boolean {
     style.setAttribute('data-sv-compat', '')
     style.textContent = FALLBACK_CSS
     document.head.appendChild(style)
+    // The same marker on <html>, where the rest of the package can see it.
+    // styles/pin.css releases `.sv-stage` below this floor and the driver's pin
+    // helper withholds the tall wrapper height there, both right for a page
+    // that animates nothing down here. The rules above DO animate, from
+    // --sv-pin, which is computed from that skeleton: the marker is how those
+    // two releases know to stand down.
+    document.documentElement.setAttribute('data-sv-compat', '')
     patched = true
   }
 

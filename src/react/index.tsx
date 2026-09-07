@@ -30,31 +30,46 @@ import { splitParts } from '../core/split.js'
  */
 /** Inline, runs before first paint when <ScrollVarsBoot /> is the first child of <body>:
  * adds html.sv-on immediately (no flash of visible-then-hidden content) and removes
- * it again if the driver has not booted within 3s, so a broken bundle still fails visible. */
+ * it again if the driver has not booted within 3s, so a broken bundle still fails visible.
+ * Once released the release is final: a driver that arrives at 4s (slow network, a
+ * bundle behind a long task) would add sv-on back and send every offscreen entrance to
+ * opacity 0, so content the visitor is already reading disappears. The observer costs
+ * nothing on the normal path, it is only installed when the watchdog has fired. */
 const PREPAINT =
   "(function(){try{if(!('IntersectionObserver'in window&&'ResizeObserver'in window))return;" +
   "var h=document.documentElement;h.classList.add('sv-on');" +
-  "setTimeout(function(){if(!window.__scrollvars)h.classList.remove('sv-on')},3000)}catch(e){}})()"
+  "setTimeout(function(){if(window.__scrollvars)return;h.classList.remove('sv-on');" +
+  "new MutationObserver(function(){if(h.classList.contains('sv-on'))h.classList.remove('sv-on')})" +
+  ".observe(h,{attributes:true,attributeFilter:['class']})},3000)}catch(e){}})()"
 
-export const ScrollVarsBoot: React.FC = () => {
+export interface ScrollVarsBootProps {
+  /** CSP nonce, forwarded to the pre-paint script tag. Required under a
+   * strict `script-src` that has no `'unsafe-inline'`. */
+  nonce?: string
+}
+
+export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce }) => {
   useEffect(() => {
     const stopScan = scan()
     const stopToggles = toggles()
     // dev convenience: ?sv-debug mounts the overlay (code-split. Costs
     // nothing unless the flag is present)
     let stopDebug: (() => void) | undefined
+    let disposed = false
     if (new URLSearchParams(location.search).has('sv-debug')) {
       import('../debug/index.js').then((m) => {
+        if (disposed) return
         stopDebug = m.debug()
       })
     }
     return () => {
+      disposed = true
       stopScan()
       stopToggles()
       stopDebug?.()
     }
   }, [])
-  return <script dangerouslySetInnerHTML={{ __html: PREPAINT }} />
+  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
 /** React 19 knows `inert` as a boolean attribute (a string would be dropped as falsy); React 18
@@ -64,14 +79,67 @@ const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true })
 type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
 
 /**
+ * A ref whose `current` is an accessor instead of a plain field. React's
+ * commit phase treats any object with a `current` property as an object
+ * ref (`ref.current = node` on attach, `ref.current = null` on detach,
+ * duck-typed, unchanged between React 18 and 19), so the setter itself
+ * runs `attach`/cleanup instead of an effect keyed on the ref's identity.
+ * A mount-effect alone misses a target that appears after the initial
+ * render (conditional render, a node swapped for a new one): the setter
+ * catches it the moment React assigns it. `attach` is read through a ref
+ * so it always runs with the latest options; `deps` changing re-runs it
+ * against the node already attached, so option changes still re-track.
+ * The returned object is typed as `React.RefObject<T>` so it drops
+ * straight into `ref={...}` like any other ref.
+ */
+function useAttachedRef<T extends HTMLElement>(
+  attach: (node: T) => (() => void) | void,
+  deps: React.DependencyList
+): React.RefObject<T> {
+  const nodeRef = useRef<T | null>(null)
+  const cleanupRef = useRef<(() => void) | undefined>(undefined)
+  const attachRef = useRef(attach)
+  attachRef.current = attach
+
+  const retrack = useCallback((node: T | null) => {
+    cleanupRef.current?.()
+    cleanupRef.current = undefined
+    nodeRef.current = node
+    if (node) cleanupRef.current = attachRef.current(node) ?? undefined
+  }, [])
+
+  const [ref] = useState<React.RefObject<T>>(() =>
+    Object.defineProperty({}, 'current', {
+      get: () => nodeRef.current,
+      set: retrack,
+      enumerable: true,
+      configurable: true,
+    }) as React.RefObject<T>
+  )
+
+  // deps changed while a node is already attached (no re-mount): retrack
+  // it with the latest options. Skips the very first run, the setter
+  // above already attached the initial node with these same options.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
+    if (nodeRef.current) retrack(nodeRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+
+  return ref
+}
+
+/**
  * Track an element with the scroll driver.
  * No React state is touched on scroll. Values land as CSS variables.
  */
 export function useTrack<T extends HTMLElement = HTMLDivElement>(
   options: TrackOptions = {}
-) {
-  const ref = useRef<T>(null)
-
+): React.RefObject<T> {
   // latest-ref pattern: callbacks never force a re-track
   const callbacksRef = useRef<Callbacks>({})
   callbacksRef.current = {
@@ -86,30 +154,29 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
   const hasSceneCb = !!options.onScene
   const hasPinCb = !!options.onPin
 
-  useEffect(() => {
-    if (!ref.current) return
-    return track(ref.current, {
-      view,
-      travel,
-      scenes,
-      snap,
-      once,
-      pin,
-      root,
-      enter,
-      exit,
-      onLive: (live) => callbacksRef.current.onLive?.(live),
-      onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
-      onTravel: hasTravelCb
-        ? (t) => callbacksRef.current.onTravel?.(t)
-        : undefined,
-      onPin: hasPinCb
-        ? (p) => callbacksRef.current.onPin?.(p)
-        : undefined,
-    })
-  }, [view, travel, scenes, snap, once, pin, root, enter, exit, hasSceneCb, hasTravelCb, hasPinCb])
-
-  return ref
+  return useAttachedRef<T>(
+    (node) =>
+      track(node, {
+        view,
+        travel,
+        scenes,
+        snap,
+        once,
+        pin,
+        root,
+        enter,
+        exit,
+        onLive: (live) => callbacksRef.current.onLive?.(live),
+        onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
+        onTravel: hasTravelCb
+          ? (t) => callbacksRef.current.onTravel?.(t)
+          : undefined,
+        onPin: hasPinCb
+          ? (p) => callbacksRef.current.onPin?.(p)
+          : undefined,
+      }),
+    [view, travel, scenes, snap, once, pin, root, enter, exit, hasSceneCb, hasTravelCb, hasPinCb]
+  )
 }
 
 /**
@@ -270,6 +337,14 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
   options: Omit<TrackOptions, 'scenes' | 'onScene'> = {}
 ) {
   const [scene, setScene] = useState(0)
+  // A shrinking count strands the last index: the driver emits nothing at
+  // all when scenes <= 1, so a 5 → 1 change would keep reporting scene 4
+  // and every consumer would treat the only scene as past. Clamp here, on
+  // the render that sees the new count, instead of waiting for an event
+  // that never comes.
+  const last = Math.max(count - 1, 0)
+  if (scene > last) setScene(last)
+  const current = Math.min(scene, last)
 
   const ref = useTrack<T>({
     ...options,
@@ -284,7 +359,7 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     [count, options.root]
   )
 
-  return { ref, scene, goTo }
+  return { ref, scene: current, goTo }
 }
 
 export interface ScenesProps extends Omit<TrackProps, 'scenes' | 'children'> {
@@ -399,7 +474,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   ...rest
 }) => {
   const { ref, scene, goTo } = useScenes(count, {
-    pin: pin === false ? undefined : (height ?? `${count * 100}vh`),
+    pin: typeof pin === 'string' ? pin : pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
     enter,
     exit,
@@ -435,17 +510,14 @@ export const Scenes: React.FC<ScenesProps> = ({
  * Mount a canvas effect (see `scrollvars/canvas`). Callbacks follow the
  * latest-ref pattern. Changing them never remounts the effect.
  */
-export function useCanvasEffect(options: EffectOptions) {
-  const ref = useRef<HTMLCanvasElement>(null)
-
+export function useCanvasEffect(options: EffectOptions): React.RefObject<HTMLCanvasElement> {
   const optionsRef = useRef(options)
   optionsRef.current = options
 
   const { dprCap, autoPause, context } = options
 
-  useEffect(() => {
-    if (!ref.current) return
-    const handle = mountEffect(ref.current, {
+  return useAttachedRef<HTMLCanvasElement>((node) => {
+    const handle = mountEffect(node, {
       dprCap,
       autoPause,
       context,
@@ -453,10 +525,8 @@ export function useCanvasEffect(options: EffectOptions) {
       frame: (fx, dt) => optionsRef.current.frame(fx, dt),
       resize: (fx) => optionsRef.current.resize?.(fx),
     })
-    return handle.destroy
+    return () => handle.destroy()
   }, [dprCap, autoPause, context])
-
-  return ref
 }
 
 /**
@@ -466,26 +536,30 @@ export function useCanvasEffect(options: EffectOptions) {
  * `--sd` / `.sv-active` for pure-CSS animation.
  */
 export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
-  const ref = useRef<HTMLDivElement>(null)
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
   const { snap, drag, duration, axis } = options
   const onScrollRef = useRef(options.onScroll)
   onScrollRef.current = options.onScroll
 
-  useEffect(() => {
-    if (!ref.current) return
-    const handle = slider(ref.current, {
-      snap,
-      drag,
-      duration,
-      axis,
-      onSlide: setActive,
-      onScroll: (state) => onScrollRef.current?.(state),
-    })
-    handleRef.current = handle
-    return handle.destroy
-  }, [snap, drag, duration, axis])
+  const ref = useAttachedRef<HTMLDivElement>(
+    (node) => {
+      const handle = slider(node, {
+        snap,
+        drag,
+        duration,
+        axis,
+        onSlide: setActive,
+        onScroll: (state) => onScrollRef.current?.(state),
+      })
+      handleRef.current = handle
+      return () => {
+        handleRef.current = null
+        handle.destroy()
+      }
+    },
+    [snap, drag, duration, axis]
+  )
 
   const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
   const prev = useCallback((smooth?: boolean) => handleRef.current?.prev(smooth), [])
@@ -506,17 +580,56 @@ const BREAKPOINTS: Record<string, number> = {
 }
 
 /** Media-query CSS for a responsive perView map. Breakpoints ARE media
- * queries here (Tailwind-style keys or raw min-width numbers). */
+ * queries here (Tailwind-style keys or raw min-width numbers).
+ * Every interpolated part is coerced with Number(): this string goes into a
+ * <style> through dangerouslySetInnerHTML, where React's `</style` escaping
+ * no longer covers it, and perView can come from untyped data. A NaN renders
+ * a declaration the CSS parser drops, never markup. */
 function perViewCss(scope: string, perView: Record<string, number>): string {
   let css = ''
   const entries = Object.entries(perView)
     .filter(([key]) => key !== 'base')
     .sort(([a], [b]) => (BREAKPOINTS[a] ?? Number(a)) - (BREAKPOINTS[b] ?? Number(b)))
-  if ('base' in perView) css += `${scope}{--sv-per-view:${perView.base}}`
+  if ('base' in perView) css += `${scope}{--sv-per-view:${Number(perView.base)}}`
   for (const [key, value] of entries) {
-    css += `@media (min-width:${BREAKPOINTS[key] ?? Number(key)}px){${scope}{--sv-per-view:${value}}}`
+    // Number(BREAKPOINTS[key] ?? key), not BREAKPOINTS[key] ?? Number(key):
+    // a key like "constructor" hits Object.prototype and would interpolate a
+    // function's source
+    const min = Number(BREAKPOINTS[key] ?? key)
+    css += `@media (min-width:${min}px){${scope}{--sv-per-view:${Number(value)}}}`
   }
   return css
+}
+
+/**
+ * Everything the rail renders, fragments opened, in render order. What the
+ * ENGINE counts is the elements in it, which is what `Children.count` gets
+ * wrong: a conditional slide (`{show && <Slide/>}`) counts as one and renders
+ * none, a fragment counts as one and renders its children, and `cloneElement`
+ * on a Fragment drops role and aria-* on the floor. One list feeds rendering,
+ * counting and annotation, so the dots, the labels and the engine agree.
+ * A child COMPONENT that itself returns a fragment still counts as one slide:
+ * only rendering could tell, and the engine reads the real DOM anyway.
+ * A child that is not an element (a bare string, a portal) stays in the list
+ * untouched: it can carry no annotation and the engine cannot count it, but
+ * dropping it would delete content the caller wrote. A portal in particular
+ * renders somewhere else entirely, and `toArray().filter(isValidElement)`
+ * would have removed it from the document.
+ */
+function slideList(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  return React.Children.toArray(children).flatMap((child): React.ReactNode[] => {
+    if (!React.isValidElement<Record<string, unknown>>(child)) return [child]
+    // toArray keys each level from ".0", so a fragment's children would
+    // collide with their uncles without the parent's key in front. The
+    // separator is `:` because React escapes `:` (to `=2`) in an element key
+    // and never leaves a bare one behind, while `.` and `$` pass through
+    // untouched: joined on those, <Fragment key="a"><b/></Fragment> and a
+    // sibling keyed "a.$b" both flatten to ".$a.$b".
+    const key = prefix ? `${prefix}:${child.key ?? ''}` : (child.key ?? '')
+    if (child.type === React.Fragment)
+      return slideList((child.props as { children?: React.ReactNode }).children, key)
+    return [key === child.key ? child : React.cloneElement(child, { key })]
+  })
 }
 
 export interface SliderComponentProps
@@ -577,13 +690,18 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       className,
       style,
       children,
+      // pulled out of rest so the spread cannot replace autoplay's hover
+      // pause: both are public props on HTMLAttributes
+      onPointerEnter,
+      onPointerLeave,
       ...rest
     },
     apiRef
   ) {
     const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis })
     const uid = React.useId()
-    const count = React.Children.count(children)
+    const items = slideList(children)
+    const count = items.filter(React.isValidElement).length
 
     React.useImperativeHandle(
       apiRef,
@@ -604,7 +722,13 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
             dragging: false,
             gliding: false,
           },
-        destroy: () => handle.current?.destroy(),
+        // dropping the ref is half the fix: the autoplay interval below keeps
+        // firing on its own schedule, but its callback reads handle.current
+        // on every tick and early-returns as a no-op the moment it is null
+        destroy: () => {
+          handle.current?.destroy()
+          handle.current = null
+        },
       }),
       []
     )
@@ -660,23 +784,30 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       }
     }, [autoplay, handle, ref])
 
-    const scope = `[data-sv-uid="${uid}"] .sv-slider`
+    // a child combinator, not a descendant one: the rail of a slider nested
+    // inside a slide is a descendant of this shell too, and a descendant scope
+    // declares --sv-per-view right on it, where the inner shell's own rule can
+    // no longer be inherited past it
+    const scope = `[data-sv-uid="${uid}"] > .sv-slider`
     const styleVars: Record<string, string | number> = {}
     if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
     const rotating = !!autoplay && autoplay > 0 && !paused
     // APG slide semantics without breaking layout: annotate each child in
-    // place (no wrapper, sv-cols and --sv-span target direct children)
-    const slides = React.Children.map(children, (child, i) =>
-      React.isValidElement<Record<string, unknown>>(child)
-        ? React.cloneElement(child, {
-            role: (child.props.role as string) ?? 'group',
-            'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
-            'aria-label': child.props['aria-label'] ?? `${i + 1} of ${count}`,
-          })
-        : child
-    )
+    // place (no wrapper, sv-cols and --sv-span target direct children).
+    // The position is counted over elements only: whatever else is in the
+    // list renders where the caller put it and is not a slide.
+    let position = 0
+    const slides = items.map((child) => {
+      if (!React.isValidElement<Record<string, unknown>>(child)) return child
+      position += 1
+      return React.cloneElement(child, {
+        role: (child.props.role as string) ?? 'group',
+        'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
+        'aria-label': child.props['aria-label'] ?? `${position} of ${count}`,
+      })
+    })
 
     return (
       <div
@@ -687,11 +818,24 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         className={className ? `sv-slider-shell ${className}` : 'sv-slider-shell'}
         data-sv-uid={uid}
         style={{ ...style, ...styleVars } as React.CSSProperties}
-        onPointerEnter={() => (hovering.current = true)}
-        onPointerLeave={() => (hovering.current = false)}
         {...rest}
+        onPointerEnter={(event) => {
+          hovering.current = true
+          onPointerEnter?.(event)
+        }}
+        onPointerLeave={(event) => {
+          hovering.current = false
+          onPointerLeave?.(event)
+        }}
       >
-        {perView && typeof perView === 'object' && <style>{perViewCss(scope, perView)}</style>}
+        {perView && typeof perView === 'object' && (
+          // raw text, not a child: react-dom 18 escapes `"` to `&quot;` inside
+          // a <style>, and a raw-text entity never decodes, so the quoted uid
+          // scope would drop every rule on the server. The raw sink also drops
+          // React's `</style` escaping, so perViewCss coerces every value it
+          // interpolates. Same CSP story as any inline <style>.
+          <style dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
+        )}
         {!!autoplay && autoplay > 0 && (
           <button
             type="button"
@@ -790,7 +934,7 @@ export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, child
   >
     <div className="sv-marquee-track">
       {children}
-      <span aria-hidden="true" {...INERT} style={{ display: 'contents' }}>
+      <span className="sv-marquee-dup" aria-hidden="true" {...INERT}>
         {children}
       </span>
     </div>
@@ -832,18 +976,69 @@ export interface ModalProps extends React.DialogHTMLAttributes<HTMLDialogElement
 /** Native <dialog> + the sv-pop entry/exit preset. */
 export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children, ...rest }) => {
   const ref = useRef<HTMLDialogElement>(null)
+  // Rendered, so a modal that starts open IS open in the server markup and
+  // stays open before hydration and without JS (README: open ones open).
+  // Frozen at the first render on purpose: from mount on the effect owns the
+  // attribute, and React writing it would strip `open` off a modal dialog
+  // without taking it out of the top layer, leaving an invisible dialog that
+  // still blocks the page.
+  const initialOpen = useRef(open).current
+  // Whether THIS effect already promoted the dialog into the top layer.
+  const promoted = useRef(false)
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    if (open && !dialog.open) typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', '')
-    else if (!open && dialog.open) dialog.close()
+    // Branch once on real <dialog> support. Without it the element is
+    // unknown: `dialog.open` is undefined, so a check on it can only ever
+    // open and never close. Drive the attribute in both directions instead,
+    // and let styles/state.css keep the unknown element visible (the
+    // documented open static panel).
+    // set/removeAttribute, never toggleAttribute: the engines that land in
+    // this branch are exactly the ones without <dialog> (Safari below 15.4,
+    // Firefox below 98), and Safari 11 / Firefox 60 to 62 are inside the
+    // README floor while predating toggleAttribute. There it would throw
+    // and React would tear the tree down.
+    if (typeof dialog.showModal !== 'function') {
+      if (open) dialog.setAttribute('open', '')
+      else dialog.removeAttribute('open')
+      return
+    }
+    if (open) {
+      // An `open` attribute (the server markup, or React's own first client
+      // render) leaves the dialog open but NOT modal, and showModal() throws
+      // on an open NON-modal one: a `!dialog.open` guard would skip it and
+      // leave it non-modal forever. Drop the attribute, then promote it.
+      // removeAttribute, never close(): close() fires a close event, and a
+      // controlled parent answers that by setting open back to false, which
+      // closes the modal it just server-rendered open.
+      // Exactly once, though. showModal() on an already modal dialog returns
+      // early by spec, but dropping the attribute first walks past that early
+      // return, and the second call records whatever is focused INSIDE the
+      // dialog as the element to restore: close() then aims focus at a hidden
+      // node and it falls to the body instead of the trigger. StrictMode
+      // double-invokes this effect in development, which is the default in
+      // Next.js and in the Vite and CRA templates.
+      // A ref, not `dialog.matches(':modal')`: that selector throws a
+      // SyntaxError in Chrome 61 to 104, which have <dialog> without `:modal`
+      // and are inside the README floor.
+      if (!dialog.open) dialog.showModal()
+      else if (!promoted.current) {
+        dialog.removeAttribute('open')
+        dialog.showModal()
+      }
+      promoted.current = true
+    } else {
+      promoted.current = false
+      if (dialog.open) dialog.close()
+    }
   }, [open])
 
   return (
     <dialog
       ref={ref}
       className={className ? `sv-pop ${className}` : 'sv-pop'}
+      open={initialOpen}
       onClose={onClose}
       {...rest}
     >
@@ -855,14 +1050,8 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
 /** Pointer tilt for every `.sv-tilt` descendant. One delegated listener. */
 export function usePointer<T extends HTMLElement = HTMLDivElement>(
   options: PointerOptions = {}
-) {
-  const ref = useRef<T>(null)
+): React.RefObject<T> {
   const selector = options.selector
 
-  useEffect(() => {
-    if (!ref.current) return
-    return trackPointer(ref.current, { selector })
-  }, [selector])
-
-  return ref
+  return useAttachedRef<T>((node) => trackPointer(node, { selector }), [selector])
 }

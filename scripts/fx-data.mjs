@@ -21,16 +21,26 @@ export const EFFECTS = [
   <p class="sv-rise fxp" style="--sv-order: 1">Rises second.</p>
   <p class="sv-rise fxp" style="--sv-order: 2">Rises third.</p>
 </section>`,
-    css: `<section data-sv>            <!-- tracked; gets .sv-live in the band -->
+    css: `<section data-sv>            <!-- tracked; sets --sv-live in the band -->
   <h2 class="sv-rise">Title</h2>
   <p class="sv-rise" style="--sv-order: 1">Copy</p>
 </section>
 
 /* needs styles/core.css (or paste the preset): */
-.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+.sv-on .sv .sv-rise { opacity: var(--sv-live);
+  translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
-.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }`,
+
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
   <p class="sv-rise" data-sv-order="1">Copy</p>
@@ -84,7 +94,14 @@ export const EFFECTS = [
   rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg); }
 
 /* scrub instead of play: */
-.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }`,
+.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
+    translate: none; rotate: none; transition: none; }
+}`,
     tailwind: `<section data-sv class="py-24">
   <div class="sv-spread sv-spread-in [--sv-gap:14px]">
     <div class="[--sv-order:0] rounded-xl border p-8">01</div>
@@ -105,7 +122,7 @@ export const EFFECTS = [
   {
     slug: 'curtain',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Curtain',
     tagline: 'Two panels slide apart as you scroll through a pinned stretch.',
@@ -118,17 +135,25 @@ export const EFFECTS = [
     <div class="fxpanel sv-curtain-r" style="left:50%">vars</div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">                        <!-- sticky; top:0; h:100vh; overflow:hidden -->
-    <div class="revealed-content">…</div>
-    <div class="panel-left sv-curtain-l">…</div>
-    <div class="panel-right sv-curtain-r">…</div>
+    css: `<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
+    <div class="revealed">…</div>
+    <div class="panel sv-curtain-l">…</div>
+    <div class="panel sv-curtain-r">…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
+/* the preset (styles/pin.css), plus the two panels, which are yours: */
+.sv-stage .panel { position: absolute; inset: 0; width: 50%; background: #14141a; }
+.sv-stage .sv-curtain-r { left: 50%; }
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
-.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }`,
+.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r { display: none; }
+}`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage">
     <div class="grid h-full place-items-center">revealed content</div>
@@ -147,7 +172,7 @@ export const EFFECTS = [
   {
     slug: 'horizontal-rail',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
@@ -161,15 +186,23 @@ export const EFFECTS = [
     </div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 300vh -->
-  <div class="sticky">                        <!-- sticky stage, flex center -->
+    css: `<div data-sv data-sv-pin="300vh">        <!-- the pin helper owns the height -->
+  <div class="sv-stage rail-stage">      <!-- the sticky viewport, from pin.css -->
     <div class="sv-rail">…cards…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
-.sv .sv-rail { width: max-content;
-  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }`,
+/* the preset (styles/pin.css), plus the stage layout, which is yours: */
+.rail-stage { display: flex; align-items: center; }
+/* --sv-rail-start: the stage width when it is narrower than the viewport */
+.sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
+}`,
     tailwind: `<div data-sv data-sv-pin="300vh">
   <div class="sv-stage flex items-center">
     <div class="sv-rail flex gap-4 px-[10vw]">
@@ -201,8 +234,8 @@ export const EFFECTS = [
     </div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">
+    css: `<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
     <div class="sv-range sv-range-rise">
       <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
       <p style="--sv-from: .3; --sv-to: .7">Second</p>
@@ -212,13 +245,22 @@ export const EFFECTS = [
 </div>
 
 /* styles/pin.css ships it; the mechanism, if you want it inline: */
-.sv .sv-range > * {
+/* the clock lives on the container at zero specificity, so your own rule on
+   that container (--sv-clock: var(--sv-t)) or an inline style wins */
+:where(.sv .sv-range) {
   --sv-clock: var(--sv-pin, var(--sv-t, 0));
+}
+.sv .sv-range > * {
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }`,
+.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-range > * { --sv-r: 1; }
+}`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage grid place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
@@ -229,7 +271,9 @@ export const EFFECTS = [
   </div>
 </div>
 <!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
-     Older engines settle at the end state (consume as var(--sv-r, 1)). -->`,
+     --sv-r is a registered property (initial-value: 1), so an engine
+     that can't compute the division settles there instead of turning
+     invalid; still consume it as var(--sv-r, 1). -->`,
     react: `<Track pin="250vh">
   <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">
@@ -246,7 +290,7 @@ export const EFFECTS = [
   {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.9.0' },
+    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.13.0' },
     category: 'Interop',
     title: 'GSAP timeline under scrub',
     tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
@@ -270,17 +314,17 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
   else SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => tl.progress(p) })
 })</script>`,
-    css: `<div class="outer">          <!-- height: 250vh; position: relative -->
-  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+    css: `<div class="scene">                     <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
 </div>
 
 <script>
   // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
-    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
-  track(document.querySelector('.outer'), {
-    pin: true,
+  track(document.querySelector('.scene'), {
+    pin: '250vh',                 // the helper owns the wrapper height
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
@@ -291,7 +335,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 <!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() => tl.progress(
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
-    react: `const tl = useRef<gsap.core.Timeline>(null)
+    react: `const tl = useRef<gsap.core.Timeline | null>(null)
 useEffect(() => {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -305,7 +349,7 @@ useEffect(() => {
   {
     slug: 'three-scene',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.11.0' },
+    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.13.0' },
     category: 'Interop',
     title: 'Three.js scene on the pin',
     tagline: 'A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.',
@@ -348,8 +392,8 @@ useEffect(() => {
   })
   SV.track(document.getElementById('fxthree-outer'), { pin: '240vh', onPin: (p) => (progress = p) })
 })</script>`,
-    css: `<div class="outer">              <!-- height: 250vh -->
-  <div class="sticky"><canvas id="scene"></canvas></div>
+    css: `<div id="outer">                       <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage"><canvas id="scene"></canvas></div>   <!-- from pin.css -->
 </div>
 
 <script type="module">
@@ -364,7 +408,7 @@ useEffect(() => {
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
+  track(document.getElementById('outer'), { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>`,
@@ -411,13 +455,22 @@ const canvasRef = useCanvasEffect({
      aria-hidden. char mode: data-sv-split="char". -->
 
 /* the preset (styles/core.css): */
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split > span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise > span {
-  opacity: 0; translate: 0 .6em;
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv.sv-live .sv-split-rise > span { opacity: 1; translate: 0 0; }
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,
@@ -464,6 +517,10 @@ const canvasRef = useCanvasEffect({
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-words > * { transition-duration: .01ms; }
+}
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)`,
@@ -484,7 +541,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   {
     slug: 'pointer-tilt',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['tilt'], min: '1.9.0' },
+    requires: { styles: ['tilt'], min: '1.9.0', tailwind: true },
     category: 'Pointer',
     title: 'Pointer tilt',
     tagline: 'Cards tilt toward the cursor with a moving glare. One delegated listener.',
@@ -529,7 +586,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}</style>
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>`,
     css: `<div class="sv-slider" id="cards">
   <div class="slide">…</div> ×N
@@ -543,7 +600,8 @@ el.style.setProperty('--sv-word', nextIndex)`,
 /* the coverflow is pure CSS on --sd: */
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
-  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }`,
+  transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */`,
     tailwind: `<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
   {cards.map(c => (
@@ -570,7 +628,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   <div class="sv-marquee-track fxmarq">
     <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
     <span>CSS variables out</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
   </div>
 </div>`,
     css: `<div class="sv-marquee">
@@ -585,7 +643,13 @@ el.style.setProperty('--sv-word', nextIndex)`,
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
-@keyframes sv-marquee { to { translate: -50% 0; } }`,
+@keyframes sv-marquee { to { translate: -50% 0; } }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   without it a pasted marquee never stops */
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track { animation: none; }
+}`,
     tailwind: `<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
@@ -606,35 +670,23 @@ el.style.setProperty('--sv-word', nextIndex)`,
     tagline: 'Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).',
     when: 'Landing pages, studio reels, product launches. The first fold that has to land.',
     knobs: '--sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-marquee-duration; swap the orbs for images or video',
-    preview: `<style>
-.sv-hero { position: relative; min-height: 86vh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; padding: 0; }
-.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
-  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
-.hero-orb.a { background: var(--accent); top: -14%; left: -8%; }
-.hero-orb.b { background: #ffb454; bottom: -16%; right: -10%; --hero-parallax: -60px; }
-.hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
-@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
-.hero-eyebrow { font: 600 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
-.hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
-.hero-sub { color: var(--muted); max-width: 42ch; margin: 0 auto 26px; font-size: 17px; }
-.hero-cta { display: inline-block; padding: 12px 22px; border-radius: 999px; background: var(--accent); color: #121118; font-weight: 700; text-decoration: none; }
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid var(--line); font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.hero-strip span { margin: 0 18px; }
-</style>
-<section data-sv data-sv-travel class="sv-hero fxstage" id="fxhero" style="--sv-stagger: 70ms">
-  <div class="hero-orb a"></div><div class="hero-orb b"></div>
-  <div class="hero-inner">
-    <p class="hero-eyebrow sv-rise">Studio · 2026 reel</p>
-    <h3 class="hero-title sv-split-rise" data-sv-split>Sites that move with intent</h3>
-    <p class="hero-sub sv-rise" data-sv-order="6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p>
-    <p class="sv-rise" data-sv-order="7"><a class="hero-cta" href="#">See the work</a></p>
-  </div>
-  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
-    <span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span>
-  </div></div>
-</section>
-<script>addEventListener('load', () => SV.trackPointer(document.getElementById('fxhero'), { selector: '.sv-hero' }))</script>`,
+    // The preview is the installed component itself, rendered (see
+    // scripts/fx-render.mjs): no second, hand-typed preview string to drift
+    // from HeroCinematic below. usePointer/<Track> attach imperatively (no
+    // scannable data-sv attribute lands in server markup), so the gallery
+    // page keeps this tiny attach script, deferred to `load` so `window.SV`
+    // (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      eyebrow: 'Studio · 2026 reel',
+      title: 'Sites that move with intent',
+      copy: 'One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.',
+      cta: 'See the work',
+      className: 'fxstage',
+    },
+    previewScript: `addEventListener('load', () => {
+  SV.track(document.querySelector('.sv-hero > .sv'), { travel: true })
+  SV.trackPointer(document.querySelector('.sv-hero'), { selector: '.sv-hero' })
+})`,
     css: `<section data-sv data-sv-travel class="sv-hero" id="hero">   <!-- travel: --sv-t 0..1 through the viewport -->
   <div class="hero-orb a"></div><div class="hero-orb b"></div>
   <div class="hero-inner">
@@ -645,7 +697,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   </div>
   <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
     <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
   </div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
@@ -662,9 +714,13 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
     tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&_.inner]:[opacity:1] motion-reduce:[&_.inner]:[scale:none]">
+  <!-- the motion-reduce override is written on the section, same [&_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order -->
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"></div>
   <div class="inner text-center">
     <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
@@ -702,40 +758,23 @@ function Hero() {
     tagline: 'Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.',
     when: 'Company history, case-study process, roadmap, "how we got here". Any ordered story.',
     knobs: '--tl-from/--tl-span (year counter), data-sv-from/to per milestone (its slice of the pin), --sv-distance (milestone travel), wrapper height (scroll length)',
-    preview: `<style>
-.tl { --tl-from: 2019; --tl-span: 7; }
-.tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
-.tl-year { font: 700 clamp(64px, 12vw, 150px)/1 var(--mono); letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums;
-  counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
-.tl-year::after { content: counter(tl-year); }
-.tl-cap { display: block; margin-top: 10px; color: var(--muted); font: 600 12px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
-.tl-track { position: relative; padding-left: 34px; }
-.tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
-.tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
-.tl-items { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(18px, 4vh, 40px); text-align: left; }
-.tl-items > li { position: relative; --sv-distance: 1.6rem; }
-.tl-items > li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
-  background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); box-shadow: 0 0 0 4px #17151f; }
-.tl-items b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--accent); margin-bottom: 4px; }
-.tl-items p { margin: 0; color: var(--text); font-size: 15px; max-width: 34ch; }
-@media (max-width: 640px) { .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } .tl-year { font-size: clamp(56px, 18vw, 96px); } }
-</style>
-<div data-sv data-sv-pin="320vh" class="fxouter tl">
-  <div class="sv-stage fxsticky tl-sticky">
-    <div><span class="tl-year"></span><span class="tl-cap">years of shipping</span></div>
-    <div class="tl-track"><i class="tl-line"></i>
-      <ol class="sv-range sv-range-rise tl-items">
-        <li data-sv-from="0" data-sv-to=".28"><b>2019</b><p>First client site on a hand-rolled scroll engine.</p></li>
-        <li data-sv-from=".22" data-sv-to=".52"><b>2021</b><p>The engine becomes a package; five sites share one codebase.</p></li>
-        <li data-sv-from=".46" data-sv-to=".76"><b>2024</b><p>Benchmarks published, CSS-variable API frozen.</p></li>
-        <li data-sv-from=".7" data-sv-to="1"><b>2026</b><p>ScrollVars ships on npm. This timeline is one pinned block and four ranges.</p></li>
-      </ol>
-    </div>
-  </div>
-</div>`,
+    // Rendered from TimelineScrub itself (see scripts/fx-render.mjs). <Track
+    // pin> attaches imperatively, so the gallery page keeps the same tiny
+    // attach script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      steps: [
+        { year: 2019, text: 'First client site on a hand-rolled scroll engine.' },
+        { year: 2021, text: 'The engine becomes a package; five sites share one codebase.' },
+        { year: 2024, text: 'Benchmarks published, CSS-variable API frozen.' },
+        { year: 2026, text: 'ScrollVars ships on npm. This timeline is one pinned block and four ranges.' },
+      ],
+      className: 'fxouter',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-timeline'), { pin: '320vh' }))`,
     css: `<div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
   <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
-    <span class="tl-year"></span>
+    <span class="tl-year"><span class="tl-count"></span></span>
     <div class="tl-track"><i class="tl-line"></i>
       <ol class="sv-range sv-range-rise tl-items">                              <!-- preset: --sv-r per child -->
         <li data-sv-from="0"   data-sv-to=".28"><b>2019</b><p>…</p></li>
@@ -749,7 +788,7 @@ function Hero() {
 .tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
 /* the year is a CSS counter driven by the pin. No JS, no innerText */
 .tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
-.tl-year::after { content: counter(tl-year); }
+.tl-year .tl-count::after { content: counter(tl-year); }   /* on the inner span, never on .tl-year itself: the React tab puts the readable year there */
 /* the line fills with the pin */
 .tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
@@ -780,7 +819,11 @@ function Timeline() {
   return (
     <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
       <div className="sv-stage tl-sticky">
-        <span className="tl-year" />
+        <span className="tl-year">
+          {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{2026}</span>
+          <span className="tl-count" aria-hidden="true" />   {/* the CSS-counter digits */}
+        </span>
         <div className="tl-track"><i className="tl-line" />
           <ol className="sv-range sv-range-rise tl-items">
             {steps.map((s) => (
@@ -805,41 +848,23 @@ function Timeline() {
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
     when: 'Product features, "how it works", case-study walkthroughs, onboarding explainers.',
     knobs: 'data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)',
-    preview: `<style>
-.st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
-.st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
-.st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
-.st-shot:nth-child(2) { background: linear-gradient(160deg, #1f2a3a, #17151f 70%); color: #7dd3fc; }
-.st-shot:nth-child(3) { background: linear-gradient(160deg, #3a2a1f, #17151f 70%); color: #ffb454; }
-/* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
-.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
-.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
-.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
-.st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
-.st-steps h4 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
-.st-steps p { margin: 0; color: var(--muted); max-width: 36ch; }
-.st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
-.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); background: var(--accent); }
-html:not(.sv-on) .st-steps > li { opacity: 1; }
-@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
-</style>
-<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="fxouter st">
-  <div class="sv-stage fxsticky st-grid">
-    <div class="st-media">
-      <figure class="st-shot" style="--i: 0">01</figure>
-      <figure class="st-shot" style="--i: 1">02</figure>
-      <figure class="st-shot" style="--i: 2">03</figure>
-    </div>
-    <ol class="st-steps">
-      <li style="--i: 0"><b>Step 1</b><h4>Track the section</h4><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li>
-      <li style="--i: 1"><b>Step 2</b><h4>Give each piece an index</h4><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li>
-      <li style="--i: 2"><b>Step 3</b><h4>Ship it</h4><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li>
-    </ol>
-    <div class="st-dots"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i></div>
-  </div>
-</div>`,
+    // Rendered from StickySteps itself (see scripts/fx-render.mjs). useScenes
+    // attaches imperatively, so the gallery page keeps the same tiny attach
+    // script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it
+    // runs. The rendered markup never hydrates, so the scene-driven
+    // inert/aria-hidden swap (tested live in
+    // demo/bench/harness/fixtures/sticky-steps-inert.html) is out of scope
+    // here: the static preview stays in its initial, fully reachable state.
+    previewProps: {
+      steps: [
+        { title: 'Track the section', text: 'One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.', media: '01' },
+        { title: 'Give each piece an index', text: 'Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.', media: '02' },
+        { title: 'Ship it', text: 'No observers per step, no timeline library. Three scenes here; make it thirty.', media: '03' },
+      ],
+      className: 'fxouter',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-steps'), { pin: '300vh', scenes: 3 }))`,
     css: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
   <div class="sv-stage st-sticky">
     <div class="st-media">
@@ -862,7 +887,11 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
-html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */`,
+html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+/* Placed after the rule above (same specificity, later wins, so a media block
+   up there would lose): the stage unpins under reduce but --sv-scene keeps
+   being written, and every non-active step would sit at 30% forever (ADU-155) */
+@media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }`,
     tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
   <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
     <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
@@ -903,53 +932,52 @@ function StickySteps() {
   },
   {
     slug: 'stats-countup',
-    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['state'], min: '1.13.0' },
+    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars.
+    // core.css is not decoration here: the acts clock is
+    // `calc(var(--sv-live) * var(--sv-acts-count))` and --sv-live is declared
+    // in core.css alone, so on state.css by itself every number renders 0.
+    requires: { styles: ['core', 'state'], min: '1.13.0' },
     category: 'Sections',
     title: 'Stats count-up',
     tagline: 'Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.',
     when: 'Proof strips ("248 sites shipped"), pricing pages, investor-style KPI rows.',
     knobs: '--sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "+", "k"), --sv-acts-count stays 1',
     runway: true,
-    preview: `<style>
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 10px 0; }
-.stats > div { padding: 22px 12px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, #221f31, #17151f 80%); }
-.stats dt { order: 2; color: var(--muted); font-size: 13px; margin-top: 8px; }
-.stats dd { margin: 0; font: 800 clamp(34px, 6vw, 64px)/1 var(--mono); letter-spacing: -.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
-.stats > div { display: flex; flex-direction: column; }
-.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
-html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
-@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
-</style>
-<section data-sv data-sv-once class="fxstage sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
-  <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
-    <div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max: 4"></dd></div>
-  </dl>
-</section>`,
+    // Rendered from StatsCountup itself (see scripts/fx-render.mjs). <Track
+    // once> attaches imperatively, so the gallery page keeps the same tiny
+    // attach script the hand-written preview used, deferred to `load` so
+    // `window.SV` (sv.js, loaded later in the page) exists by the time it runs.
+    previewProps: {
+      stats: [
+        { label: 'client sites shipped', value: 248, suffix: '+' },
+        { label: 'median Lighthouse performance', value: 99 },
+        { label: 'KB of engine, gzipped', value: 4 },
+      ],
+      className: 'fxstage',
+    },
+    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))`,
     css: `<section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
   <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"><span class="count"></span></dd></div>
   </dl>
 </section>
 
-/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
-   block goes live; the counter re-renders every frame of that transition. */
+/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
+   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
+   every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
+.stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
 /* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */`,
     tailwind: `<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"><span class="count"></span></dd></div>
   </dl>
 </section>
-<!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->`,
+<!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) -->`,
     react: `import { Track } from 'scrollvars/react'
 
 const stats = [
@@ -963,8 +991,14 @@ function Stats() {
       <dl className="stats">
         {stats.map((s) => (
           <div key={s.label}>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
             <dt>{s.label}</dt>
+            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
+                term whose only dd is aria-hidden is a term with no definition */}
+            <dd className="stat" style={{ '--sv-max': s.max }}>
+              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>
@@ -981,7 +1015,11 @@ export const COMPONENTS = {
     content: `// ScrollVars fx · hero-cinematic
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/ui.css'
 // Split headline rising on a beat, pointer-parallax glow, marquee strip; the block
-// fades and scales out as it leaves (--sv-t). The CSS below is the whole section.
+// fades and scales out as it leaves (--sv-t). The CSS below is the whole section,
+// one constant string injected as raw HTML: React 18's server renderer escapes a
+// <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so the entity never
+// decodes and every child-combinator rule is dropped. CSP is unchanged from any
+// inline <style>: a style-src nonce or hash, or lift the string into your own CSS.
 'use client'
 import * as React from 'react'
 import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -1019,8 +1057,10 @@ export function HeroCinematic({
 }) {
   const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    <section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}>
-      <style>{css}</style>
+    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="hero-orb a" />
       <div className="hero-orb b" />
       <Track travel>
@@ -1057,6 +1097,11 @@ export function HeroCinematic({
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage, sv-range)
 // Pinned: the scroll draws the line, counts the year (a CSS counter) and lights each
 // milestone over its own slice of the pin. No JS beyond the driver.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes and every child-combinator rule is dropped. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
@@ -1065,7 +1110,7 @@ const css = \`
 .sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
 .sv-timeline .tl-year { font-size: clamp(64px, 12vw, 150px); line-height: 1; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
-.sv-timeline .tl-year::after { content: counter(tl-year); }
+.sv-timeline .tl-year .tl-count::after { content: counter(tl-year); }
 .sv-timeline .tl-cap { display: block; margin-top: 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 .sv-timeline .tl-track { position: relative; padding-left: 34px; }
 .sv-timeline .tl-line { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: rgba(128,128,128,.25); }
@@ -1078,6 +1123,17 @@ const css = \`
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 \`
+
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// \`aria-prohibited-attr\`: so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
 
 export interface TimelineStep {
   year: number
@@ -1107,10 +1163,13 @@ export function TimelineScrub({
       className={className ? 'sv-timeline ' + className : 'sv-timeline'}
       style={{ '--tl-from': from, '--tl-span': span } as React.CSSProperties}
     >
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage tl-sticky">
         <div>
-          <span className="tl-year" aria-label={String(from + span)} />
+          <span className="tl-year">
+            <span style={SR_ONLY}>{from + span}</span>
+            <span className="tl-count" aria-hidden="true" />
+          </span>
           <span className="tl-cap">{caption}</span>
         </div>
         <div className="tl-track">
@@ -1139,6 +1198,12 @@ export function TimelineScrub({
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (sv-stage)
 // Media stays put while the copy scrolls; each step swaps the shot. --sv-scene does the
 // swapping, the crossfade is one max() per element. Without JS the shots stack in flow.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes. Here that dropped the whole --st-d rule (its selector
+// list carries a child combinator) and every shot stayed at full opacity. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { useScenes } from 'scrollvars/react'
@@ -1160,6 +1225,11 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 .sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+/* Placed after the rules above (same specificity, later wins): the stage is
+   unpinned under reduced motion, so --sv-scene keeps writing but every
+   non-active step would otherwise sit at 30% opacity forever and the copy
+   would slide with the raw scroll. Reset both the steps and the dots. */
+@media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 \`
 
@@ -1171,18 +1241,31 @@ export interface StickyStep {
   label?: string
 }
 
+// React 19 knows inert as a boolean attribute (a string would be dropped as falsy); React 18
+// does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
+const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
+
 export function StickySteps({ steps, className }: { steps: StickyStep[]; className?: string }) {
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh' })
   // after mount only (server markup stays fully usable), and never under reduced
-  // motion, where the shots stack in flow and must all stay reachable
+  // motion, where the shots stack in flow and must all stay reachable. Live:
+  // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
-  React.useEffect(() => setInteractive(!matchMedia('(prefers-reduced-motion: reduce)').matches), [])
+  React.useEffect(() => {
+    const mq = matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setInteractive(!mq.matches)
+    sync()
+    mq.addEventListener?.('change', sync)
+    return () => mq.removeEventListener?.('change', sync)
+  }, [])
   return (
-    <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
-      <style>{css}</style>
+    // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage st-grid">
         <div className="st-media">
           {steps.map((s, i) => (
@@ -1190,7 +1273,7 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive && i !== scene ? (React.version.startsWith('18') ? { inert: '' } : { inert: true }) : {})}
+              {...(interactive && i !== scene ? INERT : {})}
               aria-hidden={interactive && i !== scene ? true : undefined}
             >
               {s.media}
@@ -1220,10 +1303,18 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
   'stats-countup': {
     file: 'StatsCountup.tsx',
     content: `// ScrollVars fx · stats-countup
-// Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (sv-acts)
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/state.css'
+// state.css owns sv-acts; core.css declares --sv-live, and the acts clock is
+// calc(var(--sv-live) * var(--sv-acts-count)): without core.css every number
+// renders 0 the moment the driver boots.
 // Numbers count from zero when the block enters: a CSS counter driven by the
 // registered --sv-act transition. No JS, no innerText. Without JS or under
 // reduced motion the final numbers render immediately.
+// The CSS below is one constant string, injected as raw HTML: a <style> child
+// is escaped by React 18's server renderer (\`>\` becomes \`&gt;\`, dropping every
+// child-combinator rule), and <style> is raw text, so the entity never decodes.
+// CSP is unchanged from any inline <style>: allow it with a style-src nonce or
+// hash, or lift this string into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
@@ -1234,9 +1325,20 @@ const css = \`
 .sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
 .sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
-.sv-stats .stat::after { content: counter(n) attr(data-suffix); }
+.sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
 \`
+
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// \`aria-prohibited-attr\`: so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
 
 export interface Stat {
   label: React.ReactNode
@@ -1260,17 +1362,18 @@ export function StatsCountup({
       className={className ? 'sv-acts ' + className : 'sv-acts'}
       style={{ '--sv-acts-count': 1, '--sv-acts-duration': duration + 's' } as React.CSSProperties}
     >
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
       <dl className="sv-stats">
         {stats.map((s, i) => (
           <div key={i}>
-            <dd
-              className="stat"
-              style={{ '--sv-max': s.value } as React.CSSProperties}
-              data-suffix={s.suffix ?? ''}
-              aria-label={s.value + (s.suffix ?? '')}
-            />
             <dt>{s.label}</dt>
+            {/* both halves sit INSIDE the dd: a dl group takes dt/dd only (a loose
+                span there is not in the content model), and a term whose only dd
+                is aria-hidden reaches assistive tech with no definition at all */}
+            <dd className="stat" style={{ '--sv-max': s.value } as React.CSSProperties}>
+              <span style={SR_ONLY}>{s.value}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>
@@ -1301,15 +1404,26 @@ export function SequencedScrub({
   height?: string
   className?: string
 }) {
-  const count = React.Children.count(children)
+  // toArray, not Children.map: a conditional step ({show && <Card/>}) is
+  // false, and Children.map still calls back for it, so the stack got an
+  // empty slice and every step after it scrubbed on the wrong window.
+  // Anything that is not an element (a portal renders elsewhere) passes
+  // through: it owns no slice of the pin.
+  const items = React.Children.toArray(children)
+  const count = items.filter(React.isValidElement).length
+  let step = -1
   return (
     <Track pin={height} className={className}>
       <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="sv-range sv-range-rise" style={{ display: 'grid', gap: 12 }}>
-          {React.Children.map(children, (child, i) => {
+          {items.map((child) => {
+            if (!React.isValidElement(child)) return child
+            const i = ++step
             const [from, to] = ranges?.[i] ?? [i / count, Math.min((i + 1.6) / count, 1)]
             return (
-              <div style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>{child}</div>
+              <div key={child.key} style={{ '--sv-from': from, '--sv-to': to } as React.CSSProperties}>
+                {child}
+              </div>
             )
           })}
         </div>
@@ -1329,6 +1443,7 @@ export function SequencedScrub({
 'use client'
 import * as React from 'react'
 import gsap from 'gsap'
+import { prefersReducedMotion } from 'scrollvars'
 import { Track } from 'scrollvars/react'
 
 export function GsapScrub({
@@ -1344,13 +1459,17 @@ export function GsapScrub({
   className?: string
 }) {
   const stage = React.useRef<HTMLDivElement>(null)
-  const tl = React.useRef<gsap.core.Timeline>(null)
+  const tl = React.useRef<gsap.core.Timeline | null>(null)
   React.useEffect(() => {
     if (stage.current) tl.current = buildTimeline(stage.current)
     return () => { tl.current?.kill() }
   }, [buildTimeline])
   return (
-    <Track pin={height} onPin={(p) => tl.current?.progress(p)} className={className}>
+    <Track
+      pin={height}
+      onPin={(p) => tl.current?.progress(prefersReducedMotion() ? 1 : p)}
+      className={className}
+    >
       <div ref={stage} className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
         {children}
       </div>
@@ -1372,7 +1491,7 @@ import { Track, useCanvasEffect } from 'scrollvars/react'
 
 export function ThreeScene({ height = '250vh', className }: { height?: string; className?: string }) {
   const progress = React.useRef(0)
-  const three = React.useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; mesh: THREE.Mesh }>(null)
+  const three = React.useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; mesh: THREE.Mesh } | null>(null)
 
   const canvasRef = useCanvasEffect({
     context: null, // WebGL owns the canvas
@@ -1414,7 +1533,10 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
   return (
     <Track pin={height} onPin={(p) => (progress.current = p)} className={className}>
       <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
-        <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
+        {/* the cast satisfies React 18's stricter ref types: useCanvasEffect returns
+        RefObject<T | null> so the same hook fits React 19 too, and React 18 wants a
+        bare RefObject<T> on a host element */}
+        <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
   )
@@ -1487,16 +1609,29 @@ export function DeckSpread({
   gap?: number
   className?: string
 }) {
-  const count = React.Children.count(children)
+  // toArray, not Children.map: a conditional card ({show && <Card/>}) is
+  // false, and Children.map still calls back for it, so the deck got an empty
+  // cell and --sv-mid centred the fan on a card that is not there. Anything
+  // that is not an element (a portal renders elsewhere) passes through: it
+  // holds no place in the fan.
+  const items = React.Children.toArray(children)
+  const count = items.filter(React.isValidElement).length
+  let order = -1
   return (
     <Track className={className}>
       <div
         className="sv-spread sv-spread-in"
         style={{ '--sv-gap': gap + 'px', '--sv-mid': (count - 1) / 2 } as React.CSSProperties}
       >
-        {React.Children.map(children, (child, i) => (
-          <div style={{ '--sv-order': i } as React.CSSProperties}>{child}</div>
-        ))}
+        {items.map((child) =>
+          React.isValidElement(child) ? (
+            <div key={child.key} style={{ '--sv-order': ++order } as React.CSSProperties}>
+              {child}
+            </div>
+          ) : (
+            child
+          )
+        )}
       </div>
     </Track>
   )
@@ -1574,13 +1709,23 @@ export function RotatingWords({
   className?: string
 }) {
   const [index, setIndex] = React.useState(0)
+  // A shrinking list strands the last index, same shape as useScenes: clamp
+  // here, on the render that sees the new length, instead of waiting for the
+  // next tick. An empty list schedules no interval at all: (i + 1) % 0 is
+  // NaN, and NaN never recovers ((NaN + 1) % n is NaN for any n), so a list
+  // that arrives late, after a tick already fired on an empty one, would
+  // stay NaN forever.
+  const last = Math.max(words.length - 1, 0)
+  if (index > last) setIndex(last)
+  const current = Math.min(index, last)
   React.useEffect(() => {
+    if (words.length === 0) return
     const t = setInterval(() => setIndex((i) => (i + 1) % words.length), interval)
     return () => clearInterval(t)
   }, [words.length, interval])
   return (
     <span className={className ? \`sv-words \${className}\` : 'sv-words'}
-      style={{ '--sv-word': index } as React.CSSProperties}>
+      style={{ '--sv-word': current } as React.CSSProperties}>
       {words.map((w) => (
         <span key={w}>{w}</span>
       ))}
@@ -1607,7 +1752,9 @@ export function PointerTiltGrid({
 }) {
   const ref = usePointer<HTMLDivElement>()
   return (
-    <div ref={ref} className={className}>
+    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
+    <div ref={ref as React.RefObject<HTMLDivElement>} className={className}>
       {children}
     </div>
   )
@@ -1619,15 +1766,21 @@ export function PointerTiltGrid({
     content: `// ScrollVars fx · coverflow-slider
 // Requires: npm i scrollvars · import 'scrollvars/styles/slider.css' (layout)
 // Chrome knobs: --sv-arrow-* / --sv-dot-* on this element or :root.
+// The CSS below is one constant string injected as raw HTML: React 18's server
+// renderer escapes a <style> child (\`>\` becomes \`&gt;\`) and <style> is raw text, so
+// the entity never decodes and every child-combinator rule is dropped. CSP is
+// unchanged from any inline <style>: a style-src nonce or hash, or lift the string
+// into your own stylesheet.
 'use client'
 import * as React from 'react'
 import { Slide, Slider } from 'scrollvars/react'
 
-const coverflow = {
-  scale: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3))',
-  opacity: 'calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7))',
-  transform: 'perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg))',
-} as React.CSSProperties
+const css = \`
+.cf-slide { scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
+  transform: perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg)); }
+@media (prefers-reduced-motion: reduce) { .cf-slide { scale: none; opacity: 1; transform: none; } }
+\`
 
 export function CoverflowSlider({
   children,
@@ -1635,11 +1788,26 @@ export function CoverflowSlider({
   ...rest
 }: React.ComponentProps<typeof Slider>) {
   return (
-    <Slider perView={perView} gap={16} arrows dots {...rest}>
-      {React.Children.map(children, (child) => (
-        <Slide style={coverflow}>{child}</Slide>
-      ))}
-    </Slider>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <Slider perView={perView} gap={16} arrows dots {...rest}>
+        {/* toArray, not Children.map: a conditional child ({show && <Card/>})
+            is false, and Children.map still calls back for it, so the rail
+            got an empty slide and a dot wired past the end of the engine.
+            Anything that is not an element (a portal renders elsewhere) is
+            handed to the Slider untouched: it is not a card, and dropping it
+            would delete content the caller wrote. */}
+        {React.Children.toArray(children).map((child) =>
+          React.isValidElement(child) ? (
+            <Slide key={child.key} className="cf-slide">
+              {child}
+            </Slide>
+          ) : (
+            child
+          )
+        )}
+      </Slider>
+    </>
   )
 }
 `,

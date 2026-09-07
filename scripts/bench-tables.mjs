@@ -4,10 +4,33 @@
  * demo/bench/results/latest.json (written by the harness). Same rule as the
  * demo inline blocks: the page is never hand-patched.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { measureSizes } from './docs-data.mjs'
+import { measureSizes, GSAP_KB } from './docs-data.mjs'
+import { spliceOne } from './docs-stamp.mjs'
+
+/**
+ * Replaces every match of `re` in `text`, throwing unless the match count
+ * is exactly `count`. A repeat is the intended shape here (the bench
+ * page's runner config states the same bundle size in three engine
+ * entries), so the caller states its own expected count instead of the
+ * old "any count greater than zero" check: that check accepted PARTIAL
+ * coverage, where one of the three matches breaks (a stray quote, an
+ * anchor that moved) while the other two are silently rewritten and the
+ * third is silently left stale, exit 0 either way (ADU-196 fix pass).
+ */
+export const spliceAll = (text, re, replacement, count, label) => {
+  const globalRe = re.global ? re : new RegExp(re.source, `${re.flags}g`)
+  const matches = (text.match(globalRe) || []).length
+  if (matches !== count) throw new Error(`${label}: expected ${count} matches, found ${matches}`)
+  return text.replace(globalRe, replacement)
+}
+
+// Everything below only runs when this script is executed directly, not
+// when a test imports spliceAll above.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
@@ -49,7 +72,6 @@ html += `  </tbody>
 </table>`
 
 // low-end profile (headful + 4x CPU throttle) when measured
-import { existsSync } from 'node:fs'
 const throttledPath = join(root, 'demo', 'bench', 'results', 'throttled-4x.json')
 if (existsSync(throttledPath)) {
   const th = JSON.parse(readFileSync(throttledPath, 'utf8'))
@@ -78,7 +100,7 @@ console.log('bench tables regenerated from results/latest.json')
 
 // ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
 const sizes = measureSizes(root)
-const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': '46.3 KB', 'gsap-batched.html': '46.3 KB', 'framer.html': '46.9 KB (+ React)' }
+const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': `${GSAP_KB} KB`, 'gsap-batched.html': `${GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
 const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
 const md = ['| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
@@ -93,11 +115,28 @@ for (const file of ['README.md', 'AGENTS.md']) {
   writeFileSync(path, text.replace(mre, () => `<!-- bench:start -->\n${md.join('\n')}\n<!-- bench:end -->`))
 }
 // the bench page's runner config carries the same measured bundle size
-writeFileSync(pagePath, readFileSync(pagePath, 'utf8').replace(/(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/g, `$1${sizes.everything} KB'`))
-// the bundle ratio in the prose is arithmetic on the same numbers
-const ratio = Math.round(46.3 / parseFloat(sizes.everything))
+// (three engine entries share this cell shape, so an exact repeat is
+// intended: a broken match on any one of them must throw, not silently
+// leave that entry stale while the other two update, ADU-196 fix pass)
+writeFileSync(pagePath, spliceAll(readFileSync(pagePath, 'utf8'), /(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/, `$1${sizes.everything} KB'`, 3, 'demo/bench/index.html: scrollvars.html bundle config line'))
+// the bundle ratio in the prose is arithmetic on the same numbers, exactly
+// one match expected per file (spliceOne, not spliceAll: an accidental
+// second mention in either file must throw, not be double-patched)
+const ratio = Math.round(GSAP_KB / parseFloat(sizes.everything))
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)
-  writeFileSync(path, readFileSync(path, 'utf8').replace(/~\d+× less bundle/g, `~${ratio}× less bundle`))
+  writeFileSync(path, spliceOne(readFileSync(path, 'utf8'), /~\d+× less bundle/, `~${ratio}× less bundle`, `${file}: "less bundle" ratio sentence`))
+}
+// the bench page's own headline claim (ADU-194: "15× less JavaScript" had drifted
+// against the very table it sits above; both mentions are the same arithmetic)
+{
+  let bench = readFileSync(pagePath, 'utf8')
+  const h1Re = /Same workload, three engines\. Same frames, ~?\d+× less JavaScript/
+  bench = spliceOne(bench, h1Re, `Same workload, three engines. Same frames, ~${ratio}× less JavaScript`, 'demo/bench/index.html: h1 claim')
+  const claimRe = /the same frames for a ~\d+× smaller bundle/
+  bench = spliceOne(bench, claimRe, `the same frames for a ~${ratio}× smaller bundle`, 'demo/bench/index.html: bundle-ratio sentence')
+  writeFileSync(pagePath, bench)
 }
 console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)
+
+}

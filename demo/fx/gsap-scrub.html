@@ -174,22 +174,22 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 &lt;!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() =&gt; tl.progress(
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="outer"&gt;          &lt;!-- height: 250vh; position: relative --&gt;
-  &lt;div class="sticky"&gt;…stage…&lt;/div&gt;  &lt;!-- sticky; top:0; h:100vh --&gt;
+    <pre data-pane="css"><code>&lt;div class="scene"&gt;                     &lt;!-- no data-sv: tracked in JS below --&gt;
+  &lt;div class="sv-stage"&gt;…stage…&lt;/div&gt;   &lt;!-- the sticky viewport, from pin.css --&gt;
 &lt;/div&gt;
 
 &lt;script&gt;
   // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
-    .from('.stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.sv-stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })
 
-  track(document.querySelector('.outer'), {
-    pin: true,
+  track(document.querySelector('.scene'), {
+    pin: '250vh',                 // the helper owns the wrapper height
     onPin: (p) =&gt; tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 &lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline&gt;(null)
+    <pre data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
 useEffect(() =&gt; {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -200,7 +200,7 @@ useEffect(() =&gt; {
   &lt;div className="sv-stage"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

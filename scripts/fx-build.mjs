@@ -13,6 +13,31 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EFFECTS, COMPONENTS } from './fx-data.mjs'
 import { measureSizes } from './docs-data.mjs'
+import { SECTION_PREVIEW_SLUGS, renderSectionPreview } from './fx-render.mjs'
+
+// Resyncs the bench page's inlined engine block. Pure (no I/O), so it is
+// unit-tested directly; everything else in this file only runs when the
+// script is executed, not when this function is imported for a test.
+// The bundle is a single minified line with no embedded newlines, followed
+// by a blank-line gap before the page's own hand-written bench script
+// resumes: the marker greedily consumes that whole gap, however many
+// blank lines already accumulated, instead of a fixed 3, which is what let
+// every run add one more. trimEnd() drops the iife's own trailing newline
+// before the fixed "\n\n\n" gap is appended: keeping both is what caused
+// the drift in the first place.
+export function resyncBenchEngine(page, iife) {
+  const re = /(<script>\n)"use strict";var SV=.*\n+/
+  if (!re.test(page)) throw new Error('bench inline engine marker not found')
+  // function replacer: the dist contains `$&`-like sequences that a string
+  // replacement would corrupt (found the hard way. The page died with a
+  // SyntaxError and every bench run silently hung)
+  return page.replace(re, (_, open) => `${open}${iife.trimEnd()}\n\n\n`)
+}
+
+// Everything below only runs when this script is executed directly, not
+// when a test imports resyncBenchEngine above.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'demo', 'fx')
@@ -56,13 +81,7 @@ copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 {
   const benchPage = join(root, 'demo', 'bench', 'scrollvars.html')
   const iife = readFileSync(join(out, 'sv.js'), 'utf8').replace(/\nSV\.scan\(\);\n$/, '')
-  const page = readFileSync(benchPage, 'utf8')
-  const re = /(<script>\n)"use strict";var SV=[\s\S]*?(\n\n\n)/
-  if (!re.test(page)) throw new Error('bench inline engine marker not found')
-  // function replacer: the dist contains `$&`-like sequences that a string
-  // replacement would corrupt (found the hard way. The page died with a
-  // SyntaxError and every bench run silently hung)
-  writeFileSync(benchPage, page.replace(re, (_, open, close) => `${open}${iife}${close}`))
+  writeFileSync(benchPage, resyncBenchEngine(readFileSync(benchPage, 'utf8'), iife))
   console.log('bench engine resynced from dist')
 }
 
@@ -192,6 +211,15 @@ const footer = `<footer class="fx">
   <div><b>ScrollVars</b> v${VERSION}. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>`
+
+// Section previews (whole premium blocks) are not hand-typed: they are the
+// installed component itself, compiled and rendered (scripts/fx-render.mjs),
+// so preview and component cannot drift.
+for (const fx of EFFECTS) {
+  if (SECTION_PREVIEW_SLUGS.has(fx.slug)) {
+    fx.preview = await renderSectionPreview(fx, COMPONENTS[fx.slug])
+  }
+}
 
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
@@ -328,3 +356,5 @@ const registry = EFFECTS.map((fx) => ({
 writeFileSync(join(out, 'registry.json'), JSON.stringify({ version: 1, effects: registry }, null, 2))
 
 console.log(`fx built: ${EFFECTS.length} effects + hub + llms.txt + registry.json + sv.js/sv.css`)
+
+}

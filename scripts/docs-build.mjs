@@ -7,25 +7,61 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { varsHtml } from './docs-data.mjs'
+import { varsHtml, measureSizes, compatPresetsGrouped, BROWSER_FLOOR } from './docs-data.mjs'
+
+/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold).
+ * Bullets group their indented continuation lines into one <li>, and a run
+ * of bullets is wrapped in one <ul>, line by line rather than by regex
+ * backtracking, so a multi-line entry (the common case in this file) does
+ * not lose everything past its first line. */
+export const mdLite = (md) => {
+  const escaped = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^# .+$/gm, '')
+    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
+
+  const out = []
+  let bullet = null // accumulated text of the bullet in progress, or null
+  let inList = false
+  const flushBullet = () => {
+    if (bullet === null) return
+    if (!inList) { out.push('<ul>'); inList = true }
+    out.push(`<li>${bullet}</li>`)
+    bullet = null
+  }
+  const closeList = () => { if (inList) { out.push('</ul>'); inList = false } }
+  for (const line of escaped.split('\n')) {
+    const start = line.match(/^- (.+)$/)
+    if (start) {
+      flushBullet()
+      bullet = start[1]
+    } else if (bullet !== null && /^\s+\S/.test(line)) {
+      bullet += ' ' + line.trim() // indented continuation of the open bullet
+    } else {
+      flushBullet()
+      closeList()
+      out.push(line)
+    }
+  }
+  flushBullet()
+  closeList()
+
+  return out
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'demo', 'docs')
 mkdirSync(out, { recursive: true })
 const VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-
-/* CHANGELOG.md → minimal HTML (headers, bullets, inline code, bold) */
-const mdLite = (md) =>
-  md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# .+$/gm, '')
-    .replace(/^([A-Z][^\n<]*:)$/gm, '<p class="grp">$1</p>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?)(?=\n(?!<li>|\s)|$)/g, '$1')
-    .replace(/(?:^|\n)(<li>[\s\S]*?<\/li>)(?=\n(?!<li>))/g, '\n<ul>$1</ul>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
+const sizes = measureSizes(root)
 const changelogHtml = mdLite(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'))
 
 const page = `<!doctype html>
@@ -49,6 +85,7 @@ const page = `<!doctype html>
   h1 { font-size: 30px; margin: 10px 0 6px; }
   h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
+  h4 { font-size: 12px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   p, li { color: #cfcbe4; } p.lead { color: var(--muted); }
   p.grp { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-top: 14px; }
@@ -174,13 +211,13 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 1.9&nbsp;KB · pin 1.8 · slider 1.3 · tilt 0.5 · state 1.5 · ui 0.8).</p>
+(gzipped: <code>styles/core.css</code> ${sizes.css.core}&nbsp;KB · pin ${sizes.css.pin} · slider ${sizes.css.slider} · tilt ${sizes.css.tilt} · state ${sizes.css.state} · ui ${sizes.css.ui}).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
 <tr><td>pin (scrub)</td><td><code>sv-stage sv-curtain-l sv-curtain-r sv-rail sv-deck sv-reading sv-counter sv-range sv-range-rise</code></td></tr>
 <tr><td>slider</td><td><code>sv-slider sv-cols sv-active sv-arrow sv-dots sv-dot sv-pause</code> + <code>--sd</code> per slide</td></tr>
-<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code></td></tr>
+<tr><td>state</td><td><code>sv-open sv-pop sv-words sv-acts</code> (a scroll-driven acts clock needs core.css too)</td></tr>
 <tr><td>ui</td><td><code>sv-marquee sv-accordion</code></td></tr>
 <tr><td>tilt</td><td><code>sv-tilt</code> + <code>--sv-tilt</code> (angle)</td></tr>
 </table>
@@ -237,21 +274,62 @@ plug in what's missing.</p>
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
 <table>
 <tr><th>browser</th><th>fully animated</th><th>notes</th></tr>
-<tr><td>Chrome / Edge</td><td><b>104+</b> (Aug 2022)</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
-<tr><td>Firefox</td><td><b>74+</b> (Mar 2020)</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
-<tr><td>Safari / iOS</td><td><b>14.1+</b> (Apr 2021)</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard: hiding styles only apply after the driver boots</td></tr>
+<tr><td>Chrome / Edge</td><td><b>${BROWSER_FLOOR.chrome.version}</b> (${BROWSER_FLOOR.chrome.date})</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
+<tr><td>Firefox</td><td><b>${BROWSER_FLOOR.firefox.version}</b> (${BROWSER_FLOOR.firefox.date}, ${BROWSER_FLOOR.firefox.reason.map((s) => `<code>${s}</code>`).join('/')})</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
+<tr><td>Safari / iOS</td><td><b>${BROWSER_FLOOR.safari.version}</b> (${BROWSER_FLOOR.safari.date})</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); with <code>compat()</code> installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); <code>sv-rail</code> is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
-breaks. The page renders complete and static. Animation is progressive enhancement, never a
+breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
+overlapping or clipped (curtains parted, deck unstacked, <code>.sv-stage</code> back in flow;
+<code>sv-rail</code>'s own exception is below); call it and the page animates instead, on
+roughly Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive enhancement, never a
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
+<p>Below the transform floor, with JS still running, <code>styles/pin.css</code> carries its
+own <code>@supports not (translate: 0)</code> net, but only for four of its rules: the stage,
+both curtains and the deck. The curtains sit parted and static rather than animated, the deck
+unstacks to a static, non-overlapping layout, and, without <code>compat()</code> installed,
+the stage resets to flow so nothing is clipped by the stage itself (<code>sv-reading</code>,
+<code>sv-range</code> and <code>sv-counter</code> need no net of their own, they settle for
+unrelated reasons). With <code>compat()</code> installed the net exempts
+<code>.sv-stage</code> instead (its own <code>data-sv-compat</code> marker on
+<code>&lt;html&gt;</code> is the switch): the module's fallback sheet still animates the
+curtains and rail from <code>--sv-pin</code>, measured off that stage, so releasing it there
+would snap them over one pixel instead. The trade is real: measured on a four-card
+<code>sv-deck</code> pinned below the floor with <code>compat()</code> installed, the stage
+stayed a fixed height while the deck unstacked to its full static column, so cards three and
+four sat past the clip, unreachable, for the roughly 1800px of scroll the pin still consumed
+doing nothing visible. A page whose below-floor deck matters more than its below-floor
+animation gets the flow layout back by not calling <code>compat()</code> there, the same
+escape the design rule above already promises.
+<code>sv-rail</code> stays the one exception either way: with JS running the no-JS guard's
+<code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
+viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
+at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code>'s own
+<code>sv-rail</code> fallback does not really fix that: it ignores <code>--sv-rail-start</code>,
+starts at <code>translateX(0)</code> instead of entering from offscreen, and is stationary
+whenever the track's own width equals the viewport, so wrap the rail yourself below the floor
+regardless. One more caveat until ADU-150
+lands: a released stage can also leave a parked curtain panel sitting outside it, extending
+the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs
-two feature checks and exits (free); on old ones it installs ResizeObserver/
-IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet written
-without <code>:is()</code>/<code>clamp()</code>/<code>min()</code>. With your bundler
-downleveling the ES2020 dist (Next.js already does), the core reveal/pin presets animate on
-roughly <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
+three feature checks and exits (free); on old ones it installs ResizeObserver/
+IntersectionObserver stubs and a <code>transform:</code>-based fallback stylesheet for
+${compatPresetsGrouped((n) => `<code>${n}</code>`)}, written
+without <code>:is()</code>/<code>clamp()</code>/<code>min()</code> (the one
+<code>max()</code> left, drift's fade, sits behind a plain <code>opacity</code>
+declaration that old parsers keep). <code>sv-deck</code> unstacks to a static,
+non-overlapping layout instead of animating (its fly-away slice needs
+<code>clamp()</code>); <code>sv-spread</code> stays static below the floor too, no fallback
+rule, its rule parses fine but has no <code>translate</code>/<code>rotate</code> to apply
+down there. <code>sv-split-rise</code> has no fallback rule either, but its floor is not one
+line: below <code>:is()</code> support its animating rule, written with <code>:is()</code>, is
+dropped whole by a parser that predates it, fully static; between <code>:is()</code> support
+and the individual-transform floor the rule still matches and its <code>opacity</code>
+declaration still transitions, so the text fades in without rising. With your bundler
+downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
+<b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
 <pre><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
@@ -274,3 +352,5 @@ ${changelogHtml}
 
 writeFileSync(join(out, 'index.html'), page)
 console.log(`docs built (v${VERSION})`)
+
+}

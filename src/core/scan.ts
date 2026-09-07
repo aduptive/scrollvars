@@ -68,10 +68,29 @@ export function scan(root?: ParentNode): () => void {
     if (!tracked.has(el)) tracked.set(el, track(el, optionsFrom(el)))
   }
   const remove = (el: HTMLElement) => {
+    // a mutation batch can carry the same node in both removedNodes and
+    // addedNodes (parent.replaceChildren/replaceWith retaining it) or split
+    // a reorder across a removal record and an insertion record: by the
+    // time the observer fires the DOM has already settled, so a node still
+    // inside the observed scope was never really removed. Untracking it
+    // here would strip its live state and force a re-track that hides
+    // content for a frame. scope.contains(el), not el.isConnected: a
+    // scoped scan(root) only observes root's subtree, so a node moved OUT
+    // of root into another still-connected part of the document must be
+    // untracked (isConnected stays true and no further record ever
+    // arrives for it), and a scan() on a detached root needs the same
+    // fix-up (isConnected is always false there, so el.isConnected could
+    // never trigger the churn guard for it either).
+    if (scope.contains(el)) return
     tracked.get(el)?.()
     tracked.delete(el)
   }
   const removeSplit = (el: HTMLElement) => {
+    // same guard as remove() above: a retained [data-sv-split] node (batch
+    // replaceChildren/replaceWith, or a reorder split across two records)
+    // is still inside scope by the time the observer fires. Restoring its
+    // original markup here would drop sv-split and nothing re-splits it.
+    if (scope.contains(el)) return
     splits.get(el)?.()
     splits.delete(el)
   }

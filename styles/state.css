@@ -19,9 +19,14 @@
   opacity: 0;
   translate: 0 var(--sv-pop-distance);
 }
-dialog.sv-pop:not([open]) {
-  opacity: 0;
-  translate: 0 var(--sv-pop-distance);
+/* only where <dialog> is implemented: the type selector matches the unknown
+   element too, and hiding THAT would break the documented static fallback
+   panel (nothing else hides it there, no UA display:none) */
+@supports selector(dialog:modal) {
+  dialog.sv-pop:not([open]) {
+    opacity: 0;
+    translate: 0 var(--sv-pop-distance);
+  }
 }
 .sv-pop:not([popover]):not(dialog):not(.sv-open) {
   display: none;
@@ -74,7 +79,13 @@ dialog.sv-pop:not([open]) {
    and every act rescales. Reversible and interruptible by nature: remove
    the class mid-flight and the transition RETARGETS instead of restarting.
    Needs @property (Chrome 85 / FF 128 / Safari 16.4); older browsers snap
-   straight to the finished state. Content never hidden. */
+   straight to the finished state. Content never hidden.
+   --sv-acts-settle is internal, set only by toggles() during its boot
+   settle (src/core/toggles.ts), which also holds an element's own inline
+   transition-duration LONGHAND for the same settle. What remains unguarded:
+   an author RULE, not an inline style, that overrides transition-duration
+   or the whole transition shorthand on .sv-acts at higher specificity than
+   this one still owns the settle timing instead of it. */
 @property --sv-act {
   syntax: '<number>';
   initial-value: 0;
@@ -82,15 +93,31 @@ dialog.sv-pop:not([open]) {
 }
 .sv-acts {
   --sv-act: 0;
-  transition: --sv-act var(--sv-acts-duration, 2s) linear;
+  transition: --sv-act var(--sv-acts-settle, var(--sv-acts-duration, 2s)) linear;
 }
-html:not(.sv-on) .sv-acts {
-  --sv-act: var(--sv-acts-count, 3); /* no JS: the finished state, not act zero */
+/* sv-ui (set by toggles(), src/core/toggles.ts) marks each toggle TARGET
+   (the trigger itself when there is no separate target): without the
+   :not(.sv-ui) here, a click-only widget on a page whose scroll driver
+   never boots would be frozen at the finished state forever instead of
+   starting at act zero and animating on click. A widget the click driver
+   does not control (plain scroll reveal, no toggle) is not marked, so it
+   keeps the no-JS/no-boot fallback below. */
+html:not(.sv-on) .sv-acts:not(.sv-ui) {
+  --sv-act: var(--sv-acts-count, 3); /* no JS at all: the finished state, not act zero */
 }
-.sv-acts.sv-open,
-.sv-on .sv.sv-live.sv-acts,
-.sv-on .sv.sv-live .sv-acts {
+.sv-acts.sv-open {
   --sv-act: var(--sv-acts-count, 3);
+}
+/* Driven from the inherited --sv-live flag, like the entrance presets: the
+   nearest tracker (not just any live ancestor) decides whether this acts
+   clock is live, so a nested non-live tracker keeps its own clock at 0.
+   :not(.sv-open) excludes an opened widget: without it this rule (0,3,0)
+   outranks .sv-acts.sv-open (0,2,0) above, so an opened widget sitting
+   inside (or itself a) non-live tracker would compute --sv-act: 0 instead
+   of staying at the finished value. */
+.sv-on :is(.sv, [data-sv]) .sv-acts:not(.sv-open),
+.sv-on :is(.sv, [data-sv]).sv-acts:not(.sv-open) {
+  --sv-act: calc(var(--sv-live) * var(--sv-acts-count, 3));
 }
 
 @media (prefers-reduced-motion: reduce) {

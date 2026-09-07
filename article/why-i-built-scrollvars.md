@@ -1,6 +1,6 @@
 # One rAF in, CSS variables out: why I built ScrollVars
 
-*A 2 KB scroll-animation engine, a 26-pattern public demo, and the five
+*A 2.9 KB scroll-animation engine, a 28-pattern public demo, and the five
 hard-won lessons that shaped it.*
 
 ---
@@ -69,9 +69,9 @@ Committing to "variables out" bought more than performance:
 - **It's testable.** The whole engine is pure geometry: rect in, numbers
   out. The test suite stubs a DOM in ~40 lines and asserts exact variable
   values at exact scroll positions.
-- **Zero dependencies**, ~2 KB of driver.
+- **Zero dependencies**, ~2.9 KB of driver.
 
-## The stress test: 26 patterns in public
+## The stress test: 28 patterns in public
 
 A transport claim is cheap until you push real weight through it, so the
 [public demo](https://scrollvars.dev) became a stress test: every
@@ -86,10 +86,10 @@ variables. A few highlights:
   sits under the viewport's bottom edge. The scroll owns the rotation;
   the arrow buttons just scroll the page to the matching stop, so the two
   inputs can never fight.
-- **A 1.4 KB carousel.** Native scroll rails + scroll-snap magnetism + an
+- **A 2.3 KB carousel.** Native scroll rails + scroll-snap magnetism + an
   observer that writes each slide's signed distance from center (`--sd`)
   as a variable. Coverflow is then two CSS declarations. Measured against
-  Swiper 11 from the same CDN: 42 KB gzipped (plus 18 KB of CSS) vs 1.4 KB.
+  Swiper 11 from the same CDN: 42 KB gzipped (plus 18 KB of CSS) vs 2.3 KB.
 Because the browser already ships the hard parts.
 
 The demo is served unminified on purpose: view-source is the documentation.
@@ -101,27 +101,27 @@ For scale, measured from the same CDN (min / gzip):
 | framer-motion 11 | 144 KB | 46.9 KB |
 | GSAP core + ScrollTrigger | 117 KB | 46.3 KB |
 | Swiper 11 bundle | 151 KB | 42 KB |
-| **ScrollVars, everything** (core + slider + presets CSS) | 15.8 KB | **5.9 KB** |
-| **ScrollVars driver alone** | 2.3 KB | **1.2 KB** |
+| **ScrollVars, everything** (core + slider + presets CSS) | not tracked | **15.6 KB** |
+| **ScrollVars driver alone** | not tracked | **2.9 KB** |
 
 And because a size table invites the obvious question, there is a
 [public benchmark](https://scrollvars.dev/bench/). Identical DOM,
 identical scroll driver, 150 and 900 scrubbed elements, only the engine
-varies. Two honest findings. First: **on capable
-hardware all three deliver the same 60 fps**. Every competent engine
+varies (four builds now, including a batched-expert GSAP variant). Two
+honest findings. First: **on capable
+hardware all four deliver the same 60 fps**. Every competent engine
 animates only the viewport, so frame parity in scrubbing is structural.
 Second, and this is where they separate: **what those frames cost.**
 Measured over the identical run via CDP (script + style recalc + layout):
-ScrollVars 421 ms of CPU and 1.3 MB of JS heap; GSAP 476 ms and 7.2 MB;
-framer-motion 918 ms and 10.8 MB. Same frames at 2.2× less CPU and 8× less
-memory than Framer. On phones that's battery and headroom for your own
-code, and it's why stacked Framer pages fold on weak devices first. GSAP
-is genuinely efficient; against it the difference is the 15× bundle, the
-heap, and the no-JS/SSR story. And on Google's own ruler, Lighthouse
-mobile, the PageSpeed profile. The load cost decides it: ScrollVars 100,
-framer-motion 94, GSAP + ScrollTrigger 88, the latter losing 230 ms of
-Total Blocking Time just building its 900 triggers on a throttled main
-thread. Run it all on your own machine; that's what it's for.
+ScrollVars 302 ms of CPU and 1.4 MB of JS heap; GSAP (idiomatic) 325 ms
+and 6.2 MB; framer-motion 796 ms and 11.1 MB. Same frames at ~2.6× less
+CPU and ~8× less memory than Framer. On phones that's battery and
+headroom for your own code, and it's why stacked Framer pages fold on
+weak devices first. GSAP is genuinely efficient; against it the
+difference is the ~7× bundle, the heap, and the no-JS/SSR story. And on
+Google's own ruler, Lighthouse mobile, the PageSpeed profile: [Lighthouse
+scores need a fresh run against the deployed site before this publishes,
+see the PR]. Run it all on your own machine; that's what it's for.
 
 ## Five lessons that cost real hours
 
@@ -176,8 +176,8 @@ are their own paradigm; ScrollVars only offers them a lifecycle harness
 
 ## Try it
 
-The demo: 26 live patterns, each with its skeleton and source:
+The demo: 28 live patterns, each with its skeleton and source:
 **https://scrollvars.dev**
 
-`npm i scrollvars`: MIT, zero dependencies, Chrome/Edge 104+, Firefox 74+,
+`npm i scrollvars`: MIT, zero dependencies, Chrome/Edge 104+, Firefox 78+,
 Safari 14.1+ fully animated; everything older gets the complete page, static.

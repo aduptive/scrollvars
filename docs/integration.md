@@ -115,7 +115,7 @@ useTrack({ scenes: 4, onScene: setIndex })
 | Browser | Fully animated |
 | --- | --- |
 | Chrome / Edge | 104+ (Aug 2022) |
-| Firefox | 74+ (Mar 2020): `sv-counter` 128+ |
+| Firefox | 78+ (Jun 2020): `sv-counter` 128+ |
 | Safari / iOS | 14.1+ (Apr 2021): `sv-counter` 16.4+ |
 | With `compat()` + downleveled build | ~Chrome 61 / FF 60 / Safari 11 |
 | Anything older / no JS | complete page, static: nothing breaks |

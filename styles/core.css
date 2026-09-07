@@ -64,6 +64,11 @@
 /* ---- sv-split: text broken into word/char spans (split()/data-sv-split/
    <Split>). Spans carry --sv-order, the container --sv-count, so every
    order-driven preset works on text. sv-split-rise = staggered entrance. */
+/* Non-replaced inline boxes ignore `translate`; the first child is the
+   screen-reader span (position absolute), left untouched. */
+.sv-split > span[aria-hidden] {
+  display: inline-block;
+}
 .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
   opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * 0.6em);
@@ -73,7 +78,9 @@
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
 
-/* Automatic stagger order for sv-auto (and manual lists using sv-stagger) */
+/* Automatic stagger order for sv-auto (and manual lists using sv-stagger).
+   :nth-child(1) resets first so it never inherits an ancestor's order. */
+.sv-auto > :nth-child(1),  .sv-stagger > :nth-child(1)  { --sv-order: 0; }
 .sv-auto > :nth-child(2),  .sv-stagger > :nth-child(2)  { --sv-order: 1; }
 .sv-auto > :nth-child(3),  .sv-stagger > :nth-child(3)  { --sv-order: 2; }
 .sv-auto > :nth-child(4),  .sv-stagger > :nth-child(4)  { --sv-order: 3; }
@@ -117,14 +124,24 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
+/* Same for a RELEASED tracker (`data-sv-off`, see pin.css), on an ancestor or
+   on the spread itself, which is where the marker lands in the scrub idiom. */
+[data-sv-off] .sv-spread > *,
+.sv-spread[data-sv-off] > * {
+  translate: none;
+  rotate: none;
+}
 .sv-on .sv .sv-spread.sv-spread-in > * {
   transition:
     translate var(--sv-duration, 800ms) var(--sv-ease, ease),
     rotate var(--sv-duration, 800ms) var(--sv-ease, ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv.sv-live .sv-spread.sv-spread-in > * {
-  --sv-spread: 1;
+/* Driven from the inherited --sv-live flag, like the entrance presets: the
+   nearest tracker (not just any live ancestor) decides whether this spread
+   is live, so a nested non-live tracker keeps its own spread stacked. */
+.sv-on :is(.sv, [data-sv]) .sv-spread.sv-spread-in > * {
+  --sv-spread: var(--sv-live);
 }
 
 /* ---- Pure CSS tier: zero JS where animation-timeline is supported ---- */
@@ -154,14 +171,18 @@ html:not(.sv-on) .sv-spread > * {
 /* ---- Accessibility ---- */
 
 @media (prefers-reduced-motion: reduce) {
-  .sv-spread > * {
+  /* Matches the animating rule's selector shape (line 127) so the override
+     ties on specificity and wins on source order, not just on the ambient
+     .sv-spread > * rule it also covers. */
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
     translate: none;
     rotate: none;
     transition: none;
   }
   .sv-on :is(.sv, [data-sv]) .sv-split-rise > span,
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
-  .sv-on :is(.sv, [data-sv]).sv-auto > *,
+  .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
   .sv-view-fade,
   .sv-view-rise {
     transition: none;

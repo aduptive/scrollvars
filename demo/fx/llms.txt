@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 5.2 KB gzip as ESM; the fx/sv.js IIFE on these pages is 5.5 KB). Each effect below includes when to
+> (npm i scrollvars, 6.7 KB gzip as ESM; the fx/sv.js IIFE on these pages is 6.9 KB). Each effect below includes when to
 > use it, its knobs, and three ready formats. Engine API: see
 > https://scrollvars.dev/llms.txt
 
@@ -28,16 +28,26 @@ Knobs: --sv-distance (travel), --sv-stagger (delay step), --sv-duration, --sv-ea
 
 ### CSS
 ```html
-<section data-sv>            <!-- tracked; gets .sv-live in the band -->
+<section data-sv>            <!-- tracked; sets --sv-live in the band -->
   <h2 class="sv-rise">Title</h2>
   <p class="sv-rise" style="--sv-order: 1">Copy</p>
 </section>
 
 /* needs styles/core.css (or paste the preset): */
-.sv-on .sv .sv-rise { opacity: 0; translate: 0 var(--sv-distance, 6rem);
-  transition: opacity .8s var(--sv-ease), translate .8s var(--sv-ease);
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+.sv-on .sv .sv-rise { opacity: var(--sv-live);
+  translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
+  transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
-.sv-on .sv.sv-live .sv-rise { opacity: 1; translate: 0 0; }
+
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 ```
 
 ### React
@@ -90,6 +100,13 @@ Knobs: --sv-mid = (N−1)/2, --sv-order per card, --sv-gap; map --sv-spread your
 
 /* scrub instead of play: */
 .mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
+    translate: none; rotate: none; transition: none; }
+}
 ```
 
 ### React
@@ -125,17 +142,25 @@ Knobs: outer height = scroll length; panel content/colors are yours
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">                        <!-- sticky; top:0; h:100vh; overflow:hidden -->
-    <div class="revealed-content">…</div>
-    <div class="panel-left sv-curtain-l">…</div>
-    <div class="panel-right sv-curtain-r">…</div>
+<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
+    <div class="revealed">…</div>
+    <div class="panel sv-curtain-l">…</div>
+    <div class="panel sv-curtain-r">…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
+/* the preset (styles/pin.css), plus the two panels, which are yours: */
+.sv-stage .panel { position: absolute; inset: 0; width: 50%; background: #14141a; }
+.sv-stage .sv-curtain-r { left: 50%; }
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
 .sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r { display: none; }
+}
 ```
 
 ### React
@@ -169,15 +194,23 @@ Knobs: outer height = scroll length; works at any viewport width (min() keeps it
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 300vh -->
-  <div class="sticky">                        <!-- sticky stage, flex center -->
+<div data-sv data-sv-pin="300vh">        <!-- the pin helper owns the height -->
+  <div class="sv-stage rail-stage">      <!-- the sticky viewport, from pin.css -->
     <div class="sv-rail">…cards…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
-.sv .sv-rail { width: max-content;
-  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }
+/* the preset (styles/pin.css), plus the stage layout, which is yours: */
+.rail-stage { display: flex; align-items: center; }
+/* --sv-rail-start: the stage width when it is narrower than the viewport */
+.sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
+}
 ```
 
 ### React
@@ -208,13 +241,15 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
   </div>
 </div>
 <!-- needs calc() division by var: Chrome 112 / Safari 16.4 / FF 112.
-     Older engines settle at the end state (consume as var(--sv-r, 1)). -->
+     --sv-r is a registered property (initial-value: 1), so an engine
+     that can't compute the division settles there instead of turning
+     invalid; still consume it as var(--sv-r, 1). -->
 ```
 
 ### CSS
 ```html
-<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">
+<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
     <div class="sv-range sv-range-rise">
       <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
       <p style="--sv-from: .3; --sv-to: .7">Second</p>
@@ -224,13 +259,22 @@ Knobs: --sv-from / --sv-to per child (slice of the clock), --sv-distance; overri
 </div>
 
 /* styles/pin.css ships it; the mechanism, if you want it inline: */
-.sv .sv-range > * {
+/* the clock lives on the container at zero specificity, so your own rule on
+   that container (--sv-clock: var(--sv-t)) or an inline style wins */
+:where(.sv .sv-range) {
   --sv-clock: var(--sv-pin, var(--sv-t, 0));
+}
+.sv .sv-range > * {
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
 .mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-range > * { --sv-r: 1; }
+}
 ```
 
 ### React
@@ -268,17 +312,17 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP
 
 ### CSS
 ```html
-<div class="outer">          <!-- height: 250vh; position: relative -->
-  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+<div class="scene">                     <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
 </div>
 
 <script>
   // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
-    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
-  track(document.querySelector('.outer'), {
-    pin: true,
+  track(document.querySelector('.scene'), {
+    pin: '250vh',                 // the helper owns the wrapper height
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
@@ -287,7 +331,7 @@ Knobs: the timeline is yours; ScrollVars owns scroll (pin/onPin). Never let GSAP
 
 ### React
 ```tsx
-const tl = useRef<gsap.core.Timeline>(null)
+const tl = useRef<gsap.core.Timeline | null>(null)
 useEffect(() => {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
@@ -318,8 +362,8 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
 
 ### CSS
 ```html
-<div class="outer">              <!-- height: 250vh -->
-  <div class="sticky"><canvas id="scene"></canvas></div>
+<div id="outer">                       <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage"><canvas id="scene"></canvas></div>   <!-- from pin.css -->
 </div>
 
 <script type="module">
@@ -334,7 +378,7 @@ Knobs: mountEffect({ context: null }) hands you the raw canvas; feed progress vi
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
+  track(document.getElementById('outer'), { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>
@@ -385,13 +429,22 @@ Knobs: data-sv-split (word|char) does the splitting; --sv-stagger (beat), --sv-d
      aria-hidden. char mode: data-sv-split="char". -->
 
 /* the preset (styles/core.css): */
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split > span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise > span {
-  opacity: 0; translate: 0 .6em;
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv.sv-live .sv-split-rise > span { opacity: 1; translate: 0 0; }
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->
@@ -444,6 +497,10 @@ Knobs: --sv-word (index), --sv-duration; drive it from state, scenes or an inter
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-words > * { transition-duration: .01ms; }
+}
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)
@@ -530,6 +587,7 @@ Knobs: --sd per slide (written by slider()); --sv-per-view breakpoints; chrome v
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */
 ```
 
 ### React
@@ -571,6 +629,12 @@ Knobs: --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running d
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   without it a pasted marquee never stops */
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track { animation: none; }
+}
 ```
 
 ### React
@@ -590,9 +654,13 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
 ### Tailwind
 ```html
 <section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]">
+  [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
+  motion-reduce:[&_.inner]:[opacity:1] motion-reduce:[&_.inner]:[scale:none]">
+  <!-- the motion-reduce override is written on the section, same [&_.inner] shape as the base rule: two
+       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order -->
   <div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500"></div>
+    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
+    motion-reduce:[translate:none] motion-reduce:transition-none"></div>
   <div class="inner text-center">
     <p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400">Eyebrow</p>
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
@@ -615,7 +683,7 @@ Knobs: --sv-stagger (word beat), --hero-parallax (px of pointer drift), --sv-mar
   </div>
   <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
     <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
   </div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
@@ -683,7 +751,7 @@ Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its sl
 ```html
 <div data-sv data-sv-pin="320vh" class="tl" style="--tl-from: 2019; --tl-span: 7">   <!-- pin helper: the value is the scroll length -->
   <div class="sv-stage tl-sticky">                                                     <!-- preset: sticky viewport; flow again without JS -->
-    <span class="tl-year"></span>
+    <span class="tl-year"><span class="tl-count"></span></span>
     <div class="tl-track"><i class="tl-line"></i>
       <ol class="sv-range sv-range-rise tl-items">                              <!-- preset: --sv-r per child -->
         <li data-sv-from="0"   data-sv-to=".28"><b>2019</b><p>…</p></li>
@@ -697,7 +765,7 @@ Knobs: --tl-from/--tl-span (year counter), data-sv-from/to per milestone (its sl
 .tl-sticky { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; }   /* sv-stage does the pinning */
 /* the year is a CSS counter driven by the pin. No JS, no innerText */
 .tl-year { counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); font-variant-numeric: tabular-nums; }
-.tl-year::after { content: counter(tl-year); }
+.tl-year .tl-count::after { content: counter(tl-year); }   /* on the inner span, never on .tl-year itself: the React tab puts the readable year there */
 /* the line fills with the pin */
 .tl-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .tl-line::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: top; scale: 1 var(--sv-pin, 1); }
@@ -720,7 +788,11 @@ function Timeline() {
   return (
     <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
       <div className="sv-stage tl-sticky">
-        <span className="tl-year" />
+        <span className="tl-year">
+          {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{2026}</span>
+          <span className="tl-count" aria-hidden="true" />   {/* the CSS-counter digits */}
+        </span>
         <div className="tl-track"><i className="tl-line" />
           <ol className="sv-range sv-range-rise tl-items">
             {steps.map((s) => (
@@ -788,6 +860,10 @@ Knobs: data-sv-scenes (step count), wrapper height (scroll per step), --i on eac
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+/* Placed after the rule above (same specificity, later wins, so a media block
+   up there would lose): the stage unpins under reduce but --sv-scene keeps
+   being written, and every non-active step would sit at 30% forever (ADU-155) */
+@media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }
 ```
 
 ### React
@@ -827,26 +903,27 @@ Knobs: --sv-max per number, --sv-acts-duration (count time), data-suffix ("%", "
 ```html
 <section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]" data-suffix="+"></dd><dt class="text-neutral-400">client sites shipped</dt></div>
-    <div><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"></dd><dt class="text-neutral-400">median Lighthouse</dt></div>
+    <div><dt class="text-neutral-400">client sites shipped</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"><span class="count"></span></dd></div>
   </dl>
 </section>
-<!-- .stat's counter-reset / ::after are 3 lines of global CSS (CSS tab) -->
+<!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) -->
 ```
 
 ### CSS
 ```html
 <section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s">
   <dl class="stats">
-    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248" data-suffix="+"></dd></div>
-    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"></dd></div>
+    <div><dt>client sites shipped</dt><dd class="stat" style="--sv-max: 248"><span class="count" data-suffix="+"></span></dd></div>
+    <div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max: 99"><span class="count"></span></dd></div>
   </dl>
 </section>
 
-/* sv-acts (styles/state.css) transitions the registered --sv-act 0 → 1 when the
-   block goes live; the counter re-renders every frame of that transition. */
+/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
+   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
+   every frame of that transition. */
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
-.stats .stat::after { content: counter(n) attr(data-suffix); }
+.stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
 /* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */
@@ -867,8 +944,14 @@ function Stats() {
       <dl className="stats">
         {stats.map((s) => (
           <div key={s.label}>
-            <dd className="stat" style={{ '--sv-max': s.max }} data-suffix={s.suffix ?? ''} />
             <dt>{s.label}</dt>
+            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
+                term whose only dd is aria-hidden is a term with no definition */}
+            <dd className="stat" style={{ '--sv-max': s.max }}>
+              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
+              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
+              <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />
+            </dd>
           </div>
         ))}
       </dl>

@@ -70,12 +70,14 @@
   initial-value: 0;
   inherits: true;
 }
-.sv .sv-counter {
+/* :is(.sv, [data-sv]) here too: the no-JS guard below feeds --sv-int to
+   attribute-only markup, whose digits come from these two rules */
+:is(.sv, [data-sv]) .sv-counter {
   font-variant-numeric: tabular-nums;
   --sv-int: calc(var(--sv-pin, 0) * var(--sv-max, 100));
   counter-reset: sv-counter var(--sv-int);
 }
-.sv .sv-counter::after {
+:is(.sv, [data-sv]) .sv-counter::after {
   content: counter(sv-counter);
 }
 
@@ -86,8 +88,8 @@
    parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
    when pinned, else --sv-t; override --sv-clock to choose explicitly.
    Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
-   on older engines --sv-r is invalid at computed-value time, so ALWAYS
-   consume it as var(--sv-r, 1). Content settles at the end state. */
+   an engine that cannot compute it settles --sv-r at the registered
+   initial value (1), the end state; consume it as var(--sv-r, 1) anyway. */
 /* the clock lives on the container at zero specificity: any author rule on it
    (`.mine { --sv-clock: var(--sv-t) }`) or an inline style wins */
 :where(.sv .sv-range) {
@@ -121,32 +123,103 @@ html:not(.sv-on) .sv-stage {
   height: auto;
   overflow: visible;
 }
-/* SSR markup carries .sv before the driver runs: nothing may hide or fly off */
-html:not(.sv-on) .sv .sv-curtain-l,
-html:not(.sv-on) .sv .sv-curtain-r {
+/* Markup carries data-sv before the driver runs (scan() adds .sv with JS):
+   nothing may hide or fly off, or stay stacked over the revealed content */
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-l,
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-curtain-r {
   display: none;
 }
-html:not(.sv-on) .sv .sv-rail {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-rail {
   translate: none;
   width: auto;
   flex-wrap: wrap;
 }
-html:not(.sv-on) .sv .sv-deck {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck {
   display: block;
 }
-html:not(.sv-on) .sv .sv-deck > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-deck > * {
   translate: none;
   rotate: none;
   scale: none;
 }
-html:not(.sv-on) .sv .sv-reading > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-reading > * {
   opacity: 1;
 }
-html:not(.sv-on) .sv .sv-range > * {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-range > * {
   --sv-r: 1; /* the clock is 0 without the driver; the finished state, not opacity 0 */
 }
-html:not(.sv-on) .sv .sv-counter {
+html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
+}
+
+/* RELEASED (`data-sv-off`, written when a tracker stops): the no-JS twin of
+   every guard above, on an ancestor or on the element itself. One rule each,
+   never a shared list: a parser without `:is()` drops the whole list. */
+[data-sv-off] .sv-stage,
+.sv-stage[data-sv-off] {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+[data-sv-off] .sv-curtain-l,
+[data-sv-off] .sv-curtain-r,
+.sv-curtain-l[data-sv-off],
+.sv-curtain-r[data-sv-off] {
+  display: none;
+}
+[data-sv-off] .sv-rail,
+.sv-rail[data-sv-off] {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+[data-sv-off] .sv-deck,
+.sv-deck[data-sv-off] {
+  display: block;
+}
+[data-sv-off] .sv-deck > *,
+.sv-deck[data-sv-off] > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+[data-sv-off] .sv-reading > *,
+.sv-reading[data-sv-off] > * {
+  opacity: 1;
+}
+[data-sv-off] .sv-range > *,
+.sv-range[data-sv-off] > * {
+  --sv-r: 1;
+}
+[data-sv-off] .sv-counter,
+.sv-counter[data-sv-off] {
+  --sv-int: var(--sv-max, 100);
+}
+
+/* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
+   14.1): `html.sv-on` blocks the guards above, and the stacking half of these
+   presets is plain layout. `transform`, not the no-JS `display: none`, so
+   compat's sheet still outranks and animates them. Guarantee: the curtains
+   sit parted and static, nothing overlaps, content stays in flow. */
+@supports not (translate: 0) {
+  /* Not under compat(): its sheet animates from --sv-pin, measured from this
+     skeleton, so releasing it snapped the curtains over one pixel. The driver
+     reads the same marker. The guarantee above holds without compat only: with
+     it the stage stays pinned and tall content clips. */
+  html:not([data-sv-compat]) .sv-stage {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .sv .sv-curtain-l {
+    transform: translateX(-101%);
+  }
+  .sv .sv-curtain-r {
+    transform: translateX(101%);
+  }
+  .sv .sv-deck {
+    display: block; /* the same line compat's sheet carries, for the same reason */
+  }
 }
 
 /* ---- Accessibility ---- */

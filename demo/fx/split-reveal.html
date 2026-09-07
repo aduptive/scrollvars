@@ -168,13 +168,22 @@
      aria-hidden. char mode: data-sv-split="char". --&gt;
 
 /* the preset (styles/core.css): */
+.sv, [data-sv] { --sv-live: 0; }
+.sv.sv-live { --sv-live: 1; }
+/* non-replaced inline boxes ignore translate: the animated spans need it */
+.sv-split &gt; span[aria-hidden] { display: inline-block; }
 .sv-on .sv .sv-split-rise &gt; span {
-  opacity: 0; translate: 0 .6em;
-  transition: opacity var(--sv-duration) var(--sv-ease),
-              translate var(--sv-duration) var(--sv-ease);
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
+  opacity: var(--sv-live); translate: 0 calc((1 - var(--sv-live)) * 0.6em);
+  transition: opacity var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
+              translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv.sv-live .sv-split-rise &gt; span { opacity: 1; translate: 0 0; }
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise &gt; span {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 &lt;h2 class="sv-reading" data-sv-split&gt;…&lt;/h2&gt;   &lt;!-- inside a data-sv-pin --&gt;</code></pre>
@@ -190,7 +199,7 @@
    HTML, so no client-side splitting, no layout shift, no hydration
    flash. by="char" for letters. */}</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

@@ -143,41 +143,31 @@
   <h1>Sticky steps</h1>
   <p class="tag">Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.</p>
   <p class="meta"><b>Use it for:</b> Product features, "how it works", case-study walkthroughs, onboarding explainers.<br><b>Knobs:</b> data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)</p>
-  <style>
-.st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
-.st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #221f31; display: grid; }
-.st-shot { margin: 0; display: grid; place-items: center; font: 800 clamp(48px, 9vw, 110px) var(--mono); color: var(--accent); background: linear-gradient(160deg, #221f31, #17151f 70%); }
-.st-shot:nth-child(2) { background: linear-gradient(160deg, #1f2a3a, #17151f 70%); color: #7dd3fc; }
-.st-shot:nth-child(3) { background: linear-gradient(160deg, #3a2a1f, #17151f 70%); color: #ffb454; }
-/* distance from the active scene, 0..1 (abs() without abs(): max(x, -x)) */
-.st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
-.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); text-align: left; }
-.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
-.st-steps b { display: block; font: 700 12px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
-.st-steps h4 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
-.st-steps p { margin: 0; color: var(--muted); max-width: 36ch; }
-.st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
-.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); background: var(--accent); }
-html:not(.sv-on) .st-steps > li { opacity: 1; }
-@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } .st-steps { gap: 12px; } }
-</style>
-<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="fxouter st">
-  <div class="sv-stage fxsticky st-grid">
-    <div class="st-media">
-      <figure class="st-shot" style="--i: 0">01</figure>
-      <figure class="st-shot" style="--i: 1">02</figure>
-      <figure class="st-shot" style="--i: 2">03</figure>
-    </div>
-    <ol class="st-steps">
-      <li style="--i: 0"><b>Step 1</b><h4>Track the section</h4><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li>
-      <li style="--i: 1"><b>Step 2</b><h4>Give each piece an index</h4><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li>
-      <li style="--i: 2"><b>Step 3</b><h4>Ship it</h4><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li>
-    </ol>
-    <div class="st-dots"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i></div>
-  </div>
-</div>
+  <div class="sv-steps fxouter"><style>
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
+.sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
+.sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
+.sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
+.sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
+  --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
+.sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+@media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
+.sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
+.sv-steps .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
+.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.sv-steps .st-steps h3 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
+.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
+.sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
+.sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+/* Placed after the rules above (same specificity, later wins): the stage is
+   unpinned under reduced motion, so --sv-scene keeps writing but every
+   non-active step would otherwise sit at 30% opacity forever and the copy
+   would slide with the raw scroll. Reset both the steps and the dots. */
+@media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
+@media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
+</style><div class="sv-stage fxsticky st-grid"><div class="st-media"><figure class="st-shot" style="--i:0">01</figure><figure class="st-shot" style="--i:1">02</figure><figure class="st-shot" style="--i:2">03</figure></div><ol class="st-steps"><li style="--i:0"><b>Step 1</b><h3>Track the section</h3><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li><li style="--i:1"><b>Step 2</b><h3>Give each piece an index</h3><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li><li style="--i:2"><b>Step 3</b><h3>Ship it</h3><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li></ol><div class="st-dots" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div></div></div>
+<script>addEventListener('load', () => SV.track(document.querySelector('.sv-steps'), { pin: '300vh', scenes: 3 }))</script>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -222,7 +212,11 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
 .st-steps &gt; li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
-html:not(.sv-on) .st-steps &gt; li { opacity: 1; }                 /* no JS: shots stack, every step readable */</code></pre>
+html:not(.sv-on) .st-steps &gt; li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+/* Placed after the rule above (same specificity, later wins, so a media block
+   up there would lose): the stage unpins under reduce but --sv-scene keeps
+   being written, and every non-active step would sit at 30% forever (ADU-155) */
+@media (prefers-reduced-motion: reduce) { .st-steps &gt; li { opacity: 1; } }</code></pre>
     <pre data-pane="react"><code>import { Track } from 'scrollvars/react'
 
 const steps = [
@@ -246,7 +240,7 @@ function StickySteps() {
 }
 // npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 5.2 KB gzip as ESM (this page's fx/sv.js IIFE: 5.5 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
