@@ -626,7 +626,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   <div class="sv-marquee-track fxmarq">
     <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
     <span>CSS variables out</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
   </div>
 </div>`,
     css: `<div class="sv-marquee">
@@ -695,7 +695,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   </div>
   <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
     <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
-    <span aria-hidden="true" style="display:contents"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
+    <span class="sv-marquee-dup" aria-hidden="true"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
   </div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
