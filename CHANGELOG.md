@@ -51,32 +51,47 @@
 No behavior change: a stub modelled a ResizeObserver that never delivers,
 which left the mount-time schedule untested rather than passing.
 - Every `ResizeObserver` stub in the slider suite (18 of them, one per
-  fixture) recorded the observed element and delivered nothing. A real one
-  delivers once, on its own, right after `observe()`, with the element's
-  current size, and `src/core/slider.ts` is written against that: its
-  callback is `schedule()`, so the frame that measures a rail whose box was
-  not ready at mount comes from that first delivery and from nothing else.
-  One shared stub now delivers it, batched into one callback per frame,
-  dropped by `disconnect()`, the way the spec has it. The delivery is a
-  frame, not a microtask: a real one runs in the rendering step, and these
-  fixtures drive their own rAF queue as their only clock, so a microtask
-  would land after the whole test body had run.
+  fixture) was an empty `observe() {}` that recorded nothing and delivered
+  nothing. A real one delivers once, on its own, right after `observe()`,
+  with the element's current size, and `src/core/slider.ts` is written
+  against that: its callback is `schedule()`, so the frame that measures a
+  rail whose box was not ready at mount comes from that first delivery and
+  from nothing else. One shared stub now delivers it, batched into one
+  callback per frame, dropped by `disconnect()`, the way the spec has it.
+  The delivery is a frame, not a microtask: a real one runs in the
+  rendering step, and these fixtures drive their own rAF queue as their
+  only clock, so a microtask would land after the whole test body had run.
+  `disconnect()` cancels the queued frame instead of only forgetting it,
+  or a fixture's blunt `cancelAnimationFrame` (every one of them clears the
+  WHOLE queue) would leave the stub believing a delivery is still pending
+  and unable to ever schedule another.
 - All 18 fixtures now reach that delivery, up from 8: two drove
   `requestAnimationFrame` as `() => 1`, which throws the callback away and
-  with it any observer delivery, and eight never ran a frame at all. A new
-  test covers what the missing delivery hid, a rail mounted with no box
-  (a tab just revealed, a font not yet swapped): the synchronous mount
-  measure reads a zero viewport and parks on slide 0, and only the
-  observer's first delivery re-measures it onto the real active slide.
-  Proved red against the old do-nothing stub.
-- The canvas harness's stub had the same hole. It queues the first delivery
-  on `observe()` now and `pump()` runs it after that frame's rAF callbacks,
-  Chrome's order. A fixture that calls `env.resize()` before it ever pumps
-  has delivered that first entry by hand, so nothing is delivered twice and
-  the other 51 canvas tests are untouched. The new test mounts and pumps
-  with no `resize()` call at all: the canvas sizes itself from the first
-  delivery and starts its loop, and stays at the HTML default 300x150
-  without it.
+  with it any observer delivery; seven never ran a frame at all; and one
+  (`rapid next() clicks accumulate through the pending target`) ran six
+  frames of its own glide and still delivered nothing, because the second
+  `next()`'s `stopGlide` calls `cancelAnimationFrame`, which every fixture
+  defines as clearing the WHOLE queue, wiping the already-queued delivery
+  along with it. A new test covers what the missing delivery hid, a rail
+  mounted with no box (a tab just revealed, a font not yet swapped): the
+  synchronous mount measure reads a zero viewport and parks on slide 0,
+  and only the observer's first delivery re-measures it onto the real
+  active slide. Proved red against the old do-nothing stub.
+- The canvas harness's stub had the same hole in a different spot. It
+  queues the first delivery on `observe()` now and `pump()` runs it after
+  that frame's rAF callbacks, Chrome's order: that frame order is what
+  keeps the other 51 canvas tests correct, not `deliverResize()` also
+  cancelling the pending flag on a fixture's own hand-fired `env.resize()`,
+  which silently cancelled the observer's own queued mount delivery
+  instead of letting it land. Removed: the canvas cases this fix targets
+  only turn red under a delivery synchronous with `observe()`, never under
+  one deferred a frame like this stub's. A hand delivery can now be
+  followed by a real, same-box auto delivery on the fixture's next
+  `pump()` (five of the 52 canvas fixtures reach that state, up from the
+  one below), harmless because nothing moved between them. The new test
+  mounts and pumps with no `resize()` call at all: the canvas sizes itself
+  from the first delivery and starts its loop, and stays at the HTML
+  default 300x150 without it.
 
 ### Testing (round 6 follow-up, ADU-161)
 No behavior change: three fixtures modelled a browser state no engine is in,

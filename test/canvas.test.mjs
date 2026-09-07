@@ -153,11 +153,6 @@ function makeEnv() {
     // safety net, a capped loop (not an unbounded one), so a bug that never
     // converges fails the test instead of hanging it.
   function deliverResize(contentRect) {
-    // Whatever fires first IS the observer's first delivery: a fixture that
-    // calls resize() before it ever pumps has just delivered it by hand, and a
-    // real observer has nothing left to send after that (no box moved). Only a
-    // fixture that reaches a frame first gets it from pump() below.
-    roPending = false
     if (contentRect) {
       roCallback([{ contentRect }])
       return

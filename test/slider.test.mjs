@@ -80,6 +80,12 @@ class ResizeObserverStub {
   }
   disconnect() {
     this.pending = []
+    // cancel the queued delivery, not just forget it: leaving `frame` set
+    // with nothing left in the real queue to reset it would make every
+    // observe() after this one believe a delivery is still pending and
+    // never schedule another
+    if (this.frame) cancelAnimationFrame(this.frame)
+    this.frame = 0
   }
 }
 
