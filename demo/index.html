@@ -5068,15 +5068,29 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             sync();
         },
         destroy: () => {
+            // Idempotent: a second call is a no-op, not a second run of the
+            // consumer's own setup() cleanup (a WebGL context or a renderer
+            // disposed twice can itself throw). Exception-safe: the observers and
+            // listener removals below run in the `finally`, so a throwing cleanup
+            // still cannot leak them for the life of the page (ADU-189, the
+            // untouched twin of ADU-165).
+            if (destroyed)
+                return;
             destroyed = true;
-            cleanup?.();
-            sync();
-            ro.disconnect();
-            io.disconnect();
-            document.removeEventListener('visibilitychange', onVisibility);
-            offMediaChange(motionQuery, onMotion);
-            if (dprQuery)
-                offMediaChange(dprQuery, onDprChange);
+            const dispose = cleanup;
+            cleanup = undefined;
+            try {
+                dispose?.();
+            }
+            finally {
+                sync();
+                ro.disconnect();
+                io.disconnect();
+                document.removeEventListener('visibilitychange', onVisibility);
+                offMediaChange(motionQuery, onMotion);
+                if (dprQuery)
+                    offMediaChange(dprQuery, onDprChange);
+            }
         },
     };
 }

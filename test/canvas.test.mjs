@@ -2113,3 +2113,89 @@ test('canvas harness: a MediaQueryList with only addListener (no addEventListene
   assert.equal(motion.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
   assert.equal(dpr.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
 })
+
+test('canvas harness: destroy() is idempotent, a second call runs nothing (ADU-189)', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // Counts every call to the consumer's own setup() cleanup: a second
+  // destroy() must not re-run it (a consumer disposing a renderer or a GPU
+  // buffer twice can itself throw).
+  let cleanupCalls = 0
+  const handle = mountEffect(env.canvas, {
+    setup: () => () => {
+      cleanupCalls++
+    },
+    frame: () => {},
+  })
+
+  env.resize()
+  env.pump(16)
+  assert.equal(cleanupCalls, 0, 'not disposed yet')
+
+  handle.destroy()
+  assert.equal(cleanupCalls, 1)
+
+  handle.destroy()
+  assert.equal(cleanupCalls, 1, 'a second destroy() must not re-run the consumer cleanup')
+})
+
+test('canvas harness: a throwing cleanup still disconnects both observers and removes every listener (ADU-189)', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+
+  // mountEffect reads these globals at call time, not at import time, so
+  // wrapping them AFTER makeEnv() has installed its own stubs still lands
+  // inside this test's mountEffect() call below.
+  const BaseRO = global.ResizeObserver
+  let roDisconnects = 0
+  global.ResizeObserver = class extends BaseRO {
+    disconnect() {
+      roDisconnects++
+      super.disconnect()
+    }
+  }
+  const BaseIO = global.IntersectionObserver
+  let ioDisconnects = 0
+  global.IntersectionObserver = class extends BaseIO {
+    disconnect() {
+      ioDisconnects++
+      super.disconnect()
+    }
+  }
+  const baseRemoveEventListener = global.document.removeEventListener
+  const docRemovals = []
+  global.document.removeEventListener = (type, fn) => {
+    docRemovals.push(type)
+    baseRemoveEventListener(type, fn)
+  }
+  const baseMatchMedia = global.window.matchMedia
+  const mqRemovals = []
+  global.window.matchMedia = (query) => {
+    const mq = baseMatchMedia(query)
+    return {
+      ...mq,
+      removeEventListener: (type, fn) => {
+        mqRemovals.push(query)
+        mq.removeEventListener(type, fn)
+      },
+    }
+  }
+
+  const handle = mountEffect(env.canvas, {
+    setup: () => () => {
+      throw new Error('cleanup boom')
+    },
+    frame: () => {},
+  })
+
+  env.resize()
+  env.pump(16)
+
+  assert.throws(() => handle.destroy(), /cleanup boom/, 'the cleanup error still propagates')
+
+  assert.equal(roDisconnects, 1, 'the ResizeObserver is disconnected despite the throwing cleanup')
+  assert.equal(ioDisconnects, 1, 'the IntersectionObserver is disconnected despite the throwing cleanup')
+  assert.equal(docRemovals.length, 1, 'the visibilitychange listener is removed')
+  assert.equal(mqRemovals.length, 2, 'both the reduced-motion and dpr media query listeners are removed')
+})

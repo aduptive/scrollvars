@@ -1872,6 +1872,19 @@ Docs read against the code merged by the seven round-6 code tickets.
   destroyed. With the core fix above, a destroyed slider is inert from
   either side.
 
+### Canvas (round 8, ADU-189)
+- `destroy()` was neither idempotent nor exception-safe. A second call ran
+  the consumer's own `setup()` cleanup again (disposing a renderer or a GPU
+  buffer twice can itself throw), and a cleanup that threw skipped both the
+  `ResizeObserver`/`IntersectionObserver` disconnects and all three
+  listener removals (`visibilitychange`, the reduced-motion query, the DPR
+  query), leaking them for the life of the page. `destroy()` now returns
+  early on a second call, nulls the stored cleanup before running it, and
+  runs the teardown in a `finally`, so a throwing cleanup can no longer
+  skip it. The untouched twin of ADU-165, which fixed the same shape in
+  the slider; no other module carries a consumer-supplied dispose callback
+  a destroy path can re-run or skip past.
+
 ## 1.13.0 (2026-09-05)
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean
