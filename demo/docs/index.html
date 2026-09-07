@@ -637,6 +637,17 @@ Docs read against the code merged by the seven round-6 code tickets.
 <li>Second pass (verifier finding on 213c15b): the compat header comment in <code>src/compat/index.ts</code>, which <code>tsc</code> emits verbatim into the published <code>dist/compat/index.js</code>, still opened with the old flat claim, three presets stay static, one reason each, including <code>sv-split-rise</code> with no fallback rule at all. It now carries the same two-band split as the README sentence above: <code>sv-deck</code> and <code>sv-spread</code> stay static, one reason each; <code>sv-split-rise</code> is static only below <code>:is()</code> support and fades in without rising above it. The README's closing "stay static or progressive" list also still named <code>sv-split-rise</code>, reading like the old flat claim; it is dropped from that list now that the paragraph above it already carries the nuance.</li>
 </ul>
 
+<h4>Slider (blind review round 7)</h4>
+<ul>
+<li>The active slide is the one nearest the viewport centre in PIXELS. The argmin divided each distance by that slide's OWN width first, so a wide slide always looked nearer than a narrow neighbour: with a 100px slide beside a 300px one (centres 50 and 250, midpoint 150) the active flipped to the wide slide at centre 101. <code>sv-active</code>, <code>--sv-slide</code>, <code>onSlide</code>, the glide a drag release lands on and the wheel settle all took that index. <code>--sd</code> is unchanged, still normalized by each slide's own size, which is what the CSS reads; an exact tie still keeps the first slide. Sliders whose slides are all the same width read exactly as before.</li>
+<li>A destroyed slider stops moving. <code>destroy()</code> set no flag, so <code>next</code>, <code>prev</code>, <code>goTo</code> and <code>seek</code> still scrolled the container from a frame of their own, on geometry nothing measures any more. Every command is a no-op after <code>destroy()</code> and nothing schedules a frame, so a scroll or an observer record already in flight measures nothing either.</li>
+</ul>
+
+<h4>React (blind review round 7)</h4>
+<ul>
+<li><code>&lt;Slider></code>'s imperative <code>destroy()</code> drops its handle instead of keeping it, so the autoplay interval (which reads the handle on every tick and returns when there is none) stops advancing a slider the consumer has destroyed. With the core fix above, a destroyed slider is inert from either side.</li>
+</ul>
+
 <h3>1.13.0 (2026-09-05)</h3>
 
 Second source-level review round (Kimi K3 and Codex gpt-6-astra on a clean

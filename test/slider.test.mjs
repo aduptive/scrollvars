@@ -803,3 +803,73 @@ test('slider: a press inside the wheel settle window drops the pending glide', a
   }
   handle.destroy()
 })
+
+test('slider: the active slide is the nearest one in pixels, not in slide widths', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  // a 100px slide followed by a 300px one: centres at 50 and 250, midpoint 150.
+  // Dividing each distance by the slide's OWN width made the wide one look
+  // nearer from centre 110 on, where it is 140px away and its neighbour 60px.
+  const slides = [makeSlideBox({ x: 0, w: 100 }), makeSlideBox({ x: 100, w: 300 })]
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 400, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?uneven')
+  const handle = slider(c, { duration: 0 })
+
+  for (let centre = 100; centre <= 200; centre++) {
+    c.scrollLeft = centre - 50 // centre = scrollLeft + clientWidth / 2
+    pumpSlider(listeners, rafQueue)
+    const { active, position } = handle.state()
+    // the flip sits on the midpoint 150, where the two are equidistant and the
+    // first one keeps it (same tie rule as the vertical rail test above)
+    assert.equal(active, centre <= 150 ? 0 : 1, `centre ${centre} belongs to the nearest slide in pixels`)
+    // active is the slide the continuous position rounds to: they can only
+    // ever be half a slide apart, at that exact midpoint
+    assert.ok(
+      Math.abs(position - active) <= 0.5,
+      `position ${position} and active ${active} disagree at centre ${centre}`
+    )
+  }
+
+  // --sd stays normalized by each slide's own size: that is what the CSS reads
+  c.scrollLeft = 100 // centre 150
+  pumpSlider(listeners, rafQueue)
+  assert.equal(slides[0].vars['--sd'], '-1.0000')
+  assert.equal(slides[1].vars['--sd'], '0.3333')
+
+  handle.destroy()
+})
+
+test('slider: a destroyed slider stops moving', async () => {
+  const rafQueue = [], listeners = {}
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = class { observe() {} disconnect() {} }
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?destroyed')
+  const handle = slider(c, { duration: 0 })
+
+  handle.goTo(1, false)
+  const parked = c.scrollLeft
+  assert.equal(parked, 100, 'it moves while it is alive')
+
+  handle.destroy()
+  handle.next()
+  handle.prev()
+  handle.goTo(2, false)
+  handle.seek(1)
+  assert.equal(c.scrollLeft, parked, 'no command writes a position after destroy')
+
+  // a stray scroll (or an observer record already in flight) measures nothing
+  rafQueue.length = 0
+  listeners.scroll()
+  assert.equal(rafQueue.length, 0, 'a destroyed slider schedules no frame')
+})
