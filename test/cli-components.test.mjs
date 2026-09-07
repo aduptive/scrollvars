@@ -835,3 +835,67 @@ test('cli component rotating-words: an empty list schedules no interval, a late 
     delete global.IS_REACT_ACT_ENVIRONMENT
   }
 })
+
+// ---- ADU-188: Children.map calls back for `false` and `null` too, so a
+// conditional child ({show && <Card/>}) used to wrap nothing in a real
+// wrapper: an empty slide in the rail, an empty cell in the deck, an empty
+// slice of the pin. Three components carried the same pair (Children.count
+// for the geometry, Children.map for the render), so all three are checked
+// on the same shape. The mirror of the count is the pass-through: what is
+// not an element is not wrapped and not counted, but it still renders.
+const CONDITIONAL_CHILDREN = () => [
+  h('p', { key: 1 }, 'one'),
+  false,
+  null,
+  'loose text',
+  h('p', { key: 2 }, 'two'),
+]
+
+async function renderInstalled(slug, name, props) {
+  const src = join(dir, name + 'Conditional.tsx')
+  writeFileSync(src, COMPONENTS[slug].content)
+  const out = join(outDir, slug + '-conditional.mjs')
+  await build({
+    entryPoints: [src], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const mod = await import(pathToFileURL(out).href)
+  return renderToStaticMarkup(h(mod[name], props))
+}
+
+test('cli component coverflow-slider: a conditional child renders no empty slide', async () => {
+  const markup = await renderInstalled('coverflow-slider', 'CoverflowSlider', {
+    children: CONDITIONAL_CHILDREN(),
+  })
+  // class=, not the bare class name: the component's own <style> names
+  // .cf-slide twice and would pad the count
+  assert.equal(markup.match(/class="cf-slide"/g).length, 2, 'two children, two slides')
+  assert.equal(markup.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.doesNotMatch(markup, /of 4/)
+  assert.match(markup, /loose text/, 'a child that is not an element still renders')
+})
+
+test('cli component deck-spread: the fan is centred on the cards that exist', async () => {
+  const markup = await renderInstalled('deck-spread', 'DeckSpread', {
+    children: CONDITIONAL_CHILDREN(),
+  })
+  // four wrappers, two of them empty, and --sv-mid at 1.5 fanned the deck
+  // around a card that is not there
+  assert.equal(markup.match(/--sv-order:/g).length, 2, 'two cards, two positions')
+  assert.match(markup, /--sv-order:0/)
+  assert.match(markup, /--sv-order:1/)
+  assert.match(markup, /--sv-mid:0\.5/, 'the midpoint of two cards is 0.5, not 1.5')
+  assert.match(markup, /loose text/, 'a child that is not an element still renders')
+})
+
+test('cli component sequenced-scrub: each card gets the slice its own index earns', async () => {
+  const markup = await renderInstalled('sequenced-scrub', 'SequencedScrub', {
+    children: CONDITIONAL_CHILDREN(),
+  })
+  // the second card used to be child 3 of 4 and scrubbed over 0.75..1
+  assert.equal(markup.match(/--sv-from:/g).length, 2, 'two cards, two windows')
+  assert.match(markup, /--sv-from:0;/)
+  assert.match(markup, /--sv-from:0\.5;/)
+  assert.doesNotMatch(markup, /--sv-from:0\.75/)
+  assert.match(markup, /loose text/, 'a child that is not an element still renders')
+})

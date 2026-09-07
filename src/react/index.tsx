@@ -30,11 +30,17 @@ import { splitParts } from '../core/split.js'
  */
 /** Inline, runs before first paint when <ScrollVarsBoot /> is the first child of <body>:
  * adds html.sv-on immediately (no flash of visible-then-hidden content) and removes
- * it again if the driver has not booted within 3s, so a broken bundle still fails visible. */
+ * it again if the driver has not booted within 3s, so a broken bundle still fails visible.
+ * Once released the release is final: a driver that arrives at 4s (slow network, a
+ * bundle behind a long task) would add sv-on back and send every offscreen entrance to
+ * opacity 0, so content the visitor is already reading disappears. The observer costs
+ * nothing on the normal path, it is only installed when the watchdog has fired. */
 const PREPAINT =
   "(function(){try{if(!('IntersectionObserver'in window&&'ResizeObserver'in window))return;" +
   "var h=document.documentElement;h.classList.add('sv-on');" +
-  "setTimeout(function(){if(!window.__scrollvars)h.classList.remove('sv-on')},3000)}catch(e){}})()"
+  "setTimeout(function(){if(window.__scrollvars)return;h.classList.remove('sv-on');" +
+  "new MutationObserver(function(){if(h.classList.contains('sv-on'))h.classList.remove('sv-on')})" +
+  ".observe(h,{attributes:true,attributeFilter:['class']})},3000)}catch(e){}})()"
 
 export interface ScrollVarsBootProps {
   /** CSP nonce, forwarded to the pre-paint script tag. Required under a
@@ -595,6 +601,37 @@ function perViewCss(scope: string, perView: Record<string, number>): string {
   return css
 }
 
+/**
+ * Everything the rail renders, fragments opened, in render order. What the
+ * ENGINE counts is the elements in it, which is what `Children.count` gets
+ * wrong: a conditional slide (`{show && <Slide/>}`) counts as one and renders
+ * none, a fragment counts as one and renders its children, and `cloneElement`
+ * on a Fragment drops role and aria-* on the floor. One list feeds rendering,
+ * counting and annotation, so the dots, the labels and the engine agree.
+ * A child COMPONENT that itself returns a fragment still counts as one slide:
+ * only rendering could tell, and the engine reads the real DOM anyway.
+ * A child that is not an element (a bare string, a portal) stays in the list
+ * untouched: it can carry no annotation and the engine cannot count it, but
+ * dropping it would delete content the caller wrote. A portal in particular
+ * renders somewhere else entirely, and `toArray().filter(isValidElement)`
+ * would have removed it from the document.
+ */
+function slideList(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  return React.Children.toArray(children).flatMap((child): React.ReactNode[] => {
+    if (!React.isValidElement<Record<string, unknown>>(child)) return [child]
+    // toArray keys each level from ".0", so a fragment's children would
+    // collide with their uncles without the parent's key in front. The
+    // separator is `:` because React escapes `:` (to `=2`) in an element key
+    // and never leaves a bare one behind, while `.` and `$` pass through
+    // untouched: joined on those, <Fragment key="a"><b/></Fragment> and a
+    // sibling keyed "a.$b" both flatten to ".$a.$b".
+    const key = prefix ? `${prefix}:${child.key ?? ''}` : (child.key ?? '')
+    if (child.type === React.Fragment)
+      return slideList((child.props as { children?: React.ReactNode }).children, key)
+    return [key === child.key ? child : React.cloneElement(child, { key })]
+  })
+}
+
 export interface SliderComponentProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onScroll'> {
   /** Slides per view. A number, or a responsive map: `{ base: 1.2, md: 2.5, xl: 4 }`
@@ -663,7 +700,8 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
   ) {
     const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis })
     const uid = React.useId()
-    const count = React.Children.count(children)
+    const items = slideList(children)
+    const count = items.filter(React.isValidElement).length
 
     React.useImperativeHandle(
       apiRef,
@@ -746,23 +784,30 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       }
     }, [autoplay, handle, ref])
 
-    const scope = `[data-sv-uid="${uid}"] .sv-slider`
+    // a child combinator, not a descendant one: the rail of a slider nested
+    // inside a slide is a descendant of this shell too, and a descendant scope
+    // declares --sv-per-view right on it, where the inner shell's own rule can
+    // no longer be inherited past it
+    const scope = `[data-sv-uid="${uid}"] > .sv-slider`
     const styleVars: Record<string, string | number> = {}
     if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
     const rotating = !!autoplay && autoplay > 0 && !paused
     // APG slide semantics without breaking layout: annotate each child in
-    // place (no wrapper, sv-cols and --sv-span target direct children)
-    const slides = React.Children.map(children, (child, i) =>
-      React.isValidElement<Record<string, unknown>>(child)
-        ? React.cloneElement(child, {
-            role: (child.props.role as string) ?? 'group',
-            'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
-            'aria-label': child.props['aria-label'] ?? `${i + 1} of ${count}`,
-          })
-        : child
-    )
+    // place (no wrapper, sv-cols and --sv-span target direct children).
+    // The position is counted over elements only: whatever else is in the
+    // list renders where the caller put it and is not a slide.
+    let position = 0
+    const slides = items.map((child) => {
+      if (!React.isValidElement<Record<string, unknown>>(child)) return child
+      position += 1
+      return React.cloneElement(child, {
+        role: (child.props.role as string) ?? 'group',
+        'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
+        'aria-label': child.props['aria-label'] ?? `${position} of ${count}`,
+      })
+    })
 
     return (
       <div

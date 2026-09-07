@@ -65,7 +65,7 @@ test('react: Slider responsive perView survives SSR under both React majors', as
   // react-dom 18.3.1 escapes `"` to `&quot;` inside a <style> child (19 does
   // not), and <style> is raw text: the entity never decodes, so every scoped
   // rule would be dropped on the server and hydration never repairs it
-  assert.match(html, /\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:1\.2\}/)
+  assert.match(html, /\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:1\.2\}/)
   assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="/)
   assert.doesNotMatch(html, /&quot;/)
 })
@@ -105,10 +105,148 @@ test('react: numeric perView renders its rules unchanged, keys and values', asyn
     )
   )
   assert.match(html, /\.sv-slider\{--sv-per-view:1\.5\}/)
-  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:3\}\}/)
+  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:3\}\}/)
   // a raw min-width key stays that number
-  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:4\}\}/)
+  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:4\}\}/)
   assert.doesNotMatch(html, /NaN/)
+})
+
+test('react: Slider counts the slides React renders, not the children it was handed', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // ordinary React: a conditional slide is `false`, a missing one is `null`.
+  // Children.count sees 4, the rail gets 2 elements, so the extra dots used to
+  // call goTo(2) and goTo(3) on a two-slide engine and the labels lied
+  const html = renderToStaticMarkup(
+    React.createElement(Slider, { dots: true }, [
+      React.createElement('div', { key: 'a' }, 'one'),
+      false,
+      null,
+      React.createElement('div', { key: 'b' }, 'two'),
+    ])
+  )
+  assert.equal(html.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.match(html, /aria-label="1 of 2"/)
+  assert.match(html, /aria-label="2 of 2"/)
+  assert.doesNotMatch(html, /of 4/)
+})
+
+test('react: Slider annotates the slides inside a fragment', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // a mapped fragment is one child to Children.count and two elements in the
+  // rail. cloneElement on a Fragment drops role/aria-*, so neither slide
+  // carried any of the annotation the component promises
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { dots: true },
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement('div', { key: 'a' }, 'one'),
+        React.createElement('div', { key: 'b' }, 'two')
+      )
+    )
+  )
+  assert.equal(html.match(/aria-roledescription="slide"/g).length, 2)
+  assert.equal(html.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.match(html, /aria-label="1 of 2"/)
+  assert.match(html, /aria-label="2 of 2"/)
+})
+
+test('react: an outer Slider perView cannot declare on a nested slider rail', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: 1.2 } },
+      React.createElement(
+        'div',
+        null,
+        React.createElement(
+          Slider,
+          { perView: { base: 3 } },
+          React.createElement('div', null, 'one')
+        )
+      )
+    )
+  )
+  // the inner rail is a descendant of the outer shell but never its child:
+  // a descendant scope declared --sv-per-view on it, and the inner rail only
+  // inherits its own value, so the outer map won every nesting
+  assert.doesNotMatch(html, /\[data-sv-uid="[^"]+"\] \.sv-slider\{/)
+  assert.equal(html.match(/\[data-sv-uid="[^"]+"\] > \.sv-slider\{/g).length, 2)
+})
+
+test('react: a driver boot after the pre-paint watchdog fired does not re-hide the page', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { ScrollVarsBoot } = await import('../dist/react/index.js')
+  const source = renderToStaticMarkup(React.createElement(ScrollVarsBoot, null))
+    .replace(/^<script[^>]*>/, '')
+    .replace(/<\/script>$/, '')
+
+  // one token list, and a MutationObserver stub that delivers on every class
+  // write: the real one delivers a microtask later, which only widens the
+  // window this guards, it never closes it
+  function sandbox() {
+    const classes = new Set()
+    const callbacks = []
+    const timers = []
+    const notify = () => callbacks.slice().forEach((cb) => cb())
+    const documentElement = {
+      classList: {
+        add: (c) => (classes.add(c), notify()),
+        remove: (c) => (classes.delete(c), notify()),
+        contains: (c) => classes.has(c),
+      },
+    }
+    const win = { IntersectionObserver: class {}, ResizeObserver: class {} }
+    const MO = class {
+      constructor(cb) {
+        this.cb = cb
+      }
+      observe() {
+        callbacks.push(this.cb)
+      }
+    }
+    new Function('window', 'document', 'setTimeout', 'MutationObserver', source)(
+      win,
+      { documentElement },
+      (fn, ms) => timers.push([fn, ms]),
+      MO
+    )
+    return {
+      timers,
+      win,
+      boot: () => documentElement.classList.add('sv-on'),
+      release: () => documentElement.classList.remove('sv-on'),
+      on: () => documentElement.classList.contains('sv-on'),
+    }
+  }
+
+  const late = sandbox()
+  assert.ok(late.on(), 'the pre-paint script adds sv-on before first paint')
+  assert.equal(late.timers[0][1], 3000)
+  late.timers[0][0]() // 3s, no driver: the page is released, content is visible
+  assert.ok(!late.on())
+  // the bundle finally arrives at 4s and the driver adds sv-on back, which
+  // sent every offscreen entrance to opacity 0: content appeared, then vanished
+  late.boot()
+  assert.ok(!late.on(), 'a boot after the watchdog must not re-hide what is already on screen')
+
+  const normal = sandbox()
+  normal.win.__scrollvars = true
+  normal.timers[0][0]() // the driver booted in time: nothing to release
+  assert.ok(normal.on())
+  normal.release()
+  normal.boot()
+  assert.ok(normal.on(), 'no watchdog fire, no class guard: the driver owns sv-on')
 })
 
 test('react: Scenes forwards options without leaking props to the DOM', async () => {
@@ -164,6 +302,19 @@ test('<Split by="char"> renders one span per grapheme, matching --sv-count', asy
 // One process (module-level driver state, ResizeObserver singleton on
 // documentElement), so these run as one sequential group, like driver.test.mjs.
 
+// A node has exactly ONE position in the tree: appendChild and insertBefore
+// MOVE a node that already has a parent, they never copy it. A stub that only
+// splices the new position in leaves the node listed twice, and a reorder (the
+// only thing that exercises keys) reads as a tree that grew instead of one
+// whose children swapped places.
+function detach(child) {
+  const parent = child?.parentNode
+  if (!parent) return
+  const i = parent.childNodes.indexOf(child)
+  if (i !== -1) parent.childNodes.splice(i, 1)
+  child.parentNode = null
+}
+
 function makeNode(tag) {
   const node = {
     nodeType: 1,
@@ -188,11 +339,15 @@ function makeNode(tag) {
     ownerDocument: null,
     _listeners: {},
     appendChild(child) {
+      detach(child)
       node.childNodes.push(child)
       child.parentNode = node
       return child
     },
     insertBefore(child, ref) {
+      // detach first, then read the reference's index: removing a preceding
+      // sibling shifts it, exactly as it does in a real DOM
+      detach(child)
       const i = ref ? node.childNodes.indexOf(ref) : -1
       if (i === -1) node.childNodes.push(child)
       else node.childNodes.splice(i, 0, child)
@@ -716,6 +871,116 @@ test('react: a className rewrite cannot strip the classes the slider owns', asyn
   assert.ok(!second.classes.has('sv-active'), 'and only there')
 
   await act(async () => { root.unmount() })
+})
+
+// ---- ADU-188: the normalized list feeds rendering, so anything that is not
+// an element has to come out of it untouched. A portal is the case that bites:
+// Children.map hands it back and React renders it into its own container,
+// while toArray().filter(isValidElement) deletes it from the document with no
+// warning anywhere. renderToStaticMarkup cannot see this, portals are a
+// client-only construct.
+test('react: a Slider child that is not an element still renders, portal included', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { createPortal } = await import('react-dom')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  const sink = global.document.createElement('div')
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  await act(async () => {
+    root.render(
+      React.createElement(
+        Slider,
+        { dots: true },
+        React.createElement('div', { key: 'a' }, 'one'),
+        createPortal(React.createElement('p', null, 'PORTALED'), sink),
+        'plain text',
+        React.createElement('div', { key: 'b' }, 'two')
+      )
+    )
+  })
+
+  const shell = container.firstChild
+  const rail = shell.children.find((child) => child.classes.has('sv-slider'))
+  assert.equal(sink.children.length, 1, 'the portal renders into its own container')
+  assert.equal(sink.children[0].tagName, 'P')
+  assert.ok(
+    rail.childNodes.some((node) => node.nodeType === 3 && node.textContent === 'plain text'),
+    'a bare string child stays in the rail'
+  )
+  // only the elements are slides: two of them, annotated 1 and 2 of 2
+  assert.equal(rail.children.length, 2, 'the portal is not an empty slide in the rail')
+  assert.deepEqual(
+    rail.children.map((slide) => slide.attributes['aria-label']),
+    ['1 of 2', '2 of 2']
+  )
+  const dots = shell.children.find((child) => child.classes.has('sv-dots'))
+  assert.equal(dots.children.length, 2, 'and the dots count the same slides')
+
+  await act(async () => { root.unmount() })
+})
+
+// ---- ADU-188: keying a fragment's children under their parent joins two
+// React keys into one string. React escapes `=` and `:` in an element key and
+// only `/` in a user key, so `.` and `$` pass through: joined on nothing,
+// <Fragment key="a"><b/></Fragment> and a sibling keyed "a.$b" both flatten to
+// ".$a.$b", which React calls unsupported and warns about in dev and prod.
+test('react: a fragment slide and its uncle keep distinct keys across a reorder', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  let seq = 0
+  function Card({ label }) {
+    // the instance number moves only if React remounts this component: state
+    // surviving the reorder is what "the keys matched" looks like from outside
+    const [n] = React.useState(() => ++seq)
+    // an attribute, not a text child: react-dom writes a lone string child
+    // straight to textContent, which this DOM models as a bare property
+    return React.createElement('div', { 'data-card': label + '#' + n })
+  }
+  const inner = React.createElement(
+    React.Fragment,
+    { key: 'a' },
+    React.createElement(Card, { key: 'b', label: 'inner' })
+  )
+  const uncle = React.createElement(Card, { key: 'a.$b', label: 'uncle' })
+  const view = (order) => React.createElement(Slider, { dots: true }, order)
+
+  const warnings = []
+  const realError = console.error
+  console.error = (...args) => warnings.push(String(args[0]))
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => { root.render(view([inner, uncle])) })
+
+    const shell = container.firstChild
+    const rail = shell.children.find((child) => child.classes.has('sv-slider'))
+    const text = () => rail.children.map((slide) => slide.attributes['data-card'])
+    assert.deepEqual(text(), ['inner#1', 'uncle#2'], 'both slides render, each its own instance')
+    const [firstNode, secondNode] = rail.children
+
+    await act(async () => { root.render(view([uncle, inner])) })
+    assert.deepEqual(text(), ['uncle#2', 'inner#1'], 'the reorder moved the instances, it did not rebuild them')
+    assert.equal(rail.children[0], secondNode, 'the uncle kept its DOM node')
+    assert.equal(rail.children[1], firstNode, 'and so did the fragment slide')
+    assert.equal(seq, 2, 'no third instance: nothing remounted')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    console.error = realError
+  }
+  assert.deepEqual(
+    warnings.filter((message) => /same key|unique "key"/i.test(message)),
+    [],
+    'the fragment child and its uncle are two keys, not one'
+  )
 })
 
 test('react: useTrack settles to one tracked node under StrictMode double-invocation, no leak on unmount', async () => {
