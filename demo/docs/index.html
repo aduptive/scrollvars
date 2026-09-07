@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.2 · slider 1.3 · tilt 0.6 · state 2.2 · ui 0.7).</p>
+(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.0 · slider 1.3 · tilt 0.6 · state 2.2 · ui 0.9).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -286,19 +286,9 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
-<h4>Compat (blind review round 7, ADU-168)</h4>
+<h4>Presets (round 7, ADU-166)</h4>
 <ul>
-<li><code>compat()</code> marks <code>&lt;html></code> with <code>data-sv-compat</code> when it installs its fallback stylesheet, and the two below-the-floor releases added in round 6 now stand down on that marker. Each was right on its own for a page that calls no <code>compat()</code>: <code>styles/pin.css</code> released <code>.sv-stage</code> under <code>@supports not (translate: 0)</code> (ADU-149) and the pin helper stopped writing the tall wrapper height there (ADU-158), so a pinned section renders at its natural height instead of two blank viewports. Neither asked whether <code>compat()</code> was installed, and the fallback sheet has no stage rule of its own, so with the module present <code>--sv-pin</code> jumped from 0 to 1 over a single pixel and the <code>sv-curtain-l</code>, <code>sv-curtain-r</code> and <code>sv-rail</code> fallbacks snapped instead of animating, which is the one thing the module exists to do. The marker is the only new surface: an attribute on the root element, written next to the <code>data-sv-compat</code> attribute the injected <code>&lt;style></code> already carried.</li>
-</ul>
-
-<h4>Presets and no-JS (blind review round 7, ADU-168)</h4>
-<ul>
-<li>Every released guard in <code>styles/pin.css</code> gained the twin that fires when the tracked element IS the preset element: <code>.sv-curtain-l[data-sv-off]</code>, <code>.sv-curtain-r[data-sv-off]</code>, <code>.sv-rail[data-sv-off]</code>, <code>.sv-deck[data-sv-off]</code> (and its <code>> *</code>), <code>.sv-reading[data-sv-off] > *</code>, <code>.sv-range[data-sv-off] > *</code> and <code>.sv-counter[data-sv-off]</code>. <code>data-sv-off</code> lands on the element whose tracker stopped, and a descendant-only guard asks for it on an ancestor, so a nested tracker on a <code>.sv-deck</code> kept its cards piled in one grid cell with the clock already gone, where the same markup without JS gives a plain block. <code>.sv-stage[data-sv-off]</code> carried the shape alone since round 5.</li>
-</ul>
-
-<h4>Driver (blind review round 7, ADU-168)</h4>
-<ul>
-<li>The pin helper reads the computed position before it writes the height, not after. The reversed order made every entry's read flush a style recalc of the write just made, once per entry in the loop that runs on a motion-preference change, against the README's "inside the driver, layout thrashing is impossible by construction". The height cannot change the computed position, so the read is free where it is now.</li>
+<li><code>.sv-marquee-track</code> under <code>prefers-reduced-motion: reduce</code> no longer leaves <code>width: max-content</code> inside <code>overflow: hidden</code>: everything past the first screen was unreachable for a reduce user while everyone else saw the whole strip. The reduce block now wraps the track (<code>width: auto; flex-wrap: wrap</code>, matching the rail's own reduce-mode wrap in <code>styles/pin.css</code>) and hides the aria-hidden duplicate copy (<code>.sv-marquee-track > [aria-hidden] { display: none !important }</code>, the <code>!important</code> needed because the duplicate carries its own inline <code>display: contents</code>, which outranks any plain selector).</li>
 </ul>
 
 <h4>Tooling (blind review round 6)</h4>

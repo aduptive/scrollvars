@@ -38,6 +38,17 @@
   thrashing is impossible by construction". The height cannot change the
   computed position, so the read is free where it is now.
 
+### Presets (round 7, ADU-166)
+- `.sv-marquee-track` under `prefers-reduced-motion: reduce` no longer
+  leaves `width: max-content` inside `overflow: hidden`: everything past
+  the first screen was unreachable for a reduce user while everyone else
+  saw the whole strip. The reduce block now wraps the track
+  (`width: auto; flex-wrap: wrap`, matching the rail's own reduce-mode
+  wrap in `styles/pin.css`) and hides the aria-hidden duplicate copy
+  (`.sv-marquee-track > [aria-hidden] { display: none !important }`, the
+  `!important` needed because the duplicate carries its own inline
+  `display: contents`, which outranks any plain selector).
+
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by
   `npm run demo:deploy`, which runs `vercel deploy --prod` from `demo/` and
