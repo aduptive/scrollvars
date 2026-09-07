@@ -98,7 +98,10 @@ export async function renderSectionPreview(fx, componentEntry) {
   let markup = renderStatic(Component, fx.previewProps)
   // gallery-only chrome for the pinned sticky viewport (the other fx pages'
   // preview markup gets this from a hand-written class; the component has
-  // no slot for it, so it lands here, once, deterministically)
+  // no slot for it, so it lands here, once, deterministically). Not every
+  // Section in SECTION_PREVIEW_SLUGS is pin-based (hero-cinematic and
+  // stats-countup use usePointer/counters instead), so a missing .sv-stage
+  // is a legitimate no-op here, not the stale-anchor defect ADU-196 guards.
   markup = markup.replace('class="sv-stage', 'class="sv-stage fxsticky')
   return fx.previewScript ? `${markup}\n<script>${fx.previewScript}</script>` : markup
 }

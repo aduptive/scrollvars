@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Tooling (ADU-196)
+- Three `.replace()` calls in `scripts/docs-stamp.mjs` (README's total size
+  stamp, README's slider module size stamp) and `scripts/demo-sync.mjs`
+  (`demo/index.html`'s version line) ran with no guard at all: worse than
+  the "missing anchor" case ADU-195 already covered, since a bare
+  `.replace()` that matches zero times reports success and silently writes
+  the target file back unchanged, the old number still on the page. A
+  sweep of every other `.replace()`/`.match()` in `scripts/` for the same
+  defect found two more in `docs-stamp.mjs` (AGENTS.md's two styles-import
+  lines) and two in `scripts/bench-tables.mjs` (the bench page's runner
+  config bundle size, the README/AGENTS "less bundle" ratio sentence), all
+  fixed the same way. `docs-stamp.mjs` and `demo-sync.mjs` gain a
+  `spliceOne()` (throws on zero or more than one match, ADU-195's
+  `floorRow()` shape generalized to a plain regex); `bench-tables.mjs`
+  gains `spliceAll()`, which throws only on zero matches since a repeat is
+  the intended shape there (the same bundle size legitimately repeats
+  across three runner-config entries, the same ratio across README and
+  AGENTS). `bench-tables.mjs` also gained the `isMain` guard the other two
+  scripts already had, so `spliceAll()` can be imported by a test without
+  running the whole script's file I/O. Every other regex-driven write in
+  `scripts/` was audited and is already guarded (missing-only or full
+  ambiguity checks); `scripts/fx-render.mjs`'s unguarded `fxsticky` class
+  splice was reviewed and left alone, it is a legitimate no-op for the
+  Section previews that are not pin-based. No output changes: `npm run
+  demo:sync` produces a byte-identical tree.
+
 ### Tooling (ADU-195)
 - The anchor splices in `scripts/docs-stamp.mjs` and `scripts/demo-sync.mjs`
   (`between()`, `stamp()`, `floorRow()`, and every regex-based row splice in

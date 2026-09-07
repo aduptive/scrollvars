@@ -4,10 +4,31 @@
  * demo/bench/results/latest.json (written by the harness). Same rule as the
  * demo inline blocks: the page is never hand-patched.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { measureSizes, GSAP_KB } from './docs-data.mjs'
+
+/**
+ * Replaces every match of `re` in `text`, throwing only when there are zero
+ * matches. Unlike docs-stamp.mjs's spliceOne, a repeated match is the
+ * intended shape here (the same measured number legitimately repeats
+ * across the bench page's runner config, or the same ratio sentence across
+ * README and AGENTS), so ambiguity is not an error, only silence is
+ * (ADU-196: these two calls used to run with no guard at all and would
+ * write the file back unchanged when the pattern moved).
+ */
+export const spliceAll = (text, re, replacement, label) => {
+  const globalRe = re.global ? re : new RegExp(re.source, `${re.flags}g`)
+  const count = (text.match(globalRe) || []).length
+  if (count === 0) throw new Error(`${label} not found`)
+  return text.replace(globalRe, replacement)
+}
+
+// Everything below only runs when this script is executed directly, not
+// when a test imports spliceAll above.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
@@ -49,7 +70,6 @@ html += `  </tbody>
 </table>`
 
 // low-end profile (headful + 4x CPU throttle) when measured
-import { existsSync } from 'node:fs'
 const throttledPath = join(root, 'demo', 'bench', 'results', 'throttled-4x.json')
 if (existsSync(throttledPath)) {
   const th = JSON.parse(readFileSync(throttledPath, 'utf8'))
@@ -93,12 +113,13 @@ for (const file of ['README.md', 'AGENTS.md']) {
   writeFileSync(path, text.replace(mre, () => `<!-- bench:start -->\n${md.join('\n')}\n<!-- bench:end -->`))
 }
 // the bench page's runner config carries the same measured bundle size
-writeFileSync(pagePath, readFileSync(pagePath, 'utf8').replace(/(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/g, `$1${sizes.everything} KB'`))
+// (three engine entries share this cell shape, so a repeat is intended)
+writeFileSync(pagePath, spliceAll(readFileSync(pagePath, 'utf8'), /(page: 'scrollvars\.html', bundle: ')[\d.]+ KB'/, `$1${sizes.everything} KB'`, 'demo/bench/index.html: scrollvars.html bundle config line'))
 // the bundle ratio in the prose is arithmetic on the same numbers
 const ratio = Math.round(GSAP_KB / parseFloat(sizes.everything))
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)
-  writeFileSync(path, readFileSync(path, 'utf8').replace(/~\d+× less bundle/g, `~${ratio}× less bundle`))
+  writeFileSync(path, spliceAll(readFileSync(path, 'utf8'), /~\d+× less bundle/, `~${ratio}× less bundle`, `${file}: "less bundle" ratio sentence`))
 }
 // the bench page's own headline claim (ADU-194: "15× less JavaScript" had drifted
 // against the very table it sits above; both mentions are the same arithmetic)
@@ -113,3 +134,5 @@ for (const file of ['README.md', 'AGENTS.md']) {
   writeFileSync(pagePath, bench)
 }
 console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)
+
+}

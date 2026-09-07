@@ -94,6 +94,21 @@ export const floorRow = (text, label, cell, surface) => {
   return text.replace(re, (m, pre) => pre + cell)
 }
 
+/**
+ * Replaces a single regex match in `text`, throwing when it matches zero or
+ * more than one time. The general form of floorRow()'s uniqueness check,
+ * for a plain regex anchor rather than a table row (ADU-196: several calls
+ * ran with no guard at all, worse than a "missing" throw: a bare
+ * `.replace()` reports success and writes the file back unchanged when the
+ * anchor moved).
+ */
+export const spliceOne = (text, re, replacement, label) => {
+  const matches = text.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`)) || []
+  if (matches.length > 1) throw new Error(`${label} is ambiguous, found ${matches.length} times`)
+  if (matches.length === 0) throw new Error(`${label} not found`)
+  return text.replace(re, replacement)
+}
+
 /** "**104+** (Aug 2022)"; with `reason: true` and Firefox, "**78+** (Jun 2020, `:is()`/`:where()`)". */
 const floorMd = (key, { reason = false } = {}) => {
   const b = BROWSER_FLOOR[key]
@@ -102,7 +117,8 @@ const floorMd = (key, { reason = false } = {}) => {
 }
 
 // Everything below only runs when this script is executed directly, not
-// when a test imports the splice functions above (between, stamp, floorRow).
+// when a test imports the splice functions above (between, stamp, floorRow,
+// spliceOne).
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
 
@@ -122,7 +138,7 @@ readme = stamp(readme, 'sizes', [
   `| everything in \`scrollvars\` (the core entry) | ${sizes.everything} KB |`,
   `| \`scrollvars/react\` (wrappers + kit, React external) | ${sizes.react} KB |`,
 ].join('\n'))
-readme = readme.replace(/\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`)
+readme = spliceOne(readme, /\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`, 'README.md: total size stamp')
 for (const [name, note] of Object.entries(STYLE_NOTES)) {
   const re = new RegExp(`^(import 'scrollvars/styles/${name}\\.css'\\s+// )[^\\n]*$`, 'm')
   if (!re.test(readme)) throw new Error(`README styles line for ${name} missing`)
@@ -132,7 +148,7 @@ for (const [name, note] of Object.entries(STYLE_NOTES)) {
 const intro = /Measured \(JS min\+gzip, CSS gzip as shipped\): driver [\d.]+ KB, full core incl\. the slider [\d.]+ KB, styles [\d.]+ KB for every preset or [\d.]+ KB for the core part\. A typical page ships ~[\d.]+ KB on the wire\./
 if (!intro.test(readme)) throw new Error('README intro sizes sentence not found')
 readme = readme.replace(intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`)
-readme = readme.replace(/Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`)
+readme = spliceOne(readme, /Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`, 'README.md: slider module size stamp')
 // compat's fallback preset list, one of three surfaces rendered from COMPAT_PRESETS
 readme = between(
   readme,
@@ -150,9 +166,10 @@ writeFileSync(join(root, 'README.md'), readme)
 // AGENTS
 let agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
 agents = stamp(agents, 'vars', varsMarkdown())
-agents = agents.replace(/^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`)
-agents = agents.replace(/^\/\/ also styles\/pin\.css[^\n]*$/m,
-  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`)
+agents = spliceOne(agents, /^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`, 'AGENTS.md: core styles import line')
+agents = spliceOne(agents, /^\/\/ also styles\/pin\.css[^\n]*$/m,
+  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`,
+  'AGENTS.md: "also styles/pin.css" line')
 // the "fully animated" browser floor headline, one of five surfaces rendered from BROWSER_FLOOR
 const agentsFloor = /Fully animated: Chrome\/Edge [\d.]+\+, Firefox [\d.]+\+, Safari\/iOS [\d.]+\+/
 if (!agentsFloor.test(agents)) throw new Error('AGENTS.md browser floor headline not found')
