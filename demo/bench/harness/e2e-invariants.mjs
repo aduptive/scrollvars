@@ -763,6 +763,76 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 3d ter. Release with the tracker ON the preset element itself, for the
+// pin presets (ADU-168). Every released guard in styles/pin.css was a
+// descendant selector, so the marker landing on the tracked element could not
+// reach the preset that element carries: a nested tracker on a .sv-deck kept
+// its cards in one grid cell, piled over each other, where no JS gives a plain
+// block. `.sv-stage[data-sv-off]` had the shape already, alone ──
+{
+  const DECK_FIXTURE = `<!doctype html><html><head><style>${STYLES_CSS}</style>
+    <style>
+      body { margin: 0 }
+      .card { padding: 2rem; background: #333; color: #fff }
+    </style></head>
+    <body>
+      <div class="sv" data-sv id="outer">
+        <div class="sv sv-deck" data-sv id="deck" style="--sv-count:3">
+          <div class="card" style="--sv-order:0">one</div>
+          <div class="card" id="deck-card" style="--sv-order:1">two</div>
+          <div class="card" style="--sv-order:2">three</div>
+        </div>
+      </div>
+      <p>after the pinned stretch</p>
+    </body></html>`
+  const DECK_PROBE = () => {
+    const deck = getComputedStyle(document.querySelector('#deck'))
+    const card = getComputedStyle(document.querySelector('#deck-card'))
+    return `display=${deck.display} translate=${card.translate} rotate=${card.rotate} scale=${card.scale}`
+  }
+  const noJs = await browser.newPage()
+  await noJs.setJavaScriptEnabled(false)
+  await noJs.setContent(DECK_FIXTURE)
+  const deckBaseline = await noJs.evaluate(DECK_PROBE)
+  await noJs.close()
+
+  const page = await browser.newPage()
+  await page.setContent(DECK_FIXTURE)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  await page.evaluate(async () => {
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    // the outer tracker is what puts a `.sv` ABOVE the deck, which is what the
+    // animated rule (`.sv .sv-deck`) asks for, and it keeps tracking through
+    // the release: no ancestor marker can settle the deck for the wrong reason
+    window.__stopOuter = SV.track(document.querySelector('#outer'), {})
+    window.__stopDeck = SV.track(document.querySelector('#deck'), { pin: '300vh' })
+    await frame()
+    scrollTo(0, innerHeight) // mid-pin: the cards are part-way through their slices
+    await frame()
+  })
+  const deckDriven = await page.evaluate(DECK_PROBE)
+  check(
+    'released deck: a tracked .sv-deck really does stack and fly its own cards while the driver runs',
+    deckDriven !== deckBaseline && deckDriven.includes('display=grid'),
+    `driving[${deckDriven}] noJS[${deckBaseline}]`
+  )
+  const deckMarked = await page.evaluate(async () => {
+    window.__stopDeck()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    await new Promise((done) => setTimeout(done, 250))
+    return document.querySelector('#deck').hasAttribute('data-sv-off')
+  })
+  check('released deck: the marker lands on the tracked .sv-deck itself', deckMarked, 'no data-sv-off on #deck')
+  const deckAfter = await page.evaluate(DECK_PROBE)
+  check(
+    'released deck: a released .sv-deck settles its cards exactly as with no JS, ancestor still tracked',
+    deckAfter === deckBaseline,
+    `released[${deckAfter}] noJS[${deckBaseline}]`
+  )
+  await page.evaluate(() => window.__stopOuter())
+  await page.close()
+}
+
 // ── 3e. A released ancestor must not settle a still-tracked descendant
 // (ADU-140, round 3 finding 1). `[data-sv-off] X` matches through ANY depth
 // and nested trackers are a first-class pattern (invariant 4 below: the

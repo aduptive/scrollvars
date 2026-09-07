@@ -34,6 +34,11 @@
  *     transitions, so it fades in without rising.
  *     sv-reading falls back to fully-visible text; sv-counter and
  *     sv-view-* stay progressive.
+ *     Installing the sheet also marks <html> with data-sv-compat: the pin
+ *     presets above animate from --sv-pin, so styles/pin.css keeps the
+ *     stage pinned and the driver keeps writing the tall wrapper height
+ *     instead of releasing both, which is what a page with no compat()
+ *     wants down here.
  *
  * Syntax floor stays the consumer's job: the dist ships ES2020; if you must
  * PARSE on very old engines, let your bundler downlevel it (Next.js already
@@ -194,6 +199,13 @@ export function compat(): boolean {
     style.setAttribute('data-sv-compat', '')
     style.textContent = FALLBACK_CSS
     document.head.appendChild(style)
+    // The same marker on <html>, where the rest of the package can see it.
+    // styles/pin.css releases `.sv-stage` below this floor and the driver's pin
+    // helper withholds the tall wrapper height there, both right for a page
+    // that animates nothing down here. The rules above DO animate, from
+    // --sv-pin, which is computed from that skeleton: the marker is how those
+    // two releases know to stand down.
+    document.documentElement.setAttribute('data-sv-compat', '')
     patched = true
   }
 

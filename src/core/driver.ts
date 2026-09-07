@@ -585,7 +585,8 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
 }
 
 // Below the individual-transform floor (Chrome 104 / Firefox 72 / Safari
-// 14.1) the `@supports not (translate: 0)` net in styles/pin.css releases
+// 14.1), and on a page that did not call compat(), the `@supports not
+// (translate: 0)` net in styles/pin.css releases
 // `.sv-stage` (position static, height auto, overflow visible), so a pinned
 // section renders at its natural height with JS on. The tall wrapper height
 // on top of that would be two blank viewports under the content, which is
@@ -595,21 +596,34 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
 // and the CSS then always agree on which side of the floor the page is.
 const belowTransformFloor = () => window.CSS?.supports?.('translate', '0px') === false
 
+// scrollvars/compat's marker, written on <html> with its fallback sheet. That
+// sheet re-expresses the curtains and the rail with `transform:` and animates
+// them from --sv-pin, which the driver computes from the pinned skeleton: with
+// it installed the skeleton is exactly what must NOT be released, or the clock
+// runs 0 to 1 over a single pixel and those presets snap. styles/pin.css reads
+// the same marker to keep `.sv-stage` sticky, so the CSS and the JS release
+// together or not at all.
+const compatInstalled = () => document.documentElement?.hasAttribute?.('data-sv-compat') === true
+
 function applyPinHelper(entry: Entry) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
-  if (reducedMotion || belowTransformFloor()) {
+  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) {
     el.style.height = authored.height
     el.style.position = authored.position
   } else {
-    el.style.height = opts.pin
+    // Read BEFORE any write: a computed-style read after an inline write in the
+    // same tick flushes a style recalc, and this runs once per entry in a loop
+    // when the motion preference changes. The height cannot change the computed
+    // position, so the read costs nothing where it is now.
+    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
     // only a static element needs the positioning context; one positioned by a
     // stylesheet or inline (absolute, fixed, sticky) keeps it. An authored
     // inline `static` is exactly the case that needs replacing: keeping it
     // means the containing block the helper promises never exists, and an
     // absolutely positioned curtain escapes the stage.
     const keep = authored.position && authored.position !== 'static' ? authored.position : ''
-    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
+    el.style.height = opts.pin
     el.style.position = keep || (!computed || computed === 'static' ? 'relative' : '')
   }
 }

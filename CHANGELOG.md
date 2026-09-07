@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+### Compat (blind review round 7, ADU-168)
+- `compat()` marks `<html>` with `data-sv-compat` when it installs its
+  fallback stylesheet, and the two below-the-floor releases added in round 6
+  now stand down on that marker. Each was right on its own for a page that
+  calls no `compat()`: `styles/pin.css` released `.sv-stage` under
+  `@supports not (translate: 0)` (ADU-149) and the pin helper stopped writing
+  the tall wrapper height there (ADU-158), so a pinned section renders at its
+  natural height instead of two blank viewports. Neither asked whether
+  `compat()` was installed, and the fallback sheet has no stage rule of its
+  own, so with the module present `--sv-pin` jumped from 0 to 1 over a single
+  pixel and the `sv-curtain-l`, `sv-curtain-r` and `sv-rail` fallbacks snapped
+  instead of animating, which is the one thing the module exists to do. The
+  marker is the only new surface: an attribute on the root element, written
+  next to the `data-sv-compat` attribute the injected `<style>` already
+  carried.
+
+### Presets and no-JS (blind review round 7, ADU-168)
+- Every released guard in `styles/pin.css` gained the twin that fires when the
+  tracked element IS the preset element: `.sv-curtain-l[data-sv-off]`,
+  `.sv-curtain-r[data-sv-off]`, `.sv-rail[data-sv-off]`,
+  `.sv-deck[data-sv-off]` (and its `> *`), `.sv-reading[data-sv-off] > *`,
+  `.sv-range[data-sv-off] > *` and `.sv-counter[data-sv-off]`. `data-sv-off`
+  lands on the element whose tracker stopped, and a descendant-only guard asks
+  for it on an ancestor, so a nested tracker on a `.sv-deck` kept its cards
+  piled in one grid cell with the clock already gone, where the same markup
+  without JS gives a plain block. `.sv-stage[data-sv-off]` carried the shape
+  alone since round 5.
+
+### Driver (blind review round 7, ADU-168)
+- The pin helper reads the computed position before it writes the height,
+  not after. The reversed order made every entry's read flush a style recalc
+  of the write just made, once per entry in the loop that runs on a
+  motion-preference change, against the README's "inside the driver, layout
+  thrashing is impossible by construction". The height cannot change the
+  computed position, so the read is free where it is now.
+
 ### Tooling (blind review round 6)
 - Git pushes no longer create Vercel deployments. Production is deployed by
   `npm run demo:deploy`, which runs `vercel deploy --prod` from `demo/` and

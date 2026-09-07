@@ -1005,7 +1005,11 @@ test('styles/pin.css: below the individual-transform floor the deck unstacks, th
   // guards, never this block: an unstacked deck taller than one viewport
   // still clipped past the first card. The block must release the stage
   // the same way its reduced-motion twin already does.
-  const stage = rules.find((rule) => rule.selectors.includes('.sv-stage'))
+  // ADU-168: scoped to a page WITHOUT compat() since round 7. compat's fallback
+  // sheet animates the curtains and the rail from --sv-pin, which is computed
+  // from the very skeleton this rule releases, so a release that ignored the
+  // marker disarmed the module it shares the floor with.
+  const stage = rules.find((rule) => rule.selectors.includes('html:not([data-sv-compat]) .sv-stage'))
   assert.ok(stage, 'the block resets `.sv-stage`, or an unstacked deck taller than one viewport still clips')
   for (const declaration of ['position: static', 'height: auto', 'overflow: visible']) {
     assert.ok(stage.body.includes(declaration), `\`.sv-stage\` declares \`${declaration}\`, got \`${stage.body}\``)
@@ -1159,4 +1163,72 @@ test('driver: below the individual-transform floor the pin helper writes no tall
   const stopAncient = track(ancient, { pin: '320vh' })
   assert.equal(ancient.style.height, '320vh', 'no answer is not a false: the tall wrapper stays')
   stopAncient()
+})
+
+test('driver: every released guard also fires when the tracked element IS the target (ADU-168)', async () => {
+  // `data-sv-off` lands on the element whose tracker stopped. A guard written
+  // only as `[data-sv-off] X` asks for the marker on an ANCESTOR, so a tracked
+  // element carrying the preset class itself (a nested tracker on a `.sv-deck`,
+  // the documented scrub idiom on a `.sv-spread`) never settles: its cards stay
+  // stacked over each other with the clock gone. `.sv-stage[data-sv-off]`
+  // already carried the shape, alone, for the one guard whose animated rule
+  // needs no tracker ancestor either.
+  let audited = 0
+  for (const rule of guardRules) {
+    for (const selector of rule.selectors) {
+      if (!selector.startsWith('[data-sv-off] ')) continue
+      const target = selector.slice('[data-sv-off] '.length).trim()
+      const self = target.replace(/^\S+/, (head) => `${head}[data-sv-off]`)
+      const twin = ruleFor(self)
+      assert.ok(twin, `\`${selector}\` needs its self twin \`${self}\`, or a tracker released ON the target never settles`)
+      assert.equal(twin.body, rule.body, `\`${self}\` settles exactly what \`${selector}\` settles`)
+      audited++
+    }
+  }
+  assert.ok(audited >= 9, `the audit found ${audited} released guards, so it is reading the sheets`)
+})
+
+test('driver: the pin helper reads the computed position before it writes the height (ADU-168)', async () => {
+  // README: "inside the driver, layout thrashing is impossible by construction".
+  // A computed-style read after an inline write in the same tick flushes a
+  // style recalc, and applyPinHelper runs once per entry in a loop whenever the
+  // motion preference changes. The height cannot change the computed position,
+  // so reading it first costs nothing at all.
+  window.CSS = { supports: () => true }
+  const log = []
+  global.getComputedStyle = () => {
+    log.push('read')
+    return { getPropertyValue: () => '', position: 'static' }
+  }
+  const { track } = await import('../dist/core/driver.js?pinreadorder')
+  const el = makeElement(400)
+  let height = ''
+  let position = ''
+  Object.defineProperty(el.style, 'height', {
+    configurable: true,
+    get: () => height,
+    set: (value) => {
+      log.push('write height')
+      height = value
+    },
+  })
+  Object.defineProperty(el.style, 'position', {
+    configurable: true,
+    get: () => position,
+    set: (value) => {
+      log.push('write position')
+      position = value
+    },
+  })
+  const untrack = track(el, { pin: '320vh' })
+  assert.equal(el.style.height, '320vh', 'the helper still writes the skeleton it is being timed on')
+  assert.equal(el.style.position, 'relative', 'and still gives a static wrapper its containing block')
+  assert.ok(log.includes('read'), 'the helper really did ask for the computed position')
+  assert.ok(
+    log.indexOf('write height') > log.lastIndexOf('read'),
+    `every computed read happens before the first style write, got ${log.join(' → ')}`
+  )
+  untrack()
+  delete global.getComputedStyle
+  delete window.CSS
 })

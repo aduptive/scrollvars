@@ -3337,17 +3337,18 @@ var SV = (() => {
     };
   }
   var belowTransformFloor = () => window.CSS?.supports?.("translate", "0px") === false;
+  var compatInstalled = () => document.documentElement?.hasAttribute?.("data-sv-compat") === true;
   function applyPinHelper(entry) {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return;
-    if (reducedMotion || belowTransformFloor()) {
+    if (reducedMotion || belowTransformFloor() && !compatInstalled()) {
       el.style.height = authored.height;
       el.style.position = authored.position;
     } else {
-      el.style.height = opts.pin;
-      const keep = authored.position && authored.position !== "static" ? authored.position : "";
       const computed = typeof getComputedStyle === "function" ? getComputedStyle(el).position : void 0;
+      const keep = authored.position && authored.position !== "static" ? authored.position : "";
+      el.style.height = opts.pin;
       el.style.position = keep || (!computed || computed === "static" ? "relative" : "");
     }
   }
