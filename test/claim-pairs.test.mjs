@@ -69,6 +69,36 @@ test('COMPAT_PRESETS groups match the fallback stylesheet: pin presets animate f
   assert.deepEqual(COMPAT_PRESETS.reveal.filter(driven), [], 'a reveal preset animates from --sv-pin')
 })
 
+// The test above only checks the list against the sheet, so a rule added
+// for a NEW preset leaves the source comment, README and /docs/ stale with
+// everything green. This is the missing inverse: every class the sheet has
+// a rule for is either named by COMPAT_PRESETS or on this exception list.
+// sv-deck and sv-reading get fallback rules on purpose (static unstacking,
+// a no-op opacity reset) but are not entrance/pin presets and carry no
+// stamped claim.
+const STATE_CLASSES = new Set(['sv', 'sv-on', 'sv-live', 'sv-skip'])
+const RULE_EXCEPTIONS = new Set(['sv-deck', 'sv-reading'])
+
+test('every class the fallback stylesheet has a rule for is named by COMPAT_PRESETS or the documented exception', () => {
+  // A /* comment */ can carry a stray ".word" (e.g. "pin.css's") that reads
+  // as a class to a plain selector scan; strip comments first.
+  const noComments = FALLBACK_CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const ruleSelectors = [...noComments.matchAll(/([^{}]+)\{/g)].map(([, selector]) => selector)
+  const named = new Set([...COMPAT_PRESETS.reveal, ...COMPAT_PRESETS.pin])
+  const found = new Set()
+  for (const selector of ruleSelectors) {
+    for (const [, cls] of selector.matchAll(/\.([a-z][\w-]*)/g)) {
+      if (!STATE_CLASSES.has(cls)) found.add(cls)
+    }
+  }
+  for (const cls of found) {
+    assert.ok(
+      named.has(cls) || RULE_EXCEPTIONS.has(cls),
+      `${cls}: has a fallback rule but is named by neither COMPAT_PRESETS nor the exception list`
+    )
+  }
+})
+
 test('driver pin-helper comment and README pinning paragraph state the same release condition', () => {
   const src = extract(
     driverSrc,
