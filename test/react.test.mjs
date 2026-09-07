@@ -65,7 +65,7 @@ test('react: Slider responsive perView survives SSR under both React majors', as
   // react-dom 18.3.1 escapes `"` to `&quot;` inside a <style> child (19 does
   // not), and <style> is raw text: the entity never decodes, so every scoped
   // rule would be dropped on the server and hydration never repairs it
-  assert.match(html, /\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:1\.2\}/)
+  assert.match(html, /\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:1\.2\}/)
   assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="/)
   assert.doesNotMatch(html, /&quot;/)
 })
@@ -105,10 +105,148 @@ test('react: numeric perView renders its rules unchanged, keys and values', asyn
     )
   )
   assert.match(html, /\.sv-slider\{--sv-per-view:1\.5\}/)
-  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:3\}\}/)
+  assert.match(html, /@media \(min-width:768px\)\{\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:3\}\}/)
   // a raw min-width key stays that number
-  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] \.sv-slider\{--sv-per-view:4\}\}/)
+  assert.match(html, /@media \(min-width:900px\)\{\[data-sv-uid="[^"]+"\] > \.sv-slider\{--sv-per-view:4\}\}/)
   assert.doesNotMatch(html, /NaN/)
+})
+
+test('react: Slider counts the slides React renders, not the children it was handed', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // ordinary React: a conditional slide is `false`, a missing one is `null`.
+  // Children.count sees 4, the rail gets 2 elements, so the extra dots used to
+  // call goTo(2) and goTo(3) on a two-slide engine and the labels lied
+  const html = renderToStaticMarkup(
+    React.createElement(Slider, { dots: true }, [
+      React.createElement('div', { key: 'a' }, 'one'),
+      false,
+      null,
+      React.createElement('div', { key: 'b' }, 'two'),
+    ])
+  )
+  assert.equal(html.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.match(html, /aria-label="1 of 2"/)
+  assert.match(html, /aria-label="2 of 2"/)
+  assert.doesNotMatch(html, /of 4/)
+})
+
+test('react: Slider annotates the slides inside a fragment', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  // a mapped fragment is one child to Children.count and two elements in the
+  // rail. cloneElement on a Fragment drops role/aria-*, so neither slide
+  // carried any of the annotation the component promises
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { dots: true },
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement('div', { key: 'a' }, 'one'),
+        React.createElement('div', { key: 'b' }, 'two')
+      )
+    )
+  )
+  assert.equal(html.match(/aria-roledescription="slide"/g).length, 2)
+  assert.equal(html.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.match(html, /aria-label="1 of 2"/)
+  assert.match(html, /aria-label="2 of 2"/)
+})
+
+test('react: an outer Slider perView cannot declare on a nested slider rail', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const html = renderToStaticMarkup(
+    React.createElement(
+      Slider,
+      { perView: { base: 1.2 } },
+      React.createElement(
+        'div',
+        null,
+        React.createElement(
+          Slider,
+          { perView: { base: 3 } },
+          React.createElement('div', null, 'one')
+        )
+      )
+    )
+  )
+  // the inner rail is a descendant of the outer shell but never its child:
+  // a descendant scope declared --sv-per-view on it, and the inner rail only
+  // inherits its own value, so the outer map won every nesting
+  assert.doesNotMatch(html, /\[data-sv-uid="[^"]+"\] \.sv-slider\{/)
+  assert.equal(html.match(/\[data-sv-uid="[^"]+"\] > \.sv-slider\{/g).length, 2)
+})
+
+test('react: a driver boot after the pre-paint watchdog fired does not re-hide the page', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { ScrollVarsBoot } = await import('../dist/react/index.js')
+  const source = renderToStaticMarkup(React.createElement(ScrollVarsBoot, null))
+    .replace(/^<script[^>]*>/, '')
+    .replace(/<\/script>$/, '')
+
+  // one token list, and a MutationObserver stub that delivers on every class
+  // write: the real one delivers a microtask later, which only widens the
+  // window this guards, it never closes it
+  function sandbox() {
+    const classes = new Set()
+    const callbacks = []
+    const timers = []
+    const notify = () => callbacks.slice().forEach((cb) => cb())
+    const documentElement = {
+      classList: {
+        add: (c) => (classes.add(c), notify()),
+        remove: (c) => (classes.delete(c), notify()),
+        contains: (c) => classes.has(c),
+      },
+    }
+    const win = { IntersectionObserver: class {}, ResizeObserver: class {} }
+    const MO = class {
+      constructor(cb) {
+        this.cb = cb
+      }
+      observe() {
+        callbacks.push(this.cb)
+      }
+    }
+    new Function('window', 'document', 'setTimeout', 'MutationObserver', source)(
+      win,
+      { documentElement },
+      (fn, ms) => timers.push([fn, ms]),
+      MO
+    )
+    return {
+      timers,
+      win,
+      boot: () => documentElement.classList.add('sv-on'),
+      release: () => documentElement.classList.remove('sv-on'),
+      on: () => documentElement.classList.contains('sv-on'),
+    }
+  }
+
+  const late = sandbox()
+  assert.ok(late.on(), 'the pre-paint script adds sv-on before first paint')
+  assert.equal(late.timers[0][1], 3000)
+  late.timers[0][0]() // 3s, no driver: the page is released, content is visible
+  assert.ok(!late.on())
+  // the bundle finally arrives at 4s and the driver adds sv-on back, which
+  // sent every offscreen entrance to opacity 0: content appeared, then vanished
+  late.boot()
+  assert.ok(!late.on(), 'a boot after the watchdog must not re-hide what is already on screen')
+
+  const normal = sandbox()
+  normal.win.__scrollvars = true
+  normal.timers[0][0]() // the driver booted in time: nothing to release
+  assert.ok(normal.on())
+  normal.release()
+  normal.boot()
+  assert.ok(normal.on(), 'no watchdog fire, no class guard: the driver owns sv-on')
 })
 
 test('react: Scenes forwards options without leaking props to the DOM', async () => {

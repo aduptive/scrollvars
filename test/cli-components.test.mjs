@@ -835,3 +835,30 @@ test('cli component rotating-words: an empty list schedules no interval, a late 
     delete global.IS_REACT_ACT_ENVIRONMENT
   }
 })
+
+// ---- ADU-188: Children.map calls back for `false` and `null` too, so a
+// conditional child ({show && <Card/>}) used to wrap nothing in a real
+// <Slide>: an empty slide in the rail and a dot wired past the end of the
+// engine. The count the Slider annotates has to be the elements React
+// renders, here and in the kit.
+test('cli component coverflow-slider: a conditional child renders no empty slide', async () => {
+  const { content } = COMPONENTS['coverflow-slider']
+  const src = join(dir, 'CoverflowSliderConditional.tsx')
+  writeFileSync(src, content)
+  const out = join(outDir, 'coverflow-slider-conditional.mjs')
+  await build({
+    entryPoints: [src], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const { CoverflowSlider } = await import(pathToFileURL(out).href)
+  const markup = renderToStaticMarkup(
+    h(CoverflowSlider, {
+      children: [h('div', { key: 1 }, 'a'), false, null, h('div', { key: 2 }, 'b')],
+    })
+  )
+  // class=, not the bare class name: the component's own <style> names
+  // .cf-slide twice and would pad the count
+  assert.equal(markup.match(/class="cf-slide"/g).length, 2, 'two children, two slides')
+  assert.equal(markup.match(/aria-label="go to slide \d+"/g).length, 2)
+  assert.doesNotMatch(markup, /of 4/)
+})

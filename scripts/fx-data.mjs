@@ -1765,9 +1765,16 @@ export function CoverflowSlider({
     <>
       <style dangerouslySetInnerHTML={{ __html: css }} />
       <Slider perView={perView} gap={16} arrows dots {...rest}>
-        {React.Children.map(children, (child) => (
-          <Slide className="cf-slide">{child}</Slide>
-        ))}
+        {/* toArray, not Children.map: a conditional child ({show && <Card/>})
+            is false, and Children.map still calls back for it, so the rail
+            got an empty slide and a dot wired past the end of the engine */}
+        {React.Children.toArray(children)
+          .filter(React.isValidElement)
+          .map((child) => (
+            <Slide key={child.key} className="cf-slide">
+              {child}
+            </Slide>
+          ))}
       </Slider>
     </>
   )

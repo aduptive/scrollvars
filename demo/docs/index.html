@@ -295,6 +295,19 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
+<h4>React (blind review round 8, ADU-188)</h4>
+No public surface change: no new export, prop, class or <code>--sv-*</code> variable.
+<ul>
+<li><code>&lt;Slider></code> counted its children with <code>React.Children.count</code>, which counts what the caller wrote and not what React renders. A conditional slide (<code>{show &amp;&amp; &lt;Slide/>}</code>) counts as one child and renders none, so <code>[&lt;Slide/>, false, null, &lt;Slide/>]</code> drew four dots for two slides, two of them calling <code>goTo(2)</code> and <code>goTo(3)</code> on a two-slide engine, with labels reading "1 of 4" and "4 of 4". A fragment counts as one child and renders two, so one dot covered two slides and <code>cloneElement</code> put <code>role</code>, <code>aria-roledescription</code> and <code>aria-label</code> on the Fragment, where React drops them: neither slide carried any of the annotation the component promises. Both shapes are ordinary React. One normalized list now feeds rendering, counting and annotation alike, so the dots, the labels and the engine agree on the same slides. <code>Children.toArray</code> does not open fragments on its own (measured under React 19.2.8, a fragment comes back as one element), so the list recurses into them, keying each level under its parent so a fragment's children cannot collide with their uncles. A child that is not an element (a bare string) is no longer rendered into the rail: it was never a slide the engine could count.</li>
+<li>The responsive <code>perView</code> stylesheet scoped its rules with a descendant selector, <code>[data-sv-uid="..."] .sv-slider</code>. The rail of a Slider nested inside a slide is a descendant of the outer shell too, so the outer map declared <code>--sv-per-view</code> directly on the inner rail, which reads its own value only by inheritance from its own shell: the outer number won every nesting. It is a child combinator now, <code>[data-sv-uid="..."] > .sv-slider</code>.</li>
+<li>The pre-paint script releases the page after 3s so a bundle that never arrives still fails visible. A driver that booted after that deadline found the page released, added <code>sv-on</code> back, and every offscreen entrance went to <code>opacity: 0</code>: content appeared and then disappeared. The release is final now, held by a MutationObserver that is installed only once the watchdog has fired, so the normal path pays nothing for it.</li>
+</ul>
+
+<h4>Gallery (blind review round 8, ADU-188)</h4>
+<ul>
+<li>The installed <code>CoverflowSlider</code> wrapped its children with <code>React.Children.map</code>, which calls the callback for <code>false</code> and <code>null</code> too: a conditional card was wrapped in a real <code>&lt;Slide></code>, so the rail carried an empty slide and the Slider drew a dot wired past the end of the engine. It maps the same normalized list now, <code>toArray</code> filtered to elements.</li>
+</ul>
+
 <h4>Tooling (round 7 follow-up, ADU-176)</h4>
 <ul>
 <li>The compat fallback preset list had THREE hand-typed copies, not two: <code>src/compat/index.ts</code>'s header comment (which tsc emits verbatim into dist and npm ships), README's Extended floor paragraph, and the "Older targets" paragraph in <code>scripts/docs-build.mjs</code> that renders /docs/. Nothing held them together, and the list already escaped once that way (ADU-159 shipped a false sentence to npm). All three now render from a single <code>COMPAT_PRESETS</code> in <code>scripts/docs-data.mjs</code>: <code>docs-stamp.mjs</code> writes the first two, <code>docs-build.mjs</code> interpolates the third, and both the CI and the release gate diff <code>src/compat/index.ts</code> alongside the other generated files. Editing the prose by hand is now the thing that fails, and the second and third edits stop being needed at all.</li>
