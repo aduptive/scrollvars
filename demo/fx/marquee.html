@@ -174,7 +174,13 @@
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
-@keyframes sv-marquee { to { translate: -50% 0; } }</code></pre>
+@keyframes sv-marquee { to { translate: -50% 0; } }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   without it a pasted marquee never stops */
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track { animation: none; }
+}</code></pre>
     <pre data-pane="react"><code>&lt;Marquee speed={24}&gt;
   {logos.map(l =&gt; &lt;img key={l.id} src={l.src} alt={l.name} className="h-8" /&gt;)}
 &lt;/Marquee&gt;</code></pre>

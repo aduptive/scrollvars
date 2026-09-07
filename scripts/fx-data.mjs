@@ -33,7 +33,14 @@ export const EFFECTS = [
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance, 6rem));
   transition: opacity .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1)),
               translate .8s var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
-  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }`,
+  transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms)); }
+
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
   <p class="sv-rise" data-sv-order="1">Copy</p>
@@ -87,7 +94,14 @@ export const EFFECTS = [
   rotate: calc(var(--sv-d) * (1 - var(--sv-spread, 0)) * -5deg); }
 
 /* scrub instead of play: */
-.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }`,
+.mine > * { --sv-spread: clamp(0, calc(var(--sv-t) * 2), 1); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-spread > *,
+  .sv-on .sv .sv-spread.sv-spread-in > * {
+    translate: none; rotate: none; transition: none; }
+}`,
     tailwind: `<section data-sv class="py-24">
   <div class="sv-spread sv-spread-in [--sv-gap:14px]">
     <div class="[--sv-order:0] rounded-xl border p-8">01</div>
@@ -121,17 +135,25 @@ export const EFFECTS = [
     <div class="fxpanel sv-curtain-r" style="left:50%">vars</div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">                        <!-- sticky; top:0; h:100vh; overflow:hidden -->
-    <div class="revealed-content">…</div>
-    <div class="panel-left sv-curtain-l">…</div>
-    <div class="panel-right sv-curtain-r">…</div>
+    css: `<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
+    <div class="revealed">…</div>
+    <div class="panel sv-curtain-l">…</div>
+    <div class="panel sv-curtain-r">…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
+/* the preset (styles/pin.css), plus the two panels, which are yours: */
+.sv-stage .panel { position: absolute; inset: 0; width: 50%; background: #14141a; }
+.sv-stage .sv-curtain-r { left: 50%; }
 .sv .sv-curtain-l { translate: calc(var(--sv-pin, 0) * -101%) 0; }
-.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }`,
+.sv .sv-curtain-r { translate: calc(var(--sv-pin, 0) * 101%) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-curtain-l,
+  .sv .sv-curtain-r { display: none; }
+}`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage">
     <div class="grid h-full place-items-center">revealed content</div>
@@ -164,15 +186,23 @@ export const EFFECTS = [
     </div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 300vh -->
-  <div class="sticky">                        <!-- sticky stage, flex center -->
+    css: `<div data-sv data-sv-pin="300vh">        <!-- the pin helper owns the height -->
+  <div class="sv-stage rail-stage">      <!-- the sticky viewport, from pin.css -->
     <div class="sv-rail">…cards…</div>
   </div>
 </div>
 
-/* the preset (styles/pin.css): */
-.sv .sv-rail { width: max-content;
-  translate: calc((1 - var(--sv-pin, 0)) * 100vw + var(--sv-pin, 0) * min(100vw - 100%, 0px)) 0; }`,
+/* the preset (styles/pin.css), plus the stage layout, which is yours: */
+.rail-stage { display: flex; align-items: center; }
+/* --sv-rail-start: the stage width when it is narrower than the viewport */
+.sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
+}`,
     tailwind: `<div data-sv data-sv-pin="300vh">
   <div class="sv-stage flex items-center">
     <div class="sv-rail flex gap-4 px-[10vw]">
@@ -204,8 +234,8 @@ export const EFFECTS = [
     </div>
   </div>
 </div>`,
-    css: `<div data-sv data-sv-pin class="outer">   <!-- height: 250vh -->
-  <div class="sticky">
+    css: `<div data-sv data-sv-pin="250vh">     <!-- the pin helper owns the height -->
+  <div class="sv-stage">                <!-- the sticky viewport, from pin.css -->
     <div class="sv-range sv-range-rise">
       <h2 style="--sv-from: 0; --sv-to: .4">First</h2>
       <p style="--sv-from: .3; --sv-to: .7">Second</p>
@@ -215,13 +245,22 @@ export const EFFECTS = [
 </div>
 
 /* styles/pin.css ships it; the mechanism, if you want it inline: */
-.sv .sv-range > * {
+/* the clock lives on the container at zero specificity, so your own rule on
+   that container (--sv-clock: var(--sv-t)) or an inline style wins */
+:where(.sv .sv-range) {
   --sv-clock: var(--sv-pin, var(--sv-t, 0));
+}
+.sv .sv-range > * {
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
 /* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }`,
+.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv .sv-range > * { --sv-r: 1; }
+}`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage grid place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
@@ -273,17 +312,17 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
   else SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => tl.progress(p) })
 })</script>`,
-    css: `<div class="outer">          <!-- height: 250vh; position: relative -->
-  <div class="sticky">…stage…</div>  <!-- sticky; top:0; h:100vh -->
+    css: `<div class="scene">                     <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
 </div>
 
 <script>
   // author in time-space, consume as a scrub. This stays input-driven:
   const tl = gsap.timeline({ paused: true })
-    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
-  track(document.querySelector('.outer'), {
-    pin: true,
+  track(document.querySelector('.scene'), {
+    pin: '250vh',                 // the helper owns the wrapper height
     onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
@@ -351,8 +390,8 @@ useEffect(() => {
   })
   SV.track(document.getElementById('fxthree-outer'), { pin: '240vh', onPin: (p) => (progress = p) })
 })</script>`,
-    css: `<div class="outer">              <!-- height: 250vh -->
-  <div class="sticky"><canvas id="scene"></canvas></div>
+    css: `<div id="outer">                       <!-- no data-sv: tracked in JS below -->
+  <div class="sv-stage"><canvas id="scene"></canvas></div>   <!-- from pin.css -->
 </div>
 
 <script type="module">
@@ -367,7 +406,7 @@ useEffect(() => {
     resize(fx) { /* setSize(fx.width, fx.height); setPixelRatio(fx.dpr) */ },
     frame(fx, dt) { /* advance + render; respect fx.reducedMotion */ },
   })
-  track(outer, { pin: '250vh', onPin: (p) => (progress = p) })
+  track(document.getElementById('outer'), { pin: '250vh', onPin: (p) => (progress = p) })
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 </script>`,
@@ -424,6 +463,12 @@ const canvasRef = useCanvasEffect({
               translate var(--sv-duration, 800ms) var(--sv-ease, cubic-bezier(0.28, 0.84, 0.42, 1));
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
+/* the same sheet's reduced-motion override, and it has to sit AFTER the rule
+   it beats: equal specificity, later wins */
+@media (prefers-reduced-motion: reduce) {
+  .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+    transition: none; animation: none; opacity: 1; translate: none; }
+}
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,
@@ -470,6 +515,10 @@ const canvasRef = useCanvasEffect({
 .sv-words > * { display: block; height: 1.15em; line-height: 1.15;
   translate: 0 calc(var(--sv-word, 0) * -1.15em);
   transition: translate .65s var(--sv-ease, cubic-bezier(.28,.84,.42,1)); }
+/* the same sheet's reduced-motion override, last so it wins on source order: */
+@media (prefers-reduced-motion: reduce) {
+  .sv-words > * { transition-duration: .01ms; }
+}
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)`,
@@ -592,7 +641,13 @@ el.style.setProperty('--sv-word', nextIndex)`,
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
-@keyframes sv-marquee { to { translate: -50% 0; } }`,
+@keyframes sv-marquee { to { translate: -50% 0; } }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   without it a pasted marquee never stops */
+@media (prefers-reduced-motion: reduce) {
+  .sv-marquee-track { animation: none; }
+}`,
     tailwind: `<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
