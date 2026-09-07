@@ -117,7 +117,7 @@ when the track fits the viewport:
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
-`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton (an inline static wrapper gets `position: relative` to give the stage a containing block; any other authored position is kept); a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math. No client components
+`data-sv-pin`, `data-sv-travel`, `data-sv-scenes="4"`, `data-sv-enter="0.6"`/`data-sv-exit="0.2"` (custom live band); per-element knobs as attributes: `data-sv-order`, `data-sv-distance`, `data-sv-from`/`data-sv-to` become the matching CSS vars on mount (no authored style attr, the scanner writes them; prefer these over style vars for mapped/CMS content)); `data-sv-pin="320vh"` + a `sv-stage` child is the pinned skeleton (an inline static wrapper gets `position: relative` to give the stage a containing block; any other authored position is kept); a sticky header is one declaration, `:root { --sv-pin-offset: 64px }`, read by both the stage and the pin math (only px, rem, em, vh and vw resolve today; `calc()` reads as 0, `vmin` and `%` read as if they were px, so stick to those five units until real length resolution lands, ADU-100). No client components
 in pages at all. Route-change nodes are auto-tracked via MutationObserver.
 
 **Spread (deck → grid):** `sv-spread`: children sit in their real flex row,
@@ -166,7 +166,10 @@ the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 **Carousel / slider (do NOT add Swiper):** in React prefer the kit:
 `<Slider perView={{base:1.2, md:2.5, xl:4}} gap={16} arrows dots autoplay={5000}>`
 with `<Slide span={2}>` for per-slide overrides. Breakpoints are media
-queries (map keys = Tailwind names or raw min-widths). Chrome customization:
+queries (map keys = Tailwind names, or a bare number of px as a raw
+min-width, e.g. `900: 4`; a string with a unit, `'900px'`, is coerced with
+`Number()` and comes out `@media (min-width:NaNpx)`, an invalid query
+that never matches, so keep the key numeric). Chrome customization:
 var knobs (--sv-arrow-*/--sv-dot-*) globally or per instance → stable
 classes (sv-arrow, sv-dot) → prevIcon/nextIcon/renderDot → external UI via
 the ref (full SliderHandle). Also `<Marquee>` (use it where Swiper loop
@@ -206,7 +209,13 @@ canvas with the same camera transform (`Path2D` from the SVG `d`).
 
 **Click states (menus/modals/tabs):** `toggles()` (Boot wires it),
 `data-sv-toggle="class"` + `data-sv-target="sel"` flips the class, writes
-`--sv-state` and syncs `aria-expanded`. Presets: `sv-pop` (popover/dialog/
+`--sv-state` and syncs `aria-expanded`, and nothing else: no focus trap,
+no Escape-to-close, no `aria-modal`, no tab roving-tabindex/arrow-key
+semantics. Enough for a menu or a disclosure panel; a real modal wants the
+kit's `<Modal>` (native `<dialog>`, focus trap and Escape included) instead
+of one hand-rolled on `toggles()` alone, and a tabs widget needs its own
+keyboard handling on top of the class flip (no dedicated Tabs component
+yet). Presets: `sv-pop` (popover/dialog/
 panel entry-exit via @starting-style) and `sv-words` (rotating words via
 `--sv-word`). On an element the driver does not track (a hand-flipped `.sv`,
 a `toggles()`-driven widget), removing `sv-live` and re-adding it on the
@@ -221,8 +230,10 @@ custom property (--sv-act) transitions 0→N on sv-open/sv-live; define acts
 as the same clamp() slices as scroll scenes (`--a2: clamp(0, calc(var(--sv-act) - 1), 1)`).
 Knobs: --sv-acts-count / --sv-acts-duration. Reversible (retargets, never
 restarts). Use it BEFORE reaching for GSAP; GSAP only for branching/physics/
-per-act callbacks. Do NOT add Framer for a modal; do NOT use checkbox hacks (wrong
-a11y semantics. Use toggles(), Popover API or `:has()` + radios).
+per-act callbacks. Do NOT add Framer for a modal; do NOT use checkbox hacks
+(wrong a11y semantics). For a modal use the kit's `<Modal>` (dialog-based:
+focus trap and Escape included); for other click-toggled state, `toggles()`,
+the Popover API, or `:has()` + radios.
 
 **Pointer tilt:** `usePointer()` on a container ref + `className="sv-tilt"` on
 cards. Two delegated listeners (pointermove, pointerout); CSS does tilt + glare from `--mx`/`--my`.
@@ -253,10 +264,13 @@ ambient canvas its own unmanaged `requestAnimationFrame` loop.
 ## SSR / Next.js
 
 All content renders on the server. The components are thin `'use client'`
-wrappers whose children stay RSC (`<Scenes>` takes a render function; its
-initial output is still server-rendered, just inside a client component
-boundary rather than a server one, so it cannot itself hold RSC-only
-children: keep heavy content in RSC siblings instead). `<ScrollVarsBoot />` (first child of `<body>`) sets
+wrappers whose children stay RSC (`<Scenes>` takes a render function, so
+that function itself must live in client code; the slot pattern still lets
+it hold RSC-only content: a server parent renders the heavy piece and
+passes the already-rendered result down as an ordinary prop into a small
+client wrapper, which closes over that prop inside the render function it
+hands to `<Scenes>` and returns it there, the same trick that lets any
+client component host RSC content as `props.children`). `<ScrollVarsBoot />` (first child of `<body>`) sets
 `sv-on` before first paint and removes it again if the driver never boots, so
 entrances neither flash nor fail hidden. That pre-paint hiding depends on
 the inline script itself running: it is gated on `IntersectionObserver` and
@@ -284,8 +298,15 @@ animations where supported.
 
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
-16.4; `sv-view-*` native tier is Chromium 115+). Below the floor the page is
-static but 100% visible (`html.sv-on` guard). The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+16.4; `sv-view-*` native tier is Chromium 115+). Below the floor and
+without `compat()`, the page is static but 100% visible (`html.sv-on`
+guard); `sv-rail` is the one exception, its track stays unwrapped and can
+run past the viewport edge, reachable by a page-wide horizontal scroll.
+With `compat()` installed (`data-sv-compat` on `<html>`) the stage stays
+pinned instead so the module's own fallback can keep animating the
+curtains and rail from `--sv-pin`, and content taller than the stage
+clips there, a real trade: skip `compat()` on a page whose below-floor
+deck matters more than its below-floor animation. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler
@@ -358,7 +379,9 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 (28 live patterns, self-contained, slider/canvas inline blocks are synced
 from the built dist by `npm run demo:sync`; NEVER hand-edit them. Deploy
 with `npm run demo:deploy`: it builds, syncs, deploys and re-points the
-alias in one step), `test/` (node:test, no DOM.
-Stubs in `test/canvas.test.mjs`). Build: `npm run build` (tsc, then
+alias in one step), `test/` (node:test; most of it runs with no DOM via
+`renderToStaticMarkup`, but `test/react.test.mjs` hand-rolls a fake DOM to
+mount `react-dom/client` for ref and effect tests, and `test/canvas.test.mjs`
+stubs the canvas/observer APIs). Build: `npm run build` (tsc, then
 `scripts/build-styles.mjs` regenerates `styles.css`). Node version: respect
 `.nvmrc`.
