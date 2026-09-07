@@ -202,11 +202,10 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
    compat's sheet still outranks and animates them. Guarantee: the curtains
    sit parted and static, nothing overlaps, content stays in flow. */
 @supports not (translate: 0) {
-  /* Not when compat() is installed: its sheet animates the curtains and the
-     rail from --sv-pin, measured from the very skeleton this would release, so
-     the clock jumped 0 to 1 over one pixel. The driver reads the same <html>
-     marker before withholding the tall wrapper height. Without compat nothing
-     animates here and the stage returns to flow, so nothing is clipped. */
+  /* Not under compat(): its sheet animates from --sv-pin, measured from this
+     skeleton, so releasing it snapped the curtains over one pixel. The driver
+     reads the same marker. The guarantee above holds without compat only: with
+     it the stage stays pinned and tall content clips. */
   html:not([data-sv-compat]) .sv-stage {
     position: static;
     height: auto;

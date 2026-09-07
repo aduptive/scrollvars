@@ -17,6 +17,15 @@
   marker is the only new surface: an attribute on the root element, written
   next to the `data-sv-compat` attribute the injected `<style>` already
   carried.
+- The cost, stated plainly: this is a trade, not a free win. On a page that
+  calls `compat()` the round-6 releases no longer fire, so below the
+  individual-transform floor the stage keeps `position: sticky`, `100vh` and
+  `overflow: hidden`, and stage content taller than the stage clips again,
+  which is exactly the defect ADU-149 measured in Chrome and fixed for
+  everyone. The presets that module exists to animate are the ones that need
+  the skeleton, and a page that would rather have the flow layout than the
+  fallback animation gets it by not calling `compat()`: without the marker
+  both halves release as they did in round 6.
 
 ### Presets and no-JS (blind review round 7, ADU-168)
 - Every released guard in `styles/pin.css` gained the twin that fires when the
@@ -31,12 +40,22 @@
   alone since round 5.
 
 ### Driver (blind review round 7, ADU-168)
-- The pin helper reads the computed position before it writes the height,
-  not after. The reversed order made every entry's read flush a style recalc
-  of the write just made, once per entry in the loop that runs on a
-  motion-preference change, against the README's "inside the driver, layout
-  thrashing is impossible by construction". The height cannot change the
-  computed position, so the read is free where it is now.
+- A motion-preference change now reads every pinned entry's computed
+  position first and writes all the skeletons after, instead of reading and
+  writing one entry at a time. The reversed order inside the helper made
+  each read flush a style recalc of the write just made, against the
+  README's "inside the driver, layout thrashing is impossible by
+  construction". Ordering the read before the write is only half of it: the
+  height cannot change the same element's computed position, so that read is
+  free, but the write on one entry does invalidate the style the next
+  entry's read asks for. Instrumented in Chrome with three pinned entries
+  and a real preference flip, the per-entry order was read p1, write p1,
+  read p2, write p2, and so on, so 2 of the 3 reads still landed with
+  another entry's inline write pending: the reorder alone took N flushes to
+  N-1, the hoisted read pass takes them to one. The position is read fresh
+  on every pass and never cached on the entry, since an author media query
+  can hand the element a `sticky` a stale read would overwrite with
+  `relative`.
 
 ### Presets (round 7, ADU-166)
 - `.sv-marquee-track` under `prefers-reduced-motion: reduce` no longer
@@ -1187,7 +1206,10 @@ against the code ADU-129 to ADU-132 shipped.
   entirely outside the clip box and the third was half gone. The block now
   resets the stage the same way its reduced-motion twin already does, and
   its own comment states exactly what it guarantees: the curtains sit
-  parted and static, nothing overlaps, content stays in flow.
+  parted and static, nothing overlaps, content stays in flow. Narrowed in
+  round 7 (ADU-168): with `compat()` installed the release stands down, so
+  the stage stays pinned below the floor and stage content taller than the
+  stage clips again there, and not calling `compat()` is the escape.
 - Size, measured: the stage reset takes `styles/pin.css` from 2.9 to 3.0 KB
   gzip (2995 to 3030 bytes; the new selector alone costs one byte against
   the file's existing repetition, the comment the rest) and `styles.css`

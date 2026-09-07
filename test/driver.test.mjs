@@ -1188,47 +1188,77 @@ test('driver: every released guard also fires when the tracked element IS the ta
   assert.ok(audited >= 9, `the audit found ${audited} released guards, so it is reading the sheets`)
 })
 
-test('driver: the pin helper reads the computed position before it writes the height (ADU-168)', async () => {
+test('driver: a motion flip reads every pinned position before it writes any of them (ADU-168)', async () => {
   // README: "inside the driver, layout thrashing is impossible by construction".
-  // A computed-style read after an inline write in the same tick flushes a
-  // style recalc, and applyPinHelper runs once per entry in a loop whenever the
-  // motion preference changes. The height cannot change the computed position,
-  // so reading it first costs nothing at all.
+  // A computed-style read after an inline write in the same tick flushes a style
+  // recalc. Reading before writing on the SAME element is free (the height
+  // cannot change the computed position), but the pin helper runs once per
+  // entry in a loop when the motion preference changes, and there the write on
+  // entry N invalidates the style the read on entry N+1 asks for: ordering
+  // inside the helper takes N flushes to N-1, not to zero. Three entries, so
+  // the difference is visible; one entry cannot tell the two apart.
   window.CSS = { supports: () => true }
   const log = []
   global.getComputedStyle = () => {
     log.push('read')
     return { getPropertyValue: () => '', position: 'static' }
   }
+  let motionListener
+  const realMatchMedia = window.matchMedia
+  // both listener pairs, like every real MediaQueryList
+  window.matchMedia = () => ({
+    matches: false,
+    addEventListener: (_type, fn) => (motionListener = fn),
+    removeEventListener: () => {},
+    addListener: (fn) => (motionListener = fn),
+    removeListener: () => {},
+  })
   const { track } = await import('../dist/core/driver.js?pinreadorder')
-  const el = makeElement(400)
-  let height = ''
-  let position = ''
-  Object.defineProperty(el.style, 'height', {
-    configurable: true,
-    get: () => height,
-    set: (value) => {
-      log.push('write height')
-      height = value
-    },
-  })
-  Object.defineProperty(el.style, 'position', {
-    configurable: true,
-    get: () => position,
-    set: (value) => {
-      log.push('write position')
-      position = value
-    },
-  })
-  const untrack = track(el, { pin: '320vh' })
-  assert.equal(el.style.height, '320vh', 'the helper still writes the skeleton it is being timed on')
-  assert.equal(el.style.position, 'relative', 'and still gives a static wrapper its containing block')
+  const instrument = (el, name) => {
+    let height = ''
+    let position = ''
+    Object.defineProperty(el.style, 'height', {
+      configurable: true,
+      get: () => height,
+      set: (value) => {
+        log.push(`write ${name} height`)
+        height = value
+      },
+    })
+    Object.defineProperty(el.style, 'position', {
+      configurable: true,
+      get: () => position,
+      set: (value) => {
+        log.push(`write ${name} position`)
+        position = value
+      },
+    })
+    return el
+  }
+  const els = [instrument(makeElement(400), 'p1'), instrument(makeElement(400), 'p2'), instrument(makeElement(400), 'p3')]
+  const untracks = els.map((el) => track(el, { pin: '320vh' }))
+  assert.equal(typeof motionListener, 'function', 'init() registered the motion listener this test flips')
+  for (const el of els) {
+    assert.equal(el.style.height, '320vh', 'the helper still writes the skeleton it is being timed on')
+    assert.equal(el.style.position, 'relative', 'and still gives a static wrapper its containing block')
+  }
   assert.ok(log.includes('read'), 'the helper really did ask for the computed position')
+
+  log.length = 0
+  motionListener({ matches: true }) // reduce: restore the authored skeleton, no read is owed
+  assert.equal(log.filter((step) => step === 'read').length, 0, `reduce needs no computed position, got ${log.join(' → ')}`)
+
+  log.length = 0
+  motionListener({ matches: false }) // back to motion: the loop that used to interleave
+  assert.equal(log.filter((step) => step === 'read').length, 3, `one read per pinned entry, got ${log.join(' → ')}`)
   assert.ok(
-    log.indexOf('write height') > log.lastIndexOf('read'),
-    `every computed read happens before the first style write, got ${log.join(' → ')}`
+    log.lastIndexOf('read') < log.findIndex((step) => step.startsWith('write')),
+    `every read happens before the first write of the whole pass, got ${log.join(' → ')}`
   )
-  untrack()
+  for (const el of els) assert.equal(el.style.height, '320vh', 'and the pass still rebuilt every skeleton')
+
+  untracks.forEach((untrack) => untrack())
+  window.matchMedia = realMatchMedia
   delete global.getComputedStyle
   delete window.CSS
 })

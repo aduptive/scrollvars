@@ -110,7 +110,7 @@ function init() {
   reducedMotion = media.matches
   const onMotionChange = (event: MediaQueryListEvent) => {
     reducedMotion = event.matches
-    entries.forEach(applyPinHelper)
+    applyPinHelperAll()
     schedule()
   }
   // addEventListener on a MediaQueryList is Safari 14; inside the supported
@@ -605,18 +605,39 @@ const belowTransformFloor = () => window.CSS?.supports?.('translate', '0px') ===
 // together or not at all.
 const compatInstalled = () => document.documentElement?.hasAttribute?.('data-sv-compat') === true
 
-function applyPinHelper(entry: Entry) {
+// The helper's only computed-style read, split out so a loop over several
+// entries can take every read before any write. Reading after a write on the
+// SAME element is free (the height cannot change the computed position), but
+// the write on entry N invalidates the style the read on entry N+1 asks for,
+// so a read-write-read-write loop still flushes a recalc for all but the
+// first. This is never cached on the entry: an author media query can change
+// the stylesheet position after track(), and a stale read would write
+// `relative` over a sticky the sheet just applied.
+function readPinPosition(entry: Entry): string | undefined {
+  const { el, opts, authored } = entry
+  if (typeof opts.pin !== 'string' || !authored) return undefined
+  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) return undefined
+  // an authored inline position outranks the computed one: no read is owed
+  if (authored.position && authored.position !== 'static') return undefined
+  return typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
+}
+
+// Every read first, then every write, so N pinned entries cost one style
+// flush instead of N. Never `entries.forEach(applyPinHelper)`: that hands the
+// element in as `computed` (and the compiler says so).
+function applyPinHelperAll() {
+  const positions = new Map<Entry, string | undefined>()
+  entries.forEach((entry) => positions.set(entry, readPinPosition(entry)))
+  entries.forEach((entry) => applyPinHelper(entry, positions.get(entry)))
+}
+
+function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
   if (reducedMotion || (belowTransformFloor() && !compatInstalled())) {
     el.style.height = authored.height
     el.style.position = authored.position
   } else {
-    // Read BEFORE any write: a computed-style read after an inline write in the
-    // same tick flushes a style recalc, and this runs once per entry in a loop
-    // when the motion preference changes. The height cannot change the computed
-    // position, so the read costs nothing where it is now.
-    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
     // only a static element needs the positioning context; one positioned by a
     // stylesheet or inline (absolute, fixed, sticky) keeps it. An authored
     // inline `static` is exactly the case that needs replacing: keeping it
