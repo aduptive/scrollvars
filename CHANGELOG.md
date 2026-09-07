@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Docs (ADU-193)
+- `article/launch-kit.md` and `article/why-i-built-scrollvars.md` (the
+  launch drafts, not shipped by npm or served by the site, so no CI gate
+  covers them) carried headline numbers from an earlier point in the
+  engine's growth: the bundle used in the Show HN title, the tweet and the
+  email pitch was 3.9 KB, now 6.7 KB (README's own bench-table figure),
+  and the bundle multiplier was ~12x, now the ~7x the bench tables stamp.
+  `why-i-built-scrollvars.md`'s driver size, carousel size, comparison
+  table and CPU/heap paragraph were reconciled the same way against
+  `scripts/docs-data.mjs`'s measured sizes and the committed bench tables;
+  its pattern count went from 26 to 28, matching AGENTS.md and
+  `demo/index.html`. The Lighthouse mobile scores in that same paragraph
+  need a fresh run against the deployed site (a live measurement, not a
+  build output) before the piece publishes: left as a marked placeholder
+  rather than carried forward stale. No code change.
+
 ### Docs (ADU-181)
 - The "fully animated" browser floor had SIX hand-typed copies and three of
   them had drifted: `docs/integration.md`, `demo/index.html` and the launch
