@@ -61,3 +61,7 @@ The performance runner uses Puppeteer’s default 800×600 viewport for all page
 Responsive fit-to-flow fallbacks may apply in gallery rows; these are not
 measurements of every animation state. The separate browser suite checks active
 pins at 1400×900 and narrow-screen fallbacks. Inspect per-run ranges as well as medians.
+
+The normal profile is headless; the throttled profile uses a headed Chrome
+window to avoid frame starvation. Compare engines within a profile. The fixed
+work ratio calibrates that JavaScript loop, not the entire rendering pipeline.

@@ -26,14 +26,15 @@ Frame delivery and CPU cost are reported separately; neither is guaranteed
 across workloads or devices:
 
 <!-- bench:start -->
-Measured 2026-08-26T19:38:02.772Z; package historical, 5 runs. Bundle and runtime measurements refer to this snapshot.
+Measured 2026-09-08T18:43:46.100Z; package 1.15.0, 3 runs. Bundle and runtime measurements refer to this snapshot.
 
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars (page outputs on) | 7.3 KB | 100 ms | 195 ms | **1.4 MB** |
-| gsap + ScrollTrigger (idiomatic) | 45.2 KB | 233 ms | 85 ms | 6.2 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 45.2 KB | 175 ms | 86 ms | 6.7 MB |
-| framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
+| ScrollVars (page outputs on) | 7.3 KB | 32 ms | 3399 ms | **1.3 MB** |
+| ScrollVars (page outputs off) | 7.3 KB | 97 ms | 364 ms | 1 MB |
+| gsap + ScrollTrigger (idiomatic) | 45.2 KB | 458 ms | 161 ms | 6.2 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 45.2 KB | 288 ms | 169 ms | 6.7 MB |
+| framer-motion | 46.9 KB (+ React) | 1022 ms | 75 ms | 10.3 MB |
 <!-- bench:end -->
 
 The committed results record the measurement date, package version, source

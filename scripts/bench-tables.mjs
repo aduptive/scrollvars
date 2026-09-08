@@ -82,7 +82,7 @@ if (existsSync(throttledPath)) {
   if (main4) {
     html += `
 <h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
-<p class="sub">Measured ${th.meta.date}; package ${th.meta.version ?? "historical"}, ${th.meta.runs} runs. Fixed-work calibration ratios are in the raw results.</p>
+<p class="sub">Measured ${th.meta.date}; package ${th.meta.version ?? "historical"}, ${th.meta.runs} runs. Headed Chrome; compare engines within this profile, not as a multiplier of the headless table. Fixed-work calibration ratios are in the raw results.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
@@ -106,6 +106,7 @@ if (galleries.length) {
   html += '</tbody></table>'
 }
 
+html = html.replaceAll('<table>', '<div class="table-scroll" tabindex="0"><table>').replaceAll('</table>', '</table></div>')
 const page = readFileSync(pagePath, 'utf8')
 const re = /<!-- measured:start -->[\s\S]*?<!-- measured:end -->/
 if (!re.test(page)) throw new Error('measured markers not found in bench/index.html')
