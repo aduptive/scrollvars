@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.14.0 (2026-09-07)
+
+### Review fixes and gallery sections
+- Pinned sections can opt into `.sv-stage > [data-sv-fit]`: tall content returns to flow, releases the pin height and reports `onFlow`. TimelineScrub and StickySteps use it, including accessible media in flow.
+- Pin offsets use the stage's computed CSS top; calc(), env(), percentages and viewport units stay aligned with CSS.
+- Slider: isolate nested per-view rules, nonce the responsive stylesheet, expose hover/focus pauses to live regions, retain explicit focus pauses and stop callbacks after destruction. Remove flatMap from the React child flattener for legacy consumers.
+- Marquee gets a keyboard pause control; toggles includes its scope root and supports pressed-state buttons. Compat ResizeObserver supports disconnect/reobserve. Canvas never resizes disposed setup resources.
+- scan owns declarative pointer containers and CSS timing/ease attributes.
+- Gallery Sections expose their exact installable source and visual previews; add CaseStudyRail and EditorialManifesto. Documentation corrects observer gating, replay reads, stagger limits and named-import size measurement.
 
 ### Tooling (ADU-196)
 - Three `.replace()` calls in `scripts/docs-stamp.mjs` (README's total size

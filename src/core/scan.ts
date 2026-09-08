@@ -1,6 +1,7 @@
 import type { TrackOptions } from './driver.js'
 import { track } from './driver.js'
 import { split } from './split.js'
+import { trackPointer } from './pointer.js'
 
 /**
  * Zero-wrapper mode: track every `[data-sv]` element and keep watching the
@@ -24,7 +25,7 @@ import { split } from './split.js'
  */
 
 // per-element variable knobs: data-sv-<name> → --sv-<name>, written once
-const VAR_ATTRS = ['order', 'distance', 'from', 'to'] as const
+const VAR_ATTRS = ['order', 'distance', 'from', 'to', 'duration', 'stagger', 'ease'] as const
 const VAR_SELECTOR = VAR_ATTRS.map((name) => `[data-sv-${name}]`).join(',')
 
 function applyVarAttrs(el: HTMLElement) {
@@ -57,6 +58,17 @@ export function scan(root?: ParentNode): () => void {
 
   const tracked = new Map<HTMLElement, () => void>()
   const splits = new Map<HTMLElement, () => void>()
+  const pointers = new Map<HTMLElement, () => void>()
+  const addPointer = (el: HTMLElement) => {
+    if (!pointers.has(el)) pointers.set(el, trackPointer(el, {
+      selector: el.getAttribute('data-sv-pointer') || undefined,
+    }))
+  }
+  const removePointer = (el: HTMLElement) => {
+    if (scope.contains(el)) return
+    pointers.get(el)?.()
+    pointers.delete(el)
+  }
 
   const addSplit = (el: HTMLElement) => {
     if (splits.has(el)) return
@@ -103,16 +115,25 @@ export function scan(root?: ParentNode): () => void {
       node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
       if (node.hasAttribute('data-sv-split')) addSplit(node)
       node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+      if (node.hasAttribute('data-sv-pointer')) addPointer(node)
+      node.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
     } else {
       // removed subtrees release their split closures too (SPA route changes)
       if (node.hasAttribute('data-sv-split')) removeSplit(node)
       node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(removeSplit)
+      if (node.hasAttribute('data-sv-pointer')) removePointer(node)
+      node.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(removePointer)
     }
   }
 
-  scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
-  scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
-  scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+  // querySelectorAll excludes an element scope itself; sweep it once.
+  if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
+  else {
+    scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+    scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+    scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+    scope.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
+  }
 
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -132,5 +153,7 @@ export function scan(root?: ParentNode): () => void {
     tracked.clear()
     splits.forEach((restore) => restore())
     splits.clear()
+    pointers.forEach((stop) => stop())
+    pointers.clear()
   }
 }

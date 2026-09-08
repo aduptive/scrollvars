@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Pointer tilt · ScrollVars fx</title>
-<meta name="description" content="Cards tilt toward the cursor with a moving glare. One delegated listener. Copy-paste in Tailwind, CSS or React.">
+<title>Editorial manifesto · ScrollVars fx</title>
+<meta name="description" content="Big statements gain contrast in sequence as --sv-t advances. Natural document flow, no pin and no split spans. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -126,7 +126,7 @@
         <a href="rotating-words.html">Rotating words</a>
       </details>
       <details open><summary>Pointer</summary>
-        <a href="pointer-tilt.html" aria-current="page">Pointer tilt</a>
+        <a href="pointer-tilt.html">Pointer tilt</a>
       </details>
       <details open><summary>Sliders</summary>
         <a href="coverflow-slider.html">Coverflow slider</a>
@@ -138,46 +138,65 @@
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
         <a href="case-study-rail.html">Case-study rail</a>
-        <a href="editorial-manifesto.html">Editorial manifesto</a>
+        <a href="editorial-manifesto.html" aria-current="page">Editorial manifesto</a>
       </details>
     </nav>
   </details>
 </div></aside>
 <main>
-  <h1>Pointer tilt</h1>
-  <p class="tag">Cards tilt toward the cursor with a moving glare. One delegated listener.</p>
-  <p class="meta"><b>Use it for:</b> Product cards, team grids, anything that should feel physical.<br><b>Knobs:</b> tilt degrees and glare live in the preset. Override .sv-tilt to taste</p>
-  <section class="fxstage" id="fxtiltrow" style="display:flex;gap:16px;justify-content:center">
-  <div class="sv-tilt fxcard">hover</div>
-  <div class="sv-tilt fxcard">me</div>
-</section>
-<script>addEventListener('load',()=>SV.trackPointer(document.getElementById('fxtiltrow')))</script>
-  <p class="meta"><b>Install:</b> <code>npx scrollvars add pointer-tilt</code><br><b>Styles:</b> <code>import 'scrollvars/styles/tilt.css'</code></p>
+  <h1>Editorial manifesto</h1>
+  <p class="tag">Big statements gain contrast in sequence as --sv-t advances. Natural document flow, no pin and no split spans.</p>
+  <p class="meta"><b>Use it for:</b> Studio manifestos, brand positioning and editorial introductions.<br><b>Knobs:</b> label, paragraphs, closing; --sv-t drives a clamped slice per paragraph</p>
+  <section class="sv sv-manifesto" style="--count:3"><style>
+.sv-manifesto { background: #e9e4db; color: #232722; padding: clamp(40px, 9vw, 128px) clamp(24px, 6vw, 88px); }
+.sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
+.sv-manifesto .manifesto-copy { padding-block: 32px; }
+.sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
+[data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+</style><header class="manifesto-label"><span>What we believe</span><span>Scroll to read ↓</span></header><div class="manifesto-copy"><p style="--i:0">Less noise. More meaning.</p><p style="--i:1">We build things people want to spend time with.</p><p style="--i:2">Every detail should earn its place.</p></div><p class="manifesto-end">From the first idea to the final interaction. A small team, accountable for the whole experience.</p></section>
+<script>addEventListener('load', () => SV.track(document.querySelector('.sv-manifesto'), { travel: true }))</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add editorial-manifesto</code><br><b>Styles:</b> Included in the component</p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">CSS</button>
-    <button data-tab="react">React</button>
+    <button class="on" data-tab="react">Complete component · CLI source</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div ref={rowRef} class="grid grid-cols-3 gap-6"&gt;
-  &lt;div class="sv-tilt rounded-2xl border p-10"&gt;…&lt;/div&gt;
-&lt;/div&gt;
-&lt;!-- tilt/glare read --mx/--my; restyle .sv-tilt::after for the glare --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="grid"&gt;          &lt;!-- any container --&gt;
-  &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
-  &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
-&lt;/div&gt;
 
-&lt;script type="module"&gt;
-  import { trackPointer } from 'scrollvars'
-  trackPointer(document.querySelector('.grid'))
-&lt;/script&gt;
-/* preset in styles/tilt.css. Tilt + glare from --mx/--my */</code></pre>
-    <pre data-pane="react"><code>const ref = usePointer()
-&lt;div ref={ref} className="grid grid-cols-3 gap-6"&gt;
-  {cards.map(c =&gt; &lt;div key={c.id} className="sv-tilt"&gt;…&lt;/div&gt;)}
-&lt;/div&gt;</code></pre>
+    <pre class="on" data-pane="react"><code>// ScrollVars fx · editorial-manifesto
+// Requires: npm i scrollvars · no preset stylesheet required
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = `
+.sv-manifesto { background: #e9e4db; color: #232722; padding: clamp(40px, 9vw, 128px) clamp(24px, 6vw, 88px); }
+.sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
+.sv-manifesto .manifesto-copy { padding-block: 32px; }
+.sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
+[data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+`
+
+export function EditorialManifesto({ label = 'What we believe', paragraphs, closing, className, nonce }: {
+  label?: string
+  paragraphs: string[]
+  closing?: string
+  className?: string
+  nonce?: string
+}) {
+  return &lt;Track as="section" travel className={className ? 'sv-manifesto ' + className : 'sv-manifesto'} style={{ '--count': paragraphs.length } as React.CSSProperties}&gt;
+    &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+    &lt;header className="manifesto-label"&gt;&lt;span&gt;{label}&lt;/span&gt;&lt;span&gt;Scroll to read ↓&lt;/span&gt;&lt;/header&gt;
+    &lt;div className="manifesto-copy"&gt;{paragraphs.map((text, i) =&gt; &lt;p key={i} style={{ '--i': i } as React.CSSProperties}&gt;{text}&lt;/p&gt;)}&lt;/div&gt;
+    {closing &amp;&amp; &lt;p className="manifesto-end"&gt;{closing}&lt;/p&gt;}
+  &lt;/Track&gt;
+}
+</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

@@ -1149,4 +1149,16 @@ test('slider: measure() reads scrollLeft and scrollWidth before it writes anythi
     `every read happens before the first write of the whole pass, got ${log.join(' → ')}`
   )
   handle.destroy()
+  let disposable
+  let afterDestroy = 0
+  disposable = slider(container, {
+    duration: 0,
+    onSlide: () => disposable?.destroy(),
+    onScroll: () => { if (disposable) afterDestroy++ },
+  })
+  scrollLeftValue = 0
+  scrollHandler()
+  runFrames(rafQueue)
+  assert.equal(afterDestroy, 0, 'onSlide destruction prevents the following onScroll callback')
+  disposable.destroy()
 })

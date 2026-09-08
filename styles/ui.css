@@ -32,6 +32,21 @@
   }
 }
 
+/* A controlled strip stays still until its pause button has been wired. */
+.sv-marquee-controlled { position: relative; }
+.sv-marquee-controlled > .sv-marquee-track:not(.sv-ui) {
+  animation: none; width: auto; flex-wrap: wrap;
+}
+.sv-marquee-controlled > .sv-marquee-track:not(.sv-ui) > .sv-marquee-dup { display: none; }
+.sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
+.sv-marquee-pause { display: none; }
+.sv-marquee-track.sv-ui + .sv-marquee-pause {
+  display: block; position: absolute; right: 8px; bottom: 8px; z-index: 1;
+  padding: 6px 10px; border: 1px solid currentColor; border-radius: 4px;
+  background: Canvas; color: CanvasText; font: inherit; font-size: 12px; cursor: pointer;
+}
+.sv-marquee-pause[aria-pressed="true"] { font-weight: bold; }
+
 /* Accordion: native <details> animated: accessibility for free, exclusive
    groups via the native name attribute. Needs interpolate-size (Chrome 129+);
    older browsers open/close without the height animation. */

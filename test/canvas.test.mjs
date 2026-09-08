@@ -2122,6 +2122,7 @@ test('canvas harness: destroy() is idempotent, a second call runs nothing (ADU-1
   // destroy() must not re-run it (a consumer disposing a renderer or a GPU
   // buffer twice can itself throw).
   let cleanupCalls = 0
+  let resizeCalls = 0
   const handle = mountEffect(env.canvas, {
     setup: () => () => {
       cleanupCalls++
@@ -2212,6 +2213,7 @@ test('canvas harness: destroy() called reentrantly from inside setup() still run
   // function setup() is about to return: nothing ever reads `cleanup` again
   // once `destroyed` is true.
   let cleanupCalls = 0
+  let resizeCalls = 0
   const handle = mountEffect(env.canvas, {
     setup: () => {
       handle.destroy()
@@ -2219,6 +2221,7 @@ test('canvas harness: destroy() called reentrantly from inside setup() still run
         cleanupCalls++
       }
     },
+    resize: () => resizeCalls++,
     frame: () => {},
   })
 
@@ -2226,6 +2229,7 @@ test('canvas harness: destroy() called reentrantly from inside setup() still run
   env.pump(16)
 
   assert.equal(cleanupCalls, 1, 'the just-returned cleanup runs instead of being orphaned')
+  assert.equal(resizeCalls, 0, 'resize must not touch the resources setup already disposed')
 
   handle.destroy()
   assert.equal(cleanupCalls, 1, 'a later explicit destroy() must not re-run it')

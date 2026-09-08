@@ -135,7 +135,7 @@ test('scan writes data-sv-* knob attributes as CSS variables, once', async () =>
   global.MutationObserver = class { constructor(cb) { global.__mutCb = cb } observe() {} disconnect() {} }
   global.HTMLElement = class {}
 
-  const VAR_SEL = '[data-sv-order],[data-sv-distance],[data-sv-from],[data-sv-to]'
+  const VAR_SEL = ['order', 'distance', 'from', 'to', 'duration', 'stagger', 'ease'].map(n => `[data-sv-${n}]`).join(',')
   const knob = (attrs) => {
     const el = new global.HTMLElement()
     Object.assign(el, {
@@ -152,7 +152,7 @@ test('scan writes data-sv-* knob attributes as CSS variables, once', async () =>
     })
     return el
   }
-  const child = knob({ 'data-sv-order': '2', 'data-sv-distance': '3rem' })
+  const child = knob({ 'data-sv-order': '2', 'data-sv-distance': '3rem', 'data-sv-duration': '800ms', 'data-sv-stagger': '90ms', 'data-sv-ease': 'ease-out' })
   const scope = {
     querySelectorAll: (sel) => (sel === VAR_SEL ? [child] : []),
   }
@@ -161,6 +161,9 @@ test('scan writes data-sv-* knob attributes as CSS variables, once', async () =>
   const stop = scan(scope)
   assert.equal(child.vars['--sv-order'], '2')
   assert.equal(child.vars['--sv-distance'], '3rem')
+  assert.equal(child.vars['--sv-duration'], '800ms')
+  assert.equal(child.vars['--sv-stagger'], '90ms')
+  assert.equal(child.vars['--sv-ease'], 'ease-out')
   assert.equal(child.vars['--sv-from'], undefined)
 
   // a node arriving later (route change) gets the same treatment

@@ -76,7 +76,7 @@ export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce }) => {
  * does not know it and drops booleans, so it gets the empty string instead. Both render inert="". */
 const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
 
-type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin'>
+type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin' | 'onFlow'>
 
 /**
  * A ref whose `current` is an accessor instead of a plain field. React's
@@ -147,6 +147,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
     onScene: options.onScene,
     onTravel: options.onTravel,
     onPin: options.onPin,
+    onFlow: options.onFlow,
   }
 
   const { view, travel, scenes, snap, once, pin, root, enter, exit } = options
@@ -167,6 +168,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
         enter,
         exit,
         onLive: (live) => callbacksRef.current.onLive?.(live),
+        onFlow: (flow) => callbacksRef.current.onFlow?.(flow),
         onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
         onTravel: hasTravelCb
           ? (t) => callbacksRef.current.onTravel?.(t)
@@ -242,6 +244,7 @@ export const Track: React.FC<TrackProps> = ({
   onScene,
   onTravel,
   onPin,
+  onFlow,
   order,
   distance,
   stagger,
@@ -252,7 +255,7 @@ export const Track: React.FC<TrackProps> = ({
   children,
   ...rest
 }) => {
-  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin })
+  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin, onFlow })
 
   return (
     <Tag
@@ -466,6 +469,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   onScene,
   onTravel,
   onPin,
+  onFlow,
   order,
   distance,
   stagger,
@@ -485,6 +489,7 @@ export const Scenes: React.FC<ScenesProps> = ({
     onLive,
     onTravel,
     onPin,
+    onFlow,
   })
   const onSceneRef = useRef(onScene)
   onSceneRef.current = onScene
@@ -617,8 +622,12 @@ function perViewCss(scope: string, perView: Record<string, number>): string {
  * would have removed it from the document.
  */
 function slideList(children: React.ReactNode, prefix = ''): React.ReactNode[] {
-  return React.Children.toArray(children).flatMap((child): React.ReactNode[] => {
-    if (!React.isValidElement<Record<string, unknown>>(child)) return [child]
+  const list: React.ReactNode[] = []
+  React.Children.toArray(children).forEach((child) => {
+    if (!React.isValidElement<Record<string, unknown>>(child)) {
+      list.push(child)
+      return
+    }
     // toArray keys each level from ".0", so a fragment's children would
     // collide with their uncles without the parent's key in front. The
     // separator is `:` because React escapes `:` (to `=2`) in an element key
@@ -627,9 +636,10 @@ function slideList(children: React.ReactNode, prefix = ''): React.ReactNode[] {
     // sibling keyed "a.$b" both flatten to ".$a.$b".
     const key = prefix ? `${prefix}:${child.key ?? ''}` : (child.key ?? '')
     if (child.type === React.Fragment)
-      return slideList((child.props as { children?: React.ReactNode }).children, key)
-    return [key === child.key ? child : React.cloneElement(child, { key })]
+      list.push(...slideList((child.props as { children?: React.ReactNode }).children, key))
+    else list.push(key === child.key ? child : React.cloneElement(child, { key }))
   })
+  return list
 }
 
 export interface SliderComponentProps
@@ -694,6 +704,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       // pause: both are public props on HTMLAttributes
       onPointerEnter,
       onPointerLeave,
+      nonce,
       ...rest
     },
     apiRef
@@ -741,14 +752,15 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     // autoplay: pauses on hover, offscreen and hidden tab
     const hovering = useRef(false)
+    const [hovered, setHovered] = useState(false)
     const shellRef = useRef<HTMLDivElement>(null)
     const [paused, setPaused] = useState(false)
+    const pointerPause = useRef<boolean | undefined>(undefined)
     const pausedRef = useRef(paused)
     pausedRef.current = paused
     useEffect(() => {
       if (!autoplay || autoplay <= 0) return
       let onscreen = true
-      let focused = false
       const io = new IntersectionObserver((entries) => {
         onscreen = entries[entries.length - 1].isIntersecting
       })
@@ -756,16 +768,14 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       if (el) io.observe(el)
       // WCAG 2.2.2: the pause must be reachable without a mouse. Keyboard
       // focus anywhere inside the slider halts autoplay like hover does
-      const onFocusIn = () => (focused = true)
-      const onFocusOut = () => (focused = false)
+      // Keyboard focus stops rotation until the user explicitly resumes it.
+      const onFocusIn = () => { pausedRef.current = true; setPaused(true) }
       const focusEl = shellRef.current ?? el
       focusEl?.addEventListener('focusin', onFocusIn)
-      focusEl?.addEventListener('focusout', onFocusOut)
       const timer = setInterval(() => {
         if (
           pausedRef.current ||
           hovering.current ||
-          focused ||
           !onscreen ||
           document.visibilityState === 'hidden'
         )
@@ -780,7 +790,6 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         clearInterval(timer)
         io.disconnect()
         focusEl?.removeEventListener('focusin', onFocusIn)
-        focusEl?.removeEventListener('focusout', onFocusOut)
       }
     }, [autoplay, handle, ref])
 
@@ -793,7 +802,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
-    const rotating = !!autoplay && autoplay > 0 && !paused
+    const rotating = !!autoplay && autoplay > 0 && !paused && !hovered
     // APG slide semantics without breaking layout: annotate each child in
     // place (no wrapper, sv-cols and --sv-span target direct children).
     // The position is counted over elements only: whatever else is in the
@@ -821,10 +830,12 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         {...rest}
         onPointerEnter={(event) => {
           hovering.current = true
+          setHovered(true)
           onPointerEnter?.(event)
         }}
         onPointerLeave={(event) => {
           hovering.current = false
+          setHovered(false)
           onPointerLeave?.(event)
         }}
       >
@@ -834,14 +845,20 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
           // scope would drop every rule on the server. The raw sink also drops
           // React's `</style` escaping, so perViewCss coerces every value it
           // interpolates. Same CSP story as any inline <style>.
-          <style dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
+          <style nonce={nonce} dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
         )}
         {!!autoplay && autoplay > 0 && (
           <button
             type="button"
             className="sv-pause"
             aria-label={paused ? 'start slide rotation' : 'stop slide rotation'}
-            onClick={() => setPaused((p) => !p)}
+            onPointerDown={() => { pointerPause.current = !paused }}
+            onPointerCancel={() => { pointerPause.current = undefined }}
+            onClick={() => {
+              const next = pointerPause.current
+              pointerPause.current = undefined
+              setPaused((p) => next ?? !p)
+            }}
           >
             {paused ? (playIcon ?? '\u25b6') : (pauseIcon ?? '\u23f8')}
           </button>
@@ -923,10 +940,14 @@ export interface MarqueeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /** Infinite strip (logos, taglines): two copies of the children on a CSS
- * animation. Pauses on hover; stops under prefers-reduced-motion. */
-export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, children, ...rest }) => (
+ * animation. Includes a keyboard pause toggle; pauses on hover/focus and
+ * stops under prefers-reduced-motion. Static until its toggle driver attaches. */
+export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, children, ...rest }) => {
+  const ref = useAttachedRef<HTMLDivElement>((node) => toggles(node), [])
+  return (
   <div
-    className={className ? `sv-marquee ${className}` : 'sv-marquee'}
+    ref={ref}
+    className={className ? `sv-marquee sv-marquee-controlled ${className}` : 'sv-marquee sv-marquee-controlled'}
     style={
       speed ? ({ ...style, '--sv-marquee-duration': `${speed}s` } as React.CSSProperties) : style
     }
@@ -938,8 +959,11 @@ export const Marquee: React.FC<MarqueeProps> = ({ speed, style, className, child
         {children}
       </span>
     </div>
+    <button type="button" className="sv-marquee-pause" aria-pressed="false"
+      data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
   </div>
-)
+  )
+}
 
 export interface AccordionProps
   extends Omit<React.DetailsHTMLAttributes<HTMLDetailsElement>, 'title'> {

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Pointer tilt · ScrollVars fx</title>
-<meta name="description" content="Cards tilt toward the cursor with a moving glare. One delegated listener. Copy-paste in Tailwind, CSS or React.">
+<title>Case-study rail · ScrollVars fx</title>
+<meta name="description" content="Oversized project cards traverse a pinned stage with --sv-pin; long content returns to a readable list. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -126,7 +126,7 @@
         <a href="rotating-words.html">Rotating words</a>
       </details>
       <details open><summary>Pointer</summary>
-        <a href="pointer-tilt.html" aria-current="page">Pointer tilt</a>
+        <a href="pointer-tilt.html">Pointer tilt</a>
       </details>
       <details open><summary>Sliders</summary>
         <a href="coverflow-slider.html">Coverflow slider</a>
@@ -137,47 +137,136 @@
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
-        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="case-study-rail.html" aria-current="page">Case-study rail</a>
         <a href="editorial-manifesto.html">Editorial manifesto</a>
       </details>
     </nav>
   </details>
 </div></aside>
 <main>
-  <h1>Pointer tilt</h1>
-  <p class="tag">Cards tilt toward the cursor with a moving glare. One delegated listener.</p>
-  <p class="meta"><b>Use it for:</b> Product cards, team grids, anything that should feel physical.<br><b>Knobs:</b> tilt degrees and glare live in the preset. Override .sv-tilt to taste</p>
-  <section class="fxstage" id="fxtiltrow" style="display:flex;gap:16px;justify-content:center">
-  <div class="sv-tilt fxcard">hover</div>
-  <div class="sv-tilt fxcard">me</div>
-</section>
-<script>addEventListener('load',()=>SV.trackPointer(document.getElementById('fxtiltrow')))</script>
-  <p class="meta"><b>Install:</b> <code>npx scrollvars add pointer-tilt</code><br><b>Styles:</b> <code>import 'scrollvars/styles/tilt.css'</code></p>
+  <h1>Case-study rail</h1>
+  <p class="tag">Oversized project cards traverse a pinned stage with --sv-pin; long content returns to a readable list.</p>
+  <p class="meta"><b>Use it for:</b> Studio portfolios and selected-work sections. Container units enable the animation; older engines get a native horizontal rail.<br><b>Knobs:</b> title, projects, href, --work-accent; cards are non-interactive, the optional CTA stays after the rail</p>
+  <section class="sv-casework"><style>
+.sv-casework { --work-accent: #c5f36b; color: #f3f0e8; background: #171a16; }
+.sv-casework .work-head { padding: 48px clamp(24px, 5vw, 72px) 24px; }
+.sv-casework h2 { font-size: clamp(36px, 7vw, 88px); letter-spacing: -.055em; line-height: 1; margin: 12px 0; }
+.sv-casework .work-stage { display: flex; align-items: center; }
+.sv-casework .work-fit { width: 100%; }
+.sv-casework .work-rail { display: flex; gap: 24px; width: max-content; padding: 24px; box-sizing: border-box; }
+.sv-casework .work-card { flex: none; width: min(70vw, 800px); padding: clamp(20px, 4vw, 48px); box-sizing: border-box; border: 1px solid #ffffff30; border-radius: 12px; }
+.sv-casework .work-art { height: clamp(100px, 30vh, 280px); border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 65% 40%, var(--work-accent) 0 18%, transparent 18.5%), repeating-linear-gradient(135deg, #303d28 0 40px, #263020 40px 80px); }
+.sv-casework .work-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sv-casework .work-meta { display: flex; justify-content: space-between; margin: 22px 0 12px; color: var(--work-accent); font: 12px monospace; text-transform: uppercase; }
+.sv-casework h3 { font-size: clamp(28px, 5vw, 54px); line-height: 1.05; margin: 0 0 12px; letter-spacing: -.04em; }
+.sv-casework .work-card:nth-child(2n) { --work-accent: #9ee4ee; }
+.sv-casework .work-card:nth-child(3n) { --work-accent: #ff9d73; }
+.sv-casework .work-card p { max-width: 44ch; margin: 0; line-height: 1.5; }
+.sv-casework .work-footer { padding: 28px; text-align: right; }
+.sv-casework .work-footer a { color: inherit; }
+/* This rail starts at its first card. cqw measures the real stage, not the page. */
+@supports (width: 1cqw) {
+  .sv-casework .work-stage { container-type: inline-size; }
+  .sv-casework .work-card { width: min(80cqw, 800px); }
+  .sv-on .sv-casework .work-rail { transform: translateX(calc(var(--sv-pin, 0) * min(100cqw - 100%, 0px))); will-change: transform; }
+}
+html:not(.sv-on) .sv-casework .work-rail,
+.sv-casework [data-sv-flow] .work-rail,
+.sv-casework [data-sv-off] .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+html:not(.sv-on) .sv-casework .work-card,
+.sv-casework [data-sv-flow] .work-card,
+.sv-casework [data-sv-off] .work-card { width: 100%; }
+@supports not (width: 1cqw) { .sv-casework > .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
+</style><header class="work-head"><small>Independent thinking · tangible results</small><h2>Selected work</h2></header><div class="sv"><div class="sv-stage fxsticky work-stage"><div class="work-fit" data-sv-fit=""><div class="work-rail"><article class="work-card"><div class="work-art"></div><div class="work-meta"><span>01</span><span>Brand / Digital</span></div><h3>Reframe the ordinary</h3><p>A clear identity with room for unexpected details.</p></article><article class="work-card"><div class="work-art"></div><div class="work-meta"><span>02</span><span>Product / Strategy</span></div><h3>Built for the next chapter</h3><p>A product story that makes complex work feel effortless.</p></article><article class="work-card"><div class="work-art"></div><div class="work-meta"><span>03</span><span>Culture / Commerce</span></div><h3>Make every detail count</h3><p>An editorial presence with the confidence to stay simple.</p></article></div></div></div></div></section>
+<script>addEventListener('load', () => SV.track(document.querySelector('.sv-casework .sv'), { pin: '300vh' }))</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add case-study-rail</code><br><b>Styles:</b> <code>import 'scrollvars/styles/pin.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">CSS</button>
-    <button data-tab="react">React</button>
+    <button class="on" data-tab="react">Complete component · CLI source</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div ref={rowRef} class="grid grid-cols-3 gap-6"&gt;
-  &lt;div class="sv-tilt rounded-2xl border p-10"&gt;…&lt;/div&gt;
-&lt;/div&gt;
-&lt;!-- tilt/glare read --mx/--my; restyle .sv-tilt::after for the glare --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="grid"&gt;          &lt;!-- any container --&gt;
-  &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
-  &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
-&lt;/div&gt;
 
-&lt;script type="module"&gt;
-  import { trackPointer } from 'scrollvars'
-  trackPointer(document.querySelector('.grid'))
-&lt;/script&gt;
-/* preset in styles/tilt.css. Tilt + glare from --mx/--my */</code></pre>
-    <pre data-pane="react"><code>const ref = usePointer()
-&lt;div ref={ref} className="grid grid-cols-3 gap-6"&gt;
-  {cards.map(c =&gt; &lt;div key={c.id} className="sv-tilt"&gt;…&lt;/div&gt;)}
-&lt;/div&gt;</code></pre>
+    <pre class="on" data-pane="react"><code>// ScrollVars fx · case-study-rail
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css'
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = `
+.sv-casework { --work-accent: #c5f36b; color: #f3f0e8; background: #171a16; }
+.sv-casework .work-head { padding: 48px clamp(24px, 5vw, 72px) 24px; }
+.sv-casework h2 { font-size: clamp(36px, 7vw, 88px); letter-spacing: -.055em; line-height: 1; margin: 12px 0; }
+.sv-casework .work-stage { display: flex; align-items: center; }
+.sv-casework .work-fit { width: 100%; }
+.sv-casework .work-rail { display: flex; gap: 24px; width: max-content; padding: 24px; box-sizing: border-box; }
+.sv-casework .work-card { flex: none; width: min(70vw, 800px); padding: clamp(20px, 4vw, 48px); box-sizing: border-box; border: 1px solid #ffffff30; border-radius: 12px; }
+.sv-casework .work-art { height: clamp(100px, 30vh, 280px); border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 65% 40%, var(--work-accent) 0 18%, transparent 18.5%), repeating-linear-gradient(135deg, #303d28 0 40px, #263020 40px 80px); }
+.sv-casework .work-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sv-casework .work-meta { display: flex; justify-content: space-between; margin: 22px 0 12px; color: var(--work-accent); font: 12px monospace; text-transform: uppercase; }
+.sv-casework h3 { font-size: clamp(28px, 5vw, 54px); line-height: 1.05; margin: 0 0 12px; letter-spacing: -.04em; }
+.sv-casework .work-card:nth-child(2n) { --work-accent: #9ee4ee; }
+.sv-casework .work-card:nth-child(3n) { --work-accent: #ff9d73; }
+.sv-casework .work-card p { max-width: 44ch; margin: 0; line-height: 1.5; }
+.sv-casework .work-footer { padding: 28px; text-align: right; }
+.sv-casework .work-footer a { color: inherit; }
+/* This rail starts at its first card. cqw measures the real stage, not the page. */
+@supports (width: 1cqw) {
+  .sv-casework .work-stage { container-type: inline-size; }
+  .sv-casework .work-card { width: min(80cqw, 800px); }
+  .sv-on .sv-casework .work-rail { transform: translateX(calc(var(--sv-pin, 0) * min(100cqw - 100%, 0px))); will-change: transform; }
+}
+html:not(.sv-on) .sv-casework .work-rail,
+.sv-casework [data-sv-flow] .work-rail,
+.sv-casework [data-sv-off] .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+html:not(.sv-on) .sv-casework .work-card,
+.sv-casework [data-sv-flow] .work-card,
+.sv-casework [data-sv-off] .work-card { width: 100%; }
+@supports not (width: 1cqw) { .sv-casework &gt; .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
+`
+
+export interface CaseStudy {
+  title: string
+  summary: string
+  category: string
+  image?: { src: string; alt: string }
+}
+
+export function CaseStudyRail({ title = 'Selected work', projects, href, className, nonce }: {
+  title?: string
+  projects: CaseStudy[]
+  /** One link after the rail; the moving cards are deliberately non-interactive. */
+  href?: string
+  className?: string
+  nonce?: string
+}) {
+  return (
+    &lt;section className={className ? 'sv-casework ' + className : 'sv-casework'}&gt;
+      &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+      &lt;header className="work-head"&gt;&lt;small&gt;Independent thinking · tangible results&lt;/small&gt;&lt;h2&gt;{title}&lt;/h2&gt;&lt;/header&gt;
+      &lt;Track pin={Math.max(projects.length, 1) * 100 + 'vh'}&gt;
+        &lt;div className="sv-stage work-stage"&gt;&lt;div className="work-fit" data-sv-fit=""&gt;
+          &lt;div className="work-rail"&gt;
+            {projects.map((project, i) =&gt; &lt;article className="work-card" key={i}&gt;
+              &lt;div className="work-art"&gt;{project.image &amp;&amp; &lt;img src={project.image.src} alt={project.image.alt} /&gt;}&lt;/div&gt;
+              &lt;div className="work-meta"&gt;&lt;span&gt;{String(i + 1).padStart(2, '0')}&lt;/span&gt;&lt;span&gt;{project.category}&lt;/span&gt;&lt;/div&gt;
+              &lt;h3&gt;{project.title}&lt;/h3&gt;&lt;p&gt;{project.summary}&lt;/p&gt;
+            &lt;/article&gt;)}
+          &lt;/div&gt;
+        &lt;/div&gt;&lt;/div&gt;
+      &lt;/Track&gt;
+      {href &amp;&amp; &lt;footer className="work-footer"&gt;&lt;a href={href}&gt;Explore all projects →&lt;/a&gt;&lt;/footer&gt;}
+    &lt;/section&gt;
+  )
+}
+</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

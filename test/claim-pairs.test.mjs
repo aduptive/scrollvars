@@ -172,7 +172,7 @@ test('--sv-pin-offset: the driver comment resolves each unit against what readPi
 })
 
 test('--sv-pin-offset: README names the units readPinOffset resolves, and the same vh group', () => {
-  const doc = extract(readme, /Only px[\s\S]*?resolve there today/, 'README.md pinning paragraph')[0]
+  const doc = extract(readme, /only px[\s\S]*?resolve in the fallback parser/, 'README.md pinning paragraph')[0]
   // px is the fallthrough (`default:`), the only resolved unit with no case
   assert.deepEqual(uniq(doc.match(UNIT) ?? []), uniq(['px', ...Object.values(switchGroups()).flat()]))
   const likeVh = extract(doc, /vh \(([^)]+)\) and vw/, 'README.md vh group')[1]

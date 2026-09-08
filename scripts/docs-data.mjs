@@ -110,14 +110,14 @@ export function measureSizes(root) {
   // minified (pre-gzip) buffers, kept for the two figures the home page states
   // side by side with a competitor's own minified size (the carousel section,
   // "the receipts" table): everything else on the site only ever cites gzip.
-  const driverBuf = entryRaw('core/driver.js')
+  const driverBuf = raw({ stdin: { contents: "export { track } from './dist/index.js'", resolveDir: root } })
   const everythingBuf = entryRaw('index.js')
   const sliderBuf = entryRaw('core/slider.js')
   const driver = gzipSync(driverBuf).length / 1024
   return {
     driver: kb(driver),
     driverMin: kb(driverBuf.length / 1024),
-    driverScan: kb(build({ stdin: { contents: "export * from './dist/core/driver.js'; export * from './dist/core/scan.js'", resolveDir: root }, })),
+    driverScan: kb(build({ stdin: { contents: "export { track, scan } from './dist/index.js'", resolveDir: root }, })),
     slider: kb(gzipSync(sliderBuf).length / 1024),
     sliderMin: kb(sliderBuf.length / 1024),
     pointer: kb(entry('core/pointer.js')),

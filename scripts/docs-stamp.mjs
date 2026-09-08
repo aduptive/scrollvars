@@ -128,7 +128,7 @@ const sizes = measureSizes(root)
 let readme = readFileSync(join(root, 'README.md'), 'utf8')
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
 readme = stamp(readme, 'sizes', [
-  `Per module entry, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
+  `Named imports for \`track\` / \`track\` + \`scan\`; other rows are complete module entries, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
   '| you import | JS on the wire |', '| --- | --- |',
   `| \`track\` (the driver) | ${sizes.driver} KB |`,
   `| \`track\` + \`scan\` (zero-wrapper mode) | ${sizes.driverScan} KB |`,

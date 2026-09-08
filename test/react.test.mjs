@@ -721,6 +721,7 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
     const shell = container.firstChild
     return {
       root,
+      shell,
       props: hostProps(shell),
       advanced: () => {
         const frames = []
@@ -747,21 +748,23 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
     })
     assert.equal(both.advanced(), true, 'autoplay rotates while nothing hovers')
 
-    both.props.onPointerEnter({ type: 'pointerenter' })
+    await act(async () => { both.props.onPointerEnter({ type: 'pointerenter' }) })
     assert.equal(seen.length, 1, "the consumer's onPointerEnter still runs")
     assert.equal(both.advanced(), false, 'hovering pauses the rotation')
+    assert.equal(both.shell.childNodes.find(node => hostProps(node).className === 'sv-slider').getAttribute('aria-live'), 'polite')
 
-    both.props.onPointerLeave({ type: 'pointerleave' })
+    await act(async () => { both.props.onPointerLeave({ type: 'pointerleave' }) })
     assert.equal(seen.length, 2, "the consumer's onPointerLeave still runs")
     assert.equal(both.advanced(), true, 'leaving resumes it')
+    assert.equal(both.shell.childNodes.find(node => hostProps(node).className === 'sv-slider').getAttribute('aria-live'), 'off')
     await act(async () => { both.root.unmount() })
 
     // a lone consumer onPointerLeave used to replace the internal one and
     // strand hovering: paused forever after the first hover
     const leaveOnly = await render({ onPointerLeave: () => {} })
-    leaveOnly.props.onPointerEnter({ type: 'pointerenter' })
+    await act(async () => { leaveOnly.props.onPointerEnter({ type: 'pointerenter' }) })
     assert.equal(leaveOnly.advanced(), false, 'hovering pauses')
-    leaveOnly.props.onPointerLeave({ type: 'pointerleave' })
+    await act(async () => { leaveOnly.props.onPointerLeave({ type: 'pointerleave' }) })
     assert.equal(leaveOnly.advanced(), true, 'a lone consumer onPointerLeave does not strand hovering')
     await act(async () => { leaveOnly.root.unmount() })
   } finally {
@@ -1436,4 +1439,13 @@ test('harness: a frame left pending by an earlier test is still swallowed', asyn
   // loop does: the successor belongs to the test that scheduled its parent,
   // not to whichever test happens to be flushing
   assert.doesNotThrow(() => flushFrames())
+})
+
+
+test('react: responsive Slider puts its CSP nonce on the generated stylesheet', async () => {
+  const React = (await import('react')).default
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const markup = renderToStaticMarkup(React.createElement(Slider, { nonce: 'request-nonce', perView: { base: 1, md: 3 } }, React.createElement('div', null, 'slide')))
+  assert.ok(markup.includes('<style nonce="request-nonce">'))
 })

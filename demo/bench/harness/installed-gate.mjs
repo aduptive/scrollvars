@@ -21,7 +21,7 @@
  * the timeline scrubs, the shots swap, the hero is split and live); reduced
  * motion hides nothing and adds no inert; and every focusable element it
  * counts is keyboard reachable, which today is a guard rather than a claim:
- * the four Sections render none with their preview props.
+ * a native pause control is reachable on the cinematic hero.
  *
  * One more pass at the end, same file because it must share the assertion:
  * the gallery CSS tab of each Section that declares a reduced-motion
@@ -106,6 +106,37 @@ const FOCUSABLE = () => {
 // One entry per effect: what a reader would call "it works". Anything not
 // listed here still gets every generic check above.
 const BEHAVIOR = {
+  'case-study-rail': {
+    what: 'the pin moves the project rail within its real stage width',
+    async run(page) {
+      await page.evaluate(() => {
+        const root = document.querySelector('.sv-casework .sv')
+        scrollTo(0, scrollY + root.getBoundingClientRect().top + (root.offsetHeight - innerHeight) * .5)
+      })
+      await sleep(100)
+      return page.evaluate(() => {
+        const root = document.querySelector('.sv-casework .sv')
+        const transform = getComputedStyle(root.querySelector('.work-rail')).transform
+        const x = new DOMMatrixReadOnly(transform).m41
+        return { ok: Number(root.style.getPropertyValue('--sv-pin')) > .4 && x < -100 && !root.hasAttribute('data-sv-flow'), detail: transform }
+      })
+    },
+  },
+  'editorial-manifesto': {
+    what: 'travel progressively lights the paragraphs without a pinned stage',
+    async run(page) {
+      await page.evaluate(() => {
+        const root = document.querySelector('.sv-manifesto')
+        scrollTo(0, scrollY + root.getBoundingClientRect().top - innerHeight / 2)
+      })
+      await sleep(100)
+      return page.evaluate(() => {
+        const root = document.querySelector('.sv-manifesto')
+        const opacity = [...root.querySelectorAll('.manifesto-copy p')].map(el => Number(getComputedStyle(el).opacity))
+        return { ok: !root.querySelector('.sv-stage') && opacity[0] > opacity[opacity.length - 1], detail: opacity.join(', ') }
+      })
+    },
+  },
   'hero-cinematic': {
     what: 'the headline is split into words and the block goes live',
     async run(page) {

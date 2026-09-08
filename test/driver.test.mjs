@@ -1503,3 +1503,44 @@ test('driver: the file-wide culler culls for real, past the band the rect read s
   assert.ok(el.classes.has('sv-live'), 'and the frame the record schedules measures it live again')
   untrack()
 })
+
+test('driver: oversized fitted content releases pin geometry once, observes inner resize, and resets on retrack', async () => {
+  const { track } = await import('../dist/core/driver.js?fitflow')
+  const el = makeElement(3000)
+  const fit = { offsetHeight: 900 }
+  el.stage = {}
+  el.style.height = 'auto'
+  el.style.position = ''
+  el.querySelector = sel => sel === '.sv-stage' ? el.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  // Native CSS resolves a calc() offset to 64px; the raw parser would give 0.
+  global.getComputedStyle = node => ({ top: node === el.stage ? '64px' : 'auto', position: 'static', getPropertyValue: () => 'calc(4rem)' })
+  place(el, 64)
+  const states = []
+  let stop = track(el, { pin: '300vh', onFlow: flow => states.push(flow) })
+  pump()
+  assert.equal(Number(el.vars['--sv-pin']), 0, 'pin starts at the actual computed sticky top')
+  assert.ok(observed.has(fit), 'inner content resizing also wakes the driver')
+  assert.equal(el.style.height, '300vh')
+  place(el, 0)
+  pump()
+  assert.ok(Math.abs(Number(el.vars['--sv-pin']) - 64 / 2064) < .0001, 'calc() offset advances pin progress before the wrapper passes viewport top')
+  fit.offsetHeight = 1000
+  listeners.scroll()
+  pump()
+  assert.ok(el.hasAttribute('data-sv-flow'))
+  assert.equal(el.style.height, 'auto', 'no empty authored pin stretch remains')
+  assert.equal(el.style.position, '')
+  fit.offsetHeight = 200
+  listeners.scroll()
+  pump()
+  assert.deepEqual(states, [false, true], 'flow stays latched while the reader is in the section')
+  stop()
+  assert.ok(!observed.has(fit), 'releases the inner observation')
+  assert.ok(!el.hasAttribute('data-sv-flow'))
+  stop = track(el, { pin: '300vh', onFlow: flow => states.push(flow) })
+  pump()
+  assert.deepEqual(states, [false, true, false])
+  assert.equal(el.style.height, '300vh')
+  stop()
+  delete global.getComputedStyle
+})

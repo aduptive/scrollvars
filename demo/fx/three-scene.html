@@ -62,6 +62,8 @@
   .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
     text-decoration:none; color:var(--text); background:#17151f; }
   .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#17151f; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
   .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
@@ -135,6 +137,8 @@
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
+        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="editorial-manifesto.html">Editorial manifesto</a>
       </details>
     </nav>
   </details>
@@ -180,6 +184,7 @@
   })
   SV.track(document.getElementById('fxthree-outer'), { pin: '240vh', onPin: (p) => (progress = p) })
 })</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add three-scene</code><br><b>Styles:</b> <code>import 'scrollvars/styles/pin.css'</code></p>
   <div class="tabs">
     <button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
@@ -228,12 +233,12 @@ const canvasRef = useCanvasEffect({
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.14.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

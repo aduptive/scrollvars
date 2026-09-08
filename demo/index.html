@@ -2756,7 +2756,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 15.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.3 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.2 KB / 2.9 KB</b></td><td></td></tr>
       </tbody>
@@ -2915,9 +2915,9 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.9 KB gzip · full core 6.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.13.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.9 KB gzip · full core 7.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.14.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 7 KB part. Reduced motion is respected by the driver and every preset.</p>
+<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
@@ -3091,11 +3091,27 @@ var SV = (() => {
       } else {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
       }
-      frames.push({ entry, geo });
+      const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
+      frames.push({ entry, geo, overflow });
     });
-    for (const { entry, geo } of frames) {
+    for (const { entry, geo, overflow } of frames) {
       if (entries.get(entry.el) !== entry)
         continue;
+      if (entry.fit && entry.flow === void 0 && !overflow) {
+        entry.flow = false;
+        entry.opts.onFlow?.(false);
+        if (entries.get(entry.el) !== entry)
+          continue;
+      }
+      if (overflow && !entry.flow) {
+        entry.flow = true;
+        entry.el.setAttribute("data-sv-flow", "");
+        restorePinHelper(entry);
+        entry.opts.onFlow?.(true);
+        if (entries.get(entry.el) !== entry)
+          continue;
+        schedule();
+      }
       apply(entry, geo);
     }
     const dt = now - lastT;
@@ -3133,7 +3149,10 @@ var SV = (() => {
     if (typeof getComputedStyle !== "function")
       return 0;
     const stage = el.querySelector?.(".sv-stage") ?? el;
-    const raw = getComputedStyle(stage).getPropertyValue("--sv-pin-offset").trim();
+    const computed = getComputedStyle(stage);
+    if (stage !== el && /^-?[\d.]+px$/.test(computed.top))
+      return parseFloat(computed.top);
+    const raw = computed.getPropertyValue("--sv-pin-offset").trim();
     const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i);
     const value = match ? parseFloat(match[1]) : parseFloat(raw);
     if (!value)
@@ -3243,7 +3262,7 @@ var SV = (() => {
   }
   function stillNeeded(target) {
     for (const other of entries.values()) {
-      if (other.el === target || other.opts.root === target)
+      if (other.el === target || other.opts.root === target || other.fit === target)
         return true;
     }
     return false;
@@ -3288,6 +3307,9 @@ var SV = (() => {
     unobserveIfUnneeded(el);
     if (entry.opts.root)
       unobserveIfUnneeded(entry.opts.root);
+    if (entry.fit)
+      unobserveIfUnneeded(entry.fit);
+    el.removeAttribute?.("data-sv-flow");
     restorePinHelper(entry);
     el.classList.toggle("sv-live", false);
     for (const name of Object.keys(entry.written))
@@ -3328,7 +3350,8 @@ var SV = (() => {
       live: false,
       scene: -1,
       pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
-      written: {}
+      written: {},
+      fit: opts.pin || opts.scenes || opts.onPin ? el.querySelector?.(".sv-stage > [data-sv-fit]") ?? void 0 : void 0
     };
     entries.set(el, entry);
     el.classList.add("sv");
@@ -3342,6 +3365,8 @@ var SV = (() => {
       replayEntrance(el);
     pageOutputs = true;
     resizeObserver?.observe(el);
+    if (entry.fit)
+      resizeObserver?.observe(entry.fit);
     if (opts.root)
       resizeObserver?.observe(opts.root);
     if (!opts.root)
@@ -3359,7 +3384,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return void 0;
-    if (reducedMotion || belowTransformFloor() && !compatInstalled())
+    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled())
       return void 0;
     if (authored.position && authored.position !== "static")
       return void 0;
@@ -3374,7 +3399,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return;
-    if (reducedMotion || belowTransformFloor() && !compatInstalled()) {
+    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled()) {
       el.style.height = authored.height;
       el.style.position = authored.position;
     } else {
@@ -3552,7 +3577,7 @@ var SV = (() => {
   }
 
   // dist/core/scan.js
-  var VAR_ATTRS = ["order", "distance", "from", "to"];
+  var VAR_ATTRS = ["order", "distance", "from", "to", "duration", "stagger", "ease"];
   var VAR_SELECTOR = VAR_ATTRS.map((name) => `[data-sv-${name}]`).join(",");
   function applyVarAttrs(el) {
     for (const name of VAR_ATTRS) {
@@ -3583,6 +3608,19 @@ var SV = (() => {
     const scope = root ?? document;
     const tracked = /* @__PURE__ */ new Map();
     const splits = /* @__PURE__ */ new Map();
+    const pointers = /* @__PURE__ */ new Map();
+    const addPointer = (el) => {
+      if (!pointers.has(el))
+        pointers.set(el, trackPointer(el, {
+          selector: el.getAttribute("data-sv-pointer") || void 0
+        }));
+    };
+    const removePointer = (el) => {
+      if (scope.contains(el))
+        return;
+      pointers.get(el)?.();
+      pointers.delete(el);
+    };
     const addSplit = (el) => {
       if (splits.has(el))
         return;
@@ -3618,15 +3656,26 @@ var SV = (() => {
         if (node.hasAttribute("data-sv-split"))
           addSplit(node);
         node.querySelectorAll("[data-sv-split]").forEach(addSplit);
+        if (node.hasAttribute("data-sv-pointer"))
+          addPointer(node);
+        node.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
       } else {
         if (node.hasAttribute("data-sv-split"))
           removeSplit(node);
         node.querySelectorAll("[data-sv-split]").forEach(removeSplit);
+        if (node.hasAttribute("data-sv-pointer"))
+          removePointer(node);
+        node.querySelectorAll("[data-sv-pointer]").forEach(removePointer);
       }
     };
-    scope.querySelectorAll("[data-sv]").forEach(add);
-    scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
-    scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
+    if (scope.hasAttribute)
+      sweep(scope, add);
+    else {
+      scope.querySelectorAll("[data-sv]").forEach(add);
+      scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+      scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
+      scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
+    }
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => sweep(node, add));
@@ -3643,6 +3692,8 @@ var SV = (() => {
       tracked.clear();
       splits.forEach((restore) => restore());
       splits.clear();
+      pointers.forEach((stop) => stop());
+      pointers.clear();
     };
   }
 
@@ -3659,11 +3710,17 @@ var SV = (() => {
       const target = selector ? scope.querySelector(selector) : trigger;
       return { className, selector, target };
     };
+    const triggers = () => {
+      const list = Array.from(scope.querySelectorAll("[data-sv-toggle]"));
+      if (scope.matches?.("[data-sv-toggle]"))
+        list.unshift(scope);
+      return list;
+    };
     const sync = (target, className, on) => {
-      scope.querySelectorAll("[data-sv-toggle]").forEach((t) => {
+      triggers().forEach((t) => {
         const other = resolve(t);
         if (other.target === target && other.className === className)
-          t.setAttribute("aria-expanded", String(on));
+          t.setAttribute(t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
       });
     };
     const write = (target, className, on) => {
@@ -3687,7 +3744,7 @@ var SV = (() => {
       longhandHold.delete(target);
       target.style.setProperty("transition-duration", saved.value, saved.priority);
     };
-    scope.querySelectorAll("[data-sv-toggle]").forEach((trigger) => {
+    triggers().forEach((trigger) => {
       const { className, target } = resolve(trigger);
       if (!target)
         return;
@@ -3871,7 +3928,8 @@ var SV = (() => {
         if (indexChanged)
           onSlide?.(best);
       }
-      onScroll?.(state(p));
+      if (!destroyed)
+        onScroll?.(state(p));
     };
     const schedule2 = () => {
       if (!raf2 && !destroyed)
@@ -4796,6 +4854,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     let lastWriteContent;
     let lastWriteDpr;
     const applySize = (entries) => {
+        if (destroyed)
+            return;
         const entry = entries?.[0];
         const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout());
         if (entry)
@@ -5043,6 +5103,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
                 else
                     cleanup = dispose;
             }
+            if (destroyed)
+                return;
             resize?.(fx); // sizing that lives in resize() must also run once
         }
         else {
@@ -5073,6 +5135,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // a monitor with a different devicePixelRatio. Watch the resolution too.
     let dprQuery = null;
     const watchDpr = () => {
+        if (destroyed)
+            return;
         if (dprQuery)
             offMediaChange(dprQuery, onDprChange);
         dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
@@ -5637,7 +5701,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             if (indexChanged)
                 onSlide?.(best);
         }
-        onScroll?.(state(p));
+        if (!destroyed)
+            onScroll?.(state(p));
     };
     const schedule = () => {
         if (!raf && !destroyed)
@@ -6035,11 +6100,17 @@ function toggles(root) {
     // and a second control toggling 'pinned' on the same nav are two
     // independent states, and grouping by the element alone made one click
     // claim aria-expanded="true" for both.
+    const triggers = () => {
+        const list = Array.from(scope.querySelectorAll('[data-sv-toggle]'));
+        if (scope.matches?.('[data-sv-toggle]'))
+            list.unshift(scope);
+        return list;
+    };
     const sync = (target, className, on) => {
-        scope.querySelectorAll('[data-sv-toggle]').forEach((t) => {
+        triggers().forEach((t) => {
             const other = resolve(t);
             if (other.target === target && other.className === className)
-                t.setAttribute('aria-expanded', String(on));
+                t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
         });
     };
     // the target's own state, written wherever the class flips
@@ -6070,7 +6141,7 @@ function toggles(root) {
         longhandHold.delete(target);
         target.style.setProperty('transition-duration', saved.value, saved.priority);
     };
-    scope.querySelectorAll('[data-sv-toggle]').forEach((trigger) => {
+    triggers().forEach((trigger) => {
         const { className, target } = resolve(trigger);
         if (!target)
             return;

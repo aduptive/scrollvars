@@ -62,6 +62,8 @@
   .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
     text-decoration:none; color:var(--text); background:#17151f; }
   .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#17151f; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
   .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
@@ -135,6 +137,8 @@
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html" aria-current="page">Stats count-up</a>
+        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="editorial-manifesto.html">Editorial manifesto</a>
       </details>
     </nav>
   </details>
@@ -153,54 +157,85 @@
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
 </style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span><span class="count" data-suffix="+" aria-hidden="true"></span></dd></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div></dl></div>
 <script>addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))</script></div>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add stats-countup</code><br><b>Styles:</b> <code>import 'scrollvars/styles/core.css'</code> · <code>import 'scrollvars/styles/state.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">CSS</button>
-    <button data-tab="react">React</button>
+    <button class="on" data-tab="react">Complete component · CLI source</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]"&gt;
-  &lt;dl class="stats grid grid-cols-3 gap-6 text-center"&gt;
-    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:248]"&gt;&lt;span class="count" data-suffix="+"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
-    &lt;div&gt;&lt;dt class="text-neutral-400"&gt;median Lighthouse&lt;/dt&gt;&lt;dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"&gt;&lt;span class="count"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
-  &lt;/dl&gt;
-&lt;/section&gt;
-&lt;!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv data-sv-once class="sv-acts" style="--sv-acts-count: 1; --sv-acts-duration: 1.8s"&gt;
-  &lt;dl class="stats"&gt;
-    &lt;div&gt;&lt;dt&gt;client sites shipped&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 248"&gt;&lt;span class="count" data-suffix="+"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
-    &lt;div&gt;&lt;dt&gt;median Lighthouse performance&lt;/dt&gt;&lt;dd class="stat" style="--sv-max: 99"&gt;&lt;span class="count"&gt;&lt;/span&gt;&lt;/dd&gt;&lt;/div&gt;
-  &lt;/dl&gt;
-&lt;/section&gt;
 
-/* sv-acts (styles/state.css, plus core.css: --sv-live is declared there) transitions
-   the registered --sv-act 0 → 1 when the block goes live; the counter re-renders
-   every frame of that transition. */
-.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
-.stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
-html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
-/* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
-   older engines show the final numbers immediately. */</code></pre>
-    <pre data-pane="react"><code>import { Track } from 'scrollvars/react'
+    <pre class="on" data-pane="react"><code>// ScrollVars fx · stats-countup
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/state.css'
+// state.css owns sv-acts; core.css declares --sv-live, and the acts clock is
+// calc(var(--sv-live) * var(--sv-acts-count)): without core.css every number
+// renders 0 the moment the driver boots.
+// Numbers count from zero when the block enters: a CSS counter driven by the
+// registered --sv-act transition. No JS, no innerText. Without JS or under
+// reduced motion the final numbers render immediately.
+// The CSS below is one constant string, injected as raw HTML: a &lt;style&gt; child
+// is escaped by React 18's server renderer (`&gt;` becomes `&amp;gt;`, dropping every
+// child-combinator rule), and &lt;style&gt; is raw text, so the entity never decodes.
+// CSP is unchanged from any inline &lt;style&gt;: allow it with a style-src nonce or
+// hash, or lift this string into your own stylesheet.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
 
-const stats = [
-  { label: 'client sites shipped', max: 248, suffix: '+' },
-  { label: 'median Lighthouse performance', max: 99 },
-  { label: 'KB of engine, gzipped', max: 4 },
-]
-function Stats() {
+const css = `
+.sv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; margin: 0; }
+.sv-stats &gt; div { display: flex; flex-direction: column; padding: 22px 12px; border-radius: 14px; border: 1px solid rgba(128,128,128,.25); text-align: center; }
+.sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
+.sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+`
+
+// aria-label is prohibited on generic roles (p/span/div). Axe
+// `aria-prohibited-attr`: so the readable text is a visually-hidden child.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+}
+
+export interface Stat {
+  label: React.ReactNode
+  value: number
+  suffix?: string
+}
+
+export function StatsCountup({
+  stats,
+  duration = 1.8,
+  className,
+  nonce,
+}: {
+  stats: Stat[]
+  /** Seconds the count takes. */
+  duration?: number
+  className?: string
+  nonce?: string
+}) {
   return (
-    &lt;Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' }}&gt;
-      &lt;dl className="stats"&gt;
-        {stats.map((s) =&gt; (
-          &lt;div key={s.label}&gt;
+    &lt;Track
+      once
+      className={className ? 'sv-acts ' + className : 'sv-acts'}
+      style={{ '--sv-acts-count': 1, '--sv-acts-duration': duration + 's' } as React.CSSProperties}
+    &gt;
+      &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+      &lt;dl className="sv-stats"&gt;
+        {stats.map((s, i) =&gt; (
+          &lt;div key={i}&gt;
             &lt;dt&gt;{s.label}&lt;/dt&gt;
-            {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
-                term whose only dd is aria-hidden is a term with no definition */}
-            &lt;dd className="stat" style={{ '--sv-max': s.max }}&gt;
-              {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
-              &lt;span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}&gt;{s.max}{s.suffix ?? ''}&lt;/span&gt;
+            {/* both halves sit INSIDE the dd: a dl group takes dt/dd only (a loose
+                span there is not in the content model), and a term whose only dd
+                is aria-hidden reaches assistive tech with no definition at all */}
+            &lt;dd className="stat" style={{ '--sv-max': s.value } as React.CSSProperties}&gt;
+              &lt;span style={SR_ONLY}&gt;{s.value}{s.suffix ?? ''}&lt;/span&gt;
               &lt;span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" /&gt;
             &lt;/dd&gt;
           &lt;/div&gt;
@@ -209,14 +244,14 @@ function Stats() {
     &lt;/Track&gt;
   )
 }
-// npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)</code></pre>
+</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.14.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

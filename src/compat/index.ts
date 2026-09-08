@@ -145,10 +145,10 @@ function makeResizeObserverStub() {
         this.els.forEach((el) => entries.push(measureEntry(el)))
         this.cb(entries)
       }
-      window.addEventListener('resize', this.fire)
-      window.addEventListener('orientationchange', this.fire)
     }
     observe(el: Element) {
+      window.addEventListener('resize', this.fire)
+      window.addEventListener('orientationchange', this.fire)
       this.els.add(el)
       this.cb([measureEntry(el)]) // like the real one: an initial observation
     }

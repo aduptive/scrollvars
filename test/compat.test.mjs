@@ -203,3 +203,29 @@ test('compat: with the fallback sheet installed the pin skeleton stays whole bel
   untrack()
   assert.equal(el.style.height, '', 'and untrack still restores the authored height')
 })
+
+test('compat: ResizeObserver reattaches window listeners after disconnect/reobserve', async () => {
+  const { compat } = await import('../dist/compat/index.js')
+  const listeners = new Map()
+  global.window = {
+    addEventListener: (type, fn) => { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn) },
+    removeEventListener: (type, fn) => listeners.get(type)?.delete(fn),
+    getComputedStyle: el => el.computedStyle,
+  }
+  global.document = makeDocument([])
+  compat()
+  let calls = 0
+  const observer = new window.ResizeObserver(() => calls++)
+  const el = makeEl({ width: 100, height: 100 })
+  observer.observe(el)
+  observer.disconnect()
+  observer.observe(el)
+  observer.observe(el)
+  assert.equal(listeners.get('resize').size, 1)
+  const before = calls
+  for (const fn of listeners.get('resize')) fn()
+  assert.equal(calls, before + 1, 'resize remains live after slider-style disconnect/reobserve')
+  observer.disconnect()
+  assert.equal(listeners.get('resize').size, 0)
+  assert.equal(listeners.get('orientationchange').size, 0)
+})

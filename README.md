@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 6.7 KB, styles 8.9 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 7.1 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
 
 ## Why
 
@@ -28,7 +28,7 @@ what differs is what those frames cost:
 <!-- bench:start -->
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 6.7 KB | 100 ms | 195 ms | **1.4 MB** |
+| ScrollVars | 7.1 KB | 100 ms | 195 ms | **1.4 MB** |
 | gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
@@ -47,8 +47,9 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   transition/animation machinery does the animating; JS only steers. That is
   why 900 animated elements cost so little script time in the table above.
 - **One passive scroll listener + one rAF for all scroll tracking** (the slider, pointer and canvas modules schedule their own frames), strict
-  read-phase-then-write-phase. Inside the driver, layout thrashing is
-  impossible by construction, not by discipline (your own callbacks are yours).
+  read-phase-then-write-phase during ordinary frames. Entrance replay explicitly
+  forces one computed-style read between writes to settle its reset; user
+  callbacks can also force layout.
 - **Scroll state never enters the framework.** React renders zero times
   per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
   index change), so the per-frame framework bill is never paid.
@@ -60,7 +61,7 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   design: class-toggled panels (menus, modals) stay closed with no click
   driver to open them, `sv-view-*` native animations still run without
   JS where the browser supports `animation-timeline: view()`, and the
-  marquee (`ui.css`) keeps scrolling, its `@keyframes` animation never
+  bare CSS marquee (`ui.css`) keeps scrolling, its `@keyframes` animation never
   depends on the driver. A click-driven `sv-acts` target also needs
   `toggles()` (which marks `sv-ui` on it) to start at zero instead of
   settling at its no-JS finished state.
@@ -89,28 +90,28 @@ npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.4 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.1 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.2 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.6 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.2 KB gz
-import 'scrollvars/styles/ui.css'      // marquee, accordion, 0.9 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.1 KB gz
 ```
 
 ## Pay for what you use
 
 The package is fully tree-shakeable (ESM, side-effect-free JS); measured
 <!-- sizes:start -->
-Per module entry, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzip as shipped):
+Named imports for `track` / `track` + `scan`; other rows are complete module entries, measured from dist by `scripts/docs-stamp.mjs` (JS min+gzip, CSS gzip as shipped):
 
 | you import | JS on the wire |
 | --- | --- |
 | `track` (the driver) | 2.9 KB |
-| `track` + `scan` (zero-wrapper mode) | 3.8 KB |
+| `track` + `scan` (zero-wrapper mode) | 4.2 KB |
 | `slider` | 2.3 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.6 KB |
-| everything in `scrollvars` (the core entry) | 6.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 12.3 KB |
+| everything in `scrollvars` (the core entry) | 7.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 12.8 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -157,7 +158,9 @@ Anything that reads them is a preset. The shipped ones:
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
 
-Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. Only px, rem (root font-size), em (the stage's font-size, not the wrapper's), vh (svh, lvh and dvh resolve like vh) and vw resolve there today: `calc()` reads as 0, `vmin` and `%` are read as if they were px, so an offset in either silently comes out wrong. Real length resolution for the rest is on ADU-100.
+Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. The driver reads the stage's computed `top`, so CSS resolves `calc()`, `env()`, percentages and viewport units in the actual layout. Without a `.sv-stage` (custom `onPin` markup), only px, rem (root font-size), em (the wrapper's font-size), vh (svh, lvh and dvh resolve like vh) and vw resolve in the fallback parser; use a stage for other lengths.
+
+For content that might exceed the stage (CMS copy, text zoom), wrap its layout in `<div class="sv-stage"><div data-sv-fit>…</div></div>`. If that inner box exceeds the available height, the driver marks the tracker `data-sv-flow`, restores its authored height and position, and the pin presets return to flow. This stays latched until retracked; `onFlow(boolean)` reports the initial state and fallback so custom media can release `inert`. TimelineScrub and StickySteps include it.
 
 ## React
 
@@ -188,7 +191,7 @@ import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
     <div>
       Slide {scene + 1}
       {/* continuous progress, pure CSS, no re-render: */}
-      <i style={{ width: 'calc(var(--sv-scene) / 3 * 100%)' }} />
+      <i aria-hidden="true" style={{ display: 'block', height: 4, background: 'currentColor', transformOrigin: 'left', scale: 'calc(var(--sv-scene) / 3) 1' }} />
     </div>
   )}
 </Scenes>
@@ -586,12 +589,21 @@ Per-module gates, if you need finer grain: driver = ES2020 + ResizeObserver
 (Safari 13.1); presets = individual transform properties (Chrome 104 /
 Firefox 78 / Safari 14.1); canvas harness adds IntersectionObserver
 (Safari 12.1); slider/pointer = Pointer Events (Safari 13). The design rule
-that makes the table safe for companies: **below the floor nothing
-breaks.** Skip `compat()` and the page renders complete and static, nothing
+that makes the table safe for companies: **the supported presets fail visible when their feature gates are unmet.**
+Consumer code and the React version have their own JavaScript/browser requirements;
+transpilation alone does not polyfill runtime APIs. Skip `compat()` for static rendering; nothing
 overlapping or clipped (curtains parted, deck unstacked, `.sv-stage` back
 in flow; `sv-rail`'s own exception is above); call it and the page animates instead, on roughly
 Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive
 enhancement, never a dependency.
+
+## Declarative pointer and timing knobs
+
+`scan()` / `<ScrollVarsBoot />` also owns `[data-sv-pointer]` containers, including an element passed as the scan root. Empty `data-sv-pointer` delegates to `.sv-tilt`; `data-sv-pointer=".card"` selects another target. Added subtrees attach automatically; removal or stopping the scan releases their listeners and pointer values. Attributes are read on mount, not watched for changes.
+
+`data-sv-duration="800ms"`, `data-sv-stagger="100ms"` and `data-sv-ease="ease-out"` map to their CSS variables. Timing attributes take CSS units; React's numeric timing props take milliseconds.
+
+`<Slider nonce={nonce} perView={{base: 1, md: 3}}>` passes the nonce to its generated responsive stylesheet. Autoplay pauses on hover, stops on keyboard focus until explicitly resumed, and sets its live region to polite while paused. `<Marquee>` includes a keyboard-operable “Pause animation” toggle (`aria-pressed`); it stays static without its click driver. The bare `.sv-marquee` CSS class remains an ambient animation: supply a pause control when using it directly. `toggles()` synchronizes an existing `aria-pressed` instead of `aria-expanded` for pressed-state buttons.
 
 ## License
 

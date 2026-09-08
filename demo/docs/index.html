@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.13.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.14.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -156,7 +156,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.1 · slider 1.3 · tilt 0.6 · state 2.2 · ui 0.9).</p>
+(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.2 · slider 1.3 · tilt 0.6 · state 2.2 · ui 1.1).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -293,7 +293,17 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
-<h3>Unreleased</h3>
+<h3>1.14.0 (2026-09-07)</h3>
+
+<h4>Review fixes and gallery sections</h4>
+<ul>
+<li>Pinned sections can opt into <code>.sv-stage > [data-sv-fit]</code>: tall content returns to flow, releases the pin height and reports <code>onFlow</code>. TimelineScrub and StickySteps use it, including accessible media in flow.</li>
+<li>Pin offsets use the stage's computed CSS top; calc(), env(), percentages and viewport units stay aligned with CSS.</li>
+<li>Slider: isolate nested per-view rules, nonce the responsive stylesheet, expose hover/focus pauses to live regions, retain explicit focus pauses and stop callbacks after destruction. Remove flatMap from the React child flattener for legacy consumers.</li>
+<li>Marquee gets a keyboard pause control; toggles includes its scope root and supports pressed-state buttons. Compat ResizeObserver supports disconnect/reobserve. Canvas never resizes disposed setup resources.</li>
+<li>scan owns declarative pointer containers and CSS timing/ease attributes.</li>
+<li>Gallery Sections expose their exact installable source and visual previews; add CaseStudyRail and EditorialManifesto. Documentation corrects observer gating, replay reads, stagger limits and named-import size measurement.</li>
+</ul>
 
 <h4>Tooling (ADU-196)</h4>
 <ul>

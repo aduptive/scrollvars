@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><link rel="stylesheet" href="sv.css"><style>body{margin:0;background:#17151f;color:#eee;font:18px/1.5 system-ui}*{box-sizing:border-box}</style><body><div class="sv sv-acts fxstage" style="--sv-acts-count:1;--sv-acts-duration:1.8s"><style>
+.sv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; margin: 0; }
+.sv-stats > div { display: flex; flex-direction: column; padding: 22px 12px; border-radius: 14px; border: 1px solid rgba(128,128,128,.25); text-align: center; }
+.sv-stats dt { order: 2; font-size: 13px; margin-top: 8px; opacity: .7; }
+.sv-stats dd { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+</style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span><span class="count" data-suffix="+" aria-hidden="true"></span></dd></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div></dl></div>
+</body></html>

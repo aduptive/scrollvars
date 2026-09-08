@@ -18,6 +18,8 @@ export interface TrackOptions {
   once?: boolean
   onLive?: (live: boolean) => void
   onScene?: (scene: number) => void
+  /** Fires when a [data-sv-fit] stage falls back to document flow. Discrete, not per frame. */
+  onFlow?: (flow: boolean) => void
   /** Fires every frame with the raw travel t (0..1). For video scrubbing,
    * WebGL cameras, or anything JS-driven. Keep the callback cheap. */
   onTravel?: (t: number) => void
@@ -52,6 +54,8 @@ interface Entry {
   /** inline height/position the pin helper replaced, restored on untrack */
   authored?: { height: string; position: string }
   written: Record<string, string>
+  fit?: HTMLElement
+  flow?: boolean
 }
 
 const SCENE_SNAP = 0.4
@@ -172,7 +176,7 @@ function update() {
   const docEl = document.documentElement
   const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1)
   const rootRects = new Map<HTMLElement, DOMRect>()
-  const frames: Array<{ entry: Entry; geo: Geometry }> = []
+  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean }> = []
   entries.forEach((entry) => {
     if (!entry.near && !entry.opts.root && !jumped && !force) return
     const rect = entry.el.getBoundingClientRect()
@@ -192,14 +196,31 @@ function update() {
     } else {
       geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
     }
-    frames.push({ entry, geo })
+    const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight >
+      (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
+    frames.push({ entry, geo, overflow })
   })
   // WRITE phase. `frames` is a snapshot taken before any callback ran: an
   // onLive/onScene fired earlier in this same loop can untrack (or replace)
   // a later entry, and a released entry must not get one more write and one
   // more callback after its untrack returned.
-  for (const { entry, geo } of frames) {
+  for (const { entry, geo, overflow } of frames) {
     if (entries.get(entry.el) !== entry) continue
+    if (entry.fit && entry.flow === undefined && !overflow) {
+      entry.flow = false
+      entry.opts.onFlow?.(false)
+      if (entries.get(entry.el) !== entry) continue
+    }
+    if (overflow && !entry.flow) {
+      // ponytail: latch until retracked; measuring the expanded flow layout to
+      // re-enable pinning would oscillate and interrupt someone reading it.
+      entry.flow = true
+      entry.el.setAttribute('data-sv-flow', '')
+      restorePinHelper(entry)
+      entry.opts.onFlow?.(true)
+      if (entries.get(entry.el) !== entry) continue
+      schedule() // geometry changed; read the flow layout on the next frame
+    }
     apply(entry, geo)
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
@@ -256,7 +277,8 @@ function computePin(geo: Geometry, offset = 0): number {
 }
 
 /** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
- * Resolves rem (root font-size), em (the stage's font-size), vh/svh/lvh/dvh
+ * Uses the actual stage's computed top, including calc(), env() and percentages.
+ * Without a stage (or when top is auto), the fallback resolves rem (root font-size), em (the stage's font-size), vh/svh/lvh/dvh
  * (window.innerHeight) and vw (window.innerWidth); anything else, including a
  * bare number, falls back to parseFloat as px. svh/lvh/dvh resolve like vh:
  * there is no JS API for the small/large viewport height without an actual
@@ -271,7 +293,11 @@ function computePin(geo: Geometry, offset = 0): number {
 function readPinOffset(el: HTMLElement): number {
   if (typeof getComputedStyle !== 'function') return 0
   const stage = (el.querySelector?.('.sv-stage') as HTMLElement | null) ?? el
-  const raw = getComputedStyle(stage).getPropertyValue('--sv-pin-offset').trim()
+  const computed = getComputedStyle(stage)
+  // CSS resolves calc(), percentages, viewport units and env() in the actual
+  // sticky containing block. Do not maintain a second CSS length engine.
+  if (stage !== el && /^-?[\d.]+px$/.test(computed.top)) return parseFloat(computed.top)
+  const raw = computed.getPropertyValue('--sv-pin-offset').trim()
   const match = raw.match(/^(-?[\d.]+)\s*([a-z%]*)$/i)
   const value = match ? parseFloat(match[1]) : parseFloat(raw)
   if (!value) return 0
@@ -428,7 +454,7 @@ function apply(entry: Entry, geo: Geometry) {
  * must never unobserve a target another live entry still depends on. */
 function stillNeeded(target: HTMLElement): boolean {
   for (const other of entries.values()) {
-    if (other.el === target || other.opts.root === target) return true
+    if (other.el === target || other.opts.root === target || other.fit === target) return true
   }
   return false
 }
@@ -507,6 +533,8 @@ function releaseEntry(entry: Entry) {
   culler?.unobserve(el)
   unobserveIfUnneeded(el)
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
+  if (entry.fit) unobserveIfUnneeded(entry.fit)
+  el.removeAttribute?.('data-sv-flow')
   restorePinHelper(entry)
   el.classList.toggle('sv-live', false)
   for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
@@ -615,6 +643,9 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     scene: -1,
     pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
     written: {},
+    fit: opts.pin || opts.scenes || opts.onPin
+      ? el.querySelector?.<HTMLElement>('.sv-stage > [data-sv-fit]') ?? undefined
+      : undefined,
   }
   entries.set(el, entry)
   el.classList.add('sv')
@@ -633,6 +664,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   if (settled) replayEntrance(el)
   pageOutputs = true
   resizeObserver?.observe(el)
+  if (entry.fit) resizeObserver?.observe(entry.fit)
   // a root scrolls its own content; watch it too so a resize of the scroller
   // itself (not just the tracked element) reschedules a measure. A root can
   // be shared by several entries (or be a standalone tracked element too),
@@ -682,7 +714,7 @@ const compatInstalled = () => document.documentElement?.hasAttribute?.('data-sv-
 function readPinPosition(entry: Entry): string | undefined {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return undefined
-  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) return undefined
+  if (entry.flow || reducedMotion || (belowTransformFloor() && !compatInstalled())) return undefined
   // an authored inline position outranks the computed one: no read is owed
   if (authored.position && authored.position !== 'static') return undefined
   return typeof getComputedStyle === 'function' ? getComputedStyle(el).position : undefined
@@ -700,7 +732,7 @@ function applyPinHelperAll() {
 function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
-  if (reducedMotion || (belowTransformFloor() && !compatInstalled())) {
+  if (entry.flow || reducedMotion || (belowTransformFloor() && !compatInstalled())) {
     el.style.height = authored.height
     el.style.position = authored.position
   } else {

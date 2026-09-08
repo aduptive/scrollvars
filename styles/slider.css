@@ -41,7 +41,7 @@
    sv-cols also works from the Slider shell (React's className prop lands
    on .sv-slider-shell, one level up from .sv-slider). */
 .sv-slider.sv-cols > *,
-.sv-cols .sv-slider > * {
+.sv-slider-shell.sv-cols > .sv-slider > * {
   flex: 0 0
     calc(
       (100% - (var(--sv-per-view, 1) - 1) * var(--sv-gap, 16px)) / var(--sv-per-view, 1) *

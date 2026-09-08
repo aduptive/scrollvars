@@ -286,7 +286,7 @@ export function slider(
       container.style.setProperty('--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
     }
-    onScroll?.(state(p))
+    if (!destroyed) onScroll?.(state(p))
   }
 
   const schedule = () => {

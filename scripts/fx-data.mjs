@@ -122,7 +122,7 @@ export const EFFECTS = [
   {
     slug: 'curtain',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
+    requires: { styles: ['pin'], min: '1.14.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Curtain',
     tagline: 'Two panels slide apart as you scroll through a pinned stretch.',
@@ -172,7 +172,7 @@ export const EFFECTS = [
   {
     slug: 'horizontal-rail',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0', tailwind: true },
+    requires: { styles: ['pin'], min: '1.14.0', tailwind: true },
     category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
@@ -219,7 +219,7 @@ export const EFFECTS = [
   {
     slug: 'sequenced-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.14.0' },
     category: 'Pinned scenes',
     title: 'Sequenced scrub',
     tagline: 'Each child animates over its own slice of the pin. Choreography without a timeline.',
@@ -290,7 +290,7 @@ export const EFFECTS = [
   {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.13.0' },
+    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.14.0' },
     category: 'Interop',
     title: 'GSAP timeline under scrub',
     tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
@@ -349,7 +349,7 @@ useEffect(() => {
   {
     slug: 'three-scene',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.13.0' },
+    requires: { styles: ['pin'], deps: { three: '>=0.147' }, min: '1.14.0' },
     category: 'Interop',
     title: 'Three.js scene on the pin',
     tagline: 'A WebGL scene scrubbed by scroll. The canvas harness runs the lifecycle, Three renders.',
@@ -436,7 +436,7 @@ const canvasRef = useCanvasEffect({
   {
     slug: 'split-reveal',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['core'], min: '1.13.0' },
+    requires: { styles: ['core'], min: '1.14.0' },
     category: 'Text',
     title: 'Split reveal',
     tagline: 'A headline broken into words, each rising on its own beat, SplitText without the engine.',
@@ -664,7 +664,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   {
     slug: 'hero-cinematic',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['core', 'ui'], min: '1.13.0' },
+    requires: { styles: ['core', 'ui'], min: '1.14.0' },
     category: 'Sections',
     title: 'Cinematic hero',
     tagline: 'Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t).',
@@ -686,6 +686,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     previewScript: `addEventListener('load', () => {
   SV.track(document.querySelector('.sv-hero > .sv'), { travel: true })
   SV.trackPointer(document.querySelector('.sv-hero'), { selector: '.sv-hero' })
+  SV.toggles(document.querySelector('.sv-hero'))
 })`,
     css: `<section data-sv data-sv-travel class="sv-hero" id="hero">   <!-- travel: --sv-t 0..1 through the viewport -->
   <div class="hero-orb a"></div><div class="hero-orb b"></div>
@@ -752,7 +753,7 @@ function Hero() {
   {
     slug: 'timeline-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.14.0' },
     category: 'Sections',
     title: 'Pinned timeline',
     tagline: 'Pin the section; the scroll draws the line, counts the year and lights each milestone over its own slice of the pin.',
@@ -842,7 +843,7 @@ function Timeline() {
   {
     slug: 'sticky-steps',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.13.0' },
+    requires: { styles: ['pin'], min: '1.14.0' },
     category: 'Sections',
     title: 'Sticky steps',
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
@@ -936,7 +937,7 @@ function StickySteps() {
     // core.css is not decoration here: the acts clock is
     // `calc(var(--sv-live) * var(--sv-acts-count))` and --sv-live is declared
     // in core.css alone, so on state.css by itself every number renders 0.
-    requires: { styles: ['core', 'state'], min: '1.13.0' },
+    requires: { styles: ['core', 'state'], min: '1.14.0' },
     category: 'Sections',
     title: 'Stats count-up',
     tagline: 'Numbers count from zero when the block enters. CSS counters + a registered property. The transition IS the animation.',
@@ -1007,6 +1008,67 @@ function Stats() {
 }
 // npx scrollvars add stats-countup → components/fx/StatsCountup.tsx (CSS included)`,
   },
+  {
+    "slug": "case-study-rail",
+    "requires": {
+      "styles": [
+        "pin"
+      ],
+      "min": "1.14.0"
+    },
+    "category": "Sections",
+    "title": "Case-study rail",
+    "tagline": "Oversized project cards traverse a pinned stage with --sv-pin; long content returns to a readable list.",
+    "when": "Studio portfolios and selected-work sections. Container units enable the animation; older engines get a native horizontal rail.",
+    "knobs": "title, projects, href, --work-accent; cards are non-interactive, the optional CTA stays after the rail",
+    "previewProps": {
+      "projects": [
+        {
+          "title": "Reframe the ordinary",
+          "category": "Brand / Digital",
+          "summary": "A clear identity with room for unexpected details."
+        },
+        {
+          "title": "Built for the next chapter",
+          "category": "Product / Strategy",
+          "summary": "A product story that makes complex work feel effortless."
+        },
+        {
+          "title": "Make every detail count",
+          "category": "Culture / Commerce",
+          "summary": "An editorial presence with the confidence to stay simple."
+        }
+      ]
+    },
+    "previewScript": "addEventListener('load', () => SV.track(document.querySelector('.sv-casework .sv'), { pin: '300vh' }))",
+    "css": "",
+    "tailwind": "",
+    "react": ""
+  },
+  {
+    "slug": "editorial-manifesto",
+    "requires": {
+      "styles": [],
+      "min": "1.14.0"
+    },
+    "category": "Sections",
+    "title": "Editorial manifesto",
+    "tagline": "Big statements gain contrast in sequence as --sv-t advances. Natural document flow, no pin and no split spans.",
+    "when": "Studio manifestos, brand positioning and editorial introductions.",
+    "knobs": "label, paragraphs, closing; --sv-t drives a clamped slice per paragraph",
+    "previewProps": {
+      "paragraphs": [
+        "Less noise. More meaning.",
+        "We build things people want to spend time with.",
+        "Every detail should earn its place."
+      ],
+      "closing": "From the first idea to the final interaction. A small team, accountable for the whole experience."
+    },
+    "previewScript": "addEventListener('load', () => SV.track(document.querySelector('.sv-manifesto'), { travel: true }))",
+    "css": "",
+    "tailwind": "",
+    "react": ""
+  },
 ]
 
 export const COMPONENTS = {
@@ -1046,6 +1108,7 @@ export function HeroCinematic({
   cta,
   strip = ['Brand', '·', 'Motion', '·', 'Web', '·', 'Type', '·'],
   className,
+  nonce,
 }: {
   eyebrow?: string
   /** Plain text: it is split into words on the server, each rising on its own beat. */
@@ -1054,13 +1117,14 @@ export function HeroCinematic({
   cta?: React.ReactNode
   strip?: string[]
   className?: string
+  nonce?: string
 }) {
   const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
     // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
     <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
-      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <div className="hero-orb a" />
       <div className="hero-orb b" />
       <Track travel>
@@ -1107,7 +1171,7 @@ import * as React from 'react'
 import { Track } from 'scrollvars/react'
 
 const css = \`
-.sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 0 clamp(20px, 5vw, 64px); }
+.sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
 .sv-timeline .tl-year { font-size: clamp(64px, 12vw, 150px); line-height: 1; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
 .sv-timeline .tl-year .tl-count::after { content: counter(tl-year); }
@@ -1121,6 +1185,7 @@ const css = \`
   background: color-mix(in oklab, currentColor calc(var(--sv-r, 1) * 100%), rgba(128,128,128,.35)); }
 .sv-timeline .tl-items b { display: block; font-size: 12px; letter-spacing: .12em; margin-bottom: 4px; }
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
+[data-sv-flow].sv-timeline .tl-sticky { min-height: 0; --sv-pin: 1; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 \`
 
@@ -1147,12 +1212,14 @@ export function TimelineScrub({
   caption = 'years of shipping',
   height = '320vh',
   className,
+  nonce,
 }: {
   steps: TimelineStep[]
   caption?: string
   /** Scroll length of the pinned stretch. */
   height?: string
   className?: string
+  nonce?: string
 }) {
   const from = steps[0]?.year ?? 0
   const span = (steps[steps.length - 1]?.year ?? from) - from
@@ -1163,8 +1230,8 @@ export function TimelineScrub({
       className={className ? 'sv-timeline ' + className : 'sv-timeline'}
       style={{ '--tl-from': from, '--tl-span': span } as React.CSSProperties}
     >
-      <style dangerouslySetInnerHTML={{ __html: css }} />
-      <div className="sv-stage tl-sticky">
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+      <div className="sv-stage"><div data-sv-fit="" className="tl-sticky">
         <div>
           <span className="tl-year">
             <span style={SR_ONLY}>{from + span}</span>
@@ -1186,7 +1253,7 @@ export function TimelineScrub({
             })}
           </ol>
         </div>
-      </div>
+      </div></div>
     </Track>
   )
 }
@@ -1209,7 +1276,7 @@ import * as React from 'react'
 import { useScenes } from 'scrollvars/react'
 
 const css = \`
-.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 0 clamp(20px, 5vw, 64px); }
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
 .sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
 .sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
@@ -1230,6 +1297,11 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
    non-active step would otherwise sit at 30% opacity forever and the copy
    would slide with the raw scroll. Reset both the steps and the dots. */
 @media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
+[data-sv-flow].sv-steps .st-grid { min-height: 0; }
+.sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+[data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
+[data-sv-flow].sv-steps .st-steps > li { opacity: 1; translate: none; }
+[data-sv-flow].sv-steps .st-dots { display: none; }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 \`
 
@@ -1245,11 +1317,12 @@ export interface StickyStep {
 // does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
 const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
 
-export function StickySteps({ steps, className }: { steps: StickyStep[]; className?: string }) {
+export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; className?: string; nonce?: string }) {
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh' })
+  const [flow, setFlow] = React.useState(false)
+  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
@@ -1265,16 +1338,16 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
     <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
-      <style dangerouslySetInnerHTML={{ __html: css }} />
-      <div className="sv-stage st-grid">
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+      <div className="sv-stage"><div data-sv-fit="" className="st-grid">
         <div className="st-media">
           {steps.map((s, i) => (
             <figure
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive && i !== scene ? INERT : {})}
-              aria-hidden={interactive && i !== scene ? true : undefined}
+              {...(interactive && !flow && i !== scene ? INERT : {})}
+              aria-hidden={interactive && !flow && i !== scene ? true : undefined}
             >
               {s.media}
             </figure>
@@ -1294,7 +1367,7 @@ export function StickySteps({ steps, className }: { steps: StickyStep[]; classNa
             <i key={i} style={{ '--i': i } as React.CSSProperties} />
           ))}
         </div>
-      </div>
+      </div></div>
     </div>
   )
 }
@@ -1350,11 +1423,13 @@ export function StatsCountup({
   stats,
   duration = 1.8,
   className,
+  nonce,
 }: {
   stats: Stat[]
   /** Seconds the count takes. */
   duration?: number
   className?: string
+  nonce?: string
 }) {
   return (
     <Track
@@ -1362,7 +1437,7 @@ export function StatsCountup({
       className={className ? 'sv-acts ' + className : 'sv-acts'}
       style={{ '--sv-acts-count': 1, '--sv-acts-duration': duration + 's' } as React.CSSProperties}
     >
-      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <dl className="sv-stats">
         {stats.map((s, i) => (
           <div key={i}>
@@ -1834,6 +1909,121 @@ export function LogoMarquee({
       {children}
     </Marquee>
   )
+}
+`,
+  },
+  'case-study-rail': {
+    file: 'CaseStudyRail.tsx',
+    content: `// ScrollVars fx · case-study-rail
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css'
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = \`
+.sv-casework { --work-accent: #c5f36b; color: #f3f0e8; background: #171a16; }
+.sv-casework .work-head { padding: 48px clamp(24px, 5vw, 72px) 24px; }
+.sv-casework h2 { font-size: clamp(36px, 7vw, 88px); letter-spacing: -.055em; line-height: 1; margin: 12px 0; }
+.sv-casework .work-stage { display: flex; align-items: center; }
+.sv-casework .work-fit { width: 100%; }
+.sv-casework .work-rail { display: flex; gap: 24px; width: max-content; padding: 24px; box-sizing: border-box; }
+.sv-casework .work-card { flex: none; width: min(70vw, 800px); padding: clamp(20px, 4vw, 48px); box-sizing: border-box; border: 1px solid #ffffff30; border-radius: 12px; }
+.sv-casework .work-art { height: clamp(100px, 30vh, 280px); border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 65% 40%, var(--work-accent) 0 18%, transparent 18.5%), repeating-linear-gradient(135deg, #303d28 0 40px, #263020 40px 80px); }
+.sv-casework .work-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sv-casework .work-meta { display: flex; justify-content: space-between; margin: 22px 0 12px; color: var(--work-accent); font: 12px monospace; text-transform: uppercase; }
+.sv-casework h3 { font-size: clamp(28px, 5vw, 54px); line-height: 1.05; margin: 0 0 12px; letter-spacing: -.04em; }
+.sv-casework .work-card:nth-child(2n) { --work-accent: #9ee4ee; }
+.sv-casework .work-card:nth-child(3n) { --work-accent: #ff9d73; }
+.sv-casework .work-card p { max-width: 44ch; margin: 0; line-height: 1.5; }
+.sv-casework .work-footer { padding: 28px; text-align: right; }
+.sv-casework .work-footer a { color: inherit; }
+/* This rail starts at its first card. cqw measures the real stage, not the page. */
+@supports (width: 1cqw) {
+  .sv-casework .work-stage { container-type: inline-size; }
+  .sv-casework .work-card { width: min(80cqw, 800px); }
+  .sv-on .sv-casework .work-rail { transform: translateX(calc(var(--sv-pin, 0) * min(100cqw - 100%, 0px))); will-change: transform; }
+}
+html:not(.sv-on) .sv-casework .work-rail,
+.sv-casework [data-sv-flow] .work-rail,
+.sv-casework [data-sv-off] .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+html:not(.sv-on) .sv-casework .work-card,
+.sv-casework [data-sv-flow] .work-card,
+.sv-casework [data-sv-off] .work-card { width: 100%; }
+@supports not (width: 1cqw) { .sv-casework > .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
+\`
+
+export interface CaseStudy {
+  title: string
+  summary: string
+  category: string
+  image?: { src: string; alt: string }
+}
+
+export function CaseStudyRail({ title = 'Selected work', projects, href, className, nonce }: {
+  title?: string
+  projects: CaseStudy[]
+  /** One link after the rail; the moving cards are deliberately non-interactive. */
+  href?: string
+  className?: string
+  nonce?: string
+}) {
+  return (
+    <section className={className ? 'sv-casework ' + className : 'sv-casework'}>
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+      <header className="work-head"><small>Independent thinking · tangible results</small><h2>{title}</h2></header>
+      <Track pin={Math.max(projects.length, 1) * 100 + 'vh'}>
+        <div className="sv-stage work-stage"><div className="work-fit" data-sv-fit="">
+          <div className="work-rail">
+            {projects.map((project, i) => <article className="work-card" key={i}>
+              <div className="work-art">{project.image && <img src={project.image.src} alt={project.image.alt} />}</div>
+              <div className="work-meta"><span>{String(i + 1).padStart(2, '0')}</span><span>{project.category}</span></div>
+              <h3>{project.title}</h3><p>{project.summary}</p>
+            </article>)}
+          </div>
+        </div></div>
+      </Track>
+      {href && <footer className="work-footer"><a href={href}>Explore all projects →</a></footer>}
+    </section>
+  )
+}
+`,
+  },
+  'editorial-manifesto': {
+    file: 'EditorialManifesto.tsx',
+    content: `// ScrollVars fx · editorial-manifesto
+// Requires: npm i scrollvars · no preset stylesheet required
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+const css = \`
+.sv-manifesto { background: #e9e4db; color: #232722; padding: clamp(40px, 9vw, 128px) clamp(24px, 6vw, 88px); }
+.sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
+.sv-manifesto .manifesto-copy { padding-block: 32px; }
+.sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
+[data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+\`
+
+export function EditorialManifesto({ label = 'What we believe', paragraphs, closing, className, nonce }: {
+  label?: string
+  paragraphs: string[]
+  closing?: string
+  className?: string
+  nonce?: string
+}) {
+  return <Track as="section" travel className={className ? 'sv-manifesto ' + className : 'sv-manifesto'} style={{ '--count': paragraphs.length } as React.CSSProperties}>
+    <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+    <header className="manifesto-label"><span>{label}</span><span>Scroll to read ↓</span></header>
+    <div className="manifesto-copy">{paragraphs.map((text, i) => <p key={i} style={{ '--i': i } as React.CSSProperties}>{text}</p>)}</div>
+    {closing && <p className="manifesto-end">{closing}</p>}
+  </Track>
 }
 `,
   },

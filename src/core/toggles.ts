@@ -103,11 +103,16 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // and a second control toggling 'pinned' on the same nav are two
   // independent states, and grouping by the element alone made one click
   // claim aria-expanded="true" for both.
+  const triggers = () => {
+    const list = Array.from(scope.querySelectorAll<HTMLElement>('[data-sv-toggle]'))
+    if ((scope as HTMLElement).matches?.('[data-sv-toggle]')) list.unshift(scope as HTMLElement)
+    return list
+  }
   const sync = (target: HTMLElement, className: string, on: boolean) => {
-    scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((t) => {
+    triggers().forEach((t) => {
       const other = resolve(t)
       if (other.target === target && other.className === className)
-        t.setAttribute('aria-expanded', String(on))
+        t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
     })
   }
   // the target's own state, written wherever the class flips
@@ -137,7 +142,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     target.style.setProperty('transition-duration', saved.value, saved.priority)
   }
 
-  scope.querySelectorAll<HTMLElement>('[data-sv-toggle]').forEach((trigger) => {
+  triggers().forEach((trigger) => {
     const { className, target } = resolve(trigger)
     if (!target) return
     if (!target.classList.contains('sv-ui')) {

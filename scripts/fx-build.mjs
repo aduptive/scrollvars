@@ -146,6 +146,8 @@ const SHELL_CSS = `
   .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
     text-decoration:none; color:var(--text); background:#17151f; }
   .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#17151f; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
   .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
@@ -218,6 +220,10 @@ const footer = `<footer class="fx">
 for (const fx of EFFECTS) {
   if (SECTION_PREVIEW_SLUGS.has(fx.slug)) {
     fx.preview = await renderSectionPreview(fx, COMPONENTS[fx.slug])
+    // The source shown and copied is exactly what the CLI installs.
+    fx.react = COMPONENTS[fx.slug].content
+    const staticPreview = fx.preview.replace(/<script>[\s\S]*?<\/script>/g, '')
+    writeFileSync(join(out, `${fx.slug}-preview.html`), `<!doctype html><html lang="en"><meta charset="utf-8"><link rel="stylesheet" href="sv.css"><style>body{margin:0;background:#17151f;color:#eee;font:18px/1.5 system-ui}*{box-sizing:border-box}</style><body>${staticPreview}</body></html>`)
   }
 }
 
@@ -239,16 +245,17 @@ ${sidebar(fx.slug)}
   <p class="tag">${fx.tagline}</p>
   <p class="meta"><b>Use it for:</b> ${fx.when}<br><b>Knobs:</b> ${fx.knobs}</p>
   ${fx.runway ? `<div class="fxrunway">${fx.preview}</div>` : fx.preview}
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button class="on" data-tab="react">Complete component · CLI source</button>' : `<button class="on" data-tab="tailwind">Tailwind</button>
     <button data-tab="css">CSS</button>
-    <button data-tab="react">React</button>
+    <button data-tab="react">React</button>`}
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
-    <pre data-pane="css"><code>${esc(fx.css)}</code></pre>
-    <pre data-pane="react"><code>${esc(fx.react)}</code></pre>
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
+    <pre data-pane="css"><code>${esc(fx.css)}</code></pre>`}
+    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
@@ -270,7 +277,7 @@ ${NAV_COLLAPSE}
   });
 </script>
 </body></html>`
-  writeFileSync(join(out, `${fx.slug}.html`), page)
+  writeFileSync(join(out, `${fx.slug}.html`), page.replace(/ +$/gm, ''))
 }
 
 /* hub */
@@ -287,12 +294,12 @@ ${sidebar()}
 <main>
   <h1>fx, copy-paste effects</h1>
   <p class="tag">Award-site patterns as Tailwind + CSS you can actually paste. No 47 KB tax.
-  Each effect ships three formats and full knobs. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
+  Effects ship three formats; Sections show the complete CLI source, CSS included. Machine-readable: <a href="llms.txt">llms.txt</a>.</p>
   ${CATEGORIES.map(
     (cat) => `<h2 class="fxcat">${cat}</h2>
   <div class="grid">
     ${EFFECTS.filter((e) => e.category === cat)
-      .map((fx) => `<a class="fxlink" href="${fx.slug}.html"><b>${fx.title}</b><span>${fx.tagline}</span></a>`)
+      .map((fx) => `<a class="fxlink" href="${fx.slug}.html">${SECTION_PREVIEW_SLUGS.has(fx.slug) ? `<span class="fxthumb"><iframe title="${fx.title} preview" src="${fx.slug}-preview.html" loading="lazy" sandbox tabindex="-1" aria-hidden="true"></iframe></span>` : ''}<b>${fx.title}</b><span>${fx.tagline}</span></a>`)
       .join('\n    ')}
   </div>`
   ).join('\n  ')}
@@ -310,7 +317,8 @@ const llms = `# ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
 > (npm i scrollvars, ${CORE_KB} KB gzip as ESM; the fx/sv.js IIFE on these pages is ${ENGINE_KB} KB). Each effect below includes when to
-> use it, its knobs, and three ready formats. Engine API: see
+> use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
+> expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
 
 ${EFFECTS.map(
@@ -320,8 +328,10 @@ ${fx.tagline}
 Category: ${fx.category}
 Use for: ${fx.when}
 Knobs: ${fx.knobs}
+Install: npx scrollvars add ${fx.slug}
+Styles: ${fx.requires.styles.map(name => `scrollvars/styles/${name}.css`).join(', ') || 'included'}
 
-### Tailwind
+${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `### Tailwind
 \`\`\`html
 ${fx.tailwind}
 \`\`\`
@@ -330,7 +340,7 @@ ${fx.tailwind}
 \`\`\`html
 ${fx.css}
 \`\`\`
-
+`}
 ### React
 \`\`\`tsx
 ${fx.react}

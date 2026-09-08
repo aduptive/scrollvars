@@ -64,6 +64,7 @@ import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import { installedGate } from './installed-gate.mjs'
+import { reviewGate } from './review-gate.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
@@ -143,6 +144,8 @@ const HIDDEN_TEXT = () => {
   const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
   return [...document.body.querySelectorAll('*')].filter((el) => {
     if (!own(el) || el.closest('[aria-hidden="true"], script, style, template, .sv-words, .sv-curtain-l, .sv-curtain-r')) return false
+    // A no-JS pause button is deliberately unavailable: there is nothing running to pause.
+    if (el.matches('.sv-marquee-pause') && !el.previousElementSibling?.classList.contains('sv-ui')) return false
     const cs = getComputedStyle(el)
     return cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none'
   }).length
@@ -2806,6 +2809,7 @@ const MIN_EXAMINED = 1
 // declares. A gallery page proves nothing about a consumer who imported
 // exactly what `npx scrollvars add` told them to import (ADU-129) ──
 await installedGate({ browser, check, HIDDEN_TEXT })
+await reviewGate({ browser, check })
 
 await browser.close()
 server.close()

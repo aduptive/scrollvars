@@ -24,6 +24,8 @@ export const SECTION_PREVIEW_SLUGS = new Set([
   'timeline-scrub',
   'sticky-steps',
   'stats-countup',
+  'case-study-rail',
+  'editorial-manifesto',
 ])
 
 export const resolveScrollvars = {

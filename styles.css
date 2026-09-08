@@ -130,7 +130,9 @@ html:not(.sv-on) .sv-spread > * {
 }
 /* Same for a RELEASED tracker (`data-sv-off`, see pin.css), on an ancestor or
    on the spread itself, which is where the marker lands in the scrub idiom. */
+[data-sv-flow] .sv-spread > *,
 [data-sv-off] .sv-spread > *,
+.sv-spread[data-sv-flow] > *,
 .sv-spread[data-sv-off] > * {
   translate: none;
   rotate: none;
@@ -353,43 +355,61 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 /* RELEASED (`data-sv-off`, written when a tracker stops): the no-JS twin of
    every guard above, on an ancestor or on the element itself. One rule each,
    never a shared list: a parser without `:is()` drops the whole list. */
+[data-sv-flow] .sv-stage,
 [data-sv-off] .sv-stage,
+.sv-stage[data-sv-flow],
 .sv-stage[data-sv-off] {
   position: static;
   height: auto;
   overflow: visible;
 }
+[data-sv-flow] .sv-curtain-l,
 [data-sv-off] .sv-curtain-l,
+[data-sv-flow] .sv-curtain-r,
 [data-sv-off] .sv-curtain-r,
+.sv-curtain-l[data-sv-flow],
 .sv-curtain-l[data-sv-off],
+.sv-curtain-r[data-sv-flow],
 .sv-curtain-r[data-sv-off] {
   display: none;
 }
+[data-sv-flow] .sv-rail,
 [data-sv-off] .sv-rail,
+.sv-rail[data-sv-flow],
 .sv-rail[data-sv-off] {
   translate: none;
   width: auto;
   flex-wrap: wrap;
 }
+[data-sv-flow] .sv-deck,
 [data-sv-off] .sv-deck,
+.sv-deck[data-sv-flow],
 .sv-deck[data-sv-off] {
   display: block;
 }
+[data-sv-flow] .sv-deck > *,
 [data-sv-off] .sv-deck > *,
+.sv-deck[data-sv-flow] > *,
 .sv-deck[data-sv-off] > * {
   translate: none;
   rotate: none;
   scale: none;
 }
+[data-sv-flow] .sv-reading > *,
 [data-sv-off] .sv-reading > *,
+.sv-reading[data-sv-flow] > *,
 .sv-reading[data-sv-off] > * {
   opacity: 1;
 }
+[data-sv-flow] .sv-range > *,
 [data-sv-off] .sv-range > *,
+.sv-range[data-sv-flow] > *,
 .sv-range[data-sv-off] > * {
   --sv-r: 1;
 }
+[data-sv-flow] .sv-counter,
 [data-sv-off] .sv-counter,
+.sv-counter[data-sv-flow],
 .sv-counter[data-sv-off] {
   --sv-int: var(--sv-max, 100);
 }
@@ -496,7 +516,7 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
    sv-cols also works from the Slider shell (React's className prop lands
    on .sv-slider-shell, one level up from .sv-slider). */
 .sv-slider.sv-cols > *,
-.sv-cols .sv-slider > * {
+.sv-slider-shell.sv-cols > .sv-slider > * {
   flex: 0 0
     calc(
       (100% - (var(--sv-per-view, 1) - 1) * var(--sv-gap, 16px)) / var(--sv-per-view, 1) *
@@ -784,6 +804,21 @@ html:not(.sv-on) .sv-acts:not(.sv-ui) {
     translate: -50% 0;
   }
 }
+
+/* A controlled strip stays still until its pause button has been wired. */
+.sv-marquee-controlled { position: relative; }
+.sv-marquee-controlled > .sv-marquee-track:not(.sv-ui) {
+  animation: none; width: auto; flex-wrap: wrap;
+}
+.sv-marquee-controlled > .sv-marquee-track:not(.sv-ui) > .sv-marquee-dup { display: none; }
+.sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
+.sv-marquee-pause { display: none; }
+.sv-marquee-track.sv-ui + .sv-marquee-pause {
+  display: block; position: absolute; right: 8px; bottom: 8px; z-index: 1;
+  padding: 6px 10px; border: 1px solid currentColor; border-radius: 4px;
+  background: Canvas; color: CanvasText; font: inherit; font-size: 12px; cursor: pointer;
+}
+.sv-marquee-pause[aria-pressed="true"] { font-weight: bold; }
 
 /* Accordion: native <details> animated: accessibility for free, exclusive
    groups via the native name attribute. Needs interpolate-size (Chrome 129+);

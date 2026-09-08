@@ -62,6 +62,8 @@
   .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
     text-decoration:none; color:var(--text); background:#17151f; }
   .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#17151f; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
   .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
@@ -135,6 +137,8 @@
         <a href="timeline-scrub.html">Pinned timeline</a>
         <a href="sticky-steps.html">Sticky steps</a>
         <a href="stats-countup.html">Stats count-up</a>
+        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="editorial-manifesto.html">Editorial manifesto</a>
       </details>
     </nav>
   </details>
@@ -156,86 +160,106 @@
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
 .sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
-</style><div class="hero-orb a"></div><div class="hero-orb b"></div><div class="sv"><div class="hero-inner"><p class="hero-eyebrow sv-rise">Studio · 2026 reel</p><h1 class="sv-split hero-title sv-split-rise" style="--sv-count:5"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Sites that move with intent</span><span aria-hidden="true" style="--sv-order:0">Sites</span> <span aria-hidden="true" style="--sv-order:1">that</span> <span aria-hidden="true" style="--sv-order:2">move</span> <span aria-hidden="true" style="--sv-order:3">with</span> <span aria-hidden="true" style="--sv-order:4">intent</span></h1><p class="hero-sub sv-rise" style="--sv-order:6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p><p class="sv-rise" style="--sv-order:7">See the work</p></div></div><div class="sv-marquee hero-strip"><div class="sv-marquee-track"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span><span class="sv-marquee-dup" aria-hidden="true" inert=""><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span></div></div></section>
+</style><div class="hero-orb a"></div><div class="hero-orb b"></div><div class="sv"><div class="hero-inner"><p class="hero-eyebrow sv-rise">Studio · 2026 reel</p><h1 class="sv-split hero-title sv-split-rise" style="--sv-count:5"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Sites that move with intent</span><span aria-hidden="true" style="--sv-order:0">Sites</span> <span aria-hidden="true" style="--sv-order:1">that</span> <span aria-hidden="true" style="--sv-order:2">move</span> <span aria-hidden="true" style="--sv-order:3">with</span> <span aria-hidden="true" style="--sv-order:4">intent</span></h1><p class="hero-sub sv-rise" style="--sv-order:6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p><p class="sv-rise" style="--sv-order:7">See the work</p></div></div><div class="sv-marquee sv-marquee-controlled hero-strip"><div class="sv-marquee-track"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span><span class="sv-marquee-dup" aria-hidden="true" inert=""><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span></div><button type="button" class="sv-marquee-pause" aria-pressed="false" data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button></div></section>
 <script>addEventListener('load', () => {
   SV.track(document.querySelector('.sv-hero > .sv'), { travel: true })
   SV.trackPointer(document.querySelector('.sv-hero'), { selector: '.sv-hero' })
+  SV.toggles(document.querySelector('.sv-hero'))
 })</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add hero-cinematic</code><br><b>Styles:</b> <code>import 'scrollvars/styles/core.css'</code> · <code>import 'scrollvars/styles/ui.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">CSS</button>
-    <button data-tab="react">React</button>
+    <button class="on" data-tab="react">Complete component · CLI source</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
-  [&amp;_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&amp;_.inner]:[opacity:calc(1-var(--hero-out))] [&amp;_.inner]:[scale:calc(1-var(--hero-out)*.12)]
-  motion-reduce:[&amp;_.inner]:[opacity:1] motion-reduce:[&amp;_.inner]:[scale:none]"&gt;
-  &lt;!-- the motion-reduce override is written on the section, same [&amp;_.inner] shape as the base rule: two
-       classes vs. one on the .inner div itself never wins on specificity, only on selector shape + source order --&gt;
-  &lt;div class="absolute -top-[14%] -left-[8%] size-[52vmin] rounded-full bg-violet-400/50 blur-3xl -z-10
-    [translate:calc(var(--mx,0)*40px)_calc(var(--my,0)*40px)] transition-[translate] duration-500
-    motion-reduce:[translate:none] motion-reduce:transition-none"&gt;&lt;/div&gt;
-  &lt;div class="inner text-center"&gt;
-    &lt;p class="sv-rise text-xs tracking-[.18em] uppercase text-violet-400"&gt;Eyebrow&lt;/p&gt;
-    &lt;h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
-    &lt;p class="sv-rise text-neutral-400" data-sv-order="6"&gt;Sub copy.&lt;/p&gt;
-  &lt;/div&gt;
-  &lt;div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"&gt;&lt;div class="sv-marquee-track"&gt;…&lt;/div&gt;&lt;/div&gt;
-&lt;/section&gt;
-&lt;script&gt;SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })&lt;/script&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv data-sv-travel class="sv-hero" id="hero"&gt;   &lt;!-- travel: --sv-t 0..1 through the viewport --&gt;
-  &lt;div class="hero-orb a"&gt;&lt;/div&gt;&lt;div class="hero-orb b"&gt;&lt;/div&gt;
-  &lt;div class="hero-inner"&gt;
-    &lt;p class="sv-rise"&gt;Eyebrow&lt;/p&gt;
-    &lt;h1 class="sv-split-rise" data-sv-split&gt;Sites that move with intent&lt;/h1&gt;
-    &lt;p class="sv-rise" data-sv-order="6"&gt;Sub copy.&lt;/p&gt;
-    &lt;p class="sv-rise" data-sv-order="7"&gt;&lt;a class="cta" href="#"&gt;See the work&lt;/a&gt;&lt;/p&gt;
-  &lt;/div&gt;
-  &lt;div class="sv-marquee hero-strip"&gt;&lt;div class="sv-marquee-track"&gt;
-    &lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;
-    &lt;span class="sv-marquee-dup" aria-hidden="true"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/span&gt;
-  &lt;/div&gt;&lt;/div&gt;
-&lt;/section&gt;
-&lt;script&gt;SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })&lt;/script&gt;   &lt;!-- --mx/--my (-1..1) on the section itself --&gt;
 
-/* presets do the entrance (core.css) and the strip (ui.css); this is the whole section: */
-.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
-.hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
-  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px));
-  transition: translate .5s ease-out; }
-.hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
-.hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
-  opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
-@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
-/* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */</code></pre>
-    <pre data-pane="react"><code>import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
+    <pre class="on" data-pane="react"><code>// ScrollVars fx · hero-cinematic
+// Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/ui.css'
+// Split headline rising on a beat, pointer-parallax glow, marquee strip; the block
+// fades and scales out as it leaves (--sv-t). The CSS below is the whole section,
+// one constant string injected as raw HTML: React 18's server renderer escapes a
+// &lt;style&gt; child (`&gt;` becomes `&amp;gt;`) and &lt;style&gt; is raw text, so the entity never
+// decodes and every child-combinator rule is dropped. CSP is unchanged from any
+// inline &lt;style&gt;: a style-src nonce or hash, or lift the string into your own CSS.
+'use client'
+import * as React from 'react'
+import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
 
-function Hero() {
-  const ref = usePointer&lt;HTMLElement&gt;({ selector: '.sv-hero' })   // --mx/--my (-1..1) on the section
+const css = `
+.sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; }
+.sv-hero .hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
+  translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
+.sv-hero .hero-orb.a { background: var(--hero-glow, #a78bfa); top: -14%; left: -8%; }
+.sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
+.sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
+@media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+.sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
+.sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
+.sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip span { margin: 0 18px; }
+`
+
+export function HeroCinematic({
+  eyebrow,
+  title,
+  copy,
+  cta,
+  strip = ['Brand', '·', 'Motion', '·', 'Web', '·', 'Type', '·'],
+  className,
+  nonce,
+}: {
+  eyebrow?: string
+  /** Plain text: it is split into words on the server, each rising on its own beat. */
+  title: string
+  copy?: React.ReactNode
+  cta?: React.ReactNode
+  strip?: string[]
+  className?: string
+  nonce?: string
+}) {
+  const ref = usePointer&lt;HTMLElement&gt;({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    &lt;section ref={ref} className="sv-hero"&gt;
-      &lt;div className="hero-orb a" /&gt;&lt;div className="hero-orb b" /&gt;
-      &lt;Track travel&gt;                              {/* .sv-live for the entrance, --sv-t for the exit */}
+    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject&lt;T | null&gt; so
+    // the same hook fits React 19 too, and React 18 wants a bare RefObject&lt;T&gt; on a host element
+    &lt;section ref={ref as React.RefObject&lt;HTMLElement&gt;} className={className ? 'sv-hero ' + className : 'sv-hero'}&gt;
+      &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+      &lt;div className="hero-orb a" /&gt;
+      &lt;div className="hero-orb b" /&gt;
+      &lt;Track travel&gt;
         &lt;div className="hero-inner"&gt;
-          &lt;p className="sv-rise"&gt;Eyebrow&lt;/p&gt;
-          &lt;Split as="h1" className="sv-split-rise"&gt;Sites that move with intent&lt;/Split&gt;
-          &lt;p className="sv-rise" style={{ '--sv-order': 6 }}&gt;Sub copy.&lt;/p&gt;
+          {eyebrow &amp;&amp; &lt;p className="hero-eyebrow sv-rise"&gt;{eyebrow}&lt;/p&gt;}
+          &lt;Split as="h1" className="hero-title sv-split-rise"&gt;
+            {title}
+          &lt;/Split&gt;
+          {copy &amp;&amp; (
+            &lt;p className="hero-sub sv-rise" style={{ '--sv-order': 6 } as React.CSSProperties}&gt;
+              {copy}
+            &lt;/p&gt;
+          )}
+          {cta &amp;&amp; (
+            &lt;p className="sv-rise" style={{ '--sv-order': 7 } as React.CSSProperties}&gt;
+              {cta}
+            &lt;/p&gt;
+          )}
         &lt;/div&gt;
       &lt;/Track&gt;
-      &lt;Marquee className="hero-strip"&gt;&lt;span&gt;Brand&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;/Marquee&gt;
+      &lt;Marquee className="hero-strip"&gt;
+        {strip.map((s, i) =&gt; (
+          &lt;span key={i}&gt;{s}&lt;/span&gt;
+        ))}
+      &lt;/Marquee&gt;
     &lt;/section&gt;
   )
 }
-// npx scrollvars add hero-cinematic → components/fx/HeroCinematic.tsx (CSS included)</code></pre>
+</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 6.7 KB gzip as ESM (this page's fx/sv.js IIFE: 6.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.13.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.14.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

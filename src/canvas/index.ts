@@ -491,6 +491,7 @@ export function mountEffect(
   let lastWriteDpr: number | undefined
 
   const applySize = (entries?: ResizeObserverEntry[]) => {
+    if (destroyed) return
     const entry = entries?.[0]
 
     const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout())
@@ -737,6 +738,7 @@ export function mountEffect(
         if (destroyed) dispose()
         else cleanup = dispose
       }
+      if (destroyed) return
       resize?.(fx) // sizing that lives in resize() must also run once
     } else {
       resize?.(fx)
@@ -769,6 +771,7 @@ export function mountEffect(
   // a monitor with a different devicePixelRatio. Watch the resolution too.
   let dprQuery: MediaQueryList | null = null
   const watchDpr = () => {
+    if (destroyed) return
     if (dprQuery) offMediaChange(dprQuery, onDprChange)
     dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
     onMediaChange(dprQuery, onDprChange)

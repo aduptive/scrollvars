@@ -528,3 +528,24 @@ test('toggles: each scope alone owns the trigger, and stopping one hands it over
   assert.ok(!menu.classes.has('open'), 'a fresh instance after every stop() works from the first click')
   stopFresh()
 })
+
+test('toggles: a scope-root trigger synchronizes itself, including a pressed-state button', async () => {
+  const { toggles } = await import('../dist/core/toggles.js')
+  const root = makeElement({ 'data-sv-toggle': 'sv-paused', 'aria-pressed': 'false' })
+  const listeners = {}
+  Object.assign(root, {
+    contains: el => el === root,
+    matches: sel => sel === '[data-sv-toggle]',
+    querySelectorAll: () => [],
+    addEventListener: (type, fn) => listeners[type] = fn,
+    removeEventListener: type => delete listeners[type],
+  })
+  root.classes.add('sv-paused')
+  const stop = toggles(root)
+  assert.equal(root.attrs['aria-pressed'], 'true', 'initial state includes the root')
+  listeners.click({ target: root })
+  assert.equal(root.attrs['aria-pressed'], 'false')
+  assert.equal(root.attrs['aria-expanded'], undefined, 'pause is not a disclosure')
+  stop()
+  assert.equal(listeners.click, undefined)
+})
