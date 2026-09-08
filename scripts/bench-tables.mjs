@@ -41,17 +41,21 @@ const label = (e) =>
 
 const main = results.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
+const styleCost = m => {
+  const values = m.samples?.map(run => run.recalcMs)
+  return `${m.recalcMs} ms${values?.length ? ` (${Math.min(...values)}–${Math.max(...values)})` : ''}`
+}
 
 let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
-<code>npm i && npm run measure</code>): Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
+<code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome ${results.meta.chrome.replace(/^(?:Headless)?Chrome\//, '')},
 median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle set through CDP, nominal` : ''}.
-Measured ${results.meta.date}; package ${results.meta.version ?? "historical"}, commit ${results.meta.commit ?? "not recorded"}. Startup is separate; scroll intervals are never filtered. Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+Measured ${results.meta.date}; package ${results.meta.version ?? "historical"}, commit ${results.meta.commit ?? "not recorded"}. Viewport 800×600. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <table>
-  <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
+  <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
   <tbody>
 `
 for (const [engine, m] of Object.entries(main.engines)) {
-  html += `    <tr><td>${label(engine)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${m.recalcMs} ms</td><td class="n">${m.layoutMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td></tr>\n`
+  html += `    <tr><td>${label(engine)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${styleCost(m)}</td><td class="n">${m.layoutMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td><td class="n">${m.p95Ms} ms</td><td class="n">${m.worstMs ?? "not recorded"}</td><td class="n">${m.framesOver25ms ?? "not recorded"}</td></tr>\n`
 }
 html += `  </tbody>
 </table>
@@ -65,7 +69,7 @@ selectors). Compare document-wide writes, local writes and batched GSAP:
 `
 for (const sc of deeps) {
   for (const [engine, m] of Object.entries(sc.engines))
-    html += `    <tr><td>${sc.name.replace('deep-', '')} nodes/box</td><td>${label(engine)}</td><td class="n">${m.recalcMs} ms</td><td class="n">${m.scriptMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td></tr>\n`
+    html += `    <tr><td>${sc.name.replace('deep-', '')} nodes/box</td><td>${label(engine)}</td><td class="n">${styleCost(m)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td></tr>\n`
 }
 html += `  </tbody>
 </table>`
@@ -78,12 +82,13 @@ if (existsSync(throttledPath)) {
   if (main4) {
     html += `
 <h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
+<p class="sub">Measured ${th.meta.date}; package ${th.meta.version ?? "historical"}, ${th.meta.runs} runs. Fixed-work calibration ratios are in the raw results.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
 `
     for (const [engine, m] of Object.entries(main4.engines)) {
-      html += `    <tr><td>${label(engine)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${m.recalcMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.fps}</td><td class="n">${m.p95Ms} ms</td></tr>\n`
+      html += `    <tr><td>${label(engine)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${styleCost(m)}</td><td class="n">${m.taskMs} ms</td><td class="n">${m.fps}</td><td class="n">${m.p95Ms} ms</td></tr>\n`
     }
     html += `  </tbody>
 </table>
@@ -93,10 +98,10 @@ if (existsSync(throttledPath)) {
 
 const galleries = results.scenarios.filter(s => s.name.startsWith('gallery-'))
 if (galleries.length) {
-  html += '<h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page, including gallery UI. These are workload checks, not competitor comparisons or device guarantees.</p><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody>'
+  html += '<h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees.</p><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody>'
   for (const row of galleries) {
     const m = Object.values(row.engines)[0]
-    html += `<tr><td>${row.name.slice(8)}</td><td>${m.scriptMs} ms</td><td>${m.recalcMs} ms</td><td>${m.taskMs} ms</td><td>${m.p95Ms} ms</td><td>${m.worstMs} ms</td><td>${m.framesOver25ms}</td></tr>`
+    html += `<tr><td>${row.name.slice(8)}</td><td>${m.scriptMs} ms</td><td>${styleCost(m)}</td><td>${m.taskMs} ms</td><td>${m.p95Ms} ms</td><td>${m.worstMs} ms</td><td>${m.framesOver25ms}</td></tr>`
   }
   html += '</tbody></table>'
 }

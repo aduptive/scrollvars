@@ -329,8 +329,8 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 Public, reproducible benchmark: https://scrollvars.dev/bench/:
 equivalent animated boxes and scroll progression, four engine builds (including the batched
 expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
-Frame delivery ties (every competent engine animates only the viewport);
-what differs is what those frames cost:
+Frame delivery and CPU cost are reported separately; neither is guaranteed
+across workloads or devices:
 
 <!-- bench:start -->
 Measured 2026-08-26T19:38:02.772Z; package historical, 5 runs. Bundle and runtime measurements refer to this snapshot.

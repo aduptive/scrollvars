@@ -7,7 +7,7 @@ Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variable
 
 ## Why
 
-Most scroll-animation setups pipe scroll values through framework state (a re-render per frame per element) and interleave layout reads with style writes (layout thrashing). ScrollVars fixes the transport:
+ScrollVars keeps continuous scroll values outside React and exposes them directly to CSS:
 
 - **One global driver**: a single passive scroll listener, one rAF for all scroll tracking; slider, pointer and canvas schedule their own.
 - **Batched read → write phases**. All rects first, all CSS variables after.
@@ -22,8 +22,8 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 Public, reproducible benchmark: https://scrollvars.dev/bench/:
 equivalent animated boxes and scroll progression, four engine builds (including the batched
 expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
-Frame delivery ties (every competent engine animates only the viewport);
-what differs is what those frames cost:
+Frame delivery and CPU cost are reported separately; neither is guaranteed
+across workloads or devices:
 
 <!-- bench:start -->
 Measured 2026-08-26T19:38:02.772Z; package historical, 5 runs. Bundle and runtime measurements refer to this snapshot.
@@ -84,7 +84,7 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 ```bash
 npm i scrollvars
 # or pin to a git ref (the `prepare` script builds on install):
-npm i github:aduptive/scrollvars#v1.13.0   # pin the ref
+npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 ```
 
 ```ts

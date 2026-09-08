@@ -31,8 +31,9 @@ page in headless Chrome over CDP, waits for the page's own DONE payload
 (frame stats) and reads `Performance.getMetrics`.
 
 ```bash
+cd demo/bench/harness
 npm i
-npm run measure                    # main table + deep-DOM curve, 3 runs each
+npm run measure                    # main + deep DOM + six gallery sections, 3 runs each
 node measure.mjs --runs=5          # more repetitions
 node measure.mjs --throttle=4      # 4x synthetic CPU throttle (fixed-work ratio recorded)
 CHROME=/path/to/chrome node measure.mjs
@@ -41,7 +42,9 @@ CHROME=/path/to/chrome node measure.mjs
 Scenarios: `main-900` (60 sections x 15 boxes; ScrollVars vs idiomatic GSAP
 vs batched GSAP (one trigger per section, the expert version) vs
 framer-motion) and `deep-{5,20,50}` (a realistic subtree under every box:
-the style-recalc curve as DOM depth grows; ScrollVars vs batched GSAP).
+the style-recalc curve as DOM depth grows; both ScrollVars modes vs batched GSAP).
+`gallery-*` measures each of the six generated premium-section pages, including
+the surrounding gallery UI, with page outputs disabled.
 
 Output: median-of-N tables on stdout + `../results/latest.json`. Engine
 order rotates every repetition. Startup and scroll costs are separate. Raw
@@ -53,3 +56,8 @@ or heavy workloads. Use `--out=name.json` for experiments. Metrics are not
 a guarantee of physical-device performance.
 
 The GSAP pages pin 3.15.0 (both scripts); React and Framer URLs also pin exact versions. GSAP + ScrollTrigger measure 45.2 KB gzip (level 6, bytes/1024), summed over their two CDN scripts.
+
+The performance runner uses Puppeteer’s default 800×600 viewport for all pages.
+Responsive fit-to-flow fallbacks may apply in gallery rows; these are not
+measurements of every animation state. The separate browser suite checks active
+pins at 1400×900 and narrow-screen fallbacks. Inspect per-run ranges as well as medians.
