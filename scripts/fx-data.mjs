@@ -1171,7 +1171,7 @@ import * as React from 'react'
 import { Track } from 'scrollvars/react'
 
 const css = \`
-.sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
+.sv-timeline .tl-sticky { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 40px; padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
 .sv-timeline .tl-year { font-size: clamp(64px, 12vw, 150px); line-height: 1; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
   counter-reset: tl-year calc(var(--tl-from) + var(--sv-pin, 1) * var(--tl-span)); }
 .sv-timeline .tl-year .tl-count::after { content: counter(tl-year); }
@@ -1276,7 +1276,7 @@ import * as React from 'react'
 import { useScenes } from 'scrollvars/react'
 
 const css = \`
-.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
 .sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
 .sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }

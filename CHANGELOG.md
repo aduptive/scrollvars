@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.2 (2026-09-07)
+
+- Fix TimelineScrub and StickySteps disabling their pin in bordered stages. Their inner layout now fills the stage content box with `min-height: 100%`, instead of exceeding it by the border width. Added scroll-behavior checks against the actual gallery pages; genuinely oversized content still returns to flow.
+
 ## 1.14.1 (2026-09-07)
 
 - Fix horizontal rails clipping their last cards inside narrow stages, including the fx gallery. The driver measures `--sv-stage-width` in its read phase and observes stage resizing; the preset uses this width by default while preserving `--sv-rail-start` overrides.

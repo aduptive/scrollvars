@@ -148,7 +148,7 @@
   <p class="tag">Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.</p>
   <p class="meta"><b>Use it for:</b> Product features, "how it works", case-study walkthroughs, onboarding explainers.<br><b>Knobs:</b> data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)</p>
   <div class="sv-steps fxouter"><style>
-.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
 .sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
 .sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
@@ -199,7 +199,7 @@ import * as React from 'react'
 import { useScenes } from 'scrollvars/react'
 
 const css = `
-.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: calc(100vh - var(--sv-pin-offset, 0px)); }
+.sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
 .sv-steps .st-media { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; display: grid; }
 .sv-steps .st-shot { margin: 0; display: grid; place-items: center; }
 .sv-steps .st-shot &gt; * { width: 100%; height: 100%; object-fit: cover; }
@@ -301,7 +301,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.14.1. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.14.2. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

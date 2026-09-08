@@ -2808,6 +2808,33 @@ const MIN_EXAMINED = 1
 // rendered under React 18 and 19, on ONLY the stylesheets its registry entry
 // declares. A gallery page proves nothing about a consumer who imported
 // exactly what `npx scrollvars add` told them to import (ADU-129) ──
+// The gallery adds a border and border-box sizing absent from the isolated
+// fixtures. Verify that this chrome never disables an otherwise fitting pin.
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 1400, height: 800 })
+  for (const [slug, selector, visual] of [
+    ['timeline-scrub', '.sv-timeline', '.tl-year'],
+    ['sticky-steps', '.sv-steps', '.st-shot'],
+  ]) {
+    await page.goto(`${base}/fx/${slug}.html`, { waitUntil: 'load' })
+    const snapshots = []
+    for (const progress of [.1, .8]) {
+      snapshots.push(await page.evaluate(async ({ selector, visual, progress }) => {
+        const root = document.querySelector(selector)
+        scrollTo(0, scrollY + root.getBoundingClientRect().top + (root.offsetHeight - innerHeight) * progress)
+        await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const cs = getComputedStyle(root.querySelector(visual))
+        return { flow: root.hasAttribute('data-sv-flow'), pin: Number(root.style.getPropertyValue('--sv-pin')), visual: cs.counterReset + '/' + cs.opacity }
+      }, { selector, visual, progress }))
+    }
+    check(`gallery ${slug}: a bordered stage stays pinned and visibly changes on scroll`,
+      snapshots.every(s => !s.flow) && snapshots[1].pin - snapshots[0].pin > .6 && snapshots[0].visual !== snapshots[1].visual,
+      JSON.stringify(snapshots))
+  }
+  await page.close()
+}
+
 await installedGate({ browser, check, HIDDEN_TEXT })
 await reviewGate({ browser, check })
 
