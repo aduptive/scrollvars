@@ -30,7 +30,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked (unless `setPageOutputs(false)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -327,26 +327,28 @@ downlevel ES2020 per browserslist. That extends the animated floor to
 ## The receipts (measured: why the design holds up)
 
 Public, reproducible benchmark: https://scrollvars.dev/bench/:
-identical DOM and animations, four engine builds (including the batched
+equivalent animated boxes and scroll progression, four engine builds (including the batched
 expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
 what differs is what those frames cost:
 
 <!-- bench:start -->
+Measured 2026-08-26T19:38:02.772Z; package historical, 5 runs. Bundle and runtime measurements refer to this snapshot.
+
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 7.1 KB | 100 ms | 195 ms | **1.4 MB** |
-| gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
+| ScrollVars (page outputs on) | 7.3 KB | 100 ms | 195 ms | **1.4 MB** |
+| gsap + ScrollTrigger (idiomatic) | 45.2 KB | 233 ms | 85 ms | 6.2 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 45.2 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
 <!-- bench:end -->
 
-Medians of 5 runs from the committed harness (`demo/bench/harness`,
-`npm i && node measure.mjs --runs=5` reproduces every number, engine order
-rotated; the low-end profile's 4× CPU throttle is set through CDP, nominal, not independently calibrated). Frame delivery ties at 60 fps in every row. The
-precise claim: not faster frames, the same frames for ~7× less bundle
-and a fraction of the heap; total CPU trades blows (ScrollVars wins
-shallow, batched GSAP wins deep subtrees. The published curve).
+The committed results record the measurement date, package version, source
+hashes, individual runs and startup separately from the 12-second scroll.
+The default driver and `setPageOutputs(false)` are measured side by side.
+The package ships ~6× less bundle than GSAP + ScrollTrigger; frame delivery
+and CPU cost depend on the workload. CPU throttling is a synthetic profile,
+not a physical phone. See the benchmark for current results and methodology.
 
 Why the numbers come out this way. Each is a design decision, not tuning:
 
@@ -375,8 +377,8 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
-  (`/bench/`, ?deep=N) shows batched GSAP winning total CPU once every
-  animated box carries a 50-node subtree. The authoring rule that keeps you
+  (`/bench/`, ?deep=N) compares total work across several subtree sizes. Use the measured
+  row for your workload, including whether page outputs are enabled. The authoring rule that keeps you
   on the cheap side: keep tracked elements thin: big static content lives
   next to, not inside, the animated elements. Read the bench sources before
   quoting it.
@@ -405,3 +407,21 @@ For pinned CMS content use `.sv-stage > [data-sv-fit]`. If that inner layout exc
 `data-sv-pointer` delegates to `.sv-tilt`, or provide a selector value. `scan()`/Boot owns its attach, subtree removal and stop lifecycle. `data-sv-duration="800ms"`, `data-sv-stagger="100ms"` and `data-sv-ease="ease-out"` also map to CSS vars on mount (CSS time units, unlike React numeric milliseconds). Attributes are not observed for later changes.
 
 Pass `nonce` to `<Slider>` for its generated responsive `<style>`. Autoplay pauses on hover, stops on focus until explicitly resumed, and uses a polite live region while paused. `<Marquee>` has a keyboard pause button (`aria-pressed`) and is static until its click driver attaches; bare marquee CSS still animates without JS. `toggles()` synchronizes an existing `aria-pressed` instead of `aria-expanded` for a pressed-state button.
+
+## Limit animation work to its consumers
+
+When no CSS reads `--sv-page` or `--sv-v`, call `setPageOutputs(false)`
+(import from `scrollvars`) before `track()`/`scan()`, or use
+`<ScrollVarsBoot pageOutputs={false} />`. This is a page-wide setting;
+the default remains enabled for compatibility. Re-enable with
+`setPageOutputs(true)`. Disabling removes both document variables and stops
+the idle page driver after the last tracker is released. Local clocks keep
+working. All Boot instances and manually attached effects share this setting.
+
+For entrance-only tracking, `view: false` skips the unused continuous view
+clock; `sv-view-fade`/`sv-view-rise` need no tracker where native view timelines
+are supported. Keep continuously tracked wrappers small. Inherited variables
+on a large ancestor still incur style work even if the final animated property
+is a transform. Do not change public clocks to `inherits: false`: presets
+consume them on descendants. Test representative CMS content and media on the
+client's devices; functional browser tests alone do not establish frame budgets.

@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { EffectOptions } from '../canvas/index.js'
 import { mountEffect } from '../canvas/index.js'
 import type { TrackOptions } from '../core/driver.js'
-import { scrollToScene, track } from '../core/driver.js'
+import { scrollToScene, setPageOutputs, track } from '../core/driver.js'
 import type { PointerOptions } from '../core/pointer.js'
 import { trackPointer } from '../core/pointer.js'
 import { scan } from '../core/scan.js'
@@ -43,12 +43,17 @@ const PREPAINT =
   ".observe(h,{attributes:true,attributeFilter:['class']})},3000)}catch(e){}})()"
 
 export interface ScrollVarsBootProps {
+  /** Disable document-wide variables when unused. Omit to keep the current global setting. */
+  pageOutputs?: boolean
   /** CSP nonce, forwarded to the pre-paint script tag. Required under a
    * strict `script-src` that has no `'unsafe-inline'`. */
   nonce?: string
 }
 
-export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce }) => {
+export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce, pageOutputs }) => {
+  useEffect(() => {
+    if (pageOutputs !== undefined) setPageOutputs(pageOutputs)
+  }, [pageOutputs])
   useEffect(() => {
     const stopScan = scan()
     const stopToggles = toggles()

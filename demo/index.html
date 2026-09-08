@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.0 KB driver. Same frames as the 46 KB engines. Measured: ~2.6× less CPU than Framer Motion. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 3.0 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.0 KB driver, ~7× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.0 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1757,7 +1757,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
       <div class="deck-card"><span class="tag">01 · read</span><div><h3>Batched reads</h3><p>Every getBoundingClientRect of the frame happens together, before any write.</p></div></div>
       <div class="deck-card"><span class="tag">02 · compute</span><div><h3>Just arithmetic</h3><p>view, t, pin and scene come from the same four sums per element.</p></div></div>
       <div class="deck-card"><span class="tag">03 · write</span><div><h3>Vars, not styles</h3><p>The driver writes numbers. Your CSS decides what they mean.</p></div></div>
-      <div class="deck-card"><span class="tag">04 · repeat</span><div><h3>60 fps with headroom</h3><p>No re-renders, no thrashing. The whole frame fits in a fraction of the budget.</p></div></div>
+      <div class="deck-card"><span class="tag">04 · repeat</span><div><h3>Keep the frame light</h3><p>No scroll values in React state. Keep tracked wrappers thin and measure the whole frame.</p></div></div>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
@@ -2423,7 +2423,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.6&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.8&nbsp;KB minified,
 <strong>2.3&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -2754,17 +2754,17 @@ the full API, recipes and performance rules, ready to ingest.
     <table class="sv-rise" style="--sv-order: 3">
       <tbody>
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
-        <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
+        <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.4 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.4 KB / 3.0 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.5 KB / 3.0 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
-    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost for the same frames <span style="color: var(--muted); font-weight: 400;">(identical 12s run, 900 scrubbed elements. All three deliver 60 fps; this is what those frames cost)</span></h3>
+    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll <span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 scrubbed elements; default page outputs enabled. Compare the opt-out variant and raw results in the benchmark)</span></h3>
     <table class="sv-rise" style="--sv-order: 4">
-      <thead><tr><th>engine</th><th>JS script</th><th>CPU total</th><th>JS heap</th></tr></thead>
+      <thead><tr><th>engine</th><th>JS script</th><th>JS + style + layout</th><th>JS heap</th></tr></thead>
       <tbody>
         <tr><td><b>ScrollVars</b></td><td class="range"><b>100 ms</b></td><td class="range"><b>302 ms</b></td><td class="range"><b>1.4 MB</b></td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">233 ms</td><td class="range">325 ms</td><td class="range">6.2 MB</td></tr>
@@ -2772,21 +2772,11 @@ the full API, recipes and performance rules, ready to ingest.
       </tbody>
     </table>
 
-    <h3 class="sv-rise" style="--sv-order: 5; font-size: 15px; margin: 22px 0 6px;">Lighthouse mobile <span style="color: var(--muted); font-weight: 400;">(the PageSpeed profile: Moto G, 4× CPU, slow 4G)</span></h3>
-    <table class="sv-rise" style="--sv-order: 5">
-      <thead><tr><th>page</th><th>score</th><th>LCP</th><th>TBT</th></tr></thead>
-      <tbody>
-        <tr><td><b>ScrollVars</b></td><td class="range"><b>100</b></td><td class="range"><b>1.0 s</b></td><td class="range"><b>0 ms</b></td></tr>
-        <tr><td>framer-motion</td><td class="range">94</td><td class="range">2.8 s</td><td class="range">20 ms</td></tr>
-        <tr><td>GSAP + ScrollTrigger</td><td class="range">88</td><td class="range">2.7 s</td><td class="range">230 ms</td></tr>
-      </tbody>
-    </table>
-
     <p class="sv-rise" style="--sv-order: 6; color: var(--muted); font-size: 14px; margin-top: 16px;">
-      The honest summary: in frame delivery all engines tie. Every competent one animates
-      only the viewport. What separates them is what the frames <em>cost</em> (CPU, memory,
-      battery) and what the engine costs to <em>load</em>. Which is exactly what PageSpeed
-      punishes. <a href="bench/" style="color: var(--accent)">Run the benchmark yourself →</a>
+      Frame delivery and CPU cost depend on the workload, browser and device.
+      The benchmark records startup separately, includes slow frames and compares
+      document-wide outputs enabled and disabled. Synthetic CPU throttling is not
+      a physical-phone test. <a href="bench/" style="color: var(--accent)">Inspect the dated results and run it yourself →</a>
     </p>
   </div>
 </section>
@@ -2915,7 +2905,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.14.2 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.3 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -2961,6 +2951,7 @@ var SV = (() => {
     refresh: () => refresh,
     scan: () => scan,
     scrollToScene: () => scrollToScene,
+    setPageOutputs: () => setPageOutputs,
     slider: () => slider,
     snapProgress: () => snapProgress,
     split: () => split,
@@ -3015,7 +3006,10 @@ var SV = (() => {
       return;
     vh = window.innerHeight;
     try {
-      resizeObserver = new ResizeObserver(() => schedule());
+      resizeObserver = new ResizeObserver(() => {
+        offsetsDirty = true;
+        schedule();
+      });
       resizeObserver.observe(document.documentElement);
     } catch {
       resizeObserver = null;
@@ -3057,20 +3051,41 @@ var SV = (() => {
   var lastPageStr = "";
   var lastVStr = "";
   var pageOutputs = false;
+  var pageOutputsEnabled = true;
+  var offsetsDirty = false;
   var forceAll = false;
+  function setPageOutputs(enabled) {
+    pageOutputsEnabled = enabled;
+    if (typeof document === "undefined")
+      return;
+    if (!enabled) {
+      clearTimeout(velTimer);
+      document.documentElement.style.removeProperty("--sv-page");
+      document.documentElement.style.removeProperty("--sv-v");
+      lastPageStr = lastVStr = "";
+    } else
+      schedule();
+  }
   function schedule() {
-    if (!raf && (entries.size > 0 || pageOutputs))
+    if (!raf && (entries.size > 0 || pageOutputs && pageOutputsEnabled))
       raf = requestAnimationFrame(update);
   }
   function update() {
     raf = 0;
     const force = forceAll;
     forceAll = false;
+    if (offsetsDirty) {
+      offsetsDirty = false;
+      entries.forEach((entry) => {
+        if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin)
+          entry.pinOffset = readPinOffset(entry.el);
+      });
+    }
     const y = window.scrollY;
     const now = performance.now();
     const jumped = lastY >= 0 && Math.abs(y - lastY) > vh;
     const docEl = document.documentElement;
-    const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1);
+    const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : 1;
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];
     entries.forEach((entry) => {
@@ -3116,16 +3131,18 @@ var SV = (() => {
         setVar(entry, "--sv-stage-width", stageWidth, "px");
       apply(entry, geo);
     }
-    const dt = now - lastT;
-    const v = lastY < 0 || dt <= 0 ? 0 : (y - lastY) / dt * 1e3 / vh;
-    const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4);
-    if (pageStr !== lastPageStr)
-      docEl.style?.setProperty("--sv-page", lastPageStr = pageStr);
-    const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3);
-    if (vStr !== lastVStr)
-      docEl.style?.setProperty("--sv-v", lastVStr = vStr);
-    clearTimeout(velTimer);
-    velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", lastVStr = "0"), 80);
+    if (pageOutputsEnabled) {
+      const dt = now - lastT;
+      const v = lastY < 0 || dt <= 0 ? 0 : (y - lastY) / dt * 1e3 / vh;
+      const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4);
+      if (pageStr !== lastPageStr)
+        docEl.style?.setProperty("--sv-page", lastPageStr = pageStr);
+      const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3);
+      if (vStr !== lastVStr)
+        docEl.style?.setProperty("--sv-v", lastVStr = vStr);
+      clearTimeout(velTimer);
+      velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", lastVStr = "0"), 80);
+    }
     lastY = y;
     lastT = now;
   }
@@ -4073,7 +4090,18 @@ var SV = (() => {
       container.classList.remove("sv-dragging");
       window.addEventListener("click", suppressClick, true);
       setTimeout(() => window.removeEventListener("click", suppressClick, true), 0);
-      goTo(active);
+      const center = pos() + viewport() / 2;
+      const list = slides();
+      let nearest = 0;
+      let distance = Infinity;
+      list.forEach((slide, i) => {
+        const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
+        if (d < distance) {
+          distance = d;
+          nearest = i;
+        }
+      });
+      goTo(nearest);
     };
     const onDragStart = (event) => {
       if (pressed)
@@ -4081,6 +4109,9 @@ var SV = (() => {
     };
     container.addEventListener("dragstart", onDragStart);
     const onDown = (event) => {
+      const owner = event.target?.closest?.(".sv-slider");
+      if (owner && owner !== container)
+        return;
       const wasGliding = anim !== 0;
       const wheelPending = clearWheel();
       stopGlide();
@@ -4101,6 +4132,9 @@ var SV = (() => {
     };
     container.addEventListener("pointerdown", onDown);
     const onWheel = (event) => {
+      const owner = event.target?.closest?.(".sv-slider");
+      if (owner && owner !== container)
+        return;
       if (snapIsNone)
         return;
       const along = horizontal ? event.deltaX : event.deltaY;
@@ -5881,7 +5915,20 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         container.classList.remove('sv-dragging');
         window.addEventListener('click', suppressClick, true);
         setTimeout(() => window.removeEventListener('click', suppressClick, true), 0);
-        goTo(active); // release: glide softly onto the nearest slide
+        // A final pointermove and pointerup can precede the scroll measurement.
+        // Resolve the destination from today's geometry, not the last frame.
+        const center = pos() + viewport() / 2;
+        const list = slides();
+        let nearest = 0;
+        let distance = Infinity;
+        list.forEach((slide, i) => {
+            const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
+            if (d < distance) {
+                distance = d;
+                nearest = i;
+            }
+        });
+        goTo(nearest);
     };
     // native image/link drag-and-drop would hijack the gesture mid-press
     const onDragStart = (event) => {
@@ -5890,6 +5937,9 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     container.addEventListener('dragstart', onDragStart);
     const onDown = (event) => {
+        const owner = event.target?.closest?.('.sv-slider');
+        if (owner && owner !== container)
+            return;
         const wasGliding = anim !== 0;
         const wheelPending = clearWheel(); // the press owns the position now
         stopGlide(); // the user takes over
@@ -5925,6 +5975,9 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
     // instances authored with snap none (scroll-driven ones own their position).
     const onWheel = (event) => {
+        const owner = event.target?.closest?.('.sv-slider');
+        if (owner && owner !== container)
+            return;
         if (snapIsNone)
             return;
         // only react when the gesture's dominant axis is OUR axis. Otherwise
@@ -6020,7 +6073,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
  *   old checkbox hack never gave you
  *
  * Deliberately NOT a timeline engine: one click, one state change. For
- * orchestrated multi-act sequences, use GSAP. That's its turf.
+ * reversible multi-act sequences, use the sv-acts CSS preset; use GSAP
+ * when branching, physics or per-act callbacks are needed.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  *
@@ -6063,7 +6117,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
  * landed inside the hold window.
  */
 // One click, one state change, across every live instance. `toggles(root?)`
-// is public two-argument API and the documented setup runs two instances at
+// is public optional-root API and the documented setup runs two instances at
 // once: `<ScrollVarsBoot />` calls it unscoped and a consumer calls it on
 // their own root. A trigger nested inside both is contained by both, since
 // containment is inclusive and not nearest-exclusive, so both handlers used

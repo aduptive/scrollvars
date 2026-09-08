@@ -20,10 +20,11 @@
   position: absolute;
   inset: -40%;
   background: radial-gradient(
-    circle at calc(50% + var(--mx) * 38%) calc(50% + var(--my) * 38%),
+    circle at center,
     rgba(255, 255, 255, 0.14),
     transparent 42%
   );
+  translate: calc(var(--mx) * 38%) calc(var(--my) * 38%);
   pointer-events: none;
 }
 

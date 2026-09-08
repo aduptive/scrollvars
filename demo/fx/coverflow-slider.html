@@ -190,17 +190,18 @@
 &lt;/Slider&gt;
 // chrome: --sv-arrow-* / --sv-dot-* vars, prevIcon/nextIcon, renderDot, or your own UI via ref</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.4 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.3 KB gzip as ESM (this page's fx/sv.js IIFE: 7.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.14.2. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.15.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>
 <script src="sv.js"></script>
 <script>
+  SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
     document.querySelectorAll('.code pre').forEach(p =>

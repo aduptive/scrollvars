@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.1 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.4 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.3 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.4 KB on the wire.
 
 ## Why
 
@@ -20,26 +20,28 @@ Most scroll-animation setups pipe scroll values through framework state (a re-re
 ## The receipts (measured: why the design holds up)
 
 Public, reproducible benchmark: https://scrollvars.dev/bench/:
-identical DOM and animations, four engine builds (including the batched
+equivalent animated boxes and scroll progression, four engine builds (including the batched
 expert GSAP variant, symmetric to ScrollVars' one-tracker-per-section).
 Frame delivery ties (every competent engine animates only the viewport);
 what differs is what those frames cost:
 
 <!-- bench:start -->
+Measured 2026-08-26T19:38:02.772Z; package historical, 5 runs. Bundle and runtime measurements refer to this snapshot.
+
 | engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |
 |---|---|---|---|---|
-| ScrollVars | 7.1 KB | 100 ms | 195 ms | **1.4 MB** |
-| gsap + ScrollTrigger (idiomatic) | 46.3 KB | 233 ms | 85 ms | 6.2 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 46.3 KB | 175 ms | 86 ms | 6.7 MB |
+| ScrollVars (page outputs on) | 7.3 KB | 100 ms | 195 ms | **1.4 MB** |
+| gsap + ScrollTrigger (idiomatic) | 45.2 KB | 233 ms | 85 ms | 6.2 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 45.2 KB | 175 ms | 86 ms | 6.7 MB |
 | framer-motion | 46.9 KB (+ React) | 740 ms | 48 ms | 11.1 MB |
 <!-- bench:end -->
 
-Medians of 5 runs from the committed harness (`demo/bench/harness`,
-`npm i && node measure.mjs --runs=5` reproduces every number, engine order
-rotated; the low-end profile's 4× CPU throttle is set through CDP, nominal, not independently calibrated). Frame delivery ties at 60 fps in every row. The
-precise claim: not faster frames, the same frames for ~7× less bundle
-and a fraction of the heap; total CPU trades blows (ScrollVars wins
-shallow, batched GSAP wins deep subtrees. The published curve).
+The committed results record the measurement date, package version, source
+hashes, individual runs and startup separately from the 12-second scroll.
+The default driver and `setPageOutputs(false)` are measured side by side.
+The package ships ~6× less bundle than GSAP + ScrollTrigger; frame delivery
+and CPU cost depend on the workload. CPU throttling is a synthetic profile,
+not a physical phone. See the benchmark for current results and methodology.
 
 Why the numbers come out this way. Each is a design decision, not tuning:
 
@@ -68,8 +70,8 @@ Why the numbers come out this way. Each is a design decision, not tuning:
 - **Cheap, not free: and measured where it loses.** An inherited var pays
   per-descendant, a direct transform pays per-element: ScrollVars posts the
   worst style-recalc of its own table, and the published deep-DOM curve
-  (`/bench/`, ?deep=N) shows batched GSAP winning total CPU once every
-  animated box carries a 50-node subtree. The authoring rule that keeps you
+  (`/bench/`, ?deep=N) compares total work across several subtree sizes. Use the measured
+  row for your workload, including whether page outputs are enabled. The authoring rule that keeps you
   on the cheap side: keep tracked elements thin: big static content lives
   next to, not inside, the animated elements. Read the bench sources before
   quoting it.
@@ -110,8 +112,8 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 2.3 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.6 KB |
-| everything in `scrollvars` (the core entry) | 7.1 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 12.9 KB |
+| everything in `scrollvars` (the core entry) | 7.3 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 13.1 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -130,7 +132,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked (unless `setPageOutputs(false)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -157,7 +159,7 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55 keeps 4.5:1 on the default dark palette, check your own colors; .13 for drama) |
 | `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
 
-Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)` and `.sv-stagger > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. Those rules are (0,2,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or skip `sv-auto`/`sv-stagger` and order by hand).
+Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)`, `.sv-stagger > :nth-child(n)` and `.sv .sv-deck > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. The auto/stagger rules are (0,2,0); deck indexing is (0,3,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or omit automatic indexing and order by hand).
 
 Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. The driver reads the stage's computed `top`, so CSS resolves `calc()`, `env()`, percentages and viewport units in the actual layout. Without a `.sv-stage` (custom `onPin` markup), only px, rem (root font-size), em (the wrapper's font-size), vh (svh, lvh and dvh resolve like vh) and vw resolve in the fallback parser; use a stage for other lengths.
 
@@ -609,3 +611,21 @@ enhancement, never a dependency.
 ## License
 
 MIT
+
+## Limit animation work to its consumers
+
+When no CSS reads `--sv-page` or `--sv-v`, call `setPageOutputs(false)`
+(import from `scrollvars`) before `track()`/`scan()`, or use
+`<ScrollVarsBoot pageOutputs={false} />`. This is a page-wide setting;
+the default remains enabled for compatibility. Re-enable with
+`setPageOutputs(true)`. Disabling removes both document variables and stops
+the idle page driver after the last tracker is released. Local clocks keep
+working. All Boot instances and manually attached effects share this setting.
+
+For entrance-only tracking, `view: false` skips the unused continuous view
+clock; `sv-view-fade`/`sv-view-rise` need no tracker where native view timelines
+are supported. Keep continuously tracked wrappers small. Inherited variables
+on a large ancestor still incur style work even if the final animated property
+is a transform. Do not change public clocks to `inherits: false`: presets
+consume them on descendants. Test representative CMS content and media on the
+client's devices; functional browser tests alone do not establish frame budgets.

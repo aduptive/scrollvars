@@ -14,7 +14,8 @@
  *   old checkbox hack never gave you
  *
  * Deliberately NOT a timeline engine: one click, one state change. For
- * orchestrated multi-act sequences, use GSAP. That's its turf.
+ * reversible multi-act sequences, use the sv-acts CSS preset; use GSAP
+ * when branching, physics or per-act callbacks are needed.
  *
  * `<ScrollVarsBoot />` wires this automatically alongside scan().
  *
@@ -58,7 +59,7 @@
  */
 
 // One click, one state change, across every live instance. `toggles(root?)`
-// is public two-argument API and the documented setup runs two instances at
+// is public optional-root API and the documented setup runs two instances at
 // once: `<ScrollVarsBoot />` calls it unscoped and a consumer calls it on
 // their own root. A trigger nested inside both is contained by both, since
 // containment is inclusive and not nearest-exclusive, so both handlers used

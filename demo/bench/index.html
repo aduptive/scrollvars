@@ -18,50 +18,30 @@
            border: 1px solid #a78bfa; background: transparent; color: #a78bfa; cursor: pointer; }
   small { color: #8f8ca6; display: block; margin-top: 14px; max-width: 720px; }
 </style></head><body>
-<h1>Same workload, three engines. Same frames, ~7× less JavaScript</h1>
-<p class="sub">Scroll-scrubbed elements (translate + opacity), scroll driven top→bottom→top over 12&nbsp;s.
-Three passes: 150 elements, 900, and 900 with 12&nbsp;ms of synthetic "app work" burned
-per frame. The headroom test. Frame delivery is flat until the main thread saturates, so on
-fast machines every engine shows 60&nbsp;fps; the last pass adds
-synthetic app work to probe headroom. On capable hardware all three engines deliver the same
-frames, <b>that is the finding</b>: the 46&nbsp;KB engines buy no extra performance here, they
-buy API surface. The differences that persist are the bundle column, no-JS/SSR behavior, and
-cost on weak devices (to simulate one: DevTools → Performance → CPU 6× slowdown, then run again). Each engine runs in sequence below; frame times are measured
-identically. <b>Keep this tab visible</b>: browsers freeze background tabs.</p>
+<h1>Scroll animation: cost, frame delivery and bundle size</h1>
+<p class="sub">Matching boxes and scroll progression across three engines, including idiomatic and batched GSAP.
+The interactive test adds synthetic app work to probe headroom. A steady average FPS does not exclude expensive frames.
+Keep the tab visible. CPU throttling is a synthetic experiment, not a substitute for testing the client's phone.</p>
 <button id="go">run the benchmark (~2min: 150 · 900 · 900+12ms app work)</button>
 <div id="status"></div>
 <table id="results" hidden>
   <thead><tr><th>engine</th><th>elements</th><th>bundle (gzip)</th><th>avg frame</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th><th>JS heap</th></tr></thead>
   <tbody></tbody>
 </table>
-<h2 style="font-size:15px; margin-top:18px;">Reference run <span style="color:#8f8ca6; font-weight:400;">(Apple-silicon Mac, headless Chrome via CDP. Replace it with yours above)</span></h2>
-<table>
-  <thead><tr><th>engine</th><th>elements</th><th>fps</th><th>p95</th><th>frames &gt;25ms</th></tr></thead>
-  <tbody>
-    <tr><td>ScrollVars</td><td class="n">900</td><td class="n">60</td><td class="n">17.6 ms</td><td class="n">0 / 721</td></tr>
-    <tr><td>gsap + ScrollTrigger</td><td class="n">900</td><td class="n">60</td><td class="n">17.6 ms</td><td class="n">0 / 720</td></tr>
-    <tr><td>framer-motion (React)</td><td class="n">900</td><td class="n">59.9</td><td class="n">17.6 ms</td><td class="n">1 / 720</td></tr>
-  </tbody>
-</table>
 <iframe id="stage" hidden></iframe>
-<h1 style="font-size:17px; margin-top:26px;">The CPU cost for the same frames. Measured, reproducible</h1>
-<p class="sub"><b>The claim, stated precisely:</b> ScrollVars does not promise faster frames.
-Frame delivery ties at 60 fps in every row, because every competent engine animates only the
-viewport. The claim is: the same frames for a ~7× smaller bundle, a fraction of the heap,
-zero React re-renders, and a fail-visible no-JS story. With total CPU trading blows
-(ScrollVars wins the shallow scenarios, batched GSAP wins deep subtrees; both are below).
-Both GSAP variants are included: the idiomatic one-trigger-per-box page people actually
-write, and the batched expert build (one trigger per section), symmetric to ScrollVars'
-one-tracker-per-section. Compare against the batched row for the fair fight.</p>
+<h2>Measured CPU cost</h2>
+<p class="sub">Compare ScrollVars with and without document-wide outputs. Disabling them is appropriate only when
+no CSS consumes <code>--sv-page</code>/<code>--sv-v</code>. Local animation is identical in both variants.
+Use the batched GSAP row when comparing one tracker per section. Small bundles do not guarantee lower CPU.</p>
 <!-- measured:start -->
 <p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
-<code>npm i && npm run measure</code>): headless Chrome Chrome/152.0.7977.64,
+<code>npm i && npm run measure</code>): Chrome Chrome/152.0.7977.64,
 median of 5 runs, engine order rotated per repetition.
-Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+Measured 2026-08-26T19:38:02.772Z; package historical, commit not recorded. Startup is separate; scroll intervals are never filtered. Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
   <tbody>
-    <tr><td>scrollvars</td><td class="n">100 ms</td><td class="n">195 ms</td><td class="n">7 ms</td><td class="n">958 ms</td><td class="n">1.4 MB</td><td class="n">60</td></tr>
+    <tr><td>ScrollVars (page outputs on)</td><td class="n">100 ms</td><td class="n">195 ms</td><td class="n">7 ms</td><td class="n">958 ms</td><td class="n">1.4 MB</td><td class="n">60</td></tr>
     <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">233 ms</td><td class="n">85 ms</td><td class="n">7 ms</td><td class="n">904 ms</td><td class="n">6.2 MB</td><td class="n">60</td></tr>
     <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">175 ms</td><td class="n">86 ms</td><td class="n">7 ms</td><td class="n">993 ms</td><td class="n">6.7 MB</td><td class="n">60</td></tr>
     <tr><td>framer-motion (React)</td><td class="n">740 ms</td><td class="n">48 ms</td><td class="n">8 ms</td><td class="n">1523 ms</td><td class="n">11.1 MB</td><td class="n">60</td></tr>
@@ -69,21 +49,24 @@ Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.j
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
-selectors); vars written on the section invalidate it all. ScrollVars vs the batched GSAP
-build, 150 boxes, medians:</p>
+selectors). Compare document-wide writes, local writes and batched GSAP:
+150 boxes, medians:</p>
 <table>
-  <thead><tr><th>subtree size</th><th>ScrollVars recalc</th><th>gsap-batched recalc</th><th>ScrollVars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
+  <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
   <tbody>
-    <tr><td>5 nodes/box</td><td class="n">288 ms</td><td class="n">73 ms</td><td class="n">98 ms</td><td class="n">153 ms</td><td class="n">1.1 MB</td><td class="n">3.2 MB</td></tr>
-    <tr><td>20 nodes/box</td><td class="n">516 ms</td><td class="n">98 ms</td><td class="n">95 ms</td><td class="n">204 ms</td><td class="n">1 MB</td><td class="n">3.3 MB</td></tr>
-    <tr><td>50 nodes/box</td><td class="n">769 ms</td><td class="n">96 ms</td><td class="n">87 ms</td><td class="n">192 ms</td><td class="n">1.1 MB</td><td class="n">3.4 MB</td></tr>
+    <tr><td>5 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">288 ms</td><td class="n">98 ms</td><td class="n">1050 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
+    <tr><td>5 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">73 ms</td><td class="n">153 ms</td><td class="n">795 ms</td><td class="n">3.2 MB</td><td class="n">60</td></tr>
+    <tr><td>20 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">516 ms</td><td class="n">95 ms</td><td class="n">1559 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
+    <tr><td>20 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">98 ms</td><td class="n">204 ms</td><td class="n">1255 ms</td><td class="n">3.3 MB</td><td class="n">60</td></tr>
+    <tr><td>50 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">769 ms</td><td class="n">87 ms</td><td class="n">1785 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
+    <tr><td>50 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">96 ms</td><td class="n">192 ms</td><td class="n">1284 ms</td><td class="n">3.4 MB</td><td class="n">60</td></tr>
   </tbody>
 </table>
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle set through CDP, nominal. The phone your client actually has)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
-    <tr><td>scrollvars</td><td class="n">35 ms</td><td class="n">222 ms</td><td class="n">1388 ms</td><td class="n">60</td><td class="n">18.6 ms</td></tr>
+    <tr><td>ScrollVars (page outputs on)</td><td class="n">35 ms</td><td class="n">222 ms</td><td class="n">1388 ms</td><td class="n">60</td><td class="n">18.6 ms</td></tr>
     <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">412 ms</td><td class="n">186 ms</td><td class="n">1642 ms</td><td class="n">60</td><td class="n">18.6 ms</td></tr>
     <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">189 ms</td><td class="n">93 ms</td><td class="n">1240 ms</td><td class="n">60</td><td class="n">18.5 ms</td></tr>
     <tr><td>framer-motion (React)</td><td class="n">1498 ms</td><td class="n">77 ms</td><td class="n">2763 ms</td><td class="n">60</td><td class="n">18.6 ms</td></tr>
@@ -91,38 +74,26 @@ build, 150 boxes, medians:</p>
 </table>
 <p class="sub">Raw: <a href="results/throttled-4x.json" style="color:#a78bfa">results/throttled-4x.json</a>.</p>
 <!-- measured:end -->
-<p class="sub"><b>Read the numbers honestly:</b> ScrollVars wins JS script and heap in both
-pairings and posts the <i>worst</i> style-recalc. An inherited custom property pays
-per-descendant on every change, a direct transform write pays per-element. The curve above is
-that cost growing with subtree size, and at the deep end the batched GSAP build wins total CPU.
-The authoring rule that keeps you on the cheap side: keep tracked elements thin: big static
-content lives <i>next to</i> the animated elements, not inside them (the var then never
-inherits through it). It is cheap, not free, and now it is measured.</p>
-<p class="sub"><b>Stress test (not a typical page):</b> Lighthouse mobile (Moto G emulation,
-load-only) on the 900-element pages: <b>ScrollVars 100</b> · framer-motion 94 (LCP 2.8&nbsp;s) ·
-idiomatic GSAP 88 (TBT 230&nbsp;ms. Building 900 triggers on a throttled main thread). No real
-marketing page ships 900 individual triggers; the point is the shape of the load cost, not the
-delta you should expect on your page.</p>
-<small>Methodology: identical DOM and scroll driver in every page; the only variable is the
-animation engine. The harness (<code>demo/bench/harness</code>) serves these exact pages,
-rotates engine order, uses CDP <code>Performance.getMetrics</code>, and verifies any CPU
-throttle with a calibration spin. Bundle sizes: competitors from their public CDN builds;
-ScrollVars via esbuild+gzip of its own source, inlined in its harness (framer-motion
-additionally needs React, not counted for it). Run it on your own machine. That’s the point.
+<p class="sub">Inherited variables can make large subtrees expensive. Keep continuous clocks close to their consumers;
+prefer native view timelines for compatible effects. Interpret script, style, total work and frame stalls together.</p>
+<small>Methodology: shared 12-second scroll clock; identical movement direction and opacity progression.
+CPU metrics use start/end deltas; startup is recorded separately. All frame intervals are retained.
+Raw JSON includes individual runs, version, hashes and fixed-work throttle ratios. The gallery rows measure real sections.
+Bundle sizes for competitors refer to their pinned public builds; React is additional for Framer.
 Sources: <a href="scrollvars.html" style="color:#a78bfa">ScrollVars</a> ·
 <a href="gsap.html" style="color:#a78bfa">gsap</a> ·
 <a href="gsap-batched.html" style="color:#a78bfa">gsap batched</a> ·
 <a href="framer.html" style="color:#a78bfa">framer-motion</a></small>
 <script>
   var ENGINES = [
-    { page: 'scrollvars.html', bundle: '7.1 KB', q: '', n: 150 },
-    { page: 'gsap.html', bundle: '46.3 KB', q: '', n: 150 },
+    { page: 'scrollvars.html', bundle: '7.3 KB', q: '', n: 150 },
+    { page: 'gsap.html', bundle: '45.2 KB', q: '', n: 150 },
     { page: 'framer.html', bundle: '46.9 KB', q: '', n: 150 },
-    { page: 'scrollvars.html', bundle: '7.1 KB', q: '?s=60&p=15', n: 900 },
-    { page: 'gsap.html', bundle: '46.3 KB', q: '?s=60&p=15', n: 900 },
+    { page: 'scrollvars.html', bundle: '7.3 KB', q: '?s=60&p=15', n: 900 },
+    { page: 'gsap.html', bundle: '45.2 KB', q: '?s=60&p=15', n: 900 },
     { page: 'framer.html', bundle: '46.9 KB', q: '?s=60&p=15', n: 900 },
-    { page: 'scrollvars.html', bundle: '7.1 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
-    { page: 'gsap.html', bundle: '46.3 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
+    { page: 'scrollvars.html', bundle: '7.3 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
+    { page: 'gsap.html', bundle: '45.2 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
     { page: 'framer.html', bundle: '46.9 KB', q: '?s=60&p=15&burn=12', n: '900 +12ms' },
   ];
   var stage = document.getElementById('stage');

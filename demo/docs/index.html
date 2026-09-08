@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.14.2</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.15.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -85,7 +85,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-stage-width</code></td><td>px</td><td>Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
-<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked (unless <code>setPageOutputs(false)</code>): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
 <tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
 <tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
@@ -293,6 +293,16 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.15.0 (2026-09-08)</h3>
+
+<ul>
+<li>Add <code>setPageOutputs(false)</code> and <code>&lt;ScrollVarsBoot pageOutputs={false} /></code> to stop unused document-wide progress/velocity writes. Local tracking keeps working; the existing default remains enabled for compatibility. Gallery pages opt out.</li>
+<li>Fix nested sliders stealing drag/wheel gestures, settling from a stale slide index on release, and pin offsets becoming stale after observed container resizing.</li>
+<li>Move the tilt glare with a translated fixed gradient instead of changing its painted gradient center.</li>
+<li>Benchmark the same scroll path through a shared runner, separate startup from scroll CPU, preserve long frames, record individual runs and source hashes, and compare page outputs on/off plus six gallery sections. Synthetic CPU throttling is calibrated with fixed work and is not a physical-device result.</li>
+<li>Verify deployment aliases against a unique deployment ID. Add Chromium/Firefox/WebKit regressions for the interaction fixes and correct performance claims and setup guidance.</li>
+</ul>
 
 <h3>1.14.2 (2026-09-07)</h3>
 

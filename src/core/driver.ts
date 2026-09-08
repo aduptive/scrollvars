@@ -94,7 +94,10 @@ function init() {
   // throwing constructor must leave nothing behind to undo, so a later
   // track() (after scrollvars/compat shims one in) can retry init() clean.
   try {
-    resizeObserver = new ResizeObserver(() => schedule())
+    resizeObserver = new ResizeObserver(() => {
+      offsetsDirty = true
+      schedule()
+    })
     // Layout shifts above an element (images loading, fonts) move it without
     // resizing it: watching the document catches those too.
     resizeObserver.observe(document.documentElement)
@@ -156,16 +159,37 @@ let lastPageStr = ''
 let lastVStr = ''
 
 let pageOutputs = false // true once anything was ever tracked: --sv-page/--sv-v then follow every scroll
+let pageOutputsEnabled = true
+let offsetsDirty = false
 let forceAll = false // set by refresh(): give culled entries one geometry pass on the next update()
 
+/** Enable/disable document-wide --sv-page/--sv-v writes. Default true for
+ * compatibility. Call once at boot with false when no CSS consumes them. */
+export function setPageOutputs(enabled: boolean) {
+  pageOutputsEnabled = enabled
+  if (typeof document === 'undefined') return
+  if (!enabled) {
+    clearTimeout(velTimer)
+    document.documentElement.style.removeProperty('--sv-page')
+    document.documentElement.style.removeProperty('--sv-v')
+    lastPageStr = lastVStr = ''
+  } else schedule()
+}
+
 function schedule() {
-  if (!raf && (entries.size > 0 || pageOutputs)) raf = requestAnimationFrame(update)
+  if (!raf && (entries.size > 0 || (pageOutputs && pageOutputsEnabled))) raf = requestAnimationFrame(update)
 }
 
 function update() {
   raf = 0
   const force = forceAll
   forceAll = false
+  if (offsetsDirty) {
+    offsetsDirty = false
+    entries.forEach(entry => {
+      if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin) entry.pinOffset = readPinOffset(entry.el)
+    })
+  }
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
   const y = window.scrollY
@@ -175,7 +199,7 @@ function update() {
   // seeing it intersect: give every entry one geometry pass on such frames.
   const jumped = lastY >= 0 && Math.abs(y - lastY) > vh
   const docEl = document.documentElement
-  const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1)
+  const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : 1
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
   entries.forEach((entry) => {
@@ -229,14 +253,16 @@ function update() {
   // --sv-v (signed velocity, viewport-heights per second). Velocity decays to
   // 0 shortly after the last scroll event so a CSS transition can ease a
   // skew/stretch effect back to rest.
-  const dt = now - lastT
-  const v = lastY < 0 || dt <= 0 ? 0 : ((y - lastY) / dt) * 1000 / vh
-  const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4)
-  if (pageStr !== lastPageStr) docEl.style?.setProperty('--sv-page', (lastPageStr = pageStr))
-  const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3)
-  if (vStr !== lastVStr) docEl.style?.setProperty('--sv-v', (lastVStr = vStr))
-  clearTimeout(velTimer)
-  velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', (lastVStr = '0')), 80)
+  if (pageOutputsEnabled) {
+    const dt = now - lastT
+    const v = lastY < 0 || dt <= 0 ? 0 : ((y - lastY) / dt) * 1000 / vh
+    const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4)
+    if (pageStr !== lastPageStr) docEl.style?.setProperty('--sv-page', (lastPageStr = pageStr))
+    const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3)
+    if (vStr !== lastVStr) docEl.style?.setProperty('--sv-v', (lastVStr = vStr))
+    clearTimeout(velTimer)
+    velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', (lastVStr = '0')), 80)
+  }
   lastY = y
   lastT = now
 }

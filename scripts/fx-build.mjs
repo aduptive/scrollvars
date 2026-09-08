@@ -265,6 +265,7 @@ ${footer}
 ${NAV_COLLAPSE}
 <script src="sv.js"></script>
 <script>
+  SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
     document.querySelectorAll('.code pre').forEach(p =>

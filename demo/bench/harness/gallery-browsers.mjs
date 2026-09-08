@@ -35,6 +35,60 @@ try {
       const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
       const errors = []
       page.on('pageerror', error => errors.push(error.message))
+      await page.goto(base + 'horizontal-rail.html')
+      const interactions = await page.evaluate(async () => {
+        document.body.innerHTML = `<style>
+          .test-rail { display:flex; gap:0; width:300px; overflow:auto; scroll-snap-type:x mandatory; }
+          .test-rail > div { flex:0 0 300px; height:100px; scroll-snap-align:center; }
+          #root { width:400px; height:500px; overflow:auto; container-type:inline-size; }
+          #pin { height:1500px; } #pin .sv-stage { height:500px; top:40px; }
+          @container (min-width:500px) { #pin .sv-stage { top:80px; } }
+        </style><div id="outer" class="test-rail"><div><div id="inner" class="test-rail"><div>A</div><div>B</div><div>C</div></div></div><div>D</div><div>E</div></div>
+        <div id="root"><div id="pin"><div class="sv-stage">Pinned</div></div></div>`
+        const outer = document.getElementById('outer'), inner = document.getElementById('inner')
+        const a = SV.slider(outer, { duration:0 }), b = SV.slider(inner, { duration:0 })
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const pointer = (target, type, x) => target.dispatchEvent(new PointerEvent(type, { bubbles:true, cancelable:true, pointerType:'mouse', button:0, clientX:x }))
+        pointer(inner.firstElementChild, 'pointerdown', 250)
+        pointer(window, 'pointermove', 230)
+        pointer(window, 'pointermove', 10)
+        // No frame between final movement and release: cached active is stale.
+        pointer(window, 'pointerup', 10)
+        const release = { outer:outer.scrollLeft, inner:inner.scrollLeft }
+        inner.dispatchEvent(new WheelEvent('wheel', { bubbles:true, deltaX:30 }))
+        const wheel = { outer:outer.style.scrollSnapType, inner:inner.style.scrollSnapType }
+        a.destroy(); b.destroy()
+        const root = document.getElementById('root'), el = document.getElementById('pin')
+        window.stopTestPin = SV.track(el, { root, pin:true })
+        root.scrollTop = 200
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        root.style.width = '600px'
+        return { release, wheel }
+      })
+      assert.equal(interactions.release.outer, 0, `${name}: outer slider stole inner drag`)
+      assert.equal(interactions.release.inner, 300, `${name}: release used stale active slide`)
+      assert.notEqual(interactions.wheel.outer, 'none', `${name}: outer slider stole inner wheel`)
+      assert.equal(interactions.wheel.inner, 'none')
+      await page.waitForFunction(() => {
+        const root = document.getElementById('root'), el = document.getElementById('pin')
+        const top = parseFloat(getComputedStyle(el.firstElementChild).top)
+        const expected = (top - el.getBoundingClientRect().top + root.getBoundingClientRect().top) / (el.offsetHeight - root.clientHeight + top)
+        return top === 80 && Math.abs(+el.style.getPropertyValue('--sv-pin') - expected) < .001
+      })
+      await page.evaluate(() => window.stopTestPin())
+      console.log(`ok ${name}: nested gestures, same-frame release, container-query pin offset`)
+      await page.goto(base + 'pointer-tilt.html')
+      const glare = await page.locator('.sv-tilt').first().evaluate(el => {
+        const samples = []
+        for (const x of [-1, 1]) {
+          el.style.setProperty('--mx', String(x))
+          const style = getComputedStyle(el, '::after')
+          samples.push({ background:style.backgroundImage, translate:style.translate })
+        }
+        return samples
+      })
+      assert.equal(glare[0].background, glare[1].background, `${name}: glare repaints its gradient`)
+      assert.notEqual(glare[0].translate, glare[1].translate, `${name}: glare does not move`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],

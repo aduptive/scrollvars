@@ -37,15 +37,15 @@ const pagePath = join(root, 'demo', 'bench', 'index.html')
 const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
 
 const label = (e) =>
-  ({ 'scrollvars.html': 'scrollvars', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e
+  ({ 'scrollvars.html': 'ScrollVars (page outputs on)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e
 
 const main = results.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
 
 let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
-<code>npm i && npm run measure</code>): headless Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
+<code>npm i && npm run measure</code>): Chrome ${results.meta.chrome.replace('HeadlessChrome/', '')},
 median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle set through CDP, nominal` : ''}.
-Raw output: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+Measured ${results.meta.date}; package ${results.meta.version ?? "historical"}, commit ${results.meta.commit ?? "not recorded"}. Startup is separate; scroll intervals are never filtered. Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th></tr></thead>
   <tbody>
@@ -57,16 +57,15 @@ html += `  </tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
-selectors); vars written on the section invalidate it all. ScrollVars vs the batched GSAP
-build, 150 boxes, medians:</p>
+selectors). Compare document-wide writes, local writes and batched GSAP:
+150 boxes, medians:</p>
 <table>
-  <thead><tr><th>subtree size</th><th>ScrollVars recalc</th><th>gsap-batched recalc</th><th>ScrollVars script</th><th>gsap-batched script</th><th>sv heap</th><th>gsap heap</th></tr></thead>
+  <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
   <tbody>
 `
 for (const sc of deeps) {
-  const sv = sc.engines['scrollvars.html']
-  const gs = sc.engines['gsap-batched.html']
-  html += `    <tr><td>${sc.name.replace('deep-', '')} nodes/box</td><td class="n">${sv.recalcMs} ms</td><td class="n">${gs.recalcMs} ms</td><td class="n">${sv.scriptMs} ms</td><td class="n">${gs.scriptMs} ms</td><td class="n">${sv.heapMB} MB</td><td class="n">${gs.heapMB} MB</td></tr>\n`
+  for (const [engine, m] of Object.entries(sc.engines))
+    html += `    <tr><td>${sc.name.replace('deep-', '')} nodes/box</td><td>${label(engine)}</td><td class="n">${m.recalcMs} ms</td><td class="n">${m.scriptMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td></tr>\n`
 }
 html += `  </tbody>
 </table>`
@@ -78,7 +77,7 @@ if (existsSync(throttledPath)) {
   const main4 = th.scenarios.find((s) => s.name === 'main-900')
   if (main4) {
     html += `
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× CPU throttle set through CDP, nominal. The phone your client actually has)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
 <table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
@@ -92,6 +91,16 @@ if (existsSync(throttledPath)) {
   }
 }
 
+const galleries = results.scenarios.filter(s => s.name.startsWith('gallery-'))
+if (galleries.length) {
+  html += '<h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page, including gallery UI. These are workload checks, not competitor comparisons or device guarantees.</p><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody>'
+  for (const row of galleries) {
+    const m = Object.values(row.engines)[0]
+    html += `<tr><td>${row.name.slice(8)}</td><td>${m.scriptMs} ms</td><td>${m.recalcMs} ms</td><td>${m.taskMs} ms</td><td>${m.p95Ms} ms</td><td>${m.worstMs} ms</td><td>${m.framesOver25ms}</td></tr>`
+  }
+  html += '</tbody></table>'
+}
+
 const page = readFileSync(pagePath, 'utf8')
 const re = /<!-- measured:start -->[\s\S]*?<!-- measured:end -->/
 if (!re.test(page)) throw new Error('measured markers not found in bench/index.html')
@@ -100,9 +109,10 @@ console.log('bench tables regenerated from results/latest.json')
 
 // ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
 const sizes = measureSizes(root)
-const BUNDLES = { 'scrollvars.html': `${sizes.everything} KB`, 'gsap.html': `${GSAP_KB} KB`, 'gsap-batched.html': `${GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
-const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
-const md = ['| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
+const measuredCore = results.meta.coreGzipKB ?? sizes.everything
+const BUNDLES = { 'scrollvars.html': `${measuredCore} KB`, 'scrollvars-local.html': `${measuredCore} KB`, 'gsap.html': `${GSAP_KB} KB`, 'gsap-batched.html': `${GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
+const MD_LABEL = { 'scrollvars.html': 'ScrollVars (page outputs on)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
+const md = [`Measured ${results.meta.date}; package ${results.meta.version ?? 'historical'}, ${results.meta.runs} runs. Bundle and runtime measurements refer to this snapshot.`, '', '| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
   const sv = engine === 'scrollvars.html'
   md.push(`| ${MD_LABEL[engine]} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${sv ? `**${m.heapMB} MB**` : `${m.heapMB} MB`} |`)
@@ -126,16 +136,6 @@ const ratio = Math.round(GSAP_KB / parseFloat(sizes.everything))
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)
   writeFileSync(path, spliceOne(readFileSync(path, 'utf8'), /~\d+× less bundle/, `~${ratio}× less bundle`, `${file}: "less bundle" ratio sentence`))
-}
-// the bench page's own headline claim (ADU-194: "15× less JavaScript" had drifted
-// against the very table it sits above; both mentions are the same arithmetic)
-{
-  let bench = readFileSync(pagePath, 'utf8')
-  const h1Re = /Same workload, three engines\. Same frames, ~?\d+× less JavaScript/
-  bench = spliceOne(bench, h1Re, `Same workload, three engines. Same frames, ~${ratio}× less JavaScript`, 'demo/bench/index.html: h1 claim')
-  const claimRe = /the same frames for a ~\d+× smaller bundle/
-  bench = spliceOne(bench, claimRe, `the same frames for a ~${ratio}× smaller bundle`, 'demo/bench/index.html: bundle-ratio sentence')
-  writeFileSync(pagePath, bench)
 }
 console.log(`bench tables stamped (README, AGENTS, bench page; ScrollVars ${sizes.everything} KB gz, ~${ratio}× vs GSAP)`)
 

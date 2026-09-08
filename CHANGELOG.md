@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.0 (2026-09-08)
+
+- Add `setPageOutputs(false)` and `<ScrollVarsBoot pageOutputs={false} />` to stop unused document-wide progress/velocity writes. Local tracking keeps working; the existing default remains enabled for compatibility. Gallery pages opt out.
+- Fix nested sliders stealing drag/wheel gestures, settling from a stale slide index on release, and pin offsets becoming stale after observed container resizing.
+- Move the tilt glare with a translated fixed gradient instead of changing its painted gradient center.
+- Benchmark the same scroll path through a shared runner, separate startup from scroll CPU, preserve long frames, record individual runs and source hashes, and compare page outputs on/off plus six gallery sections. Synthetic CPU throttling is calibrated with fixed work and is not a physical-device result.
+- Verify deployment aliases against a unique deployment ID. Add Chromium/Firefox/WebKit regressions for the interaction fixes and correct performance claims and setup guidance.
+
 ## 1.14.2 (2026-09-07)
 
 - Fix TimelineScrub and StickySteps disabling their pin in bordered stages. Their inner layout now fills the stage content box with `min-height: 100%`, instead of exceeding it by the border width. Added scroll-behavior checks against the actual gallery pages; genuinely oversized content still returns to flow.

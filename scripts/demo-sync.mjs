@@ -168,7 +168,6 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
   const SWIPER_GZ_KB = 42 // Swiper 11's own gzip size, same figure README's slider paragraph carries
   const bundleRatio = Math.round(GSAP_KB / parseFloat(sizes.everything))
   const sliderRatio = Math.round(SWIPER_GZ_KB / parseFloat(sizes.slider))
-  const cpuRatio = (cpuTotalMs(framer) / cpuTotalMs(sv)).toFixed(1)
 
   html = between(html, 'No GSAP, no framework in the hot path. Driver: ', ' KB gzip.',
     sizes.driver,
@@ -181,7 +180,7 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
     'footer honesty note: core size bound')
 
   html = between(html, '<meta property="og:description" content="', '">',
-    `28 live scroll-animation patterns on a ${sizes.driver} KB driver. Same frames as the 46 KB engines. Measured: ~${cpuRatio}× less CPU than Framer Motion. View-source is the documentation.`,
+    `28 live scroll-animation patterns on a ${sizes.driver} KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.`,
     'og:description')
   html = between(html, '<meta name="twitter:description" content="', '">',
     `28 live scroll-animation patterns on a ${sizes.driver} KB driver, ~${bundleRatio}× smaller than gsap + ScrollTrigger. Run the benchmark yourself.`,

@@ -322,7 +322,10 @@ function makeNode(tag) {
     parentNode: null,
     childNodes: [],
     attributes: {},
-    style: { setProperty(name, value) { node.style[name] = value } },
+    style: {
+      setProperty(name, value) { node.style[name] = value },
+      removeProperty(name) { const value = node.style[name] ?? ''; delete node.style[name]; return value },
+    },
     classes: new Set(),
     // classList and the class attribute are two views of ONE token list in a
     // real element: a classList write updates the attribute, and writing the
@@ -1122,6 +1125,28 @@ test('react: ScrollVarsBoot renders the nonce on the pre-paint script tag', asyn
   const { ScrollVarsBoot } = await import('../dist/react/index.js')
   const html = renderToStaticMarkup(React.createElement(ScrollVarsBoot, { nonce: 'abc123' }))
   assert.match(html, /<script nonce="abc123"/)
+})
+
+test('react: changing Boot page outputs does not reconnect its scanner', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { ScrollVarsBoot } = await import('../dist/react/index.js')
+  const Original = global.MutationObserver
+  let disconnected = 0
+  global.MutationObserver = class extends Original {
+    disconnect() { disconnected++; super.disconnect() }
+  }
+  const root = createRoot(document.createElement('div'))
+  try {
+    await React.act(async () => root.render(React.createElement(ScrollVarsBoot, { pageOutputs:false })))
+    const baseline = disconnected
+    await React.act(async () => root.render(React.createElement(ScrollVarsBoot, { pageOutputs:true })))
+    assert.equal(disconnected, baseline, 'changing clocks must not release/retrack scanned content')
+  } finally {
+    await React.act(async () => root.unmount())
+    global.MutationObserver = Original
+  }
 })
 
 test('react: ScrollVarsBoot debug overlay never mounts if unmounted before the dynamic import resolves', async () => {

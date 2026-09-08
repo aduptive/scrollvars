@@ -16,7 +16,8 @@ import { join } from 'node:path'
  * demo-sync.mjs both divide by it instead of each carrying their own copy
  * (ADU-194, the bundle ratio drifted independently in three places).
  */
-export const GSAP_KB = 46.3
+// GSAP 3.15.0 + ScrollTrigger, CDN minified scripts, gzip level 6 / 1024.
+export const GSAP_KB = 45.2
 
 export const VARS = [
   ['`--sv-view`', '−1 → 0 → 1', 'Below the live band → inside it (flat at 0) → gone above'],
@@ -25,7 +26,7 @@ export const VARS = [
   ['`--sv-stage-width`', 'px', 'Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width'],
   ['`--sv-scene`', '0 → n−1', 'Scene index of a pinned section, eased and snapped'],
   ['`--sv-scenes`', 'n', 'Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)`'],
-  ['`--sv-page` / `--sv-v`', '0 → 1 / ±20 viewport-heights/s', 'On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event'],
+  ['`--sv-page` / `--sv-v`', '0 → 1 / ±20 viewport-heights/s', 'On `<html>` once anything is tracked (unless `setPageOutputs(false)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event'],
   ['`--mx` / `--my`', '−1 → 1', "Pointer offset from the element's center, clamped (pointer module)"],
   ['`.sv-live`', 'class', 'On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it'],
 ]

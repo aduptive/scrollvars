@@ -8,7 +8,7 @@ import { test } from 'node:test'
 const SURFACE = {
   core: [
     'clamp', 'easeOutCubic', 'mapRange', 'prefersReducedMotion', 'refresh',
-    'scan', 'scrollToScene', 'slider', 'snapProgress', 'split', 'splitParts',
+    'scan', 'scrollToScene', 'setPageOutputs', 'slider', 'snapProgress', 'split', 'splitParts',
     'toggles', 'track', 'trackPointer',
   ],
   react: [

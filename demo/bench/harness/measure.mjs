@@ -16,14 +16,19 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { measureSizes, GSAP_KB } from '../../../scripts/docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..') // demo/
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => (a.startsWith('--') ? a.slice(2).split('=') : [a, true]))
 )
-const RUNS = +args.runs || 3
-const THROTTLE = +args.throttle || 1
-const WHICH = (args.scenarios || 'main,deep').split(',')
+const RUNS = Number(args.runs ?? 3)
+const THROTTLE = Number(args.throttle ?? 1)
+const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -46,15 +51,18 @@ if (WHICH.includes('main'))
   SCENARIOS.push({
     name: 'main-900',
     params: 's=60&p=15',
-    engines: ['scrollvars.html', 'gsap.html', 'gsap-batched.html', 'framer.html'],
+    engines: ['scrollvars.html', 'scrollvars-local.html', 'gsap.html', 'gsap-batched.html', 'framer.html'],
   })
 if (WHICH.includes('deep'))
   for (const deep of [5, 20, 50])
     SCENARIOS.push({
       name: `deep-${deep}`,
       params: `s=30&p=5&deep=${deep}`,
-      engines: ['scrollvars.html', 'gsap-batched.html'],
+      engines: ['scrollvars.html', 'scrollvars-local.html', 'gsap-batched.html'],
     })
+if (WHICH.includes('gallery'))
+  for (const slug of ['hero-cinematic', 'timeline-scrub', 'sticky-steps', 'stats-countup', 'case-study-rail', 'editorial-manifesto'])
+    SCENARIOS.push({ name: `gallery-${slug}`, params: '', engines: [`../fx/${slug}.html`] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -77,52 +85,55 @@ const browser = await puppeteer.launch({
 })
 const chromeVersion = await browser.version()
 
-async function measureOnce(page_, params) {
+const metricKeys = { scriptMs: 'ScriptDuration', recalcMs: 'RecalcStyleDuration', layoutMs: 'LayoutDuration', taskMs: 'TaskDuration' }
+const delta = (end, start) => Object.fromEntries(Object.entries(metricKeys).map(([key, metric]) => [key, Math.round((end[metric] - start[metric]) * 1000)]))
+async function measureOnce(engine, params) {
   const context = await browser.createBrowserContext()
-  const page = await context.newPage()
-  const cdp = await page.createCDPSession()
-  await cdp.send('Performance.enable')
-  let calibration = 1
-  if (THROTTLE > 1) {
-    await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE })
-    // verify the throttle actually applies: a 100ms page-side spin should
-    // take ~100ms * THROTTLE of wall time
-    await page.goto('about:blank')
-    const wall0 = Date.now()
-    await page.evaluate(() => {
-      const t = performance.now()
-      while (performance.now() - t < 100);
-    })
-    calibration = (Date.now() - wall0) / 100
-  }
-  await page.goto(`${base}${page_}?${params}&force=1`, { waitUntil: 'load', timeout: 60000 })
-  const deadline = Date.now() + 120000
-  let payload = null
-  while (Date.now() < deadline) {
-    const title = await page.title()
-    if (title.startsWith('DONE ')) {
-      payload = JSON.parse(title.slice(5))
-      break
+  try {
+    const page = await context.newPage()
+    const cdp = await page.createCDPSession()
+    let calibration = null
+    if (THROTTLE > 1) {
+      // Fixed work, consumed result: a slower CPU must take longer, not do less work.
+      await page.goto('about:blank')
+      const work = () => { const start = performance.now(); let n = 1; for (let i = 0; i < 20000000; i++) n = Math.imul(n ^ i, 1664525); window.calibrationResult = n; return performance.now() - start }
+      await page.evaluate(work) // JIT warm-up
+      const normal = await page.evaluate(work)
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE })
+      const slowed = await page.evaluate(work)
+      calibration = { normalMs: normal, slowedMs: slowed, ratio: slowed / normal }
     }
-    await new Promise((r) => setTimeout(r, 250))
-  }
-  if (!payload) throw new Error(`timeout waiting for DONE on ${page_}?${params}`)
-  const { metrics } = await cdp.send('Performance.getMetrics')
-  const m = Object.fromEntries(metrics.map(({ name, value }) => [name, value]))
-  await context.close()
-  return {
-    ...payload,
-    calibration: +calibration.toFixed(2),
-    scriptMs: Math.round(m.ScriptDuration * 1000),
-    recalcMs: Math.round(m.RecalcStyleDuration * 1000),
-    layoutMs: Math.round(m.LayoutDuration * 1000),
-    taskMs: Math.round(m.TaskDuration * 1000),
-    heapMB: +(m.JSHeapUsedSize / 1048576).toFixed(1),
-  }
+    await cdp.send('Performance.enable')
+    const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]))
+    const initial = await metrics()
+    const marks = {}
+    await page.exposeFunction('__benchMark', async name => { marks[name] = await metrics() })
+    const local = engine === 'scrollvars-local.html'
+    await page.goto(`${base}${local ? 'scrollvars.html' : engine}?${params}&harness=1${local ? '&local=1' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    if (engine.startsWith('../fx/')) {
+      await page.addScriptTag({ url: `${base}runner.js` })
+      await page.evaluate(label => runBench(label), engine)
+    }
+    await page.waitForFunction(() => typeof window.__benchStart === 'function')
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    const payload = await page.evaluate(() => window.__benchStart())
+    return { ...payload, calibration, startup: delta(marks.start, initial), ...delta(marks.end, marks.start), heapMB: +(marks.end.JSHeapUsedSize / 1048576).toFixed(1) }
+  } finally { await context.close() }
 }
 
 const median = (xs) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)]
-const results = { meta: { date: new Date().toISOString(), chrome: chromeVersion, runs: RUNS, throttle: THROTTLE, host: process.platform }, scenarios: [] }
+const repo = join(root, '..')
+const hash = path => createHash('sha256').update(readFileSync(join(root, path))).digest('hex')
+const results = { meta: {
+  date: new Date().toISOString(), chrome: chromeVersion, runs: RUNS, throttle: THROTTLE, host: process.platform,
+  version: JSON.parse(readFileSync(join(repo, 'package.json'))).version,
+  commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
+  dirty: !!execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim(),
+  files: Object.fromEntries(['bench/runner.js', 'bench/scrollvars.html', 'bench/gsap.html', 'bench/gsap-batched.html', 'bench/framer.html', 'bench/harness/measure.mjs', 'fx/sv.js', 'fx/sv.css', ...SCENARIOS.filter(s => s.name.startsWith('gallery-')).map(s => s.engines[0].slice(3))].map(path => [path, hash(path)])),
+  coreGzipKB: measureSizes(repo).everything,
+  competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
+  metricWindow: 'scroll only; startup recorded separately; no long frames filtered',
+}, scenarios: [] }
 
 for (const sc of SCENARIOS) {
   console.log(`\n== ${sc.name} (${sc.params}) · ${RUNS} runs each ==`)
@@ -146,7 +157,10 @@ for (const sc of SCENARIOS) {
       heapMB: median(runs.map((r) => r.heapMB)),
       fps: median(runs.map((r) => r.fps)),
       p95Ms: median(runs.map((r) => r.p95Ms)),
+      worstMs: median(runs.map(r => r.worstMs)),
+      framesOver25ms: median(runs.map(r => r.framesOver25ms)),
       runs: runs.length,
+      samples: runs,
     }
   }
   results.scenarios.push({ name: sc.name, params: sc.params, engines })
@@ -157,7 +171,7 @@ server.close()
 
 const outDir = join(root, 'bench', 'results')
 mkdirSync(outDir, { recursive: true })
-const outName = THROTTLE > 1 ? `throttled-${THROTTLE}x.json` : 'latest.json'
+const outName = args.out || (THROTTLE > 1 ? `throttled-${THROTTLE}x.json` : 'latest.json')
 writeFileSync(join(outDir, outName), JSON.stringify(results, null, 2))
 console.log(`\nwritten to bench/results/${outName}`)
 for (const sc of results.scenarios) {

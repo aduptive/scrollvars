@@ -459,7 +459,17 @@ export function slider(
     container.classList.remove('sv-dragging')
     window.addEventListener('click', suppressClick, true)
     setTimeout(() => window.removeEventListener('click', suppressClick, true), 0)
-    goTo(active) // release: glide softly onto the nearest slide
+    // A final pointermove and pointerup can precede the scroll measurement.
+    // Resolve the destination from today's geometry, not the last frame.
+    const center = pos() + viewport() / 2
+    const list = slides()
+    let nearest = 0
+    let distance = Infinity
+    list.forEach((slide, i) => {
+      const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center)
+      if (d < distance) { distance = d; nearest = i }
+    })
+    goTo(nearest)
   }
   // native image/link drag-and-drop would hijack the gesture mid-press
   const onDragStart = (event: Event) => {
@@ -467,6 +477,8 @@ export function slider(
   }
   container.addEventListener('dragstart', onDragStart)
   const onDown = (event: PointerEvent) => {
+    const owner = (event.target as Element | null)?.closest?.('.sv-slider')
+    if (owner && owner !== container) return
     const wasGliding = anim !== 0
     const wheelPending = clearWheel() // the press owns the position now
     stopGlide() // the user takes over
@@ -502,6 +514,8 @@ export function slider(
   // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
   // instances authored with snap none (scroll-driven ones own their position).
   const onWheel = (event: WheelEvent) => {
+    const owner = (event.target as Element | null)?.closest?.('.sv-slider')
+    if (owner && owner !== container) return
     if (snapIsNone) return
     // only react when the gesture's dominant axis is OUR axis. Otherwise
     // this is the page scrolling past the carousel (trackpad gestures are

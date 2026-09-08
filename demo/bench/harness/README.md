@@ -34,7 +34,7 @@ page in headless Chrome over CDP, waits for the page's own DONE payload
 npm i
 npm run measure                    # main table + deep-DOM curve, 3 runs each
 node measure.mjs --runs=5          # more repetitions
-node measure.mjs --throttle=4      # 4x CPU throttle (calibration verified)
+node measure.mjs --throttle=4      # 4x synthetic CPU throttle (fixed-work ratio recorded)
 CHROME=/path/to/chrome node measure.mjs
 ```
 
@@ -44,5 +44,12 @@ framer-motion) and `deep-{5,20,50}` (a realistic subtree under every box:
 the style-recalc curve as DOM depth grows; ScrollVars vs batched GSAP).
 
 Output: median-of-N tables on stdout + `../results/latest.json`. Engine
-order rotates every repetition; the throttle is verified with a spin-loop
-calibration and reported in the JSON.
+order rotates every repetition. Startup and scroll costs are separate. Raw
+runs, source hashes, version, frame stalls and the fixed-work throttle ratio
+are recorded in JSON. No frame interval is discarded for being slow.
+`scrollvars-local.html` is the same page with `setPageOutputs(false)`; it is
+a variant, not a second implementation. Run without competing browser/tests
+or heavy workloads. Use `--out=name.json` for experiments. Metrics are not
+a guarantee of physical-device performance.
+
+The GSAP pages pin 3.15.0 (both scripts); React and Framer URLs also pin exact versions. GSAP + ScrollTrigger measure 45.2 KB gzip (level 6, bytes/1024), summed over their two CDN scripts.

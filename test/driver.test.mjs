@@ -420,6 +420,28 @@ test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', asyn
   untrack()
 })
 
+test('driver: global outputs can be disabled, including the pending velocity reset', async () => {
+  const vars = {}
+  global.document = { documentElement: {
+    classList: { add() {} }, scrollHeight: 3000,
+    style: { setProperty: (k,v) => vars[k] = v, removeProperty: k => delete vars[k] },
+  } }
+  const { track, setPageOutputs } = await import('../dist/core/driver.js?optionalpage')
+  setPageOutputs(false)
+  const el = makeElement(400)
+  const stop = track(el, { travel:true })
+  pump()
+  assert.deepEqual(vars, {})
+  assert.ok('--sv-t' in el.vars, 'local outputs are unaffected')
+  setPageOutputs(true)
+  pump()
+  assert.ok('--sv-page' in vars)
+  setPageOutputs(false)
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.deepEqual(vars, {}, 'the old velocity timer must not write after disabling')
+  stop()
+})
+
 test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', async () => {
   global.getComputedStyle = () => ({ getPropertyValue: (n) => (n === '--sv-pin-offset' ? '64px' : '') })
   const { track } = await import('../dist/core/driver.js?pinoffset')

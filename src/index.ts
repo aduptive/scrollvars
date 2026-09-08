@@ -3,6 +3,7 @@ export {
   refresh,
   scrollToScene,
   prefersReducedMotion,
+  setPageOutputs,
 } from './core/driver.js'
 export type { TrackOptions } from './core/driver.js'
 export { clamp, snapProgress, easeOutCubic, mapRange } from './core/math.js'
