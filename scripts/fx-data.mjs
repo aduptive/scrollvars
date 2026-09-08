@@ -172,7 +172,7 @@ export const EFFECTS = [
   {
     slug: 'horizontal-rail',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.14.0', tailwind: true },
+    requires: { styles: ['pin'], min: '1.14.1', tailwind: true },
     category: 'Pinned scenes',
     title: 'Horizontal rail',
     tagline: 'Vertical scroll travels a horizontal track through a pinned stage.',
@@ -194,10 +194,10 @@ export const EFFECTS = [
 
 /* the preset (styles/pin.css), plus the stage layout, which is yours: */
 .rail-stage { display: flex; align-items: center; }
-/* --sv-rail-start: the stage width when it is narrower than the viewport */
+/* --sv-stage-width is measured by the driver; --sv-rail-start overrides it */
 .sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
-  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
-                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, var(--sv-stage-width, 100vw)) - 100%, 0px)) 0; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {

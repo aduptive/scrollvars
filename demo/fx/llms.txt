@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 7.1 KB gzip as ESM; the fx/sv.js IIFE on these pages is 7.3 KB). Each effect below includes when to
+> (npm i scrollvars, 7.1 KB gzip as ESM; the fx/sv.js IIFE on these pages is 7.4 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -211,10 +211,10 @@ Styles: scrollvars/styles/pin.css
 
 /* the preset (styles/pin.css), plus the stage layout, which is yours: */
 .rail-stage { display: flex; align-items: center; }
-/* --sv-rail-start: the stage width when it is narrower than the viewport */
+/* --sv-stage-width is measured by the driver; --sv-rail-start overrides it */
 .sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
-  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
-                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, var(--sv-stage-width, 100vw)) - 100%, 0px)) 0; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {

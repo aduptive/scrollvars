@@ -225,8 +225,8 @@ html:not(.sv-on) .sv-spread > * {
    right-edge aligned (min() keeps it moving even when the track fits). */
 .sv .sv-rail {
   width: max-content;
-  /* --sv-rail-start: the stage width when it is narrower than the viewport */
-  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) + var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0;
+  /* --sv-stage-width is measured by the driver; --sv-rail-start overrides it */
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) + var(--sv-pin, 0) * min(var(--sv-rail-start, var(--sv-stage-width, 100vw)) - 100%, 0px)) 0;
 }
 
 /* Deck: pinned card pile: each child flies away across its own slice of the

@@ -54,6 +54,7 @@ interface Entry {
   /** inline height/position the pin helper replaced, restored on untrack */
   authored?: { height: string; position: string }
   written: Record<string, string>
+  stage?: HTMLElement
   fit?: HTMLElement
   flow?: boolean
 }
@@ -176,7 +177,7 @@ function update() {
   const docEl = document.documentElement
   const pageSpan = Math.max((docEl.scrollHeight || 0) - vh, 1)
   const rootRects = new Map<HTMLElement, DOMRect>()
-  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean }> = []
+  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
   entries.forEach((entry) => {
     if (!entry.near && !entry.opts.root && !jumped && !force) return
     const rect = entry.el.getBoundingClientRect()
@@ -198,13 +199,13 @@ function update() {
     }
     const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight >
       (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
-    frames.push({ entry, geo, overflow })
+    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth })
   })
   // WRITE phase. `frames` is a snapshot taken before any callback ran: an
   // onLive/onScene fired earlier in this same loop can untrack (or replace)
   // a later entry, and a released entry must not get one more write and one
   // more callback after its untrack returned.
-  for (const { entry, geo, overflow } of frames) {
+  for (const { entry, geo, overflow, stageWidth } of frames) {
     if (entries.get(entry.el) !== entry) continue
     if (entry.fit && entry.flow === undefined && !overflow) {
       entry.flow = false
@@ -221,6 +222,7 @@ function update() {
       if (entries.get(entry.el) !== entry) continue
       schedule() // geometry changed; read the flow layout on the next frame
     }
+    if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
     apply(entry, geo)
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
@@ -329,8 +331,8 @@ function computeScene(pin: number, count: number, snap: number | false): number 
   return base + easeOutCubic(fraction)
 }
 
-function setVar(entry: Entry, name: string, value: number) {
-  const serialized = value.toFixed(4)
+function setVar(entry: Entry, name: string, value: number, unit = '') {
+  const serialized = value.toFixed(4) + unit
   if (entry.written[name] === serialized) return
   entry.written[name] = serialized
   entry.el.style.setProperty(name, serialized)
@@ -454,7 +456,7 @@ function apply(entry: Entry, geo: Geometry) {
  * must never unobserve a target another live entry still depends on. */
 function stillNeeded(target: HTMLElement): boolean {
   for (const other of entries.values()) {
-    if (other.el === target || other.opts.root === target || other.fit === target) return true
+    if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target) return true
   }
   return false
 }
@@ -534,6 +536,7 @@ function releaseEntry(entry: Entry) {
   unobserveIfUnneeded(el)
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
   if (entry.fit) unobserveIfUnneeded(entry.fit)
+  if (entry.stage) unobserveIfUnneeded(entry.stage)
   el.removeAttribute?.('data-sv-flow')
   restorePinHelper(entry)
   el.classList.toggle('sv-live', false)
@@ -643,6 +646,9 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     scene: -1,
     pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
     written: {},
+    stage: opts.pin || opts.scenes || opts.onPin
+      ? el.querySelector?.<HTMLElement>('.sv-stage') ?? undefined
+      : undefined,
     fit: opts.pin || opts.scenes || opts.onPin
       ? el.querySelector?.<HTMLElement>('.sv-stage > [data-sv-fit]') ?? undefined
       : undefined,
@@ -665,6 +671,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   pageOutputs = true
   resizeObserver?.observe(el)
   if (entry.fit) resizeObserver?.observe(entry.fit)
+  if (entry.stage) resizeObserver?.observe(entry.stage)
   // a root scrolls its own content; watch it too so a resize of the scroller
   // itself (not just the tracked element) reschedules a measure. A root can
   // be shared by several entries (or be a standalone tracked element too),

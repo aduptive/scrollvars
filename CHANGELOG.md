@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.1 (2026-09-07)
+
+- Fix horizontal rails clipping their last cards inside narrow stages, including the fx gallery. The driver measures `--sv-stage-width` in its read phase and observes stage resizing; the preset uses this width by default while preserving `--sv-rail-start` overrides.
+
 ## 1.14.0 (2026-09-07)
 
 ### Review fixes and gallery sections

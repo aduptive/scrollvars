@@ -22,6 +22,7 @@ export const VARS = [
   ['`--sv-view`', '−1 → 0 → 1', 'Below the live band → inside it (flat at 0) → gone above'],
   ['`--sv-t`', '0 → 1', 'Travel through the viewport (same semantics as native `view()`)'],
   ['`--sv-pin`', '0 → 1', 'Progress across a pinned (sticky) stretch: curtains, rails, scrubbing'],
+  ['`--sv-stage-width`', 'px', 'Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width'],
   ['`--sv-scene`', '0 → n−1', 'Scene index of a pinned section, eased and snapped'],
   ['`--sv-scenes`', 'n', 'Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)`'],
   ['`--sv-page` / `--sv-v`', '0 → 1 / ±20 viewport-heights/s', 'On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event'],

@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.14.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.14.1</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -82,6 +82,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-view</code></td><td>−1 → 0 → 1</td><td>Below the live band → inside it (flat at 0) → gone above</td></tr>
 <tr><td><code>--sv-t</code></td><td>0 → 1</td><td>Travel through the viewport (same semantics as native <code>view()</code>)</td></tr>
 <tr><td><code>--sv-pin</code></td><td>0 → 1</td><td>Progress across a pinned (sticky) stretch: curtains, rails, scrubbing</td></tr>
+<tr><td><code>--sv-stage-width</code></td><td>px</td><td>Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
 <tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
@@ -292,6 +293,12 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.14.1 (2026-09-07)</h3>
+
+<ul>
+<li>Fix horizontal rails clipping their last cards inside narrow stages, including the fx gallery. The driver measures <code>--sv-stage-width</code> in its read phase and observes stage resizing; the preset uses this width by default while preserving <code>--sv-rail-start</code> overrides.</li>
+</ul>
 
 <h3>1.14.0 (2026-09-07)</h3>
 

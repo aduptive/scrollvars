@@ -110,6 +110,29 @@ export async function reviewGate({ browser, check }) {
       return { active, released }
     })
     check('review: declarative pointer includes the scan root and stops cleanly', Number(pointer.active) === 1 && Number(pointer.released) === 0, JSON.stringify(pointer))
+    await page.evaluate(() => {
+      const root = document.createElement('section')
+      root.id = 'narrow-rail'
+      root.innerHTML = '<div class="sv-stage" style="width:55vw;display:flex;align-items:center;border:1px solid"><div class="sv-rail" style="display:flex;gap:14px;padding:0 8vw">' + Array.from({length:5}, (_, i) => '<div style="flex:0 0 150px;height:100px">Card '+i+'</div>').join('') + '</div></div>'
+      document.body.append(root)
+      window.stopRail = SV.track(root, { pin: '300vh' })
+    })
+    for (const width of [1600, 900]) {
+      await page.setViewport({ width, height: 800 })
+      await page.evaluate(async () => {
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const root = document.getElementById('narrow-rail')
+        scrollTo(0, scrollY + root.getBoundingClientRect().bottom - innerHeight)
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      })
+      const end = await page.evaluate(() => {
+        const root = document.getElementById('narrow-rail'), stage = root.querySelector('.sv-stage'), rail = root.querySelector('.sv-rail')
+        return { pin:Number(root.style.getPropertyValue('--sv-pin')), measured:parseFloat(root.style.getPropertyValue('--sv-stage-width')), actual:stage.clientWidth, last:rail.lastElementChild.getBoundingClientRect().right, edge:stage.getBoundingClientRect().left + stage.clientLeft + stage.clientWidth }
+      })
+      check('rail: last card is completely visible at the end, viewport '+width, end.pin > .999 && end.measured === end.actual && end.last <= end.edge + 1, JSON.stringify(end))
+    }
+    await page.evaluate(() => window.stopRail())
+    check('rail: untracking releases its measured width', await page.$eval('#narrow-rail', el => el.style.getPropertyValue('--sv-stage-width') === ''))
     check('review: mounted components raised no browser exceptions', errors.length === 0, errors.join('\n'))
   } finally {
     await page.close()

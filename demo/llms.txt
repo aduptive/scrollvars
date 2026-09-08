@@ -40,6 +40,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
 | `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
+| `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
 | `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
@@ -124,9 +125,9 @@ The container is N viewports tall by default (one per scene); a string
 `pin` (`pin="320vh"`) overrides that and wins over `height` too, matching
 `<Track pin>`. Content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
-`sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-rail-start` = the stage width when it is not the viewport: enters from offscreen right and still moves
+`sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides it: enters from offscreen right and still moves
 when the track fits the viewport:
-`translate: calc((1 - var(--sv-pin)) * 100vw + var(--sv-pin) * min(100vw - 100%, 0px)) 0`).
+`translate: calc((1 - var(--sv-pin)) * var(--sv-stage-width, 100vw) + var(--sv-pin) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0`).
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,

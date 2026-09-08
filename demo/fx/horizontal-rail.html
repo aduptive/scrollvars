@@ -178,10 +178,10 @@
 
 /* the preset (styles/pin.css), plus the stage layout, which is yours: */
 .rail-stage { display: flex; align-items: center; }
-/* --sv-rail-start: the stage width when it is narrower than the viewport */
+/* --sv-stage-width is measured by the driver; --sv-rail-start overrides it */
 .sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
-  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, 100vw) +
-                  var(--sv-pin, 0) * min(var(--sv-rail-start, 100vw) - 100%, 0px)) 0; }
+  translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) +
+                  var(--sv-pin, 0) * min(var(--sv-rail-start, var(--sv-stage-width, 100vw)) - 100%, 0px)) 0; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {
@@ -193,12 +193,12 @@
   &lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 7.1 KB gzip as ESM (this page's fx/sv.js IIFE: 7.4 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.14.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.14.1. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

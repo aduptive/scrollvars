@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 2.9 KB driver. Same frames as the 46 KB engines. Measured: ~2.6× less CPU than Framer Motion. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 3.0 KB driver. Same frames as the 46 KB engines. Measured: ~2.6× less CPU than Framer Motion. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 2.9 KB driver, ~7× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.0 KB driver, ~7× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1720,7 +1720,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 2.9 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.0 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2757,8 +2757,8 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>GSAP + ScrollTrigger</td><td class="range">117 KB / 46.3 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.3 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.2 KB / 2.9 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.4 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.4 KB / 3.0 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2915,7 +2915,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 2.9 KB gzip · full core 7.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.14.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.14.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3092,9 +3092,9 @@ var SV = (() => {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
       }
       const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
-      frames.push({ entry, geo, overflow });
+      frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth });
     });
-    for (const { entry, geo, overflow } of frames) {
+    for (const { entry, geo, overflow, stageWidth } of frames) {
       if (entries.get(entry.el) !== entry)
         continue;
       if (entry.fit && entry.flow === void 0 && !overflow) {
@@ -3112,6 +3112,8 @@ var SV = (() => {
           continue;
         schedule();
       }
+      if (stageWidth !== void 0)
+        setVar(entry, "--sv-stage-width", stageWidth, "px");
       apply(entry, geo);
     }
     const dt = now - lastT;
@@ -3184,8 +3186,8 @@ var SV = (() => {
     }
     return base + easeOutCubic(fraction);
   }
-  function setVar(entry, name, value) {
-    const serialized = value.toFixed(4);
+  function setVar(entry, name, value, unit = "") {
+    const serialized = value.toFixed(4) + unit;
     if (entry.written[name] === serialized)
       return;
     entry.written[name] = serialized;
@@ -3262,7 +3264,7 @@ var SV = (() => {
   }
   function stillNeeded(target) {
     for (const other of entries.values()) {
-      if (other.el === target || other.opts.root === target || other.fit === target)
+      if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target)
         return true;
     }
     return false;
@@ -3309,6 +3311,8 @@ var SV = (() => {
       unobserveIfUnneeded(entry.opts.root);
     if (entry.fit)
       unobserveIfUnneeded(entry.fit);
+    if (entry.stage)
+      unobserveIfUnneeded(entry.stage);
     el.removeAttribute?.("data-sv-flow");
     restorePinHelper(entry);
     el.classList.toggle("sv-live", false);
@@ -3351,6 +3355,7 @@ var SV = (() => {
       scene: -1,
       pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
       written: {},
+      stage: opts.pin || opts.scenes || opts.onPin ? el.querySelector?.(".sv-stage") ?? void 0 : void 0,
       fit: opts.pin || opts.scenes || opts.onPin ? el.querySelector?.(".sv-stage > [data-sv-fit]") ?? void 0 : void 0
     };
     entries.set(el, entry);
@@ -3367,6 +3372,8 @@ var SV = (() => {
     resizeObserver?.observe(el);
     if (entry.fit)
       resizeObserver?.observe(entry.fit);
+    if (entry.stage)
+      resizeObserver?.observe(entry.stage);
     if (opts.root)
       resizeObserver?.observe(opts.root);
     if (!opts.root)

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 2.9 KB, full core incl. the slider 7.1 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.1 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.4 KB on the wire.
 
 ## Why
 
@@ -105,17 +105,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 2.9 KB |
-| `track` + `scan` (zero-wrapper mode) | 4.2 KB |
+| `track` (the driver) | 3.0 KB |
+| `track` + `scan` (zero-wrapper mode) | 4.3 KB |
 | `slider` | 2.3 KB |
 | `trackPointer` | 0.5 KB |
 | `mountEffect` (canvas) | 1.6 KB |
 | everything in `scrollvars` (the core entry) | 7.1 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 12.8 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 12.9 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~5.3 KB gzipped, total.**
+**~5.4 KB gzipped, total.**
 
 ## Mental model
 
@@ -127,6 +127,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
 | `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
+| `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
 | `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
