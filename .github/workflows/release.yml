@@ -25,6 +25,8 @@ jobs:
         run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts demo/index.html docs/integration.md
       - run: npm run test:e2e            # progressive-enhancement invariants
         env: { CHROME: /usr/bin/google-chrome }
+      - run: npx --prefix demo/bench/harness playwright install --with-deps chromium firefox webkit
+      - run: npm run test:browsers
       - name: CHANGELOG has an entry for this version
         run: grep -q "^## $(node -p "require('./package.json').version") " CHANGELOG.md
       - name: tag matches package.json version

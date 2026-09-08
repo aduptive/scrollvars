@@ -248,7 +248,7 @@ ${sidebar(fx.slug)}
   <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>
   <div class="tabs">
     ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button class="on" data-tab="react">Complete component · CLI source</button>' : `<button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">CSS</button>
+    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
     <button data-tab="react">React</button>`}
   </div>
   <div class="code">
