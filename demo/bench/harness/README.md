@@ -937,3 +937,14 @@ does not establish an improvement over direct-with-clock on plain boxes.
 This supports selective avoidance of inherited outputs on large subtrees,
 not a universal new renderer API. Keep the existing callbacks as the opt-in
 mechanism pending a separate concrete effect gate.
+
+Next independent hypothesis: the main fixture animates individual `translate`
+but hints `will-change: transform, opacity`, while the competitor uses a
+transform shorthand. `--scenarios=main-style-css` compares the unchanged CSS,
+the matching `will-change: translate, opacity` hint, and a CSS-only
+`transform: translate3d(...)` formula. All retain `travel:true`, the same
+variables/values/appearance, globals off and original DOM. The `--css` fast
+gate checks geometry, opacity, clocks, reverse and resize in all engines.
+Screen two runs on main-900 and deep-50. Only consider a longer confirmation
+if both show at least 15% lower task time without worse frame delivery;
+do not assume a compositing hint is a fix without measurement.

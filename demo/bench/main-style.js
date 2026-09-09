@@ -5,6 +5,13 @@ window.mountMainStyleExperiment = function (mode) {
   const native = mode.startsWith('waapi')
   const animations = new Map()
   let stylesheet
+  if (mode.startsWith('hint') || mode.startsWith('transform')) {
+    stylesheet = document.createElement('style')
+    stylesheet.textContent = mode.startsWith('hint')
+      ? '.box { will-change: translate, opacity; }'
+      : '.box { translate: none; transform: translate3d(0, calc((0.5 - var(--sv-t, 0.5)) * var(--speed)), 0); }'
+    document.head.append(stylesheet)
+  }
   if (mode === 'typed') {
     for (const name of ['--sv-page', '--sv-v'])
       CSS.registerProperty({ name, syntax: '<number>', inherits: true, initialValue: '0' })
@@ -76,7 +83,7 @@ window.mountMainStyleExperiment = function (mode) {
         throw Error(`${mode}: global clocks must stay disabled`)
       for (const box of sections.get(section)) {
         const css = getComputedStyle(box.el)
-        const y = parseFloat(css.translate.split(' ')[1])
+        const y = mode.startsWith('transform') ? new DOMMatrixReadOnly(css.transform).m42 : parseFloat(css.translate.split(' ')[1])
         if (Math.abs(y - (0.5 - t) * box.speed) > .02 || Math.abs(+css.opacity - (0.3 + t * .7)) > .0001)
           throw Error(`${mode}: visual mismatch at ${p}: ${css.translate}/${css.opacity}`)
       }

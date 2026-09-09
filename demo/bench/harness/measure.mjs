@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm', 'main-style-waapi', 'main-style-callback'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm,main-style-waapi,main-style-callback')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm', 'main-style-waapi', 'main-style-callback', 'main-style-css'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm,main-style-waapi,main-style-callback,main-style-css')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -47,6 +47,9 @@ await new Promise((r) => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}/bench/`
 
 const SCENARIOS = []
+if (WHICH.includes('main-style-css'))
+  for (const [name, params] of [['900', 's=60&p=15'], ['deep-50', 's=30&p=5&deep=50']])
+    SCENARIOS.push({ name:`main-style-css-${name}`, params, balanced:true, engines:['style-baseline-off.html', 'style-hint-off.html', 'style-transform-off.html'] })
 if (WHICH.includes('main-style-callback'))
   for (const [name, params] of [['900', 's=60&p=15'], ['deep-20', 's=30&p=5&deep=20'], ['deep-50', 's=30&p=5&deep=50']])
     SCENARIOS.push({ name:`main-style-callback-${name}`, params, balanced:true, engines:['style-baseline-off.html', 'style-direct-clocks-off.html', 'style-direct-off.html'] })

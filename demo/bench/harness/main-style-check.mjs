@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { chromium, firefox, webkit } from 'playwright'
 
 const callbackOnly = process.argv.includes('--callback')
-const modes = callbackOnly ? ['baseline-off', 'direct-clocks-off', 'direct-off'] : ['baseline', 'direct-clocks', 'direct-clocks-off', 'visibility', 'waapi', 'waapi-off']
-const profiles = callbackOnly ? ['s=60&p=15', 's=30&p=5&deep=50'] : ['s=60&p=15']
+const cssOnly = process.argv.includes('--css')
+const modes = cssOnly ? ['baseline-off', 'hint-off', 'transform-off'] : callbackOnly ? ['baseline-off', 'direct-clocks-off', 'direct-off'] : ['baseline', 'direct-clocks', 'direct-clocks-off', 'visibility', 'waapi', 'waapi-off']
+const profiles = callbackOnly || cssOnly ? ['s=60&p=15', 's=30&p=5&deep=50'] : ['s=60&p=15']
 
 for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
   const browser = await engine.launch()
