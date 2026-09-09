@@ -296,8 +296,14 @@ export function slider(
     if (!raf && !destroyed) raf = requestAnimationFrame(measure)
   }
 
+  // Geometry changes can invalidate an in-flight destination. Reuse goTo's
+  // fresh bounds only on observer delivery, not on every animation frame.
+  const onLayout = () => {
+    if (anim) goTo(target)
+    schedule()
+  }
   container.addEventListener('scroll', schedule, { passive: true })
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(onLayout) : null
   ro?.observe(container)
   const watchSlides = () => {
     ro?.disconnect()
@@ -310,7 +316,7 @@ export function slider(
     typeof MutationObserver === 'function'
       ? new MutationObserver(() => {
           watchSlides()
-          schedule()
+          onLayout()
         })
       : null
   mo?.observe(container, { childList: true })
@@ -385,7 +391,12 @@ export function slider(
     const all = slides()
     const clamped = Math.max(0, Math.min(index, all.length - 1))
     const slide = all[clamped]
-    if (!slide) return
+    if (!slide) {
+      stopGlide()
+      resumeSnap()
+      target = -1
+      return
+    }
     // Edge slides may not center within the scroll range. Chasing an
     // unreachable target wastes frames after native scrolling has stopped.
     const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()))

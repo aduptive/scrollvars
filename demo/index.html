@@ -2905,7 +2905,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.2 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3970,8 +3970,13 @@ var SV = (() => {
       if (!raf2 && !destroyed)
         raf2 = requestAnimationFrame(measure);
     };
+    const onLayout = () => {
+      if (anim)
+        goTo(target);
+      schedule2();
+    };
     container.addEventListener("scroll", schedule2, { passive: true });
-    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(schedule2) : null;
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(onLayout) : null;
     ro?.observe(container);
     const watchSlides = () => {
       ro?.disconnect();
@@ -3981,7 +3986,7 @@ var SV = (() => {
     watchSlides();
     const mo = typeof MutationObserver === "function" ? new MutationObserver(() => {
       watchSlides();
-      schedule2();
+      onLayout();
     }) : null;
     mo?.observe(container, { childList: true });
     measure();
@@ -4039,8 +4044,12 @@ var SV = (() => {
       const all = slides();
       const clamped = Math.max(0, Math.min(index, all.length - 1));
       const slide = all[clamped];
-      if (!slide)
+      if (!slide) {
+        stopGlide();
+        resumeSnap();
+        target = -1;
         return;
+      }
       const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
       if (smooth) {
         target = clamped;
@@ -5771,8 +5780,15 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         if (!raf && !destroyed)
             raf = requestAnimationFrame(measure);
     };
+    // Geometry changes can invalidate an in-flight destination. Reuse goTo's
+    // fresh bounds only on observer delivery, not on every animation frame.
+    const onLayout = () => {
+        if (anim)
+            goTo(target);
+        schedule();
+    };
     container.addEventListener('scroll', schedule, { passive: true });
-    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(onLayout) : null;
     ro?.observe(container);
     const watchSlides = () => {
         ro?.disconnect();
@@ -5784,7 +5800,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     const mo = typeof MutationObserver === 'function'
         ? new MutationObserver(() => {
             watchSlides();
-            schedule();
+            onLayout();
         })
         : null;
     mo?.observe(container, { childList: true });
@@ -5859,8 +5875,12 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         const all = slides();
         const clamped = Math.max(0, Math.min(index, all.length - 1));
         const slide = all[clamped];
-        if (!slide)
+        if (!slide) {
+            stopGlide();
+            resumeSnap();
+            target = -1;
             return;
+        }
         // Edge slides may not center within the scroll range. Chasing an
         // unreachable target wastes frames after native scrolling has stopped.
         const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));

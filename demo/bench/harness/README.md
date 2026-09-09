@@ -342,3 +342,14 @@ out-of-range writes and verify completion at both edges in LTR, RTL and
 vertical rails. A fitting rail is covered by a unit check that requires zero
 animation frames. This removes observed useless writes; no new aggregate
 CPU percentage is claimed for the slider fix.
+
+
+The follow-up resize/removal reproduction started a 600ms glide toward
+700px, then reduced the range to 300px after six frames. Chromium attempted
+37 additional out-of-range writes; Firefox and WebKit attempted 36. The
+existing ResizeObserver and child-list MutationObserver now retarget an
+active glide through `goTo`; an empty rail stops and restores snap. There
+are no new per-frame geometry reads or long-lived position caches. Checks
+allow observer delivery, then require zero subsequent out-of-range writes
+and a stopped final state for resize, removed destination and empty content.
+They pass in all three engines, alongside the earlier edge/idle checks.

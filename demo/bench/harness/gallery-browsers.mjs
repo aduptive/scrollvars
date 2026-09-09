@@ -109,6 +109,41 @@ try {
         assert.deepEqual(result.reported, [false, false], `${name}: ${result.mode} final callback still reports gliding`)
       }
       console.log(`ok ${name}: slider edge glides stay in range and report completion in LTR/RTL/vertical`)
+      const changingGlides = await page.evaluate(async () => {
+        const results = []
+        for (const change of ['resize', 'remove', 'empty']) {
+          document.body.innerHTML = '<style>#rail{display:flex;position:relative;width:300px;overflow:auto}#rail>div{flex:0 0 200px;height:100px}</style><div id="rail"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div></div>'
+          const rail = document.getElementById('rail'), writes = [], states = []
+          const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollLeft')
+          Object.defineProperty(rail, 'scrollLeft', {
+            get() { return descriptor.get.call(this) },
+            set(value) { writes.push({ value, max:this.scrollWidth - this.clientWidth }); descriptor.set.call(this, value) },
+          })
+          const handle = SV.slider(rail, { duration:600, onScroll:state => states.push(state) })
+          const settle = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+          await settle()
+          handle.goTo(4)
+          for (let i = 0; i < 6; i++) await new Promise(requestAnimationFrame)
+          if (change === 'resize') rail.style.width = '700px'
+          else if (change === 'empty') rail.replaceChildren()
+          else { rail.lastElementChild.remove(); rail.lastElementChild.remove() }
+          await settle() // ResizeObserver/MutationObserver have delivered the change.
+          writes.length = 0
+          for (let i = 0; i < 90 && handle.state().gliding; i++) await new Promise(requestAnimationFrame)
+          await settle()
+          results.push({ change, outside:writes.filter(w => w.value < 0 || w.value > w.max).length,
+            gliding:handle.state().gliding, reported:states.at(-1).gliding, count:handle.state().count })
+          handle.destroy()
+        }
+        return results
+      })
+      for (const result of changingGlides) {
+        assert.equal(result.outside, 0, `${name}: ${result.change} kept an unreachable glide destination`)
+        assert.equal(result.gliding, false)
+        assert.equal(result.reported, false)
+        assert.equal(result.count, result.change === 'empty' ? 0 : result.change === 'remove' ? 3 : 5)
+      }
+      console.log(`ok ${name}: resize, removed destination and empty rail interrupt stale glide geometry`)
       await page.goto(base + 'pointer-tilt.html')
       const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
         let writes = 0

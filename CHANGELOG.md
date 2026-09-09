@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.15.2 (2026-09-09)
+
+- Slider: retarget an active glide when the existing resize/child-list observers report changed geometry; stop cleanly if all slides disappear. This prevents an old destination from driving repeated out-of-range writes after a responsive resize or content removal, without adding per-frame geometry reads.
 
 - Slider: clamp glide destinations to the real scroll range so partially visible edge slides do not cause animation frames that keep writing unreachable positions. Deliver a final stopped-state measurement even if the browser rounds away the last scroll event. Covered at both edges in LTR, RTL and vertical rails; fitting rails schedule no glide.
 
