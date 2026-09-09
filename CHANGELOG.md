@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Demo: disable unused document-wide outputs before homepage tracking. A four-run-per-mode A/B of the complete page records about **62% lower median main-thread task time** (5039.5→1911.5 ms over the same 12-second scroll), with local effects and HUD preserved. This applies the existing opt-out to this page; it does not change library defaults or establish a general speedup. [Raw measurements](https://scrollvars.dev/bench/results/home-outputs.json).
+- Demo benchmark table: use the same dated snapshot as the README and benchmark page; display total task CPU, FPS, both output modes and the batched GSAP comparison.
+
 ## 1.16.1 (2026-09-09)
 
 - Driver: repeated `setPageOutputs(true)` calls no longer schedule frames when outputs are already enabled. Calling it from `onTravel`/`onPin` previously sustained a frame loop on a stationary page. A Chromium/Firefox/WebKit probe now records zero callbacks and element-geometry reads during the idle window; real re-enabling and subsequent scroll input still update normally. This removes unnecessary idle work in that callback pattern, not the general benchmark's inherited-style cost.

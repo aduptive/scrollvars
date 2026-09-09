@@ -7,7 +7,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { measureSizes, GSAP_KB } from './docs-data.mjs'
+import { measureSizes, GSAP_KB, readBenchResults } from './docs-data.mjs'
 import { spliceOne } from './docs-stamp.mjs'
 
 /**
@@ -27,10 +27,6 @@ export const spliceAll = (text, re, replacement, count, label) => {
   return text.replace(globalRe, replacement)
 }
 
-export const newerMain = (full, mainOnly) => mainOnly?.scenarios.some(s => s.name === 'main-900')
-  && mainOnly.meta.throttle === 1 && Date.parse(mainOnly.meta.date) > Date.parse(full.meta.date)
-  ? mainOnly : full
-
 // Everything below only runs when this script is executed directly, not
 // when a test imports spliceAll above.
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
@@ -38,10 +34,7 @@ if (isMain) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
-const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
-const mainPath = join(root, 'demo', 'bench', 'results', 'main-current.json')
-const current = newerMain(results, existsSync(mainPath) ? JSON.parse(readFileSync(mainPath, 'utf8')) : null)
-const mainFile = current === results ? 'latest.json' : 'main-current.json'
+const { results, current, mainFile } = readBenchResults(root)
 
 const label = (e) =>
   ({ 'scrollvars.html': 'ScrollVars (page outputs on)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e

@@ -109,6 +109,10 @@ for (const block of BLOCKS) {
   html = html.replace(re, () => `${start}\n${iife}\n${end}`)
 }
 
+// This page consumes only local clocks. Keep the opt-out before registration.
+html = spliceOne(html, /\/\* ── wire the page ── \*\/(?:\n  SV\.setPageOutputs\(false\);)?/,
+  '/* ── wire the page ── */\n  SV.setPageOutputs(false);', 'page output opt-out before registration')
+
 // post-checks: the same ones this repo's history proved necessary
 const script = html.match(/<script>\n\s*\/\* ═+ demo driver[\s\S]*?<\/script>/)
 if (!script) throw new Error('main demo script block not found')
@@ -159,12 +163,10 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
 // one of them citing a driver size and a "Lighthouse 100" claim nothing in
 // the repo could source anymore).
 {
-  const { measureSizes, benchMainEngines, cpuTotalMs, GSAP_KB } = await import('./docs-data.mjs')
+  const { measureSizes, readBenchResults, GSAP_KB } = await import('./docs-data.mjs')
   const sizes = measureSizes(root)
-  const engines = benchMainEngines(root)
-  const sv = engines['scrollvars.html']
-  const gsap = engines['gsap.html'] // idiomatic: the build "the receipts" and the home-page CPU table single out
-  const framer = engines['framer.html']
+  const { current, mainFile } = readBenchResults(root)
+  const engines = current.scenarios.find(s => s.name === 'main-900').engines
   const SWIPER_GZ_KB = 42 // Swiper 11's own gzip size, same figure README's slider paragraph carries
   const bundleRatio = Math.round(GSAP_KB / parseFloat(sizes.everything))
   const sliderRatio = Math.round(SWIPER_GZ_KB / parseFloat(sizes.slider))
@@ -209,28 +211,30 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
     `${sizes.driverMin} KB / ${sizes.driver} KB`,
     'receipts: driver alone row')
 
-  // "the receipts": CPU cost table. Matched by cell shape (script/total in ms,
-  // heap in MB), which is what tells this table's ScrollVars/framer-motion rows
-  // apart from the Lighthouse table's rows just below, same labels, different
-  // units: the uniqueness check below counts the FULL regex, not the bare
-  // label, or it would flag a correct regex as ambiguous (ADU-195).
-  const cpuRow = (label, m) => {
-    const re = new RegExp(`(<td><b>${label}</b></td><td class="range"><b>)[\\d.]+( ms</b></td><td class="range"><b>)[\\d.]+( ms</b></td><td class="range"><b>)[\\d.]+( MB</b></td>)`)
-    const matches = html.match(new RegExp(re.source, 'g')) || []
-    if (matches.length > 1) throw new Error(`demo/index.html: receipts CPU row for "${label}" is ambiguous, found ${matches.length} times`)
-    if (!re.test(html)) throw new Error(`demo/index.html: receipts CPU row for "${label}" not found`)
-    html = html.replace(re, (m0, a, b, c, d) => `${a}${m.scriptMs}${b}${cpuTotalMs(m)}${c}${m.heapMB}${d}`)
+  const labels = {
+    'scrollvars.html': 'ScrollVars (page outputs on)',
+    'scrollvars-local.html': 'ScrollVars (page outputs off)',
+    'gsap.html': 'GSAP + ScrollTrigger (idiomatic)',
+    'gsap-batched.html': 'GSAP + ScrollTrigger (batched)',
+    'framer.html': 'framer-motion',
   }
-  const gsapRow = (label, m) => {
-    const re = new RegExp(`(<td>${label}</td><td class="range">)[\\d.]+( ms</td><td class="range">)[\\d.]+( ms</td><td class="range">)[\\d.]+( MB</td>)`)
-    const matches = html.match(new RegExp(re.source, 'g')) || []
-    if (matches.length > 1) throw new Error(`demo/index.html: receipts CPU row for "${label}" is ambiguous, found ${matches.length} times`)
-    if (!re.test(html)) throw new Error(`demo/index.html: receipts CPU row for "${label}" not found`)
-    html = html.replace(re, (m0, a, b, c, d) => `${a}${m.scriptMs}${b}${cpuTotalMs(m)}${c}${m.heapMB}${d}`)
-  }
-  cpuRow('ScrollVars', sv)
-  gsapRow('GSAP \\+ ScrollTrigger', gsap)
-  gsapRow('framer-motion', framer)
+  const rows = Object.entries(engines).map(([engine, m]) =>
+    `<tr><td>${labels[engine] ?? engine}</td><td class="range">${m.taskMs} ms</td><td class="range">${+m.fps.toFixed(1)}</td><td class="range">${m.scriptMs} ms</td><td class="range">${m.recalcMs} ms</td><td class="range">${m.heapMB} MB</td></tr>`).join('\n        ')
+  html = between(html,
+    '<h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll ',
+    '<p class="sv-rise" style="--sv-order: 6; color: var(--muted); font-size: 14px; margin-top: 16px;">',
+    `<span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 elements; package ${current.meta.version}, ${current.meta.runs} runs, measured ${current.meta.date})</span></h3>
+    <div style="overflow-x: auto" tabindex="0" role="region" aria-label="Scroll benchmark results">
+    <table class="sv-rise" style="--sv-order: 4">
+      <thead><tr><th>engine</th><th>total CPU (12s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>JS heap</th></tr></thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table></div>
+    <p style="color: var(--muted); font-size: 14px;">Total CPU is accumulated main-thread task time, not per-frame time. Page outputs off applies only when no CSS consumes the global clocks. <a href="bench/results/${mainFile}" style="color: var(--accent)">Raw runs</a>; <a href="bench/" style="color: var(--accent)">frame tails and methodology</a>.</p>
+
+    `,
+    'receipts: dated CPU and frame table')
 }
 
 if (html !== before) {

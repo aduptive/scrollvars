@@ -3,7 +3,8 @@ import { test } from 'node:test'
 
 import { between as docsBetween, stamp, floorRow, spliceOne as docsSpliceOne } from '../scripts/docs-stamp.mjs'
 import { between as demoBetween, spliceOne as demoSpliceOne } from '../scripts/demo-sync.mjs'
-import { spliceAll, newerMain } from '../scripts/bench-tables.mjs'
+import { spliceAll } from '../scripts/bench-tables.mjs'
+import { newerMain } from '../scripts/docs-data.mjs'
 import { spliceStage } from '../scripts/fx-render.mjs'
 
 // ADU-195: a between()-style splice starts its non-greedy match at the

@@ -6,7 +6,7 @@
  */
 import { buildSync } from 'esbuild'
 import { gzipSync } from 'node:zlib'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -133,11 +133,14 @@ export function measureSizes(root) {
   }
 }
 
-/** The "main-900" scenario's per-engine CDP metrics from the committed bench harness output. */
-export function benchMainEngines(root) {
-  const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
-  return results.scenarios.find((s) => s.name === 'main-900').engines
-}
+/** Keep every public main table on the same dated snapshot. */
+export const newerMain = (full, mainOnly) => mainOnly?.scenarios.some(s => s.name === 'main-900')
+  && mainOnly.meta.throttle === 1 && Date.parse(mainOnly.meta.date) > Date.parse(full.meta.date)
+  ? mainOnly : full
 
-/** CPU total the way the site states it: script + style recalc + layout (excludes idle/other). */
-export const cpuTotalMs = (m) => m.scriptMs + m.recalcMs + m.layoutMs
+export function readBenchResults(root) {
+  const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
+  const mainPath = join(root, 'demo', 'bench', 'results', 'main-current.json')
+  const current = newerMain(results, existsSync(mainPath) ? JSON.parse(readFileSync(mainPath, 'utf8')) : null)
+  return { results, current, mainFile: current === results ? 'latest.json' : 'main-current.json' }
+}

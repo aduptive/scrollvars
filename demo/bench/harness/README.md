@@ -720,3 +720,34 @@ clocks. Before changing its boot wiring, require at least 15% lower median
 TaskDuration with every rotated pair favorable, no material frame regression,
 and browser checks of local clocks, HUD, pins, no-JS and reduced motion.
 Keep the library default and main-900 benchmark controls unchanged.
+
+
+#### Result: adopt the homepage opt-out
+
+[`home-outputs.json`](../results/home-outputs.json), clean source `af8fabf`,
+records four runs per mode, alternating first position (eight executions).
+All runs traverse the same 0–82046px range. Median TaskDuration falls
+5039.5→1911.5ms (**62.1%**); every pair favors outputs off. Style recalc
+falls 3776.5→492.5ms. Script rises 183→260ms and layout 31→48.5ms, so this
+is a total-work saving, not a reduction in every submetric. Median FPS
+rises 59.25→60; slow-frame counts are [2,2,4,3] with outputs and [0,1,0,0]
+without. This full-page synthetic sweep is not a physical-device guarantee
+or the main-900 comparison, which remains unchanged.
+
+The homepage generator now emits `SV.setPageOutputs(false)` before its
+first registration. Chromium, Firefox and WebKit check equal local pin /
+travel values, rail geometry and HUD with outputs on/off at 25%, 75% and
+100% of the rail; the last card fits and reduced motion still returns the
+rail to its static transform. The full existing browser matrix passes.
+The 27 generator/runner checks pass; desktop rendering and mobile horizontal
+scrolling of the updated results table were inspected. Homepage and bench
+now share the same snapshot selector; the old partial CPU sum is replaced
+by TaskDuration/FPS with date, both modes and all five engine rows.
+
+The no-JS audit found an independent pre-existing demo defect: 18 section
+headings under `section.demo.sv` have opacity 0 in both baseline and new
+HTML because the page's custom entrance CSS lacks the `.sv-on` guard.
+The hero heading stays visible. The opt-out does not cause this; a separate
+fallback correction is still needed. Do not describe the entire homepage
+as having passed a no-JS visibility gate. The shipped preset styles and fx
+fallback tests are separate from this custom homepage CSS.

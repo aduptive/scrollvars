@@ -8,7 +8,7 @@ import { chromium, firefox, webkit } from 'playwright'
 const server = createServer(async (req, res) => {
   try {
     const path = new URL(req.url, 'http://localhost').pathname
-    if (!/^\/(fx|bench)\/[\w.-]+$/.test(path)) throw Error('not found')
+    if (path !== '/index.html' && !/^\/(fx|bench)\/[\w.-]+$/.test(path)) throw Error('not found')
     res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html')
     res.end(await readFile(fileURLToPath(new URL(`../../${path.slice(1)}`, import.meta.url))))
   } catch { res.writeHead(404).end() }
@@ -35,6 +35,35 @@ try {
       const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
       const errors = []
       page.on('pageerror', error => errors.push(error.message))
+      await page.goto(base + '../index.html')
+      assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--sv-page')), '', `${name}: homepage must opt out before tracking`)
+      for (const progress of [.25, .75, 1]) {
+        const states = await page.evaluate(async p => {
+          const el = document.getElementById('hcar-demo')
+          scrollTo(0, scrollY + el.getBoundingClientRect().top + p * (el.offsetHeight - innerHeight))
+          const states = []
+          for (const enabled of [false, true]) {
+            SV.setPageOutputs(enabled)
+            await new Promise(r => setTimeout(r, 180)) // includes the throttled HUD
+            const last = el.querySelector('.hcar-card:last-child').getBoundingClientRect()
+            states.push({
+              pin: el.style.getPropertyValue('--sv-pin'), travel: el.style.getPropertyValue('--sv-t'),
+              translate: getComputedStyle(el.querySelector('.hcar-track')).translate,
+              hud: document.getElementById('hud-pin').textContent,
+              lastLeft: last.left, lastRight: last.right,
+            })
+          }
+          SV.setPageOutputs(false)
+          return states
+        }, progress)
+        assert.deepEqual(states[0], states[1], `${name}: homepage local motion/HUD must match with either page-output setting`)
+        assert(Math.abs(+states[0].pin - progress) < .002, `${name}: homepage pin reaches ${progress}`)
+        if (progress === 1) assert(states[0].lastLeft >= -2 && states[0].lastRight <= 1402, `${name}: homepage rail endpoint`)
+      }
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      assert.equal(await page.locator('.hcar-track').evaluate(el => getComputedStyle(el).translate), 'none', `${name}: homepage reduced-motion rail`)
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      console.log(`ok ${name}: homepage opt-out preserves pin, travel, rail geometry, HUD and reduced motion`)
       await page.goto(base + 'horizontal-rail.html')
       const interactions = await page.evaluate(async () => {
         document.body.innerHTML = `<style>
