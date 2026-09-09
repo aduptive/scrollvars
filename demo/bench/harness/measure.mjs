@@ -124,8 +124,12 @@ async function measureOnce(engine, params) {
     }
     await page.waitForFunction(() => typeof window.__benchStart === 'function')
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await page.evaluate(() => {
+      if (window.__railAudit) Object.assign(window.__railAudit, { callbacks:0, changes:0, min:1, max:0, last:null })
+    })
     const payload = await page.evaluate(() => window.__benchStart())
-    return { ...payload, calibration, startup: delta(marks.start, initial), ...delta(marks.end, marks.start), heapMB: +(marks.end.JSHeapUsedSize / 1048576).toFixed(1) }
+    const animation = await page.evaluate(() => window.__railAudit ?? null)
+    return { ...payload, animation, calibration, startup: delta(marks.start, initial), ...delta(marks.end, marks.start), heapMB: +(marks.end.JSHeapUsedSize / 1048576).toFixed(1) }
   } finally { await context.close() }
 }
 
@@ -153,6 +157,7 @@ for (const sc of SCENARIOS) {
       const r = await measureOnce(engine, sc.params)
       raw[engine].push(r)
       console.log(`  ${engine.padEnd(20)} run ${run + 1}: script ${r.scriptMs}ms · recalc ${r.recalcMs}ms · task ${r.taskMs}ms · heap ${r.heapMB}MB · fps ${r.fps}`)
+      if (r.animation) console.log(`    animation: ${r.animation.changes} progress changes / ${r.frames} runner frames; range ${r.animation.min.toFixed(4)}–${r.animation.max.toFixed(4)}`)
     }
   }
   const engines = {}

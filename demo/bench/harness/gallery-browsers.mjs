@@ -147,9 +147,15 @@ try {
               const stage = el.querySelector('.sv-stage'), rail = el.querySelector('.sv-rail')
               const p = +Math.max(0, Math.min(1, -el.getBoundingClientRect().top / (el.offsetHeight - innerHeight))).toFixed(4)
               const expected = (1 - p) * stage.clientWidth + p * Math.min(stage.clientWidth - rail.offsetWidth, 0)
-              return { actual:rail.getBoundingClientRect().left - stage.getBoundingClientRect().left, expected }
+              return { actual:rail.getBoundingClientRect().left - stage.getBoundingClientRect().left, expected,
+                privateClock:+getComputedStyle(rail).getPropertyValue('--bench-rail-pin'),
+                childClock:+getComputedStyle(rail.firstElementChild).getPropertyValue('--bench-rail-pin') }
             })
             assert.ok(Math.abs(geometry.actual - geometry.expected) < .1, `${name}: ${mode} rail at ${width}px, ${progress}: ${JSON.stringify(geometry)}`)
+            if (mode === 'localized' && progress === .5) {
+              assert.equal(geometry.privateClock, .5)
+              assert.equal(geometry.childClock, 0, `${name}: private rail clock leaked into descendants`)
+            }
           }
         }
       }

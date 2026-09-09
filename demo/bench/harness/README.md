@@ -154,3 +154,20 @@ stays within 10% of direct JS there and introduces no material frame
 regression. If its results overlap direct writes, prefer the smaller
 implementation that leaves animation math in CSS. Real-gallery lifecycle
 and accessibility validation still gates adoption.
+
+The first three-way run is retained in
+[`rail-local.json`](../results/rail-local.json), source commit `73d8eec`.
+Its task timings varied strongly (for example, inherited CSS with 50 text
+descendants/card measured 1637, 394 and 1693ms). The local-clock median on
+the largest DOM was 685ms versus 443ms direct: **55% slower**, outside the
+predeclared 10% allowance. Do not promote this variant from these results.
+
+The harness now also records `animation` per rail sample: callbacks,
+four-decimal progress changes and minimum/maximum progress. All three paths
+use the same audit callback, reset before the scroll window. Inspect these
+alongside runner frames: a 60fps workload clock alone does not prove that
+the animation received the same number of updates. Counts are retained even
+when unexpected, not filtered out. Recheck anomalously cheap samples for
+missing updates before attributing variation to warmup, thermal conditions
+or the renderer. Historical files predate this instrumentation; their frame
+counts are runner counts, not independently audited animation delivery.

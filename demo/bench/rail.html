@@ -31,6 +31,15 @@
   const section = document.querySelector('section')
   const stage = document.querySelector('.sv-stage')
   const rail = document.querySelector('.sv-rail')
+  const audit = window.__railAudit = { callbacks:0, changes:0, min:1, max:0, last:null }
+  const sample = raw => {
+    audit.callbacks++
+    const p = raw.toFixed(4)
+    if (p !== audit.last) { audit.changes++; audit.last = p }
+    audit.min = Math.min(audit.min, raw)
+    audit.max = Math.max(audit.max, raw)
+    return p
+  }
   document.body.classList.toggle('direct', direct)
   document.body.classList.toggle('localized', mode === 'localized')
   for (let i = 0; i < 20; i++) {
@@ -59,7 +68,7 @@
     observer.observe(stage)
     observer.observe(rail)
     SV.track(section, { view:false, onPin:raw => {
-      const p = +raw.toFixed(4) // same precision and change suppression as setVar
+      const p = +sample(raw) // same precision and change suppression as setVar
       if (p === previous) return
       previous = p
       rail.style.translate = `${(1 - p) * width + p * end}px 0`
@@ -67,13 +76,13 @@
   } else if (mode === 'localized') {
     let previous
     SV.track(section, { view:false, onPin:raw => {
-      const p = raw.toFixed(4)
+      const p = sample(raw)
       if (p === previous) return
       previous = p
       rail.style.setProperty('--bench-rail-pin', p)
     } })
   } else {
-    SV.track(section, { view:false, pin:true })
+    SV.track(section, { view:false, pin:true, onPin:sample })
   }
   runBench('rail-' + mode)
 </script></body></html>
