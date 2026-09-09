@@ -1,0 +1,771 @@
+{
+  "meta": {
+    "date": "2026-09-09T02:39:10.577Z",
+    "chrome": "Chrome/152.0.7977.83",
+    "runs": 3,
+    "throttle": 1,
+    "host": "darwin",
+    "version": "1.15.1",
+    "commit": "73d8eec9d97daeb253866b54fc76eec34a63a6ec",
+    "dirty": false,
+    "files": {
+      "bench/runner.js": "2a28a567396cd6cd864c0009e6d0548870192fff621c533e1f7c1076cfa09f0c",
+      "bench/scrollvars.html": "82574dd1b423370c6cd342ac29a639bc3b26f45992a00973723751b0b6e514e6",
+      "bench/gsap.html": "221c7c19780b6532c617871d200a3021a3f3d8be1e40d167c12ada1936ec90e6",
+      "bench/gsap-batched.html": "57534c6a8f75327f82131790926ac48dca3c446c92d3f3fce7812b6dc93682cd",
+      "bench/framer.html": "917485ebb26b99095a846283099dc78296361b3c379ae4a6cbf0a8e6deaddb1f",
+      "bench/harness/measure.mjs": "7215d91d45eef1adada8a9c7951bb97f4d60678fc6eafa1b5fb447159550702c",
+      "fx/sv.js": "d8bcbfe5586f840019415b3ddc9b4318816a98ca8542c6100456375e4b6848db",
+      "fx/sv.css": "de5eeb563069c5ca5c088ea574d75c22bf4cab741466628b111f43a930bc6463",
+      "bench/rail.html": "7a85262792c92ed349fc0cace2e384b8e1da13b70e5ae8b077ca12941b5aaad8"
+    },
+    "coreGzipKB": "7.3",
+    "competitors": {
+      "gsap": "3.15.0",
+      "gsapGzipKB": 45.2,
+      "framerMotion": "11.18.2",
+      "react": "18.3.1"
+    },
+    "metricWindow": "scroll only; startup recorded separately; no long frames filtered"
+  },
+  "scenarios": [
+    {
+      "name": "rail-local-5",
+      "params": "deep=5",
+      "engines": {
+        "rail.html": {
+          "scriptMs": 52,
+          "recalcMs": 127,
+          "layoutMs": 0,
+          "taskMs": 318,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 4,
+                "taskMs": 22
+              },
+              "scriptMs": 80,
+              "recalcMs": 310,
+              "layoutMs": 0,
+              "taskMs": 638
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 52,
+              "recalcMs": 127,
+              "layoutMs": 0,
+              "taskMs": 318
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 31,
+              "recalcMs": 97,
+              "layoutMs": 0,
+              "taskMs": 220
+            }
+          ]
+        },
+        "rail-direct.html": {
+          "scriptMs": 89,
+          "recalcMs": 33,
+          "layoutMs": 0,
+          "taskMs": 387,
+          "heapMB": 1.6,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 129,
+              "recalcMs": 47,
+              "layoutMs": 0,
+              "taskMs": 582
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 89,
+              "recalcMs": 33,
+              "layoutMs": 0,
+              "taskMs": 387
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 14
+              },
+              "scriptMs": 44,
+              "recalcMs": 16,
+              "layoutMs": 0,
+              "taskMs": 181
+            }
+          ]
+        },
+        "rail-local.html": {
+          "scriptMs": 64,
+          "recalcMs": 58,
+          "layoutMs": 0,
+          "taskMs": 282,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 4,
+                "taskMs": 14
+              },
+              "scriptMs": 132,
+              "recalcMs": 140,
+              "layoutMs": 0,
+              "taskMs": 696
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 721,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 64,
+              "recalcMs": 58,
+              "layoutMs": 0,
+              "taskMs": 282
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 5,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 15
+              },
+              "scriptMs": 34,
+              "recalcMs": 33,
+              "layoutMs": 0,
+              "taskMs": 166
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "rail-local-50",
+      "params": "deep=50",
+      "engines": {
+        "rail.html": {
+          "scriptMs": 92,
+          "recalcMs": 1147,
+          "layoutMs": 0,
+          "taskMs": 1637,
+          "heapMB": 0.9,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 4,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 92,
+              "recalcMs": 1147,
+              "layoutMs": 0,
+              "taskMs": 1637
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 13,
+              "recalcMs": 289,
+              "layoutMs": 0,
+              "taskMs": 394
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 18
+              },
+              "scriptMs": 104,
+              "recalcMs": 1153,
+              "layoutMs": 0,
+              "taskMs": 1693
+            }
+          ]
+        },
+        "rail-direct.html": {
+          "scriptMs": 136,
+          "recalcMs": 51,
+          "layoutMs": 0,
+          "taskMs": 695,
+          "heapMB": 1.6,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 138,
+              "recalcMs": 51,
+              "layoutMs": 0,
+              "taskMs": 714
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 4,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 129,
+              "recalcMs": 47,
+              "layoutMs": 0,
+              "taskMs": 666
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 136,
+              "recalcMs": 51,
+              "layoutMs": 0,
+              "taskMs": 695
+            }
+          ]
+        },
+        "rail-local.html": {
+          "scriptMs": 127,
+          "recalcMs": 137,
+          "layoutMs": 0,
+          "taskMs": 748,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 18
+              },
+              "scriptMs": 127,
+              "recalcMs": 137,
+              "layoutMs": 0,
+              "taskMs": 748
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 18
+              },
+              "scriptMs": 128,
+              "recalcMs": 137,
+              "layoutMs": 0,
+              "taskMs": 756
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 50,
+              "heapMB": 1.5,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 19
+              },
+              "scriptMs": 116,
+              "recalcMs": 124,
+              "layoutMs": 0,
+              "taskMs": 691
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "rail-local-200",
+      "params": "deep=200",
+      "engines": {
+        "rail.html": {
+          "scriptMs": 53,
+          "recalcMs": 2270,
+          "layoutMs": 0,
+          "taskMs": 2668,
+          "heapMB": 0.9,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 12,
+                "layoutMs": 12,
+                "taskMs": 38
+              },
+              "scriptMs": 37,
+              "recalcMs": 2478,
+              "layoutMs": 0,
+              "taskMs": 2866
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 4,
+                "recalcMs": 9,
+                "layoutMs": 12,
+                "taskMs": 40
+              },
+              "scriptMs": 53,
+              "recalcMs": 2270,
+              "layoutMs": 0,
+              "taskMs": 2668
+            },
+            {
+              "engine": "rail-css",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 0.9,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 9,
+                "layoutMs": 11,
+                "taskMs": 37
+              },
+              "scriptMs": 61,
+              "recalcMs": 1215,
+              "layoutMs": 0,
+              "taskMs": 1554
+            }
+          ]
+        },
+        "rail-direct.html": {
+          "scriptMs": 85,
+          "recalcMs": 32,
+          "layoutMs": 0,
+          "taskMs": 443,
+          "heapMB": 1.8,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.8,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 12,
+                "layoutMs": 12,
+                "taskMs": 41
+              },
+              "scriptMs": 126,
+              "recalcMs": 46,
+              "layoutMs": 0,
+              "taskMs": 658
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.8,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 4,
+                "recalcMs": 12,
+                "layoutMs": 12,
+                "taskMs": 41
+              },
+              "scriptMs": 85,
+              "recalcMs": 32,
+              "layoutMs": 0,
+              "taskMs": 443
+            },
+            {
+              "engine": "rail-direct",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.8,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 4,
+                "recalcMs": 12,
+                "layoutMs": 12,
+                "taskMs": 42
+              },
+              "scriptMs": 59,
+              "recalcMs": 22,
+              "layoutMs": 0,
+              "taskMs": 250
+            }
+          ]
+        },
+        "rail-local.html": {
+          "scriptMs": 113,
+          "recalcMs": 120,
+          "layoutMs": 0,
+          "taskMs": 685,
+          "heapMB": 1.6,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 9,
+                "layoutMs": 11,
+                "taskMs": 37
+              },
+              "scriptMs": 121,
+              "recalcMs": 129,
+              "layoutMs": 0,
+              "taskMs": 726
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 4,
+                "recalcMs": 9,
+                "layoutMs": 12,
+                "taskMs": 40
+              },
+              "scriptMs": 100,
+              "recalcMs": 100,
+              "layoutMs": 0,
+              "taskMs": 538
+            },
+            {
+              "engine": "rail-localized",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 200,
+              "heapMB": 1.6,
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 9,
+                "layoutMs": 11,
+                "taskMs": 36
+              },
+              "scriptMs": 113,
+              "recalcMs": 120,
+              "layoutMs": 0,
+              "taskMs": 685
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
