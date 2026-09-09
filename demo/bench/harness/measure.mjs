@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -66,6 +66,9 @@ if (WHICH.includes('gallery'))
 if (WHICH.includes('rail'))
   for (const deep of [5, 50, 200])
     SCENARIOS.push({ name:`rail-${deep}`, params:`deep=${deep}`, engines:['rail.html', 'rail-direct.html'] })
+if (WHICH.includes('rail-local'))
+  for (const deep of [5, 50, 200])
+    SCENARIOS.push({ name:`rail-local-${deep}`, params:`deep=${deep}`, engines:['rail.html', 'rail-direct.html', 'rail-local.html'] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -113,7 +116,8 @@ async function measureOnce(engine, params) {
     await page.exposeFunction('__benchMark', async name => { marks[name] = await metrics() })
     const local = engine === 'scrollvars-local.html'
     const direct = engine === 'rail-direct.html'
-    await page.goto(`${base}${local ? 'scrollvars.html' : direct ? 'rail.html' : engine}?${params}&harness=1${local ? '&local=1' : direct ? '&mode=direct' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    const localized = engine === 'rail-local.html'
+    await page.goto(`${base}${local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
     if (engine.startsWith('../fx/')) {
       await page.addScriptTag({ url: `${base}runner.js` })
       await page.evaluate(label => runBench(label), engine)
@@ -133,7 +137,7 @@ const results = { meta: {
   version: JSON.parse(readFileSync(join(repo, 'package.json'))).version,
   commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
   dirty: !!execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim(),
-  files: Object.fromEntries(['bench/runner.js', 'bench/scrollvars.html', 'bench/gsap.html', 'bench/gsap-batched.html', 'bench/framer.html', 'bench/harness/measure.mjs', 'fx/sv.js', 'fx/sv.css', ...(WHICH.includes('rail') ? ['bench/rail.html'] : []), ...SCENARIOS.filter(s => s.name.startsWith('gallery-')).map(s => s.engines[0].slice(3))].map(path => [path, hash(path)])),
+  files: Object.fromEntries(['bench/runner.js', 'bench/scrollvars.html', 'bench/gsap.html', 'bench/gsap-batched.html', 'bench/framer.html', 'bench/harness/measure.mjs', 'fx/sv.js', 'fx/sv.css', ...(WHICH.some(s => s.startsWith('rail')) ? ['bench/rail.html'] : []), ...SCENARIOS.filter(s => s.name.startsWith('gallery-')).map(s => s.engines[0].slice(3))].map(path => [path, hash(path)])),
   coreGzipKB: measureSizes(repo).everything,
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
   metricWindow: 'scroll only; startup recorded separately; no long frames filtered',

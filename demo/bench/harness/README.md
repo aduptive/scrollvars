@@ -132,3 +132,25 @@ motion and fit-to-flow. Check whether the extra callback/measurement code is
 worthwhile for ordinary three-card sections too. A private, non-inheriting
 output on the moving rail is another candidate to compare before adding a
 general rendering mode; public inherited clocks must not change semantics.
+
+### Local private CSS clock experiment
+
+`node measure.mjs --scenarios=rail-local --runs=3 --out=rail-local.json`
+compares the inherited preset, direct translate and `mode=localized` on the
+same fixture. The third path writes a private registered numeric property
+with `inherits:false` on the rail itself; CSS computes the translate from
+that clock and the driver's existing stage-width measurement. It adds no
+extra ResizeObserver, dimension cache or per-frame layout read. Public
+clocks are unchanged. The third property is registered in every variant's
+stylesheet to keep startup inputs comparable. Unsupported registration can
+still render the formula as an ordinary inherited custom property; no
+performance claim is made for that fallback.
+
+Three variants × three rotating repetitions give each variant each order
+slot once. Geometry, reverse and resize checks cover all three browsers.
+Predeclared criterion: retain the local clock as a candidate if it saves at
+least 15% total task time versus inherited CSS in the two large workloads,
+stays within 10% of direct JS there and introduces no material frame
+regression. If its results overlap direct writes, prefer the smaller
+implementation that leaves animation math in CSS. Real-gallery lifecycle
+and accessibility validation still gates adoption.

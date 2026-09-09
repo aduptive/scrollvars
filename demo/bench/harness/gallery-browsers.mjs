@@ -136,7 +136,7 @@ try {
       assert.ok(canvasFrames.resumed > 0, `${name}: restoring canvas size did not resume`)
       console.log(`ok ${name}: zero-area canvas pause and resume`)
       // Same output geometry before comparing CPU: forward, reverse and resize.
-      for (const mode of ['css', 'direct']) {
+      for (const mode of ['css', 'direct', 'localized']) {
         await page.goto(base + `../bench/rail.html?deep=200&norun=1&mode=${mode}`)
         for (const width of [800, 390]) {
           await page.setViewportSize({ width, height:600 })
@@ -154,7 +154,7 @@ try {
         }
       }
       await page.setViewportSize({ width:1400, height:900 })
-      console.log(`ok ${name}: CSS/direct rail geometry, reverse and resize`)
+      console.log(`ok ${name}: CSS/direct/localized rail geometry, reverse and resize`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],
