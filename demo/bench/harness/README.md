@@ -216,3 +216,21 @@ more than 10% regression for standard content, and no material frame-delivery
 regression. Cross-browser checks cover forward/reverse geometry, resize,
 live reduced motion, late CMS overflow, latched flow and cleanup. Passing
 this gate is evidence for a candidate, not automatic component adoption.
+
+
+[`casework-experiment.json`](../results/casework-experiment.json) records
+four balanced repetitions (source `67545f2`, Chrome 152). Median task time
+fell from 696.5 to 557.5ms for standard content (20.0%) and from 785 to
+612ms for deep rich text (22.0%). Recalc fell from 216.5 to 89ms and from
+347 to 92.5ms respectively; script time did not improve. All 16 samples
+received 307 progress changes, covered 0–1 and delivered 60fps. This meets
+the CPU gate, but proves headroom rather than smoother visible frames.
+
+Before adopting the extra JS, compare a smaller alternative: keep the
+existing CSS transform and set `--sv-pin:0` only on the static cards. This
+stops clock inheritance into card contents while leaving the animated rail's
+clock intact. Three rotating repetitions across CSS/direct/boundary variants
+balance every order slot. Retain this CSS-only candidate if it saves at
+least 15% task time on rich content, stays within 10% of direct writes in
+both workloads and does not worsen frames. The same inheritance contract
+caveat applies; no public driver clock changes are proposed.
