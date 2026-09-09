@@ -9,6 +9,8 @@ section { height:300vh } .stage { position:sticky; top:0; height:100vh; display:
 .card { flex:0 0 220px; padding:24px; background:#272738; border-radius:12px }
 .effects .card { scale:calc(1 - min(1, max(var(--sd, 0), calc(var(--sd, 0) * -1))) * .08) }
 .card.sv-active { background:#493d70 } .card span { display:block; margin:8px 0 }
+.glide section { height:100vh } .glide #rail { overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none }
+.glide .card { scroll-snap-align:center }
 .hud { position:fixed; bottom:8px; left:8px; font:12px monospace; white-space:pre; pointer-events:none }
 </style>
 <section><div class="stage"><div id="rail"></div></div></section>
@@ -19,6 +21,7 @@ section { height:300vh } .stage { position:sticky; top:0; height:100vh; display:
 <script src="runner.js"></script>
 <script>
 const query = new URLSearchParams(location.search)
+if (query.has('glide')) document.body.classList.add('glide')
 if (!query.has('plain')) document.body.classList.add('effects')
 if (query.get('outputs') === 'off' && !query.has('plain')) throw Error('Output suppression requires non-consuming CSS')
 const count = Number(query.get('count')) || 15
@@ -40,6 +43,22 @@ window.sliderHandle = engine.slider(rail, { cssVars:query.get('outputs') === 'of
   audit.min = Math.min(audit.min, state.progress); audit.max = Math.max(audit.max, state.progress)
 } })
 SV.setPageOutputs(false)
-window.stopSliderDriver = SV.track(document.querySelector('section'), { view:false, onPin:p => sliderHandle.seek(p) })
-runBench('Linked slider')
+if (query.has('glide')) {
+  const targets = [2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 0]
+  const glide = window.__glideAudit = { commands:[], settled:[] }
+  let previous = -1
+  runBench('Slider goTo', { from:0, to:0 }, t => {
+    const slot = Math.floor(t * targets.length)
+    if (slot === previous) return
+    if (previous >= 0) glide.settled.push({ target:targets[previous], left:rail.scrollLeft, state:sliderHandle.state(), callback:sliderLastState })
+    previous = slot
+    if (slot < targets.length) {
+      glide.commands.push(targets[slot])
+      sliderHandle.goTo(targets[slot])
+    }
+  })
+} else {
+  window.stopSliderDriver = SV.track(document.querySelector('section'), { view:false, onPin:p => sliderHandle.seek(p) })
+  runBench('Linked slider')
+}
 </script>

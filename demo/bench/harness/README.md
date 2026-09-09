@@ -469,3 +469,28 @@ does not change the already published 1.15.2 package.
 Validation: 296 unit tests, React 18 typecheck and 98 targeted tests,
 Chromium/Firefox/WebKit gallery checks (including both output modes), and
 the full progressive-enhancement/installed-section invariant suite pass.
+
+### Plain slider goTo workload
+
+`node demo/bench/harness/measure.mjs --scenarios=slider-glide --runs=4 --out=slider-glide.json`
+
+Compare the same actual slider with default outputs and `cssVars:false`,
+15/120 cards, plain CSS, native snap, and no page-scroll driver. Twelve
+commands run one second apart: slides 2,3,4,5,6,7,6,5,4,3,2,0, each using
+the default 600ms glide. The remaining time is idle. The shared 12-second
+runner supplies the clock/frame accounting; startup remains separate.
+Audit every command's settled position and full state/callback. Reject a
+run that skips a command or fails to settle. Three-browser checks compare
+forward/reverse destinations and rendering with both output modes.
+
+Predeclared scope gate: report a material benefit for this workload only
+with at least 20% lower median task time at both sizes, all paired runs
+favoring opt-out, matching settled trajectories and no material frame
+regression. This is an API-driven carousel, not a physical swipe or phone
+measurement; do not generalize the continuous-seek percentages to it.
+
+Consumer audit: the gallery coverflow (`scripts/fx-data.mjs`) and the demo's
+main carousel, vertical thumbs, wheel, window gallery and pinned carousel
+all consume `--sd`. Keep their outputs enabled. The plain React slider
+snippet contains an opaque user-supplied `Card`; do not assume that child
+ignores the clocks or silently opt it out. No gallery consumer changes.

@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -84,6 +84,10 @@ if (WHICH.includes('slider-outputs'))
 if (WHICH.includes('slider-api'))
   for (const count of [15, 120])
     SCENARIOS.push({ name:`slider-api-${count}`, params:`count=${count}&plain=1&api=1`, engines:['slider-api.html', 'slider-api-no-outputs.html'] })
+
+if (WHICH.includes('slider-glide'))
+  for (const count of [15, 120])
+    SCENARIOS.push({ name:`slider-glide-${count}`, params:`count=${count}&plain=1&api=1&glide=1`, engines:['slider-api.html', 'slider-api-no-outputs.html'] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -166,7 +170,10 @@ async function measureOnce(engine, params) {
     })
     const payload = await page.evaluate(() => window.__benchStart())
     const animation = await page.evaluate(() => window.__railAudit ?? null)
-    return { ...payload, animation, calibration, startup: delta(marks.start, initial), ...delta(marks.end, marks.start), heapMB: +(marks.end.JSHeapUsedSize / 1048576).toFixed(1) }
+    const glide = await page.evaluate(() => window.__glideAudit ?? null)
+    if (glide && (glide.commands.length !== 12 || glide.settled.length !== 12 || glide.settled.some(s => s.state.gliding || s.callback.gliding || Math.abs(s.state.progress - s.callback.progress) > .001)))
+      throw Error('Incomplete or unsettled slider glide workload')
+    return { ...payload, animation, ...(glide ? { glide } : {}), calibration, startup: delta(marks.start, initial), ...delta(marks.end, marks.start), heapMB: +(marks.end.JSHeapUsedSize / 1048576).toFixed(1) }
   } finally { await context.close() }
 }
 
@@ -184,7 +191,7 @@ const results = { meta: {
   files: Object.fromEntries(['bench/runner.js', 'bench/scrollvars.html', 'bench/gsap.html', 'bench/gsap-batched.html', 'bench/framer.html', 'bench/harness/measure.mjs', 'fx/sv.js', 'fx/sv.css', ...(WHICH.some(s => s.startsWith('rail')) ? ['bench/rail.html'] : []), ...SCENARIOS.filter(s => s.name.startsWith('gallery-')).map(s => s.engines[0].slice(3))].map(path => [path, hash(path)])),
   coreGzipKB: measureSizes(repo).everything,
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
-  metricWindow: 'scroll only; startup recorded separately; no long frames filtered',
+  metricWindow: '12-second workload only; startup recorded separately; no long frames filtered',
 }, scenarios: [] }
 if (WHICH.some(s => s.startsWith('slider-')))
   for (const path of ['bench/slider-seek.html', 'bench/slider-original.js', 'bench/slider-guarded.js', 'bench/slider-no-outputs.js', 'bench/harness/slider-build.mjs']) results.meta.files[path] = hash(path)

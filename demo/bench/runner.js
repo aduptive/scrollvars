@@ -1,5 +1,5 @@
 // Shared workload clock: every engine follows the same path and frame accounting.
-async function runBench(label, scrollRange) {
+async function runBench(label, scrollRange, drive) {
   const query = new URLSearchParams(location.search)
   const hud = document.createElement('div')
   hud.className = 'hud'
@@ -21,8 +21,9 @@ async function runBench(label, scrollRange) {
         last = now
         if (burn) { const until = performance.now() + burn; while (performance.now() < until); }
         const t = (now - start) / duration
+        drive?.(Math.min(t, 1))
         if (t < 1) {
-          scrollTo(0, from + (t < .5 ? t * 2 : (1 - t) * 2) * height)
+          if (!drive) scrollTo(0, from + (t < .5 ? t * 2 : (1 - t) * 2) * height)
           requestAnimationFrame(step)
           return
         }

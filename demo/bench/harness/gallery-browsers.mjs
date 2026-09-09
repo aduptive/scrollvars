@@ -204,6 +204,35 @@ try {
         assert.deepEqual(variants[0], variants[1], `${name}: ${count} plain carousel changed without CSS outputs`)
       }
       console.log(`ok ${name}: plain slider output suppression preserves forward/reverse geometry, classes, state and callbacks`)
+      for (const count of [15, 120]) {
+        const variants = []
+        for (const off of [false, true]) {
+          await page.goto(base + `../bench/slider-seek.html?count=${count}&plain=1&api=1&glide=1&norun=1${off ? '&outputs=off' : ''}`)
+          await settle(page)
+          const samples = []
+          for (const target of [4, 7, 0]) {
+            await page.evaluate(i => sliderHandle.goTo(i), target)
+            await page.waitForFunction(() => !sliderHandle.state().gliding)
+            await settle(page)
+            const sample = await page.locator('#rail').evaluate((rail, i) => {
+              const child = rail.children[i]
+              return { state:sliderHandle.state(), callback:sliderLastState, left:rail.scrollLeft,
+                expected:Math.max(0, Math.min(rail.scrollWidth - rail.clientWidth, child.offsetLeft + child.offsetWidth / 2 - rail.clientWidth / 2)),
+                active:[...rail.children].findIndex(el => el.classList.contains('sv-active')),
+                scale:getComputedStyle(rail.firstElementChild).scale,
+                background:getComputedStyle(rail.querySelector('.sv-active')).backgroundColor }
+            }, target)
+            assert(Math.abs(sample.left - sample.expected) <= 1, `${name}: goTo(${target}) missed destination`)
+            assert.deepEqual(sample.callback, sample.state)
+            assert.equal(sample.active, sample.state.active)
+            assert.equal(sample.scale, 'none')
+            samples.push(sample)
+          }
+          variants.push(samples)
+        }
+        assert.deepEqual(variants[0], variants[1], `${name}: goTo output modes diverged`)
+      }
+      console.log(`ok ${name}: plain slider goTo keeps destinations, stopped callbacks and appearance in both output modes`)
       await page.goto(base + 'pointer-tilt.html')
       const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
         let writes = 0
