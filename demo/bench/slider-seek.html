@@ -6,8 +6,8 @@
 * { box-sizing:border-box } body { margin:0; background:#12121a; color:#eee; font:16px system-ui }
 section { height:300vh } .stage { position:sticky; top:0; height:100vh; display:grid; place-items:center }
 #rail { position:relative; display:flex; gap:16px; width:100%; overflow:hidden; scroll-snap-type:none }
-.card { flex:0 0 220px; padding:24px; background:#272738; border-radius:12px;
-  scale:calc(1 - min(1, max(var(--sd, 0), calc(var(--sd, 0) * -1))) * .08) }
+.card { flex:0 0 220px; padding:24px; background:#272738; border-radius:12px }
+.effects .card { scale:calc(1 - min(1, max(var(--sd, 0), calc(var(--sd, 0) * -1))) * .08) }
 .card.sv-active { background:#493d70 } .card span { display:block; margin:8px 0 }
 .hud { position:fixed; bottom:8px; left:8px; font:12px monospace; white-space:pre; pointer-events:none }
 </style>
@@ -15,9 +15,12 @@ section { height:300vh } .stage { position:sticky; top:0; height:100vh; display:
 <script src="../fx/sv.js"></script>
 <script src="slider-original.js"></script>
 <script src="slider-guarded.js"></script>
+<script src="slider-no-outputs.js"></script>
 <script src="runner.js"></script>
 <script>
 const query = new URLSearchParams(location.search)
+if (!query.has('plain')) document.body.classList.add('effects')
+if (query.get('outputs') === 'off' && !query.has('plain')) throw Error('Output suppression requires non-consuming CSS')
 const count = Number(query.get('count')) || 15
 const rail = document.getElementById('rail')
 for (let i = 0; i < count; i++) {
@@ -28,8 +31,9 @@ for (let i = 0; i < count; i++) {
   rail.append(card)
 }
 const audit = window.__railAudit = { callbacks:0, changes:0, min:1, max:0, last:null }
-const engine = query.has('guarded') ? GuardedSlider : OriginalSlider
-window.sliderHandle = engine.slider(rail, { onScroll:state => {
+const engine = query.get('outputs') === 'off' ? NoOutputSlider : query.has('guarded') ? GuardedSlider : OriginalSlider
+window.sliderHandle = engine.slider(rail, { onSlide:i => { window.sliderActive = i }, onScroll:state => {
+  window.sliderLastState = state
   const p = state.progress.toFixed(4)
   audit.callbacks++
   if (p !== audit.last) { audit.changes++; audit.last = p }

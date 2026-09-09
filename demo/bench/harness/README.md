@@ -398,3 +398,27 @@ in both variants. Prototype output suppression only in the benchmark first;
 any future opt-in must preserve current defaults and inherited clocks for
 existing consumers. Do not add a geometry cache or silently skip public
 outputs based on guessed CSS usage.
+
+
+### Unused slider outputs, plain carousel
+
+`node demo/bench/harness/slider-build.mjs`
+
+`node demo/bench/harness/measure.mjs --scenarios=slider-outputs --runs=4 --out=slider-outputs.json`
+
+A third frozen variant omits only the writes of `--sd`, `--sv-progress` and
+`--sv-slide`. It retains fresh geometry, classes, numeric state and callbacks;
+it does not include the previous class-removal guard. Both compared variants
+use the same plain CSS, which does not consume those clocks. The animated
+scale rule is confined to the separate effects mode; suppression is rejected
+there. All bundles load in every sample. No shipped API/default changes.
+
+Cross-browser checks compare complete states/callbacks, active classes,
+computed scale/color and scroll geometry through forward/reverse samples at
+15 and 120 cards; only the inline output variables may differ. Four rotating
+repetitions balance order. Predeclared gate: at least 20% lower median task
+time for the 120-card workload, every paired large run favoring suppression,
+no more than 5% median regression for 15 cards, and no material frame/cadence
+regression. A successful frozen-source experiment still needs validation of
+an actual opt-in implementation before adoption; default consumers must keep
+their existing inherited variables.

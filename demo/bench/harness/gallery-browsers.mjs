@@ -172,6 +172,37 @@ try {
         assert(Math.abs(seek.progress - .25) < .001)
       }
       console.log(`ok ${name}: seek guard removes only redundant mutations; repair, interruption and destroy remain intact`)
+      for (const count of [15, 120]) {
+        const variants = []
+        for (const off of [false, true]) {
+          await page.goto(base + `../bench/slider-seek.html?count=${count}&plain=1&norun=1${off ? '&outputs=off' : ''}`)
+          await page.evaluate(() => stopSliderDriver())
+          await settle(page)
+          const samples = []
+          for (const progress of [0, .2, .5, 1, .2]) {
+            await page.evaluate(p => sliderHandle.seek(p), progress)
+            await settle(page)
+            const sample = await page.locator('#rail').evaluate(rail => ({
+              state:sliderHandle.state(), callback:sliderLastState, activeCallback:sliderActive,
+              active:[...rail.children].findIndex(el => el.classList.contains('sv-active')),
+              left:rail.scrollLeft, width:rail.scrollWidth, scale:getComputedStyle(rail.firstElementChild).scale,
+              background:getComputedStyle(rail.querySelector('.sv-active')).backgroundColor,
+              outputs:[rail.style.getPropertyValue('--sv-progress'), rail.style.getPropertyValue('--sv-slide'), rail.firstElementChild.style.getPropertyValue('--sd')],
+            }))
+            assert.deepEqual(sample.callback, sample.state, `${name}: ${count} callback/state diverged`)
+            assert.equal(sample.activeCallback, sample.active)
+            assert.equal(sample.active, sample.state.active)
+            assert.equal(sample.scale, 'none')
+            assert(sample.outputs.every(value => off ? value === '' : value !== ''))
+            assert(Math.abs(sample.state.progress - progress) < .001)
+            delete sample.outputs
+            samples.push(sample)
+          }
+          variants.push(samples)
+        }
+        assert.deepEqual(variants[0], variants[1], `${name}: ${count} plain carousel changed without CSS outputs`)
+      }
+      console.log(`ok ${name}: plain slider output suppression preserves forward/reverse geometry, classes, state and callbacks`)
       await page.goto(base + 'pointer-tilt.html')
       const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
         let writes = 0
