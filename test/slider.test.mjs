@@ -162,6 +162,7 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
     },
     scrollLeft: 0,
     clientWidth: 300,
+    scrollWidth: 300,
     vars: {},
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: {
@@ -195,20 +196,21 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.equal(handle.active(), 1, 'the mount frame re-measures to the same place')
   assert.deepEqual(onSlideCalls, [1], 'and does not re-fire onSlide')
 
-  // next(): centers slide 3 → left = 200 - (300-100)/2 = 100
+  // The entire rail fits: centering the edge would require unreachable scroll.
   // (duration: 0 → the glide short-circuits to a direct position write)
   handle.next()
-  assert.equal(container.scrollLeft, 100)
+  assert.equal(container.scrollLeft, 0)
 
   // goTo clamps
   container.scrollLeft = 0
   handle.goTo(99, false)
-  assert.equal(container.scrollLeft, 100)
+  assert.equal(container.scrollLeft, 0)
 
   // state(): full snapshot
   let copiedChildren = 0, widthReads = 0
   slides[Symbol.iterator] = function* () { copiedChildren++; yield* Array.prototype.values.call(this) }
-  Object.defineProperty(container, 'scrollWidth', { get: () => { widthReads++; return 600 } })
+  Object.defineProperty(container, 'scrollWidth', { configurable:true, get: () => { widthReads++; return 600 } })
+  container.scrollLeft = 100
   const st = handle.state()
   assert.equal(st.count, 3)
   assert.equal(st.dragging, false)
@@ -218,6 +220,14 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.equal(widthReads, 1, 'read the scroll range once per snapshot')
 
   handle.destroy()
+  Object.defineProperty(container, 'scrollWidth', { get: () => 300 })
+  container.scrollLeft = 0
+  const fitting = slider(container, { duration:600 })
+  runFrames(rafQueue)
+  fitting.goTo(2)
+  assert.equal(fitting.state().gliding, false, 'a fitting rail has no unreachable glide')
+  assert.equal(rafQueue.length, 0, 'a fitting rail schedules no animation frames')
+  fitting.destroy()
 })
 
 test('slider: rapid next() clicks accumulate through the pending target', async () => {
@@ -252,7 +262,8 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
       return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 }
     },
     scrollLeft: 0,
-    clientWidth: 300,
+    clientWidth: 100,
+    scrollWidth: 300,
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: { scrollSnapType: '', setProperty: () => {} },
     addEventListener: () => {},
@@ -268,17 +279,17 @@ test('slider: rapid next() clicks accumulate through the pending target', async 
   // queue, so a glide started before it would swallow the observer's delivery
   runFrames(rafQueue)
 
-  // active starts at 1 (center). Two rapid clicks: 1 → 2 → clamped 2,
+  // active starts at 0. Two rapid clicks: 0 → 1 → 2,
   // but the second must count from the PENDING target, not stale active.
   handle.next()
-  handle.next() // mid-glide: steps from target (2), clamps at last slide
+  handle.next() // mid-glide: steps from target (1), not the stale active (0)
   // pump the glide to completion
   for (let i = 0; i < 30 && rafQueue.length; i++) {
     now += 16
     rafQueue.shift()(now)
   }
-  // slide 3 centered: left = 200 - (300-100)/2 = 100
-  assert.equal(Math.round(container.scrollLeft), 100)
+  // One slide per viewport: the last slide centers at the real end, 200.
+  assert.equal(Math.round(container.scrollLeft), 200)
   handle.destroy()
 })
 
@@ -352,9 +363,9 @@ test('slider: RTL normalizes to logical coordinates', async () => {
   assert.equal(slides[4].vars['--sd'], '3.0000')
 
   // goTo the last slide: its logical start is 500-0-100=400 → centered target
-  // logical 300 → raw scrollLeft must be -300 (spec RTL negative domain)
+  // logical 300 is unreachable: the browser clamps to the 200px range.
   handle.goTo(4, false)
-  assert.equal(container.scrollLeft, -300)
+  assert.equal(container.scrollLeft, -200)
 
   // seek(1) lands on the logical end, raw -range
   handle.seek(1)
@@ -903,6 +914,9 @@ test('slider: a press inside the wheel settle window drops the pending glide', a
     listeners.wheel({ deltaX: 40, deltaY: 0 })
     press()
     settle()
+    assert.equal(handle.state().gliding, false, 'the press stops the glide')
+    runFrames(rafQueue) // a stopped-state notification may still be pending
+    assert.equal(c.scrollLeft, 40, 'the final measurement does not move the rail')
     assert.equal(rafQueue.length, 0, 'a press inside the window leaves no glide to fight it')
 
     // same for an explicit move (arrow click, autoplay, keyboard: all goTo)

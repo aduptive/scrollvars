@@ -320,8 +320,13 @@ export function slider(
   // not from `active` (which lags mid-glide and would swallow the clicks)
   let target = -1
   const stopGlide = () => {
-    if (anim) cancelAnimationFrame(anim)
-    anim = 0
+    if (anim) {
+      cancelAnimationFrame(anim)
+      anim = 0
+      // Rounded/clamped final positions may emit no scroll event. Deliver
+      // the stopped state once; schedule() coalesces a pending measurement.
+      schedule()
+    }
     container.classList.remove('sv-gliding')
   }
   const glide = (to: number) => {
@@ -381,7 +386,9 @@ export function slider(
     const clamped = Math.max(0, Math.min(index, all.length - 1))
     const slide = all[clamped]
     if (!slide) return
-    const to = slideStart(slide) - (viewport() - slideSize(slide)) / 2
+    // Edge slides may not center within the scroll range. Chasing an
+    // unreachable target wastes frames after native scrolling has stopped.
+    const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()))
     if (smooth) {
       target = clamped
       glide(to)

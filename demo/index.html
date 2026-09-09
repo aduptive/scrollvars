@@ -2756,7 +2756,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.5 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.5 KB / 3.0 KB</b></td><td></td></tr>
       </tbody>
@@ -2905,7 +2905,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.3 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3987,9 +3987,11 @@ var SV = (() => {
     measure();
     let target = -1;
     const stopGlide = () => {
-      if (anim)
+      if (anim) {
         cancelAnimationFrame(anim);
-      anim = 0;
+        anim = 0;
+        schedule2();
+      }
       container.classList.remove("sv-gliding");
     };
     const glide = (to) => {
@@ -4039,7 +4041,7 @@ var SV = (() => {
       const slide = all[clamped];
       if (!slide)
         return;
-      const to = slideStart(slide) - (viewport() - slideSize(slide)) / 2;
+      const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
       if (smooth) {
         target = clamped;
         glide(to);
@@ -5791,9 +5793,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // not from `active` (which lags mid-glide and would swallow the clicks)
     let target = -1;
     const stopGlide = () => {
-        if (anim)
+        if (anim) {
             cancelAnimationFrame(anim);
-        anim = 0;
+            anim = 0;
+            // Rounded/clamped final positions may emit no scroll event. Deliver
+            // the stopped state once; schedule() coalesces a pending measurement.
+            schedule();
+        }
         container.classList.remove('sv-gliding');
     };
     const glide = (to) => {
@@ -5855,7 +5861,9 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         const slide = all[clamped];
         if (!slide)
             return;
-        const to = slideStart(slide) - (viewport() - slideSize(slide)) / 2;
+        // Edge slides may not center within the scroll range. Chasing an
+        // unreachable target wastes frames after native scrolling has stopped.
+        const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
         if (smooth) {
             target = clamped;
             glide(to);

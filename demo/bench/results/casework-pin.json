@@ -1,0 +1,630 @@
+{
+  "meta": {
+    "date": "2026-09-09T03:57:32.421Z",
+    "chrome": "Chrome/152.0.7977.83",
+    "runs": 4,
+    "throttle": 1,
+    "host": "darwin",
+    "version": "1.15.1",
+    "commit": "434b98d520db4299244a7b7db23d7ba6e7e72cee",
+    "dirty": false,
+    "files": {
+      "bench/runner.js": "d32bc6bf62a3ae3f71f6f06c4a79a52160e722e69cc4c1f5f2a34780c9227ea5",
+      "bench/scrollvars.html": "82574dd1b423370c6cd342ac29a639bc3b26f45992a00973723751b0b6e514e6",
+      "bench/gsap.html": "221c7c19780b6532c617871d200a3021a3f3d8be1e40d167c12ada1936ec90e6",
+      "bench/gsap-batched.html": "57534c6a8f75327f82131790926ac48dca3c446c92d3f3fce7812b6dc93682cd",
+      "bench/framer.html": "917485ebb26b99095a846283099dc78296361b3c379ae4a6cbf0a8e6deaddb1f",
+      "bench/harness/measure.mjs": "da61475cec5fa77c510e69b6f5441548be47495e77b9d35ec00bba15bdb5c9fc",
+      "fx/sv.js": "d8bcbfe5586f840019415b3ddc9b4318816a98ca8542c6100456375e4b6848db",
+      "fx/sv.css": "de5eeb563069c5ca5c088ea574d75c22bf4cab741466628b111f43a930bc6463",
+      "bench/casework.js": "a360db0eafdcd17f80a900388df4928fdd30cb7f99587f164402172b32b9b2f9",
+      "fx/case-study-rail.html": "8c0c22c403f448be1e05e75df6ae9cc1bdb2a0a76ebd239d79b2ac2491e4528b"
+    },
+    "coreGzipKB": "7.3",
+    "competitors": {
+      "gsap": "3.15.0",
+      "gsapGzipKB": 45.2,
+      "framerMotion": "11.18.2",
+      "react": "18.3.1"
+    },
+    "metricWindow": "scroll only; startup recorded separately; no long frames filtered"
+  },
+  "scenarios": [
+    {
+      "name": "casework-pin-standard",
+      "params": "rich=0&pin=1",
+      "engines": {
+        "casework-css.html": {
+          "scriptMs": 144,
+          "recalcMs": 560,
+          "layoutMs": 0,
+          "taskMs": 1158.5,
+          "heapMB": 1.8,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 139,
+              "recalcMs": 477,
+              "layoutMs": 0,
+              "taskMs": 1030
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 28
+              },
+              "scriptMs": 161,
+              "recalcMs": 659,
+              "layoutMs": 0,
+              "taskMs": 1363
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 31
+              },
+              "scriptMs": 149,
+              "recalcMs": 573,
+              "layoutMs": 0,
+              "taskMs": 1190
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 30
+              },
+              "scriptMs": 134,
+              "recalcMs": 547,
+              "layoutMs": 0,
+              "taskMs": 1127
+            }
+          ]
+        },
+        "casework-direct.html": {
+          "scriptMs": 161.5,
+          "recalcMs": 232.5,
+          "layoutMs": 0,
+          "taskMs": 854,
+          "heapMB": 1.9,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 29
+              },
+              "scriptMs": 164,
+              "recalcMs": 239,
+              "layoutMs": 0,
+              "taskMs": 877
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 35
+              },
+              "scriptMs": 179,
+              "recalcMs": 255,
+              "layoutMs": 0,
+              "taskMs": 982
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 123,
+              "recalcMs": 176,
+              "layoutMs": 0,
+              "taskMs": 670
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 27
+              },
+              "scriptMs": 159,
+              "recalcMs": 226,
+              "layoutMs": 0,
+              "taskMs": 831
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "casework-pin-rich",
+      "params": "rich=1&pin=1",
+      "engines": {
+        "casework-css.html": {
+          "scriptMs": 142.5,
+          "recalcMs": 858.5,
+          "layoutMs": 0,
+          "taskMs": 1470,
+          "heapMB": 1,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 29
+              },
+              "scriptMs": 138,
+              "recalcMs": 783,
+              "layoutMs": 0,
+              "taskMs": 1387
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 153,
+              "recalcMs": 968,
+              "layoutMs": 0,
+              "taskMs": 1603
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 32
+              },
+              "scriptMs": 147,
+              "recalcMs": 934,
+              "layoutMs": 0,
+              "taskMs": 1553
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 131,
+              "recalcMs": 708,
+              "layoutMs": 0,
+              "taskMs": 1270
+            }
+          ]
+        },
+        "casework-direct.html": {
+          "scriptMs": 153,
+          "recalcMs": 216,
+          "layoutMs": 0,
+          "taskMs": 822.5,
+          "heapMB": 1.9,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9990104166666667,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 33
+              },
+              "scriptMs": 146,
+              "recalcMs": 205,
+              "layoutMs": 0,
+              "taskMs": 787
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 28
+              },
+              "scriptMs": 158,
+              "recalcMs": 222,
+              "layoutMs": 0,
+              "taskMs": 827
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 34
+              },
+              "scriptMs": 164,
+              "recalcMs": 237,
+              "layoutMs": 0,
+              "taskMs": 887
+            },
+            {
+              "engine": "CaseStudyRail",
+              "scrollRange": {
+                "from": 462.78125,
+                "to": 2262.78125
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.9,
+              "animation": {
+                "callbacks": 720,
+                "changes": 719,
+                "min": 0.0006770833333333334,
+                "max": 0.9995659722222222,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 33
+              },
+              "scriptMs": 148,
+              "recalcMs": 210,
+              "layoutMs": 0,
+              "taskMs": 818
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

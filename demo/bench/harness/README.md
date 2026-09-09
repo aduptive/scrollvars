@@ -300,3 +300,45 @@ least 20% median task savings in both content cells, with every paired run
 favoring direct writes and no frame regression. This is a stronger candidate
 gate, not a device-independent performance claim or permission to alter
 public clock inheritance.
+
+
+[`casework-pin.json`](../results/casework-pin.json), source `434b98d`,
+records 16 active-pin executions. Every sample uses scroll endpoints
+462.78125–2262.78125px and delivers 719 quantized progress changes over 720
+frames. Minimum progress is below .001 and maximum is at least .999. All
+samples deliver 60fps with zero frames over 25ms.
+
+| Content | CSS task ms | Direct task ms | Task saving | CSS/direct recalc ms |
+| --- | ---: | ---: | ---: | ---: |
+| Standard | 1158.5 | 854 | 26.3% | 560 / 232.5 |
+| Deep rich text | 1470 | 822.5 | 44.0% | 858.5 / 216 |
+
+Every paired repetition favors direct writes. The predeclared active-window
+gate passes. Script medians rise slightly; the saving comes from other CPU
+work, particularly recalc. End heap is higher for direct (1.8–1.9MB versus
+1.0–1.8MB); this is not a retained-memory comparison because GC was not
+forced. Paint/raster/GPU presentation are not separately measured.
+
+This establishes a scoped CPU candidate, not a default renderer change:
+the prototype shadows the public pin clock on the rail. Shipped code must
+preserve the existing inheritance contract; the prototype remains confined
+to the benchmark. Do not relabel the stronger active-pin percentages as
+full-page savings. Further rail benchmarking is lower priority than a
+compatible integration or a separate confirmed runtime defect.
+
+### Slider edge-glide regression
+
+A separate real-browser reproduction found that five 200px slides inside a
+300px rail tried to center the last slide at 750px, although the native
+scroll range ends at 700px. With a 250ms glide, each engine attempted 12
+out-of-range writes after reaching the edge, and the last `onScroll` still
+reported `gliding:true` after the handle had stopped. At the starting edge,
+WebKit could also round the final movement away and omit a scroll event.
+
+The shared `goTo` path now clamps the destination to the logical scroll
+range. Stopping an active glide queues one coalesced final measurement;
+destroyed handles still schedule nothing. Browser regression checks count
+out-of-range writes and verify completion at both edges in LTR, RTL and
+vertical rails. A fitting rail is covered by a unit check that requires zero
+animation frames. This removes observed useless writes; no new aggregate
+CPU percentage is claimed for the slider fix.

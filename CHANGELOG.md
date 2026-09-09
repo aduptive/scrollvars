@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Slider: clamp glide destinations to the real scroll range so partially visible edge slides do not cause animation frames that keep writing unreachable positions. Deliver a final stopped-state measurement even if the browser rounds away the last scroll event. Covered at both edges in LTR, RTL and vertical rails; fitting rails schedule no glide.
+
 - Canvas: pause the automatic frame loop when either layout dimension becomes zero, even when IntersectionObserver still reports an intersection. Restoring the previous size resumes without recreating the simulation; manual pause and `autoPause: false` remain respected. Covered by unit and Chromium/Firefox/WebKit regression checks.
 
 ## 1.15.1 (2026-09-08)

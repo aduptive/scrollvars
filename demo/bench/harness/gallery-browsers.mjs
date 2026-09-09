@@ -77,6 +77,38 @@ try {
       })
       await page.evaluate(() => window.stopTestPin())
       console.log(`ok ${name}: nested gestures, same-frame release, container-query pin offset`)
+      const edgeGlides = await page.evaluate(async () => {
+        const results = []
+        for (const mode of ['ltr', 'rtl', 'y']) {
+          document.body.innerHTML = `<style>#rail{display:flex;position:relative;width:300px;height:300px;overflow:auto;${mode === 'y' ? 'flex-direction:column' : 'direction:' + mode}}#rail>div{flex:0 0 200px}</style><div id="rail"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div></div>`
+          const rail = document.getElementById('rail'), states = [], writes = []
+          const property = mode === 'y' ? 'scrollTop' : 'scrollLeft'
+          const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, property)
+          Object.defineProperty(rail, property, {
+            get() { return descriptor.get.call(this) },
+            set(value) { writes.push(mode === 'rtl' ? -value : value); descriptor.set.call(this, value) },
+          })
+          const handle = SV.slider(rail, { axis:mode === 'y' ? 'y' : 'x', duration:250, onScroll:state => states.push(state) })
+          const settle = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+          await settle()
+          const reported = []
+          for (const index of [4, 0]) {
+            handle.goTo(index)
+            for (let i = 0; i < 90 && handle.state().gliding; i++) await new Promise(requestAnimationFrame)
+            await settle()
+            reported.push(states.at(-1).gliding)
+          }
+          const length = mode === 'y' ? rail.scrollHeight - rail.clientHeight : rail.scrollWidth - rail.clientWidth
+          results.push({ mode, reported, outside:writes.filter(p => p < 0 || p > length).length })
+          handle.destroy()
+        }
+        return results
+      })
+      for (const result of edgeGlides) {
+        assert.equal(result.outside, 0, `${name}: ${result.mode} glide writes beyond the scrollable range`)
+        assert.deepEqual(result.reported, [false, false], `${name}: ${result.mode} final callback still reports gliding`)
+      }
+      console.log(`ok ${name}: slider edge glides stay in range and report completion in LTR/RTL/vertical`)
       await page.goto(base + 'pointer-tilt.html')
       const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
         let writes = 0
