@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Regenerates the measured tables on demo/bench/index.html from
- * demo/bench/results/latest.json (written by the harness). Same rule as the
+ * demo/bench/results/latest.json and a newer main-only snapshot. Same rule as the
  * demo inline blocks: the page is never hand-patched.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -27,6 +27,10 @@ export const spliceAll = (text, re, replacement, count, label) => {
   return text.replace(globalRe, replacement)
 }
 
+export const newerMain = (full, mainOnly) => mainOnly?.scenarios.some(s => s.name === 'main-900')
+  && mainOnly.meta.throttle === 1 && Date.parse(mainOnly.meta.date) > Date.parse(full.meta.date)
+  ? mainOnly : full
+
 // Everything below only runs when this script is executed directly, not
 // when a test imports spliceAll above.
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
@@ -35,11 +39,14 @@ if (isMain) {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pagePath = join(root, 'demo', 'bench', 'index.html')
 const results = JSON.parse(readFileSync(join(root, 'demo', 'bench', 'results', 'latest.json'), 'utf8'))
+const mainPath = join(root, 'demo', 'bench', 'results', 'main-current.json')
+const current = newerMain(results, existsSync(mainPath) ? JSON.parse(readFileSync(mainPath, 'utf8')) : null)
+const mainFile = current === results ? 'latest.json' : 'main-current.json'
 
 const label = (e) =>
   ({ 'scrollvars.html': 'ScrollVars (page outputs on)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e
 
-const main = results.scenarios.find((s) => s.name === 'main-900')
+const main = current.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
 const styleCost = m => {
   const values = m.samples?.map(run => run.recalcMs)
@@ -47,22 +54,22 @@ const styleCost = m => {
 }
 
 let html = `<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
-<code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome ${results.meta.chrome.replace(/^(?:Headless)?Chrome\//, '')},
-median of ${results.meta.runs} runs, engine order rotated per repetition${results.meta.throttle > 1 ? `, ${results.meta.throttle}x CPU throttle set through CDP, nominal` : ''}.
-Measured ${results.meta.date}; package ${results.meta.version ?? "historical"}, commit ${results.meta.commit ?? "not recorded"}. Viewport 800×600. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+<code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome ${current.meta.chrome.replace(/^(?:Headless)?Chrome\//, '')},
+median of ${current.meta.runs} runs, engine order rotated per repetition${current.meta.throttle > 1 ? `, ${current.meta.throttle}x CPU throttle set through CDP, nominal` : ''}.
+Measured ${current.meta.date}; package ${current.meta.version ?? "historical"}, commit ${current.meta.commit ?? "not recorded"}. Viewport 800×600. CPU totals accumulate over 12 seconds; they are not per-frame times. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/${mainFile}" style="color:#a78bfa">results/${mainFile}</a>.</p>
 <table>
-  <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>layout</th><th>task total</th><th>JS heap</th><th>fps</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
+  <thead><tr><th>engine</th><th>total CPU (12 s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>layout</th><th>JS heap</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
   <tbody>
 `
 for (const [engine, m] of Object.entries(main.engines)) {
-  html += `    <tr><td>${label(engine)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${styleCost(m)}</td><td class="n">${m.layoutMs} ms</td><td class="n">${m.taskMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.fps}</td><td class="n">${m.p95Ms} ms</td><td class="n">${m.worstMs ?? "not recorded"}</td><td class="n">${m.framesOver25ms ?? "not recorded"}</td></tr>\n`
+  html += `    <tr><td>${label(engine)}</td><td class="n">${m.taskMs} ms</td><td class="n">${+m.fps.toFixed(1)}</td><td class="n">${m.scriptMs} ms</td><td class="n">${styleCost(m)}</td><td class="n">${m.layoutMs} ms</td><td class="n">${m.heapMB} MB</td><td class="n">${m.p95Ms} ms</td><td class="n">${m.worstMs ?? "not recorded"}</td><td class="n">${m.framesOver25ms ?? "not recorded"}</td></tr>\n`
 }
 html += `  </tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
 selectors). Compare document-wide writes, local writes and batched GSAP:
-150 boxes, medians:</p>
+150 boxes, medians. Historical snapshot: ${results.meta.date}, package ${results.meta.version}; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
 <table>
   <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
   <tbody>
@@ -98,7 +105,7 @@ if (existsSync(throttledPath)) {
 
 const galleries = results.scenarios.filter(s => s.name.startsWith('gallery-'))
 if (galleries.length) {
-  html += '<h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees.</p><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody>'
+  html += `<h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees. Historical snapshot: ${results.meta.date}, package ${results.meta.version}; <a href="results/latest.json">raw results</a>.</p><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody>`
   for (const row of galleries) {
     const m = Object.values(row.engines)[0]
     html += `<tr><td>${row.name.slice(8)}</td><td>${m.scriptMs} ms</td><td>${styleCost(m)}</td><td>${m.taskMs} ms</td><td>${m.p95Ms} ms</td><td>${m.worstMs} ms</td><td>${m.framesOver25ms}</td></tr>`
@@ -111,17 +118,16 @@ const page = readFileSync(pagePath, 'utf8')
 const re = /<!-- measured:start -->[\s\S]*?<!-- measured:end -->/
 if (!re.test(page)) throw new Error('measured markers not found in bench/index.html')
 writeFileSync(pagePath, page.replace(re, `<!-- measured:start -->\n${html}\n<!-- measured:end -->`))
-console.log('bench tables regenerated from results/latest.json')
+console.log(`bench main table from results/${mainFile}; deep/gallery from results/latest.json`)
 
 // ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
 const sizes = measureSizes(root)
-const measuredCore = results.meta.coreGzipKB ?? sizes.everything
-const BUNDLES = { 'scrollvars.html': `${measuredCore} KB`, 'scrollvars-local.html': `${measuredCore} KB`, 'gsap.html': `${GSAP_KB} KB`, 'gsap-batched.html': `${GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
+const measuredCore = current.meta.coreGzipKB ?? sizes.everything
+const BUNDLES = { 'scrollvars.html': `${measuredCore} KB`, 'scrollvars-local.html': `${measuredCore} KB`, 'gsap.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'gsap-batched.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
 const MD_LABEL = { 'scrollvars.html': 'ScrollVars (page outputs on)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
-const md = [`Measured ${results.meta.date}; package ${results.meta.version ?? 'historical'}, ${results.meta.runs} runs. Bundle and runtime measurements refer to this snapshot.`, '', '| engine | bundle (gzip) | JS script (12 s, 900 el) | style recalc | JS heap |', '|---|---|---|---|---|']
+const md = [`Measured ${current.meta.date}; package ${current.meta.version ?? 'historical'}, ${current.meta.runs} runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/${mainFile}); [frame tails and methodology](https://scrollvars.dev/bench/).`, '', '| engine | total CPU (12 s) | fps | bundle (gzip) | JS script | style recalc | JS heap |', '|---|---|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
-  const sv = engine === 'scrollvars.html'
-  md.push(`| ${MD_LABEL[engine]} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${sv ? `**${m.heapMB} MB**` : `${m.heapMB} MB`} |`)
+  md.push(`| ${MD_LABEL[engine]} | ${m.taskMs} ms | ${+m.fps.toFixed(1)} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${m.heapMB} MB |`)
 }
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)

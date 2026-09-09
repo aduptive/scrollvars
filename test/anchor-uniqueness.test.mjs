@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 import { between as docsBetween, stamp, floorRow, spliceOne as docsSpliceOne } from '../scripts/docs-stamp.mjs'
 import { between as demoBetween, spliceOne as demoSpliceOne } from '../scripts/demo-sync.mjs'
-import { spliceAll } from '../scripts/bench-tables.mjs'
+import { spliceAll, newerMain } from '../scripts/bench-tables.mjs'
 import { spliceStage } from '../scripts/fx-render.mjs'
 
 // ADU-195: a between()-style splice starts its non-greedy match at the
@@ -190,4 +190,15 @@ test('fx-render spliceStage(): splices the fxsticky class when the anchor is pre
   const fx = { slug: 'timeline-scrub', requires: { styles: ['pin'] } }
   const result = spliceStage('<div class="sv-stage">x</div>', fx)
   assert.equal(result, '<div class="sv-stage fxsticky">x</div>')
+})
+
+
+test('bench main refresh uses its own snapshot, while a later full run wins', () => {
+  const full = { meta: { date: '2026-09-08T00:00:00Z' } }
+  const main = { meta: { date: '2026-09-09T00:00:00Z', throttle: 1 }, scenarios: [{ name: 'main-900' }] }
+  assert.equal(newerMain(full, main), main)
+  assert.equal(newerMain(full, null), full)
+  assert.equal(newerMain(full, { ...main, scenarios: [] }), full)
+  assert.equal(newerMain(full, { ...main, meta: { ...main.meta, throttle: 4 } }), full)
+  assert.equal(newerMain({ ...full, meta: { date: '2026-09-10T00:00:00Z' } }, main).meta.date, '2026-09-10T00:00:00Z')
 })

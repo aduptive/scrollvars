@@ -617,3 +617,29 @@ calculation. The [specification discussion](https://github.com/w3c/IntersectionO
 records the historical width/height ambiguity; do not rewrite the fixture
 or recreate the culler on resize from a remembered rule that disagrees
 with the tested engines. This probe is not a historical-browser guarantee.
+
+
+### Main comparison refreshed for 1.16.0
+
+`node measure.mjs --scenarios=main --runs=4 --out=main-current.json`
+records the current main-only snapshot without replacing the older deep-DOM
+and gallery measurements in `latest.json`. `scripts/bench-tables.mjs` uses
+whichever main snapshot is newer; a later full run supersedes this refresh.
+Each displayed group retains its own date/version and raw source link.
+
+The September 9 run from clean source `e393f56` includes 20 executions,
+rotating engine order. Median total task: ScrollVars defaults 4144.5ms,
+page outputs off 1872ms, GSAP idiomatic 1800ms, batched GSAP 1669ms,
+Framer 2111.5ms. All except the default ScrollVars row delivered median
+60fps (default 59.6fps). ScrollVars local is 12.2% above batched GSAP,
+4% above idiomatic GSAP and 11.3% below Framer in total task time.
+The default remains 2.48 times batched GSAP's total task cost.
+
+This does not establish a general speedup since 1.15.0: the local median
+was 1743ms then, and environment/run variation prevents attributing the
+new 1872ms to a regression. The published slider savings concern different
+workloads. Document-wide inherited outputs remain the primary measured
+weakness; changing their default would break existing consumers.
+The summary tables now lead with total task CPU and FPS, keeping script,
+style, memory and both output modes visible. Total task is CDP TaskDuration,
+not the sum of displayed subcategories or a GPU/device measurement.
