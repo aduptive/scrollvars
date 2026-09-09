@@ -2,6 +2,9 @@
 // Public clocks keep their inheritance; direct output is an explicit variant.
 window.mountMainStyleExperiment = function (mode) {
   const direct = mode.startsWith('direct')
+  const native = mode.startsWith('waapi')
+  const animations = new Map()
+  let stylesheet
   if (mode === 'typed') {
     for (const name of ['--sv-page', '--sv-v'])
       CSS.registerProperty({ name, syntax: '<number>', inherits: true, initialValue: '0' })
@@ -10,6 +13,20 @@ window.mountMainStyleExperiment = function (mode) {
     const style = document.createElement('style')
     style.textContent = 'section { content-visibility: auto; }'
     document.head.append(style)
+  }
+  if (native) {
+    stylesheet = document.createElement('style')
+    stylesheet.textContent = '.box { translate: none; opacity: 1; }'
+    document.head.append(stylesheet)
+    for (const box of boxes) {
+      const animation = box.el.animate([
+        { translate: `0 ${box.speed / 2}px`, opacity: .3 },
+        { translate: `0 ${-box.speed / 2}px`, opacity: 1 },
+      ], { duration: 1000, fill: 'both', easing: 'linear' })
+      animation.pause()
+      animation.currentTime = 500
+      animations.set(box, animation)
+    }
   }
   SV.setPageOutputs(!mode.endsWith('-off'))
   const sections = new Map()
@@ -34,6 +51,7 @@ window.mountMainStyleExperiment = function (mode) {
         box.el.style.translate = `0 ${(0.5 - t) * box.speed}px`
         box.el.style.opacity = String(0.3 + t * 0.7)
       }
+      if (native) for (const box of children) animations.get(box).currentTime = t * 1000
     } }))
   }
   // Out of the timed window: verify identical visible transforms and opacity,
@@ -73,5 +91,9 @@ window.mountMainStyleExperiment = function (mode) {
     scrollTo(0, 0)
     return results
   }
-  return () => stops.forEach(stop => stop())
+  return () => {
+    stops.forEach(stop => stop())
+    animations.forEach(animation => animation.cancel())
+    stylesheet?.remove()
+  }
 }

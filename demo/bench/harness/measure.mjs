@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm', 'main-style-waapi'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm,main-style-waapi')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -47,6 +47,8 @@ await new Promise((r) => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}/bench/`
 
 const SCENARIOS = []
+if (WHICH.includes('main-style-waapi'))
+  SCENARIOS.push({ name:'main-style-waapi-900', params:'s=60&p=15', engines:['style-baseline.html', 'style-direct-clocks.html', 'style-waapi.html', 'style-baseline-off.html', 'style-direct-clocks-off.html', 'style-waapi-off.html'] })
 if (WHICH.includes('main-style-confirm'))
   SCENARIOS.push({ name:'main-style-confirm-900', params:'s=60&p=15', engines:['style-baseline.html', 'style-direct-clocks.html', 'style-baseline-off.html', 'style-direct-clocks-off.html', 'gsap-batched.html', 'framer.html'] })
 if (WHICH.includes('main-style'))
