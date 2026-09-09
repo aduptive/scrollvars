@@ -793,3 +793,49 @@ Public HTML matches the local source byte-for-byte; `/fx/sv.js` retains
 hash `4588edad8fd62b301567e8dbf1ed405d1c17fd3a3e232b57e7aba60a93389154`.
 A public mobile Chromium check with JS disabled confirms visible section
 headings, a static rail and removed map containment. Package stays 1.16.1.
+
+### Main-900 style-cost investigation
+
+Priority changed back to CPU/style recalc at the user's request. The
+homepage reduced-motion finding above is queued, not the performance task.
+`main-style.js` mounts diagnostic variants on the existing 900-box page,
+using the same driver, viewport, positions, speeds, 12-second path and
+four-decimal travel values. Every variant reattaches the same sections and
+records callbacks/progress changes. Geometry/opacity and inherited page
+clocks are checked before the timed workload; setup remains separate.
+No package renderer or default is changed.
+
+Ranked hypotheses: typed inherited global properties might avoid unnecessary
+style work; direct local translate/opacity writes might avoid variable
+substitution; native content-visibility might skip offscreen style work.
+The first screen (`--scenarios=main-style --runs=2`,
+[`main-style-screen.json`](../results/main-style-screen.json), source files
+captured in `3d51f9f`) produced these medians, in milliseconds:
+
+| variant | TaskDuration | Style recalc |
+|---|---:|---:|
+| inherited CSS, globals on | 4335.5 | 3452 |
+| typed globals, still inherited | 4252.5 | 3331.5 |
+| direct output, globals on | 2595.5 | 1681 |
+| CSS + content-visibility:auto, globals on | 2100.5 | 1001.5 |
+| inherited CSS, globals off | 1949 | 427.5 |
+| direct output, globals off | 1496 | 197 |
+
+Two repetitions are screening, not a release claim. Typed globals show no
+material benefit and would also change unset/fallback semantics, so reject
+that route. Content-visibility is a layout-dependent authoring option,
+not safe to apply to arbitrary pinned/sticky/fixed content. Its result must
+not be presented as a general engine improvement or used exclusively on
+ScrollVars to manufacture a competitive advantage.
+
+The confirmation uses `--scenarios=main-style-confirm --runs=4`: CSS/direct
+with globals on/off, GSAP batched and Framer in the same rotating batch.
+Unlike the screening direct variant, direct-clocks also keeps the public
+`--sv-t` output alongside the explicit renderer; only the consumption path
+changes. The fast `node main-style-check.mjs` gate covers forward/reverse,
+desktop/mobile resize, transforms, opacity and clocks in all three engines.
+Require at least 15% lower median total task CPU in both matched modes,
+each repetition favorable, no material frame-delivery regression and
+comparable animation progress delivery. Preserve all raw runs. If it passes,
+this establishes a renderer candidate, not an automatic rewrite of arbitrary
+user CSS; real preset semantics and lifecycle still gate adoption.

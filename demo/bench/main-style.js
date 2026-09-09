@@ -21,7 +21,7 @@ window.mountMainStyleExperiment = function (mode) {
   const stops = []
   for (const [section, children] of sections) {
     let last
-    stops.push(SV.track(section, { view: false, travel: !direct, onTravel(value) {
+    stops.push(SV.track(section, { view: false, travel: !direct || mode.includes('clocks'), onTravel(value) {
       const t = +value.toFixed(4) // same serialization as the CSS clock
       const audit = window.__railAudit
       audit.callbacks++
@@ -45,8 +45,13 @@ window.mountMainStyleExperiment = function (mode) {
       const top = scrollY + section.getBoundingClientRect().top
       scrollTo(0, top - innerHeight + (section.offsetHeight + innerHeight) * p)
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      // Allow async scrolling/resize delivery to settle across browser engines.
+      // This is a geometry gate, outside the separately audited timed workload.
+      await new Promise(r => setTimeout(r, 100))
       const rect = section.getBoundingClientRect()
       const t = +Math.max(0, Math.min((innerHeight - rect.top) / (rect.height + innerHeight), 1)).toFixed(4)
+      if ((!direct || mode.includes('clocks')) && Math.abs(+section.style.getPropertyValue('--sv-t') - t) > .0001)
+        throw Error(`${mode}: public travel clock ${section.style.getPropertyValue('--sv-t')} != ${t} at ${p}`)
       for (const box of sections.get(section)) {
         const css = getComputedStyle(box.el)
         const y = parseFloat(css.translate.split(' ')[1])
@@ -56,6 +61,8 @@ window.mountMainStyleExperiment = function (mode) {
       if (!mode.endsWith('-off')) {
         const root = getComputedStyle(document.documentElement)
         const child = getComputedStyle(sections.get(section)[0].el)
+        if (Math.abs(+root.getPropertyValue('--sv-page') - scrollY / (document.documentElement.scrollHeight - innerHeight)) > .0001)
+          throw Error(`${mode}: incorrect public page progress`)
         for (const name of ['--sv-page', '--sv-v']) {
           if (Math.abs(+root.getPropertyValue(name) - +child.getPropertyValue(name)) > .00001)
             throw Error(`${mode}: lost inheritance of ${name}`)
