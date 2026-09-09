@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -69,6 +69,9 @@ if (WHICH.includes('rail'))
 if (WHICH.includes('rail-local'))
   for (const deep of [5, 50, 200])
     SCENARIOS.push({ name:`rail-local-${deep}`, params:`deep=${deep}`, engines:['rail.html', 'rail-direct.html', 'rail-local.html'] })
+if (WHICH.includes('casework'))
+  for (const rich of [0, 1])
+    SCENARIOS.push({ name:`casework-${rich ? 'rich' : 'standard'}`, params:`rich=${rich}`, engines:['casework-css.html', 'casework-direct.html'] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -97,6 +100,8 @@ async function measureOnce(engine, params) {
   const context = await browser.createBrowserContext()
   try {
     const page = await context.newPage()
+    const casework = engine.startsWith('casework-')
+    if (casework) await page.setViewport({ width:1400, height:900 }) // active pin, not the small-screen flow fallback
     const cdp = await page.createCDPSession()
     let calibration = null
     if (THROTTLE > 1) {
@@ -117,8 +122,14 @@ async function measureOnce(engine, params) {
     const local = engine === 'scrollvars-local.html'
     const direct = engine === 'rail-direct.html'
     const localized = engine === 'rail-local.html'
-    await page.goto(`${base}${local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
-    if (engine.startsWith('../fx/')) {
+    await page.goto(`${base}${casework ? '../fx/case-study-rail.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    if (casework) {
+      await page.addScriptTag({ url:`${base}casework.js` })
+      await page.evaluate(direct => {
+        window.stopCaseworkExperiment = mountCaseworkExperiment({ direct, rich:new URLSearchParams(location.search).get('rich') === '1' })
+      }, engine === 'casework-direct.html')
+    }
+    if (engine.startsWith('../fx/') || casework) {
       await page.addScriptTag({ url: `${base}runner.js` })
       await page.evaluate(label => runBench(label), engine)
     }
@@ -133,7 +144,10 @@ async function measureOnce(engine, params) {
   } finally { await context.close() }
 }
 
-const median = (xs) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)]
+const median = xs => {
+  const sorted = xs.slice().sort((a, b) => a - b), mid = Math.floor(xs.length / 2)
+  return (sorted[Math.ceil(xs.length / 2) - 1] + sorted[mid]) / 2
+}
 const repo = join(root, '..')
 const hash = path => createHash('sha256').update(readFileSync(join(root, path))).digest('hex')
 const results = { meta: {
@@ -146,6 +160,8 @@ const results = { meta: {
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
   metricWindow: 'scroll only; startup recorded separately; no long frames filtered',
 }, scenarios: [] }
+if (WHICH.includes('casework'))
+  for (const path of ['bench/casework.js', 'fx/case-study-rail.html']) results.meta.files[path] = hash(path)
 
 for (const sc of SCENARIOS) {
   console.log(`\n== ${sc.name} (${sc.params}) · ${RUNS} runs each ==`)

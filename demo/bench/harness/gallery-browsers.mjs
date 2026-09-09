@@ -161,6 +161,46 @@ try {
       }
       await page.setViewportSize({ width:1400, height:900 })
       console.log(`ok ${name}: CSS/direct/localized rail geometry, reverse and resize`)
+      for (const direct of [false, true]) {
+        await page.goto(base + 'case-study-rail.html')
+        await page.addScriptTag({ url:base + '../bench/casework.js' })
+        await page.evaluate(direct => { window.stopCaseworkExperiment = mountCaseworkExperiment({ direct, rich:true }) }, direct)
+        for (const width of [1400, 900, 1400]) {
+          await page.setViewportSize({ width, height:900 })
+          await settle(page)
+          for (const progress of [.1, .5, 1, .5, 0]) {
+            await pin(page, '.sv-casework > .sv', progress)
+            const geometry = await page.locator('.work-rail').evaluate(rail => {
+              const root = rail.closest('.sv'), stage = rail.closest('.sv-stage')
+              const p = +root.style.getPropertyValue('--sv-pin')
+              return { flow:root.hasAttribute('data-sv-flow'), p,
+                actual:new DOMMatrixReadOnly(getComputedStyle(rail).transform).m41,
+                expected:p * Math.min(stage.clientWidth - rail.getBoundingClientRect().width, 0) }
+            })
+            assert(!geometry.flow && Math.abs(geometry.p - progress) < .002 && Math.abs(geometry.actual - geometry.expected) < .2,
+              `${name}: casework direct=${direct}, width=${width}, p=${progress}: ${JSON.stringify(geometry)}`)
+          }
+        }
+        await page.emulateMedia({ reducedMotion:'reduce' })
+        await settle(page)
+        assert.equal(await page.locator('.work-rail').evaluate(el => getComputedStyle(el).transform), 'none')
+        await page.emulateMedia({ reducedMotion:'no-preference' })
+        await settle(page)
+        await pin(page, '.sv-casework > .sv', .5)
+        assert(await page.locator('.work-rail').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41 < -100))
+        await page.locator('.work-fit').evaluate(el => {
+          const text = document.createElement('p'); text.textContent = 'Long CMS content. '.repeat(500); el.append(text)
+        })
+        await page.setViewportSize({ width:390, height:600 })
+        await page.waitForFunction(() => document.querySelector('.sv-casework > .sv').hasAttribute('data-sv-flow'))
+        assert.equal(await page.locator('.work-rail').evaluate(el => getComputedStyle(el).transform), 'none')
+        await page.setViewportSize({ width:1400, height:900 })
+        await settle(page)
+        assert(await page.locator('.sv-casework > .sv').evaluate(el => el.hasAttribute('data-sv-flow')))
+        await page.evaluate(() => stopCaseworkExperiment())
+        assert.deepEqual(await page.locator('.work-rail').evaluate(el => ['transform', '--sv-pin'].map(p => el.style.getPropertyValue(p))), ['', ''])
+      }
+      console.log(`ok ${name}: real casework CSS/direct geometry, reverse, resize, live reduced motion, CMS flow and cleanup`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],

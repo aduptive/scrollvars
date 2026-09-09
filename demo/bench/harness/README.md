@@ -192,3 +192,27 @@ earlier acceptance gate remains unmet. Keep it benchmark-only and prioritize
 the real-gallery adoption gate; do not add a general output-mode API on
 these results. Geometry and non-inheritance checks pass in all three browser
 engines; the core and shipped component implementations have not changed.
+
+
+### Real CaseStudyRail experiment
+
+`node demo/bench/harness/measure.mjs --scenarios=casework --runs=4 --out=casework-experiment.json`
+
+This loads the actual generated gallery page at 1400×900 (active pin), then
+retracks its preview with the existing pin helper and `view:false` in both
+variants. The direct variant cuts pin inheritance on the rail, caches its
+measured travel with a ResizeObserver and writes `transform` from `onPin`.
+The wrapper retains its public clock, pin height, sticky offset and flow
+helper. This is benchmark-only: descendant CSS that consumes the inherited
+pin clock would need an explicit contract before adopting this boundary.
+
+Standard content and an identical-looking deep rich-text variant (13 nested
+spans per word) are measured. Four rotating repetitions balance first/second
+order. Both retain the full gallery, including code panels outside the pin;
+progress-change counts therefore need not equal full-page runner frames.
+Inspect progress coverage and variant cadence before comparing CPU totals.
+Predeclared gate: at least 15% lower median task time for rich content, no
+more than 10% regression for standard content, and no material frame-delivery
+regression. Cross-browser checks cover forward/reverse geometry, resize,
+live reduced motion, late CMS overflow, latched flow and cleanup. Passing
+this gate is evidence for a candidate, not automatic component adoption.
