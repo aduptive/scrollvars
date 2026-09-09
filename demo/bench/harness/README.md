@@ -894,3 +894,27 @@ an API or changing any preset. Do not silently suppress clocks used by CSS,
 apply containment to arbitrary layouts, or change global defaults. The main
 published benchmark and changelog stay unchanged until a runtime change is
 actually adopted and measured.
+
+#### Callback-only confirmation protocol
+
+`node measure.mjs --scenarios=main-style-callback --runs=6 --out=main-style-callback.json`
+compares CSS, direct-with-clock and callback-only direct output with global
+outputs disabled in all three. Workloads: 60×15 plain boxes (900), then
+30×5 boxes with 20 and 50 text descendants per box. Each uses the same
+12-second forward/reverse path within its profile. Six repetitions cover
+all six engine permutations, balancing positions and within-run predecessor
+pairs; the raw file records the actual measurement order. No concurrent
+browser tests or heavy work may run during measurement.
+
+The `--callback` mode of `main-style-check.mjs` checks plain and deep DOM
+at two viewport widths in Chromium, Firefox and WebKit, including absence
+of unused clocks and matching transform/opacity. Geometry preflight stays
+outside the measurement; startup contains that diagnostic work.
+
+Predeclared promotion gate: callback-only must lower median total task CPU
+by at least 15% versus CSS in all three profiles, every matched repetition
+must favor it, and frame/progress delivery must not materially regress.
+The middle variant isolates the cost of retaining an unused local clock;
+report that difference separately. Passing permits validation of a concrete
+opt-in effect, not a blanket renderer change. Failure means recording the
+limit and choosing a different hypothesis, without lowering the gate.

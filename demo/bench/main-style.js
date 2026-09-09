@@ -70,6 +70,10 @@ window.mountMainStyleExperiment = function (mode) {
       const t = +Math.max(0, Math.min((innerHeight - rect.top) / (rect.height + innerHeight), 1)).toFixed(4)
       if ((!direct || mode.includes('clocks')) && Math.abs(+section.style.getPropertyValue('--sv-t') - t) > .0001)
         throw Error(`${mode}: public travel clock ${section.style.getPropertyValue('--sv-t')} != ${t} at ${p}`)
+      if (direct && !mode.includes('clocks') && section.style.getPropertyValue('--sv-t') !== '')
+        throw Error(`${mode}: callback-only must not publish an unused travel clock`)
+      if (mode.endsWith('-off') && ['--sv-page', '--sv-v'].some(name => document.documentElement.style.getPropertyValue(name) !== ''))
+        throw Error(`${mode}: global clocks must stay disabled`)
       for (const box of sections.get(section)) {
         const css = getComputedStyle(box.el)
         const y = parseFloat(css.translate.split(' ')[1])

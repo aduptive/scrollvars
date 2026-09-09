@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm', 'main-style-waapi'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm,main-style-waapi')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style', 'main-style-confirm', 'main-style-waapi', 'main-style-callback'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home,main-style,main-style-confirm,main-style-waapi,main-style-callback')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -47,6 +47,9 @@ await new Promise((r) => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}/bench/`
 
 const SCENARIOS = []
+if (WHICH.includes('main-style-callback'))
+  for (const [name, params] of [['900', 's=60&p=15'], ['deep-20', 's=30&p=5&deep=20'], ['deep-50', 's=30&p=5&deep=50']])
+    SCENARIOS.push({ name:`main-style-callback-${name}`, params, balanced:true, engines:['style-baseline-off.html', 'style-direct-clocks-off.html', 'style-direct-off.html'] })
 if (WHICH.includes('main-style-waapi'))
   SCENARIOS.push({ name:'main-style-waapi-900', params:'s=60&p=15', engines:['style-baseline.html', 'style-direct-clocks.html', 'style-waapi.html', 'style-baseline-off.html', 'style-direct-clocks-off.html', 'style-waapi-off.html'] })
 if (WHICH.includes('main-style-confirm'))
@@ -235,9 +238,12 @@ if (WHICH.some(s => s.startsWith('casework')))
 for (const sc of SCENARIOS) {
   console.log(`\n== ${sc.name} (${sc.params}) · ${RUNS} runs each ==`)
   const raw = Object.fromEntries(sc.engines.map((e) => [e, []]))
+  const measurementOrder = []
   for (let run = 0; run < RUNS; run++) {
     // rotate order every repetition so no engine always pays the cold cost
-    const order = sc.engines.slice(run % sc.engines.length).concat(sc.engines.slice(0, run % sc.engines.length))
+    const pool = sc.balanced && Math.floor(run / sc.engines.length) % 2 ? [...sc.engines].reverse() : sc.engines
+    const order = pool.slice(run % pool.length).concat(pool.slice(0, run % pool.length))
+    measurementOrder.push(order)
     for (const engine of order) {
       const r = await measureOnce(engine, sc.params)
       raw[engine].push(r)
@@ -261,7 +267,7 @@ for (const sc of SCENARIOS) {
       samples: runs,
     }
   }
-  results.scenarios.push({ name: sc.name, params: sc.params, engines })
+  results.scenarios.push({ name: sc.name, params: sc.params, measurementOrder, engines })
 }
 
 await browser.close()

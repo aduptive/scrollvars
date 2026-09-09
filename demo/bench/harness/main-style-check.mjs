@@ -3,13 +3,17 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { chromium, firefox, webkit } from 'playwright'
 
+const callbackOnly = process.argv.includes('--callback')
+const modes = callbackOnly ? ['baseline-off', 'direct-clocks-off', 'direct-off'] : ['baseline', 'direct-clocks', 'direct-clocks-off', 'visibility', 'waapi', 'waapi-off']
+const profiles = callbackOnly ? ['s=60&p=15', 's=30&p=5&deep=50'] : ['s=60&p=15']
+
 for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
   const browser = await engine.launch()
   try {
-    for (const mode of ['baseline', 'direct-clocks', 'direct-clocks-off', 'visibility', 'waapi', 'waapi-off']) {
+    for (const mode of modes) for (const params of profiles) {
       const page = await browser.newPage({ viewport: { width: 800, height: 600 } })
       try {
-        await page.goto(new URL('../scrollvars.html?s=60&p=15&harness=1', import.meta.url).href)
+        await page.goto(new URL(`../scrollvars.html?${params}&harness=1`, import.meta.url).href)
         await page.addScriptTag({ path: fileURLToPath(new URL('../main-style.js', import.meta.url)) })
         await page.evaluate(mode => { window.stopStyleExperiment = mountMainStyleExperiment(mode) }, mode)
         for (const width of [800, 390]) {
@@ -19,7 +23,7 @@ for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
         }
         await page.evaluate(() => stopStyleExperiment())
         assert.equal(await page.evaluate(() => document.getAnimations().length), 0)
-        console.log(`ok ${name}: ${mode}, forward/reverse, resize, transforms, opacity and public clocks`)
+        console.log(`ok ${name}: ${mode} ${params}, forward/reverse, resize, transforms, opacity and public clocks`)
       } finally { await page.close() }
     }
   } finally { await browser.close() }
