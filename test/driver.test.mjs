@@ -468,6 +468,45 @@ test('driver: global outputs can be disabled, including the pending velocity res
   setPageOutputs(false)
 })
 
+test('driver: repeatedly enabling page outputs from a callback does not sustain idle frames', async () => {
+  for (const callback of ['onTravel', 'onPin']) {
+    const vars = {}
+    global.document = { documentElement: {
+      classList: { add() {} }, scrollHeight: 3000,
+      style: { setProperty: (k,v) => vars[k] = v, removeProperty: k => delete vars[k] },
+    } }
+    window.scrollY = 1000
+    const { track, setPageOutputs } = await import(`../dist/core/driver.js?pageidle-${callback}`)
+    const el = makeElement(400)
+    place(el, 100)
+    let callbacks = 0
+    const stop = track(el, { [callback]: () => { callbacks++; setPageOutputs(true) } })
+    try {
+      // Never pump an unbounded queue: the regression reschedules itself.
+      for (let i = 0; i < 120 && rafQueue.length; i++) rafQueue.shift()(performance.now())
+      assert.equal(callbacks, 1, `${callback}: an unchanged setting must not sustain an idle loop`)
+      assert.equal(rafQueue.length, 0)
+      setPageOutputs(false)
+      setPageOutputs(true)
+      assert.equal(rafQueue.length, 1, 'a real re-enable still schedules a frame')
+      rafQueue.shift()(performance.now())
+      assert.equal(callbacks, 2)
+      assert.equal(vars['--sv-page'], '0.5000')
+      assert.equal(rafQueue.length, 0, 'the callback must not extend the re-enable frame')
+      window.scrollY = 1100
+      listeners.scroll()
+      rafQueue.shift()(performance.now())
+      assert.equal(callbacks, 3, 'later scroll input still updates normally')
+      assert.equal(vars['--sv-page'], '0.5500')
+      assert.equal(rafQueue.length, 0)
+    } finally {
+      stop()
+      setPageOutputs(false)
+      while (rafQueue.length) rafQueue.shift()(performance.now())
+    }
+  }
+})
+
 test('driver: callbacks can toggle page outputs without publishing an unread page span', async () => {
   for (const callback of ['onLive', 'onTravel', 'onPin', 'onScene']) {
     const vars = {}, events = []

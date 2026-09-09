@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Driver: repeated `setPageOutputs(true)` calls no longer schedule frames when outputs are already enabled. Calling it from `onTravel`/`onPin` previously sustained a frame loop on a stationary page. A Chromium/Firefox/WebKit probe now records zero callbacks and element-geometry reads during the idle window; real re-enabling and subsequent scroll input still update normally. This removes unnecessary idle work in that callback pattern, not the general benchmark's inherited-style cost.
 - Driver: enabling page outputs inside a tracking callback waits for a frame with measured document geometry. Previously it could briefly publish `--sv-page: 1` halfway through the page. Disabling remains immediate; the fix adds no layout reads during the write phase. Covered for live/travel/pin/scene callbacks and checked in Chromium, Firefox and WebKit. This is a correctness fix, not a measured CPU speedup.
 
 ## 1.16.0 (2026-09-09)

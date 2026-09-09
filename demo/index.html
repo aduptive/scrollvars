@@ -3055,6 +3055,8 @@ var SV = (() => {
   var offsetsDirty = false;
   var forceAll = false;
   function setPageOutputs(enabled) {
+    if (enabled && pageOutputsEnabled)
+      return;
     pageOutputsEnabled = enabled;
     if (typeof document === "undefined")
       return;

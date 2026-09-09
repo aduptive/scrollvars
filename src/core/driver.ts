@@ -164,8 +164,10 @@ let offsetsDirty = false
 let forceAll = false // set by refresh(): give culled entries one geometry pass on the next update()
 
 /** Enable/disable document-wide --sv-page/--sv-v writes. Default true for
- * compatibility. Call once at boot with false when no CSS consumes them. */
+ * compatibility. Call once at boot with false when no CSS consumes them.
+ * Repeated enabling does not schedule another frame. */
 export function setPageOutputs(enabled: boolean) {
+  if (enabled && pageOutputsEnabled) return
   pageOutputsEnabled = enabled
   if (typeof document === 'undefined') return
   if (!enabled) {

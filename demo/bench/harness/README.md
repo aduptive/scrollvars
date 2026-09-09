@@ -661,3 +661,22 @@ ordering. All 300 unit tests pass. A real-browser probe at viewport
 when enabling from `onTravel` in Chromium, Firefox and WebKit.
 No additional geometry read, public default or variable inheritance change;
 this is correctness evidence, not a new CPU benchmark or npm release.
+
+### Repeated page-output enable at rest (unreleased)
+
+Confirmed against source `45c791b`: calling `setPageOutputs(true)` from
+`onTravel` sustained all 120 frames of a bounded unit probe without any
+scroll input. The setter always scheduled another frame, even though the
+setting was already true. A single guard now skips repeated enabling;
+disabling still clears outputs, and a real false-to-true transition still
+schedules the measured frame. The setting is not a refresh API.
+
+The permanent test covers both `onTravel` and `onPin`, the re-enable path
+and a later scroll event. All 301 unit tests pass. Browser probes compare
+the bundled baseline source with the candidate on a stationary 3000px
+document at viewport 800×1000. After 250ms settling, a further 250ms window
+records callbacks/element rect reads of 15/15 in Chromium, 16/16 in Firefox
+and 15/15 in WebKit for the baseline; every candidate records 0/0. Later
+scroll input resumes callbacks in both versions and all three engines.
+These counts prove removal of the idle loop in this callback pattern;
+they do not quantify CPU savings or alter the published scroll benchmark.
