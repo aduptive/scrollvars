@@ -2,7 +2,9 @@
 
 ## 1.16.0 (2026-09-09)
 
-- Add `cssVars: false` to `slider()`/`useSlider()` and the `<Slider>` kit to skip unused `--sd`, `--sv-progress` and `--sv-slide` writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes. The actual-API benchmark records 46.3%/53.7% lower median task time for 15/120-card linked sliders; both modes already deliver 60fps, and this is not a device-wide guarantee.
+- Add `cssVars: false` to `slider()`/`useSlider()` and the `<Slider>` kit to skip unused `--sd`, `--sv-progress` and `--sv-slide` writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes.
+- **36–54% less main-thread CPU time in the measured plain-slider workloads**, when opting out of unused CSS outputs. Continuous `seek()` benchmarks fall from 1145 to 615 ms (15 cards, **46.3%**) and 2784.5 to 1288 ms (120 cards, **53.7%**). Animated `goTo()` benchmarks fall from 508.5 to 323.5 ms (**36.4%**) and 1319 to 603.5 ms (**54.2%**), respectively. Each workload uses four runs per mode and size with rotated execution order; both modes already deliver 60fps. These are CPU savings, not FPS gains or a general speedup over GSAP/Framer. Sliders whose CSS consumes these variables must keep outputs enabled. [Seek measurements](https://scrollvars.dev/bench/results/slider-api.json), [glide measurements](https://scrollvars.dev/bench/results/slider-glide.json), [methodology and limits](https://github.com/aduptive/scrollvars/blob/main/demo/bench/harness/README.md#unused-slider-outputs-plain-carousel).
+- Refresh the [general benchmark](https://scrollvars.dev/bench/) for 1.16.0 and lead with total CPU and frame delivery, retaining the style-cost breakdown and both page-output modes. This comparison does not establish a general speedup since 1.15.0; document-wide outputs remain the main measured weakness.
 
 ## 1.15.2 (2026-09-09)
 
