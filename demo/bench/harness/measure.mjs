@@ -27,7 +27,7 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home'].includes(s)))
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home', 'main-style'].includes(s)))
   throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -47,6 +47,8 @@ await new Promise((r) => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}/bench/`
 
 const SCENARIOS = []
+if (WHICH.includes('main-style'))
+  SCENARIOS.push({ name:'main-style-900', params:'s=60&p=15', engines:['style-baseline.html', 'style-typed.html', 'style-direct.html', 'style-visibility.html', 'style-baseline-off.html', 'style-direct-off.html'] })
 if (WHICH.includes('home'))
   SCENARIOS.push({ name:'home-page', params:'', engines:['home-on.html', 'home-off.html'] })
 if (WHICH.includes('main'))
@@ -120,6 +122,7 @@ async function measureOnce(engine, params) {
     const page = await context.newPage()
     const casework = engine.startsWith('casework-')
     const home = engine.startsWith('home-')
+    const styleExperiment = engine.startsWith('style-')
     if (home) {
       await page.setViewport({ width:1400, height:900 })
       await page.evaluateOnNewDocument(() => {
@@ -151,7 +154,12 @@ async function measureOnce(engine, params) {
     const guardedSlider = engine === 'slider-guarded.html'
     const noOutputs = engine === 'slider-no-outputs.html' || engine === 'slider-api-no-outputs.html'
     const plainSlider = noOutputs || engine === 'slider-plain.html' || engine === 'slider-api.html'
-    await page.goto(`${base}${home ? '../index.html' : casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    await page.goto(`${base}${home ? '../index.html' : casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local || styleExperiment ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    if (styleExperiment) {
+      await page.addScriptTag({ url:`${base}main-style.js` })
+      await page.evaluate(mode => mountMainStyleExperiment(mode), engine.slice(6, -5))
+      await page.evaluate(() => __styleCheck())
+    }
     if (home) {
       await page.evaluate(async enabled => {
         await document.fonts.ready
@@ -213,6 +221,7 @@ const results = { meta: {
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
   metricWindow: '12-second workload only; startup recorded separately; no long frames filtered',
 }, scenarios: [] }
+if (WHICH.includes('main-style')) results.meta.files['bench/main-style.js'] = hash('bench/main-style.js')
 if (WHICH.includes('home')) results.meta.files['index.html'] = hash('index.html')
 if (WHICH.some(s => s.startsWith('slider-')))
   for (const path of ['bench/slider-seek.html', 'bench/slider-original.js', 'bench/slider-guarded.js', 'bench/slider-no-outputs.js', 'bench/harness/slider-build.mjs']) results.meta.files[path] = hash(path)
