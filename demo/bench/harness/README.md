@@ -751,3 +751,37 @@ The hero heading stays visible. The opt-out does not cause this; a separate
 fallback correction is still needed. Do not describe the entire homepage
 as having passed a no-JS visibility gate. The shipped preset styles and fx
 fallback tests are separate from this custom homepage CSS.
+
+#### Follow-up: homepage static fallback corrected
+
+The homepage test first failed against the unchanged page: entrance headings
+and descriptions inherited opacity 0. Its authored CSS now has a shared
+`html:not(.sv-on)` fallback: scenes return to flow, curtains uncover copy,
+galleries show every card, the map and product-tour panels form readable
+lists, and the CSS 3D card shows both faces. Canvas-only stages and inactive
+controls are omitted; a noscript notice explains the static preview.
+Five native carousels have named, focusable regions; the page-driven rail
+restores native horizontal scrolling and the wheel keeps its vertical axis.
+
+Chromium, Firefox and WebKit pass at 1400px and 390px with JavaScript disabled.
+The check inspects ancestor opacity and real text rectangles/hit targets after
+scrolling, catching occlusion and clipping as well as hidden text. Keyboard
+arrows move each native carousel and its final card remains reachable.
+WebKit needs an initial arrow and a settled frame after programmatic focus;
+a bare overflow div reproduces this with JS enabled and disabled. The test
+sends a second arrow after 100ms instead of adding page-side keyboard code.
+Mobile screenshots of the rail, tour and pizza gallery were also inspected.
+
+The existing full browser checks pass in all three engines, including the
+homepage's animated pin/travel/HUD/rail endpoint and reduced-motion rail.
+The build/sync and 30 generator/benchmark checks pass. This changes demo CSS
+and markup only; runtime bundles, defaults and measured benchmark snapshots
+stay unchanged. No new CPU improvement is claimed and no npm release is needed.
+
+Separate pending finding: the homepage map's existing reduced-motion rule
+sets height auto but leaves `contain: strict`. A Chromium mobile probe with
+JS enabled and reduced motion reports a 0px stage containing a 746px world.
+The no-JS fallback removes containment, but the JS-enabled reduced-motion
+path still needs its own regression test and correction. Audit the other
+custom homepage reduced-motion scenes in that next round; the fx gates do
+not cover them.

@@ -32,6 +32,67 @@ try {
     if (selected && selected !== name) continue
     const browser = await engine.launch()
     try {
+      const staticContext = await browser.newContext({ javaScriptEnabled: false })
+      const staticPage = await staticContext.newPage()
+      for (const width of [1400, 390]) {
+        await staticPage.setViewportSize({ width, height: 900 })
+        await staticPage.goto(base + '../index.html')
+        const hidden = await staticPage.locator('main h1, main h2, .demo-head p').evaluateAll(elements => elements.filter(el => {
+          for (let node = el; node; node = node.parentElement) {
+            const css = getComputedStyle(node)
+            if (css.display === 'none' || css.visibility === 'hidden' || +css.opacity === 0) return true
+          }
+          return false
+        }).map(el => el.textContent.trim()))
+        assert.deepEqual(hidden, [], `${name} homepage no-JS ${width}: hidden copy`)
+        // Check real text pixels after scrolling: opacity alone misses clipped
+        // galleries, overlapping decks, offscreen rails and curtain occlusion.
+        const targets = staticPage.locator('main h1, main h2, .pgal-card .lbl, .hcar-card, .deck-card h3, .curtain-reveal .big, .tour-panel h3, .map-station h3, .type-letter i, .collage-item.co-card, .spread-cards > div, .acts-stage h3, .acts-chips span, .acts-tag, .face .big')
+        assert(await targets.count() > 40)
+        for (const target of await targets.all()) {
+          await target.scrollIntoViewIfNeeded()
+          const result = await target.evaluate(el => {
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+            let text
+            while ((text = walker.nextNode()) && !text.textContent.trim()) {}
+            const range = document.createRange()
+            range.selectNodeContents(text)
+            const rect = range.getClientRects()[0]
+            const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+            let visible = true
+            for (let node = el; node; node = node.parentElement) {
+              const css = getComputedStyle(node)
+              if (+css.opacity === 0 || css.visibility === 'hidden' || css.display === 'none') visible = false
+            }
+            return { text: el.textContent.trim(), visible, hit: !!hit && el.contains(hit), fits: rect.left >= -2 && rect.right <= innerWidth + 2 }
+          })
+          assert(result.visible && result.hit && result.fits, `${name} homepage no-JS ${width}: ${JSON.stringify(result)}`)
+        }
+        // Native scrolling remains available even when the click/drag driver
+        // never attaches, including the normally page-driven horizontal rail.
+        for (const selector of ['#slider-rail', '#slider-demo', '#snapcar', '#wingal-slider', '#wheel-slider']) {
+          const rail = staticPage.locator(selector)
+          const vertical = selector === '#wheel-slider'
+          await rail.scrollIntoViewIfNeeded()
+          await rail.focus()
+          // WebKit consumes the first arrow after programmatic focus even in
+          // a bare native overflow div; the next arrow must scroll it.
+          await staticPage.keyboard.press(vertical ? 'ArrowDown' : 'ArrowRight')
+          await staticPage.waitForTimeout(100)
+          await staticPage.keyboard.press(vertical ? 'ArrowDown' : 'ArrowRight')
+          await staticPage.waitForTimeout(300)
+          assert(await rail.evaluate((el, y) => (y ? el.scrollTop : el.scrollLeft) > 0, vertical), `${name}: no-JS ${selector} responds to the keyboard`)
+          const end = await rail.evaluate((el, y) => {
+            if (y) el.scrollTop = el.scrollHeight
+            else el.scrollLeft = el.scrollWidth
+            const last = el.lastElementChild.getBoundingClientRect(), box = el.getBoundingClientRect()
+            return y ? last.top >= box.top - 2 && last.bottom <= box.bottom + 2 : last.left >= box.left - 2 && last.right <= box.right + 2
+          }, vertical)
+          assert(end, `${name}: no-JS ${selector} last card is reachable`)
+        }
+      }
+      await staticContext.close()
+      console.log(`ok ${name}: homepage no-JS text, card occlusion, mobile flow and keyboard rail`)
       const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
       const errors = []
       page.on('pageerror', error => errors.push(error.message))

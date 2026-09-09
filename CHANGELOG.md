@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Demo: keep the homepage's custom scenes readable before the driver boots. Entrance text stays visible; pinned rails, decks, product-tour panels and map stations return to normal flow; galleries stop clipping static cards. Native carousels remain keyboard-scrollable without JavaScript, including the page-driven rail. Canvas-only effects and inactive controls are omitted from the static preview.
 - Demo: disable unused document-wide outputs before homepage tracking. A four-run-per-mode A/B of the complete page records about **62% lower median main-thread task time** (5039.5→1911.5 ms over the same 12-second scroll), with local effects and HUD preserved. This applies the existing opt-out to this page; it does not change library defaults or establish a general speedup. [Raw measurements](https://scrollvars.dev/bench/results/home-outputs.json).
 - Demo benchmark table: use the same dated snapshot as the README and benchmark page; display total task CPU, FPS, both output modes and the batched GSAP comparison.
 

@@ -1462,6 +1462,54 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
 @media (prefers-reduced-motion: reduce) {
   .sv-spread > * { translate: none; rotate: none; transition: none; }
 }
+
+/* The custom demos need the same fails-visible contract as the shipped
+   presets. Until the driver boots, every scene is ordinary readable content. */
+html:not(.sv-on) :is(.sv-rise, .sv-fade, .sv-drift, .collage-item, .type-letter, .type-letter i, .tour-panel, .warp-sticky, .warp-label, .sv-spread > *) {
+  opacity: 1; translate: none; rotate: none; scale: none; transition: none;
+}
+html:not(.sv-on) :is(.kf-outer, .curtain-outer, .hcar-outer, .deck-outer, .read-outer, .count-outer, .vid-outer, .type-outer, .draw-outer, .gl-outer, .warp-outer, .map-outer, .sliderail-outer, .pz-outer) {
+  height: auto;
+}
+html:not(.sv-on) :is(.kf-sticky, .curtain-sticky, .hcar-sticky, .deck-sticky, .read-sticky, .count-sticky, .vid-sticky, .type-sticky, .draw-sticky, .gl-sticky, .warp-sticky, .map-sticky, .sliderail-sticky, .pz-sticky) {
+  position: static; height: auto; min-height: 0; overflow: visible; contain: none;
+  padding: 40px 24px;
+}
+html:not(.sv-on) :is(.curtain-panel, #hud, .hero-vars, .kf-bar, .vid-hudbar, .type-caption, .gl-caption, .map-compass, .amb-hud, .blob-hint, .slider-controls, .slider-thumbs, .snap-buttons, .pz-btn, .pz-dots, .acts-btn, #install-copy, .draw-car, canvas) {
+  display: none;
+}
+html:not(.sv-on) :is(.pgal-stage, .collage-stage) { height: auto; overflow: visible; }
+html:not(.sv-on) .pgal-stage { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+html:not(.sv-on) .pgal-stage::before, html:not(.sv-on) .pgal-stage::after { display: none; }
+html:not(.sv-on) .pgal-col { margin-top: 0; translate: none; }
+html:not(.sv-on) :is(.hcar-track, .deck-sticky, .gl-sticky, .collage-stage, .card3d, .pz-hub) {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 18px;
+  width: auto; height: auto; translate: none; transform: none;
+}
+html:not(.sv-on) .hcar-track { padding: 0; }
+html:not(.sv-on) :is(.deck-card, .tour-panel, .map-world, .map-station, .face, .pz-head, .pz-hub, .pz-slice, .pz-slice img, .warp-label) {
+  position: static; translate: none; rotate: none; scale: none; transform: none;
+}
+html:not(.sv-on) .collage-item { position: static; translate: none !important; }
+html:not(.sv-on) .co-pill { white-space: normal; text-align: center; }
+html:not(.sv-on) .map-world { width: auto; height: auto; }
+html:not(.sv-on) .map-station { max-width: 100%; margin: 18px auto; }
+html:not(.sv-on) .tour-panel { pointer-events: auto; }
+html:not(.sv-on) .face { width: min(340px, 100%); min-height: 220px; gap: 14px; }
+html:not(.sv-on) .face .big { overflow-wrap: anywhere; }
+html:not(.sv-on) .card3d { aspect-ratio: auto; }
+html:not(.sv-on) .pz-slice { width: auto; height: auto; }
+html:not(.sv-on) .pz-slice img { width: min(200px, 100%); height: auto; opacity: 1; }
+html:not(.sv-on) .pz-hub { margin-top: 28px; }
+html:not(.sv-on) .curtain-reveal .big { white-space: normal; letter-spacing: normal; }
+html:not(.sv-on) .count-num { --cnum: 421; }
+html:not(.sv-on) .draw-path { stroke-dashoffset: 0; }
+html:not(.sv-on) .acts-stage { --sv-act: var(--sv-acts-count); transition: none; }
+html:not(.sv-on) :is(.amb-stage, .blob-stage) { height: auto; }
+html:not(.sv-on) #slider-rail { overflow-x: auto !important; }
+html:not(.sv-on) .wheel { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+html:not(.sv-on) :is(.demo-slider, .wheel, .wingal) { scrollbar-width: auto; }
+html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display: block; }
 </style>
 </head>
 <body>
@@ -1485,6 +1533,7 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
   </div>
 </header>
 <main>
+<noscript><p class="wrap" style="padding-top: 80px;">Static preview: all text and cards remain available. Enable JavaScript to try the scroll, pointer and canvas effects.</p></noscript>
 
 <!-- ══════════════ HERO ══════════════ -->
 <section class="hero" id="hero" data-sv data-hud="hero">
@@ -2320,7 +2369,7 @@ Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
       <button data-mode="mandatory">mandatory</button>
       <button data-mode="stop">mandatory + stop</button>
     </div>
-    <div class="snapcar sv-rise" style="--sv-order: 4" id="snapcar" data-mode="free">
+    <div class="snapcar sv-rise" style="--sv-order: 4" id="snapcar" data-mode="free" tabindex="0" role="region" aria-label="Scroll-snap cards">
       <div>01<br>drag me sideways</div>
       <div>02<br>then switch the mode</div>
       <div>03<br>feel the difference</div>
@@ -2429,7 +2478,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
       </p>
     </div>
     <div class="slider-duo sv-rise" style="--sv-order: 3">
-      <div class="sv-slider demo-slider" id="slider-demo">
+      <div class="sv-slider demo-slider" id="slider-demo" tabindex="0" role="region" aria-label="Carousel cards">
         <div>01<br>native scroll rails</div>
         <div>02<br>snap is the magnet</div>
         <div>03<br>--sd drives the CSS</div>
@@ -2463,7 +2512,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
   <div class="sliderail-outer sv" id="slider-rail-outer" data-hud="slider · scroll">
     <div class="sliderail-sticky">
       <div class="sliderail-hint">13b · same module, one writer. Only the PAGE scroll drives it</div>
-      <div class="sv-slider demo-slider" id="slider-rail" style="scroll-snap-type: none; overflow-x: hidden;">
+      <div class="sv-slider demo-slider" id="slider-rail" tabindex="0" role="region" aria-label="Scroll-driven cards" style="scroll-snap-type: none; overflow-x: hidden;">
         <div>01<br>vertical in</div>
         <div>02<br>horizontal out</div>
         <div>03<br>onPin maps the axes</div>
@@ -2499,7 +2548,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
     <div class="wheel-stage sv-rise" style="--sv-order: 3">
       <div style="position: relative;">
-        <div class="sv-slider wheel" id="wheel-slider">
+        <div class="sv-slider wheel" id="wheel-slider" tabindex="0" role="region" aria-label="Vertical effect examples">
           <div>none</div><div>rise</div><div>fade</div><div>slide</div>
           <div>drift</div><div>curtain</div><div>rail</div><div>tilt</div>
         </div>
@@ -2589,7 +2638,7 @@ onQuiet(() =&gt; <span class="k">scrollToScene</span>(section, Math.round(pin * 
         bytes each.
       </p>
     </div>
-    <div class="sv-slider wingal sv-rise" style="--sv-order: 3" id="wingal-slider">
+    <div class="sv-slider wingal sv-rise" style="--sv-order: 3" id="wingal-slider" tabindex="0" role="region" aria-label="Landscape cards">
       <div class="g1"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23ffb454'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%23241a3d'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%23140e24'/></svg>");'></div><h3>dusk</h3></div>
       <div class="g2"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23a7f3d0'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%230d3a33'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%2307251f'/></svg>");'></div><h3>lagoon</h3></div>
       <div class="g3"><div class="layer far" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><circle cx='588' cy='108' r='46' fill='%23ffd9a0'/><path d='M0 400 L0 258 L140 140 L260 252 L380 118 L520 262 L640 178 L800 278 L800 400 Z' fill='%234a1c28'/></svg>");'></div><div class="layer near" style='background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='xMidYMax slice'><path d='M0 400 L0 318 L120 248 L240 330 L360 268 L520 352 L680 288 L800 338 L800 400 Z' fill='%232a0f18'/></svg>");'></div><h3>ember</h3></div>
