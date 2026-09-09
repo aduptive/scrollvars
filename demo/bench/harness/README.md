@@ -557,3 +557,20 @@ rail/handle retention. The larger uncollected opt-out heap in earlier CPU
 benchmarks is not evidence of a leak. No runtime change is justified by
 this probe; React teardown and application-held references remain outside
 its scope.
+
+### React output-switch teardown gate
+
+The existing `test/react.test.mjs` suite now mounts the actual Slider under
+StrictMode with autoplay, alternates explicit/default CSS outputs while a
+glide or mouse drag is active, and unmounts during a glide. The existing
+DOM stubs gain local observer/timer/listener accounting for this test only.
+There is one autoplay interval and three active observers while mounted;
+reattachment cancels old work. Unmount leaves no counted observers,
+intervals, frame requests, focus/input listeners or live external ref. A
+previously saved imperative facade cannot schedule work afterward.
+
+This passes in React 18 and 19 (99 React-18 targeted checks, 298 full unit
+tests). It verifies resource ownership, not browser heap retention. No
+additional runtime correction was needed beyond the validated `cssVars`
+option prepared for 1.16.0; the core retention probe above remains the
+separate evidence for collected rails/handles.

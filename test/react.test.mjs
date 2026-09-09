@@ -1502,3 +1502,74 @@ test('react: Slider cssVars opts out, re-enables by default, and is not forwarde
   assert.equal(rail.children[0].style['--sd'], '.75', 'opt-out stops future writes without deleting authored values')
   await React.act(async () => { root.unmount() })
 })
+
+test('react: StrictMode Slider releases resources across output switches, active input and unmount', async () => {
+  await ensureDomAndWarmDriver()
+  flushFrames()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const saved = Object.fromEntries(['ResizeObserver', 'IntersectionObserver', 'MutationObserver', 'setInterval', 'clearInterval'].map(key => [key, global[key]]))
+  const savedWindow = { addEventListener:window.addEventListener, removeEventListener:window.removeEventListener }
+  const observers = new Map(), intervals = new Map(), listeners = new Map()
+  let timerId = 0
+  class Observer {
+    observe(el) { if (!observers.has(this)) observers.set(this, new Set()); observers.get(this).add(el) }
+    disconnect() { observers.delete(this) }
+  }
+  global.ResizeObserver = global.IntersectionObserver = global.MutationObserver = Observer
+  global.setInterval = fn => { const id = ++timerId; intervals.set(id, fn); return id }
+  global.clearInterval = id => intervals.delete(id)
+  window.addEventListener = (type, fn) => { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn) }
+  window.removeEventListener = (type, fn) => { const handlers = listeners.get(type); handlers?.delete(fn); if (!handlers?.size) listeners.delete(type) }
+  const api = React.createRef(), container = document.createElement('div'), root = createRoot(container)
+  let mounted = true
+  const pending = () => rafQueue.filter(entry => entry.epoch === rafEpoch).length
+  const view = cssVars => React.createElement(React.StrictMode, null,
+    React.createElement(Slider, { ref:api, autoplay:4000, cssVars },
+      React.createElement('div', null, 'one'), React.createElement('div', null, 'two')))
+  try {
+    await React.act(async () => root.render(view(false)))
+    const facade = api.current, shell = container.firstChild
+    const rail = shell.children.find(child => child.classes.has('sv-slider'))
+    Object.assign(rail, { clientWidth:100, scrollWidth:200, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null })
+    rail.children.forEach((child, i) => Object.assign(child, { offsetWidth:100, offsetLeft:i * 100, offsetParent:rail }))
+    for (const cssVars of [true, undefined, true]) {
+      assert.equal(intervals.size, 1, 'StrictMode leaves one autoplay interval')
+      assert.equal(observers.size, 3, 'one resize, mutation and intersection observer')
+      intervals.values().next().value()
+      assert(facade.state().gliding && pending() > 0, 'autoplay starts a real pending glide')
+      await React.act(async () => root.render(view(cssVars)))
+      assert.equal(api.current, facade, 'external facade remains stable across reattachment')
+      assert.equal(facade.state().gliding, false)
+      assert.equal(pending(), 0, 'option reattachment cancels the old glide and measurement')
+      assert.equal(observers.size, 3, 'old core observers were disconnected')
+      rail._listeners.pointerdown[0]({ target:rail, pointerType:'mouse', button:0, clientX:50, preventDefault() {} })
+      assert.equal(listeners.size, 3, 'press installs global move/up/cancel handlers')
+      listeners.get('pointermove').values().next().value({ clientX:30 })
+      assert.equal(facade.state().dragging, true)
+      await React.act(async () => root.render(view(cssVars === false ? true : false)))
+      assert.equal(listeners.size, 0, 'reattachment cancels the active press listeners')
+      assert.equal(facade.state().dragging, false)
+    }
+    intervals.values().next().value()
+    assert(facade.state().gliding)
+    await React.act(async () => root.unmount())
+    mounted = false
+    assert.equal(api.current, null)
+    assert.equal(intervals.size, 0)
+    assert.equal(observers.size, 0)
+    assert.equal(listeners.size, 0)
+    assert.equal(pending(), 0)
+    assert.equal(shell._listeners.focusin.length, 0)
+    for (const type of ['pointerdown', 'wheel', 'scroll', 'keydown', 'dragstart'])
+      assert.equal(rail._listeners[type].length, 0)
+    facade.next(); facade.seek(.5)
+    assert.equal(pending(), 0, 'a saved facade cannot revive an unmounted slider')
+    assert.equal(facade.state().count, 0)
+  } finally {
+    if (mounted) await React.act(async () => root.unmount())
+    Object.assign(global, saved)
+    Object.assign(window, savedWindow)
+  }
+})

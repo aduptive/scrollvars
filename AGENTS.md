@@ -191,7 +191,7 @@ ONLY writer of scrollLeft; direct swiping would desync and jump back:
 `track(rail, { pin: true, onPin: (p) => { el.scrollLeft = p * (el.scrollWidth - el.clientWidth) } })`.
 Discrete flavor: `track(rail, { scenes: n, onScene: (i) => s.goTo(i) })`.
 
-**Unreleased slider option:** when CSS does not consume `--sd`,
+**Slider output option:** when CSS does not consume `--sd`,
 `--sv-progress` or `--sv-slide`, use `slider(el, { cssVars: false })`,
 `useSlider({ cssVars: false })` or `<Slider cssVars={false}>`. This skips future
 writes of those outputs without removing existing inline values. Numeric
