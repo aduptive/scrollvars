@@ -463,8 +463,8 @@ The 15-card opt-out includes one unusually low 102ms sample (others 641,
 would give 641ms, still 44.0% below the original median. End heap is higher
 with opt-out (1.9–2MB versus 1.4–1.5MB); these samples do not establish
 retained memory, paint/raster cost or physical-phone performance. CPU
-headroom improved; visible fluidity did not. The option is unreleased and
-does not change the already published 1.15.2 package.
+headroom improved; visible fluidity did not. The option was unreleased in
+this measurement snapshot; the published 1.15.2 package was unchanged.
 
 Validation: 296 unit tests, React 18 typecheck and 98 targeted tests,
 Chromium/Firefox/WebKit gallery checks (including both output modes), and
@@ -574,3 +574,20 @@ tests). It verifies resource ownership, not browser heap retention. No
 additional runtime correction was needed beyond the validated `cssVars`
 option prepared for 1.16.0; the core retention probe above remains the
 separate evidence for collected rails/handles.
+
+### 1.16.0 publication receipt
+
+Published 2026-09-09 from tag `v1.16.0`, source `6910682`, through
+[release run 34337976966](https://github.com/aduptive/scrollvars/actions/runs/34337976966).
+Every gate passed, including generated-file consistency, unit tests,
+installed-section invariants, Chromium/Firefox/WebKit and tarball imports.
+The npm registry returned version 1.16.0 and integrity
+`sha512-9IrCkpe7xm7uG76UROZn0T0CkoYlzjDWiFBxk5TFmR66H7ZDOb3OEW3WgsfOQQwfEu0qQiT7xbgmWRRrwZ/47Q==`.
+
+Demo deployment `5f308459-4aa2-4de8-bd71-1bdef35a654d`:
+https://scrollvars-gns35022b-aduptives-projects.vercel.app.
+Both public aliases were verified against that ID; the secondary redirects
+to scrollvars.dev. Public docs show v1.16.0 and the public `/fx/sv.js` hash
+matches the source bundle, `6dfad9dc399c4df5010345ac026a1711e1597b0cd963431afa666cd345ec91ae`.
+The option previously described as unreleased is now available; no default
+consumer was opted out and no experimental rail/class guard was shipped.
