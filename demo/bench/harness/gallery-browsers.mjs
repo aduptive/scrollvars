@@ -144,6 +144,34 @@ try {
         assert.equal(result.count, result.change === 'empty' ? 0 : result.change === 'remove' ? 3 : 5)
       }
       console.log(`ok ${name}: resize, removed destination and empty rail interrupt stale glide geometry`)
+      for (const guarded of [false, true]) {
+        await page.goto(base + `../bench/slider-seek.html?count=120&norun=1${guarded ? '&guarded=1' : ''}`)
+        const seek = await page.evaluate(async () => {
+          stopSliderDriver()
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+          const rail = document.getElementById('rail')
+          let mutations = 0
+          const observer = new MutationObserver(records => { mutations += records.length })
+          observer.observe(rail, { attributes:true, attributeFilter:['class'] })
+          for (let i = 0; i < 100; i++) sliderHandle.seek(i / 99)
+          await Promise.resolve(); observer.disconnect()
+          rail.classList.add('sv-gliding') // an external class rewrite must still be repaired
+          sliderHandle.seek(0)
+          const repaired = !rail.classList.contains('sv-gliding')
+          sliderHandle.goTo(100)
+          const started = sliderHandle.state().gliding
+          sliderHandle.seek(.25)
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+          const stopped = !sliderHandle.state().gliding && !rail.classList.contains('sv-gliding')
+          const progress = sliderHandle.state().progress, position = rail.scrollLeft
+          sliderHandle.destroy(); sliderHandle.seek(.8)
+          return { mutations, repaired, started, stopped, progress, released:rail.scrollLeft === position }
+        })
+        assert.equal(seek.mutations, guarded ? 0 : 100, `${name}: seek class mutations`)
+        assert(seek.repaired && seek.started && seek.stopped && seek.released, `${name}: guarded=${guarded}: ${JSON.stringify(seek)}`)
+        assert(Math.abs(seek.progress - .25) < .001)
+      }
+      console.log(`ok ${name}: seek guard removes only redundant mutations; repair, interruption and destroy remain intact`)
       await page.goto(base + 'pointer-tilt.html')
       const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
         let writes = 0

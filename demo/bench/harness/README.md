@@ -353,3 +353,23 @@ are no new per-frame geometry reads or long-lived position caches. Checks
 allow observer delivery, then require zero subsequent out-of-range writes
 and a stopped final state for resize, removed destination and empty content.
 They pass in all three engines, alongside the earlier edge/idle checks.
+
+
+### Linked slider seek class-guard experiment
+
+Run `node demo/bench/harness/slider-build.mjs` to freeze two bundles from the
+same current slider source; only the `stopGlide` class removal is guarded in
+one. Both bundles load in every sample; the selected implementation varies.
+The shipped core is unchanged. Browser checks cover 100 seeks (100→0 class
+mutations), external class repair, real-glide interruption and destroy.
+
+`node demo/bench/harness/measure.mjs --scenarios=slider-seek --runs=4 --out=slider-seek.json`
+
+The 15/120-card linked sliders use the existing scroll driver and `seek()`,
+with identical CSS transforms, content, precision and scroll path. The audit
+counts delivered slider `onScroll` progress, not just upstream driver calls.
+Four rotating repetitions balance order. Predeclared gate: retain the guard
+only with at least 10% lower median task time in both cells, every paired run
+favoring it and no material frame/cadence regression. Operation-count savings
+alone do not establish CPU savings; keep an inconclusive guard benchmark-only
+and move to a different bottleneck rather than adding geometry caches.

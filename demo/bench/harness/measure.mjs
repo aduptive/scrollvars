@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -72,6 +72,10 @@ if (WHICH.includes('rail-local'))
 if (WHICH.some(s => s.startsWith('casework')))
   for (const rich of [0, 1])
     SCENARIOS.push({ name:`casework-${WHICH.includes('casework-pin') ? 'pin-' : ''}${rich ? 'rich' : 'standard'}`, params:`rich=${rich}${WHICH.includes('casework-pin') ? '&pin=1' : ''}`, engines:WHICH.includes('casework-aa') ? ['casework-css.html', 'casework-control.html'] : ['casework-css.html', 'casework-direct.html', ...(WHICH.includes('casework-boundary') ? ['casework-boundary.html'] : [])] })
+
+if (WHICH.includes('slider-seek'))
+  for (const count of [15, 120])
+    SCENARIOS.push({ name:`slider-seek-${count}`, params:`count=${count}`, engines:['slider-seek.html', 'slider-guarded.html'] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -122,7 +126,8 @@ async function measureOnce(engine, params) {
     const local = engine === 'scrollvars-local.html'
     const direct = engine === 'rail-direct.html'
     const localized = engine === 'rail-local.html'
-    await page.goto(`${base}${casework ? '../fx/case-study-rail.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    const guardedSlider = engine === 'slider-guarded.html'
+    await page.goto(`${base}${casework ? '../fx/case-study-rail.html' : guardedSlider ? 'slider-seek.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
     if (casework) {
       await page.addScriptTag({ url:`${base}casework.js` })
       await page.evaluate(engine => {
@@ -171,6 +176,8 @@ const results = { meta: {
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
   metricWindow: 'scroll only; startup recorded separately; no long frames filtered',
 }, scenarios: [] }
+if (WHICH.includes('slider-seek'))
+  for (const path of ['bench/slider-seek.html', 'bench/slider-original.js', 'bench/slider-guarded.js', 'bench/harness/slider-build.mjs']) results.meta.files[path] = hash(path)
 if (WHICH.some(s => s.startsWith('casework')))
   for (const path of ['bench/casework.js', 'fx/case-study-rail.html']) results.meta.files[path] = hash(path)
 

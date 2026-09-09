@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Linked slider seek experiment</title>
+<style>
+* { box-sizing:border-box } body { margin:0; background:#12121a; color:#eee; font:16px system-ui }
+section { height:300vh } .stage { position:sticky; top:0; height:100vh; display:grid; place-items:center }
+#rail { position:relative; display:flex; gap:16px; width:100%; overflow:hidden; scroll-snap-type:none }
+.card { flex:0 0 220px; padding:24px; background:#272738; border-radius:12px;
+  scale:calc(1 - min(1, max(var(--sd, 0), calc(var(--sd, 0) * -1))) * .08) }
+.card.sv-active { background:#493d70 } .card span { display:block; margin:8px 0 }
+.hud { position:fixed; bottom:8px; left:8px; font:12px monospace; white-space:pre; pointer-events:none }
+</style>
+<section><div class="stage"><div id="rail"></div></div></section>
+<script src="../fx/sv.js"></script>
+<script src="slider-original.js"></script>
+<script src="slider-guarded.js"></script>
+<script src="runner.js"></script>
+<script>
+const query = new URLSearchParams(location.search)
+const count = Number(query.get('count')) || 15
+const rail = document.getElementById('rail')
+for (let i = 0; i < count; i++) {
+  const card = document.createElement('article'); card.className = 'card'
+  for (const text of [`Project ${i + 1}`, 'Independent design', 'Built for the web', 'Selected work']) {
+    const span = document.createElement('span'); span.textContent = text; card.append(span)
+  }
+  rail.append(card)
+}
+const audit = window.__railAudit = { callbacks:0, changes:0, min:1, max:0, last:null }
+const engine = query.has('guarded') ? GuardedSlider : OriginalSlider
+window.sliderHandle = engine.slider(rail, { onScroll:state => {
+  const p = state.progress.toFixed(4)
+  audit.callbacks++
+  if (p !== audit.last) { audit.changes++; audit.last = p }
+  audit.min = Math.min(audit.min, state.progress); audit.max = Math.max(audit.max, state.progress)
+} })
+SV.setPageOutputs(false)
+window.stopSliderDriver = SV.track(document.querySelector('section'), { view:false, onPin:p => sliderHandle.seek(p) })
+runBench('Linked slider')
+</script>
