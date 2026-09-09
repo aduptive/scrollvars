@@ -283,3 +283,20 @@ are a diagnostic control, not a statistical confidence interval. If either
 cell's two identical medians differ by over 10%, do not promote a 12–22%
 rail gain on this environment. Record the uncertainty and move to another
 concrete bottleneck instead of tuning against noise.
+
+
+[`casework-aa.json`](../results/casework-aa.json), source `bd73aa3`, has
+16 identical-implementation executions. Standard medians were 824 and
+842.5ms (2.2% apart); rich medians were 1007 and 995ms (1.2%). All samples
+had 307 progress changes, 720 frames and no frames over 25ms. The predeclared
+10% median gate passes, but individual standard pairs differed by −35.9%
+to +23.8%; close medians do not prove that small gains are repeatable.
+
+Next comparison isolates the active pin for all 12 seconds, retaining the
+same real page and content. `--scenarios=casework-pin --runs=4` uses the
+actual sticky offset and wrapper height, records its scroll endpoints and
+balances order. Require complete forward/reverse progress delivery and at
+least 20% median task savings in both content cells, with every paired run
+favoring direct writes and no frame regression. This is a stronger candidate
+gate, not a device-independent performance claim or permission to alter
+public clock inheritance.
