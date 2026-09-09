@@ -234,3 +234,37 @@ balance every order slot. Retain this CSS-only candidate if it saves at
 least 15% task time on rich content, stays within 10% of direct writes in
 both workloads and does not worsen frames. The same inheritance contract
 caveat applies; no public driver clock changes are proposed.
+
+
+`node demo/bench/harness/measure.mjs --scenarios=casework-boundary --runs=3 --out=casework-boundary.json`
+
+[`casework-boundary.json`](../results/casework-boundary.json), source
+`8a724ca`, compares the three paths in every order slot. All 18 samples
+received 307 progress changes across 0–1, 720 frames, 60fps and zero frames
+above 25ms. No observed frame advantage distinguishes them.
+
+| Content | CSS task ms | Direct task ms | Static-card boundary task ms |
+| --- | ---: | ---: | ---: |
+| Standard | 642 | 501 | 530 |
+| Deep rich text | 651 | 572 | 681 |
+
+**Do not adopt the CSS-only boundary.** It meets the standard-content gate,
+but on rich text it is 4.6% more expensive than baseline and 19.1% more
+expensive than direct writes. Its lower recalc (299→140ms) is insufficient:
+script rises (90→141ms) and total task time rises. The experiment does not
+establish why script varied; do not label this a proven JS regression caused
+by the CSS rule.
+
+Direct writes remain a candidate: standard-content savings repeat (20.0%
+then 22.0%), but rich-content savings fall from 22.0% to 12.1%, below the
+15% gate in this second series. Baseline rich samples range from 573 to
+808ms despite equal progress/frame delivery. Do not silently adopt a public
+clock inheritance boundary or add a new renderer API on this evidence.
+Neither experimental variant is shipped in the component or core.
+
+Next: run an identical-implementation A/A control to quantify run variance;
+then isolate the actual active pin window (the full gallery currently spends
+only 307 of 720 frames changing pin progress), retaining the full-page result
+as a separate workload. Use the same visible content and record both update
+cadence and total task time. Stop extending rail experiments if the added
+complexity cannot clear that noise floor; profile another concrete bottleneck.

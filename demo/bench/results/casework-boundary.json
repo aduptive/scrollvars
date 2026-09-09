@@ -1,0 +1,652 @@
+{
+  "meta": {
+    "date": "2026-09-09T03:04:23.994Z",
+    "chrome": "Chrome/152.0.7977.83",
+    "runs": 3,
+    "throttle": 1,
+    "host": "darwin",
+    "version": "1.15.1",
+    "commit": "8a724ca8acc110531cc85d15b3e398373fa43ca7",
+    "dirty": false,
+    "files": {
+      "bench/runner.js": "2a28a567396cd6cd864c0009e6d0548870192fff621c533e1f7c1076cfa09f0c",
+      "bench/scrollvars.html": "82574dd1b423370c6cd342ac29a639bc3b26f45992a00973723751b0b6e514e6",
+      "bench/gsap.html": "221c7c19780b6532c617871d200a3021a3f3d8be1e40d167c12ada1936ec90e6",
+      "bench/gsap-batched.html": "57534c6a8f75327f82131790926ac48dca3c446c92d3f3fce7812b6dc93682cd",
+      "bench/framer.html": "917485ebb26b99095a846283099dc78296361b3c379ae4a6cbf0a8e6deaddb1f",
+      "bench/harness/measure.mjs": "ce7a2be54c7f20f8d234e889d92bae1bf20b7cf8d1a8e4ce3e3b8e3628b22ee6",
+      "fx/sv.js": "d8bcbfe5586f840019415b3ddc9b4318816a98ca8542c6100456375e4b6848db",
+      "fx/sv.css": "de5eeb563069c5ca5c088ea574d75c22bf4cab741466628b111f43a930bc6463",
+      "bench/casework.js": "a360db0eafdcd17f80a900388df4928fdd30cb7f99587f164402172b32b9b2f9",
+      "fx/case-study-rail.html": "8c0c22c403f448be1e05e75df6ae9cc1bdb2a0a76ebd239d79b2ac2491e4528b"
+    },
+    "coreGzipKB": "7.3",
+    "competitors": {
+      "gsap": "3.15.0",
+      "gsapGzipKB": 45.2,
+      "framerMotion": "11.18.2",
+      "react": "18.3.1"
+    },
+    "metricWindow": "scroll only; startup recorded separately; no long frames filtered"
+  },
+  "scenarios": [
+    {
+      "name": "casework-standard",
+      "params": "rich=0",
+      "engines": {
+        "casework-css.html": {
+          "scriptMs": 112,
+          "recalcMs": 209,
+          "layoutMs": 0,
+          "taskMs": 642,
+          "heapMB": 1.7,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 29
+              },
+              "scriptMs": 112,
+              "recalcMs": 209,
+              "layoutMs": 0,
+              "taskMs": 642
+            },
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 31
+              },
+              "scriptMs": 94,
+              "recalcMs": 182,
+              "layoutMs": 0,
+              "taskMs": 561
+            },
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 28
+              },
+              "scriptMs": 135,
+              "recalcMs": 252,
+              "layoutMs": 0,
+              "taskMs": 782
+            }
+          ]
+        },
+        "casework-direct.html": {
+          "scriptMs": 113,
+          "recalcMs": 79,
+          "layoutMs": 0,
+          "taskMs": 501,
+          "heapMB": 1.8,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 111,
+              "recalcMs": 79,
+              "layoutMs": 0,
+              "taskMs": 492
+            },
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 113,
+              "recalcMs": 78,
+              "layoutMs": 0,
+              "taskMs": 501
+            },
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 33
+              },
+              "scriptMs": 145,
+              "recalcMs": 89,
+              "layoutMs": 0,
+              "taskMs": 620
+            }
+          ]
+        },
+        "casework-boundary.html": {
+          "scriptMs": 109,
+          "recalcMs": 117,
+          "layoutMs": 0,
+          "taskMs": 530,
+          "heapMB": 1.7,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 35
+              },
+              "scriptMs": 119,
+              "recalcMs": 117,
+              "layoutMs": 0,
+              "taskMs": 579
+            },
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 109,
+              "recalcMs": 117,
+              "layoutMs": 0,
+              "taskMs": 530
+            },
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 34
+              },
+              "scriptMs": 102,
+              "recalcMs": 101,
+              "layoutMs": 0,
+              "taskMs": 500
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "casework-rich",
+      "params": "rich=1",
+      "engines": {
+        "casework-css.html": {
+          "scriptMs": 90,
+          "recalcMs": 299,
+          "layoutMs": 0,
+          "taskMs": 651,
+          "heapMB": 1.7,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 34
+              },
+              "scriptMs": 90,
+              "recalcMs": 299,
+              "layoutMs": 0,
+              "taskMs": 651
+            },
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 125,
+              "recalcMs": 348,
+              "layoutMs": 0,
+              "taskMs": 808
+            },
+            {
+              "engine": "casework-css.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 27
+              },
+              "scriptMs": 82,
+              "recalcMs": 265,
+              "layoutMs": 0,
+              "taskMs": 573
+            }
+          ]
+        },
+        "casework-direct.html": {
+          "scriptMs": 129,
+          "recalcMs": 86,
+          "layoutMs": 0,
+          "taskMs": 572,
+          "heapMB": 1.8,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 29
+              },
+              "scriptMs": 129,
+              "recalcMs": 86,
+              "layoutMs": 0,
+              "taskMs": 572
+            },
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 686,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 146,
+              "recalcMs": 97,
+              "layoutMs": 0,
+              "taskMs": 625
+            },
+            {
+              "engine": "casework-direct.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 11,
+                "taskMs": 28
+              },
+              "scriptMs": 117,
+              "recalcMs": 85,
+              "layoutMs": 0,
+              "taskMs": 508
+            }
+          ]
+        },
+        "casework-boundary.html": {
+          "scriptMs": 141,
+          "recalcMs": 140,
+          "layoutMs": 0,
+          "taskMs": 681,
+          "heapMB": 1.7,
+          "fps": 60,
+          "p95Ms": 16.8,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 3,
+          "samples": [
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 28
+              },
+              "scriptMs": 136,
+              "recalcMs": 135,
+              "layoutMs": 0,
+              "taskMs": 649
+            },
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 32
+              },
+              "scriptMs": 150,
+              "recalcMs": 149,
+              "layoutMs": 0,
+              "taskMs": 721
+            },
+            {
+              "engine": "casework-boundary.html",
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.7,
+              "animation": {
+                "callbacks": 685,
+                "changes": 307,
+                "min": 0,
+                "max": 1,
+                "last": "0.0000"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 2,
+                "layoutMs": 12,
+                "taskMs": 29
+              },
+              "scriptMs": 141,
+              "recalcMs": 140,
+              "layoutMs": 0,
+              "taskMs": 681
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
