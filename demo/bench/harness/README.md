@@ -859,3 +859,38 @@ may reduce style writes to one currentTime update per box. Test it against
 CSS and direct output with the same clocks and both global modes; reject
 unless total CPU improves without lost progress/geometry or excessive setup
 cost. This remains an experiment, not a dependency or a runtime API.
+
+Native-animation screen (`main-style-waapi.json`, clean source `7dc5df2`,
+two runs per mode, 12 executions) rejects that route for this workload:
+with globals on, CSS/direct/native task medians are 4316/2703.5/4494ms and
+style recalc 3345/1690/3483.5ms. With globals off they are
+1643/1357.5/1623.5ms task and 357.5/190.5/463.5ms recalc. Native animations
+do not beat direct writes and increase style work even with globals off.
+All variants preserve the 0–42600px path. Optimized direct runs deliver
+60fps, no >25ms frames, and 1434–1435 progress changes; native globals-on
+runs have 1425/1433 changes and 2/1 slow frames. The native experiment also
+passes the cross-browser geometry/clock gate and cancels its 900 animations
+on teardown, so this is a cost finding rather than an obvious missing-output
+failure. Startup metrics include the untimed geometry preflight for these
+diagnostic variants; do not compare them as clean startup benchmarks with
+the competitor pages, which do not run that preflight.
+
+The two-run direct globals-off improvement in this last batch (17.4%) does
+not supersede the four-run confirmation's 5% and unfavorable repetition.
+Retain both; do not cherry-pick the better batch or call the adoption gate
+passed. The default/globals-on direct reduction is repeatable across batches,
+but the package has not changed. All clocks/renderer code is experimental.
+
+Next performance task: confirm the existing callback-only path (`view:false`,
+`onTravel`, no redundant `travel:true`) against CSS and direct-with-clock
+using both the main-900 and deep-DOM workloads. The first screen's 23% saving
+without globals only had two runs and is not sufficient. Keep matched
+geometry, progress delivery, full scroll range, raw runs and randomized or
+balanced order. This measures the cost of publishing an unused local clock
+separately from the cost of rendering. If it holds, validate a concrete
+opt-in effect using the existing callback API (responsive dimensions,
+authored styles, reduced motion, release/retrack and no-JS) before adding
+an API or changing any preset. Do not silently suppress clocks used by CSS,
+apply containment to arbitrary layouts, or change global defaults. The main
+published benchmark and changelog stay unchanged until a runtime change is
+actually adopted and measured.
