@@ -110,7 +110,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | --- | --- |
 | `track` (the driver) | 3.0 KB |
 | `track` + `scan` (zero-wrapper mode) | 4.4 KB |
-| `slider` | 2.3 KB |
+| `slider` | 2.4 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.6 KB |
 | everything in `scrollvars` (the core entry) | 7.4 KB |
@@ -322,7 +322,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.3 KB gzip; Swiper 11 bundle
+Size, measured: this module 2.4 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)

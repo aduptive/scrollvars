@@ -38,6 +38,9 @@ export interface SliderOptions {
   /** Glide settle time in ms (default 600; 0 = instant). Exponential lerp:
    * velocity ∝ remaining distance, so any travel feels equally soft. */
   duration?: number
+  /** Write --sd, --sv-progress and --sv-slide (default true). Disable when
+   * CSS does not consume them. Existing inline values are left intact. */
+  cssVars?: boolean
   /** Fires when the active slide changes. */
   onSlide?: (index: number) => void
   /** Fires on every measured scroll frame with the full state. Drive a
@@ -85,6 +88,7 @@ export function slider(
     snap = 'mandatory',
     drag = true,
     duration = 600,
+    cssVars = true,
     onSlide,
     onScroll,
   }: SliderOptions = {}
@@ -237,8 +241,10 @@ export function slider(
       // normalized values made a wide slide look nearer than a narrow one
       // beside it, so with a 100px and a 300px slide the active flipped at
       // centre 101 instead of their midpoint, 150.
-      const sd = (centers[i] - center) / sizes[i]
-      slide.style.setProperty('--sd', sd.toFixed(4))
+      if (cssVars) {
+        const sd = (centers[i] - center) / sizes[i]
+        slide.style.setProperty('--sd', sd.toFixed(4))
+      }
       // an exact tie keeps the first slide, as before
       const dist = Math.abs(centers[i] - center)
       if (dist < bestDist) {
@@ -260,7 +266,7 @@ export function slider(
       const raw = span > 0 ? seg + (center - centers[seg]) / span : seg
       position = Math.min(Math.max(raw, 0), centers.length - 1)
     }
-    container.style.setProperty('--sv-progress', p.toFixed(4))
+    if (cssVars) container.style.setProperty('--sv-progress', p.toFixed(4))
     // Something outside the slider can rewrite the class attribute of the rail
     // or of a slide (React committing `className`), dropping what the engine
     // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -286,7 +292,7 @@ export function slider(
       const indexChanged = best !== active
       active = best
       activeEl = bestEl
-      container.style.setProperty('--sv-slide', String(best))
+      if (cssVars) container.style.setProperty('--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
     }
     if (!destroyed) onScroll?.(state(p))

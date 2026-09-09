@@ -1474,3 +1474,31 @@ test('react: responsive Slider puts its CSP nonce on the generated stylesheet', 
   const markup = renderToStaticMarkup(React.createElement(Slider, { nonce: 'request-nonce', perView: { base: 1, md: 3 } }, React.createElement('div', null, 'slide')))
   assert.ok(markup.includes('<style nonce="request-nonce">'))
 })
+
+test('react: Slider cssVars opts out, re-enables by default, and is not forwarded to the DOM', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div'), root = createRoot(container)
+  const view = cssVars => React.createElement(Slider, { cssVars }, React.createElement('div', null, 'one'), React.createElement('div', null, 'two'))
+  await React.act(async () => { root.render(view(false)) })
+  const shell = container.firstChild, rail = shell.children.find(child => child.classes.has('sv-slider'))
+  assert.equal(hostProps(shell).cssVars, undefined)
+  assert.equal(rail.style['--sv-progress'], undefined)
+  assert.equal(rail.children[0].style['--sd'], undefined)
+  assert(rail.children[0].classes.has('sv-active'))
+  Object.assign(rail, { clientWidth:100, scrollWidth:200, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null })
+  rail.children.forEach((child, i) => Object.assign(child, { offsetWidth:100, offsetLeft:i * 100, offsetParent:rail }))
+  await React.act(async () => { root.render(view(undefined)) })
+  assert.equal(shell.children.find(child => child.classes.has('sv-slider')), rail)
+  assert.equal(rail.style['--sv-progress'], '0.0000')
+  assert.equal(rail.children[0].style['--sd'], '0.0000')
+  rail.children[0].style['--sd'] = '.75'
+  await React.act(async () => {
+    root.render(view(false))
+  })
+  await React.act(async () => { rail._listeners.scroll[0](); flushFrames() })
+  assert.equal(rail.children[0].style['--sd'], '.75', 'opt-out stops future writes without deleting authored values')
+  await React.act(async () => { root.unmount() })
+})

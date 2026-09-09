@@ -548,7 +548,7 @@ export function useCanvasEffect(options: EffectOptions): React.RefObject<HTMLCan
 export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
-  const { snap, drag, duration, axis } = options
+  const { snap, drag, duration, axis, cssVars } = options
   const onScrollRef = useRef(options.onScroll)
   onScrollRef.current = options.onScroll
 
@@ -559,6 +559,7 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
         drag,
         duration,
         axis,
+        cssVars,
         onSlide: setActive,
         onScroll: (state) => onScrollRef.current?.(state),
       })
@@ -568,7 +569,7 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
         handle.destroy()
       }
     },
-    [snap, drag, duration, axis]
+    [snap, drag, duration, axis, cssVars]
   )
 
   const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
@@ -658,6 +659,8 @@ export interface SliderComponentProps
   drag?: boolean
   duration?: number
   axis?: 'x' | 'y'
+  /** Publish animation CSS variables (default true); disable for plain carousels. */
+  cssVars?: boolean
   arrows?: boolean
   dots?: boolean
   /** Auto-advance interval in ms (wraps to the start). Pauses on hover,
@@ -692,6 +695,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       drag,
       duration,
       axis,
+      cssVars,
       arrows,
       dots,
       autoplay,
@@ -714,7 +718,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     },
     apiRef
   ) {
-    const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis })
+    const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis, cssVars })
     const uid = React.useId()
     const items = slideList(children)
     const count = items.filter(React.isValidElement).length

@@ -2411,7 +2411,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 2.3&nbsp;KB carousel, 18× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 2.4&nbsp;KB carousel, 18× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2423,8 +2423,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.9&nbsp;KB minified,
-<strong>2.3&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.0&nbsp;KB minified,
+<strong>2.4&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -3844,7 +3844,7 @@ var SV = (() => {
     destroy: () => {
     }
   };
-  function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, onSlide, onScroll } = {}) {
+  function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, cssVars = true, onSlide, onScroll } = {}) {
     if (typeof window === "undefined")
       return noop;
     const horizontal = axis === "x";
@@ -3925,8 +3925,10 @@ var SV = (() => {
       const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
       const p = progress();
       list.forEach((slide, i) => {
-        const sd = (centers[i] - center) / sizes[i];
-        slide.style.setProperty("--sd", sd.toFixed(4));
+        if (cssVars) {
+          const sd = (centers[i] - center) / sizes[i];
+          slide.style.setProperty("--sd", sd.toFixed(4));
+        }
         const dist = Math.abs(centers[i] - center);
         if (dist < bestDist) {
           bestDist = dist;
@@ -3942,7 +3944,8 @@ var SV = (() => {
         const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
         position = Math.min(Math.max(raw, 0), centers.length - 1);
       }
-      container.style.setProperty("--sv-progress", p.toFixed(4));
+      if (cssVars)
+        container.style.setProperty("--sv-progress", p.toFixed(4));
       const classes = container.classList;
       if (classes.contains?.("sv-slider") !== true || classes.contains?.("sv-slider-y") !== !horizontal || classes.contains?.("sv-draggable") !== !!drag) {
         classes.add("sv-slider");
@@ -3959,7 +3962,8 @@ var SV = (() => {
         const indexChanged = best !== active;
         active = best;
         activeEl = bestEl;
-        container.style.setProperty("--sv-slide", String(best));
+        if (cssVars)
+          container.style.setProperty("--sv-slide", String(best));
         if (indexChanged)
           onSlide?.(best);
       }
@@ -5580,7 +5584,7 @@ const noop = {
     state: () => noopState,
     destroy: () => { },
 };
-function slider(container, { axis = 'x', snap = 'mandatory', drag = true, duration = 600, onSlide, onScroll, } = {}) {
+function slider(container, { axis = 'x', snap = 'mandatory', drag = true, duration = 600, cssVars = true, onSlide, onScroll, } = {}) {
     if (typeof window === 'undefined')
         return noop;
     const horizontal = axis === 'x';
@@ -5721,8 +5725,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             // normalized values made a wide slide look nearer than a narrow one
             // beside it, so with a 100px and a 300px slide the active flipped at
             // centre 101 instead of their midpoint, 150.
-            const sd = (centers[i] - center) / sizes[i];
-            slide.style.setProperty('--sd', sd.toFixed(4));
+            if (cssVars) {
+                const sd = (centers[i] - center) / sizes[i];
+                slide.style.setProperty('--sd', sd.toFixed(4));
+            }
             // an exact tie keeps the first slide, as before
             const dist = Math.abs(centers[i] - center);
             if (dist < bestDist) {
@@ -5745,7 +5751,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
             position = Math.min(Math.max(raw, 0), centers.length - 1);
         }
-        container.style.setProperty('--sv-progress', p.toFixed(4));
+        if (cssVars)
+            container.style.setProperty('--sv-progress', p.toFixed(4));
         // Something outside the slider can rewrite the class attribute of the rail
         // or of a slide (React committing `className`), dropping what the engine
         // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -5769,7 +5776,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             const indexChanged = best !== active;
             active = best;
             activeEl = bestEl;
-            container.style.setProperty('--sv-slide', String(best));
+            if (cssVars)
+                container.style.setProperty('--sv-slide', String(best));
             if (indexChanged)
                 onSlide?.(best);
         }

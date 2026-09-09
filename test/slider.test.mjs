@@ -1182,3 +1182,31 @@ test('slider: measure() reads scrollLeft and scrollWidth before it writes anythi
   assert.equal(afterDestroy, 0, 'onSlide destruction prevents the following onScroll callback')
   disposable.destroy()
 })
+
+test('slider: cssVars false preserves state/classes and leaves existing inline values untouched', async () => {
+  const rafQueue = [], listeners = {}, changes = []
+  global.window = { addEventListener() {}, removeEventListener() {} }
+  global.requestAnimationFrame = fn => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => { rafQueue.length = 0 }
+  global.ResizeObserver = ResizeObserverStub
+  global.getComputedStyle = () => ({ direction:'ltr' })
+  const slides = [0, 100, 200].map(x => makeSlideBox({ x }))
+  const c = makeBox(slides, { rect:{ left:0, top:0 }, clientWidth:100, clientHeight:100, scrollWidth:300, scrollHeight:100, listeners, rafQueue })
+  c.vars['--sv-progress'] = '.25'
+  slides[0].vars['--sd'] = '.75'
+  let reported
+  const { slider } = await import('../dist/core/slider.js')
+  const handle = slider(c, { cssVars:false, duration:0, onSlide:i => changes.push(i), onScroll:s => { reported = s } })
+  runFrames(rafQueue)
+  handle.seek(.5)
+  pumpSlider(listeners, rafQueue)
+  assert.deepEqual(reported, handle.state())
+  assert.equal(handle.active(), 1)
+  assert(slides[1].classes.has('sv-active'))
+  assert.deepEqual(changes, [0, 1])
+  assert.equal(c.vars['--sv-progress'], '.25')
+  assert.equal(c.vars['--sv-slide'], undefined)
+  assert.equal(slides[0].vars['--sd'], '.75')
+  assert.equal(slides[1].vars['--sd'], undefined)
+  handle.destroy()
+})

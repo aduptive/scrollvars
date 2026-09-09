@@ -438,3 +438,14 @@ future writes of the three animation outputs; classes, callbacks, snap and
 authored/existing inline values remain intact. Reuse the same two workloads
 and gate for that implementation before adoption. Defaults must continue
 emitting inherited outputs; no automatic CSS-usage detection.
+
+
+`node demo/bench/harness/measure.mjs --scenarios=slider-api --runs=4 --out=slider-api.json`
+
+This comparison calls the actual built core slider in both variants, once
+with its default and once with `cssVars:false`; it does not substitute the
+frozen implementation. The earlier bundles remain pinned to v1.15.2 in
+`slider-build.mjs` so those prototypes can still be reproduced independently.
+The same predeclared gate and plain-carousel workloads apply. Unit coverage
+also checks existing inline values, callback/class behavior, React prop
+consumption and changing the option on the same mounted rail.

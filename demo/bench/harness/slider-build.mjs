@@ -1,8 +1,8 @@
 // Frozen, benchmark-only variants of the same slider source. No core API change.
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
 import { build } from 'esbuild'
-const source = await readFile(new URL('../../../src/core/slider.ts', import.meta.url), 'utf8')
+const source = execFileSync('git', ['show', 'v1.15.2:src/core/slider.ts'], { cwd:new URL('../../../', import.meta.url), encoding:'utf8' })
 const removal = "    container.classList.remove('sv-gliding')"
 assert.equal(source.split(removal).length, 2, 'Expected one stopGlide removal to compare')
 for (const mode of ['original', 'guarded', 'no-outputs']) {

@@ -31,8 +31,8 @@ for (let i = 0; i < count; i++) {
   rail.append(card)
 }
 const audit = window.__railAudit = { callbacks:0, changes:0, min:1, max:0, last:null }
-const engine = query.get('outputs') === 'off' ? NoOutputSlider : query.has('guarded') ? GuardedSlider : OriginalSlider
-window.sliderHandle = engine.slider(rail, { onSlide:i => { window.sliderActive = i }, onScroll:state => {
+const engine = query.has('api') ? SV : query.get('outputs') === 'off' ? NoOutputSlider : query.has('guarded') ? GuardedSlider : OriginalSlider
+window.sliderHandle = engine.slider(rail, { cssVars:query.get('outputs') === 'off' ? false : undefined, onSlide:i => { window.sliderActive = i }, onScroll:state => {
   window.sliderLastState = state
   const p = state.progress.toFixed(4)
   audit.callbacks++

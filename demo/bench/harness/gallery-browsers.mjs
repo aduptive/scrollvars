@@ -172,10 +172,11 @@ try {
         assert(Math.abs(seek.progress - .25) < .001)
       }
       console.log(`ok ${name}: seek guard removes only redundant mutations; repair, interruption and destroy remain intact`)
+      for (const api of [false, true])
       for (const count of [15, 120]) {
         const variants = []
         for (const off of [false, true]) {
-          await page.goto(base + `../bench/slider-seek.html?count=${count}&plain=1&norun=1${off ? '&outputs=off' : ''}`)
+          await page.goto(base + `../bench/slider-seek.html?count=${count}&plain=1&norun=1${api ? '&api=1' : ''}${off ? '&outputs=off' : ''}`)
           await page.evaluate(() => stopSliderDriver())
           await settle(page)
           const samples = []

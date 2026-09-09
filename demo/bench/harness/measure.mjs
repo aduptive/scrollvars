@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -81,6 +81,10 @@ if (WHICH.includes('slider-outputs'))
   for (const count of [15, 120])
     SCENARIOS.push({ name:`slider-outputs-${count}`, params:`count=${count}&plain=1`, engines:['slider-plain.html', 'slider-no-outputs.html'] })
 
+if (WHICH.includes('slider-api'))
+  for (const count of [15, 120])
+    SCENARIOS.push({ name:`slider-api-${count}`, params:`count=${count}&plain=1&api=1`, engines:['slider-api.html', 'slider-api-no-outputs.html'] })
+
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
 // with the window parked offscreen: real vsync frames, throttled CPU.
@@ -131,8 +135,8 @@ async function measureOnce(engine, params) {
     const direct = engine === 'rail-direct.html'
     const localized = engine === 'rail-local.html'
     const guardedSlider = engine === 'slider-guarded.html'
-    const noOutputs = engine === 'slider-no-outputs.html'
-    const plainSlider = noOutputs || engine === 'slider-plain.html'
+    const noOutputs = engine === 'slider-no-outputs.html' || engine === 'slider-api-no-outputs.html'
+    const plainSlider = noOutputs || engine === 'slider-plain.html' || engine === 'slider-api.html'
     await page.goto(`${base}${casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
     if (casework) {
       await page.addScriptTag({ url:`${base}casework.js` })
