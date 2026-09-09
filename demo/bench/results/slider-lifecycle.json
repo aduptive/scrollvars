@@ -1,0 +1,584 @@
+{
+  "meta": {
+    "date": "2026-09-09T08:57:09.716Z",
+    "commit": "7da7d97dc101a71e803ecaf345fcaefc3ec7547e",
+    "dirty": false,
+    "hashes": {
+      "harness/slider-lifecycle.mjs": "8e8356e540ef6322d5ba46eacdff7fa3cb5894327494a35b52d27d264270d8f5",
+      "fx/sv.js": "6dfad9dc399c4df5010345ac026a1711e1597b0cd963431afa666cd345ec91ae"
+    },
+    "slides": 120,
+    "warmup": 20,
+    "batches": 4,
+    "cyclesPerBatch": 25,
+    "repetitions": 3,
+    "chrome": "Chrome/152.0.7977.83"
+  },
+  "runs": [
+    {
+      "repeat": 1,
+      "mode": "dom",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 765956,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "mode": "on",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860432,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873448,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "mode": "off",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860260,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873240,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873412,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873412,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873412,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "mode": "on",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860432,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873448,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "mode": "off",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860248,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873228,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "mode": "dom",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 765956,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "mode": "off",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860248,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873228,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873436,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "mode": "dom",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 765956,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 0,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 766444,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "mode": "on",
+      "checkpoints": [
+        {
+          "cycles": 0,
+          "alive": 0,
+          "pending": 0,
+          "executed": 27,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 860432,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 25,
+          "alive": 0,
+          "pending": 0,
+          "executed": 61,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873448,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 50,
+          "alive": 0,
+          "pending": 0,
+          "executed": 95,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 75,
+          "alive": 0,
+          "pending": 0,
+          "executed": 129,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        },
+        {
+          "cycles": 100,
+          "alive": 0,
+          "pending": 0,
+          "executed": 163,
+          "callbacksAfterDestroy": 0,
+          "idleFrames": 0,
+          "heapBytes": 873620,
+          "nodes": 8,
+          "listeners": 1
+        }
+      ]
+    }
+  ],
+  "control": {
+    "mode": "retained",
+    "checkpoints": [
+      {
+        "cycles": 5,
+        "alive": 10,
+        "pending": 0,
+        "executed": 6,
+        "callbacksAfterDestroy": 0,
+        "idleFrames": 0,
+        "heapBytes": 876876,
+        "nodes": 3013,
+        "listeners": 1
+      }
+    ]
+  }
+}

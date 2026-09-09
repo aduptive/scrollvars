@@ -540,3 +540,20 @@ keeps five destroyed rails/handles alive on purpose and must detect all ten
 objects. Heap bytes alone do not establish a leak: inspect post-warmup
 trends and the DOM-only control. This is a desktop Chrome cleanup probe,
 not a heap ranking, React lifecycle test or cross-device memory guarantee.
+
+[`slider-lifecycle.json`](../results/slider-lifecycle.json), clean source
+`7da7d97`, passes all checkpoints in Chrome 152. Across six slider contexts
+(three per output mode), 600 measured cycles plus 120 warm-up cycles leave
+zero live rail/handle targets, pending/idle frames or post-destroy callbacks.
+DOM nodes remain 8 and listeners 1, matching each context's baseline and
+the three DOM-only controls. The positive control detects all ten retained
+objects, so the weak-target check is not vacuously passing.
+
+Post-GC heap plateaus by cycle 50: 873620 bytes with outputs and
+873412–873436 without, unchanged through cycles 75 and 100. DOM-only
+controls plateau at 766444 bytes by cycle 25. The roughly 13KB increase
+after slider warm-up stops growing; these data show no accumulating
+rail/handle retention. The larger uncollected opt-out heap in earlier CPU
+benchmarks is not evidence of a leak. No runtime change is justified by
+this probe; React teardown and application-held references remain outside
+its scope.
