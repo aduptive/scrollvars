@@ -591,3 +591,29 @@ to scrollvars.dev. Public docs show v1.16.0 and the public `/fx/sv.js` hash
 matches the source bundle, `6dfad9dc399c4df5010345ac026a1711e1597b0cd963431afa666cd345ec91ae`.
 The option previously described as unreleased is now available; no default
 consumer was opted out and no experimental rail/class guard was shipped.
+
+### Empty-driver and shared-root audit (1.16.0)
+
+`node --test test/driver.test.mjs` passes all 41 cases. Two existing cases
+now check the previously unasserted operation counts: after release and
+draining any already-queued frame, 100 scroll/resize event pairs schedule
+zero frames with page outputs disabled, make no released-element writes
+and leave document outputs absent. Re-enabling page outputs still schedules
+one frame without trackers. Two entries sharing a custom root read that
+root's rect once per frame, then read it fresh on the next frame. Both
+behaviors already existed; no runtime change or CPU-speed claim follows.
+
+A suspected rootMargin test mismatch was also rejected by a browser probe.
+An implicit-root observer with `rootMargin:'100% 0px 100% 0px'` produced:
+
+| viewport | target top | root bounds top / bottom | intersecting |
+|---|---|---|---|
+| 1200×600 | 1500px | −600 / 1200px | false |
+| 600×1200 | 2000px | −1200 / 2400px | true |
+
+Installed Chromium, Firefox and WebKit agreed in all six cases (20×20px
+absolute targets, fresh pages). This matches the existing fixture's height
+calculation. The [specification discussion](https://github.com/w3c/IntersectionObserver/issues/391)
+records the historical width/height ambiguity; do not rewrite the fixture
+or recreate the culler on resize from a remembered rule that disagrees
+with the tested engines. This probe is not a historical-browser guarantee.

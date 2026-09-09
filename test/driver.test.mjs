@@ -327,20 +327,26 @@ test('driver: custom live band and custom root geometry', async () => {
 
   // custom root: a 500px-tall inner scroller at viewport top 100; the child
   // rect sits at 450 → relative top 350 = 70% of the root, inside its band
+  let rootReads = 0
   const rootEl = {
     clientTop: 0,
     clientHeight: 500,
-    getBoundingClientRect: () => ({ top: 100, bottom: 600, height: 500 }),
+    getBoundingClientRect: () => { rootReads++; return { top: 100, bottom: 600, height: 500 } },
   }
   const child = makeElement(200)
   place(child, 450)
   const untrack2 = track(child, { root: rootEl, travel: true })
+  const untrackSibling = track(makeElement(200), { root: rootEl })
   pump()
+  assert.equal(rootReads, 1, 'entries sharing a root share one root rect read per frame')
   assert.ok(child.classes.has('sv-live'), 'live relative to the root band')
   // travel: (vp - top) / (vp + height) = (500 - 350) / (500 + 200)
   assert.equal(child.vars['--sv-t'], (150 / 700).toFixed(4))
   // same rect against the WINDOW band (vh 1000): top 450 < 750 → also live,
   // but travel differs — proves the geometry really is root-relative
+  pump()
+  assert.equal(rootReads, 2, 'the next frame gets fresh root geometry instead of a lasting cache')
+  untrackSibling()
   untrack2()
 })
 
@@ -446,6 +452,20 @@ test('driver: global outputs can be disabled, including the pending velocity res
   await new Promise(resolve => setTimeout(resolve, 100))
   assert.deepEqual(vars, {}, 'the old velocity timer must not write after disabling')
   stop()
+  pump() // drain any frame queued before release
+  const writes = el.setCalls
+  for (let i = 0; i < 100; i++) {
+    listeners.scroll()
+    listeners.resize()
+  }
+  assert.equal(rafQueue.length, 0, 'new scroll/resize events must not wake an empty disabled driver')
+  assert.equal(el.setCalls, writes)
+  assert.deepEqual(vars, {})
+  setPageOutputs(true)
+  assert.equal(rafQueue.length, 1, 're-enabling page outputs still wakes the driver without trackers')
+  pump()
+  assert.ok('--sv-page' in vars)
+  setPageOutputs(false)
 })
 
 test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', async () => {
