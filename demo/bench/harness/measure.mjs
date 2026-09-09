@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin', 'slider-seek', 'slider-outputs', 'slider-api', 'slider-glide', 'home'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin,slider-seek,slider-outputs,slider-api,slider-glide,home')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -47,6 +47,8 @@ await new Promise((r) => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}/bench/`
 
 const SCENARIOS = []
+if (WHICH.includes('home'))
+  SCENARIOS.push({ name:'home-page', params:'', engines:['home-on.html', 'home-off.html'] })
 if (WHICH.includes('main'))
   SCENARIOS.push({
     name: 'main-900',
@@ -117,6 +119,14 @@ async function measureOnce(engine, params) {
   try {
     const page = await context.newPage()
     const casework = engine.startsWith('casework-')
+    const home = engine.startsWith('home-')
+    if (home) {
+      await page.setViewport({ width:1400, height:900 })
+      await page.evaluateOnNewDocument(() => {
+        let seed = 12345
+        Math.random = () => ((seed = Math.imul(seed, 1664525) + 1013904223 >>> 0) / 4294967296)
+      })
+    }
     if (casework) await page.setViewport({ width:1400, height:900 }) // active pin, not the small-screen flow fallback
     const cdp = await page.createCDPSession()
     let calibration = null
@@ -141,14 +151,20 @@ async function measureOnce(engine, params) {
     const guardedSlider = engine === 'slider-guarded.html'
     const noOutputs = engine === 'slider-no-outputs.html' || engine === 'slider-api-no-outputs.html'
     const plainSlider = noOutputs || engine === 'slider-plain.html' || engine === 'slider-api.html'
-    await page.goto(`${base}${casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    await page.goto(`${base}${home ? '../index.html' : casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    if (home) {
+      await page.evaluate(async enabled => {
+        await document.fonts.ready
+        SV.setPageOutputs(enabled)
+      }, engine === 'home-on.html')
+    }
     if (casework) {
       await page.addScriptTag({ url:`${base}casework.js` })
       await page.evaluate(engine => {
         window.stopCaseworkExperiment = mountCaseworkExperiment({ direct:engine === 'casework-direct.html', boundary:engine === 'casework-boundary.html', rich:new URLSearchParams(location.search).get('rich') === '1' })
       }, engine)
     }
-    if (engine.startsWith('../fx/') || casework) {
+    if (engine.startsWith('../fx/') || casework || home) {
       await page.addScriptTag({ url: `${base}runner.js` })
       await page.evaluate(label => {
         let range
@@ -169,6 +185,10 @@ async function measureOnce(engine, params) {
       if (window.__railAudit) Object.assign(window.__railAudit, { callbacks:0, changes:0, min:1, max:0, last:null })
     })
     const payload = await page.evaluate(() => window.__benchStart())
+    if (home) {
+      const hasOutputs = await page.evaluate(() => document.documentElement.style.getPropertyValue('--sv-page') !== '')
+      if (hasOutputs !== (engine === 'home-on.html')) throw Error('Home page-output configuration drifted')
+    }
     const animation = await page.evaluate(() => window.__railAudit ?? null)
     const glide = await page.evaluate(() => window.__glideAudit ?? null)
     if (glide && (glide.commands.length !== 12 || glide.settled.length !== 12 || glide.settled.some(s => s.state.gliding || s.callback.gliding || Math.abs(s.state.progress - s.callback.progress) > .001)))
@@ -193,6 +213,7 @@ const results = { meta: {
   competitors: { gsap: '3.15.0', gsapGzipKB: GSAP_KB, framerMotion: '11.18.2', react: '18.3.1' },
   metricWindow: '12-second workload only; startup recorded separately; no long frames filtered',
 }, scenarios: [] }
+if (WHICH.includes('home')) results.meta.files['index.html'] = hash('index.html')
 if (WHICH.some(s => s.startsWith('slider-')))
   for (const path of ['bench/slider-seek.html', 'bench/slider-original.js', 'bench/slider-guarded.js', 'bench/slider-no-outputs.js', 'bench/harness/slider-build.mjs']) results.meta.files[path] = hash(path)
 if (WHICH.some(s => s.startsWith('casework')))

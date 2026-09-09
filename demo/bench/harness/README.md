@@ -701,3 +701,22 @@ Both aliases were verified against that ID, with the secondary redirecting
 to scrollvars.dev. Public docs show v1.16.1; the public `/fx/sv.js` matches
 the source hash `4588edad8fd62b301567e8dbf1ed405d1c17fd3a3e232b57e7aba60a93389154`.
 The main benchmark still identifies its measured package as 1.16.0.
+
+
+### Main demo page-output experiment
+
+`node measure.mjs --scenarios=home --runs=4 --out=home-outputs.json`
+uses the complete homepage at 1400×900 and the shared 12-second forward /
+reverse scroll path. Fresh contexts use the same seeded Math.random for
+procedural content. Both load the same HTML; after load and font readiness,
+the harness sets page outputs on or off, then settles two frames before
+the timed workload. Startup includes this configuration and is separate;
+this experiment measures steady scrolling, not a pre-boot startup saving.
+The runner records the page source hash, actual scroll range and frame tails.
+
+The source audit finds no --sv-page/--sv-v consumers in the homepage;
+register() forwards local travel/pin/scene callbacks and the HUD reads local
+clocks. Before changing its boot wiring, require at least 15% lower median
+TaskDuration with every rotated pair favorable, no material frame regression,
+and browser checks of local clocks, HUD, pins, no-JS and reduced motion.
+Keep the library default and main-900 benchmark controls unchanged.
