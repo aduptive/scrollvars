@@ -643,3 +643,21 @@ weakness; changing their default would break existing consumers.
 The summary tables now lead with total task CPU and FPS, keeping script,
 style, memory and both output modes visible. Total task is CDP TaskDuration,
 not the sum of displayed subcategories or a GPU/device measurement.
+
+### Reentrant page-output enable (unreleased)
+
+Confirmed against 1.16.0: with outputs disabled at the read phase, enabling
+them inside a tracking callback published `--sv-page: 1.0000` at 50% scroll.
+The frame used a placeholder span of 1 because it had not read document
+height. The driver now marks that span unmeasured and skips page writes
+until the frame already scheduled by `setPageOutputs(true)` reads it.
+Disabling inside a callback still suppresses that frame immediately.
+
+The regression test fails before the fix and passes afterward for
+`onLive`, `onTravel`, `onPin` and `onScene`, including the reverse toggle.
+It checks the intermediate frame, correct first published value and read
+ordering. All 300 unit tests pass. A real-browser probe at viewport
+800×1000, document height 3000 and scrollY 1000 records only `0.5000`
+when enabling from `onTravel` in Chromium, Firefox and WebKit.
+No additional geometry read, public default or variable inheritance change;
+this is correctness evidence, not a new CPU benchmark or npm release.

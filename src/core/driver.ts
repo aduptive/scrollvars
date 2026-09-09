@@ -199,7 +199,7 @@ function update() {
   // seeing it intersect: give every entry one geometry pass on such frames.
   const jumped = lastY >= 0 && Math.abs(y - lastY) > vh
   const docEl = document.documentElement
-  const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : 1
+  const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
   entries.forEach((entry) => {
@@ -253,7 +253,9 @@ function update() {
   // --sv-v (signed velocity, viewport-heights per second). Velocity decays to
   // 0 shortly after the last scroll event so a CSS transition can ease a
   // skew/stretch effect back to rest.
-  if (pageOutputsEnabled) {
+  // A callback may enable outputs after the read phase; its scheduled frame
+  // must measure the page before publishing progress. Disabling is immediate.
+  if (pageOutputsEnabled && pageSpan !== null) {
     const dt = now - lastT
     const v = lastY < 0 || dt <= 0 ? 0 : ((y - lastY) / dt) * 1000 / vh
     const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4)

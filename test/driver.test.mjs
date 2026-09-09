@@ -468,6 +468,41 @@ test('driver: global outputs can be disabled, including the pending velocity res
   setPageOutputs(false)
 })
 
+test('driver: callbacks can toggle page outputs without publishing an unread page span', async () => {
+  for (const callback of ['onLive', 'onTravel', 'onPin', 'onScene']) {
+    const vars = {}, events = []
+    global.document = { documentElement: {
+      classList: { add() {} },
+      get scrollHeight() { events.push('read'); return 3000 },
+      style: { setProperty: (k,v) => vars[k] = v, removeProperty: k => delete vars[k] },
+    } }
+    window.scrollY = 1000
+    const { track, setPageOutputs } = await import(`../dist/core/driver.js?pagecallback-${callback}`)
+    const el = makeElement(400)
+    place(el, 100)
+    setPageOutputs(false)
+    let toggle = true
+    let stop = track(el, { scenes: 2, [callback]: () => {
+      events.push('callback')
+      if (toggle) { toggle = false; setPageOutputs(true) }
+    } })
+    rafQueue.shift()(performance.now()) // inspect the frame before the queued refresh
+    assert.deepEqual(vars, {}, `${callback}: enabling must wait for a measured frame`)
+    assert.deepEqual(events, ['callback'], 'no document geometry read during the write phase')
+    assert.equal(rafQueue.length, 1, 'enabling schedules the measuring frame')
+    events.length = 0
+    rafQueue.shift()(performance.now())
+    assert.equal(vars['--sv-page'], '0.5000', `${callback}: first published progress is correct`)
+    assert.equal(events[0], 'read', 'geometry is read before callbacks')
+    stop()
+
+    stop = track(el, { scenes: 2, [callback]: () => setPageOutputs(false) })
+    rafQueue.shift()(performance.now())
+    assert.deepEqual(vars, {}, `${callback}: disabling must suppress the measured frame too`)
+    stop()
+  }
+})
+
 test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', async () => {
   global.getComputedStyle = () => ({ getPropertyValue: (n) => (n === '--sv-pin-offset' ? '64px' : '') })
   const { track } = await import('../dist/core/driver.js?pinoffset')

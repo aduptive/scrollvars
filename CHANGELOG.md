@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Driver: enabling page outputs inside a tracking callback waits for a frame with measured document geometry. Previously it could briefly publish `--sv-page: 1` halfway through the page. Disabling remains immediate; the fix adds no layout reads during the write phase. Covered for live/travel/pin/scene callbacks and checked in Chromium, Firefox and WebKit. This is a correctness fix, not a measured CPU speedup.
+
 ## 1.16.0 (2026-09-09)
 
 - Add `cssVars: false` to `slider()`/`useSlider()` and the `<Slider>` kit to skip unused `--sd`, `--sv-progress` and `--sv-slide` writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes.

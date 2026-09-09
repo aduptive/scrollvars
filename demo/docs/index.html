@@ -294,10 +294,18 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
+<h3>Unreleased</h3>
+
+<ul>
+<li>Driver: enabling page outputs inside a tracking callback waits for a frame with measured document geometry. Previously it could briefly publish <code>--sv-page: 1</code> halfway through the page. Disabling remains immediate; the fix adds no layout reads during the write phase. Covered for live/travel/pin/scene callbacks and checked in Chromium, Firefox and WebKit. This is a correctness fix, not a measured CPU speedup.</li>
+</ul>
+
 <h3>1.16.0 (2026-09-09)</h3>
 
 <ul>
-<li>Add <code>cssVars: false</code> to <code>slider()</code>/<code>useSlider()</code> and the <code>&lt;Slider></code> kit to skip unused <code>--sd</code>, <code>--sv-progress</code> and <code>--sv-slide</code> writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes. The actual-API benchmark records 46.3%/53.7% lower median task time for 15/120-card linked sliders; both modes already deliver 60fps, and this is not a device-wide guarantee.</li>
+<li>Add <code>cssVars: false</code> to <code>slider()</code>/<code>useSlider()</code> and the <code>&lt;Slider></code> kit to skip unused <code>--sd</code>, <code>--sv-progress</code> and <code>--sv-slide</code> writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes.</li>
+<li><b>36–54% less main-thread CPU time in the measured plain-slider workloads</b>, when opting out of unused CSS outputs. Continuous <code>seek()</code> benchmarks fall from 1145 to 615 ms (15 cards, <b>46.3%</b>) and 2784.5 to 1288 ms (120 cards, <b>53.7%</b>). Animated <code>goTo()</code> benchmarks fall from 508.5 to 323.5 ms (<b>36.4%</b>) and 1319 to 603.5 ms (<b>54.2%</b>), respectively. Each workload uses four runs per mode and size with rotated execution order; both modes already deliver 60fps. These are CPU savings, not FPS gains or a general speedup over GSAP/Framer. Sliders whose CSS consumes these variables must keep outputs enabled. [Seek measurements](https://scrollvars.dev/bench/results/slider-api.json), [glide measurements](https://scrollvars.dev/bench/results/slider-glide.json), [methodology and limits](https://github.com/aduptive/scrollvars/blob/main/demo/bench/harness/README.md#unused-slider-outputs-plain-carousel).</li>
+<li>Refresh the [general benchmark](https://scrollvars.dev/bench/) for 1.16.0 and lead with total CPU and frame delivery, retaining the style-cost breakdown and both page-output modes. This comparison does not establish a general speedup since 1.15.0; document-wide outputs remain the main measured weakness.</li>
 </ul>
 
 <h3>1.15.2 (2026-09-09)</h3>
