@@ -161,10 +161,10 @@ try {
       }
       await page.setViewportSize({ width:1400, height:900 })
       console.log(`ok ${name}: CSS/direct/localized rail geometry, reverse and resize`)
-      for (const direct of [false, true]) {
+      for (const mode of ['css', 'direct', 'boundary']) {
         await page.goto(base + 'case-study-rail.html')
         await page.addScriptTag({ url:base + '../bench/casework.js' })
-        await page.evaluate(direct => { window.stopCaseworkExperiment = mountCaseworkExperiment({ direct, rich:true }) }, direct)
+        await page.evaluate(mode => { window.stopCaseworkExperiment = mountCaseworkExperiment({ direct:mode === 'direct', boundary:mode === 'boundary', rich:true }) }, mode)
         for (const width of [1400, 900, 1400]) {
           await page.setViewportSize({ width, height:900 })
           await settle(page)
@@ -178,7 +178,7 @@ try {
                 expected:p * Math.min(stage.clientWidth - rail.getBoundingClientRect().width, 0) }
             })
             assert(!geometry.flow && Math.abs(geometry.p - progress) < .002 && Math.abs(geometry.actual - geometry.expected) < .2,
-              `${name}: casework direct=${direct}, width=${width}, p=${progress}: ${JSON.stringify(geometry)}`)
+              `${name}: casework ${mode}, width=${width}, p=${progress}: ${JSON.stringify(geometry)}`)
           }
         }
         await page.emulateMedia({ reducedMotion:'reduce' })
@@ -200,7 +200,7 @@ try {
         await page.evaluate(() => stopCaseworkExperiment())
         assert.deepEqual(await page.locator('.work-rail').evaluate(el => ['transform', '--sv-pin'].map(p => el.style.getPropertyValue(p))), ['', ''])
       }
-      console.log(`ok ${name}: real casework CSS/direct geometry, reverse, resize, live reduced motion, CMS flow and cleanup`)
+      console.log(`ok ${name}: real casework CSS/direct/boundary geometry, reverse, resize, live reduced motion, CMS flow and cleanup`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],

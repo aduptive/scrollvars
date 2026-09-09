@@ -1,5 +1,5 @@
 // Experiment on the actual generated CaseStudyRail, not a shipped component API.
-window.mountCaseworkExperiment = ({ direct = false, rich = false } = {}) => {
+window.mountCaseworkExperiment = ({ direct = false, boundary = false, rich = false } = {}) => {
   const root = document.querySelector('.sv-casework > .sv')
   const stage = root.querySelector('.sv-stage')
   const rail = root.querySelector('.work-rail')
@@ -15,6 +15,11 @@ window.mountCaseworkExperiment = ({ direct = false, rich = false } = {}) => {
         return outer
       }))
     }
+  }
+  const boundaryStyle = boundary ? document.createElement('style') : null
+  if (boundaryStyle) {
+    boundaryStyle.textContent = '.sv-casework .work-card { --sv-pin:0; }'
+    document.head.append(boundaryStyle)
   }
   const audit = window.__railAudit = { callbacks:0, changes:0, min:1, max:0, last:null }
   const motion = matchMedia('(prefers-reduced-motion: reduce)')
@@ -57,6 +62,7 @@ window.mountCaseworkExperiment = ({ direct = false, rich = false } = {}) => {
   })
   if (direct) measure()
   return () => {
+    boundaryStyle?.remove()
     observer?.disconnect()
     motion.removeEventListener('change', onMotion)
     stop()
