@@ -90,3 +90,45 @@ experiment only: it does not establish reduced-motion, no-JS or production
 lifecycle support for a new preset. Do not change the public API on this
 evidence alone. Main-thread task time includes work beyond script/style/layout;
 the CDP metrics do not isolate raster or GPU cost.
+
+### Result: keep the candidate, not a blanket replacement
+
+Measured 2026-09-09 UTC with Chrome 152.0.7977.83: 36 executions,
+12 seconds each, three alternating repetitions per variant/workload/profile.
+Sources are identical across profiles (all recorded SHA-256 hashes match).
+Raw normal results: [`rail-experiment.json`](../results/rail-experiment.json),
+source commit `06598fd`; synthetic 4x results:
+[`rail-experiment-4x.json`](../results/rail-experiment-4x.json), source commit
+`4757e8e`. These are experiments, separate from the published comparison table.
+
+All values below are medians in milliseconds; reductions compare variants
+within a profile, never normal versus throttled Chrome.
+
+| Profile | Text descendants/card | Total task: CSS → direct | Reduction | Style recalc: CSS → direct |
+| --- | ---: | ---: | ---: | ---: |
+| Normal, headless | 5 | 964 → 529 | 45.1% | 486 → 41 |
+| Normal, headless | 50 | 2008 → 587 | 70.8% | 1503 → 42 |
+| Normal, headless | 200 | 2980 → 572 | 80.8% | 2564 → 40 |
+| Synthetic 4x, headed | 5 | 293 → 116 | 60.4% | 143 → 5 |
+| Synthetic 4x, headed | 50 | 1351 → 174 | 87.1% | 1024 → 5 |
+| Synthetic 4x, headed | 200 | 4433 → 172 | 96.1% | 4016 → 4 |
+
+Every direct run used less total task time than every CSS run within the same
+workload/profile. Both variants delivered 60 fps with zero frames over 25ms;
+p95 was 16.7–16.8ms normally and 18.5ms in the headed 4x profile. This proves
+CPU savings in this fixture, not a visible smoothness improvement or a higher
+frame-rate ceiling. The fixed-work calibration ratio was 3.96–4.17 (median
+4.06). It is not a physical phone test. Startup medians differed by at most
+2ms. End-of-run JS heap was higher in the direct variant (up to 2.3MB versus
+0.9–2.1MB for CSS); this is not retained memory after forced GC, and no memory
+improvement is claimed. Paint/raster/GPU time was not isolated.
+
+The candidate passes the predeclared CPU/frame criterion. Keep the existing
+CSS presets and public clocks intact: the prototype uses today's `onPin`
+callback with `view:false` and no `pin` output, so no new core API is needed.
+The next adoption gate is the real CaseStudyRail with representative CMS
+content, including images/fonts arriving late, resizing, teardown, reduced
+motion and fit-to-flow. Check whether the extra callback/measurement code is
+worthwhile for ordinary three-card sections too. A private, non-inheriting
+output on the moving rail is another candidate to compare before adding a
+general rendering mode; public inherited clocks must not change semantics.
