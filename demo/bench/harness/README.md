@@ -494,3 +494,27 @@ main carousel, vertical thumbs, wheel, window gallery and pinned carousel
 all consume `--sd`. Keep their outputs enabled. The plain React slider
 snippet contains an opaque user-supplied `Card`; do not assume that child
 ignores the clocks or silently opt it out. No gallery consumer changes.
+
+[`slider-glide.json`](../results/slider-glide.json), clean source `5a54861`,
+contains 16 executions. Task medians fall 508.5→323.5ms (36.4%) for 15
+cards and 1319→603.5ms (54.2%) for 120. All four pairs at each size favor
+opt-out. Recalc falls 168→6ms and 680→6ms; large-workload script rises
+309→324ms. Every sample has 720 frames, 60fps and zero frames over 25ms.
+The small carousel delivers 298–302 quantized progress changes; the long
+one delivers 242 in every run because the same pixel movement covers a
+smaller fraction of its total range. Do not compare those counts as FPS.
+
+All twelve settled destinations, states and callbacks match exactly across
+all eight runs at each size. The local path is identical at both sizes:
+182,418,654,890,1126,1362,1126,890,654,418,182,0px. The scope gate passes;
+unused outputs also cost materially in this discrete goTo workload. This
+does not prove touch-gesture, paint/GPU or physical-device gains. End heap
+is 1.6→1.5MB for 15 cards and 1.15→1.8MB for 120; no forced-GC retained
+memory claim. Runtime code and public defaults did not change this round.
+
+Validation: the shared runner's three unit cases preserve page/pin paths,
+long frames and start/end accounting; its custom driver never also scrolls
+the page. The full Chromium/Firefox/WebKit gallery matrix passes, including
+forward/reverse goTo parity with both output settings. Next distinct check:
+retained memory and idle work after repeated slider mount/destroy cycles;
+do not infer a leak from an end-of-run heap sample or repeat these CPU A/Bs.

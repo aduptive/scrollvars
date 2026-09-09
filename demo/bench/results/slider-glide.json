@@ -1,0 +1,4761 @@
+{
+  "meta": {
+    "date": "2026-09-09T07:56:45.823Z",
+    "chrome": "Chrome/152.0.7977.83",
+    "runs": 4,
+    "throttle": 1,
+    "host": "darwin",
+    "version": "1.15.2",
+    "commit": "5a54861337c8cc2d59c98535d9861ef332bef67e",
+    "dirty": false,
+    "files": {
+      "bench/runner.js": "f902148a2874eeea58e226af3bc21cd3421586341ca30214c4256d5b607fcff9",
+      "bench/scrollvars.html": "b2d393dd429bf3aa563467565bce25cc1478ca37250ef4af517edb41b4e417eb",
+      "bench/gsap.html": "221c7c19780b6532c617871d200a3021a3f3d8be1e40d167c12ada1936ec90e6",
+      "bench/gsap-batched.html": "57534c6a8f75327f82131790926ac48dca3c446c92d3f3fce7812b6dc93682cd",
+      "bench/framer.html": "917485ebb26b99095a846283099dc78296361b3c379ae4a6cbf0a8e6deaddb1f",
+      "bench/harness/measure.mjs": "1b09b8407ad95b52ec6f7e41a36af499eb407c943a80916706336bb9e50e8d50",
+      "fx/sv.js": "6dfad9dc399c4df5010345ac026a1711e1597b0cd963431afa666cd345ec91ae",
+      "fx/sv.css": "de5eeb563069c5ca5c088ea574d75c22bf4cab741466628b111f43a930bc6463",
+      "bench/slider-seek.html": "5cc959bf4ea4c00ba4d158e75bcb35578d839f0d3a32ae08e6ae19d4bf904719",
+      "bench/slider-original.js": "875c499ebbca11c05a17351bbb53bf38a41b3aa3b5bcc1f674170dd306f60289",
+      "bench/slider-guarded.js": "43e47ceea3b563f60d2cc9c8f0de8dbbe96e88844238aef24a1ae751ad3ffcaf",
+      "bench/slider-no-outputs.js": "b6380f36c0d1ccbeb3c5b56bb0b07784c497010702d7cfd7c3e93547169dc550",
+      "bench/harness/slider-build.mjs": "ea4594ea86e509b4e181c0d3cd3ae3fb0940c46b8211043be1a449f8ad486441"
+    },
+    "coreGzipKB": "7.4",
+    "competitors": {
+      "gsap": "3.15.0",
+      "gsapGzipKB": 45.2,
+      "framerMotion": "11.18.2",
+      "react": "18.3.1"
+    },
+    "metricWindow": "12-second workload only; startup recorded separately; no long frames filtered"
+  },
+  "scenarios": [
+    {
+      "name": "slider-glide-15",
+      "params": "count=15&plain=1&api=1&glide=1",
+      "engines": {
+        "slider-api.html": {
+          "scriptMs": 124,
+          "recalcMs": 168,
+          "layoutMs": 0,
+          "taskMs": 508.5,
+          "heapMB": 1.6,
+          "fps": 60,
+          "p95Ms": 16.75,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.6,
+              "animation": {
+                "callbacks": 322,
+                "changes": 300,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 5,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 23
+              },
+              "scriptMs": 128,
+              "recalcMs": 179,
+              "layoutMs": 0,
+              "taskMs": 523
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.6,
+              "animation": {
+                "callbacks": 322,
+                "changes": 301,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 5,
+                "taskMs": 13
+              },
+              "scriptMs": 109,
+              "recalcMs": 141,
+              "layoutMs": 0,
+              "taskMs": 445
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.6,
+              "animation": {
+                "callbacks": 322,
+                "changes": 300,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 5,
+                "taskMs": 13
+              },
+              "scriptMs": 120,
+              "recalcMs": 157,
+              "layoutMs": 0,
+              "taskMs": 494
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.6,
+              "animation": {
+                "callbacks": 322,
+                "changes": 299,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 5,
+                "taskMs": 13
+              },
+              "scriptMs": 134,
+              "recalcMs": 186,
+              "layoutMs": 0,
+              "taskMs": 548
+            }
+          ]
+        },
+        "slider-api-no-outputs.html": {
+          "scriptMs": 104,
+          "recalcMs": 6,
+          "layoutMs": 0,
+          "taskMs": 323.5,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 322,
+                "changes": 298,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 5,
+                "taskMs": 13
+              },
+              "scriptMs": 101,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 315
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 322,
+                "changes": 298,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 107,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 332
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 322,
+                "changes": 302,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 87,
+              "recalcMs": 4,
+              "layoutMs": 0,
+              "taskMs": 264
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 322,
+                "changes": 298,
+                "min": 0,
+                "max": 0.5,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 15,
+                      "position": 7,
+                      "progress": 0.5,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 15,
+                      "position": 6,
+                      "progress": 0.4133627019089574,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 15,
+                      "position": 5,
+                      "progress": 0.3267254038179148,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 15,
+                      "position": 4,
+                      "progress": 0.24008810572687225,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 15,
+                      "position": 3,
+                      "progress": 0.15345080763582966,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 15,
+                      "position": 2,
+                      "progress": 0.06681350954478708,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 15,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 0,
+                "layoutMs": 5,
+                "taskMs": 13
+              },
+              "scriptMs": 109,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 341
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "slider-glide-120",
+      "params": "count=120&plain=1&api=1&glide=1",
+      "engines": {
+        "slider-api.html": {
+          "scriptMs": 309,
+          "recalcMs": 680,
+          "layoutMs": 0,
+          "taskMs": 1319,
+          "heapMB": 1.15,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.2,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 309,
+              "recalcMs": 689,
+              "layoutMs": 0,
+              "taskMs": 1322
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.1,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 310,
+              "recalcMs": 715,
+              "layoutMs": 0,
+              "taskMs": 1342
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.2,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 299,
+              "recalcMs": 671,
+              "layoutMs": 0,
+              "taskMs": 1316
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 309,
+              "recalcMs": 664,
+              "layoutMs": 0,
+              "taskMs": 1305
+            }
+          ]
+        },
+        "slider-api-no-outputs.html": {
+          "scriptMs": 324,
+          "recalcMs": 6,
+          "layoutMs": 0,
+          "taskMs": 603.5,
+          "heapMB": 1.8,
+          "fps": 60,
+          "p95Ms": 16.75,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 16
+              },
+              "scriptMs": 321,
+              "recalcMs": 7,
+              "layoutMs": 0,
+              "taskMs": 609
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 15
+              },
+              "scriptMs": 332,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 616
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 6,
+                "taskMs": 16
+              },
+              "scriptMs": 327,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 598
+            },
+            {
+              "engine": "Slider goTo",
+              "scrollRange": {
+                "from": 0,
+                "to": 0
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.8,
+              "animation": {
+                "callbacks": 322,
+                "changes": 242,
+                "min": 0,
+                "max": 0.04952006980802792,
+                "last": "0.0000"
+              },
+              "glide": {
+                "commands": [
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  6,
+                  5,
+                  4,
+                  3,
+                  2,
+                  0
+                ],
+                "settled": [
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 7,
+                    "left": 1362,
+                    "state": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 7,
+                      "count": 120,
+                      "position": 7,
+                      "progress": 0.04952006980802792,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 6,
+                    "left": 1126,
+                    "state": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 6,
+                      "count": 120,
+                      "position": 6,
+                      "progress": 0.040939499709133215,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 5,
+                    "left": 890,
+                    "state": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 5,
+                      "count": 120,
+                      "position": 5,
+                      "progress": 0.032358929610238514,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 4,
+                    "left": 654,
+                    "state": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 4,
+                      "count": 120,
+                      "position": 4,
+                      "progress": 0.023778359511343803,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 3,
+                    "left": 418,
+                    "state": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 3,
+                      "count": 120,
+                      "position": 3,
+                      "progress": 0.015197789412449099,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 2,
+                    "left": 182,
+                    "state": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 2,
+                      "count": 120,
+                      "position": 2,
+                      "progress": 0.006617219313554392,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  },
+                  {
+                    "target": 0,
+                    "left": 0,
+                    "state": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    },
+                    "callback": {
+                      "active": 1,
+                      "count": 120,
+                      "position": 1.228813559322034,
+                      "progress": 0,
+                      "dragging": false,
+                      "gliding": false
+                    }
+                  }
+                ]
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 15
+              },
+              "scriptMs": 316,
+              "recalcMs": 6,
+              "layoutMs": 0,
+              "taskMs": 594
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -78,3 +78,10 @@ fell only 1.0% at 15 cards versus 14.9% at 120; the predeclared both-workload
 gate failed. It remains benchmark-only. Do not repeat this micro-optimization
 as though untested; the next distinct hypothesis concerns unused slider
 clocks in a plain carousel, with public defaults preserved.
+
+That follow-up is complete: `slider-outputs.json` proved the frozen
+prototype, `slider-api.json` validated the explicit `cssVars:false` option,
+and `slider-glide.json` extended the evidence to discrete goTo motion.
+See the harness README for workload-specific CPU results and limits. The
+option remains unreleased, with default outputs preserved. No gallery
+consumer was silently opted out; its visual sliders consume the clocks.
