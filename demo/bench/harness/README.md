@@ -644,7 +644,7 @@ The summary tables now lead with total task CPU and FPS, keeping script,
 style, memory and both output modes visible. Total task is CDP TaskDuration,
 not the sum of displayed subcategories or a GPU/device measurement.
 
-### Reentrant page-output enable (unreleased)
+### Reentrant page-output enable (shipped in 1.16.1)
 
 Confirmed against 1.16.0: with outputs disabled at the read phase, enabling
 them inside a tracking callback published `--sv-page: 1.0000` at 50% scroll.
@@ -662,7 +662,7 @@ when enabling from `onTravel` in Chromium, Firefox and WebKit.
 No additional geometry read, public default or variable inheritance change;
 this is correctness evidence, not a new CPU benchmark or npm release.
 
-### Repeated page-output enable at rest (unreleased)
+### Repeated page-output enable at rest (shipped in 1.16.1)
 
 Confirmed against source `45c791b`: calling `setPageOutputs(true)` from
 `onTravel` sustained all 120 frames of a bounded unit probe without any
@@ -680,3 +680,24 @@ and 15/15 in WebKit for the baseline; every candidate records 0/0. Later
 scroll input resumes callbacks in both versions and all three engines.
 These counts prove removal of the idle loop in this callback pattern;
 they do not quantify CPU savings or alter the published scroll benchmark.
+
+### 1.16.1 publication receipt
+
+Published 2026-09-09 from tag `v1.16.1`, source `a09a245`, through
+[release run 34361573218](https://github.com/aduptive/scrollvars/actions/runs/34361573218).
+Local gates passed: 301 unit tests, 99 React-18 checks and type checking,
+installed-section integration and the Chromium/Firefox/WebKit suite.
+CI repeated its release gates and passed the tarball installation/import
+check before publishing with provenance. The two probes above are now
+released; no defaults or public variable inheritance changed.
+
+The registry's latest version is 1.16.1. The downloaded tarball's digest
+matches its published integrity:
+`sha512-I1soyioGMQ7VgDJ7MqaeeqWs0+DwLNlgnYHFWKP8wkqmwefqox7ysswJ9b9Qw3dtj2ohAVcGUDVO00Qy5DzODg==`.
+
+Deployment `d32dfbe9-9e7b-4469-9d24-9e97f8b94e3d`:
+https://scrollvars-6pz4mklpo-aduptives-projects.vercel.app.
+Both aliases were verified against that ID, with the secondary redirecting
+to scrollvars.dev. Public docs show v1.16.1; the public `/fx/sv.js` matches
+the source hash `4588edad8fd62b301567e8dbf1ed405d1c17fd3a3e232b57e7aba60a93389154`.
+The main benchmark still identifies its measured package as 1.16.0.
