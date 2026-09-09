@@ -51,3 +51,21 @@ Follow-up: the private-clock experiment and per-sample progress-delivery
 audit are now recorded in README. The private clock has not shown a
 consistent advantage over direct writes and is not approved for adoption.
 Read those results before repeating this experiment.
+
+
+## Next measured operation to inspect (1.15.2)
+
+An independent browser probe of the current `seek()` path made 100 calls on
+an idle slider after its initial ResizeObserver delivery. A class-attribute
+MutationObserver on the rail counted **100 mutations in Chromium, Firefox
+and WebKit**, although `gliding` stayed false. `seek()` calls `stopGlide()`,
+which removes the already-absent `sv-gliding` class each time. The public
+README's linked-slider recipe uses exactly this path through `onScroll`.
+
+This is an operation-count finding, not a CPU benchmark or a shipped fix.
+Next: verify a guarded removal still repairs an externally re-added class,
+stops a real glide and preserves final callbacks/destroy; then measure a
+representative long linked slider before claiming a CPU/frame gain. Keep
+geometry fresh; the earlier gap counterexample still rules out RO-only
+position caching. The resize/removal glide fix and the earlier edge/canvas
+fixes shipped in npm 1.15.2, release run 34312949211 (all gates passed).
