@@ -918,3 +918,22 @@ The middle variant isolates the cost of retaining an unused local clock;
 report that difference separately. Passing permits validation of a concrete
 opt-in effect, not a blanket renderer change. Failure means recording the
 limit and choosing a different hypothesis, without lowering the gate.
+
+Result (`main-style-callback.json`, clean source `1c03e6b`, 54 executions):
+
+| profile | CSS task / recalc | direct + clock task / recalc | callback-only task / recalc |
+|---|---:|---:|---:|
+| 900 plain boxes | 1784.5 / 377.5 | 1574 / 217 | 1603 / 203.5 |
+| 150 boxes, 20 text descendants each | 1636.5 / 526 | 1597 / 460.5 | 1368 / 189 |
+| 150 boxes, 50 text descendants each | 1987 / 840.5 | 1890 / 744 | 1557.5 / 242.5 |
+
+Milliseconds accumulated over 12 seconds; medians of six balanced runs.
+Callback-only saves 10.2%, 16.4% and 21.6% task time versus CSS, and 46.1%,
+64.1% and 71.1% style recalc. The all-profile gate FAILS: the plain profile
+falls below 15% and one matched pair is unfavorable. Both deep profiles
+favor callback-only in all six pairs. Keeping an unused local clock almost
+erases the direct renderer's benefit in the deep profiles, but removing it
+does not establish an improvement over direct-with-clock on plain boxes.
+This supports selective avoidance of inherited outputs on large subtrees,
+not a universal new renderer API. Keep the existing callbacks as the opt-in
+mechanism pending a separate concrete effect gate.
