@@ -2423,7 +2423,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.8&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 5.9&nbsp;KB minified,
 <strong>2.3&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -2757,7 +2757,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.4 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.5 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.5 KB / 3.0 KB</b></td><td></td></tr>
       </tbody>
     </table>
@@ -2905,7 +2905,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.3 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.0 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.3 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.15.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3141,7 +3141,8 @@ var SV = (() => {
       if (vStr !== lastVStr)
         docEl.style?.setProperty("--sv-v", lastVStr = vStr);
       clearTimeout(velTimer);
-      velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", lastVStr = "0"), 80);
+      if (vStr !== "0.000")
+        velTimer = setTimeout(() => docEl.style?.setProperty("--sv-v", lastVStr = "0.000"), 80);
     }
     lastY = y;
     lastT = now;
@@ -3486,10 +3487,16 @@ var SV = (() => {
         return;
       const { el, x, y } = pending;
       pending = null;
+      if (!container.contains(el))
+        return;
       const rect = el.getBoundingClientRect();
       const unit = (v) => Math.max(-1, Math.min(1, v)).toFixed(3);
-      el.style.setProperty("--mx", unit((x - rect.left) / rect.width * 2 - 1));
-      el.style.setProperty("--my", unit((y - rect.top) / rect.height * 2 - 1));
+      const mx = rect.width > 0 ? unit((x - rect.left) / rect.width * 2 - 1) : "0.000";
+      const my = rect.height > 0 ? unit((y - rect.top) / rect.height * 2 - 1) : "0.000";
+      if (el.style.getPropertyValue?.("--mx") !== mx)
+        el.style.setProperty("--mx", mx);
+      if (el.style.getPropertyValue?.("--my") !== my)
+        el.style.setProperty("--my", my);
     };
     const leave = (el) => {
       written.delete(el);
@@ -3505,7 +3512,8 @@ var SV = (() => {
         written.forEach(leave);
         written.add(el);
       }
-      el.classList.remove("sv-pointer-leave");
+      if (el.classList.contains("sv-pointer-leave"))
+        el.classList.remove("sv-pointer-leave");
       pending = { el, x: event.clientX, y: event.clientY };
       if (!raf2)
         raf2 = requestAnimationFrame(flush);
@@ -3854,7 +3862,10 @@ var SV = (() => {
     };
     const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    const progress = () => range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0;
+    const progress = () => {
+      const length = range();
+      return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
+    };
     const chainToContainer = (el, x) => {
       let v = 0;
       let node = el;
@@ -3898,7 +3909,7 @@ var SV = (() => {
     const slides = () => Array.from(container.children);
     const state = (p) => ({
       active: Math.max(active, 0),
-      count: slides().length,
+      count: container.children.length,
       position,
       progress: p ?? progress(),
       dragging,
@@ -4167,7 +4178,7 @@ var SV = (() => {
       else if (event.key === "Home")
         goTo(0);
       else if (event.key === "End")
-        goTo(slides().length - 1);
+        goTo(container.children.length - 1);
       else
         return;
       event.preventDefault();
@@ -5579,7 +5590,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
     // trackpads) pushes pos() past both ends, and a follower chained through
     // `onScroll` + `seek(progress)` would be sent outside its own range.
-    const progress = () => (range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0);
+    const progress = () => {
+        const length = range();
+        return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
+    };
     // Container-local start of a slide in logical scroll units, from offset
     // chains: layout positions, so the coverflow transforms a slide carries
     // (scale/rotate from --sd) never feed back into its own measurement. RTL
@@ -5662,7 +5676,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // outside a measure pass) it reads fresh, same as before.
     const state = (p) => ({
         active: Math.max(active, 0),
-        count: slides().length,
+        count: container.children.length,
         position,
         progress: p ?? progress(),
         dragging,
@@ -6016,7 +6030,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         else if (event.key === 'Home')
             goTo(0);
         else if (event.key === 'End')
-            goTo(slides().length - 1);
+            goTo(container.children.length - 1);
         else
             return;
         event.preventDefault();

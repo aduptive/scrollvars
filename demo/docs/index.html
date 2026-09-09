@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.15.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.15.1</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -293,6 +293,15 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.15.1 (2026-09-08)</h3>
+
+<ul>
+<li>Pointer: stop rewriting an unchanged leave class on every pointer event; write each coordinate only when its inline value changes. Hidden targets settle to zero instead of <code>NaN</code>, and queued moves skip detached targets. External style replacements are still repaired.</li>
+<li>Slider: read the scroll range once per progress snapshot and avoid copying all children just to count them.</li>
+<li>Driver: skip the velocity-reset timer when already at zero and keep the reset's zero serialization consistent, avoiding redundant document-wide style changes at rest.</li>
+<li>Regression checks cover the actual pointer class mutations and hidden targets in Chromium, Firefox and WebKit, plus coordinate writes, detached targets, slider snapshots and idle velocity writes.</li>
+</ul>
 
 <h3>1.15.0 (2026-09-08)</h3>
 

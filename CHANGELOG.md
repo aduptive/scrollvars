@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.1 (2026-09-08)
+
+- Pointer: stop rewriting an unchanged leave class on every pointer event; write each coordinate only when its inline value changes. Hidden targets settle to zero instead of `NaN`, and queued moves skip detached targets. External style replacements are still repaired.
+- Slider: read the scroll range once per progress snapshot and avoid copying all children just to count them.
+- Driver: skip the velocity-reset timer when already at zero and keep the reset's zero serialization consistent, avoiding redundant document-wide style changes at rest.
+- Regression checks cover the actual pointer class mutations and hidden targets in Chromium, Firefox and WebKit, plus coordinate writes, detached targets, slider snapshots and idle velocity writes.
+
 ## 1.15.0 (2026-09-08)
 
 - Add `setPageOutputs(false)` and `<ScrollVarsBoot pageOutputs={false} />` to stop unused document-wide progress/velocity writes. Local tracking keeps working; the existing default remains enabled for compatibility. Gallery pages opt out.

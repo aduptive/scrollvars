@@ -394,10 +394,11 @@ test('driver: offscreen culling skips the rect read, IO wakes it back up', async
 
 test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', async () => {
   const pageVars = {}
+  const velocityWrites = []
   global.document = {
     documentElement: {
       classList: { add: () => {} },
-      style: { setProperty: (k, v) => (pageVars[k] = v) },
+      style: { setProperty: (k, v) => { pageVars[k] = v; if (k === '--sv-v') velocityWrites.push(v) } },
       scrollHeight: 3000,
     },
   }
@@ -411,12 +412,17 @@ test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', asyn
   // 1000 / (3000 - 1000)
   assert.equal(pageVars['--sv-page'], '0.5000')
   assert.equal(pageVars['--sv-v'], '0.000', 'first frame has no velocity')
+  await new Promise((r) => setTimeout(r, 100))
+  assert.deepEqual(velocityWrites, ['0.000'], 'idle must not schedule another document-wide zero write')
   window.scrollY = 1500
   await new Promise((r) => setTimeout(r, 20))
   pump()
   assert.ok(parseFloat(pageVars['--sv-v']) > 0, 'downward scroll is positive velocity')
   await new Promise((r) => setTimeout(r, 120))
-  assert.equal(pageVars['--sv-v'], '0', 'velocity decays to 0 at rest')
+  assert.equal(+pageVars['--sv-v'], 0, 'velocity decays to 0 at rest')
+  const atRest = velocityWrites.length
+  pump()
+  assert.equal(velocityWrites.length, atRest, 'the next idle frame keeps the same zero serialization')
   untrack()
 })
 

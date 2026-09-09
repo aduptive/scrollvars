@@ -78,6 +78,27 @@ try {
       await page.evaluate(() => window.stopTestPin())
       console.log(`ok ${name}: nested gestures, same-frame release, container-query pin offset`)
       await page.goto(base + 'pointer-tilt.html')
+      const pointerClassWrites = await page.locator('.sv-tilt').first().evaluate(async el => {
+        let writes = 0
+        const observer = new MutationObserver(records => { writes += records.length })
+        observer.observe(el, { attributes:true, attributeFilter:['class'] })
+        for (let i = 0; i < 100; i++)
+          el.dispatchEvent(new PointerEvent('pointermove', { bubbles:true, clientX:i, clientY:25 }))
+        await Promise.resolve()
+        observer.disconnect()
+        return writes
+      })
+      assert.equal(pointerClassWrites, 0, `${name}: pointermove rewrote an unchanged class ${pointerClassWrites} times`)
+      const hiddenPointer = await page.locator('.sv-tilt').first().evaluate(async el => {
+        const display = el.style.display
+        el.dispatchEvent(new PointerEvent('pointermove', { bubbles:true, clientX:0, clientY:0 }))
+        el.style.display = 'none'
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const values = ['--mx', '--my'].map(name => +el.style.getPropertyValue(name))
+        el.style.display = display
+        return values
+      })
+      assert.deepEqual(hiddenPointer, [0, 0], `${name}: hidden pointer target emitted invalid coordinates`)
       const glare = await page.locator('.sv-tilt').first().evaluate(el => {
         const samples = []
         for (const x of [-1, 1]) {
@@ -89,6 +110,7 @@ try {
       })
       assert.equal(glare[0].background, glare[1].background, `${name}: glare repaints its gradient`)
       assert.notEqual(glare[0].translate, glare[1].translate, `${name}: glare does not move`)
+      console.log(`ok ${name}: pointer class writes, hidden target, translated glare`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],

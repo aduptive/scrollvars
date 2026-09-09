@@ -25,7 +25,9 @@ retracking starts a new measurement, avoiding a surprise jump while reading.
 
 ## Performance measurements
 
-Reproduces every number on /bench/. Including the CPU split the in-page
+Published measurements are dated snapshots. Check out `meta.commit` from the
+raw JSON to reproduce their exact sources; a newer patch is not implicitly
+covered by an older measurement. Includes the CPU split the in-page
 runner cannot measure. Serves the repo's demo/ locally, drives each engine
 page in headless Chrome over CDP, waits for the page's own DONE payload
 (frame stats) and reads `Performance.getMetrics`.

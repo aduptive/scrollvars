@@ -261,7 +261,8 @@ function update() {
     const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3)
     if (vStr !== lastVStr) docEl.style?.setProperty('--sv-v', (lastVStr = vStr))
     clearTimeout(velTimer)
-    velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', (lastVStr = '0')), 80)
+    if (vStr !== '0.000')
+      velTimer = setTimeout(() => docEl.style?.setProperty('--sv-v', (lastVStr = '0.000')), 80)
   }
   lastY = y
   lastT = now

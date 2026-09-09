@@ -206,10 +206,16 @@ test('slider: --sd per slide, active detection, goTo centering math', async () =
   assert.equal(container.scrollLeft, 100)
 
   // state(): full snapshot
+  let copiedChildren = 0, widthReads = 0
+  slides[Symbol.iterator] = function* () { copiedChildren++; yield* Array.prototype.values.call(this) }
+  Object.defineProperty(container, 'scrollWidth', { get: () => { widthReads++; return 600 } })
   const st = handle.state()
   assert.equal(st.count, 3)
   assert.equal(st.dragging, false)
   assert.equal(st.gliding, false)
+  assert.equal(st.progress, 1 / 3)
+  assert.equal(copiedChildren, 0, 'reading slider state must not copy every child')
+  assert.equal(widthReads, 1, 'read the scroll range once per snapshot')
 
   handle.destroy()
 })

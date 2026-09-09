@@ -15,6 +15,7 @@ function makeEl({ isTilt = false, matchSelector = null, parent = null } = {}) {
     classes,
     isTilt,
     style: {
+      getPropertyValue: (name) => vars[name] ?? '',
       setProperty: (name, value) => {
         vars[name] = value
       },
@@ -83,6 +84,46 @@ function stubFrame() {
   }
   return () => cb
 }
+
+test('trackPointer handles a target hidden or detached before its queued frame', async () => {
+  const frame = stubFrame()
+  const container = makeContainer()
+  const card = makeEl({ isTilt:true, parent:container })
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container)
+  container.fire('pointermove', { target:card, clientX:0, clientY:0 })
+  card.getBoundingClientRect = () => ({ left:0, top:0, width:0, height:0 })
+  frame()()
+  assert.equal(+card.vars['--mx'], 0, 'a hidden target must not emit NaN')
+  assert.equal(+card.vars['--my'], 0)
+  container.fire('pointermove', { target:card, clientX:80, clientY:80 })
+  card.parent = null
+  card.getBoundingClientRect = () => { throw Error('detached target was still measured') }
+  frame()()
+  stop()
+})
+
+test('trackPointer only writes changed coordinates and repairs externally replaced values', async () => {
+  const frame = stubFrame()
+  const container = makeContainer()
+  const card = makeEl({ isTilt:true, parent:container })
+  let writes = 0
+  const set = card.style.setProperty
+  card.style.setProperty = (...args) => { writes++; set(...args) }
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container)
+  for (let x = 10; x < 20; x++) {
+    container.fire('pointermove', { target:card, clientX:x, clientY:50 })
+    frame()()
+  }
+  assert.equal(writes, 11, 'ten X changes plus one initial Y write')
+  card.style.removeProperty('--mx')
+  container.fire('pointermove', { target:card, clientX:19, clientY:50 })
+  frame()()
+  assert.equal(writes, 12, 'same coordinates must repair a removed inline value')
+  assert.equal(card.vars['--mx'], '-0.620')
+  stop()
+})
 
 test('trackPointer ignores a .sv-tilt ancestor of the container: match must be inside', async () => {
   const rafCb = stubFrame()

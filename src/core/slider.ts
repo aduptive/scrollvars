@@ -117,7 +117,10 @@ export function slider(
   // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
   // trackpads) pushes pos() past both ends, and a follower chained through
   // `onScroll` + `seek(progress)` would be sent outside its own range.
-  const progress = () => (range() > 0 ? Math.max(0, Math.min(pos() / range(), 1)) : 0)
+  const progress = () => {
+    const length = range()
+    return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0
+  }
   // Container-local start of a slide in logical scroll units, from offset
   // chains: layout positions, so the coverflow transforms a slide carries
   // (scale/rotate from --sd) never feed back into its own measurement. RTL
@@ -205,7 +208,7 @@ export function slider(
   // outside a measure pass) it reads fresh, same as before.
   const state = (p?: number): SliderState => ({
     active: Math.max(active, 0),
-    count: slides().length,
+    count: container.children.length,
     position,
     progress: p ?? progress(),
     dragging,
@@ -548,7 +551,7 @@ export function slider(
     if (event.key === nextKey) next()
     else if (event.key === prevKey) prev()
     else if (event.key === 'Home') goTo(0)
-    else if (event.key === 'End') goTo(slides().length - 1)
+    else if (event.key === 'End') goTo(container.children.length - 1)
     else return
     event.preventDefault()
   }

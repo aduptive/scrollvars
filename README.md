@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.3 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.4 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.3 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.5 KB on the wire.
 
 ## Why
 
@@ -109,16 +109,16 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | you import | JS on the wire |
 | --- | --- |
 | `track` (the driver) | 3.0 KB |
-| `track` + `scan` (zero-wrapper mode) | 4.3 KB |
+| `track` + `scan` (zero-wrapper mode) | 4.4 KB |
 | `slider` | 2.3 KB |
-| `trackPointer` | 0.5 KB |
+| `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.6 KB |
 | everything in `scrollvars` (the core entry) | 7.3 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 13.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 13.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~5.4 KB gzipped, total.**
+**~5.5 KB gzipped, total.**
 
 ## Mental model
 

@@ -45,10 +45,14 @@ export function trackPointer(
     if (!pending) return
     const { el, x, y } = pending
     pending = null
+    if (!container.contains(el)) return
     const rect = el.getBoundingClientRect()
     const unit = (v: number) => Math.max(-1, Math.min(1, v)).toFixed(3)
-    el.style.setProperty('--mx', unit(((x - rect.left) / rect.width) * 2 - 1))
-    el.style.setProperty('--my', unit(((y - rect.top) / rect.height) * 2 - 1))
+    const mx = rect.width > 0 ? unit(((x - rect.left) / rect.width) * 2 - 1) : '0.000'
+    const my = rect.height > 0 ? unit(((y - rect.top) / rect.height) * 2 - 1) : '0.000'
+    // Read inline values so a consumer replacing its styles can be repaired.
+    if (el.style.getPropertyValue?.('--mx') !== mx) el.style.setProperty('--mx', mx)
+    if (el.style.getPropertyValue?.('--my') !== my) el.style.setProperty('--my', my)
   }
 
   // relax el back to center and drop it from the written set: the same
@@ -74,7 +78,7 @@ export function trackPointer(
       written.forEach(leave)
       written.add(el)
     }
-    el.classList.remove('sv-pointer-leave')
+    if (el.classList.contains('sv-pointer-leave')) el.classList.remove('sv-pointer-leave')
     pending = { el, x: event.clientX, y: event.clientY }
     if (!raf) raf = requestAnimationFrame(flush)
   }
