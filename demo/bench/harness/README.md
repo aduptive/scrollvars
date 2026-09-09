@@ -839,3 +839,23 @@ each repetition favorable, no material frame-delivery regression and
 comparable animation progress delivery. Preserve all raw runs. If it passes,
 this establishes a renderer candidate, not an automatic rewrite of arbitrary
 user CSS; real preset semantics and lifecycle still gate adoption.
+
+Confirmation (`main-style-confirm.json`, clean source `3e62cbe`, four runs
+per variant, 24 executions): keeping all measured clocks, direct rendering
+reduces median task CPU 4128.5→2625.5ms (36.4%) with globals on; all four
+repetitions favor it. Style recalc falls 3272→1666.5ms. With globals off,
+task CPU falls only 1696→1612ms (5.0%), with one unfavorable repetition;
+style recalc falls 368.5→225.5ms. The predeclared two-mode adoption gate
+FAILS. Do not ship this as a universal fast path. In that same batch GSAP
+batched records 1588ms task/171.5ms recalc, Framer 1855ms/77.5ms. The direct
+globals-off prototype is close in total CPU, but still pays more style work.
+All optimized runs report 60fps; the ordinary globals-on median is 59.9fps.
+Geometry/clock gates passed in Chromium, Firefox and WebKit at two widths;
+untimed checks wait 100ms after programmatic scroll because Firefox's async
+scroll delivery also caused transient mismatches in the unmodified baseline.
+
+Next hypothesis: paused native Web Animations driven by the same `onTravel`
+may reduce style writes to one currentTime update per box. Test it against
+CSS and direct output with the same clocks and both global modes; reject
+unless total CPU improves without lost progress/geometry or excessive setup
+cost. This remains an experiment, not a dependency or a runtime API.
