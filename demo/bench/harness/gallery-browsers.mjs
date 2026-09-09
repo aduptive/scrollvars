@@ -111,6 +111,30 @@ try {
       assert.equal(glare[0].background, glare[1].background, `${name}: glare repaints its gradient`)
       assert.notEqual(glare[0].translate, glare[1].translate, `${name}: glare does not move`)
       console.log(`ok ${name}: pointer class writes, hidden target, translated glare`)
+      await page.addScriptTag({ url:base + 'sv-canvas.js' })
+      const canvasFrames = await page.evaluate(async () => {
+        document.body.innerHTML = '<canvas style="position:fixed;top:20px;left:20px;width:200px;height:100px"></canvas>'
+        const canvas = document.querySelector('canvas')
+        let frames = 0
+        const handle = SVC.mountEffect(canvas, { frame:() => { frames++ } })
+        const waitFrames = async () => {
+          for (let i = 0; i < 5; i++) await new Promise(requestAnimationFrame)
+        }
+        await waitFrames()
+        canvas.style.width = '0px'
+        await waitFrames()
+        const before = frames
+        await waitFrames()
+        const hidden = frames - before
+        canvas.style.width = '200px'
+        await waitFrames()
+        const resumed = frames - before - hidden
+        handle.destroy()
+        return { hidden, resumed }
+      })
+      assert.equal(canvasFrames.hidden, 0, `${name}: zero-area canvas kept drawing`)
+      assert.ok(canvasFrames.resumed > 0, `${name}: restoring canvas size did not resume`)
+      console.log(`ok ${name}: zero-area canvas pause and resume`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],

@@ -4813,6 +4813,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // the loop runs only when every gate is open
     let userPaused = false;
     let onscreen = true;
+    let hasArea = false;
     let visible = document.visibilityState !== 'hidden';
     const running = () => raf !== 0;
     const tick = (now) => {
@@ -4822,7 +4823,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         frame(fx, dt);
     };
     const sync = () => {
-        const shouldRun = !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible));
+        const shouldRun = !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible && hasArea));
         if (shouldRun && !running()) {
             last = performance.now();
             raf = requestAnimationFrame(tick);
@@ -4912,8 +4913,12 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout());
         if (entry)
             lastContent = size;
-        if (!size.width || !size.height)
+        // IntersectionObserver can still intersect a zero-area canvas.
+        hasArea = size.width > 0 && size.height > 0;
+        if (!hasArea) {
+            sync();
             return;
+        }
         fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
         // Dead band (eleventh pass): a sub-pixel content change never needs a
         // new bitmap. Skipping the whole pass here, before the probe or the
@@ -4926,6 +4931,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             fx.dpr === lastWriteDpr &&
             Math.abs(size.width - lastWriteContent.width) < 0.5 &&
             Math.abs(size.height - lastWriteContent.height) < 0.5) {
+            sync(); // a collapsed canvas can return at exactly its previous size
             return;
         }
         if (!mounted) {

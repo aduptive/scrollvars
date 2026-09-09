@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Canvas: pause the automatic frame loop when either layout dimension becomes zero, even when IntersectionObserver still reports an intersection. Restoring the previous size resumes without recreating the simulation; manual pause and `autoPause: false` remain respected. Covered by unit and Chromium/Firefox/WebKit regression checks.
+
 ## 1.15.1 (2026-09-08)
 
 - Pointer: stop rewriting an unchanged leave class on every pointer event; write each coordinate only when its inline value changes. Hidden targets settle to zero instead of `NaN`, and queued moves skip detached targets. External style replacements are still repaired.

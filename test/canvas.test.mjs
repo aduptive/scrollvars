@@ -259,6 +259,52 @@ test('canvas harness: sizes, runs, pauses offscreen, clamps dt, destroys', async
   assert.equal(env.pending(), 0)
 })
 
+test('canvas harness: zero-area resize pauses automatically and restores the same size without resetting setup', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+  let setups = 0, frames = 0
+  const handle = mountEffect(env.canvas, {
+    setup: () => { setups++ },
+    frame: () => { frames++ },
+  })
+  env.pump(16)
+  env.pump(16)
+  for (const size of [{ width:0, height:300 }, { width:400, height:0 }]) {
+    env.resize(size)
+    assert.equal(env.pending(), 0, 'no frames while either axis has zero area')
+    handle.resume()
+    env.intersect(true)
+    assert.equal(env.pending(), 0, 'manual resume and intersection cannot bypass zero area')
+    const before = frames
+    env.pump(1000)
+    assert.equal(frames, before)
+    env.resize({ width:400, height:300 })
+    assert.equal(env.pending(), 1, 'restoring the previous size restarts the loop')
+    env.pump(16)
+    assert.equal(frames, before + 1)
+  }
+  assert.equal(setups, 1)
+  env.resize({ width:0, height:300 })
+  handle.pause()
+  env.resize({ width:400, height:300 })
+  assert.equal(env.pending(), 0, 'restoring size must respect manual pause')
+  handle.destroy()
+})
+
+test('canvas harness: autoPause false keeps an initialized zero-area simulation running', async () => {
+  const env = makeEnv()
+  const { mountEffect } = await import('../dist/canvas/index.js')
+  let frames = 0
+  const handle = mountEffect(env.canvas, { autoPause:false, frame:() => { frames++ } })
+  env.pump(16)
+  env.resize({ width:0, height:300 })
+  env.intersect(false)
+  env.pump(16)
+  assert.equal(frames, 1)
+  assert.equal(env.pending(), 1)
+  handle.destroy()
+})
+
 test('canvas harness: the observer\'s first delivery sizes the canvas with nothing else happening', async () => {
   const env = makeEnv()
   const { mountEffect } = await import('../dist/canvas/index.js')

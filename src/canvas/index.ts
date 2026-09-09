@@ -332,7 +332,7 @@ export interface EffectOptions {
    * nothing: for WebGL/Three: create your own renderer on `fx.canvas`
    * (the harness still sizes the backing store and runs the lifecycle). */
   context?: '2d' | null
-  /** Pause automatically when offscreen / tab hidden (default true). */
+  /** Pause automatically when offscreen, zero-area or tab hidden (default true). */
   autoPause?: boolean
 }
 
@@ -392,6 +392,7 @@ export function mountEffect(
   // the loop runs only when every gate is open
   let userPaused = false
   let onscreen = true
+  let hasArea = false
   let visible = document.visibilityState !== 'hidden'
 
   const running = () => raf !== 0
@@ -405,7 +406,7 @@ export function mountEffect(
 
   const sync = () => {
     const shouldRun =
-      !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible))
+      !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible && hasArea))
     if (shouldRun && !running()) {
       last = performance.now()
       raf = requestAnimationFrame(tick)
@@ -496,7 +497,12 @@ export function mountEffect(
 
     const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout())
     if (entry) lastContent = size
-    if (!size.width || !size.height) return
+    // IntersectionObserver can still intersect a zero-area canvas.
+    hasArea = size.width > 0 && size.height > 0
+    if (!hasArea) {
+      sync()
+      return
+    }
     fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap)
 
     // Dead band (eleventh pass): a sub-pixel content change never needs a
@@ -512,6 +518,7 @@ export function mountEffect(
       Math.abs(size.width - lastWriteContent.width) < 0.5 &&
       Math.abs(size.height - lastWriteContent.height) < 0.5
     ) {
+      sync() // a collapsed canvas can return at exactly its previous size
       return
     }
 
