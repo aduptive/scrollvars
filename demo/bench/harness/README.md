@@ -785,3 +785,11 @@ The no-JS fallback removes containment, but the JS-enabled reduced-motion
 path still needs its own regression test and correction. Audit the other
 custom homepage reduced-motion scenes in that next round; the fx gates do
 not cover them.
+
+Published from `f190293` to
+https://scrollvars-i2wga8d6u-aduptives-projects.vercel.app,
+deployment `50472513-c1ae-4846-b509-acc51e7f5b1c`. Both aliases were verified.
+Public HTML matches the local source byte-for-byte; `/fx/sv.js` retains
+hash `4588edad8fd62b301567e8dbf1ed405d1c17fd3a3e232b57e7aba60a93389154`.
+A public mobile Chromium check with JS disabled confirms visible section
+headings, a static rail and removed map containment. Package stays 1.16.1.
