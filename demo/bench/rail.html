@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rail experiment · ScrollVars</title>
+<link rel="stylesheet" href="../fx/sv.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background:#121118; color:#e6e4f0; font:14px/1.5 system-ui; }
+  section { position:relative; height:500vh; }
+  .sv-stage { display:flex; align-items:center; }
+  .sv-rail { display:flex; gap:24px; will-change:translate; }
+  article { flex:0 0 320px; width:320px; height:360px; padding:24px; overflow:hidden; background:#252035; border-radius:16px; }
+  article span { display:inline-block; margin:2px; }
+  article span:nth-child(3n) { color:#a78bfa; }
+  article span:nth-child(3n + 1) { font-weight:600; }
+  .direct .sv-rail { translate:none; }
+  .hud { position:fixed; top:8px; left:8px; white-space:pre; background:#121118; z-index:2; }
+</style></head><body>
+<section><div class="sv-stage"><div class="sv-rail"></div></div></section>
+<script src="../fx/sv.js"></script><script src="runner.js"></script>
+<script>
+  // Experimental fixture, not a new public API. Same DOM, pin, precision and
+  // translate property in both paths; only the continuously written output differs.
+  const query = new URLSearchParams(location.search)
+  const direct = query.get('mode') === 'direct'
+  const deep = Math.max(0, Math.min(500, Number(query.get('deep')) || 0))
+  const section = document.querySelector('section')
+  const stage = document.querySelector('.sv-stage')
+  const rail = document.querySelector('.sv-rail')
+  document.body.classList.toggle('direct', direct)
+  for (let i = 0; i < 20; i++) {
+    const card = document.createElement('article')
+    const title = document.createElement('h2')
+    title.textContent = 'Project ' + (i + 1)
+    card.append(title)
+    for (let j = 0; j < deep; j++) {
+      const span = document.createElement('span')
+      span.textContent = 'Detail ' + j
+      card.append(span)
+    }
+    rail.append(card)
+  }
+  SV.setPageOutputs(false)
+  if (direct) {
+    let width, end, previous
+    const measure = () => {
+      width = stage.clientWidth
+      end = Math.min(width - rail.offsetWidth, 0)
+      previous = undefined
+      SV.refresh()
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(stage)
+    observer.observe(rail)
+    SV.track(section, { view:false, onPin:raw => {
+      const p = +raw.toFixed(4) // same precision and change suppression as setVar
+      if (p === previous) return
+      previous = p
+      rail.style.translate = `${(1 - p) * width + p * end}px 0`
+    } })
+  } else {
+    SV.track(section, { view:false, pin:true })
+  }
+  runBench('rail-' + (direct ? 'direct' : 'css'))
+</script></body></html>

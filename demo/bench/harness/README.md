@@ -67,3 +67,26 @@ pins at 1400×900 and narrow-screen fallbacks. Inspect per-run ranges as well as
 The normal profile is headless; the throttled profile uses a headed Chrome
 window to avoid frame starvation. Compare engines within a profile. The fixed
 work ratio calibrates that JavaScript loop, not the entire rendering pipeline.
+
+## Direct rail experiment
+
+`node measure.mjs --scenarios=rail --runs=3 --out=rail-experiment.json`
+compares the existing CSS rail with callback-only tracking that writes
+`translate` directly. Both use the same driver, four-decimal progress, scroll
+path, DOM, dimensions and compositing hint; page outputs and the unused view
+clock are disabled in both. Each rail has 20 cards with 5, 50 or 200 text
+descendants per card. The direct version caches dimensions through its own
+ResizeObserver; its startup cost is included separately. `rail-direct.html`
+is an alias for the same fixture with `mode=direct`, not another source file.
+The browser suite verifies identical positions, reverse scroll and resizing
+in Chromium, Firefox and WebKit before performance is compared in Chrome.
+
+Decision criterion, set before measurement: seek at least 15% lower median
+total task time on the two larger workloads, with consistent repetitions,
+no material frame regression and no more than 10% total-task regression on
+the small workload. Confirm on a second profile before adopting. A small or
+inconsistent gain does not justify a new runtime path. This fixture is an
+experiment only: it does not establish reduced-motion, no-JS or production
+lifecycle support for a new preset. Do not change the public API on this
+evidence alone. Main-thread task time includes work beyond script/style/layout;
+the CDP metrics do not isolate raster or GPU cost.

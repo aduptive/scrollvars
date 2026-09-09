@@ -8,7 +8,7 @@ import { chromium, firefox, webkit } from 'playwright'
 const server = createServer(async (req, res) => {
   try {
     const path = new URL(req.url, 'http://localhost').pathname
-    if (!/^\/fx\/[\w.-]+$/.test(path)) throw Error('not found')
+    if (!/^\/(fx|bench)\/[\w.-]+$/.test(path)) throw Error('not found')
     res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html')
     res.end(await readFile(fileURLToPath(new URL(`../../${path.slice(1)}`, import.meta.url))))
   } catch { res.writeHead(404).end() }
@@ -135,6 +135,26 @@ try {
       assert.equal(canvasFrames.hidden, 0, `${name}: zero-area canvas kept drawing`)
       assert.ok(canvasFrames.resumed > 0, `${name}: restoring canvas size did not resume`)
       console.log(`ok ${name}: zero-area canvas pause and resume`)
+      // Same output geometry before comparing CPU: forward, reverse and resize.
+      for (const mode of ['css', 'direct']) {
+        await page.goto(base + `../bench/rail.html?deep=200&norun=1&mode=${mode}`)
+        for (const width of [800, 390]) {
+          await page.setViewportSize({ width, height:600 })
+          await settle(page)
+          for (const progress of [0, .15, .5, 1, .5, 0]) {
+            await pin(page, 'section', progress)
+            const geometry = await page.locator('section').evaluate(el => {
+              const stage = el.querySelector('.sv-stage'), rail = el.querySelector('.sv-rail')
+              const p = +Math.max(0, Math.min(1, -el.getBoundingClientRect().top / (el.offsetHeight - innerHeight))).toFixed(4)
+              const expected = (1 - p) * stage.clientWidth + p * Math.min(stage.clientWidth - rail.offsetWidth, 0)
+              return { actual:rail.getBoundingClientRect().left - stage.getBoundingClientRect().left, expected }
+            })
+            assert.ok(Math.abs(geometry.actual - geometry.expected) < .1, `${name}: ${mode} rail at ${width}px, ${progress}: ${JSON.stringify(geometry)}`)
+          }
+        }
+      }
+      await page.setViewportSize({ width:1400, height:900 })
+      console.log(`ok ${name}: CSS/direct rail geometry, reverse and resize`)
       for (const [slug, selector, visual] of [
         ['hero-cinematic', '.sv-hero', '.hero-inner'],
         ['editorial-manifesto', '.sv-manifesto', '.manifesto-copy p:last-child'],
