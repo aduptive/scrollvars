@@ -373,3 +373,28 @@ only with at least 10% lower median task time in both cells, every paired run
 favoring it and no material frame/cadence regression. Operation-count savings
 alone do not establish CPU savings; keep an inconclusive guard benchmark-only
 and move to a different bottleneck rather than adding geometry caches.
+
+
+[`slider-seek.json`](../results/slider-seek.json), source `5b7a4c2`, contains
+16 executions of the frozen 1.15.2 slider variants. The 15-card task medians
+are 1115ms original and 1103.5ms guarded (1.0% less); one guarded repetition
+is slower than its paired original. At 120 cards, medians are 2980.5 and
+2535.5ms (14.9% less), with every pair favoring the guard. Large-slider recalc
+medians are 1860→1616.5ms and script 465.5→405ms.
+
+The predeclared gate fails in the small workload. **Do not adopt this as a
+general core optimization from this experiment.** The 100→0 class mutations
+remain a confirmed operation-count improvement and the large-workload result
+is useful evidence, but neither makes the small gain consistent. Both
+variants have occasional missed frames: 15-card delivery is 719–720 runner
+frames / 717–718 slider progress changes; 120-card delivery is 717–720 /
+715–718. Keep the individual samples, including those misses. There is no
+established visible-fluidity gain or physical-device result.
+
+No runtime or public API changed; the guarded implementation stays in the
+benchmark fixture. Next hypothesis: measure the cost of publishing unused
+slider clocks in a plain carousel, with identical non-clock-dependent CSS
+in both variants. Prototype output suppression only in the benchmark first;
+any future opt-in must preserve current defaults and inherited clocks for
+existing consumers. Do not add a geometry cache or silently skip public
+outputs based on guessed CSS usage.

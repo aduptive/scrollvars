@@ -69,3 +69,12 @@ representative long linked slider before claiming a CPU/frame gain. Keep
 geometry fresh; the earlier gap counterexample still rules out RO-only
 position caching. The resize/removal glide fix and the earlier edge/canvas
 fixes shipped in npm 1.15.2, release run 34312949211 (all gates passed).
+
+
+The seek guard was subsequently tested in all three engines and benchmarked
+in 16 balanced executions (`slider-seek.json`). It preserved repair,
+interruption and destroy and removed the redundant mutations, but task time
+fell only 1.0% at 15 cards versus 14.9% at 120; the predeclared both-workload
+gate failed. It remains benchmark-only. Do not repeat this micro-optimization
+as though untested; the next distinct hypothesis concerns unused slider
+clocks in a plain carousel, with public defaults preserved.

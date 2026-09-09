@@ -1,0 +1,632 @@
+{
+  "meta": {
+    "date": "2026-09-09T05:57:18.135Z",
+    "chrome": "Chrome/152.0.7977.83",
+    "runs": 4,
+    "throttle": 1,
+    "host": "darwin",
+    "version": "1.15.2",
+    "commit": "5b7a4c2478d97888e39e853028a12445652850ad",
+    "dirty": false,
+    "files": {
+      "bench/runner.js": "d32bc6bf62a3ae3f71f6f06c4a79a52160e722e69cc4c1f5f2a34780c9227ea5",
+      "bench/scrollvars.html": "dffdfe373c151081d74cee7a43b91e0bb045ff96da13b6a76c77ed9dc9f90d57",
+      "bench/gsap.html": "221c7c19780b6532c617871d200a3021a3f3d8be1e40d167c12ada1936ec90e6",
+      "bench/gsap-batched.html": "57534c6a8f75327f82131790926ac48dca3c446c92d3f3fce7812b6dc93682cd",
+      "bench/framer.html": "917485ebb26b99095a846283099dc78296361b3c379ae4a6cbf0a8e6deaddb1f",
+      "bench/harness/measure.mjs": "8c39b70cfe45a737fd4c2910582ee1d01b0a9fc00c6ead0de1a1d101e0b670e2",
+      "fx/sv.js": "3280d3a7ab81e92b5a58f0280a05318da19422d72a7803e393626d2a17bdc542",
+      "fx/sv.css": "de5eeb563069c5ca5c088ea574d75c22bf4cab741466628b111f43a930bc6463",
+      "bench/slider-seek.html": "4986351311ed844f16fc0755e3aeaa52a4f23c3163a57be5215f8e3865059c99",
+      "bench/slider-original.js": "875c499ebbca11c05a17351bbb53bf38a41b3aa3b5bcc1f674170dd306f60289",
+      "bench/slider-guarded.js": "43e47ceea3b563f60d2cc9c8f0de8dbbe96e88844238aef24a1ae751ad3ffcaf",
+      "bench/harness/slider-build.mjs": "9c4b05c1eaf8128707ef7065d5b83abfae1f6515f01dafa1e5fc6bfc97f6bfcb"
+    },
+    "coreGzipKB": "7.4",
+    "competitors": {
+      "gsap": "3.15.0",
+      "gsapGzipKB": 45.2,
+      "framerMotion": "11.18.2",
+      "react": "18.3.1"
+    },
+    "metricWindow": "scroll only; startup recorded separately; no long frames filtered"
+  },
+  "scenarios": [
+    {
+      "name": "slider-seek-15",
+      "params": "count=15",
+      "engines": {
+        "slider-seek.html": {
+          "scriptMs": 247.5,
+          "recalcMs": 438.5,
+          "layoutMs": 0,
+          "taskMs": 1115,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.7,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 15
+              },
+              "scriptMs": 249,
+              "recalcMs": 411,
+              "layoutMs": 0,
+              "taskMs": 1105
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 14
+              },
+              "scriptMs": 246,
+              "recalcMs": 461,
+              "layoutMs": 0,
+              "taskMs": 1125
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 13
+              },
+              "scriptMs": 241,
+              "recalcMs": 416,
+              "layoutMs": 0,
+              "taskMs": 1068
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 14
+              },
+              "scriptMs": 291,
+              "recalcMs": 537,
+              "layoutMs": 0,
+              "taskMs": 1344
+            }
+          ]
+        },
+        "slider-guarded.html": {
+          "scriptMs": 245,
+          "recalcMs": 426,
+          "layoutMs": 0,
+          "taskMs": 1103.5,
+          "heapMB": 1.5,
+          "fps": 60,
+          "p95Ms": 16.75,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 14
+              },
+              "scriptMs": 236,
+              "recalcMs": 384,
+              "layoutMs": 0,
+              "taskMs": 1064
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 4,
+                "taskMs": 14
+              },
+              "scriptMs": 254,
+              "recalcMs": 453,
+              "layoutMs": 0,
+              "taskMs": 1143
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 719,
+              "avgMs": 16.69,
+              "fps": 59.9,
+              "p95Ms": 16.8,
+              "worstMs": 33.3,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 718,
+                "changes": 717,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 14
+              },
+              "scriptMs": 202,
+              "recalcMs": 399,
+              "layoutMs": 0,
+              "taskMs": 945
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0007342143906020558,
+                "max": 0.9992657856093979,
+                "last": "0.0007"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 2,
+                "recalcMs": 1,
+                "layoutMs": 5,
+                "taskMs": 14
+              },
+              "scriptMs": 259,
+              "recalcMs": 456,
+              "layoutMs": 0,
+              "taskMs": 1164
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "slider-seek-120",
+      "params": "count=120",
+      "engines": {
+        "slider-seek.html": {
+          "scriptMs": 465.5,
+          "recalcMs": 1860,
+          "layoutMs": 0,
+          "taskMs": 2980.5,
+          "heapMB": 1.45,
+          "fps": 59.849999999999994,
+          "p95Ms": 16.7,
+          "worstMs": 41.65,
+          "framesOver25ms": 1,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 717,
+              "avgMs": 16.74,
+              "fps": 59.8,
+              "p95Ms": 16.7,
+              "worstMs": 50,
+              "framesOver25ms": 2,
+              "deep": 0,
+              "heapMB": 1.4,
+              "animation": {
+                "callbacks": 716,
+                "changes": 715,
+                "min": 0.0008362420011634672,
+                "max": 1,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 18
+              },
+              "scriptMs": 461,
+              "recalcMs": 1791,
+              "layoutMs": 0,
+              "taskMs": 2878
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 719,
+              "avgMs": 16.69,
+              "fps": 59.9,
+              "p95Ms": 16.8,
+              "worstMs": 33.4,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 718,
+                "changes": 717,
+                "min": 0.0008362420011634672,
+                "max": 0.9991637579988365,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 18
+              },
+              "scriptMs": 470,
+              "recalcMs": 1929,
+              "layoutMs": 0,
+              "taskMs": 3083
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 718,
+              "avgMs": 16.71,
+              "fps": 59.8,
+              "p95Ms": 16.7,
+              "worstMs": 49.9,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.4,
+              "animation": {
+                "callbacks": 717,
+                "changes": 716,
+                "min": 0.0008362420011634672,
+                "max": 0.9991637579988365,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 17
+              },
+              "scriptMs": 454,
+              "recalcMs": 1787,
+              "layoutMs": 0,
+              "taskMs": 2856
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 719,
+              "avgMs": 16.69,
+              "fps": 59.9,
+              "p95Ms": 16.7,
+              "worstMs": 33.4,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 718,
+                "changes": 717,
+                "min": 0.0008362420011634672,
+                "max": 1,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 18
+              },
+              "scriptMs": 491,
+              "recalcMs": 1935,
+              "layoutMs": 0,
+              "taskMs": 3100
+            }
+          ]
+        },
+        "slider-guarded.html": {
+          "scriptMs": 405,
+          "recalcMs": 1616.5,
+          "layoutMs": 0,
+          "taskMs": 2535.5,
+          "heapMB": 1.45,
+          "fps": 59.9,
+          "p95Ms": 16.75,
+          "worstMs": 33.4,
+          "framesOver25ms": 0.5,
+          "runs": 4,
+          "samples": [
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.8,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0008362420011634672,
+                "max": 0.9991637579988365,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 6,
+                "taskMs": 18
+              },
+              "scriptMs": 389,
+              "recalcMs": 1599,
+              "layoutMs": 0,
+              "taskMs": 2436
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 718,
+              "avgMs": 16.71,
+              "fps": 59.8,
+              "p95Ms": 16.7,
+              "worstMs": 50,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.4,
+              "animation": {
+                "callbacks": 717,
+                "changes": 716,
+                "min": 0.0008362420011634672,
+                "max": 0.9991637579988365,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 18
+              },
+              "scriptMs": 507,
+              "recalcMs": 1807,
+              "layoutMs": 0,
+              "taskMs": 2886
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 720,
+              "avgMs": 16.67,
+              "fps": 60,
+              "p95Ms": 16.7,
+              "worstMs": 16.8,
+              "framesOver25ms": 0,
+              "deep": 0,
+              "heapMB": 1.5,
+              "animation": {
+                "callbacks": 719,
+                "changes": 718,
+                "min": 0.0008362420011634672,
+                "max": 0.9991637579988365,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 17
+              },
+              "scriptMs": 416,
+              "recalcMs": 1622,
+              "layoutMs": 0,
+              "taskMs": 2521
+            },
+            {
+              "engine": "Linked slider",
+              "scrollRange": {
+                "from": 0,
+                "to": 1200
+              },
+              "frames": 718,
+              "avgMs": 16.71,
+              "fps": 59.8,
+              "p95Ms": 16.8,
+              "worstMs": 50,
+              "framesOver25ms": 1,
+              "deep": 0,
+              "heapMB": 1.4,
+              "animation": {
+                "callbacks": 717,
+                "changes": 716,
+                "min": 0.0008362420011634672,
+                "max": 1,
+                "last": "0.0008"
+              },
+              "calibration": null,
+              "startup": {
+                "scriptMs": 3,
+                "recalcMs": 3,
+                "layoutMs": 5,
+                "taskMs": 18
+              },
+              "scriptMs": 394,
+              "recalcMs": 1611,
+              "layoutMs": 0,
+              "taskMs": 2550
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
