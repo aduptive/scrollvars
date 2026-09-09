@@ -268,3 +268,18 @@ only 307 of 720 frames changing pin progress), retaining the full-page result
 as a separate workload. Use the same visible content and record both update
 cadence and total task time. Stop extending rail experiments if the added
 complexity cannot clear that noise floor; profile another concrete bottleneck.
+
+
+### CaseStudyRail A/A control
+
+`node demo/bench/harness/measure.mjs --scenarios=casework-aa --runs=4 --out=casework-aa.json`
+
+The two aliases load the same gallery URL, mount the same CSS-only baseline
+with identical options and use the same HUD label. Only the result grouping
+key differs. Four rotations balance their order. Standard and rich content
+remain separate cells, with the same full-page scroll, viewport and cadence
+audit. Compare paired task differences, medians and sample ranges; four runs
+are a diagnostic control, not a statistical confidence interval. If either
+cell's two identical medians differ by over 10%, do not promote a 12–22%
+rail gain on this environment. Record the uncertainty and move to another
+concrete bottleneck instead of tuning against noise.

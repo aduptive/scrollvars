@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -71,7 +71,7 @@ if (WHICH.includes('rail-local'))
     SCENARIOS.push({ name:`rail-local-${deep}`, params:`deep=${deep}`, engines:['rail.html', 'rail-direct.html', 'rail-local.html'] })
 if (WHICH.some(s => s.startsWith('casework')))
   for (const rich of [0, 1])
-    SCENARIOS.push({ name:`casework-${rich ? 'rich' : 'standard'}`, params:`rich=${rich}`, engines:['casework-css.html', 'casework-direct.html', ...(WHICH.includes('casework-boundary') ? ['casework-boundary.html'] : [])] })
+    SCENARIOS.push({ name:`casework-${rich ? 'rich' : 'standard'}`, params:`rich=${rich}`, engines:WHICH.includes('casework-aa') ? ['casework-css.html', 'casework-control.html'] : ['casework-css.html', 'casework-direct.html', ...(WHICH.includes('casework-boundary') ? ['casework-boundary.html'] : [])] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -131,7 +131,7 @@ async function measureOnce(engine, params) {
     }
     if (engine.startsWith('../fx/') || casework) {
       await page.addScriptTag({ url: `${base}runner.js` })
-      await page.evaluate(label => runBench(label), engine)
+      await page.evaluate(label => runBench(label), casework ? 'CaseStudyRail' : engine)
     }
     await page.waitForFunction(() => typeof window.__benchStart === 'function')
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
