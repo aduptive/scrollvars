@@ -422,3 +422,19 @@ no more than 5% median regression for 15 cards, and no material frame/cadence
 regression. A successful frozen-source experiment still needs validation of
 an actual opt-in implementation before adoption; default consumers must keep
 their existing inherited variables.
+
+
+[`slider-outputs.json`](../results/slider-outputs.json), source `cdb7ed9`,
+contains 16 frozen-source executions. Task medians fall 1145.5→712.5ms
+(37.8%) at 15 cards and 2764.5→1287ms (53.4%) at 120. Every pair favors
+suppression. Recalc falls 373→3ms and 1512.5→24.5ms. Large-workload script
+rises 652→708ms: the saving is total CPU, not universally lower JS time.
+All samples deliver 718 slider updates / 720 frames at 60fps. End heap is
+higher without outputs (roughly 1.9–2MB); no forced-GC retention claim.
+
+The prototype passes the predeclared gate. Next validate an actual
+`cssVars:false` option in core/useSlider/Slider, with default true. It skips
+future writes of the three animation outputs; classes, callbacks, snap and
+authored/existing inline values remain intact. Reuse the same two workloads
+and gate for that implementation before adoption. Defaults must continue
+emitting inherited outputs; no automatic CSS-usage detection.
