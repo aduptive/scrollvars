@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `cssVars: false` to `slider()`/`useSlider()` and the `<Slider>` kit to skip unused `--sd`, `--sv-progress` and `--sv-slide` writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes. The actual-API benchmark records 46.3%/53.7% lower median task time for 15/120-card linked sliders; both modes already deliver 60fps, and this is not a device-wide guarantee.
+
 ## 1.15.2 (2026-09-09)
 
 - Slider: retarget an active glide when the existing resize/child-list observers report changed geometry; stop cleanly if all slides disappear. This prevents an old destination from driving repeated out-of-range writes after a responsive resize or content removal, without adding per-frame geometry reads.

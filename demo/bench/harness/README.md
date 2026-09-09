@@ -357,8 +357,8 @@ They pass in all three engines, alongside the earlier edge/idle checks.
 
 ### Linked slider seek class-guard experiment
 
-Run `node demo/bench/harness/slider-build.mjs` to freeze two bundles from the
-same current slider source; only the `stopGlide` class removal is guarded in
+Run `node demo/bench/harness/slider-build.mjs` to freeze bundles from the
+same v1.15.2 slider source; only the `stopGlide` class removal is guarded in
 one. Both bundles load in every sample; the selected implementation varies.
 The shipped core is unchanged. Browser checks cover 100 seeks (100→0 class
 mutations), external class repair, real-glide interruption and destroy.
@@ -449,3 +449,23 @@ frozen implementation. The earlier bundles remain pinned to v1.15.2 in
 The same predeclared gate and plain-carousel workloads apply. Unit coverage
 also checks existing inline values, callback/class behavior, React prop
 consumption and changing the option on the same mounted rail.
+
+[`slider-api.json`](../results/slider-api.json), clean source `6c0299c`,
+records 16 actual-API executions in desktop headless Chrome. Median task
+time falls 1145→615ms (46.3%) for 15 cards and 2784.5→1288ms (53.7%) for
+120. Every paired run favors opting out. Recalc falls 388→2.5ms and
+1553→23.5ms; large-workload script rises 656→700ms. All samples deliver
+718 progress changes / 720 frames, 60fps and zero frames over 25ms.
+
+The gate passes: retain the explicit option, with default behavior unchanged.
+The 15-card opt-out includes one unusually low 102ms sample (others 641,
+589 and 797ms); it remains in the data. Excluding it as a sensitivity check
+would give 641ms, still 44.0% below the original median. End heap is higher
+with opt-out (1.9–2MB versus 1.4–1.5MB); these samples do not establish
+retained memory, paint/raster cost or physical-phone performance. CPU
+headroom improved; visible fluidity did not. The option is unreleased and
+does not change the already published 1.15.2 package.
+
+Validation: 296 unit tests, React 18 typecheck and 98 targeted tests,
+Chromium/Firefox/WebKit gallery checks (including both output modes), and
+the full progressive-enhancement/installed-section invariant suite pass.

@@ -315,6 +315,13 @@ state/destroy`; `useSlider()` returns `{ ref, active, next, prev, goTo,
 handle }`, where `handle` is a ref to that same handle for `seek`, `state`
 and `destroy`.
 
+**Unreleased:** plain carousels can use `slider(el, { cssVars: false })`,
+`useSlider({ cssVars: false })` or `<Slider cssVars={false}>` when their CSS
+does not read `--sd`, `--sv-progress` or `--sv-slide`. This skips future writes
+of those three outputs; existing inline values stay intact. Numeric state,
+callbacks, active classes and scroll-snap keep working. The default is `true`;
+keep it enabled for coverflow or custom CSS progress effects.
+
 Chain two sliders (Swiper's controller/thumbs, one line, unidirectional):
 
 ```ts

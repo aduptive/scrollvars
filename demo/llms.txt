@@ -204,6 +204,13 @@ ONLY writer of scrollLeft; direct swiping would desync and jump back:
 `track(rail, { pin: true, onPin: (p) => { el.scrollLeft = p * (el.scrollWidth - el.clientWidth) } })`.
 Discrete flavor: `track(rail, { scenes: n, onScene: (i) => s.goTo(i) })`.
 
+**Unreleased slider option:** when CSS does not consume `--sd`,
+`--sv-progress` or `--sv-slide`, use `slider(el, { cssVars: false })`,
+`useSlider({ cssVars: false })` or `<Slider cssVars={false}>`. This skips future
+writes of those outputs without removing existing inline values. Numeric
+state, callbacks, active classes and snap remain available. Default `true`
+preserves existing effects; do not disable it for CSS that reads the clocks.
+
 **Scroll-snap on the page:** scope it, `proximity` (never `mandatory` on pages
 with pinned sections) and toggle it regionally via `onLive` toggling a class on
 `<html>`; never globally.

@@ -294,6 +294,12 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
+<h3>Unreleased</h3>
+
+<ul>
+<li>Add <code>cssVars: false</code> to <code>slider()</code>/<code>useSlider()</code> and the <code>&lt;Slider></code> kit to skip unused <code>--sd</code>, <code>--sv-progress</code> and <code>--sv-slide</code> writes in plain carousels. Default output behavior, callbacks, numeric state, active classes and snap are preserved; existing inline values are left intact. Unit, React 18/19 and Chromium/Firefox/WebKit checks cover both modes. The actual-API benchmark records 46.3%/53.7% lower median task time for 15/120-card linked sliders; both modes already deliver 60fps, and this is not a device-wide guarantee.</li>
+</ul>
+
 <h3>1.15.2 (2026-09-09)</h3>
 
 <ul>
