@@ -27,8 +27,8 @@ const args = Object.fromEntries(
 const RUNS = Number(args.runs ?? 3)
 const THROTTLE = Number(args.throttle ?? 1)
 const WHICH = (args.scenarios || 'main,deep,gallery').split(',')
-if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa'].includes(s)))
-  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa')
+if (!Number.isInteger(RUNS) || RUNS < 1 || !Number.isFinite(THROTTLE) || THROTTLE < 1 || WHICH.some(s => !['main', 'deep', 'gallery', 'rail', 'rail-local', 'casework', 'casework-boundary', 'casework-aa', 'casework-pin'].includes(s)))
+  throw new Error('Use a positive integer --runs, --throttle >= 1 and --scenarios=main,deep,gallery,rail,rail-local,casework,casework-boundary,casework-aa,casework-pin')
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -71,7 +71,7 @@ if (WHICH.includes('rail-local'))
     SCENARIOS.push({ name:`rail-local-${deep}`, params:`deep=${deep}`, engines:['rail.html', 'rail-direct.html', 'rail-local.html'] })
 if (WHICH.some(s => s.startsWith('casework')))
   for (const rich of [0, 1])
-    SCENARIOS.push({ name:`casework-${rich ? 'rich' : 'standard'}`, params:`rich=${rich}`, engines:WHICH.includes('casework-aa') ? ['casework-css.html', 'casework-control.html'] : ['casework-css.html', 'casework-direct.html', ...(WHICH.includes('casework-boundary') ? ['casework-boundary.html'] : [])] })
+    SCENARIOS.push({ name:`casework-${WHICH.includes('casework-pin') ? 'pin-' : ''}${rich ? 'rich' : 'standard'}`, params:`rich=${rich}${WHICH.includes('casework-pin') ? '&pin=1' : ''}`, engines:WHICH.includes('casework-aa') ? ['casework-css.html', 'casework-control.html'] : ['casework-css.html', 'casework-direct.html', ...(WHICH.includes('casework-boundary') ? ['casework-boundary.html'] : [])] })
 
 // Under CPU throttle, headless-new never produces the first BeginFrame —
 // rAF starves and the run hangs. The throttled profile launches headful
@@ -131,7 +131,18 @@ async function measureOnce(engine, params) {
     }
     if (engine.startsWith('../fx/') || casework) {
       await page.addScriptTag({ url: `${base}runner.js` })
-      await page.evaluate(label => runBench(label), casework ? 'CaseStudyRail' : engine)
+      await page.evaluate(label => {
+        let range
+        if (new URLSearchParams(location.search).get('pin') === '1') {
+          const root = document.querySelector('.sv-casework > .sv')
+          if (root.hasAttribute('data-sv-flow')) throw Error('Expected an active pin')
+          const offset = parseFloat(getComputedStyle(root.querySelector('.sv-stage')).top) || 0
+          const from = scrollY + root.getBoundingClientRect().top - offset
+          range = { from, to:from + root.offsetHeight - innerHeight + offset }
+          scrollTo(0, from)
+        }
+        return runBench(label, range)
+      }, casework ? 'CaseStudyRail' : engine)
     }
     await page.waitForFunction(() => typeof window.__benchStart === 'function')
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))

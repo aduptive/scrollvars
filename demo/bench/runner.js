@@ -1,5 +1,5 @@
 // Shared workload clock: every engine follows the same path and frame accounting.
-async function runBench(label) {
+async function runBench(label, scrollRange) {
   const query = new URLSearchParams(location.search)
   const hud = document.createElement('div')
   hud.className = 'hud'
@@ -7,7 +7,8 @@ async function runBench(label) {
   document.body.appendChild(hud)
   if (query.has('norun')) { hud.textContent = label + '\nload-only mode (lighthouse)'; return }
   window.__benchStart = async () => {
-    const height = document.documentElement.scrollHeight - innerHeight
+    const from = scrollRange?.from ?? 0
+    const height = (scrollRange?.to ?? document.documentElement.scrollHeight - innerHeight) - from
     const duration = 12000
     const frames = []
     const burn = Number(query.get('burn')) || 0
@@ -21,7 +22,7 @@ async function runBench(label) {
         if (burn) { const until = performance.now() + burn; while (performance.now() < until); }
         const t = (now - start) / duration
         if (t < 1) {
-          scrollTo(0, (t < .5 ? t * 2 : (1 - t) * 2) * height)
+          scrollTo(0, from + (t < .5 ? t * 2 : (1 - t) * 2) * height)
           requestAnimationFrame(step)
           return
         }
@@ -30,7 +31,7 @@ async function runBench(label) {
         const sorted = [...frames].sort((a, b) => a - b)
         const avg = frames.reduce((a, b) => a + b, 0) / frames.length
         const out = {
-          engine: label, frames: frames.length, avgMs: +avg.toFixed(2),
+          engine: label, scrollRange: { from, to:from + height }, frames: frames.length, avgMs: +avg.toFixed(2),
           fps: +(1000 / avg).toFixed(1), p95Ms: +sorted[Math.floor(sorted.length * .95)].toFixed(2),
           worstMs: +sorted.at(-1).toFixed(1), framesOver25ms: frames.filter(f => f > 25).length,
           deep: Number(query.get('deep')) || 0,
