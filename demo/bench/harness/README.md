@@ -518,3 +518,25 @@ the page. The full Chromium/Firefox/WebKit gallery matrix passes, including
 forward/reverse goTo parity with both output settings. Next distinct check:
 retained memory and idle work after repeated slider mount/destroy cycles;
 do not infer a leak from an end-of-run heap sample or repeat these CPU A/Bs.
+
+### Slider lifecycle retention and idle probe
+
+`node demo/bench/harness/slider-lifecycle.mjs`
+
+Three rotated repetitions compare DOM-only controls and actual sliders with
+CSS outputs on/off. Each fresh browser context warms up 20 cycles, then
+runs four batches of 25 mount/destroy cycles with 120 slides. Teardown
+covers idle, active glide, pending wheel settle, active mouse drag and drag
+release. These synthetic events test cleanup, not physical gesture speed.
+After each batch, drain timer windows, collect garbage through CDP in
+separate jobs and count WeakRefs to rails/handles. Drop the probe's WeakRefs
+and collect again before recording heap, DOM nodes and listener counts.
+Record pending/executed slider rAF callbacks and callbacks after destroy;
+the probe's own waits bypass the frame counter.
+
+Gate: zero live weak targets, pending frames, idle frames and callbacks
+after destruction in every non-retaining checkpoint. A positive control
+keeps five destroyed rails/handles alive on purpose and must detect all ten
+objects. Heap bytes alone do not establish a leak: inspect post-warmup
+trends and the DOM-only control. This is a desktop Chrome cleanup probe,
+not a heap ranking, React lifecycle test or cross-device memory guarantee.
