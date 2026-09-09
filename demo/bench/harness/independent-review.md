@@ -46,3 +46,8 @@ for these invalidation cases.
 No runtime change was made based solely on this review. The measured rail
 results remain CPU savings at the same 60fps, not a universal ranking against
 other animation libraries or a physical-device guarantee.
+
+Follow-up: the private-clock experiment and per-sample progress-delivery
+audit are now recorded in README. The private clock has not shown a
+consistent advantage over direct writes and is not approved for adoption.
+Read those results before repeating this experiment.

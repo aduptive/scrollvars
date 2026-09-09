@@ -171,3 +171,24 @@ when unexpected, not filtered out. Recheck anomalously cheap samples for
 missing updates before attributing variation to warmup, thermal conditions
 or the renderer. Historical files predate this instrumentation; their frame
 counts are runner counts, not independently audited animation delivery.
+
+[`rail-local-cadence.json`](../results/rail-local-cadence.json) records the
+first audit pass (source `a938697`, one repetition per cell, nine executions).
+Every sample delivered 719 quantized progress changes for 720 runner frames,
+with minimum below .001 and maximum above .999. This excludes missing
+progress delivery in these nine samples; it does not retrospectively prove
+the cause of the earlier outlier or measure GPU presentation.
+
+| Text descendants/card | Inherited task ms | Direct task ms | Private-clock task ms |
+| --- | ---: | ---: | ---: |
+| 5 | 902 | 446 | 548 |
+| 50 | 2052 | 545 | 578 |
+| 200 | 3038 | 669 | 669 |
+
+This single audit pass is not a new performance verdict. The private clock
+ties direct writes in the largest cell here, versus the earlier 55% higher
+median. There is no consistent advantage over the direct candidate, and the
+earlier acceptance gate remains unmet. Keep it benchmark-only and prioritize
+the real-gallery adoption gate; do not add a general output-mode API on
+these results. Geometry and non-inheritance checks pass in all three browser
+engines; the core and shipped component implementations have not changed.
