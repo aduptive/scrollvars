@@ -948,3 +948,24 @@ gate checks geometry, opacity, clocks, reverse and resize in all engines.
 Screen two runs on main-900 and deep-50. Only consider a longer confirmation
 if both show at least 15% lower task time without worse frame delivery;
 do not assume a compositing hint is a fix without measurement.
+
+The screen (`main-style-css.json`, clean source `d38ed4b`, 12 executions)
+does not support either change. Main CSS/hint/transform task medians are
+1754/1911.5/1663.5ms, with recalc 392/450/401ms. Deep-50 medians are
+1891.5/1886/1852ms task, with recalc 780.5/822.5/786.5ms. The shorthand's
+5.2%/2.1% task reductions miss the 15% screen gate; the matching hint raises
+main task time and neither variant lowers median recalc. Keep the original
+CSS. Cross-browser geometry checks passed; no rendering difference explains
+away the negative result.
+
+Next step: capture a separate diagnostic trace of ordinary CSS with globals
+on/off and direct output, counting style-update scope and looking at where
+main-thread task time goes. Use the same path and actual outputs. Trace
+instrumentation must not contaminate the ordinary performance samples.
+Inspect available CDP thread-time metrics as additional evidence about the
+large timing spread; do not silently replace the historical TaskDuration
+definition or compare different time domains. The local devtools-protocol
+types expose Performance.enable timeDomain = timeTicks/threadTicks. Verify
+what the installed browser actually reports before relying on it.
+The target is a falsifiable new optimization of inherited-style work, not
+another repetition of the failed renderer/hint/property/WAAPI screens.
