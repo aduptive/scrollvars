@@ -35,6 +35,16 @@ export async function pageOutputsGate({ browser, check, base }) {
       page => page.evaluate(() => SV.setPageOutputs(true)), true],
     ['setPageOutputs(false) with a consumer: not published', 'style-page',
       page => page.evaluate(() => SV.setPageOutputs(false)), false],
+    ['a CSSOM-inserted rule counts as a consumer', 'cssom', null, true],
+    ['an @import that reaches a consumer counts', 'import', null, true],
+    ['a stylesheet added after boot that reads nothing stays silent', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        const style = document.createElement('style')
+        style.textContent = '.late { opacity: var(--sv-view) }'
+        document.head.append(style)
+        requestAnimationFrame(() => requestAnimationFrame(done))
+      }))
+    }, false],
     ['a stylesheet added after boot turns publishing back on', 'none', async page => {
       await page.evaluate(() => new Promise(done => {
         scrollTo(0, 800)

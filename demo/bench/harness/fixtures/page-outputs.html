@@ -25,6 +25,18 @@
     style.textContent = css
     document.head.append(style)
   }
+  if (CONSUMER === 'cssom') {
+    // A CSS-in-JS runtime in production inserts rules through the CSSOM and
+    // leaves the element's own text empty.
+    var live = document.createElement('style')
+    document.head.append(live)
+    live.sheet.insertRule('.p { width: calc(var(--sv-page) * 100%) }', 0)
+  }
+  if (CONSUMER === 'import') {
+    var imp = document.createElement('style')
+    imp.textContent = '@import url("/bench/harness/fixtures/page-consumer.css");'
+    document.head.append(imp)
+  }
   if (CONSUMER === 'link') {
     var link = document.createElement('link')
     link.rel = 'stylesheet'

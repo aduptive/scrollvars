@@ -209,25 +209,46 @@ function mentionsPageOutputs(css: string) {
   return PAGE_OUTPUT_NAMES.test(css)
 }
 
+function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
+  let rules: CSSRuleList | null
+  try {
+    rules = sheet.cssRules
+  } catch {
+    return true // cross-origin without CORS: unreadable, so assume it reads them
+  }
+  if (!rules) return true
+  for (const rule of Array.from(rules)) {
+    // An @import's own serialization is just the url: the names live in the
+    // sheet it pulls in, and an unreadable imported sheet is the same
+    // uncertainty as an unreadable linked one.
+    const imported = (rule as CSSImportRule).styleSheet
+    if (imported) {
+      if (depth > 4 || sheetReadsPageOutputs(imported, depth + 1)) return true
+      continue
+    }
+    // cssText of a grouping rule carries its children, so nesting is covered.
+    if (mentionsPageOutputs(rule.cssText)) return true
+  }
+  return false
+}
+
 function detectPageConsumers(): boolean {
   try {
-    if (document.querySelector('[style*="--sv-page"],[style*="--sv-v"]')) return true
+    // The attribute selector can only match a substring, so `--sv-view` (which
+    // the driver itself writes inline on every tracked element) matches
+    // `--sv-v`. Re-test each candidate with the bounded name instead: without
+    // this, any rescan after the first frame says yes on every page.
+    for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"],[style*="--sv-v"]')))
+      if (mentionsPageOutputs(el.getAttribute('style') || '')) return true
+    const adopted = (document as unknown as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets
+    if (adopted) for (const sheet of Array.from(adopted)) if (sheetReadsPageOutputs(sheet, 0)) return true
     for (const sheet of Array.from(document.styleSheets)) {
       const node = sheet.ownerNode as Element | null
-      // A <style> element's own text avoids serializing every rule back out.
-      if (node && node.nodeName === 'STYLE') {
-        if (mentionsPageOutputs(node.textContent || '')) return true
-        continue
-      }
-      let rules: CSSRuleList | null
-      try {
-        rules = sheet.cssRules
-      } catch {
-        return true // cross-origin: assume it reads them
-      }
-      if (!rules) return true
-      // cssText of a grouping rule carries its children, so nesting is covered.
-      for (const rule of Array.from(rules)) if (mentionsPageOutputs(rule.cssText)) return true
+      // A <style> element's text is the cheap path, but a CSS-in-JS runtime in
+      // production inserts rules through the CSSOM and leaves that text empty,
+      // so a miss there has to fall through to the rules rather than skip.
+      if (node && node.nodeName === 'STYLE' && mentionsPageOutputs(node.textContent || '')) return true
+      if (sheetReadsPageOutputs(sheet, 0)) return true
     }
   } catch {
     return true
@@ -236,25 +257,50 @@ function detectPageConsumers(): boolean {
 }
 
 // A stylesheet that arrives later (a lazily mounted component, a CSS-in-JS
-// runtime, an HMR update) can introduce the first consumer. Watching <head>
-// for new <style>/<link> covers where every bundler injects; the watch exists
-// only while the answer is "nobody reads them" and stops for good at the
-// first consumer, so the common case carries no observer at all.
+// runtime, an HMR update) can introduce the first consumer, and so can an
+// element with an inline style. The watch exists only while the answer is
+// "nobody reads them" and stops for good at the first consumer, so a page that
+// uses the variables carries no observer at all. Same shape as the scanner's
+// own observer, which already watches the whole tree for childList.
 function watchForPageConsumers() {
-  if (consumerWatch || typeof MutationObserver === 'undefined' || !document.head) return
+  if (consumerWatch || typeof MutationObserver === 'undefined') return
+  const root = document.documentElement
+  if (!root) return
+  let queued = false
   consumerWatch = new MutationObserver(records => {
-    for (const record of records)
-      for (const node of Array.from(record.addedNodes))
-        if (node.nodeName === 'STYLE' || node.nodeName === 'LINK') {
-          if (!detectPageConsumers()) return
-          consumerWatch?.disconnect()
-          consumerWatch = null
-          pageOutputsEnabled = true
-          schedule()
+    if (queued) return
+    for (const record of records) {
+      for (const node of Array.from(record.addedNodes)) {
+        if (node.nodeType !== 1) continue
+        // A <link> inserted now has no parsed sheet yet: its rules cannot be
+        // read on this turn, and that unreadability is the same uncertainty a
+        // cross-origin sheet is, so it publishes rather than waiting forever
+        // for a rescan that nothing would trigger.
+        if (node.nodeName === 'LINK' && !(node as HTMLLinkElement).sheet) {
+          adoptPageConsumers()
           return
         }
+        queued = true
+        break
+      }
+      if (queued) break
+    }
+    // One rescan per frame at most: a runtime that injects a hundred rules
+    // in a row would otherwise walk every stylesheet a hundred times.
+    if (queued)
+      requestAnimationFrame(() => {
+        queued = false
+        if (pageOutputsMode === 'auto' && detectPageConsumers()) adoptPageConsumers()
+      })
   })
-  consumerWatch.observe(document.head, { childList: true })
+  consumerWatch.observe(root, { childList: true, subtree: true })
+}
+
+function adoptPageConsumers() {
+  consumerWatch?.disconnect()
+  consumerWatch = null
+  pageOutputsEnabled = true
+  schedule()
 }
 
 function resolvePageOutputs() {
@@ -654,6 +700,14 @@ function clearReleased(el: HTMLElement) {
 function releaseEntry(entry: Entry) {
   const { el } = entry
   entries.delete(el)
+  // Nothing is tracked any more: stop watching for a consumer that would only
+  // wake a driver with no work, and let the next track() ask the document
+  // again, since the page it asks about will have changed by then.
+  if (entries.size === 0 && pageOutputsMode === 'auto') {
+    consumerWatch?.disconnect()
+    consumerWatch = null
+    pageOutputsResolved = false
+  }
   culler?.unobserve(el)
   unobserveIfUnneeded(el)
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
