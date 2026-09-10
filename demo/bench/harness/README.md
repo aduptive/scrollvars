@@ -1071,3 +1071,69 @@ old one.
 The stamped bench tables in README and AGENTS still carry the old numbers.
 Regenerating them needs a full `measure.mjs` run (main, deep, gallery) on a
 quiet machine.
+
+#### Write precision: rejected (`precision-cost.json`)
+
+Hypothesis: the driver writes every clock with `toFixed(4)`, so the value
+changes on nearly every frame, and each change invalidates. Fewer decimals
+should make many frames write the same string, which does not dirty style.
+`precision-cost.mjs` wraps `setProperty` before boot and rounds every `--sv-*`
+number the engine writes, keeping the engine's own call so only the browser's
+handling of an unchanged value is measured. Main-900, three balanced runs:
+
+| variant | task | recalc | recalc count |
+|---|---:|---:|---:|
+| four decimals (shipped) | 1431ms | 298ms | 719 |
+| three decimals | 1544ms | 316ms | 719 |
+| two decimals | 1432ms | 294ms | 719 |
+
+No effect, and the reasoning was wrong twice over. The recalculation count is
+one per frame, not one per element, so it was never going to move; and at a
+normal scroll speed the progress of each box changes by more than 0.01 per
+frame anyway, so even two decimals produces a different string almost every
+time. Keep four decimals.
+
+#### The per-element clocks inherit too (`clocks-cost-deep50.json`)
+
+Deep DOM is where the library loses to GSAP, and all of the excess is style
+recalculation. `--sv-t` and `--sv-view` are written on the tracked element and
+they inherit, so each write invalidates that element's whole subtree, and the
+deep profiles hang 50 text descendants off every box, none of which read
+either clock. Same discriminator as the document-wide finding, one level down:
+`clocks-cost.mjs` registers both with `inherits: false` before boot, so the
+writes are identical and only the invalidation scope changes. deep-50, three
+balanced runs:
+
+| variant | task | recalc |
+|---|---:|---:|
+| shipped | 1704ms | 745ms |
+| the same writes, not inheriting | 807ms | 167ms |
+
+53% less total task time and 78% less style recalculation. For scale, the
+published table puts gsap-batched at 1185ms on this profile: scoped clocks
+would move the library from 49% behind to 32% ahead on the workload where it
+is weakest.
+
+It cannot simply be adopted. `@property` registration is document-wide, and
+the shipped presets read both clocks from a DESCENDANT of the tracked element:
+`.sv .sv-drift` reads `--sv-view` and `:where(.sv .sv-range)` reads `--sv-t`.
+Inheritance is load-bearing for them, so registering either as non-inheriting
+breaks a preset for anyone who uses it.
+
+Two ways out, both larger than a patch, neither taken here:
+
+1. An explicit opt-in for authors whose own CSS reads the clocks only on the
+   tracked element itself. Cheap to build and it hands the whole 53% to those
+   pages, but it is a footgun: a `.sv-drift` mounted later silently stops
+   animating, and a detection that reads today's CSS and today's markup cannot
+   see tomorrow's. The page-outputs scan can fail safe because publishing more
+   is harmless; here the safe direction is not scoping, which is the status
+   quo, so detection buys nothing.
+2. Stop the presets needing a descendant read: the driver writes the clock on
+   the elements that animate rather than on the wrapper they hang under. More
+   writes, each invalidating only itself, and a net win as soon as a subtree is
+   larger than a handful of nodes. That is a design change to the write model
+   and belongs to a major, with the stagger cases measured first.
+
+Recorded rather than adopted. The number is the argument for doing it
+properly, not for doing it quickly.

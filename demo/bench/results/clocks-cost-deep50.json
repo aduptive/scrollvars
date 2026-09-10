@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "date": "2026-09-10T19:10:43.789Z",
+    "chrome": "Chrome/152.0.7977.85",
+    "runs": 3,
+    "params": "s=30&p=5&deep=50",
+    "commit": "d57a33855feccca137c79646bd2b2c4eb149ac6b",
+    "dirty": true,
+    "note": "Diagnostic only. noinherit registers the per-element clocks with inherits:false; the writes are identical to base."
+  },
+  "order": [
+    [
+      "base",
+      "noinherit"
+    ],
+    [
+      "noinherit",
+      "base"
+    ],
+    [
+      "noinherit",
+      "base"
+    ]
+  ],
+  "variants": {
+    "base": {
+      "taskMs": 1704,
+      "recalcMs": 745,
+      "scriptMs": 86,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1747,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 86,
+          "recalcMs": 745,
+          "layoutMs": 0,
+          "taskMs": 1704,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1747,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 89,
+          "recalcMs": 770,
+          "layoutMs": 0,
+          "taskMs": 1719,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1763,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 67,
+          "recalcMs": 646,
+          "layoutMs": 0,
+          "taskMs": 1379,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1412,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "noinherit": {
+      "taskMs": 807,
+      "recalcMs": 167,
+      "scriptMs": 113,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 856,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 115,
+          "recalcMs": 169,
+          "layoutMs": 0,
+          "taskMs": 831,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 877,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px 121.877px",
+            "opacity": "0.3"
+          }
+        },
+        {
+          "scriptMs": 113,
+          "recalcMs": 167,
+          "layoutMs": 0,
+          "taskMs": 807,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 856,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px 121.877px",
+            "opacity": "0.3"
+          }
+        },
+        {
+          "scriptMs": 100,
+          "recalcMs": 145,
+          "layoutMs": 0,
+          "taskMs": 728,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 771,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px 121.877px",
+            "opacity": "0.3"
+          }
+        }
+      ]
+    }
+  }
+}

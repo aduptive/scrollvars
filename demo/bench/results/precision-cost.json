@@ -1,0 +1,264 @@
+{
+  "meta": {
+    "date": "2026-09-10T19:08:57.874Z",
+    "chrome": "Chrome/152.0.7977.85",
+    "runs": 3,
+    "params": "s=60&p=15",
+    "commit": "d57a33855feccca137c79646bd2b2c4eb149ac6b",
+    "dirty": true,
+    "note": "Diagnostic only. p3/p2 wrap setProperty and round every --sv-* number the engine writes; the engine still calls setProperty every frame."
+  },
+  "order": [
+    [
+      "p4",
+      "p3",
+      "p2"
+    ],
+    [
+      "p3",
+      "p2",
+      "p4"
+    ],
+    [
+      "p2",
+      "p4",
+      "p3"
+    ]
+  ],
+  "variants": {
+    "p4": {
+      "taskMs": 1431,
+      "recalcMs": 298,
+      "scriptMs": 71,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1473,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 71,
+          "recalcMs": 298,
+          "layoutMs": 0,
+          "taskMs": 1431,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1473,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 63,
+          "recalcMs": 261,
+          "layoutMs": 0,
+          "taskMs": 1247,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1284,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 75,
+          "recalcMs": 313,
+          "layoutMs": 0,
+          "taskMs": 1486,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1529,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "p3": {
+      "taskMs": 1544,
+      "recalcMs": 316,
+      "scriptMs": 82,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1589,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 78,
+          "recalcMs": 299,
+          "layoutMs": 0,
+          "taskMs": 1447,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1490,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 86,
+          "recalcMs": 329,
+          "layoutMs": 0,
+          "taskMs": 1569,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1615,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 82,
+          "recalcMs": 316,
+          "layoutMs": 0,
+          "taskMs": 1544,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1589,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "p2": {
+      "taskMs": 1432,
+      "recalcMs": 294,
+      "scriptMs": 76,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1474,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 76,
+          "recalcMs": 293,
+          "layoutMs": 0,
+          "taskMs": 1430,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1473,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 76,
+          "recalcMs": 294,
+          "layoutMs": 0,
+          "taskMs": 1432,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1474,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 78,
+          "recalcMs": 301,
+          "layoutMs": 0,
+          "taskMs": 1467,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1510,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    }
+  }
+}
