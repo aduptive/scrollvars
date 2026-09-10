@@ -54,6 +54,20 @@ const VARIANTS = {
       return real.call(this, name, value, priority)
     }
   },
+  // Narrow the culling band: only elements within half a viewport of the
+  // screen get a per-frame read and write, instead of a full viewport each way.
+  cull: () => { globalThis.__svCullMargin = '25% 0px 25% 0px' },
+  // Skip the continuous view clock entirely. For an entrance-only tracker it
+  // is the only per-frame write, so dropping it means the element is not
+  // written at all and nothing under it is invalidated.
+  noview: () => {
+    const proto = CSSStyleDeclaration.prototype
+    const real = proto.setProperty
+    proto.setProperty = function (name, value, priority) {
+      if (name === '--sv-view') return
+      return real.call(this, name, value, priority)
+    }
+  },
   // The driver mirrors each clock onto the children that consume it.
   mirror: () => {
     globalThis.__svScopedClocks = true

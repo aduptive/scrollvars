@@ -1281,3 +1281,18 @@ Two honest options remain, and neither is a core rewrite:
 A third path, tracking the element that animates instead of a wrapper, avoids
 the whole problem for an author who can structure their markup that way and
 costs nothing to document.
+
+#### Two more, both negative, both behind the gate
+
+A tighter culling band (`--variant=cull`, a quarter viewport each way instead
+of a full one) is worse on main-900: 514ms against 420ms task, 131ms against
+104ms recalculation. A narrower band makes elements cross it more often, and
+every crossing costs an observer delivery plus a geometry pass. The shipped
+margin is already on the right side of that trade.
+
+Dropping the continuous view clock (`--variant=noview`) fails the gate on the
+home page, correctly: seven `.sv-drift` elements read it. On sticky-steps,
+which nothing reads it on, 267ms against 294ms: noise. On a real page the
+per-element writes are not where the time goes, and the earlier finding
+holds, since suppressing one write to an element that still gets another
+saves nothing.
