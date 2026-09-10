@@ -1189,3 +1189,95 @@ win at all.
 That closes the write-level ideas. What is left on this workload is the
 invalidation scope itself, which the clocks screen above priced at 53 percent
 and which the shipped presets stand in the way of.
+
+### Round 2: what the deep-DOM gap actually is
+
+Every timing below passed a rendered-output gate before it was kept. The gate
+came out of the previous round's retraction and lives in `ab-runner.mjs`: it
+snapshots the computed animatable properties of every element under a tracked
+ancestor at four scroll positions, twice per position, keeps only the elements
+that held still between the two samples (an entrance transition depends on the
+wall clock and is never identical between two loads), requires the baseline to
+have actually moved, and compares numerically with a 1% tolerance. Three
+candidate designs were rejected by it before any of them produced a number.
+
+#### The benchmark's flat profile is not shaped like a real page
+
+`shape-probe.mjs` counts, per tracked element, how many descendants there are
+against how many direct children:
+
+| page | descendants | children | ratio |
+|---|---:|---:|---:|
+| bench main-900 | 15.0 | 15.0 | 1.0x |
+| bench deep-50 | 260.0 | 5.0 | 52x |
+| gallery sections | 9 to 24 | 1 to 4 | 2.3x to 24x |
+| the scrollvars.dev home page | 23.0 | 1.2 | 18.5x |
+
+Every design that narrows invalidation pays per consumer and saves per
+non-consuming descendant, so this ratio decides whether it wins. The headline
+benchmark sits at 1.0, where every descendant is a consumer, which is the
+worst possible case for such a design and the least like a real page.
+
+#### Two ways to narrow the invalidation, both measured
+
+`scoped-write-cost.mjs` registers the clocks non-inheriting and has the driver
+mirror each value onto the children that consume it, so consumers still
+receive it. `forward-cost.mjs` keeps the single write and stops propagation
+with an explicit `--sv-t: inherit` on the consumer selectors instead.
+
+| workload | design | task | recalc |
+|---|---|---:|---:|
+| deep-50 | as shipped | 694ms | 278ms |
+| deep-50 | mirrored writes | 490ms | 105ms |
+| deep-50 | forwarded inheritance | 504ms | 120ms |
+| main-900 | as shipped | 346ms | 78ms |
+| main-900 | mirrored writes | 432ms | 106ms |
+| main-900 | forwarded inheritance | 425ms | 108ms |
+
+Both win about 60% of the style recalculation at 52x depth and both lose about
+35% at 1x. They are the same trade in two shapes.
+
+On the real home page at 18.5x, with the same gate: 1727ms task and 377ms
+recalculation as shipped, against 1592ms and 365ms forwarded. About 8%, inside
+a run-to-run spread of 1531 to 1932ms. **The synthetic deep profile
+exaggerates by an order of magnitude what a real page stands to gain.**
+
+#### Native scroll timelines do not avoid the style work
+
+The strongest remaining idea was to stop computing the clock in JavaScript at
+all: register `--sv-t` and animate it from 0 to 1 over `animation-timeline:
+view()`, which the driver's own comment says has the same semantics as the
+cover range. Chrome 152 supports it, and the gate confirms the semantics
+claim: the rendered output matched the JavaScript path exactly.
+
+main-900, three balanced runs: 468ms task and 118ms recalculation as shipped,
+against 444ms and 112ms native. Five percent, inside the noise.
+
+That result is the important one in this round. A browser animating a
+registered custom property still resolves style for the affected subtree every
+frame; it only removes the JavaScript that set the value. Our script time is
+already 3 to 11 times lower than the competitors', so there was never much
+there to remove. **The cost is the style resolution that a custom property
+implies, and no amount of moving the write around changes it.**
+
+#### Where that leaves the library
+
+GSAP writes transforms straight onto elements: no custom property, no
+inheritance, no cascade to re-resolve. ScrollVars writes a variable and lets
+CSS own the animation, which is the whole product, and it buys a bundle a
+sixth the size, a heap a sixth the size and a third of the script time. The
+style resolution is what it costs. On a flat page that trade is a draw. On a
+page with large subtrees under a tracked element it loses, in proportion to
+how large those subtrees are.
+
+Two honest options remain, and neither is a core rewrite:
+
+1. Ship the narrowing as an OPT-IN for pages that are deep, with the ratio
+   above as the guidance for when it pays. The measurement says roughly 60% of
+   the style recalculation above 50x, 8% around 18x, a loss below about 5x.
+2. Leave the model alone and say plainly in the benchmark what the trade is,
+   which the restamped table now does.
+
+A third path, tracking the element that animates instead of a wrapper, avoids
+the whole problem for an author who can structure their markup that way and
+costs nothing to document.
