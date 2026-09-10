@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "date": "2026-09-10T22:40:02.600Z",
+    "page": "/bench/scrollvars.html?s",
+    "variant": "scopedcss",
+    "forward": ".box",
+    "runs": 3,
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 300,
+      "recalcMs": 73,
+      "scriptMs": 42,
+      "fps": 60,
+      "runs": 3
+    },
+    "scopedcss": {
+      "taskMs": 482,
+      "recalcMs": 140,
+      "scriptMs": 84,
+      "fps": 59.8,
+      "runs": 3
+    }
+  }
+}

@@ -129,7 +129,7 @@ export function measureSizes(root) {
     react: kb(entry('react/index.js')),
     typical: kb(driver + cssKb('core')),
     stylesAll: kb(gzipSync(readFileSync(join(root, 'styles.css'))).length / 1024),
-    css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui'].map((n) => [n, kb(cssKb(n))])),
+    css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui', 'scoped'].map((n) => [n, kb(cssKb(n))])),
   }
 }
 

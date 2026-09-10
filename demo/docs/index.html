@@ -296,6 +296,12 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
+<h4>Added</h4>
+
+<ul>
+<li><code>scrollvars/styles/scoped.css</code>, an opt-in sheet that registers <code>--sv-t</code> and <code>--sv-view</code> non-inheriting so a write re-resolves one element instead of its whole subtree. The rule it imposes: a clock reaches only the elements that declare <code>inherit</code> for it, and every element between the tracked ancestor and a reader must declare it too; the shipped presets that read a clock from a descendant (<code>sv-drift</code>, <code>sv-range</code>) are forwarded inside the sheet, and a test derives that list from the stylesheets so a new preset cannot ship without its forward. A registered property always has a value, so a <code>var(--sv-t, 1)</code> fallback is never taken again under the sheet: declare that default on the tracked element instead. Measured behind a rendered-output gate: 63 percent less style recalculation and 28 percent less task time on the benchmark's deep profile, 13 percent more recalculation and 4 percent more task time on its flat profile; on the site's own home page 10 percent less task time and 23 percent less recalculation. Browsers without <code>@property</code> keep inheriting, so it never breaks a page below the floor. Not part of <code>styles.css</code> on purpose.</li>
+</ul>
+
 <h4>Changed</h4>
 
 <ul>

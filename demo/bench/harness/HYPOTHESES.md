@@ -12,21 +12,13 @@ Baseline facts the loop must not re-derive:
   inherited custom properties invalidating large subtrees.
 - Narrowing the invalidation (mirror or forward) wins about 60% of that
   recalculation at 52x depth, 8% at the home page's 18.5x, and loses at 1x.
-- Native view() timelines match our semantics exactly and save 5%: the style
-  resolution is the cost, not the JavaScript.
+- Native view() timelines: UNTESTED. The 5% screen never applied its variant.
 - Rejected: precision, partial suppression, tighter culling, dropping an
   unread view clock, direct writes, WAAPI scrubbing, will-change, transform
   shorthand.
 
 ## Open, ranked by expected value
 
-1. **Opt-in scoped clocks, shipped properly.** Register `--sv-t`/`--sv-view`
-   non-inheriting behind `SV.scopeClocks()` (or a `data-sv-scoped` root
-   attribute) and have the shipped presets forward with `--sv-t: inherit` on
-   their consumer selectors, so `.sv-drift` and `.sv-range` keep working.
-   Document the depth ratio at which it pays. Gate: deep-50 within 10% of the
-   forward screen (504ms), main-900 not worse than 5%, every gallery page
-   and the home page passing the rendered-output gate, e2e green.
 2. **`contain: layout style paint` on tracked elements that are not pinned.**
    Not about inheritance: containment lets Blink skip the subtree in layout
    and paint when only the element's own style changed. Screen on deep-50
@@ -47,4 +39,9 @@ Baseline facts the loop must not re-derive:
 
 ## Done
 
-(none yet in this file; earlier rounds are in README.md)
+- **Opt-in scoped clocks** (`styles/scoped.css`): SHIPPED on
+  `perf/page-outputs-cost`. Seven pages behind the hardened gate: deep-50
+  -27.5% task, home -10.5%, sticky-steps -12%, case-study-rail noise,
+  main-900 +4%, timeline-scrub +7%, hero-cinematic +12%, editorial-manifesto
+  +9%. Pays per registered holder, saves per non-inheriting descendant; the
+  docs say so with the numbers, the path rule and the fallback clause.

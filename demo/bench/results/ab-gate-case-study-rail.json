@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "date": "2026-09-10T22:28:28.937Z",
+    "page": "/fx/case-study-rail.html",
+    "variant": "forward",
+    "runs": 1,
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 197,
+      "recalcMs": 61,
+      "scriptMs": 37,
+      "fps": 60,
+      "runs": 1
+    },
+    "forward": {
+      "taskMs": 215,
+      "recalcMs": 65,
+      "scriptMs": 42,
+      "fps": 60,
+      "runs": 1
+    }
+  }
+}

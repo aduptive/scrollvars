@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- `scrollvars/styles/scoped.css`, an opt-in sheet that registers `--sv-t`
+  and `--sv-view` non-inheriting so a write re-resolves one element instead
+  of its whole subtree. The rule it imposes: a clock reaches only the
+  elements that declare `inherit` for it, and every element between the
+  tracked ancestor and a reader must declare it too; the shipped presets that
+  read a clock from a descendant (`sv-drift`, `sv-range`) are forwarded inside
+  the sheet, and a test derives that list from the stylesheets so a new
+  preset cannot ship without its forward. A registered property always has
+  a value, so a `var(--sv-t, 1)` fallback is never taken again under the
+  sheet: declare that default on the tracked element instead. Measured
+  behind a rendered-output
+  gate: 63 percent less style recalculation and 28 percent less task time on
+  the benchmark's deep profile, 13 percent more recalculation and 4 percent
+  more task time on its flat profile; on the site's own home page 10 percent
+  less task time and 23 percent less recalculation.
+  Browsers without `@property` keep inheriting, so it never breaks a page
+  below the floor. Not part of `styles.css` on purpose.
+
 ### Changed
 
 - `--sv-page` and `--sv-v` are published only when something in the document

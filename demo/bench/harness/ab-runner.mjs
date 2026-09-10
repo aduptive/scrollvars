@@ -1,15 +1,25 @@
 #!/usr/bin/env node
 /**
  * A/B runner for ANY page in demo/, with a rendered-output gate that no
- * timing can bypass. Born from a screen that reported 53% because the
- * variant had stopped animating.
+ * timing can bypass, and with every trap found so far closed by construction.
  *
- * For each variant it snapshots the computed animatable properties of every
- * element under a tracked ancestor, at several scroll positions, BEFORE the
- * timed run. The baseline must actually move between positions, and every
- * variant must match the baseline exactly. Only then are timings recorded.
+ *   node ab-runner.mjs --page=/index.html --variant=scopedcss --runs=6
+ *   node ab-runner.mjs --page='/bench/scrollvars.html?s=30&p=5&deep=50' \
+ *        --variant=forward,scopedcss --forward=.box --runs=6
  *
- *   node ab-runner.mjs --page=/index.html --variant=forward --runs=3
+ * Per configuration and per run:
+ *   1. a GATE load: the variant is applied after `load` (document.head is
+ *      null before the document exists), it must prove it applied, and the
+ *      rendered output is snapshotted at four scroll positions and compared
+ *      against the baseline's snapshot from the same run;
+ *   2. a TIMED load, separate, so the timed page is as cold as the published
+ *      one: no preflight scrolling, no latched entries, the variant applied
+ *      the same way, then the page's own 12-second workload.
+ * The frame count of every variant must match the baseline's within 2%: a
+ * run that drops frames visits fewer scroll positions and looks cheaper.
+ * Order rotates each run and reverses direction every round, so each
+ * configuration follows each other one equally often; use 2 x (variants + 1)
+ * runs or a multiple of it.
  */
 import { createServer } from 'node:http'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -17,64 +27,95 @@ import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import puppeteer from 'puppeteer-core'
+import { snapshotRender, compareRender, rendersMoved, describeMismatch } from './render-equivalence.mjs'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const args = Object.fromEntries(process.argv.slice(2).map(a => (a.startsWith('--') ? a.slice(2).split('=') : [a, true])))
-const RUNS = Number(args.runs ?? 3)
+const here = dirname(fileURLToPath(import.meta.url))
+const root = join(here, '..', '..')
+const SCOPED_CSS = readFileSync(join(root, '..', 'styles', 'scoped.css'), 'utf8')
+
+// Split on the FIRST '=' only: a page URL carries its own '=' signs, and
+// splitting on all of them once turned '?s=30&p=5&deep=50' into '?s'.
+const args = Object.fromEntries(process.argv.slice(2).map(a => {
+  if (!a.startsWith('--')) return [a, true]
+  const eq = a.indexOf('=')
+  return eq < 0 ? [a.slice(2), true] : [a.slice(2, eq), a.slice(eq + 1)]
+}))
+const RUNS = Number(args.runs ?? 6)
 const PAGE = args.page ?? '/index.html'
-const VARIANT = args.variant ?? 'forward'
+if (/[?&][a-z]+(&|$)/.test(PAGE)) throw Error(`page query has a key with no value: ${PAGE}`)
+const VARIANT = String(args.variant ?? 'scopedcss')
+// The author's side of the scoped-clocks contract: this page's own readers.
+const FORWARD = args.forward ? String(args.forward) : ''
+// Any further author-side CSS the page needs under the sheet, for instance a
+// default on the tracked element replacing a `var(--sv-t, 1)` fallback that a
+// registered property no longer honours.
+const AUTHOR = args.author ? String(args.author) : ''
 const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
 
-// Each variant is a function evaluated in the page before the driver boots.
+// Each variant: `apply` runs in the page after load, `verify` runs right
+// after and must return true, or the run fails instead of measuring the
+// untouched page under the variant's name.
 const VARIANTS = {
-  // One write, as today, with propagation stopped at the consumers.
-  forward: () => {
-    const style = document.createElement('style')
-    style.textContent = '.sv > *, .sv-drift, .sv-range, .sv-rise, .sv-fade, .sv-spread { --sv-t: inherit; --sv-view: inherit }'
-    document.head.append(style)
-    for (const name of ['--sv-t', '--sv-view'])
-      CSS.registerProperty({ name, syntax: '<number>', inherits: false, initialValue: '0' })
+  // Nothing at all: base against base, to learn what the gate and the timing
+  // report when there is no difference. Run it before trusting a small one.
+  noop: { apply: () => { window.__svNoop = true }, verify: () => window.__svNoop === true },
+  // The real artifact: styles/scoped.css as shipped, plus this page's own
+  // readers forwarded the way its author would.
+  scopedcss: {
+    apply: (css, forward, author) => {
+      const style = document.createElement('style')
+      style.textContent = css + (forward ? `\n${forward} { --sv-t: inherit; --sv-view: inherit; }` : '') + (author ? `\n${author}` : '')
+      document.head.append(style)
+    },
+    // a registered non-inheriting property reads its initial value on <html>
+    verify: () => getComputedStyle(document.documentElement).getPropertyValue('--sv-t') === '0',
   },
-  // The browser computes the travel clock itself, from the scroll position,
-  // with no JavaScript in the frame at all: a registered custom property
-  // animated over a view() timeline. --sv-t is documented as having the same
-  // semantics as the native cover range, so this should be a drop-in.
-  native: () => {
-    CSS.registerProperty({ name: '--sv-t', syntax: '<number>', inherits: true, initialValue: '0' })
-    const style = document.createElement('style')
-    style.textContent = `@keyframes sv-native-travel { from { --sv-t: 0 } to { --sv-t: 1 } }
-      .sv { animation: sv-native-travel linear both; animation-timeline: view(); animation-range: cover 0% cover 100% }`
-    document.head.append(style)
-    // The driver must stop writing the clock it no longer owns.
-    const proto = CSSStyleDeclaration.prototype
-    const real = proto.setProperty
-    proto.setProperty = function (name, value, priority) {
-      if (name === '--sv-t') return
-      return real.call(this, name, value, priority)
-    }
+  // The same design through the JS API and a one-level forward to every child.
+  forward: {
+    apply: () => {
+      const style = document.createElement('style')
+      style.textContent = '.sv > *, .sv-drift, .sv-range { --sv-t: inherit; --sv-view: inherit }'
+      document.head.append(style)
+      for (const name of ['--sv-t', '--sv-view'])
+        CSS.registerProperty({ name, syntax: '<number>', inherits: false, initialValue: '0' })
+    },
+    verify: () => getComputedStyle(document.documentElement).getPropertyValue('--sv-t') === '0',
   },
-  // Narrow the culling band: only elements within half a viewport of the
-  // screen get a per-frame read and write, instead of a full viewport each way.
-  cull: () => { globalThis.__svCullMargin = '25% 0px 25% 0px' },
-  // Skip the continuous view clock entirely. For an entrance-only tracker it
-  // is the only per-frame write, so dropping it means the element is not
-  // written at all and nothing under it is invalidated.
-  noview: () => {
-    const proto = CSSStyleDeclaration.prototype
-    const real = proto.setProperty
-    proto.setProperty = function (name, value, priority) {
-      if (name === '--sv-view') return
-      return real.call(this, name, value, priority)
-    }
+  // The browser computes the travel clock itself over a view() timeline.
+  native: {
+    apply: () => {
+      CSS.registerProperty({ name: '--sv-t', syntax: '<number>', inherits: true, initialValue: '0' })
+      const style = document.createElement('style')
+      style.textContent = `@keyframes sv-native-travel { from { --sv-t: 0 } to { --sv-t: 1 } }
+        .sv { animation: sv-native-travel linear both; animation-timeline: view(); animation-range: cover 0% cover 100% }`
+      document.head.append(style)
+      const real = CSSStyleDeclaration.prototype.setProperty
+      CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
+        if (name === '--sv-t') return
+        return real.call(this, name, value, priority)
+      }
+    },
+    verify: () => [...document.querySelectorAll('.sv')].some(el => getComputedStyle(el).animationName === 'sv-native-travel'),
   },
-  // The driver mirrors each clock onto the children that consume it.
-  mirror: () => {
-    globalThis.__svScopedClocks = true
-    for (const name of ['--sv-t', '--sv-view'])
-      CSS.registerProperty({ name, syntax: '<number>', inherits: false, initialValue: '0' })
+  // Skip the continuous view clock entirely.
+  noview: {
+    apply: () => {
+      const real = CSSStyleDeclaration.prototype.setProperty
+      CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
+        if (name === '--sv-view') return
+        return real.call(this, name, value, priority)
+      }
+      window.__svNoView = true
+    },
+    verify: () => window.__svNoView === true,
   },
 }
+
+const NAMES = ['base', ...VARIANT.split(',').map(v => v.trim()).filter(Boolean)]
+for (const n of NAMES.slice(1)) if (!VARIANTS[n]) throw Error(`unknown variant ${n}; known: ${Object.keys(VARIANTS).join(', ')}`)
+if (RUNS % (2 * NAMES.length)) console.warn(`runs=${RUNS} is not a multiple of ${2 * NAMES.length}: order is not fully balanced`)
+console.log(`page ${PAGE}   configurations ${NAMES.join(', ')}   runs ${RUNS}${FORWARD ? `   forward ${FORWARD}` : ''}${AUTHOR ? `   author ${AUTHOR}` : ''}`)
 
 const server = createServer((req, res) => {
   const path = join(root, req.url.split('?')[0].replace(/\/$/, '/index.html'))
@@ -85,137 +126,106 @@ await new Promise(r => server.listen(0, r))
 const base = `http://127.0.0.1:${server.address().port}`
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true })
 
-const KEYS = { scriptMs:'ScriptDuration', recalcMs:'RecalcStyleDuration', layoutMs:'LayoutDuration', taskMs:'TaskDuration' }
+const KEYS = { scriptMs: 'ScriptDuration', recalcMs: 'RecalcStyleDuration', layoutMs: 'LayoutDuration', taskMs: 'TaskDuration' }
 const delta = (end, start) => Object.fromEntries(Object.entries(KEYS).map(([k, m]) => [k, Math.round((end[m] - start[m]) * 1000)]))
 
-// Every element under a tracked ancestor, capped so a huge page stays quick.
-const SNAPSHOT = () => {
-  const els = [...document.querySelectorAll('.sv, .sv *')].slice(0, 400)
-  return els.map(el => {
-    const cs = getComputedStyle(el)
-    const id = el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '')
-    return id + ' => ' + [cs.translate, cs.opacity, cs.transform, cs.rotate, cs.scale].join('|')
-  })
+async function open(variant) {
+  const context = await browser.createBrowserContext()
+  const page = await context.newPage()
+  // Match the published methodology: bench pages at puppeteer's default
+  // 800x600, only the site pages at the large viewport.
+  if (!PAGE.startsWith('/bench/')) await page.setViewport({ width: 1400, height: 900 })
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  await page.goto(`${base}${PAGE}${PAGE.includes('?') ? '&' : '?'}harness=1`, { waitUntil: 'load', timeout: 60000 })
+  if (!PAGE.startsWith('/bench/')) {
+    await page.addScriptTag({ url: `${base}/bench/runner.js` })
+    await page.evaluate(label => runBench(label), PAGE)
+  }
+  await page.waitForFunction(() => typeof window.__benchStart === 'function')
+  if (variant !== 'base') {
+    await page.evaluate(VARIANTS[variant].apply, variant === 'scopedcss' ? SCOPED_CSS : undefined, FORWARD, AUTHOR)
+    if (!(await page.evaluate(VARIANTS[variant].verify))) throw Error(`${variant}: the variant did not apply, the run would have measured the untouched page`)
+  }
+  const failOnErrors = () => { if (pageErrors.length) throw Error(`${variant}: the page raised ${pageErrors.length} error(s), first: ${pageErrors[0]}`) }
+  return { page, context, failOnErrors }
 }
 
-async function once(variant) {
-  const context = await browser.createBrowserContext()
+async function gate(variant) {
+  const { page, context, failOnErrors } = await open(variant)
   try {
-    const page = await context.newPage()
-    await page.setViewport({ width: 1400, height: 900 })
+    const shot = await snapshotRender(page)
+    failOnErrors()
+    return shot
+  } finally { await context.close() }
+}
+
+async function timed(variant) {
+  const { page, context, failOnErrors } = await open(variant)
+  try {
     const cdp = await page.createCDPSession()
     await cdp.send('Performance.enable')
     const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]))
     const marks = {}
     await page.exposeFunction('__benchMark', async name => { marks[name] = await metrics() })
     const initial = await metrics()
-    if (variant !== 'base') await page.evaluateOnNewDocument(VARIANTS[variant])
-    await page.goto(`${base}${PAGE}${PAGE.includes('?') ? '&' : '?'}harness=1`, { waitUntil: 'load', timeout: 60000 })
-    if (!PAGE.startsWith('/bench/')) {
-      await page.addScriptTag({ url: `${base}/bench/runner.js` })
-      await page.evaluate(label => runBench(label), PAGE)
-    }
-    await page.waitForFunction(() => typeof window.__benchStart === 'function')
-
-    // Rendered-output preflight, outside the timed window.
-    const shot = await page.evaluate(async snap => {
-      const fn = new Function('return (' + snap + ')()')
-      const out = []
-      const height = document.documentElement.scrollHeight - innerHeight
-      for (const p of [0.15, 0.4, 0.65, 0.4]) {
-        scrollTo(0, Math.round(height * p))
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-        // Entrance presets are transitions: their value depends on the wall
-        // clock since the class flipped, and on this page something is always
-        // mid-flight. Sample twice and let the runner keep only what did not
-        // move in between, so a scroll-linked value is compared exactly and a
-        // transition in progress is ignored rather than reported as a change.
-        await new Promise(r => setTimeout(r, 500))
-        const first = fn()
-        await new Promise(r => setTimeout(r, 400))
-        out.push([first, fn()])
-      }
-      scrollTo(0, 0)
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-      return out
-    }, SNAPSHOT.toString())
-
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
     const payload = await page.evaluate(() => window.__benchStart())
+    failOnErrors()
     const end = marks.end ?? await metrics()
     const start = marks.start ?? initial
-    return { ...delta(end, start), fps: payload.fps, frames: payload.frames, framesOver25ms: payload.framesOver25ms, shot }
+    return { ...delta(end, start), fps: payload.fps, frames: payload.frames, framesOver25ms: payload.framesOver25ms, p95Ms: payload.p95Ms }
   } finally { await context.close() }
 }
 
-// A transition-based preset depends on wall-clock time since its class
-// flipped, so two loads never agree byte for byte: measured jitter is about
-// 0.01% (17.5173 against 17.491). Compare numerically instead, tight enough
-// to catch the failure that started this gate (a sign flip and opacity 1
-// against 0.3) and loose enough not to cry wolf.
-const TOL_REL = 0.01
-const TOL_ABS = 0.05
-const numbersOf = s => (s.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
-const sameRender = (a, b, mask) => {
-  if (a.length !== b.length) return false
-  return a.every((v, i) => !mask[i] || sameOne(v, b[i]))
-}
-
-// An element counts only where it held still between the two samples.
-const stableMask = pair => pair[0].map((v, i) => sameOne(v, pair[1][i]))
-const sameOne = (a, b) => {
-  const [ka, kb] = [a.split(' => ')[0], b.split(' => ')[0]]
-  if (ka !== kb) return false
-  if (a.replace(/-?\d+(?:\.\d+)?/g, '#') !== b.replace(/-?\d+(?:\.\d+)?/g, '#')) return false
-  const [na, nb] = [numbersOf(a), numbersOf(b)]
-  if (na.length !== nb.length) return false
-  return na.every((x, j) => {
-    const diff = Math.abs(x - nb[j])
-    return diff <= TOL_ABS || diff <= Math.abs(nb[j]) * TOL_REL
-  })
-}
-
-const NAMES = ['base', VARIANT]
 const raw = Object.fromEntries(NAMES.map(n => [n, []]))
-let baseline = null
+const order = []
 try {
   for (let run = 0; run < RUNS; run++) {
-    const seq = run % 2 ? [...NAMES].reverse() : NAMES
-    for (const name of seq) {
-      const r = await once(name)
+    const pool = Math.floor(run / NAMES.length) % 2 ? [...NAMES].reverse() : NAMES
+    const seq = pool.slice(run % pool.length).concat(pool.slice(0, run % pool.length))
+    order.push(seq)
+    let baseline = null, baseFrames = null
+    // the gate first, for every configuration of this run, against this run's baseline
+    for (const name of ['base', ...seq.filter(n => n !== 'base')]) {
+      const shot = await gate(name)
       if (name === 'base') {
-        const mask0 = stableMask(r.shot[0])
-        const moved = r.shot.some((s, i) => i > 0 && !sameRender(s[1], r.shot[0][1], mask0.map((m, j) => m && stableMask(s)[j])))
-        if (!moved) throw Error('baseline did not animate between scroll positions: the fixture proves nothing')
-        baseline ??= r.shot
+        if (!rendersMoved(shot)) throw Error('baseline did not animate between scroll positions: the fixture proves nothing')
+        baseline = shot
+        continue
       }
-      const maskAt = i => stableMask(r.shot[i]).map((m, j) => m && stableMask(baseline[i])[j])
-      if (baseline && r.shot.some((s, i) => !sameRender(s[1], baseline[i][1], maskAt(i)))) {
-        const at = r.shot.findIndex((s, i) => !sameRender(s[1], baseline[i][1], maskAt(i)))
-        const mask = maskAt(at)
-        const mine = r.shot[at][1] ?? [], theirs = baseline[at][1] ?? []
-        const diffs = mine.map((v, i) => [v, theirs[i], mask[i]]).filter(([a, b, m]) => m && !sameOne(a, b)).slice(0, 6)
-        throw Error(`${name} changed rendered output at scroll position ${at}: the timing is not comparable\n` +
-          diffs.map(([a, b]) => `   variant: ${a}\n   base   : ${b}`).join('\n') +
-          `\n   (${mine.filter((v, i) => mask[i] && !sameOne(v, theirs[i])).length} settled elements differ)`)
-      }
+      const result = compareRender(baseline, shot)
+      if (!result.ok) throw Error(describeMismatch(name, result))
+      if (run === 0) console.log(`  gate ${name}: ${result.compared} of ${result.total} sampled elements settled and equal, ${result.timeDependent} time-dependent excluded`)
+    }
+    // then the timed loads, in the balanced order
+    for (const name of seq) {
+      const r = await timed(name)
+      if (name === 'base') baseFrames = r.frames
+      else if (baseFrames && Math.abs(r.frames - baseFrames) > baseFrames * 0.02)
+        throw Error(`${name}: ${r.frames} frames against the baseline's ${baseFrames}, the run did not do the same work`)
       raw[name].push(r)
-      console.log(`  ${name.padEnd(8)} run ${run + 1}: task ${String(r.taskMs).padStart(5)}ms · recalc ${String(r.recalcMs).padStart(5)}ms · script ${String(r.scriptMs).padStart(4)}ms · fps ${r.fps}`)
+      console.log(`  ${name.padEnd(9)} run ${run + 1}: task ${String(r.taskMs).padStart(5)}ms · recalc ${String(r.recalcMs).padStart(5)}ms · script ${String(r.scriptMs).padStart(4)}ms · frames ${r.frames} · fps ${r.fps}`)
     }
   }
 } finally { await browser.close(); server.close() }
 
-const median = xs => { const s = xs.slice().sort((a,b)=>a-b), m = Math.floor(xs.length/2); return (s[Math.ceil(xs.length/2)-1] + s[m]) / 2 }
-const out = { meta: { date:new Date().toISOString(), page:PAGE, variant:VARIANT, runs:RUNS,
-  commit: execFileSync('git', ['rev-parse','HEAD'], { cwd: join(root,'..'), encoding:'utf8' }).trim(),
-  dirty: !!execFileSync('git', ['status','--porcelain'], { cwd: join(root,'..'), encoding:'utf8' }).trim(),
-  gate: 'rendered output compared against the baseline at four scroll positions before any timing was kept',
+const median = xs => { const s = xs.slice().sort((a, b) => a - b), m = Math.floor(xs.length / 2); return (s[Math.ceil(xs.length / 2) - 1] + s[m]) / 2 }
+const out = { meta: {
+  date: new Date().toISOString(), page: PAGE, variants: NAMES.slice(1), forward: FORWARD, author: AUTHOR, runs: RUNS, order,
+  commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: join(root, '..'), encoding: 'utf8' }).trim(),
+  dirty: !!execFileSync('git', ['status', '--porcelain'], { cwd: join(root, '..'), encoding: 'utf8' }).trim(),
+  method: 'gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round',
 }, variants: {} }
 for (const [n, runs] of Object.entries(raw))
-  out.variants[n] = { taskMs:median(runs.map(r=>r.taskMs)), recalcMs:median(runs.map(r=>r.recalcMs)),
-    scriptMs:median(runs.map(r=>r.scriptMs)), fps:median(runs.map(r=>r.fps)), runs:runs.length }
-mkdirSync(join(root,'bench','results'), { recursive:true })
-writeFileSync(join(root,'bench','results', args.out || `ab-${VARIANT}.json`), JSON.stringify(out, null, 2))
-console.log('\n| variant | task | recalc | script | fps |')
-console.log('|---|---:|---:|---:|---:|')
-for (const [n,m] of Object.entries(out.variants)) console.log(`| ${n} | ${m.taskMs}ms | ${m.recalcMs}ms | ${m.scriptMs}ms | ${m.fps} |`)
+  out.variants[n] = {
+    taskMs: median(runs.map(r => r.taskMs)), recalcMs: median(runs.map(r => r.recalcMs)), scriptMs: median(runs.map(r => r.scriptMs)),
+    frames: median(runs.map(r => r.frames)), fps: median(runs.map(r => r.fps)), runs: runs.length, samples: runs,
+  }
+mkdirSync(join(root, 'bench', 'results'), { recursive: true })
+const outName = args.out ? String(args.out) : `ab-${VARIANT.replace(/,/g, '+')}.json`
+writeFileSync(join(root, 'bench', 'results', outName), JSON.stringify(out, null, 2))
+console.log(`\nwritten to bench/results/${outName}`)
+console.log('| variant | task | recalc | script | frames | fps |')
+console.log('|---|---:|---:|---:|---:|---:|')
+for (const [n, m] of Object.entries(out.variants)) console.log(`| ${n} | ${m.taskMs}ms | ${m.recalcMs}ms | ${m.scriptMs}ms | ${m.frames} | ${m.fps} |`)

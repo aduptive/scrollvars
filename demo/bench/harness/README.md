@@ -1296,3 +1296,284 @@ which nothing reads it on, 267ms against 294ms: noise. On a real page the
 per-element writes are not where the time goes, and the earlier finding
 holds, since suppressing one write to an element that still gets another
 saves nothing.
+
+#### RETRACTED: every ab-runner variant that touched the DOM measured nothing
+
+`ab-runner.mjs` applied its variants with `evaluateOnNewDocument`, and at
+new-document time `document.head` is null: the `append` threw inside the
+injected script, the page loaded untouched, and the run was recorded under
+the variant's name. A probe confirms it: with the sheet injected that way the
+document has no `@property`, the boxes read the section's clock as before,
+and the page error log says `Cannot read properties of null (reading
+'append')`.
+
+Withdrawn as evidence, all of them baseline-against-baseline noise: the
+"native view() timeline saves 5%" screen on main-900, the "8% on the home
+page" and "14% worse on hero-cinematic" forwarding figures, the one-run
+gallery timings, the timeline-scrub and deep-50 timings of the shipped sheet,
+and the six "gate passes" on the gallery pages, which passed because nothing
+was injected. The conclusion drawn from the native screen, that a browser
+animating a registered property still resolves the subtree, is UNTESTED, not
+established; the paragraph above that states it is wrong until re-measured.
+
+Still valid, because those screens injected after load: the bench-page
+mirror and forward results on deep-50 (490 and 504ms against 694 and 658ms)
+and on main-900 (432 and 425ms against 346 and 357ms), the shape probe, and
+the two negatives that touched no DOM (culling and the dropped view clock).
+
+The runner now applies DOM-touching variants after `load`, and the shipped
+sheet's gate asserts the stylesheet actually attached before it snapshots.
+Registration and forwarding change inheritance the instant they land, so a
+post-load injection is equivalent for the measurement, and it is what the
+valid screens above already did. Everything withdrawn here is re-measured
+below.
+
+#### RETRACTED, the fourth trap: the runner's page query was truncated
+
+`ab-runner.mjs` parsed its arguments by splitting on every `=`, so
+`--page=/bench/scrollvars.html?s=30&p=5&deep=50` became
+`/bench/scrollvars.html?s` and the page fell back to its defaults: 30
+sections of 5 boxes with no deep subtree. Every bench-page run of that runner
+measured the same flat 150-box page under whatever name it was given, which
+is why "forward loses 15% on deep-50" and "the shipped sheet loses 60% on
+deep-50" contradicted the standalone screens that had built the URL
+correctly. Found by review, not by the numbers: the saved JSON records the
+truncated page in its own meta.
+
+Void: every `ab-*.json` result on a bench page before this fix. The standalone
+screens (`forward-cost.mjs`, `scoped-write-cost.mjs`, `clocks-cost.mjs`) stand.
+
+The same review found six more ways the runner could report a number that
+did not mean what it claimed, and the runner now: prints the resolved page and
+refuses a query key with no value; requires each variant to prove it applied
+before timing; takes the rendered-output snapshot in a separate page load
+from the timed run, so the timed page is as cold as the published one; fails
+a variant whose frame count differs from the baseline's by more than 2
+percent, since a run that drops frames visits fewer scroll positions and
+looks cheaper; samples every tracked element and every direct child in full
+plus a stride of deeper descendants, instead of the first 400 elements in
+document order, and refuses to pass a comparison that covered fewer than half
+of them; asserts the scroll height matches; and reverses the rotation every
+round so each configuration follows each other one equally often.
+
+#### Scoped clocks on deep-50, measured with the hardened runner
+
+`ab-deep50-side-by-side.json`: the real deep-50 page (the baseline's 1231ms
+against about 300ms for the flat default the truncated query used to load is
+the proof), six runs with the rotation reversed every round, each variant
+proved applied before timing, the gate in a separate load from the timed run,
+every configuration at exactly 720 frames, rendered output equal on every
+settled sampled element.
+
+| configuration | task | style recalc | script |
+|---|---:|---:|---:|
+| as shipped | 1231ms | 553ms | 54.5ms |
+| forward (JS registration, `.sv > *`) | 966ms | 223ms | 65.5ms |
+| `styles/scoped.css` plus `.box { --sv-t: inherit }` | 892.5ms | 206.5ms | 62ms |
+
+The shipped sheet, with the one line the page's author adds for their own
+readers, takes 27.5% off the total task time and 62.7% off the style
+recalculation on the profile where the library loses to GSAP. That is the
+number the retracted screens were reaching for, and this one has no known
+way to be wrong that the harness does not check for.
+
+The other half of the gate, the flat profile and the real pages, follows.
+
+#### Scoped clocks on main-900, the flat profile, same runner
+
+`ab-main900-side-by-side.json`, six balanced runs, 720 frames in every
+configuration, render equal:
+
+| configuration | task | style recalc | script |
+|---|---:|---:|---:|
+| as shipped | 764.5ms | 155ms | 60.5ms |
+| forward | 787.5ms | 176.5ms | 65.5ms |
+| `styles/scoped.css` plus `.box { --sv-t: inherit }` | 795.5ms | 175ms | 56.5ms |
+
+Four percent more task time and thirteen percent more style recalculation
+where every descendant is a reader: the registration's per-holder cost with
+nothing to save. Within the five percent the predeclared gate allowed. The
+earlier standalone screens put this loss at twenty to thirty-five percent;
+they were three single-load runs with no frame check, and this measurement
+supersedes them.
+
+Both halves of the gate for hypothesis 1 hold: 27.5% less task time on the
+deep profile, 4% more on the flat one, rendering identical on both.
+
+#### The sheet broke the library's own preset on the home page
+
+With the hardened runner, `styles/scoped.css` failed the gate on
+scrollvars.dev's home page: three `.sv-drift` parallax layers rendered
+`0px | 1` under the sheet against `-112px | 0` without it. They are not
+direct children of the tracked element. A non-inheriting property is its
+initial value on every element in between, so `.sv .sv-drift { --sv-view:
+inherit }` read a zero from the layer's parent. The contract's fine print,
+"every element between the tracked ancestor and a reader must declare it
+too", bit the library's own preset first, which is the best possible place
+for it to bite.
+
+The sheet now forwards along the path: `.sv :has(.sv-drift), .sv .sv-drift`
+and the same for `.sv-range`, and the whole sheet sits under `@supports
+selector(:has(a))`, so a browser that could register the clocks but not carry
+them down stays on plain inheritance. The derived-forward test now demands
+the path rule for every descendant reader, not only the reader.
+
+#### Scoped clocks on timeline-scrub, the first real page through the hardened runner
+
+`ab-timeline-scopedcss.json`, the sheet alone (its only clock readers are
+the forwarded presets), six balanced runs, 720 frames each, render equal:
+298ms against 320ms task, 93.5ms against 100ms style recalculation. Seven
+percent worse. The page has three `sv-range` readers under a tracked element
+with 23 descendants; the registration's per-holder cost outweighs what the
+shallow subtrees save. Consistent with the flat profile, and the first
+evidence that the gallery pages, as built, are on the losing side of the
+sheet's trade.
+
+#### Calibration: base against base on the home page
+
+`ab-home-noop.json`, a variant that changes nothing, four runs: 1692.5ms
+against 1714ms task, 433.5ms against 441ms style recalculation, 720 frames
+both, the gate passing on every settled element including the parallax
+layers and the map stations. So the runner's noise floor on this page is
+about 1.3 percent of task time, and the gate does not cry wolf on it. Any
+difference under that on this page is not a result.
+
+Note for the next person who sees `div.map-station` differ under a variant on
+the home page: it reads no clock. Its rotation is `var(--map-ang)`, which the
+camera-path demo writes from a per-frame JavaScript lerp (`mapShown +=
+(mapTarget - mapShown) * 0.1`, then `angleLerp(..., 0.08)`) fed by an
+`onPin` callback. The settled angle depends on how many frames ran since the
+scroll, not on any variable the sheet registers, so a difference there is
+frame timing, not rendering. It passed base against base; a variant that
+slows the preflight frames can move it without changing anything the sheet
+is about. The gate cannot tell those apart, and this is the one known place
+on the shipped pages where that matters.
+
+#### The gate learns to tell time-dependent elements from scroll-dependent ones
+
+With every reader forwarded, the home page still failed on its five map
+stations, and the two values swapped roles between runs (-2.22deg in the
+baseline one time, in the variant the next). The stations rotate by a
+JavaScript lerp fed by an `onPin` callback, converging at 8 percent per frame:
+after the gate's settle window it is 99 percent there, and the last percent
+depends on how many frames ran, which the preflight of a slower or faster
+variant changes. Nothing the sheet registers reaches them.
+
+The position list already visits 0.4 twice, arriving from 0.15 and from 0.65.
+An element that is a function of the scroll position reads the same at both
+visits; a lerp still converging does not, because it arrived with a different
+residual each time. The gate now excludes from the comparison, and from its
+coverage count, every element that differs between the two visits in either
+run, and reports how many it excluded. A unit test pins it. This is the
+general form of the "held still between two samples" rule: the first catches
+motion in time, the second catches motion in frames.
+
+#### Scoped clocks on sticky-steps: a real page on the winning side
+
+`ab-sticky-scopedcss.json`, the sheet alone, six balanced runs, 720 frames
+each, render equal: 292.5ms against 258ms task, 83ms against 75.5ms style
+recalculation. Twelve percent less task time and nine percent less
+recalculation. One tracked element, two direct children, 24 descendants: a
+shallow-looking page that still has ten non-reading nodes for every reader.
+Against timeline-scrub's seven percent loss on a page with three readers,
+this is the trade the sheet's documentation describes, on the library's own
+pages, in both directions.
+
+#### Scoped clocks on the home page, gate passed
+
+`ab-home-scopedcss.json`: the sheet plus the page's own three readers
+forwarded (`.sv :has(.card3d), .card3d, .spread-scrub > *`; the drift layers
+are the sheet's), six balanced runs, 719.5 against 720 frames, the five map
+stations excluded as time-dependent and every other settled element equal.
+1615ms against 1445.5ms task, 408.5ms against 314.5ms style recalculation:
+10.5 percent less task time and 23 percent less recalculation, against a
+noise floor of 1.3 percent measured base against base on this same page.
+
+Forty-six tracked elements at 18.5 non-reading descendants per reader, and
+the sheet pays for itself on the library's own front page. With sticky-steps
+at minus twelve and timeline-scrub at plus seven, the trade is now measured on
+three shipped pages and lands where the shape probe said it would.
+
+#### Scoped clocks on hero-cinematic: a real page on the losing side
+
+`ab-hero-scopedcss.json`, the sheet plus the page's own reader forwarded
+(`.sv :has(.hero-inner), .hero-inner`), six balanced runs, 720 frames each,
+render equal: 281.5ms against 316.5ms task, 83ms against 107ms style
+recalculation. Twelve percent more task time, twenty-nine percent more
+recalculation. One tracked element, one child, eleven descendants, and the
+reader is the child that holds most of them: registration pays on the holder
+and there is almost nothing under it to save. Two wins and two losses on the
+four shipped pages measured so far, each on the side the page's shape put it.
+
+#### editorial-manifesto: the gate finds a gap in the scoped contract
+
+With its reader forwarded (`.sv :has(.manifesto-copy p), .manifesto-copy
+p`) the page still failed: paragraphs at opacity 0.28 under the sheet against
+1 without it. Not a missing forward. The page's rule is
+`--read: clamp(0, calc(var(--sv-t, 1) * ...), 1)`: unread paragraphs are
+fully visible because `--sv-t` is undefined until the section is written and
+the fallback 1 applies. A registered property is never undefined; it reads
+its initial value, 0, and the fallback is dead. That is a semantic
+consequence of registration the sheet's documentation did not state and now
+does: declare the default on the tracked element (`.sv-manifesto { --sv-t: 1
+}`), which the driver's inline write overrides on arrival, and the reader
+sees what it saw before. The runner gained `--author=<css>` to carry such a
+rule, and the page is measured again with it.
+
+#### Scoped clocks on case-study-rail: neutral
+
+`ab-casestudy-scopedcss.json`, the sheet alone, six balanced runs, 720
+frames each, render equal: 282.5ms against 274.5ms task, 80.5ms against 79ms
+style recalculation. Under three percent, inside the noise floor. One tracked
+element, one child, 24 descendants, and a rail whose readers are its own
+cards: nothing much to save, nothing much to pay.
+
+#### editorial-manifesto, second failure: `:has()` is evaluated from the candidate
+
+With the reader forwarded and the default moved, the paragraphs still read a
+clock of 0. A probe through the path: the section holds 0.4283, `.manifesto-
+copy` holds 0, the paragraphs hold 0. The path rule was `.sv
+:has(.manifesto-copy p)`, and `:has()` evaluates its relative selector from
+each candidate: `.manifesto-copy` has no `.manifesto-copy` inside it, so it
+did not match its own path rule and stayed at the initial value, and
+`inherit` on the paragraphs read that.
+
+The rule that works names the reader's LAST compound: `.sv :has(p)` matches
+every element on the way down to a paragraph, `.manifesto-copy` included.
+The sheet's own forwards already had this shape (`:has(.sv-drift)`,
+`:has(.sv-range)`, single-compound readers), which is why the presets never
+hit it; the documentation now states the rule with a two-compound example,
+and the CI gate's entry for the page is corrected.
+
+#### Scoped clocks on editorial-manifesto: gate passed, losing side
+
+`ab-editorial-scopedcss.json`, the sheet plus `.sv :has(p), .manifesto-copy
+p` forwarded and `.sv-manifesto { --sv-t: 1 }` replacing the fallback, six
+balanced runs, 720 frames each, render equal: 227ms against 247.5ms task,
+66.5ms against 112.5ms style recalculation. Nine percent more task time,
+sixty-nine percent more recalculation. The readers are the leaves, every
+element on the way to them now holds a registered value, and there is nothing
+underneath to save. The most expensive shape for the sheet, and the page
+where its contract took two rounds to get right.
+
+#### Hypothesis 1, settled
+
+Seven measurements behind the hardened gate, six runs each, frames equal,
+rendering equal:
+
+| page | task | style recalc |
+|---|---:|---:|
+| deep-50 | -27.5% | -62.7% |
+| home page (three own readers forwarded) | -10.5% | -23% |
+| sticky-steps | -12% | -9% |
+| case-study-rail | -3% (noise) | -2% |
+| main-900 | +4% | +13% |
+| timeline-scrub | +7% | +7% |
+| hero-cinematic | +12% | +29% |
+| editorial-manifesto (reader and default forwarded) | +9% | +69% |
+
+The sheet pays per element that holds a registered value and saves per
+descendant that no longer inherits one. It ships as an opt-in with that
+sentence, the measurements above, the path rule, and the fallback clause,
+and the CI gate keeps every shipped page rendering identically under it with
+the author lines each one needs.

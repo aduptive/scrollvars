@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "date": "2026-09-10T22:31:12.660Z",
+    "page": "/fx/hero-cinematic.html",
+    "variant": "forward",
+    "runs": 3,
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 412,
+      "recalcMs": 118,
+      "scriptMs": 64,
+      "fps": 60,
+      "runs": 3
+    },
+    "forward": {
+      "taskMs": 471,
+      "recalcMs": 133,
+      "scriptMs": 66,
+      "fps": 60,
+      "runs": 3
+    }
+  }
+}

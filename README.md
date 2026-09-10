@@ -104,6 +104,7 @@ import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.6 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.2 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.1 KB gz
+import 'scrollvars/styles/scoped.css'  // OPT-IN: the clocks stop inheriting, see Scoped clocks below, 1.0 KB gz
 ```
 
 ## Pay for what you use
@@ -625,6 +626,63 @@ enhancement, never a dependency.
 ## License
 
 MIT
+
+## Scoped clocks, an opt-in for deep pages
+
+`--sv-t` and `--sv-view` are written on the tracked element, and as ordinary
+custom properties they inherit: every write re-resolves style for the whole
+subtree, including every node that never reads them. On the published
+benchmark that resolution is the whole of the gap to GSAP on deep DOM, and
+none of it on flat DOM.
+
+`scrollvars/styles/scoped.css` registers both clocks non-inheriting, so an
+invalidation stops at the tracked element. The rule it imposes is one
+sentence: **a clock reaches only the elements that declare `inherit` for it,
+and every element between the tracked ancestor and a reader must declare it
+too.** The shipped presets that read a clock from a descendant (`sv-drift`,
+`sv-range`) are forwarded inside the sheet, along the whole path down to
+them. Your own reader needs one rule, covering the reader and every element
+between it and the tracked ancestor:
+
+```css
+.sv :has(.my-card), .my-card { --sv-t: inherit; }
+```
+
+Just `.my-card { --sv-t: inherit; }` when it is a direct child. Put the
+reader's LAST compound inside `:has()`: for a reader written as
+`.copy p`, the path rule is `.sv :has(p)`, because `:has(.copy p)` is
+evaluated from each candidate and `.copy` itself has no `.copy` inside it,
+so it would be skipped and read the initial value. The sheet
+registers nothing where `:has()` is unsupported, so a browser that could
+register but not forward stays on plain inheritance.
+
+One more consequence of registration: a registered property always has a
+value, so a fallback such as `var(--sv-t, 1)` is never taken again. It
+reads the initial value, 0, wherever the driver has not written yet. If your
+CSS relied on that fallback (unread paragraphs fully visible until the
+section is tracked, say), declare the default on the tracked element instead,
+`.my-section { --sv-t: 1; }`: the driver's inline write overrides it the
+moment it arrives, and the reader sees the same value it saw before.
+
+It is not free and it is not always a win. Registration makes the browser
+resolve a typed value on every element that holds one, so the sheet pays per
+reader and saves per non-reading descendant. Measured behind a rendered-output
+gate, same page and same scroll each time: on the benchmark's deep profile
+(50 descendants per reader) 63 percent less style recalculation and 28
+percent less total task time; on its flat profile (every descendant a
+reader) 13 percent more recalculation and 4 percent more task time. On
+scrollvars.dev's own home page, with its three readers forwarded, 10 percent
+less task time and 23 percent less recalculation; on the gallery pages
+sticky-steps 12 percent less, timeline-scrub 7 percent more,
+hero-cinematic 12 percent more, editorial-manifesto 9 percent more and
+case-study-rail within noise, each on the side its shape predicts. Import it
+when a tracked wrapper holds a lot of content that does not animate; leave
+it out when the tracked element's own children are the readers. Measure your
+page, the benchmark harness is in the repository.
+
+Browsers without `@property` ignore the registration and keep inheriting, so
+the sheet never breaks a page below the floor; it can only make one faster
+where it is understood. It is deliberately not part of `styles.css`.
 
 ## Limit animation work to its consumers
 
