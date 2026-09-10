@@ -1,18 +1,17 @@
 #!/usr/bin/env node
 /**
  * Diagnostic: deep DOM is where the library loses to GSAP, and all of the
- * excess is style recalculation. --sv-t and --sv-view are written on the
- * tracked element and they INHERIT, so each write invalidates that element's
- * whole subtree. The deep profiles hang 20 or 50 text descendants off every
- * box, none of which read either clock.
+ * excess is style recalculation. Section clocks inherit into animated boxes
+ * and their text subtrees. Registration alone breaks the boxes' animation;
+ * the visual preflight must reject that variant before accepting timings.
  *
  * Same page, same 12s path:
  *   base       untouched
- *   noinherit  --sv-t and --sv-view registered inherits:false before boot
+ *   noinherit  --sv-t and --sv-view registered inherits:false after baseline audit
  *
  * The second variant writes exactly what the first writes; only the
- * invalidation scope changes. It is the same discriminator that found the
- * document-wide cost, one level down. Not a shipped change.
+ * invalidation scope changes. This is not an equivalent workload unless the
+ * visual gate passes. Not a shipped change.
  */
 import { createServer } from 'node:http'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -20,6 +19,7 @@ import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import puppeteer from 'puppeteer-core'
+import { assertClockEquivalence } from './clock-equivalence.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const args = Object.fromEntries(process.argv.slice(2).map(a => (a.startsWith('--') ? a.slice(2).split('=') : [a, true])))
@@ -53,21 +53,34 @@ async function once(variant) {
     const initial = await metrics()
     await page.goto(`${base}scrollvars.html?${PARAMS}&harness=1`, { waitUntil:'load', timeout:60000 })
 
+    // Check the actual consumers at multiple positions before timing. A rAF
+    // runner still reports 60fps when registration has frozen every box.
+    const sampleMotion = () => page.evaluate(async () => {
+      const box = document.querySelectorAll('.box')[40]
+      if (!box) throw new Error('Clock preflight requires at least 41 boxes')
+      const section = box.parentElement
+      const top = section.getBoundingClientRect().top + scrollY
+      const samples = []
+      for (const offset of [-innerHeight / 2, 0, innerHeight / 2, 0]) {
+        scrollTo(0, top + offset)
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        const cs = getComputedStyle(box)
+        samples.push({ translate: cs.translate, opacity: cs.opacity })
+      }
+      return samples
+    })
+    const expected = await sampleMotion()
+    if (new Set(expected.map(sample => JSON.stringify(sample))).size < 2)
+      throw new Error('Clock baseline did not animate during preflight')
+
     if (variant === 'noinherit')
       await page.evaluate(() => {
         for (const name of ['--sv-t', '--sv-view'])
           CSS.registerProperty({ name, syntax:'<number>', inherits:false, initialValue:'0' })
       })
 
-    // Same rendered output? Sample a box at a fixed scroll position.
-    const sample = await page.evaluate(() => {
-      scrollTo(0, 8000)
-      return new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
-        const box = document.querySelectorAll('.box')[40]
-        const cs = getComputedStyle(box)
-        res({ translate: cs.translate, opacity: cs.opacity })
-      })))
-    })
+    const sample = await sampleMotion()
+    assertClockEquivalence(expected, sample)
     await page.evaluate(() => scrollTo(0, 0))
 
     await page.waitForFunction(() => typeof window.__benchStart === 'function')
@@ -88,7 +101,7 @@ async function once(variant) {
       threadTimeMs: Math.round((end.ThreadTime - start.ThreadTime) * 1000),
       fps: payload.fps, frames: payload.frames, worstMs: payload.worstMs,
       framesOver25ms: payload.framesOver25ms, p95Ms: payload.p95Ms,
-      wrote, sample,
+      wrote, sample, expected,
     }
   } finally { await context.close() }
 }
@@ -96,17 +109,21 @@ async function once(variant) {
 const VARIANTS = ['base', 'noinherit']
 const raw = Object.fromEntries(VARIANTS.map(v => [v, []]))
 const order = []
-for (let run = 0; run < RUNS; run++) {
-  const pool = Math.floor(run / VARIANTS.length) % 2 ? [...VARIANTS].reverse() : VARIANTS
-  const seq = pool.slice(run % pool.length).concat(pool.slice(0, run % pool.length))
-  order.push(seq)
-  for (const v of seq) {
-    const r = await once(v)
-    raw[v].push(r)
-    console.log(`  ${v.padEnd(10)} run ${run + 1}: task ${String(r.taskMs).padStart(5)}ms · recalc ${String(r.recalcMs).padStart(5)}ms · recalcs ${String(r.recalcCount).padStart(5)} · fps ${r.fps} · --sv-page="${r.wrote.page}"`)
+try {
+  for (let run = 0; run < RUNS; run++) {
+    const pool = Math.floor(run / VARIANTS.length) % 2 ? [...VARIANTS].reverse() : VARIANTS
+    const seq = pool.slice(run % pool.length).concat(pool.slice(0, run % pool.length))
+    order.push(seq)
+    for (const v of seq) {
+      const r = await once(v)
+      raw[v].push(r)
+      console.log(`  ${v.padEnd(10)} run ${run + 1}: task ${String(r.taskMs).padStart(5)}ms · recalc ${String(r.recalcMs).padStart(5)}ms · recalcs ${String(r.recalcCount).padStart(5)} · fps ${r.fps} · --sv-page="${r.wrote.page}"`)
+    }
   }
+} finally {
+  await browser.close()
+  server.close()
 }
-await browser.close(); server.close()
 
 const median = xs => { const s = xs.slice().sort((a, b) => a - b), m = Math.floor(xs.length / 2); return (s[Math.ceil(xs.length / 2) - 1] + s[m]) / 2 }
 const out = { meta: {
@@ -124,7 +141,7 @@ for (const [v, runs] of Object.entries(raw))
     samples: runs,
   }
 mkdirSync(join(root, 'bench', 'results'), { recursive: true })
-writeFileSync(join(root, 'bench', 'results', args.out || 'precision-cost.json'), JSON.stringify(out, null, 2))
+writeFileSync(join(root, 'bench', 'results', args.out || 'clocks-cost.json'), JSON.stringify(out, null, 2))
 console.log('\n| variant | task | recalc | recalcs | script | layout | fps |')
 console.log('|---|---:|---:|---:|---:|---:|---:|')
 for (const [v, m] of Object.entries(out.variants))

@@ -1093,26 +1093,36 @@ normal scroll speed the progress of each box changes by more than 0.01 per
 frame anyway, so even two decimals produces a different string almost every
 time. Keep four decimals.
 
-#### The per-element clocks inherit too (`clocks-cost-deep50.json`)
+#### Invalid comparison: per-element clocks (`clocks-cost-deep50.json`)
 
-Deep DOM is where the library loses to GSAP, and all of the excess is style
-recalculation. `--sv-t` and `--sv-view` are written on the tracked element and
-they inherit, so each write invalidates that element's whole subtree, and the
-deep profiles hang 50 text descendants off every box, none of which read
-either clock. Same discriminator as the document-wide finding, one level down:
-`clocks-cost.mjs` registers both with `inherits: false` before boot, so the
-writes are identical and only the invalidation scope changes. deep-50, three
-balanced runs:
+**Withdrawn as performance evidence.** The archived samples show different
+rendered output in every repetition. The baseline sampled opacity `1` and
+translate `0px -121.877px`; `noinherit` sampled opacity `0.3` and translate
+`0px 121.877px`. These values come directly from each variant's `sample`
+field in the raw JSON, which is retained unchanged for audit.
+
+The benchmark tracks each section with `travel: true, view: false`, then
+its descendant boxes read `--sv-t`. Registering that property as
+non-inheriting disconnects the boxes from the section's clock. The old
+harness collected a visual sample but never compared it. Its runner's FPS
+measured the scrolling workload, not whether the boxes still animated.
+
+The timings below are historical observations of **unequal visual work**.
+They do not establish the benefit of a working scoped-clock design.
+
+The original hypothesis concerned inherited invalidation into the text
+descendants of each box. The experiment registered `--sv-t` and `--sv-view`
+with `inherits: false` after page load. Writes remained identical, but both
+invalidation scope and rendered output changed. Historical deep-50 results,
+three balanced runs:
 
 | variant | task | recalc |
 |---|---:|---:|
 | shipped | 1704ms | 745ms |
 | the same writes, not inheriting | 807ms | 167ms |
 
-53% less total task time and 78% less style recalculation. For scale, the
-published table puts gsap-batched at 1185ms on this profile: scoped clocks
-would move the library from 49% behind to 32% ahead on the workload where it
-is weakest.
+The previous interpretation extrapolated a competitive advantage from these
+timings. That conclusion is withdrawn because the animation changed.
 
 It cannot simply be adopted. `@property` registration is document-wide, and
 the shipped presets read both clocks from a DESCENDANT of the tracked element:
@@ -1135,8 +1145,30 @@ Two ways out, both larger than a patch, neither taken here:
    larger than a handful of nodes. That is a design change to the write model
    and belongs to a major, with the stagger cases measured first.
 
-Recorded rather than adopted. The number is the argument for doing it
-properly, not for doing it quickly.
+No core change is justified by this screen. Scoping remains a plausible
+hypothesis, but its benefit with equivalent animation is unmeasured.
+
+The harness now samples a box through forward and reverse scroll positions,
+requires baseline motion, and compares rendered translate and opacity before
+and after registration. It aborts before accepting the altered workload's
+timings or writing a result file. `test/clock-equivalence.test.mjs` exercises
+that same comparator against the archived samples. The test was first run
+with a no-op comparator and failed with `Missing expected exception`, then
+passed with the comparison enabled. This proves the archived mismatch is
+rejected, not that the browser preflight has executed in this environment.
+
+On the follow-up worktree, Node 20 could not run the requested
+`node measure.mjs --scenarios=main,deep --runs=3`: the sandbox refused the
+server's listen call with `EPERM`. An explicit loopback listen was refused
+too. There are no fresh same-session timings. The redesign is deferred,
+not rejected on measured performance grounds, and the public API is unchanged.
+
+The next valid experiment should retain section geometry and fan out a
+non-inheriting travel clock to the boxes that consume it. It must compare
+rendered motion before timing and count the extra writes. For production,
+explicit consumer ownership must also handle nested trackers, insertion,
+release and retracking. Stagger can retain the discrete inherited live flag;
+pin, scene and range consumers need their own equivalent-motion fixtures.
 
 #### Suppressing one clock of two buys nothing (`view-cost-main.json`)
 
