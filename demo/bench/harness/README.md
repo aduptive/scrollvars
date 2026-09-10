@@ -1137,3 +1137,23 @@ Two ways out, both larger than a patch, neither taken here:
 
 Recorded rather than adopted. The number is the argument for doing it
 properly, not for doing it quickly.
+
+#### Suppressing one clock of two buys nothing (`view-cost-main.json`)
+
+If an unread `--sv-view` costs something, not writing it should show up.
+`view-cost.mjs` drops every `--sv-view` write on main-900 and leaves `--sv-t`
+alone. Three balanced runs: 1537ms task and 318ms recalculation against
+1500ms and 314ms. Nothing.
+
+The reason matters more than the result. Both clocks are written on the SAME
+element in the same frame, so the subtree is invalidated by the first write
+whether or not the second happens. Suppression only pays when it removes every
+inherited write from an element, which is exactly why the earlier
+callback-only screen won on the deep profiles (46 to 71 percent less
+recalculation, `onTravel` replacing the clock entirely) and lost on the plain
+one. Partial suppression is not a smaller version of the same win; it is no
+win at all.
+
+That closes the write-level ideas. What is left on this workload is the
+invalidation scope itself, which the clocks screen above priced at 53 percent
+and which the shipped presets stand in the way of.
