@@ -37,7 +37,7 @@ const pagePath = join(root, 'demo', 'bench', 'index.html')
 const { results, current, mainFile } = readBenchResults(root)
 
 const label = (e) =>
-  ({ 'scrollvars.html': 'ScrollVars', 'scrollvars-page.html': 'ScrollVars (document variables published)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e
+  ({ 'scrollvars.html': 'ScrollVars', 'scrollvars-page.html': 'ScrollVars (document variables published)', 'scrollvars-scoped.html': 'ScrollVars + styles/scoped.css', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic, 1 trigger/box)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, 1 trigger/section)', 'framer.html': 'framer-motion (React)' })[e] ?? e
 
 const main = current.scenarios.find((s) => s.name === 'main-900')
 const deeps = results.scenarios.filter((s) => s.name.startsWith('deep-'))
@@ -116,8 +116,8 @@ console.log(`bench main table from results/${mainFile}; deep/gallery from result
 // ── the same numbers in README.md and AGENTS.md (markdown, between markers) ──
 const sizes = measureSizes(root)
 const measuredCore = current.meta.coreGzipKB ?? sizes.everything
-const BUNDLES = { 'scrollvars.html': `${measuredCore} KB`, 'scrollvars-local.html': `${measuredCore} KB`, 'scrollvars-page.html': `${measuredCore} KB`, 'gsap.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'gsap-batched.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
-const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'scrollvars-page.html': 'ScrollVars (document variables published)', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
+const BUNDLES = { 'scrollvars.html': `${measuredCore} KB`, 'scrollvars-local.html': `${measuredCore} KB`, 'scrollvars-page.html': `${measuredCore} KB`, 'scrollvars-scoped.html': `${(Number(measuredCore) + Number(sizes.css.scoped)).toFixed(1)} KB`, 'gsap.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'gsap-batched.html': `${current.meta.competitors?.gsapGzipKB ?? GSAP_KB} KB`, 'framer.html': '46.9 KB (+ React)' }
+const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'scrollvars-page.html': 'ScrollVars (document variables published)', 'scrollvars-scoped.html': 'ScrollVars + styles/scoped.css', 'scrollvars-local.html': 'ScrollVars (page outputs off)', 'gsap.html': 'gsap + ScrollTrigger (idiomatic)', 'gsap-batched.html': 'gsap + ScrollTrigger (batched, symmetric)', 'framer.html': 'framer-motion' }
 const md = [`Measured ${current.meta.date}; package ${current.meta.version ?? 'historical'}, ${current.meta.runs} runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/${mainFile}); [frame tails and methodology](https://scrollvars.dev/bench/).`, '', '| engine | total CPU (12 s) | fps | bundle (gzip) | JS script | style recalc | JS heap |', '|---|---|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
   md.push(`| ${MD_LABEL[engine]} | ${m.taskMs} ms | ${+m.fps.toFixed(1)} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${m.heapMB} MB |`)

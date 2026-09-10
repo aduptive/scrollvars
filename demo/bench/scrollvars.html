@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>bench · ScrollVars</title>
+<script>
+  // ?scoped=1: the published row for styles/scoped.css. The sheet (copied
+  // next to this page by demo:sync, never hand-edited) plus the two author
+  // lines its contract asks of this fixture: the boxes are the readers, and
+  // their var(--sv-t, 0.5) fallback becomes a default on the tracked section.
+  if (new URLSearchParams(location.search).has('scoped'))
+    document.write('<link rel="stylesheet" href="scoped.css"><style>.box { --sv-t: inherit; --sv-view: inherit; } section { --sv-t: 0.5; }</style>');
+</script>
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { background: #121118; color: #e6e4f0; font: 14px/1.5 -apple-system, sans-serif; }
