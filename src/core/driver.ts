@@ -303,10 +303,45 @@ function adoptPageConsumers() {
   schedule()
 }
 
+// A <link> whose sheet has not been parsed yet answers nothing: its rules are
+// unreadable at this instant, which is the same uncertainty a cross-origin
+// sheet is. It publishes meanwhile and asks again when the sheet lands, so a
+// slow stylesheet cannot make the page silent and cannot make it loud forever.
+// CI found this: locally the fixture's stylesheet always won the race.
+function pendingSheets(): HTMLLinkElement[] {
+  // Anything that cannot answer is uncertainty, and detectPageConsumers()
+  // already says yes to that, so an empty list here is the honest answer
+  // rather than a second guess.
+  try {
+    return Array.from(document.querySelectorAll('link[rel~="stylesheet"]'))
+      .filter(link => !(link as HTMLLinkElement).sheet) as HTMLLinkElement[]
+  } catch {
+    return []
+  }
+}
+
 function resolvePageOutputs() {
   if (pageOutputsMode !== 'auto') return
-  pageOutputsEnabled = detectPageConsumers()
-  if (!pageOutputsEnabled) watchForPageConsumers()
+  const pending = pendingSheets()
+  const found = detectPageConsumers()
+  const enabled = found || pending.length > 0
+  const was = pageOutputsEnabled
+  if (was && !enabled) stopPageOutputs()
+  pageOutputsEnabled = enabled
+  if (pending.length) {
+    for (const link of pending) {
+      const settled = () => {
+        link.removeEventListener('load', settled)
+        link.removeEventListener('error', settled)
+        resolvePageOutputs()
+      }
+      link.addEventListener('load', settled)
+      link.addEventListener('error', settled)
+    }
+  } else if (!found) watchForPageConsumers()
+  // Only a transition earns a frame. Scheduling on every resolution sustains
+  // an idle loop, which is the trap the setPageOutputs guard was written for.
+  if (!was && enabled) schedule()
 }
 
 function schedule() {

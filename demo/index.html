@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.5 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 3.6 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.5 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.6 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1769,7 +1769,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.5 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.6 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2805,9 +2805,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>8.8 KB / 3.5 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.2 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.1 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.3 KB / 3.6 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2958,7 +2958,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.5 KB gzip · full core 7.8 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.6 KB gzip · full core 8.0 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3217,12 +3217,37 @@ var SV = (() => {
     pageOutputsEnabled = true;
     schedule();
   }
+  function pendingSheets() {
+    try {
+      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet);
+    } catch {
+      return [];
+    }
+  }
   function resolvePageOutputs() {
     if (pageOutputsMode !== "auto")
       return;
-    pageOutputsEnabled = detectPageConsumers();
-    if (!pageOutputsEnabled)
+    const pending = pendingSheets();
+    const found = detectPageConsumers();
+    const enabled = found || pending.length > 0;
+    const was = pageOutputsEnabled;
+    if (was && !enabled)
+      stopPageOutputs();
+    pageOutputsEnabled = enabled;
+    if (pending.length) {
+      for (const link of pending) {
+        const settled = () => {
+          link.removeEventListener("load", settled);
+          link.removeEventListener("error", settled);
+          resolvePageOutputs();
+        };
+        link.addEventListener("load", settled);
+        link.addEventListener("error", settled);
+      }
+    } else if (!found)
       watchForPageConsumers();
+    if (!was && enabled)
+      schedule();
   }
   function schedule() {
     if (!raf && (entries.size > 0 || pageOutputs && pageOutputsEnabled))
