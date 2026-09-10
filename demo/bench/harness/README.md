@@ -1022,3 +1022,52 @@ pages that use the variables and removes the cost for pages that do not.
 Gate it on the published benchmark: the main-900 task median must fall to
 within measurement noise of the `off` variant with the outputs suppressed
 and must not move when a stylesheet does reference them.
+
+#### Adopted, and what it cost the competitor gap (`main-after-autodetect.json`)
+
+The runtime change landed on `perf/page-outputs-cost`: the driver asks the
+document, on the first frame that could publish, whether anything can read the
+two variables, and stays silent when nothing can. `demo/bench/scrollvars.html`
+no longer calls `setPageOutputs(true)` on the default path, because a
+benchmark page that configures the library measures the configuration rather
+than the library, which is how five screens came to be run inside the very
+setting that was the cost.
+
+Same page, same path, four runs:
+
+| engine | script | recalc | task | heap |
+|---|---:|---:|---:|---:|
+| scrollvars | 83ms | 322ms | 1543.5ms | 1.1MB |
+| scrollvars-local | 80ms | 307ms | 1481ms | 1.0MB |
+| gsap | 326.5ms | 124ms | 1394.5ms | 6.15MB |
+| gsap-batched | 230.5ms | 139.5ms | 1374.5ms | 6.7MB |
+| framer-motion | 917ms | 63ms | 1820.5ms | 10.6MB |
+
+1543.5ms against 4128.5ms before, so 1.12x gsap-batched instead of 2.6x, and
+0.85x framer-motion. The remaining gap is style recalculation (322ms against
+139.5ms), which is what a library that writes custom properties and lets CSS
+animate pays for the privilege; script time is 2.8x to 11x lower and heap is
+6x to 10x lower. That is the honest shape of the trade, and it is a shape
+worth publishing rather than the one the old default produced.
+
+An adversarial review of the diff then found the same class of bug the change
+exists to avoid, in a place the first fix had not reached: the inline-style
+selector matches a substring, `--sv-view` matched `--sv-v`, and the driver
+writes `--sv-view` inline on every tracked element, so every rescan after the
+first frame said yes on every page. The invariant that should have caught it
+could not: "a late stylesheet turns publishing back on" would have passed with
+no consumer in that stylesheet at all. Twelve invariants now, including a late
+stylesheet that reads nothing and must stay silent.
+
+Remaining performance work, in the order the numbers justify: the style
+recalculation gap itself (322ms against GSAP's 139.5ms on the same workload)
+is now the largest single line, and it is the cost of writing `--sv-t` on 900
+elements. The callback-only screen already measured 46 to 71 percent less
+recalculation on deep DOM by not publishing an unread local clock, which is
+the same shape of finding one level down. That is the next hypothesis worth a
+protocol, and it should be measured against this new baseline rather than the
+old one.
+
+The stamped bench tables in README and AGENTS still carry the old numbers.
+Regenerating them needs a full `measure.mjs` run (main, deep, gallery) on a
+quiet machine.
