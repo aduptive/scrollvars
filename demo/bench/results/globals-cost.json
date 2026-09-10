@@ -1,0 +1,335 @@
+{
+  "meta": {
+    "date": "2026-09-10T14:18:07.531Z",
+    "chrome": "Chrome/152.0.7977.85",
+    "runs": 4,
+    "params": "s=60&p=15",
+    "commit": "1ec2283c14f4cdebceb74c1c184e3ea79b1819ef",
+    "dirty": true,
+    "note": "Diagnostic only. noinherit registers the two page outputs with inherits:false; the writes are identical to on."
+  },
+  "order": [
+    [
+      "on",
+      "off",
+      "noinherit"
+    ],
+    [
+      "off",
+      "noinherit",
+      "on"
+    ],
+    [
+      "noinherit",
+      "on",
+      "off"
+    ],
+    [
+      "noinherit",
+      "off",
+      "on"
+    ]
+  ],
+  "variants": {
+    "on": {
+      "taskMs": 4071.5,
+      "recalcMs": 3249,
+      "scriptMs": 26,
+      "layoutMs": 0,
+      "recalcCount": 709.5,
+      "threadTimeMs": 4128.5,
+      "fps": 59.15,
+      "framesOver25ms": 4,
+      "samples": [
+        {
+          "scriptMs": 24,
+          "recalcMs": 3340,
+          "layoutMs": 0,
+          "taskMs": 4154,
+          "recalcCount": 711,
+          "layoutCount": 0,
+          "threadTimeMs": 4210,
+          "fps": 59.3,
+          "frames": 711,
+          "worstMs": 83.4,
+          "framesOver25ms": 4,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0011",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 28,
+          "recalcMs": 3158,
+          "layoutMs": 0,
+          "taskMs": 3989,
+          "recalcCount": 708,
+          "layoutCount": 0,
+          "threadTimeMs": 4047,
+          "fps": 59,
+          "frames": 708,
+          "worstMs": 99.9,
+          "framesOver25ms": 4,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0013",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 30,
+          "recalcMs": 2704,
+          "layoutMs": 0,
+          "taskMs": 3560,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 3690,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0009",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 23,
+          "recalcMs": 3362,
+          "layoutMs": 0,
+          "taskMs": 4238,
+          "recalcCount": 708,
+          "layoutCount": 0,
+          "threadTimeMs": 4298,
+          "fps": 59,
+          "frames": 708,
+          "worstMs": 116.6,
+          "framesOver25ms": 5,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0010",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "off": {
+      "taskMs": 1309.5,
+      "recalcMs": 269,
+      "scriptMs": 65,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1343,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 54,
+          "recalcMs": 230,
+          "layoutMs": 0,
+          "taskMs": 1130,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1165,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 51,
+          "recalcMs": 209,
+          "layoutMs": 0,
+          "taskMs": 1049,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1085,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 79,
+          "recalcMs": 314,
+          "layoutMs": 0,
+          "taskMs": 1489,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1521,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 76,
+          "recalcMs": 308,
+          "layoutMs": 0,
+          "taskMs": 1493,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1538,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "noinherit": {
+      "taskMs": 1243,
+      "recalcMs": 267.5,
+      "scriptMs": 67,
+      "layoutMs": 0,
+      "recalcCount": 720,
+      "threadTimeMs": 1278,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 70,
+          "recalcMs": 279,
+          "layoutMs": 0,
+          "taskMs": 1289,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1324,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 63,
+          "recalcMs": 256,
+          "layoutMs": 0,
+          "taskMs": 1197,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1232,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 64,
+          "recalcMs": 241,
+          "layoutMs": 0,
+          "taskMs": 1098,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1133,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 78,
+          "recalcMs": 315,
+          "layoutMs": 0,
+          "taskMs": 1452,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1492,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    }
+  }
+}

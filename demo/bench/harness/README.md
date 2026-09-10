@@ -969,3 +969,56 @@ types expose Performance.enable timeDomain = timeTicks/threadTicks. Verify
 what the installed browser actually reports before relying on it.
 The target is a falsifiable new optimization of inherited-style work, not
 another repetition of the failed renderer/hint/property/WAAPI screens.
+
+#### The document-wide outputs, measured directly (`globals-cost.json`)
+
+The renderer, hint, property and WAAPI screens all optimized inside the
+`-off` configuration and treated globals-on as a control. That inverted the
+question: the control condition was the finding. `globals-cost.mjs` measures
+the same page and the same 12-second path in three variants: `on` (the
+shipped default), `off` (`setPageOutputs(false)`), and `noinherit`, which
+writes `--sv-page` and `--sv-v` exactly as `on` does but registers both with
+`inherits: false`. The third variant is the discriminator: identical writes,
+no subtree invalidation. Every run asserts the two properties really are
+present on `<html>` (or absent in `off`) and samples a box's computed
+`translate`/`opacity` at a fixed scroll position.
+
+| profile | on task / recalc | off task / recalc | noinherit task / recalc |
+|---|---:|---:|---:|
+| 900 plain boxes (4 runs) | 4071.5 / 3249 | 1309.5 / 269 | 1243 / 267.5 |
+| 50 boxes (3 runs) | 2047 / 1453 | 1107 / 276 | 1011 / 270 |
+| 150 boxes, 50 text descendants (3 runs) | 1920 / 1222 | 1018 / 250 | 1012 / 266 |
+
+Milliseconds over 12 seconds, medians, balanced order, Chrome 152.0.7977.85.
+`noinherit` tracks `off` in all three profiles while writing both properties
+every frame, so the cost is the inherited invalidation, not the write, the
+velocity timer or the string formatting. The recalculation COUNT is the same
+in all three (708 to 720): the same number of style updates, each traversing
+the whole document instead of the animated elements. Sampled
+`translate`/`opacity` are byte-identical across variants, so no variant wins
+by rendering less.
+
+Against the competitor numbers already recorded in `main-style-confirm.json`
+(4 runs, same page): gsap-batched 1588ms task / 171.5ms recalc and framer
+1855ms / 77.5ms, versus 4128.5ms / 3272ms for the shipped default and
+1696ms / 368.5ms with the outputs off. The default is 2.6x GSAP's total task
+time; without the two document-wide writes the same engine is within 7% of
+GSAP and ahead of framer-motion. That gap, not the renderer, is what a
+reviewer measures.
+
+Nothing in this repository consumes either property: `grep` for
+`var(--sv-page` and `var(--sv-v)` across `styles/`, `demo/`, `src/`, the
+gallery and the docs returns nothing. Every page pays document-wide
+invalidation on every scroll frame for two variables none of the library's
+own presets or demos read.
+
+Next step is a runtime change, not another screen: publish the page outputs
+only when something can consume them. Detect the literal property names in
+the document's own stylesheets at boot, treat any unreadable (cross-origin)
+sheet as a consumer so the default fails safe, re-check when stylesheets
+change, and keep `setPageOutputs(true)` as the explicit override for a JS
+reader that CSS cannot reveal. That preserves the documented contract for
+pages that use the variables and removes the cost for pages that do not.
+Gate it on the published benchmark: the main-900 task median must fall to
+within measurement noise of the `off` variant with the outputs suppressed
+and must not move when a stylesheet does reference them.

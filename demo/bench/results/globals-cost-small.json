@@ -1,0 +1,264 @@
+{
+  "meta": {
+    "date": "2026-09-10T14:20:52.920Z",
+    "chrome": "Chrome/152.0.7977.85",
+    "runs": 3,
+    "params": "s",
+    "commit": "1ec2283c14f4cdebceb74c1c184e3ea79b1819ef",
+    "dirty": true,
+    "note": "Diagnostic only. noinherit registers the two page outputs with inherits:false; the writes are identical to on."
+  },
+  "order": [
+    [
+      "on",
+      "off",
+      "noinherit"
+    ],
+    [
+      "off",
+      "noinherit",
+      "on"
+    ],
+    [
+      "noinherit",
+      "on",
+      "off"
+    ]
+  ],
+  "variants": {
+    "on": {
+      "taskMs": 2047,
+      "recalcMs": 1453,
+      "scriptMs": 87,
+      "layoutMs": 0,
+      "recalcCount": 720,
+      "threadTimeMs": 2087,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 96,
+          "recalcMs": 1601,
+          "layoutMs": 0,
+          "taskMs": 2339,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 2366,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0004",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 70,
+          "recalcMs": 1251,
+          "layoutMs": 0,
+          "taskMs": 1894,
+          "recalcCount": 718,
+          "layoutCount": 0,
+          "threadTimeMs": 1926,
+          "fps": 59.8,
+          "frames": 718,
+          "worstMs": 33.3,
+          "framesOver25ms": 2,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "0.0004",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 87,
+          "recalcMs": 1453,
+          "layoutMs": 0,
+          "taskMs": 2047,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 2087,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "0.0012",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "off": {
+      "taskMs": 1107,
+      "recalcMs": 276,
+      "scriptMs": 124,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 1154,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 124,
+          "recalcMs": 277,
+          "layoutMs": 0,
+          "taskMs": 1116,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1155,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 116,
+          "recalcMs": 251,
+          "layoutMs": 0,
+          "taskMs": 1021,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1063,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 126,
+          "recalcMs": 276,
+          "layoutMs": 0,
+          "taskMs": 1107,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 1154,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    "noinherit": {
+      "taskMs": 1011,
+      "recalcMs": 270,
+      "scriptMs": 127,
+      "layoutMs": 0,
+      "recalcCount": 720,
+      "threadTimeMs": 1052,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 127,
+          "recalcMs": 278,
+          "layoutMs": 0,
+          "taskMs": 1022,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1062,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 129,
+          "recalcMs": 270,
+          "layoutMs": 0,
+          "taskMs": 1011,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1052,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        },
+        {
+          "scriptMs": 125,
+          "recalcMs": 267,
+          "layoutMs": 0,
+          "taskMs": 1001,
+          "recalcCount": 720,
+          "layoutCount": 0,
+          "threadTimeMs": 1042,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "0.0005",
+            "v": "0.000"
+          },
+          "sample": {
+            "translate": "0px -121.877px",
+            "opacity": "1"
+          }
+        }
+      ]
+    }
+  }
+}
