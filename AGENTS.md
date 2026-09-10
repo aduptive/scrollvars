@@ -340,15 +340,15 @@ Frame delivery and CPU cost are reported separately; neither is guaranteed
 across workloads or devices:
 
 <!-- bench:start -->
-Measured 2026-09-09T11:54:42.829Z; package 1.16.0, 4 runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/main-current.json); [frame tails and methodology](https://scrollvars.dev/bench/).
+Measured 2026-09-10T14:50:36.901Z; package 1.16.1, 3 runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/latest.json); [frame tails and methodology](https://scrollvars.dev/bench/).
 
 | engine | total CPU (12 s) | fps | bundle (gzip) | JS script | style recalc | JS heap |
 |---|---|---|---|---|---|---|
-| ScrollVars (page outputs on) | 4144.5 ms | 59.6 | 7.4 KB | 27 ms | 3378 ms | 1.4 MB |
-| ScrollVars (page outputs off) | 1872 ms | 60 | 7.4 KB | 109.5 ms | 382 ms | 1 MB |
-| gsap + ScrollTrigger (idiomatic) | 1800 ms | 60 | 45.2 KB | 441.5 ms | 161 ms | 6.15 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 1669 ms | 60 | 45.2 KB | 293 ms | 168.5 ms | 6.65 MB |
-| framer-motion | 2111.5 ms | 60 | 46.9 KB (+ React) | 1072.5 ms | 77.5 ms | 10.75 MB |
+| ScrollVars | 1395 ms | 60 | 8.0 KB | 88 ms | 299 ms | 1 MB |
+| ScrollVars (page outputs off) | 1409 ms | 60 | 8.0 KB | 76 ms | 293 ms | 1 MB |
+| gsap + ScrollTrigger (idiomatic) | 1364 ms | 60 | 45.2 KB | 314 ms | 120 ms | 6.1 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 1356 ms | 60 | 45.2 KB | 230 ms | 136 ms | 6.7 MB |
+| framer-motion | 1803 ms | 60 | 46.9 KB (+ React) | 933 ms | 62 ms | 11.8 MB |
 <!-- bench:end -->
 
 The committed results record the measurement date, package version, source

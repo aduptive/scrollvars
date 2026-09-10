@@ -36,35 +36,35 @@ no CSS consumes <code>--sv-page</code>/<code>--sv-v</code>. Local animation is i
 Use the batched GSAP row when comparing one tracker per section. Small bundles do not guarantee lower CPU.</p>
 <!-- measured:start -->
 <p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
-<code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome 152.0.7977.83,
-median of 4 runs, engine order rotated per repetition.
-Measured 2026-09-09T11:54:42.829Z; package 1.16.0, commit e393f56daecc996f24fa6a01005a45aafc55c4d0. Viewport 800×600. CPU totals accumulate over 12 seconds; they are not per-frame times. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/main-current.json" style="color:#a78bfa">results/main-current.json</a>.</p>
+<code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome 152.0.7977.85,
+median of 3 runs, engine order rotated per repetition.
+Measured 2026-09-10T14:50:36.901Z; package 1.16.1, commit d70b6a0f5eb499345e12dc7b7334f183b69a79c7. Viewport 800×600. CPU totals accumulate over 12 seconds; they are not per-frame times. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>engine</th><th>total CPU (12 s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>layout</th><th>JS heap</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
   <tbody>
-    <tr><td>ScrollVars (page outputs on)</td><td class="n">4144.5 ms</td><td class="n">59.6</td><td class="n">27 ms</td><td class="n">3378 ms (3028–3544)</td><td class="n">0 ms</td><td class="n">1.4 MB</td><td class="n">16.75 ms</td><td class="n">91.7</td><td class="n">1</td></tr>
-    <tr><td>ScrollVars (page outputs off)</td><td class="n">1872 ms</td><td class="n">60</td><td class="n">109.5 ms</td><td class="n">382 ms (301–430)</td><td class="n">0 ms</td><td class="n">1 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
-    <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">1800 ms</td><td class="n">60</td><td class="n">441.5 ms</td><td class="n">161 ms (148–182)</td><td class="n">0 ms</td><td class="n">6.15 MB</td><td class="n">16.75 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
-    <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">1669 ms</td><td class="n">60</td><td class="n">293 ms</td><td class="n">168.5 ms (162–173)</td><td class="n">0 ms</td><td class="n">6.65 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
-    <tr><td>framer-motion (React)</td><td class="n">2111.5 ms</td><td class="n">60</td><td class="n">1072.5 ms</td><td class="n">77.5 ms (75–87)</td><td class="n">0 ms</td><td class="n">10.75 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
+    <tr><td>ScrollVars</td><td class="n">1395 ms</td><td class="n">60</td><td class="n">88 ms</td><td class="n">299 ms (278–359)</td><td class="n">0 ms</td><td class="n">1 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
+    <tr><td>ScrollVars (page outputs off)</td><td class="n">1409 ms</td><td class="n">60</td><td class="n">76 ms</td><td class="n">293 ms (259–317)</td><td class="n">0 ms</td><td class="n">1 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
+    <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">1364 ms</td><td class="n">60</td><td class="n">314 ms</td><td class="n">120 ms (107–122)</td><td class="n">0 ms</td><td class="n">6.1 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
+    <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">1356 ms</td><td class="n">60</td><td class="n">230 ms</td><td class="n">136 ms (134–141)</td><td class="n">0 ms</td><td class="n">6.7 MB</td><td class="n">16.8 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
+    <tr><td>framer-motion (React)</td><td class="n">1803 ms</td><td class="n">60</td><td class="n">933 ms</td><td class="n">62 ms (59–67)</td><td class="n">0 ms</td><td class="n">11.8 MB</td><td class="n">16.8 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
   </tbody>
 </table></div>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
 selectors). Compare document-wide writes, local writes and batched GSAP:
-150 boxes, medians. Historical snapshot: 2026-09-08T18:43:46.100Z, package 1.15.0; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
+150 boxes, medians. Historical snapshot: 2026-09-10T14:50:36.901Z, package 1.16.1; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
   <tbody>
-    <tr><td>5 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">2463 ms (2227–2477)</td><td class="n">66 ms</td><td class="n">3086 ms</td><td class="n">1.3 MB</td><td class="n">60</td></tr>
-    <tr><td>5 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">522 ms (502–537)</td><td class="n">132 ms</td><td class="n">1632 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
-    <tr><td>5 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">118 ms (116–120)</td><td class="n">216 ms</td><td class="n">1198 ms</td><td class="n">3.1 MB</td><td class="n">60</td></tr>
-    <tr><td>20 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">2911 ms (2891–2959)</td><td class="n">22 ms</td><td class="n">3419 ms</td><td class="n">1.2 MB</td><td class="n">60</td></tr>
-    <tr><td>20 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">637 ms (598–653)</td><td class="n">115 ms</td><td class="n">1746 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
-    <tr><td>20 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">96 ms (93–109)</td><td class="n">178 ms</td><td class="n">1131 ms</td><td class="n">3.2 MB</td><td class="n">60</td></tr>
-    <tr><td>50 nodes/box</td><td>ScrollVars (page outputs on)</td><td class="n">4219 ms (3407–4255)</td><td class="n">38 ms</td><td class="n">4808 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
-    <tr><td>50 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">327 ms (249–937)</td><td class="n">61 ms</td><td class="n">806 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
-    <tr><td>50 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">27 ms (25–28)</td><td class="n">57 ms</td><td class="n">345 ms</td><td class="n">3.3 MB</td><td class="n">60</td></tr>
+    <tr><td>5 nodes/box</td><td>ScrollVars</td><td class="n">403 ms (384–421)</td><td class="n">107 ms</td><td class="n">1264 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
+    <tr><td>5 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">411 ms (407–424)</td><td class="n">110 ms</td><td class="n">1311 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
+    <tr><td>5 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">101 ms (96–103)</td><td class="n">190 ms</td><td class="n">1039 ms</td><td class="n">3.1 MB</td><td class="n">60</td></tr>
+    <tr><td>20 nodes/box</td><td>ScrollVars</td><td class="n">548 ms (530–560)</td><td class="n">100 ms</td><td class="n">1551 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
+    <tr><td>20 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">550 ms (530–573)</td><td class="n">106 ms</td><td class="n">1598 ms</td><td class="n">1 MB</td><td class="n">60</td></tr>
+    <tr><td>20 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">97 ms (94–99)</td><td class="n">186 ms</td><td class="n">1201 ms</td><td class="n">3.2 MB</td><td class="n">60</td></tr>
+    <tr><td>50 nodes/box</td><td>ScrollVars</td><td class="n">778 ms (763–802)</td><td class="n">94 ms</td><td class="n">1763 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
+    <tr><td>50 nodes/box</td><td>ScrollVars (page outputs off)</td><td class="n">775 ms (748–789)</td><td class="n">91 ms</td><td class="n">1727 ms</td><td class="n">1.1 MB</td><td class="n">60</td></tr>
+    <tr><td>50 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">93 ms (92–98)</td><td class="n">174 ms</td><td class="n">1185 ms</td><td class="n">3.4 MB</td><td class="n">60</td></tr>
   </tbody>
 </table></div>
 <h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
@@ -72,14 +72,14 @@ selectors). Compare document-wide writes, local writes and batched GSAP:
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
   <tbody>
-    <tr><td>ScrollVars (page outputs on)</td><td class="n">112 ms</td><td class="n">9067 ms (9010–9082)</td><td class="n">10711 ms</td><td class="n">59.9</td><td class="n">17.6 ms</td></tr>
+    <tr><td>ScrollVars</td><td class="n">112 ms</td><td class="n">9067 ms (9010–9082)</td><td class="n">10711 ms</td><td class="n">59.9</td><td class="n">17.6 ms</td></tr>
     <tr><td>ScrollVars (page outputs off)</td><td class="n">49 ms</td><td class="n">307 ms (289–422)</td><td class="n">1386 ms</td><td class="n">60</td><td class="n">17.5 ms</td></tr>
     <tr><td>gsap + ScrollTrigger (idiomatic, 1 trigger/box)</td><td class="n">230 ms</td><td class="n">94 ms (83–125)</td><td class="n">1208 ms</td><td class="n">60</td><td class="n">17.5 ms</td></tr>
     <tr><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">147 ms</td><td class="n">90 ms (79–91)</td><td class="n">1068 ms</td><td class="n">60</td><td class="n">17.5 ms</td></tr>
     <tr><td>framer-motion (React)</td><td class="n">1624 ms</td><td class="n">85 ms (76–91)</td><td class="n">2642 ms</td><td class="n">60</td><td class="n">17.5 ms</td></tr>
   </tbody>
 </table></div>
-<p class="sub">Raw: <a href="results/throttled-4x.json" style="color:#a78bfa">results/throttled-4x.json</a>.</p><h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees. Historical snapshot: 2026-09-08T18:43:46.100Z, package 1.15.0; <a href="results/latest.json">raw results</a>.</p><div class="table-scroll" tabindex="0"><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody><tr><td>hero-cinematic</td><td>105 ms</td><td>271 ms (59–283)</td><td>772 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>timeline-scrub</td><td>92 ms</td><td>195 ms (150–237)</td><td>633 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>sticky-steps</td><td>113 ms</td><td>141 ms (125–164)</td><td>555 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>stats-countup</td><td>65 ms</td><td>42 ms (34–43)</td><td>366 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>case-study-rail</td><td>93 ms</td><td>131 ms (125–191)</td><td>470 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>editorial-manifesto</td><td>109 ms</td><td>131 ms (121–145)</td><td>519 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr></tbody></table></div>
+<p class="sub">Raw: <a href="results/throttled-4x.json" style="color:#a78bfa">results/throttled-4x.json</a>.</p><h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees. Historical snapshot: 2026-09-10T14:50:36.901Z, package 1.16.1; <a href="results/latest.json">raw results</a>.</p><div class="table-scroll" tabindex="0"><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody><tr><td>hero-cinematic</td><td>99 ms</td><td>238 ms (224–241)</td><td>720 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>timeline-scrub</td><td>113 ms</td><td>247 ms (233–248)</td><td>728 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>sticky-steps</td><td>101 ms</td><td>151 ms (147–187)</td><td>525 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>stats-countup</td><td>71 ms</td><td>47 ms (34–55)</td><td>372 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>case-study-rail</td><td>77 ms</td><td>116 ms (107–144)</td><td>391 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>editorial-manifesto</td><td>100 ms</td><td>86 ms (86–131)</td><td>412 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr></tbody></table></div>
 <!-- measured:end -->
 <p class="sub">Inherited variables can make large subtrees expensive. Keep continuous clocks close to their consumers;
 prefer native view timelines for compatible effects. Interpret script, style, total work and frame stalls together.</p>

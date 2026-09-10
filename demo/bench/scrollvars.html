@@ -68,6 +68,10 @@
   // actually does, and since the page outputs became self-detecting that is
   // the auto path. `?local=1` still forces them off for the local-only engine.
   if (Q.has('local')) SV.setPageOutputs(false);
+  // The cost of USING the two document variables, which the default page has
+  // nothing to read: this is the row that tells a reader what the feature
+  // costs, now that the default detects its own consumers.
+  if (Q.has('pageoutputs')) SV.setPageOutputs(true);
   var seen = new Set();
   boxes.forEach(function (b) {
     b.el.style.setProperty('--speed', b.speed + 'px');
