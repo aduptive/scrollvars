@@ -98,6 +98,20 @@ const VARIANTS = {
     },
     verify: () => [...document.querySelectorAll('.sv')].some(el => getComputedStyle(el).animationName === 'sv-native-travel'),
   },
+  // Hypothesis 2: CSS containment on tracked elements that are not pinned.
+  // Not about inheritance: layout and paint containment let Blink skip the
+  // subtree in layout and paint when only the element's own style changed.
+  // The gate decides whether the clipping it implies changes the rendering.
+  contain: {
+    apply: () => {
+      const style = document.createElement('style')
+      style.textContent = '.sv:not([data-sv-pin]):not(:has(.sv-stage)) { contain: layout style paint; }'
+      document.head.append(style)
+      window.__svContain = true
+    },
+    // Chrome serializes `layout style paint` as the shorthand keyword `content`
+    verify: () => window.__svContain === true && [...document.querySelectorAll('.sv')].some(el => /content|strict|layout/.test(getComputedStyle(el).contain)),
+  },
   // Skip the continuous view clock entirely.
   noview: {
     apply: () => {

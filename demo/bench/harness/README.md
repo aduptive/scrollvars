@@ -1577,3 +1577,67 @@ descendant that no longer inherits one. It ships as an opt-in with that
 sentence, the measurements above, the path rule, and the fallback clause,
 and the CI gate keeps every shipped page rendering identically under it with
 the author lines each one needs.
+
+### Round 3
+
+#### Containment: rejected (`ab-deep50-contain.json`)
+
+`contain: layout style paint` on every tracked element that is not pinned
+(`.sv:not([data-sv-pin]):not(:has(.sv-stage))`), deep-50, six balanced runs,
+720 frames each, render equal: 783.5ms against 800ms task, 309ms against
+319.5ms style recalculation. Two percent, noise. Style containment scopes
+counters and quotes, not custom-property inheritance, and layout and paint
+containment never touch style resolution, which is the only cost this page
+has. A note for the next runner: Chrome serializes that value as the
+shorthand `content`, and the first attempt's "did the variant apply" check
+looked for the word `layout` and refused to run, which is the guard doing
+its job on its own author.
+
+#### Where the non-style time goes (`trace-fx-sticky-steps-html.json`)
+
+`trace-breakdown.mjs` records a devtools timeline trace of one timed load
+and sums self time per event on the page's renderer main thread. Tracing has
+overhead, so the numbers are proportions only, never comparable with untraced
+runs. sticky-steps, 720 frames, 364ms of self time:
+
+| event | self | share |
+|---|---:|---:|
+| UpdateLayoutTree (style recalculation) | 86ms | 24% |
+| RunTask (scheduler and uninstrumented task time) | 83ms | 23% |
+| FunctionCall plus FireAnimationFrame (our JavaScript and the runner) | 80ms | 22% |
+| PrePaint, Commit, Layerize, ScrollLayer (producing the frame) | 84ms | 23% |
+| EventDispatch (the scroll event) | 20ms | 6% |
+| IntersectionObserver, Paint, UpdateLayer | 10ms | 3% |
+
+Layout does not make the list. Of the four large slices, two are ours to
+change: the JavaScript, which on this page is already a fifth of what GSAP
+spends, and the style recalculation that our writes cause. The other two,
+producing the frame and scheduling the task, are what any page pays for
+scrolling at 60 frames a second, and a competitor pays them too. There is
+nothing hidden in the remainder to chase. The lever is the one already
+named, and the rest of the time is the browser's.
+
+The first run of this tool reported six milliseconds for the whole workload:
+a `traceConfig` with `excludedCategories: ['*']` next to the includes came
+back nearly empty, and the first of three `CrRendererMain` threads was an
+idle one. An empty trace looks like a fast page. The tool now uses the
+legacy categories string and the busiest renderer thread, and prints both.
+
+`trace-deep50.json`, the deep profile, 720 frames, about 830ms of self time:
+style recalculation 301ms (36%), scheduler 127ms (15%), Layerize 126ms
+(15%), our JavaScript 76ms (9%), Commit 56ms, PrePaint 40ms, Paint 38ms,
+the scroll event 19ms. Layerize is large here because 150 animated boxes are
+150 composited layers reassigned every frame, and GSAP moving the same 150
+transforms pays the same Layerize: the published gap between the two on this
+profile (578ms) is smaller than the style slice alone (685ms of recalculation
+against GSAP's 93), so style is the whole of the gap and the rest is shared.
+
+#### Hypotheses 4 and 5, dropped by their own threshold
+
+Astra's geometry cache and allocation reuse both live inside the JavaScript
+slice, which the traces put at 22 percent on sticky-steps and 9 percent on
+deep-50, and which is already a fifth to a quarter of what GSAP spends. The
+queue's rule for both was "drop if under 5 percent". A change that removed
+the ENTIRE JavaScript slice on deep-50 would save 9 percent; a cache that
+trims part of it cannot reach 5, and on the profile where the library
+actually loses it cannot reach 3. Recorded as bounded rather than screened.

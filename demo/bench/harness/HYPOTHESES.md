@@ -19,21 +19,6 @@ Baseline facts the loop must not re-derive:
 
 ## Open, ranked by expected value
 
-2. **`contain: layout style paint` on tracked elements that are not pinned.**
-   Not about inheritance: containment lets Blink skip the subtree in layout
-   and paint when only the element's own style changed. Screen on deep-50
-   and the home page. Risk: containment changes overflow and stacking.
-3. **Trace where the non-style time goes.** On sticky-steps task is 267ms
-   with 47ms script and 91ms style; the remaining 130ms is paint, compositing
-   and the scroll itself. A CDP trace (`disabled-by-default-devtools.timeline`)
-   over one run says whether any of it is ours. If it is all the browser's,
-   record that and stop chasing it.
-4. **Astra's geometry cache** (its idea 3): cache section document
-   coordinates after layout settles and derive viewport positions from
-   scrollY, refreshing on resize. Astra's own guess is 0 to 25ms. Screen once
-   on main-900; drop if under 5%.
-5. **Astra's allocation churn** (its idea 4): reuse the per-frame Map, array
-   and geometry records. Guess 0 to 10ms. Screen once; drop if under 5%.
 6. **Ask Astra for a fresh list** after 1 to 5 are settled, with everything
    above as the excluded set. Take only ideas outside the invalidation frame.
 
@@ -45,3 +30,11 @@ Baseline facts the loop must not re-derive:
   main-900 +4%, timeline-scrub +7%, hero-cinematic +12%, editorial-manifesto
   +9%. Pays per registered holder, saves per non-inheriting descendant; the
   docs say so with the numbers, the path rule and the fallback clause.
+- **Containment on tracked elements**: REJECTED. deep-50 800 against 783.5ms,
+  noise. Containment does not touch style resolution, which is the cost.
+- **Trace of the non-style time**: SETTLED. sticky-steps: style 24%, our JS
+  22%, frame production 23%, scroll event 6%, scheduler 23%. deep-50: style
+  36%, Layerize 15%, scheduler 15%, JS 9%. The remainder is what any engine
+  pays to scroll; style is the whole of the gap to GSAP.
+- **Geometry cache, allocation reuse** (Astra 3 and 4): DROPPED by their own
+  5% threshold. The entire JS slice is 9% on the losing profile.
