@@ -19,7 +19,23 @@ Baseline facts the loop must not re-derive:
 
 ## Open, ranked by expected value
 
-6. **Ask Astra for a fresh list** after 1 to 5 are settled, with everything
+6. **Astra's second list** (asked with everything above as the excluded set):
+   - 6a. Cheaper selectors in the presets: REJECTED by the inverse. Eleven
+     extra universal rules cost 4.5ms of recalc over 12s on sticky-steps
+     (256 against 253.5ms task); the shipped eleven are worth at most that.
+   - 6b. Typed clocks with `inherits: true`: REJECTED. deep-50 695.5
+     against 733ms task, recalc 287 against 292ms: the cost is visiting the
+     element, not parsing its value.
+   - 6c. Repeated intermediate expressions in page CSS (sticky-steps'
+     `--st-d`): a page-authoring note, not a library lever. Park.
+   - 6d. The deep fixture gives every fifth span `opacity: .8`, creating
+     opacity groups that cost Paint and Layerize for every engine equally.
+     A fixture observation, shared cost; note in the bench page, do not
+     change the published fixture.
+   - 6e. Extra recalcs from interleaved readers: DROPPED, the probe shows
+     0.99 recalculations per frame on the fixture; Astra's own guess was 0%
+     unless duplication is demonstrated.
+7. **Ask Astra for a fresh list** after 1 to 5 are settled, with everything
    above as the excluded set. Take only ideas outside the invalidation frame.
 
 ## Done

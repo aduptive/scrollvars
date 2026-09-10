@@ -112,6 +112,30 @@ const VARIANTS = {
     // Chrome serializes `layout style paint` as the shorthand keyword `content`
     verify: () => window.__svContain === true && [...document.querySelectorAll('.sv')].some(el => /content|strict|layout/.test(getComputedStyle(el).contain)),
   },
+  // 6a, the INVERSE screen: eleven more rules shaped like core.css's stagger
+  // block, whose rightmost compound is an unqualified :nth-child() and so
+  // sits in Blink's universal bucket, candidate-matched against every element
+  // in a recalculation. If adding eleven does not move recalc, removing the
+  // shipped eleven will not either.
+  nthload: {
+    apply: () => {
+      const style = document.createElement('style')
+      style.textContent = Array.from({ length: 11 }, (_, i) => `.sv-probe > :nth-child(${i + 1}) { --sv-probe: ${i}; }`).join('\n')
+      document.head.append(style)
+      window.__svNthLoad = true
+    },
+    verify: () => window.__svNthLoad === true && [...document.styleSheets].some(sheet => { try { return [...sheet.cssRules].some(r => r.selectorText?.includes('.sv-probe')) } catch { return false } }),
+  },
+  // 6b: the travel clock registered as a typed number that still inherits,
+  // initial .5 to match the bench fixture's var(--sv-t, .5) fallback, so
+  // resolution copies a number instead of re-parsing a token list.
+  typed: {
+    apply: () => {
+      CSS.registerProperty({ name: '--sv-t', syntax: '<number>', inherits: true, initialValue: '0.5' })
+      window.__svTyped = true
+    },
+    verify: () => window.__svTyped === true && getComputedStyle(document.documentElement).getPropertyValue('--sv-t') === '0.5',
+  },
   // Skip the continuous view clock entirely.
   noview: {
     apply: () => {

@@ -1641,3 +1641,51 @@ queue's rule for both was "drop if under 5 percent". A change that removed
 the ENTIRE JavaScript slice on deep-50 would save 9 percent; a cache that
 trims part of it cannot reach 5, and on the profile where the library
 actually loses it cannot reach 3. Recorded as bounded rather than screened.
+
+#### One style recalculation per frame, and it touches 121 elements
+
+A three-second scroll of deep-50 under a devtools trace: 182 frames, 180
+`UpdateLayoutTree` events (0.99 per frame), zero `Layout`, no forced
+recalculation from a read after a write, and an average of 121 elements
+resolved per pass. The driver's several `setProperty` calls per element per
+frame coalesce into one recalculation, as they should. So the number of
+recalculations is not a lever; what one costs is the product of the elements
+it touches (scoped clocks already narrowed that) and what resolving each one
+costs, which is the only remaining question and the one Astra is asked.
+
+### Round 4: Astra's second list
+
+#### Selector load in the presets: rejected by the inverse (`ab-sticky-nthload.json`)
+
+core.css's automatic stagger is eleven rules whose rightmost compound is an
+unqualified `:nth-child()`, which puts them in Blink's universal bucket,
+candidate-matched against every element in every recalculation. Rather than
+rebuild the sheet without them, the screen adds eleven MORE of the same
+shape: if those cost nothing measurable, removing the shipped ones saves
+nothing measurable. sticky-steps, six balanced runs, 720 frames, render
+equal: 253.5ms against 256ms task, 74ms against 78.5ms style recalculation.
+Four and a half milliseconds of recalculation over twelve seconds for eleven
+universal rules, so the shipped eleven are worth at most that, under two
+percent of task time. Astra's own guess was 0 to 2 percent. Not worth the
+presets' readability.
+
+#### Typed inheriting clock: rejected (`ab-deep50-typed.json`)
+
+`--sv-t` registered as `<number>`, `inherits: true`, initial `.5` to match
+the fixture's own fallback, every write unchanged. deep-50, six balanced
+runs, 720 frames, render equal: 733ms against 695.5ms task, 292ms against
+287ms style recalculation. The recalculation, which is the cost, does not
+move: resolving an element whose inherited variable changed is not about
+parsing the token, it is about visiting the element. The five percent on
+task sits at the edge of the noise floor and buys nothing on the slice that
+matters. Astra's guess was approximately zero. Rejected.
+
+#### Round 4, settled
+
+Both of Astra's lists are exhausted. Everything that changes WHERE the
+variables live is done (scoped clocks, shipped). Everything that changes HOW
+they are written or resolved is measured at noise: precision, typing,
+registration, containment, selector load, native timelines. The JavaScript
+slice is bounded at 9 percent on the losing profile. The recalculation count
+is one per frame. What remains is the number of elements a recalculation
+visits, and the sheet is the tool for that.
