@@ -65,6 +65,7 @@ import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import { installedGate } from './installed-gate.mjs'
 import { reviewGate } from './review-gate.mjs'
+import { pageOutputsGate } from './page-outputs-gate.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
@@ -2835,6 +2836,7 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+await pageOutputsGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
 await reviewGate({ browser, check })
 

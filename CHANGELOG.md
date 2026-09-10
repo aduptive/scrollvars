@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Changed
+
+- `--sv-page` and `--sv-v` are published only when something in the document
+  can read them. Both live on `<html>` and both inherit, so every write asked
+  the browser to recalculate style for the entire document, on every scroll
+  frame, whether or not a single rule referenced them. On the 900-box
+  benchmark that cost 3249ms of style recalculation over a 12-second scroll
+  against 269ms without, and 4128ms of total task time against 1696ms; the
+  same page with the identical writes registered `inherits: false` cost
+  267.5ms, so the price was the inheritance rather than the write. The driver
+  now scans the document's own stylesheets and inline styles once, on the
+  first frame that could publish, and stays silent when neither name appears.
+  A stylesheet added later turns publishing back on.
+  **This can change behavior for a page that reads the variables only from
+  JavaScript**, which no CSS scan can see: call `setPageOutputs(true)` there.
+  Anything unreadable counts as a reader, so a cross-origin stylesheet without
+  CORS headers keeps publishing exactly as before. Calling `setPageOutputs()`
+  at all now takes the decision away from detection permanently, in both
+  directions.
+
+### Performance
+
+- The published main-900 benchmark, measured on the same page with the same
+  four repetitions: total task time 1543.5ms against gsap-batched's 1374.5ms
+  and framer-motion's 1820.5ms, with 83ms of script against 230.5ms and
+  917ms, and 1.1MB of heap against 6.7MB and 10.6MB. Before this change the
+  same page cost 4128.5ms, which was 2.6x GSAP rather than 1.12x.
+
+
 - Demo: keep the homepage's custom scenes readable before the driver boots. Entrance text stays visible; pinned rails, decks, product-tour panels and map stations return to normal flow; galleries stop clipping static cards. Native carousels remain keyboard-scrollable without JavaScript, including the page-driven rail. Canvas-only effects and inactive controls are omitted from the static preview.
 - Demo: disable unused document-wide outputs before homepage tracking. A four-run-per-mode A/B of the complete page records about **62% lower median main-thread task time** (5039.5→1911.5 ms over the same 12-second scroll), with local effects and HUD preserved. This applies the existing opt-out to this page; it does not change library defaults or establish a general speedup. [Raw measurements](https://scrollvars.dev/bench/results/home-outputs.json).
 - Demo benchmark table: use the same dated snapshot as the README and benchmark page; display total task CPU, FPS, both output modes and the batched GSAP comparison.

@@ -85,7 +85,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-stage-width</code></td><td>px</td><td>Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
-<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked (unless <code>setPageOutputs(false)</code>): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked AND some CSS reads them (or <code>setPageOutputs(true)</code>): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
 <tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
 <tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
@@ -295,6 +295,19 @@ compat()   // once, before anything else</code></pre>
 
 
 <h3>Unreleased</h3>
+
+<h4>Changed</h4>
+
+<ul>
+<li><code>--sv-page</code> and <code>--sv-v</code> are published only when something in the document can read them. Both live on <code>&lt;html></code> and both inherit, so every write asked the browser to recalculate style for the entire document, on every scroll frame, whether or not a single rule referenced them. On the 900-box benchmark that cost 3249ms of style recalculation over a 12-second scroll against 269ms without, and 4128ms of total task time against 1696ms; the same page with the identical writes registered <code>inherits: false</code> cost 267.5ms, so the price was the inheritance rather than the write. The driver now scans the document's own stylesheets and inline styles once, on the first frame that could publish, and stays silent when neither name appears. A stylesheet added later turns publishing back on. <b>This can change behavior for a page that reads the variables only from JavaScript</b>, which no CSS scan can see: call <code>setPageOutputs(true)</code> there. Anything unreadable counts as a reader, so a cross-origin stylesheet without CORS headers keeps publishing exactly as before. Calling <code>setPageOutputs()</code> at all now takes the decision away from detection permanently, in both directions.</li>
+</ul>
+
+<h4>Performance</h4>
+
+<ul>
+<li>The published main-900 benchmark, measured on the same page with the same four repetitions: total task time 1543.5ms against gsap-batched's 1374.5ms and framer-motion's 1820.5ms, with 83ms of script against 230.5ms and 917ms, and 1.1MB of heap against 6.7MB and 10.6MB. Before this change the same page cost 4128.5ms, which was 2.6x GSAP rather than 1.12x.</li>
+</ul>
+
 
 <ul>
 <li>Demo: keep the homepage's custom scenes readable before the driver boots. Entrance text stays visible; pinned rails, decks, product-tour panels and map stations return to normal flow; galleries stop clipping static cards. Native carousels remain keyboard-scrollable without JavaScript, including the page-driven rail. Canvas-only effects and inactive controls are omitted from the static preview.</li>

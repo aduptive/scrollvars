@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.0 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 3.3 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.0 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.3 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1769,7 +1769,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.0 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.3 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2805,9 +2805,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.5 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.5 KB / 3.0 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.9 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.8 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>8.3 KB / 3.3 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2958,7 +2958,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.3 KB gzip · full core 7.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3104,22 +3104,88 @@ var SV = (() => {
   var lastPageStr = "";
   var lastVStr = "";
   var pageOutputs = false;
+  var pageOutputsMode = "auto";
+  var pageOutputsResolved = false;
   var pageOutputsEnabled = true;
+  var consumerWatch = null;
   var offsetsDirty = false;
   var forceAll = false;
   function setPageOutputs(enabled) {
+    pageOutputsMode = enabled ? "on" : "off";
+    consumerWatch?.disconnect();
+    consumerWatch = null;
     if (enabled && pageOutputsEnabled)
       return;
     pageOutputsEnabled = enabled;
     if (typeof document === "undefined")
       return;
-    if (!enabled) {
-      clearTimeout(velTimer);
-      document.documentElement.style.removeProperty("--sv-page");
-      document.documentElement.style.removeProperty("--sv-v");
-      lastPageStr = lastVStr = "";
-    } else
+    if (!enabled)
+      stopPageOutputs();
+    else
       schedule();
+  }
+  function stopPageOutputs() {
+    clearTimeout(velTimer);
+    document.documentElement.style.removeProperty("--sv-page");
+    document.documentElement.style.removeProperty("--sv-v");
+    lastPageStr = lastVStr = "";
+  }
+  var PAGE_OUTPUT_NAMES = /--sv-page(?![\w-])|--sv-v(?![\w-])/;
+  function mentionsPageOutputs(css) {
+    return PAGE_OUTPUT_NAMES.test(css);
+  }
+  function detectPageConsumers() {
+    try {
+      if (document.querySelector('[style*="--sv-page"],[style*="--sv-v"]'))
+        return true;
+      for (const sheet of Array.from(document.styleSheets)) {
+        const node = sheet.ownerNode;
+        if (node && node.nodeName === "STYLE") {
+          if (mentionsPageOutputs(node.textContent || ""))
+            return true;
+          continue;
+        }
+        let rules;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          return true;
+        }
+        if (!rules)
+          return true;
+        for (const rule of Array.from(rules))
+          if (mentionsPageOutputs(rule.cssText))
+            return true;
+      }
+    } catch {
+      return true;
+    }
+    return false;
+  }
+  function watchForPageConsumers() {
+    if (consumerWatch || typeof MutationObserver === "undefined" || !document.head)
+      return;
+    consumerWatch = new MutationObserver((records) => {
+      for (const record of records)
+        for (const node of Array.from(record.addedNodes))
+          if (node.nodeName === "STYLE" || node.nodeName === "LINK") {
+            if (!detectPageConsumers())
+              return;
+            consumerWatch?.disconnect();
+            consumerWatch = null;
+            pageOutputsEnabled = true;
+            schedule();
+            return;
+          }
+    });
+    consumerWatch.observe(document.head, { childList: true });
+  }
+  function resolvePageOutputs() {
+    if (pageOutputsMode !== "auto")
+      return;
+    pageOutputsEnabled = detectPageConsumers();
+    if (!pageOutputsEnabled)
+      watchForPageConsumers();
   }
   function schedule() {
     if (!raf && (entries.size > 0 || pageOutputs && pageOutputsEnabled))
@@ -3140,6 +3206,10 @@ var SV = (() => {
     const now = performance.now();
     const jumped = lastY >= 0 && Math.abs(y - lastY) > vh;
     const docEl = document.documentElement;
+    if (pageOutputs && !pageOutputsResolved) {
+      pageOutputsResolved = true;
+      resolvePageOutputs();
+    }
     const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null;
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];

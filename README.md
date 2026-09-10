@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.0 KB, full core incl. the slider 7.4 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.5 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.3 KB, full core incl. the slider 7.7 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~5.8 KB on the wire.
 
 ## Why
 
@@ -108,17 +108,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 3.0 KB |
-| `track` + `scan` (zero-wrapper mode) | 4.4 KB |
+| `track` (the driver) | 3.3 KB |
+| `track` + `scan` (zero-wrapper mode) | 4.7 KB |
 | `slider` | 2.4 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.6 KB |
-| everything in `scrollvars` (the core entry) | 7.4 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 13.2 KB |
+| everything in `scrollvars` (the core entry) | 7.7 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 13.5 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~5.5 KB gzipped, total.**
+**~5.8 KB gzipped, total.**
 
 ## Mental model
 
@@ -133,7 +133,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked (unless `setPageOutputs(false)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS reads them (or `setPageOutputs(true)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -622,13 +622,29 @@ MIT
 
 ## Limit animation work to its consumers
 
-When no CSS reads `--sv-page` or `--sv-v`, call `setPageOutputs(false)`
-(import from `scrollvars`) before `track()`/`scan()`, or use
-`<ScrollVarsBoot pageOutputs={false} />`. This is a page-wide setting;
-the default remains enabled for compatibility. Re-enable with
-`setPageOutputs(true)`. Disabling removes both document variables and stops
-the idle page driver after the last tracker is released. Local clocks keep
-working. All Boot instances and manually attached effects share this setting.
+`--sv-page` and `--sv-v` live on `<html>`, and they inherit, so every write
+asks the browser to recalculate style for the whole document. A page that
+never reads them should never pay that, so the driver looks before it
+publishes: on the first frame it scans the document's own stylesheets and
+inline styles for the two names, and stays silent when neither appears. A
+stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
+turns publishing back on.
+
+Detection reads CSS, so it cannot see a JavaScript reader. Call
+`setPageOutputs(true)` (import from `scrollvars`, or
+`<ScrollVarsBoot pageOutputs />`) when only script reads the variables, for
+instance through `getComputedStyle`. Calling `setPageOutputs()` at all takes
+the decision away from detection permanently, in both directions:
+`setPageOutputs(false)` keeps them off even for a page whose CSS reads them.
+
+Anything the scan cannot read counts as a reader, so the variables keep
+working. A stylesheet on another origin without CORS headers is the common
+case: its rules are unreadable, so the page publishes as before. Serve that
+CSS same-origin, send the header, or call `setPageOutputs(false)` yourself.
+
+Suppressed, both document variables are removed and the idle page driver
+stops after the last tracker is released. Local clocks keep working. All Boot
+instances and manually attached effects share this setting.
 
 For entrance-only tracking, `view: false` skips the unused continuous view
 clock; `sv-view-fade`/`sv-view-rise` need no tracker where native view timelines

@@ -159,23 +159,108 @@ let lastPageStr = ''
 let lastVStr = ''
 
 let pageOutputs = false // true once anything was ever tracked: --sv-page/--sv-v then follow every scroll
-let pageOutputsEnabled = true
+let pageOutputsMode: 'auto' | 'on' | 'off' = 'auto'
+let pageOutputsResolved = false
+let pageOutputsEnabled = true // in auto mode this is the answer detectPageConsumers() gave
+let consumerWatch: MutationObserver | null = null
 let offsetsDirty = false
 let forceAll = false // set by refresh(): give culled entries one geometry pass on the next update()
 
-/** Enable/disable document-wide --sv-page/--sv-v writes. Default true for
- * compatibility. Call once at boot with false when no CSS consumes them.
+/** Enable/disable document-wide --sv-page/--sv-v writes. Calling this at all
+ * takes the decision away from auto-detection, permanently and in both
+ * directions: pass true for a JS reader that no stylesheet reveals.
  * Repeated enabling does not schedule another frame. */
 export function setPageOutputs(enabled: boolean) {
+  pageOutputsMode = enabled ? 'on' : 'off'
+  consumerWatch?.disconnect()
+  consumerWatch = null
   if (enabled && pageOutputsEnabled) return
   pageOutputsEnabled = enabled
   if (typeof document === 'undefined') return
-  if (!enabled) {
-    clearTimeout(velTimer)
-    document.documentElement.style.removeProperty('--sv-page')
-    document.documentElement.style.removeProperty('--sv-v')
-    lastPageStr = lastVStr = ''
-  } else schedule()
+  if (!enabled) stopPageOutputs()
+  else schedule()
+}
+
+function stopPageOutputs() {
+  clearTimeout(velTimer)
+  document.documentElement.style.removeProperty('--sv-page')
+  document.documentElement.style.removeProperty('--sv-v')
+  lastPageStr = lastVStr = ''
+}
+
+// --sv-page and --sv-v are INHERITED custom properties on <html>: every write
+// invalidates style for the whole document, whether or not anything reads
+// them. Measured on the 900-box benchmark, publishing them unread costs 3249ms
+// of style recalculation over a 12-second scroll against 269ms, and the same
+// page with the same writes registered `inherits: false` costs 267.5ms, so the
+// price is the inheritance, not the write. Pages that use the variables must
+// pay it; pages that do not should not, and until this they all did.
+//
+// So in auto mode the driver asks the document whether anything COULD read
+// them before publishing. Every uncertainty answers yes: an unreadable
+// cross-origin sheet, a thrown DOM call, anything. A JS-only reader is
+// invisible to this and needs setPageOutputs(true).
+// The name has to end where it ends: `--sv-view` starts with `--sv-v`, and a
+// plain substring test called every preset in core.css a consumer, which is
+// every page that uses the library at all.
+const PAGE_OUTPUT_NAMES = /--sv-page(?![\w-])|--sv-v(?![\w-])/
+
+function mentionsPageOutputs(css: string) {
+  return PAGE_OUTPUT_NAMES.test(css)
+}
+
+function detectPageConsumers(): boolean {
+  try {
+    if (document.querySelector('[style*="--sv-page"],[style*="--sv-v"]')) return true
+    for (const sheet of Array.from(document.styleSheets)) {
+      const node = sheet.ownerNode as Element | null
+      // A <style> element's own text avoids serializing every rule back out.
+      if (node && node.nodeName === 'STYLE') {
+        if (mentionsPageOutputs(node.textContent || '')) return true
+        continue
+      }
+      let rules: CSSRuleList | null
+      try {
+        rules = sheet.cssRules
+      } catch {
+        return true // cross-origin: assume it reads them
+      }
+      if (!rules) return true
+      // cssText of a grouping rule carries its children, so nesting is covered.
+      for (const rule of Array.from(rules)) if (mentionsPageOutputs(rule.cssText)) return true
+    }
+  } catch {
+    return true
+  }
+  return false
+}
+
+// A stylesheet that arrives later (a lazily mounted component, a CSS-in-JS
+// runtime, an HMR update) can introduce the first consumer. Watching <head>
+// for new <style>/<link> covers where every bundler injects; the watch exists
+// only while the answer is "nobody reads them" and stops for good at the
+// first consumer, so the common case carries no observer at all.
+function watchForPageConsumers() {
+  if (consumerWatch || typeof MutationObserver === 'undefined' || !document.head) return
+  consumerWatch = new MutationObserver(records => {
+    for (const record of records)
+      for (const node of Array.from(record.addedNodes))
+        if (node.nodeName === 'STYLE' || node.nodeName === 'LINK') {
+          if (!detectPageConsumers()) return
+          consumerWatch?.disconnect()
+          consumerWatch = null
+          pageOutputsEnabled = true
+          schedule()
+          return
+        }
+  })
+  consumerWatch.observe(document.head, { childList: true })
+}
+
+function resolvePageOutputs() {
+  if (pageOutputsMode !== 'auto') return
+  pageOutputsEnabled = detectPageConsumers()
+  if (!pageOutputsEnabled) watchForPageConsumers()
 }
 
 function schedule() {
@@ -201,6 +286,12 @@ function update() {
   // seeing it intersect: give every entry one geometry pass on such frames.
   const jumped = lastY >= 0 && Math.abs(y - lastY) > vh
   const docEl = document.documentElement
+  // Ask the document once, on the first frame that could publish: by then a
+  // stylesheet written next to the track() call is in place.
+  if (pageOutputs && !pageOutputsResolved) {
+    pageOutputsResolved = true
+    resolvePageOutputs()
+  }
   const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
