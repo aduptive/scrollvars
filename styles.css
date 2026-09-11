@@ -198,6 +198,25 @@ html:not(.sv-on) .sv-spread > * {
   }
 }
 
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-spread > *,
+.sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > * {
+  translate: none;
+  rotate: none;
+  transition: none;
+}
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span,
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
+:where([data-sv-motion="reduce"]) .sv-view-fade,
+:where([data-sv-motion="reduce"]) .sv-view-rise {
+  transition: none;
+  animation: none;
+  opacity: 1;
+  translate: none;
+}
+
 /* ScrollVars: pinned presets (curtain, rail, deck, reading, counter).
  * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
 
@@ -473,6 +492,37 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   }
 }
 
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-stage {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-l,
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-r {
+  display: none;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-deck {
+  display: block;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-reading > * {
+  opacity: 1;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-range > * {
+  --sv-r: 1;
+}
+
 /* ScrollVars: slider styles (the class is added by slider()). */
 
 /* Slider: native rails + snap magnetism; the class is added by slider().
@@ -583,21 +633,43 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   justify-content: var(--sv-dots-justify, center);
   margin-top: var(--sv-dots-offset, 14px);
 }
+/* The button is the target and the dot is drawn inside it: WCAG 2.5.8 asks
+   24 by 24 CSS pixels of target, an 8px dot with 8px gaps had a third of
+   that. --sv-dot-size still sizes what you see, --sv-dot-target what you hit. */
 .sv-dot {
+  display: grid;
+  place-items: center;
+  width: var(--sv-dot-target, 24px);
+  height: var(--sv-dot-target, 24px);
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.sv-dot::before {
+  content: '';
   width: var(--sv-dot-size, 8px);
   height: var(--sv-dot-size, 8px);
   border-radius: 999px;
-  border: 0;
-  padding: 0;
   background: var(--sv-dot-color, rgba(128, 128, 128, 0.35));
-  cursor: pointer;
   transition: background 300ms, scale 300ms;
 }
-.sv-dot.on {
+.sv-dot.on::before {
   background: var(--sv-dot-active, currentColor);
   scale: 1.25;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .sv-dot::before {
+    transition: none;
+  }
+}
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-dot::before {
+  transition: none;
+}
 /* ScrollVars: pointer tilt preset (use with trackPointer / usePointer). */
 
 /* ---- Pointer preset (use with trackPointer / usePointer) ---- */
@@ -640,6 +712,17 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   .sv-tilt::after {
     display: none;
   }
+}
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-tilt,
+:where([data-sv-motion="reduce"]) .sv-tilt.sv-pointer-leave {
+  transform: none;
+  transition: none;
+}
+:where([data-sv-motion="reduce"]) .sv-tilt::after {
+  display: none;
 }
 
 /* ScrollVars: interaction-state presets (use with toggles(), the Popover
@@ -772,6 +855,14 @@ html:not(.sv-on) .sv-acts:not(.sv-ui) {
   }
 }
 
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-pop,
+:where([data-sv-motion="reduce"]) .sv-words > *,
+:where([data-sv-motion="reduce"]) .sv-acts {
+  transition-duration: 0.01ms;
+}
+
 /* ScrollVars: UI presets (marquee, accordion) for the React kit and
  * vanilla markup alike. */
 
@@ -858,4 +949,18 @@ html:not(.sv-on) .sv-acts:not(.sv-ui) {
   .sv-accordion::details-content {
     transition: none;
   }
+}
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-marquee-track {
+  animation: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+:where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup {
+  display: none;
+}
+:where([data-sv-motion="reduce"]) .sv-accordion::details-content {
+  transition: none;
 }

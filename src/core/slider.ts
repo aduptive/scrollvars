@@ -16,6 +16,7 @@
  * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
 * no per-frame JS, same philosophy as the scroll driver.
  */
+import { reducedMotion as effectiveReduce, onMotionChange } from './motion.js'
 
 export interface SliderState {
   active: number
@@ -341,11 +342,20 @@ export function slider(
     }
     container.classList.remove('sv-gliding')
   }
+  // A preference that flips to reduce mid-glide settles the glide where it
+  // was going, now: checking only when a glide starts left one in flight.
+  const offMotion = onMotionChange((reduced) => {
+    if (!reduced || target < 0 || destroyed) return
+    const to = target
+    stopGlide()
+    target = -1
+    setPos(to)
+    resumeSnap()
+  })
   const glide = (to: number) => {
     stopGlide()
     let current = pos()
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+    if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
       resumeSnap()
       target = -1
       setPos(to)
@@ -590,6 +600,7 @@ export function slider(
     state,
     destroy: () => {
       destroyed = true
+      offMotion()
       stopGlide()
       resumeSnap()
       container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging')

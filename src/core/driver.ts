@@ -1,4 +1,5 @@
 import { clamp, easeOutCubic } from './math.js'
+import { reducedMotion as effectiveReduce, onMotionChange } from './motion.js'
 
 export interface TrackOptions {
   /** Write `--sv-view` (-1 below viewport → 0 in scene → 1 gone above). Default true. */
@@ -80,10 +81,7 @@ let reducedMotion = false
  * would otherwise see the stale `false` default: query the media list
  * directly in that window instead. */
 function getReducedMotion(): boolean {
-  if (initialized || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return reducedMotion
-  }
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  return initialized ? reducedMotion : effectiveReduce()
 }
 
 function init() {
@@ -115,18 +113,15 @@ function init() {
     refresh() // a responsive sticky header changes every pin offset too
   })
 
-  const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-  reducedMotion = media.matches
-  const onMotionChange = (event: MediaQueryListEvent) => {
-    reducedMotion = event.matches
+  // The effective preference (OS setting or the page's own data-sv-motion
+  // switch) lives in core/motion.ts and reaches every part of the library
+  // at once; the driver only keeps a copy for the hot path.
+  reducedMotion = effectiveReduce()
+  onMotionChange((reduced) => {
+    reducedMotion = reduced
     applyPinHelperAll()
     schedule()
-  }
-  // addEventListener on a MediaQueryList is Safari 14; inside the supported
-  // floor (Safari 11) only the deprecated addListener exists, and the
-  // optional call alone made the whole preference a no-op there.
-  if (typeof media.addEventListener === 'function') media.addEventListener('change', onMotionChange)
-  else media.addListener?.(onMotionChange)
+  })
 
   // Offscreen culling: a viewport of margin on each side keeps fast scrolls
   // correct; far outside it the rect read is skipped entirely.

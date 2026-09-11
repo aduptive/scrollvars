@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.8 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 4.0 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.8 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.0 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1769,7 +1769,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.8 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.0 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2460,7 +2460,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 2.4&nbsp;KB carousel, 18× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 2.7&nbsp;KB carousel, 16× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2472,8 +2472,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.0&nbsp;KB minified,
-<strong>2.4&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.8&nbsp;KB minified,
+<strong>2.7&nbsp;KB gzipped, ~16× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2484,7 +2484,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         <div>03<br>--sd drives the CSS</div>
         <div>04<br>drag me (mouse too)</div>
         <div>05<br>.sv-active for state</div>
-        <div>06<br>2 KB, not 150</div>
+        <div>06<br>3 KB, not 150</div>
       </div>
       <div class="slider-thumbs" id="slider-thumbs" style="scroll-snap-type: none;">
         <div>01</div><div>02</div><div>03</div>
@@ -2805,9 +2805,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.7 KB / 3.8 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.6 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>10.4 KB / 4.0 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2959,7 +2959,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.8 KB gzip · full core 8.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 4.0 KB gzip · full core 8.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3001,10 +3001,12 @@ var SV = (() => {
     clamp: () => clamp,
     easeOutCubic: () => easeOutCubic,
     mapRange: () => mapRange,
+    onMotionChange: () => onMotionChange,
     prefersReducedMotion: () => prefersReducedMotion,
     refresh: () => refresh,
     scan: () => scan,
     scrollToScene: () => scrollToScene,
+    setMotion: () => setMotion,
     setPageOutputs: () => setPageOutputs,
     slider: () => slider,
     snapProgress: () => snapProgress,
@@ -3038,6 +3040,65 @@ var SV = (() => {
     return ease ? ease(raw) : raw;
   }
 
+  // dist/core/motion.js
+  var ATTR = "data-sv-motion";
+  var listeners = /* @__PURE__ */ new Set();
+  var media = null;
+  var wiredWith = null;
+  var mediaMatches = false;
+  var last = false;
+  var attrReduce = () => {
+    const el = typeof document !== "undefined" ? document.documentElement : null;
+    return typeof el?.getAttribute === "function" && el.getAttribute(ATTR) === "reduce";
+  };
+  var mediaReduce = () => media ? mediaMatches : false;
+  var onMedia = (event) => {
+    mediaMatches = typeof event?.matches === "boolean" ? event.matches : !!media?.matches;
+    notify();
+  };
+  function reducedMotion() {
+    wire();
+    return attrReduce() || mediaReduce();
+  }
+  function notify() {
+    const now = reducedMotion();
+    if (now === last)
+      return;
+    last = now;
+    listeners.forEach((fn) => fn(now));
+  }
+  function wire() {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia === wiredWith)
+      return;
+    wiredWith = window.matchMedia;
+    media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mediaMatches = !!media.matches;
+    if (typeof media.addEventListener === "function")
+      media.addEventListener("change", onMedia);
+    else
+      media.addListener?.(onMedia);
+    if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.documentElement)
+      new MutationObserver(notify).observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] });
+    last = attrReduce() || mediaMatches;
+  }
+  function onMotionChange(fn) {
+    wire();
+    listeners.add(fn);
+    return () => {
+      listeners.delete(fn);
+    };
+  }
+  function setMotion(mode) {
+    if (typeof document === "undefined" || !document.documentElement)
+      return;
+    if (mode === "reduce")
+      document.documentElement.setAttribute(ATTR, "reduce");
+    else
+      document.documentElement.removeAttribute(ATTR);
+    wire();
+    notify();
+  }
+
   // dist/core/driver.js
   var SCENE_SNAP = 0.4;
   var LIVE_ENTER = 0.75;
@@ -3048,12 +3109,9 @@ var SV = (() => {
   var resizeObserver = null;
   var culler = null;
   var initialized = false;
-  var reducedMotion = false;
+  var reducedMotion2 = false;
   function getReducedMotion() {
-    if (initialized || typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return reducedMotion;
-    }
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return initialized ? reducedMotion2 : reducedMotion();
   }
   function init() {
     if (initialized || typeof window === "undefined")
@@ -3075,17 +3133,12 @@ var SV = (() => {
       vh = window.innerHeight;
       refresh();
     });
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reducedMotion = media.matches;
-    const onMotionChange = (event) => {
-      reducedMotion = event.matches;
+    reducedMotion2 = reducedMotion();
+    onMotionChange((reduced) => {
+      reducedMotion2 = reduced;
       applyPinHelperAll();
       schedule();
-    };
-    if (typeof media.addEventListener === "function")
-      media.addEventListener("change", onMotionChange);
-    else
-      media.addListener?.(onMotionChange);
+    });
     if (typeof IntersectionObserver !== "undefined") {
       culler = new IntersectionObserver((records) => {
         for (const record of records) {
@@ -3349,7 +3402,7 @@ var SV = (() => {
       const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4);
       if (pageStr !== lastPageStr)
         docEl.style?.setProperty("--sv-page", lastPageStr = pageStr);
-      const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3);
+      const vStr = (reducedMotion2 ? 0 : clamp(v, -20, 20)).toFixed(3);
       if (vStr !== lastVStr)
         docEl.style?.setProperty("--sv-v", lastVStr = vStr);
       clearTimeout(velTimer);
@@ -3440,7 +3493,7 @@ var SV = (() => {
       const settle = isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene;
       if (settle) {
         if (opts.view !== false)
-          setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
+          setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
         if (entries.get(entry.el) === entry) {
           entries.delete(entry.el);
           unobserveIfUnneeded(entry.el);
@@ -3462,7 +3515,7 @@ var SV = (() => {
       writeLive(entry);
     }
     if (opts.view !== false) {
-      setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
+      setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
     }
     if (opts.travel || opts.onTravel) {
       const t = computeTravel(geo);
@@ -3627,7 +3680,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return void 0;
-    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled())
+    if (entry.flow || reducedMotion2 || belowTransformFloor() && !compatInstalled())
       return void 0;
     if (authored.position && authored.position !== "static")
       return void 0;
@@ -3642,7 +3695,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return;
-    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled()) {
+    if (entry.flow || reducedMotion2 || belowTransformFloor() && !compatInstalled()) {
       el.style.height = authored.height;
       el.style.position = authored.position;
     } else {
@@ -4221,11 +4274,19 @@ var SV = (() => {
       }
       container.classList.remove("sv-gliding");
     };
+    const offMotion = onMotionChange((reduced) => {
+      if (!reduced || target < 0 || destroyed)
+        return;
+      const to = target;
+      stopGlide();
+      target = -1;
+      setPos(to);
+      resumeSnap();
+    });
     const glide = (to) => {
       stopGlide();
       let current = pos();
-      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-      if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+      if (duration <= 0 || reducedMotion() || Math.abs(to - current) < 1) {
         resumeSnap();
         target = -1;
         setPos(to);
@@ -4233,10 +4294,10 @@ var SV = (() => {
       }
       suspendSnap();
       container.classList.add("sv-gliding");
-      let last = performance.now();
+      let last2 = performance.now();
       const step = (now) => {
-        const dt = Math.min(now - last, 50);
-        last = now;
+        const dt = Math.min(now - last2, 50);
+        last2 = now;
         const factor = 1 - Math.pow(2e-3, dt / duration);
         current += (to - current) * factor;
         if (Math.abs(to - current) < 0.5) {
@@ -4426,6 +4487,7 @@ var SV = (() => {
       state,
       destroy: () => {
         destroyed = true;
+        offMotion();
         stopGlide();
         resumeSnap();
         container.classList.remove("sv-slider", "sv-slider-y", "sv-draggable", "sv-dragging");
@@ -5002,6 +5064,7 @@ var SV = (() => {
  * correct test: it fires exactly when the author left the ratio alone, and
  * never overrides one the author set.
  */
+var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 // Browsers cap a canvas's own width/height attribute well above this
 // (platform-dependent, but comfortably higher); guards the proportional
@@ -5032,14 +5095,13 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     const ctx = context === '2d' ? canvas.getContext('2d') : null;
     if (context === '2d' && !ctx)
         return noop;
-    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const fx = {
         ctx,
         canvas,
         width: 0,
         height: 0,
         dpr: 1,
-        reducedMotion: motionQuery.matches,
+        reducedMotion: effectiveReduce(),
     };
     let raf = 0;
     let last = 0;
@@ -5441,10 +5503,9 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         watchDpr();
     };
     watchDpr();
-    const onMotion = () => {
-        fx.reducedMotion = motionQuery.matches;
-    };
-    onMediaChange(motionQuery, onMotion);
+    const offMotion = onMotionChange((reduced) => {
+        fx.reducedMotion = reduced;
+    });
     return {
         pause: () => {
             userPaused = true;
@@ -5474,7 +5535,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
                 ro.disconnect();
                 io.disconnect();
                 document.removeEventListener('visibilitychange', onVisibility);
-                offMediaChange(motionQuery, onMotion);
+                offMotion();
                 if (dprQuery)
                     offMediaChange(dprQuery, onDprChange);
             }
@@ -5788,6 +5849,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
  * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
 * no per-frame JS, same philosophy as the scroll driver.
  */
+var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
 const noopState = {
     active: 0,
     count: 0,
@@ -6047,11 +6109,21 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         }
         container.classList.remove('sv-gliding');
     };
+    // A preference that flips to reduce mid-glide settles the glide where it
+    // was going, now: checking only when a glide starts left one in flight.
+    const offMotion = onMotionChange((reduced) => {
+        if (!reduced || target < 0 || destroyed)
+            return;
+        const to = target;
+        stopGlide();
+        target = -1;
+        setPos(to);
+        resumeSnap();
+    });
     const glide = (to) => {
         stopGlide();
         let current = pos();
-        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-        if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+        if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
             resumeSnap();
             target = -1;
             setPos(to);
@@ -6308,6 +6380,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         state,
         destroy: () => {
             destroyed = true;
+            offMotion();
             stopGlide();
             resumeSnap();
             container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging');

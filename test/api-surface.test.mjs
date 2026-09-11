@@ -7,8 +7,8 @@ import { test } from 'node:test'
 // Adding exports is fine (minor): add them here in the same PR.
 const SURFACE = {
   core: [
-    'clamp', 'easeOutCubic', 'mapRange', 'prefersReducedMotion', 'refresh',
-    'scan', 'scrollToScene', 'setPageOutputs', 'slider', 'snapProgress', 'split', 'splitParts',
+    'clamp', 'easeOutCubic', 'mapRange', 'onMotionChange', 'prefersReducedMotion', 'refresh',
+    'scan', 'scrollToScene', 'setMotion', 'setPageOutputs', 'slider', 'snapProgress', 'split', 'splitParts',
     'toggles', 'track', 'trackPointer',
   ],
   react: [

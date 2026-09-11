@@ -191,7 +191,7 @@ mapping becomes pure CSS.</p>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
 <tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
-<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
+<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion / setMotion / onMotionChange</code></td><td>utilities; the last three read, set and watch the effective motion preference (the OS setting or <code>data-sv-motion="reduce"</code> on <code>&lt;html&gt;</code>).</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
@@ -264,9 +264,11 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow; every block has a twin under <code>html[data-sv-motion="reduce"]</code>, the page's own switch (<code>setMotion()</code>), kept in step by a test and checked rendered in CI</td></tr>
+<tr><td>motion preference</td><td>one effective value, the OS setting or the page switch, read live by the driver, the slider's glide (a running glide settles when it flips), canvas effects (<code>fx.reducedMotion</code>) and the React Slider autoplay (starts paused under reduce; the visible control resumes it)</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
+<tr><td>Slider dots</td><td>24 by 24 CSS pixel buttons (WCAG 2.5.8, <code>--sv-dot-target</code>) with the visual dot drawn inside (<code>--sv-dot-size</code>); no transition under reduced motion. Measured in CI</td></tr>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 </table>

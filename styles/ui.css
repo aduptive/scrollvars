@@ -85,3 +85,17 @@
     transition: none;
   }
 }
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-marquee-track {
+  animation: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+:where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup {
+  display: none;
+}
+:where([data-sv-motion="reduce"]) .sv-accordion::details-content {
+  transition: none;
+}

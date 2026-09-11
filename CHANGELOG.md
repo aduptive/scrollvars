@@ -4,6 +4,25 @@
 
 ### Added
 
+- A motion preference the page can set: `html[data-sv-motion="reduce"]`
+  asks for less motion whatever the OS says, and every
+  `prefers-reduced-motion` block in the shipped sheets (core, pin, state,
+  tilt, ui, slider, and the compat fallback) has a twin under it, kept in
+  step by a test and checked rendered in CI. `setMotion('reduce' | 'auto')`
+  sets the attribute, `onMotionChange(fn)` reports the effective preference
+  live, and `prefersReducedMotion()` now reads that effective value. The
+  driver, the slider's glide, canvas effects and the React `<Slider>`
+  autoplay all follow it from one source (`core/motion`), so a change from
+  the OS or from the page reaches every animation at once. The OS setting
+  alone was the only switch, and it is one many people never find. The
+  twins and the module cost about 0.3 KB gzipped across the sheets and the
+  driver; the stamped sizes moved with them.
+- `styles/slider.css`: a reduced-motion block (it was the only preset sheet
+  without one) and `--sv-dot-target`, the hit area of a dot.
+- A README section, Accessibility, listing what the library guarantees on
+  its own surfaces with the WCAG criteria each guarantee serves, what stays
+  the page's job, and the published guidance the library follows.
+
 - `scrollvars/styles/scoped.css`, an opt-in sheet that registers `--sv-t`
   and `--sv-view` non-inheriting so a write re-resolves one element instead
   of its whole subtree. The rule it imposes: a clock reaches only the
@@ -23,6 +42,17 @@
   below the floor. Not part of `styles.css` on purpose.
 
 ### Changed
+
+- Slider dots are 24 by 24 CSS pixel targets (WCAG 2.5.8 Target Size,
+  Minimum): the button is the target and the visual dot is drawn inside it
+  as `::before`, so `--sv-dot-size` still sizes what you see and
+  `--sv-dot-target` what you hit. An override written directly on `.sv-dot`
+  (rather than through the knobs) now styles the button box; move it to
+  `.sv-dot::before`. The dots row is 24px tall instead of 8px.
+- `<Slider autoplay>` starts paused under reduced motion and pauses the
+  moment the preference flips; the visible control still resumes it. It
+  kept rotating before (jumping instead of gliding), and a glide in flight
+  when the preference changed finished animating: it settles now.
 
 - `--sv-page` and `--sv-v` are published only when something in the document
   can read them. Both live on `<html>` and both inherit, so every write asked
