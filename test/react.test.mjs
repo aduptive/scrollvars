@@ -775,6 +775,53 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
   }
 })
 
+test('react: Slider autoplay starts paused under reduced motion and the visible control resumes it (ADU-243)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Slider } = await import('../dist/react/index.js')
+
+  const realSetInterval = global.setInterval
+  let tick = () => {}
+  global.setInterval = (fn) => { tick = fn; return 0 }
+  const realMatchMedia = global.window.matchMedia
+  // the OS asks for less motion before the slider mounts
+  global.window.matchMedia = () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} })
+  // Under reduced motion a glide is a jump, so "the tick advanced" is not a
+  // scheduled frame here (the probe the other autoplay tests use) but a
+  // position write on the rail: setPos assigns scrollLeft.
+  let writes = 0
+  const advanced = (rail) => {
+    Object.defineProperty(rail, 'scrollLeft', { configurable: true, get: () => 0, set: () => { writes++ } })
+    const before = writes
+    tick()
+    return writes > before
+  }
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(Slider, { autoplay: 4000 },
+        React.createElement('div', null, 'one'), React.createElement('div', null, 'two')))
+    })
+    const shell = container.firstChild
+    const rail = shell.childNodes.find((node) => hostProps(node).className === 'sv-slider')
+    const pause = shell.childNodes.find((node) => hostProps(node).className === 'sv-pause')
+    assert.ok(pause, 'the visible rotation control renders')
+    assert.equal(hostProps(pause)['aria-label'], 'start slide rotation', 'it reads as paused from the first client render after the effect')
+    assert.equal(advanced(rail), false, 'the interval tick does not advance under reduced motion')
+    // the person presses the control: that is them asking, so it rotates
+    await act(async () => { hostProps(pause).onClick() })
+    assert.equal(hostProps(shell.childNodes.find((node) => hostProps(node).className === 'sv-pause'))['aria-label'], 'stop slide rotation')
+    assert.equal(advanced(rail), true, 'an explicit resume moves the rail even under reduced motion (a jump, not a glide)')
+    await act(async () => { root.unmount() })
+  } finally {
+    global.setInterval = realSetInterval
+    global.window.matchMedia = realMatchMedia
+  }
+})
+
 test('react: a destroyed Slider handle stops the autoplay interval', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

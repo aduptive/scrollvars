@@ -15,7 +15,7 @@
   autoplay all follow it from one source (`core/motion`), so a change from
   the OS or from the page reaches every animation at once. The OS setting
   alone was the only switch, and it is one many people never find. The
-  twins and the module cost about 0.3 KB gzipped across the sheets and the
+  twins and the module cost about 0.4 KB gzipped across the sheets and the
   driver; the stamped sizes moved with them.
 - `styles/slider.css`: a reduced-motion block (it was the only preset sheet
   without one) and `--sv-dot-target`, the hit area of a dot.

@@ -1210,3 +1210,49 @@ test('slider: cssVars false preserves state/classes and leaves existing inline v
   assert.equal(slides[1].vars['--sd'], undefined)
   handle.destroy()
 })
+
+test('slider: a preference that flips to reduce mid-glide settles on the slide, not on its index (review, ADU-243)', async () => {
+  const rafQueue = []
+  const mq = { matches: false, handlers: [], addEventListener(_, fn) { this.handlers.push(fn) }, removeEventListener() {} }
+  global.window = { addEventListener: () => {}, removeEventListener: () => {}, matchMedia: () => mq }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((sl) => { sl.style._owner = sl; sl.classList._owner = sl })
+  const container = {
+    get children() { slides.forEach((sl) => { sl._c = this; sl.offsetParent = this }); return slides },
+    clientLeft: 0, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0,
+    clientWidth: 300,
+    scrollWidth: 600, // a range of 300: the glide to the third slide is reachable
+    vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+    setPointerCapture: () => {}, releasePointerCapture: () => {},
+  }
+  const { slider } = await import('../dist/core/slider.js')
+  const handle = slider(container, { duration: 600 })
+  runFrames(rafQueue)
+  assert.equal(mq.handlers.length >= 1, true, 'the slider subscribes to the shared preference, which listens to the media query')
+
+  handle.goTo(2)
+  assert.equal(handle.state().gliding, true, 'a reachable glide is in flight')
+  assert.ok(rafQueue.length > 0, 'and has a frame pending')
+
+  // the OS flips to reduce while the glide is in flight: the first version
+  // wrote the slide INDEX (2) as scrollLeft; the destination of goTo(2) on
+  // this geometry is 200 - (300 - 100) / 2 = 100
+  mq.handlers.forEach((fn) => fn({ matches: true }))
+  assert.equal(handle.state().gliding, false, 'the glide settled at once')
+  assert.equal(container.scrollLeft, 100, 'on the pixel destination of the slide it was heading for')
+
+  handle.destroy()
+  container.scrollLeft = 0
+  mq.handlers.forEach((fn) => fn({ matches: false }))
+  mq.handlers.forEach((fn) => fn({ matches: true }))
+  assert.equal(container.scrollLeft, 0, 'a destroyed slider no longer hears the preference')
+})

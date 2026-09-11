@@ -344,13 +344,12 @@ export function slider(
   }
   // A preference that flips to reduce mid-glide settles the glide where it
   // was going, now: checking only when a glide starts left one in flight.
+  // `target` is the slide INDEX the glide is heading for, so the settle goes
+  // through goTo(index, false), which recomputes the pixel destination; the
+  // first version wrote the index as scrollLeft (review, ADU-243).
   const offMotion = onMotionChange((reduced) => {
     if (!reduced || target < 0 || destroyed) return
-    const to = target
-    stopGlide()
-    target = -1
-    setPos(to)
-    resumeSnap()
+    goTo(target, false)
   })
   const glide = (to: number) => {
     stopGlide()

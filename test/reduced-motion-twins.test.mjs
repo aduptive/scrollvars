@@ -19,6 +19,7 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim()
 // others, as tilt.css does with hover: none).
 const parse = (css) => {
   const top = [], reduced = []
+  let lastReducedEnd = -1
   let i = 0
   const readBlock = (from) => { // from points at '{'; returns [content, indexAfterClose]
     let depth = 0
@@ -35,12 +36,12 @@ const parse = (css) => {
     const head = css.slice(i, open)
     const [content, next] = readBlock(open)
     if (/^\s*@/.test(head)) {
-      if (/@media[^{]*prefers-reduced-motion:\s*reduce/.test(head)) reduced.push(...rulesOf(content))
+      if (/@media[^{]*prefers-reduced-motion:\s*reduce/.test(head)) { reduced.push(...rulesOf(content)); lastReducedEnd = next }
       // other at-rules (@supports, other @media) are not top level for this test
-    } else top.push([norm(head), norm(content)])
+    } else top.push([norm(head), norm(content), i])
     i = next
   }
-  return { top, reduced }
+  return { top, reduced, lastReducedEnd }
 }
 
 // The twin of a selector: the attribute lives on <html>, so a selector that
@@ -71,13 +72,17 @@ const sheets = readdirSync(root).filter((f) => f.endsWith('.css')).map((f) => [f
 test('every reduced-motion block in styles/*.css has its data-sv-motion twin', () => {
   let checked = 0
   for (const [file, css] of sheets) {
-    const { top, reduced } = parse(css)
+    const { top, reduced, lastReducedEnd } = parse(css)
     for (const [selector, body] of reduced) {
       checked++
       const expected = norm(twin(selector))
       const found = top.find(([sel]) => norm(sel) === expected)
       assert.ok(found, `${file}: no twin rule "${expected}" for the reduced-motion rule "${selector}"`)
       assert.equal(found[1], body, `${file}: the twin of "${selector}" carries different declarations`)
+      // :where() keeps the twin at the media rule's specificity, so it wins
+      // the way that rule does: by coming later in the source than what it
+      // overrides. A twin moved above the block loses (review, ADU-243).
+      assert.ok(found[2] >= lastReducedEnd, `${file}: the twin of "${selector}" sits before the reduced-motion block; it has to come after it`)
     }
   }
   assert.ok(checked >= 10, `the derivation found only ${checked} reduced-motion rules: it is broken, not the sheets`)

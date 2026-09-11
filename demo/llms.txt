@@ -527,9 +527,10 @@ every reduced-motion block in the sheets has a twin under it.
 reports the effective preference live, `prefersReducedMotion()` reads it.
 Persist the choice yourself and set it before the first frame. Your own CSS
 on the clocks (`--sv-view`, `--sv-t`, `--mx`, `--my`) is motion too: guard it
-with the media query and `:where([data-sv-motion="reduce"])`. Slider dots are
-24 by 24 CSS pixel targets (`--sv-dot-target`) with the visual dot inside
-(`--sv-dot-size`); `split()` takes plain text only. The README's
+with the media query and `:where([data-sv-motion="reduce"])`. The kit's slider
+dots are 24 by 24 CSS pixel targets (`--sv-dot-target`) that never shrink,
+with the visual dot inside (`--sv-dot-size`); a `renderDot` of your own is
+yours to size. `split()` takes plain text only. The README's
 Accessibility section lists the guarantees with their WCAG criteria.
 
 ## Limit animation work to its consumers

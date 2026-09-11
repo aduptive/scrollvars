@@ -2146,14 +2146,25 @@ test('canvas harness: a MediaQueryList with only addListener (no addEventListene
   const canvas = makeCanvas({ width: 300, height: 150, style })
 
   let handle
+  let fx
   assert.doesNotThrow(() => {
-    handle = mountEffect(canvas, { frame: () => {} })
+    handle = mountEffect(canvas, { frame: (f) => { fx = f } })
   }, 'mountEffect must not throw when MediaQueryList only has addListener')
 
   const motion = queries.find((q) => q.query.includes('prefers-reduced-motion'))
   const dpr = queries.find((q) => q.query.startsWith('(resolution'))
   assert.equal(motion.listeners.length, 1, 'the reduced-motion listener registered through the addListener fallback')
   assert.equal(dpr.listeners.length, 1, 'the dpr listener registered through the addListener fallback')
+
+  // the flip reaches the running effect through that listener, live
+  env.resize()
+  env.pump(16)
+  assert.ok(fx, 'the effect ran a frame once it had a size')
+  assert.equal(fx.reducedMotion, false, 'no preference at mount')
+  motion.listeners[0]({ matches: true })
+  env.pump(16)
+  assert.equal(fx.reducedMotion, true, 'a change on the legacy listener reaches fx.reducedMotion')
+  motion.listeners[0]({ matches: false })
 
   handle.destroy()
   // The reduced-motion listener belongs to core/motion, one for the whole

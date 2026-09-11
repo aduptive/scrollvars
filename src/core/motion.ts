@@ -43,7 +43,17 @@ function notify() {
   const now = reducedMotion()
   if (now === last) return
   last = now
-  listeners.forEach((fn) => fn(now))
+  // Each subscriber on its own: a throwing one (an application's listener)
+  // must not stop the slider or the canvas from hearing the change, and the
+  // observer cannot deliver it again since `last` already moved.
+  listeners.forEach((fn) => {
+    try {
+      fn(now)
+    } catch (error) {
+      if (typeof reportError === 'function') reportError(error)
+      else console.error(error)
+    }
+  })
 }
 
 function wire() {
@@ -76,9 +86,10 @@ export function onMotionChange(fn: (reduced: boolean) => void): () => void {
  * frame and nothing animates first and calms down later.
  */
 export function setMotion(mode: 'reduce' | 'auto'): void {
-  if (typeof document === 'undefined' || !document.documentElement) return
-  if (mode === 'reduce') document.documentElement.setAttribute(ATTR, 'reduce')
-  else document.documentElement.removeAttribute(ATTR)
+  const el = typeof document !== 'undefined' ? document.documentElement : null
+  if (!el || typeof el.setAttribute !== 'function') return
+  if (mode === 'reduce') el.setAttribute(ATTR, 'reduce')
+  else el.removeAttribute(ATTR)
   wire()
   notify() // the observer would report it a microtask later; callers read the new state now
 }

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.0 KB, full core incl. the slider 8.4 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.5 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
 
 ## Why
 
@@ -136,12 +136,12 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 4.0 KB |
+| `track` (the driver) | 4.1 KB |
 | `track` + `scan` (zero-wrapper mode) | 5.4 KB |
 | `slider` | 2.7 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 8.4 KB |
+| everything in `scrollvars` (the core entry) | 8.5 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 14.2 KB |
 <!-- sizes:end -->
 
@@ -716,9 +716,13 @@ What the library guarantees on its own surfaces, each line covered by a test
 in this repository (most of them browser invariants in CI), with the WCAG
 success criterion it serves. It is not a conformance claim for your site.
 
-- **Readable without JavaScript.** Every hiding style is gated on
-  `html.sv-on`, which only the driver sets. No JS, or an error before boot,
-  and the page is a normal static page with everything visible.
+- **Readable without JavaScript.** Every entrance and scrub preset hides
+  only under `html.sv-on`, which the driver sets. No JS, or an error before
+  boot, and those render as a normal static page with everything visible.
+  Disclosures keep their closed state without JS, as the platform's own
+  `<details>` and `<dialog>` do: an `sv-pop` panel, an Accordion item or a
+  Modal that is closed stays closed, so essential content goes outside them
+  or opens by default (`sv-open`, `open`).
 - **Reduced motion everywhere, from two sources** (2.3.3 Animation from
   Interactions). Every preset sheet has a `prefers-reduced-motion` block:
   entrances render their final state, scrub presets settle, the deck and the
@@ -742,9 +746,10 @@ success criterion it serves. It is not a conformance claim for your site.
   labeled arrows and dots, keyboard on the track, `aria-live="polite"` on
   the track while it is not rotating. Native scroll and scroll snap do the
   moving, so nothing is hijacked, on sliders or on pins.
-- **Targets** (2.5.8 Target Size, Minimum). Every slider dot is a 24 by 24
-  CSS pixel button with the visual dot drawn inside it: `--sv-dot-target`
-  sizes what you hit, `--sv-dot-size` what you see.
+- **Targets** (2.5.8 Target Size, Minimum). Every dot the kit renders is a
+  24 by 24 CSS pixel button that never shrinks (a crowded row wraps), with
+  the visual dot drawn inside it: `--sv-dot-target` sizes what you hit,
+  `--sv-dot-size` what you see. A `renderDot` of your own is yours to size.
 - **Animated text stays text** (1.3.2 Meaningful Sequence). `split()` keeps
   the full text as a visually hidden first child and marks the animated
   spans `aria-hidden`. It flattens markup, so give it plain text, never a

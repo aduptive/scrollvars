@@ -48,6 +48,26 @@ test('motion: the attribute and the media query both count, and both notify once
   assert.deepEqual(seen, [true, false, true], 'unsubscribed listeners hear nothing')
 })
 
+test('motion: a throwing subscriber does not silence the ones after it', async () => {
+  setup()
+  const { onMotionChange, setMotion } = await import('../dist/core/motion.js?isolation')
+  const heard = []
+  const realError = console.error
+  let reported = 0
+  console.error = () => { reported++ }
+  try {
+    const offBad = onMotionChange(() => { throw Error('an application listener that throws') })
+    const offGood = onMotionChange((r) => heard.push(r))
+    setMotion('reduce')
+    assert.deepEqual(heard, [true], 'the slider or the canvas behind a throwing app listener still hears the change')
+    assert.equal(reported, 1, 'the error is reported, not swallowed')
+    offBad(); offGood()
+    setMotion('auto')
+  } finally {
+    console.error = realError
+  }
+})
+
 test('motion: prefersReducedMotion() from the driver reports the effective preference before init', async () => {
   setup()
   const { prefersReducedMotion } = await import('../dist/core/driver.js?motionpref')

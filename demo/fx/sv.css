@@ -629,6 +629,7 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 }
 .sv-dots {
   display: flex;
+  flex-wrap: wrap; /* a crowded row wraps rather than shrinking the targets */
   gap: var(--sv-dot-gap, 8px);
   justify-content: var(--sv-dots-justify, center);
   margin-top: var(--sv-dots-offset, 14px);
@@ -639,6 +640,7 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
 .sv-dot {
   display: grid;
   place-items: center;
+  flex: none;
   width: var(--sv-dot-target, 24px);
   height: var(--sv-dot-target, 24px);
   border: 0;
