@@ -174,6 +174,7 @@ export function setPageOutputs(enabled: boolean) {
   pageOutputsMode = enabled ? 'on' : 'off'
   consumerWatch?.disconnect()
   consumerWatch = null
+  unlistenAll()
   if (enabled && pageOutputsEnabled) return
   pageOutputsEnabled = enabled
   if (typeof document === 'undefined') return
@@ -212,6 +213,16 @@ function mentionsPageOutputs(css: string) {
 // Owner nodes of sheets whose @import has not loaded yet, found by the last
 // scan: they fire `load` when it lands, and the answer is asked again then.
 let pendingImportOwners: Element[] = []
+// Owners currently listened to, one pair each, so repeated resolutions do not
+// stack closures and an explicit override can take them all off.
+const listened = new Map<Element, () => void>()
+function unlistenAll() {
+  listened.forEach((off, owner) => {
+    owner.removeEventListener('load', off)
+    owner.removeEventListener('error', off)
+  })
+  listened.clear()
+}
 
 function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   let rules: CSSRuleList | null
@@ -231,7 +242,9 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
     if (isImportRule(rule)) {
       const imported = rule.styleSheet
       if (!imported) {
-        if (sheet.ownerNode) pendingImportOwners.push(sheet.ownerNode as Element)
+        let owner: CSSStyleSheet | null = sheet
+        while (owner && !owner.ownerNode) owner = owner.parentStyleSheet
+        if (owner?.ownerNode) pendingImportOwners.push(owner.ownerNode as Element)
         return true
       }
       if (depth > 4 || sheetReadsPageOutputs(imported, depth + 1)) return true
@@ -252,7 +265,9 @@ function detectPageConsumers(): boolean {
     // the driver itself writes inline on every tracked element) matches
     // `--sv-v`. Re-test each candidate with the bounded name instead: without
     // this, any rescan after the first frame says yes on every page.
-    for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"],[style*="--sv-v"]')))
+    // :not(html): the driver writes the two outputs inline on <html>, and a
+    // rescan that read its own writes as a consumer never unpublished again.
+    for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"]:not(html),[style*="--sv-v"]:not(html)')))
       if (mentionsPageOutputs(el.getAttribute('style') || '')) return true
     const adopted = (document as unknown as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets
     if (adopted) for (const sheet of Array.from(adopted)) if (sheetReadsPageOutputs(sheet, 0)) return true
@@ -285,37 +300,35 @@ function watchForPageConsumers() {
     if (queued) return
     for (const record of records) {
       for (const node of Array.from(record.addedNodes)) {
-        if (node.nodeType !== 1) continue
-        // A <link> inserted now has no parsed sheet yet: its rules cannot be
-        // read on this turn, and that unreadability is the same uncertainty a
-        // cross-origin sheet is, so it publishes rather than waiting forever
-        // for a rescan that nothing would trigger.
-        if (node.nodeName === 'LINK' && !(node as HTMLLinkElement).sheet) {
-          adoptPageConsumers()
-          return
-        }
+        // text landing in a <style> (textContent = ...) is a new rule too
+        const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
+        if (!relevant) continue
         queued = true
         break
       }
       if (queued) break
     }
     // One rescan per frame at most: a runtime that injects a hundred rules
-    // in a row would otherwise walk every stylesheet a hundred times.
+    // in a row would otherwise walk every stylesheet a hundred times. The
+    // rescan goes through resolvePageOutputs(), so a <link> or @import that
+    // has not loaded (inserted bare or inside a wrapper) is uncertainty with
+    // a load listener, not a rule read as absent; and it does nothing once
+    // the watch is gone, so a frame queued before the last release cannot
+    // wake a driver with no work.
     if (queued)
       requestAnimationFrame(() => {
         queued = false
-        if (pageOutputsMode === 'auto' && detectPageConsumers()) adoptPageConsumers()
+        if (!consumerWatch || pageOutputsMode !== 'auto') return
+        resolvePageOutputs()
+        if (pageOutputsEnabled && !listened.size) {
+          consumerWatch?.disconnect()
+          consumerWatch = null
+        }
       })
   })
   consumerWatch.observe(root, { childList: true, subtree: true })
 }
 
-function adoptPageConsumers() {
-  consumerWatch?.disconnect()
-  consumerWatch = null
-  pageOutputsEnabled = true
-  schedule()
-}
 
 // A <link> whose sheet has not been parsed yet answers nothing: its rules are
 // unreadable at this instant, which is the same uncertainty a cross-origin
@@ -346,11 +359,14 @@ function resolvePageOutputs() {
   pageOutputsEnabled = enabled
   if (pending.length) {
     for (const owner of pending) {
+      if (listened.has(owner)) continue
       const settled = () => {
         owner.removeEventListener('load', settled)
         owner.removeEventListener('error', settled)
+        listened.delete(owner)
         resolvePageOutputs()
       }
+      listened.set(owner, settled)
       owner.addEventListener('load', settled)
       owner.addEventListener('error', settled)
     }
@@ -757,6 +773,7 @@ function releaseEntry(entry: Entry) {
   if (entries.size === 0 && pageOutputsMode === 'auto') {
     consumerWatch?.disconnect()
     consumerWatch = null
+    unlistenAll()
     pageOutputsResolved = false
   }
   culler?.unobserve(el)

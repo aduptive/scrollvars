@@ -1719,3 +1719,31 @@ Style recalculation on deep-50: 269ms as shipped, 117ms with the sheet,
 descendants per box and the gap at fifty narrows from 72 percent behind to
 24. On the flat profile the sheet costs 13 percent, and the table says so
 next to the win rather than instead of it.
+
+### Round 6: Astra reviews the day's driver code
+
+Eight findings, six real, all in the consumer detection for the document
+outputs; the two left as documented limits are shadow roots and in-place
+edits of an existing rule. Closed:
+
+1. Publishing became its own consumer: the inline scan matched the two
+   outputs the driver itself writes on `<html>`, so a page that published
+   "meanwhile" for a pending sheet never unpublished when the sheet turned
+   out to read nothing. `<html>` is excluded from the inline scan.
+2. Text assigned into an existing `<style>` is a text node, which the
+   observer ignored. It counts now.
+3. A pending `<link>` inside an inserted wrapper, an `@import` found by the
+   observer, and any `<link>` at all (an icon, a preload) were all handled by
+   a shortcut that adopted the consumer without installing a load listener or
+   checking `rel`. The observer's rescan goes through `resolvePageOutputs()`
+   like the first frame does, so the same pending logic and listeners apply.
+4. Listeners stacked: every resolution added a fresh load/error pair to every
+   pending owner, and an explicit `setPageOutputs()` left them all in place.
+   One pair per owner, removed on settle, on override and on the last release.
+5. An `@import` inside an imported sheet has no owner node of its own; the
+   owner is found up the `parentStyleSheet` chain.
+6. A rescan frame queued before the last tracker was released could wake a
+   driver with no work; it now does nothing once the watch is gone.
+
+Two invariants pin the sharpest of these: a preload link added after boot
+stays silent, and text assigned into an existing empty `<style>` counts.

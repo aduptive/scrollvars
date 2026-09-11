@@ -45,6 +45,26 @@ export async function pageOutputsGate({ browser, check, base }) {
         requestAnimationFrame(() => requestAnimationFrame(done))
       }))
     }, false],
+    ['a preload or icon link added after boot is not a stylesheet and stays silent', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        const link = document.createElement('link')
+        link.rel = 'preload'
+        link.as = 'image'
+        link.href = '/fx/nothing.png'
+        document.head.append(link)
+        requestAnimationFrame(() => requestAnimationFrame(done))
+      }))
+    }, false],
+    ['text assigned into an existing empty <style> after boot counts', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        const style = document.createElement('style')
+        document.head.append(style)
+        requestAnimationFrame(() => {
+          style.textContent = '.late { opacity: var(--sv-page) }'
+          setTimeout(done, 40)
+        })
+      }))
+    }, true],
     ['a stylesheet added after boot turns publishing back on', 'none', async page => {
       await page.evaluate(() => new Promise(done => {
         scrollTo(0, 800)
