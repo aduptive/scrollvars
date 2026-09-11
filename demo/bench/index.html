@@ -31,9 +31,13 @@ Keep the tab visible. CPU throttling is a synthetic experiment, not a substitute
 </table></div>
 <iframe id="stage" hidden></iframe>
 <h2>Total CPU and frame delivery</h2>
-<p class="sub">Compare ScrollVars with and without document-wide outputs. Disabling them is appropriate only when
-no CSS consumes <code>--sv-page</code>/<code>--sv-v</code>. Local animation is identical in both variants.
-Use the batched GSAP row when comparing one tracker per section. Small bundles do not guarantee lower CPU.</p>
+<p class="sub">Three ScrollVars rows. The plain one is the default: the document outputs
+<code>--sv-page</code>/<code>--sv-v</code> publish only when a stylesheet reads them, and nothing here does.
+The <code>styles/scoped.css</code> row is the opt-in that stops the clocks inheriting (README, Scoped clocks),
+run with the two author lines its contract asks of this fixture: it pays on this flat profile and wins on the
+deep one below. The "document variables published" row is what the two document outputs cost when a page
+reads them, not a competitor comparison. Use the batched GSAP row when comparing one tracker per section.
+Small bundles do not guarantee lower CPU.</p>
 <!-- measured:start -->
 <p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
 <code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome 152.0.7977.85,
