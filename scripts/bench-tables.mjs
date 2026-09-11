@@ -61,7 +61,7 @@ html += `  </tbody>
 </table>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
-selectors). Compare document-wide writes, local writes and batched GSAP:
+selectors). A GSAP tween writes a transform on the box, so its cost does not depend on what the box contains; a custom property inherits, so every write re-resolves the box's whole subtree, and <code>styles/scoped.css</code> stops that at the readers. Compare document-wide writes, local writes and batched GSAP:
 150 boxes, medians. Historical snapshot: ${results.meta.date}, package ${results.meta.version}; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
 <table>
   <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
@@ -121,6 +121,15 @@ const MD_LABEL = { 'scrollvars.html': 'ScrollVars', 'scrollvars-page.html': 'Scr
 const md = [`Measured ${current.meta.date}; package ${current.meta.version ?? 'historical'}, ${current.meta.runs} runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/${mainFile}); [frame tails and methodology](https://scrollvars.dev/bench/).`, '', '| engine | total CPU (12 s) | fps | bundle (gzip) | JS script | style recalc | JS heap |', '|---|---|---|---|---|---|---|']
 for (const [engine, m] of Object.entries(main.engines)) {
   md.push(`| ${MD_LABEL[engine]} | ${m.taskMs} ms | ${+m.fps.toFixed(1)} | ${BUNDLES[engine]} | ${m.scriptMs} ms | ${m.recalcMs} ms | ${m.heapMB} MB |`)
+}
+// The deep profile in one line under the table, so the README carries the
+// shape of the curve with measured numbers rather than typed ones: smallest
+// and largest subtree size, three engines. The full curve is on the bench page.
+const deepAt = (sc) => ['scrollvars.html', 'scrollvars-scoped.html', 'gsap-batched.html'].map((engine) => sc.engines[engine]?.taskMs)
+const [shallow, deep] = [deeps[0], deeps[deeps.length - 1]]
+if (shallow && deep && [...deepAt(shallow), ...deepAt(deep)].every((ms) => typeof ms === 'number')) {
+  const phrase = (sc) => { const [sv, scoped, gsap] = deepAt(sc); return `ScrollVars ${sv} ms, with styles/scoped.css ${scoped} ms, gsap batched ${gsap} ms` }
+  md.push('', `Deep profile, 150 boxes with N nodes each ([full curve](https://scrollvars.dev/bench/)): at ${shallow.name.slice(5)} nodes per box ${phrase(shallow)}; at ${deep.name.slice(5)} nodes per box ${phrase(deep)}.`)
 }
 for (const file of ['README.md', 'AGENTS.md']) {
   const path = join(root, file)

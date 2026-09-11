@@ -350,6 +350,8 @@ Measured 2026-09-10T23:55:45.351Z; package 1.16.1, 3 runs. CPU is accumulated ov
 | gsap + ScrollTrigger (idiomatic) | 659 ms | 60 | 45.2 KB | 145 ms | 57 ms | 6.1 MB |
 | gsap + ScrollTrigger (batched, symmetric) | 626 ms | 60 | 45.2 KB | 117 ms | 59 ms | 6.8 MB |
 | framer-motion | 1078 ms | 60 | 46.9 KB (+ React) | 490 ms | 42 ms | 10.9 MB |
+
+Deep profile, 150 boxes with N nodes each ([full curve](https://scrollvars.dev/bench/)): at 5 nodes per box ScrollVars 514 ms, with styles/scoped.css 442 ms, gsap batched 553 ms; at 50 nodes per box ScrollVars 653 ms, with styles/scoped.css 471 ms, gsap batched 380 ms.
 <!-- bench:end -->
 
 The committed results record the measurement date, package version, source
@@ -364,6 +366,19 @@ publishing them asks the browser to recalculate style for the whole document
 on every frame. The default row does not pay it because nothing on that page
 reads them, and the driver checks before publishing. A page that does use
 them pays in proportion to its own size, not to that row.
+
+Read the deep profile next to the main table: a GSAP tween writes a
+transform on the animated element, so its cost does not depend on what the
+box contains. ScrollVars writes a custom property on the tracked element,
+and custom properties inherit, so the browser re-resolves style for every
+node inside that element on every frame, readers or not. With a few nodes
+per box the two tie or ScrollVars wins; the more nodes a tracked box holds,
+the further the default falls behind, and `styles/scoped.css` (the clocks
+registered non-inheriting, so a write stops at the readers) removes most of
+that gap. What is left at fifty nodes per box is the price of animating
+through the cascade at all. The authoring rule that keeps a page on the
+cheap side of the curve: keep tracked elements thin, with big static
+content next to the animated element rather than inside it.
 The package ships ~6× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.

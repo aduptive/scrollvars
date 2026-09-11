@@ -56,7 +56,7 @@ Measured 2026-09-10T23:55:45.351Z; package 1.16.1, commit 24b4f2020eac7387c9cc82
 </table></div>
 <h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
-selectors). Compare document-wide writes, local writes and batched GSAP:
+selectors). A GSAP tween writes a transform on the box, so its cost does not depend on what the box contains; a custom property inherits, so every write re-resolves the box's whole subtree, and <code>styles/scoped.css</code> stops that at the readers. Compare document-wide writes, local writes and batched GSAP:
 150 boxes, medians. Historical snapshot: 2026-09-10T23:55:45.351Z, package 1.16.1; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>subtree size</th><th>engine</th><th>style recalc</th><th>JS script</th><th>task total</th><th>heap</th><th>fps</th></tr></thead>
