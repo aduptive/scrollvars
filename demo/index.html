@@ -103,6 +103,10 @@
   /* ── hero ── */
   /* ── fixed top bar: repo/install, visible in the first fold and on every
      scroll position (the site's own "npm i" pitch, always in reach) ── */
+  /* the bar covers whatever the browser scrolls to the top edge, a focused
+     link on the way back included (WCAG 2.4.11): the scrollport starts
+     under it. The keyboard gate found the reading list's links under it. */
+  html { scroll-padding-top: 64px; }
   header.site {
     position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: 56px;
     display: flex; align-items: center; justify-content: space-between;

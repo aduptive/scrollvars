@@ -271,6 +271,7 @@ plug in what's missing.</p>
 <tr><td>Slider dots</td><td>the kit's dots are 24 by 24 CSS pixel buttons (WCAG 2.5.8, <code>--sv-dot-target</code>) that never shrink, a crowded row wraps, with the visual dot drawn inside (<code>--sv-dot-size</code>); no transition under reduced motion. Measured in CI. A <code>renderDot</code> of your own is yours to size</td></tr>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
+<tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 400ms later. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
 </table>
 
 <h2 id="browsers">Browser support: and the answer for older ones</h2>

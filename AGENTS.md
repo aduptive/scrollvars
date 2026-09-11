@@ -517,7 +517,9 @@ on the clocks (`--sv-view`, `--sv-t`, `--mx`, `--my`) is motion too: guard it
 with the media query and `:where([data-sv-motion="reduce"])`. The kit's slider
 dots are 24 by 24 CSS pixel targets (`--sv-dot-target`) that never shrink,
 with the visual dot inside (`--sv-dot-size`); a `renderDot` of your own is
-yours to size. `split()` takes plain text only. The README's
+yours to size. `split()` takes plain text only. Under a fixed or sticky
+header set `scroll-padding-top` on `html` to its height, or a focused
+element the browser scrolls to the top edge lands under it. The README's
 Accessibility section lists the guarantees with their WCAG criteria.
 
 ## Limit animation work to its consumers

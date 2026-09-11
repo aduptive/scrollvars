@@ -758,13 +758,26 @@ success criterion it serves. It is not a conformance claim for your site.
   `aria-pressed`) on every trigger of a target; Modal and Accordion are
   native `<dialog>` and `<details>`, so focus, Escape and exclusivity come
   from the platform.
+- **Focus can be seen** (2.4.7 Focus Visible, 2.4.11 Focus Not Obscured). A
+  gate tabs through every gallery page and the home page, forward and back,
+  and at every stop requires the focused element to be inside the viewport,
+  at an effective opacity of at least 0.5 down its ancestors, `visibility:
+  visible`, not covered at the center of its visible part, and still so
+  400ms later. Content an entrance or a pin reveals is reached that way: the
+  browser scrolls the focused element into view, the section goes live, the
+  entrance runs. The gate proves it can fail on a fixture (a link under a
+  fixed header on the way back, a link inside a box that stays at opacity
+  0) and that `scroll-padding-top` clears the first.
 
 Your side of it: CSS of your own that reads `--sv-view`, `--sv-t`, `--mx` or
 `--my` is motion too, so give it the same two guards (the media query and
 `:where([data-sv-motion="reduce"])`); keep essential content out of reveals
 that only the scroll position opens; give anything that moves on its own a
-way to stop; and put the readable text in the DOM for rotating words and
-counters, with the animated copy `aria-hidden`.
+way to stop; put the readable text in the DOM for rotating words and
+counters, with the animated copy `aria-hidden`; and under a fixed or sticky
+header set `scroll-padding-top` on `html` to the header's height, or a
+focused element the browser scrolls to the top edge lands under it (the
+gallery pages carried exactly that until the gate found it).
 
 Where this follows published guidance: the visually hidden copy in
 `split()` uses the technique Sara Soueidan describes in

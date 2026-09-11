@@ -68,6 +68,7 @@ import { reviewGate } from './review-gate.mjs'
 import { pageOutputsGate } from './page-outputs-gate.mjs'
 import { scopedClocksGate } from './scoped-clocks-gate.mjs'
 import { motionGate } from './motion-gate.mjs'
+import { keyboardGate } from './keyboard-gate.mjs'
 import { execSync } from 'node:child_process'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -2860,6 +2861,7 @@ const MIN_EXAMINED = 1
 await pageOutputsGate({ browser, check, base })
 await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })
+await keyboardGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
 await reviewGate({ browser, check })
 

@@ -22,6 +22,13 @@
 - A README section, Accessibility, listing what the library guarantees on
   its own surfaces with the WCAG criteria each guarantee serves, what stays
   the page's job, and the published guidance the library follows.
+- A keyboard-reach gate in the e2e run (`demo/bench/harness/keyboard-gate.mjs`):
+  it tabs through every gallery page and the home page, forward and back,
+  and requires each focused element to be seen (in the viewport, effective
+  opacity at least 0.5, `visibility: visible`, not covered at the center of
+  its visible part, still so 400ms later). It proves it can fail on a
+  fixture: a link under a fixed header on the way back, and a link inside a
+  box that stays at opacity 0.
 
 - `scrollvars/styles/scoped.css`, an opt-in sheet that registers `--sv-t`
   and `--sv-view` non-inheriting so a write re-resolves one element instead
@@ -40,6 +47,13 @@
   less task time and 23 percent less recalculation.
   Browsers without `@property` keep inheriting, so it never breaks a page
   below the floor. Not part of `styles.css` on purpose.
+
+### Fixed
+
+- Demo: the gallery pages' fixed header covered a focused element the
+  browser scrolled to the top edge on the way back (Shift+Tab into the code
+  block's controls), WCAG 2.4.11. The pages set `scroll-padding-top` under
+  the header now; the keyboard gate found it and keeps it.
 
 ### Changed
 
