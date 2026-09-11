@@ -1779,3 +1779,57 @@ either. The residual 0.17ms is the inline-style query over the 5000
 elements; if it ever matters, scan only the added subtree for inline
 readers. The gate counts `cssText` reads through the getter: 1860 for 30
 plain elements before, 0 after.
+
+### Round 8: the low-end table refreshed, and a page that lives
+
+Two measurements that are about publishing honestly rather than about a
+new lever.
+
+**Low-end profile (4x CPU throttle, headful Chrome, main-900, 5 runs).**
+The published table still showed the 1.15.0 snapshot, whose "page outputs
+on" row (10711ms) described a default that no longer exists. Re-measured in
+the calmest window the night offered (1-minute load 5.5 before, 3.8 after;
+other sessions' Next.js builds held the machine between 20 and 110 the rest
+of the time, and a conditional re-run at load 21 was skipped by its own
+rule). Medians, with the run spread:
+
+| engine | task total | runs |
+|---|---:|---|
+| ScrollVars (default) | 1735 ms | 1682 / 2563 / 1915 / 1735 / 1221 |
+| ScrollVars + scoped.css | 2052 ms | 1809 / 2750 / 2178 / 2052 / 1467 |
+| ScrollVars (document variables published) | 10743 ms | 10099 / 11661 / 11969 / 10743 / 10391 |
+| gsap idiomatic | 1607 ms | 934 / 1773 / 1607 / 1912 / 1134 |
+| gsap batched | 1519 ms | 1382 / 1541 / 1576 / 1519 / 1413 |
+| framer-motion | 3232 ms | 3232 / 3744 / 3341 / 2933 / 2816 |
+
+Run 2 is high for every engine (a load spike); the medians carry it. The
+1.15.0 snapshot, taken on a calm machine, had gsap batched at 1068ms and the
+opt-out at 1386ms: absolute numbers are not comparable across the two days,
+the within-snapshot shape is (default at 1.14x gsap batched now, the old
+opt-out at 1.30x then). The bench page says to compare within the profile.
+
+**An app-shaped page (`app-shaped.mjs`, 3 runs, order rotated).** Every
+bench page holds still after load. This one is generated to look like a
+product site on a utility-class framework: sticky header, hero with entrance
+presets, a card grid with stagger, a parallax band, a feed of forty tracked
+items, a stream that mounts two rows and unmounts two every 250ms during the
+scroll, a route change at six seconds that swaps the grid and the feed, and
+a 5000-rule stylesheet. Three modes on the same 12-second scroll: the page
+without the library, the default, the default plus `styles/scoped.css`. The
+scoped mode is gated against the default on the static page (2459 of 2468
+settled elements equal, every run); 240 mutations happened in every timed
+run (asserted, or the run does not count).
+
+| page | task total | script | style recalc | p95 | frames >25ms |
+|---|---:|---:|---:|---:|---:|
+| without the library | 126.8 ms (114.9–146) | 27.4 ms | 3.4 ms | 16.7 ms | 0 |
+| ScrollVars | 331.9 ms (320.2–574.6) | 51.8 ms | 80.4 ms | 16.7 ms | 0 |
+| ScrollVars + scoped.css | 299 ms (255.9–340.3) | 51.4 ms | 56 ms | 16.8 ms | 0 |
+
+What the library adds to this page, animations included: about 205ms of
+main-thread time over 12 seconds, 0.3ms a frame at 60fps; 172ms with the
+sheet. No frame over 25ms in any mode. The round-7 memo is what keeps the
+stream and the route change from costing a stylesheet walk per frame; the
+watch stays alive here because nothing reads the document variables, which
+is the common case this page models. Both results are stamped onto the
+bench page and the README block by `scripts/bench-tables.mjs`.

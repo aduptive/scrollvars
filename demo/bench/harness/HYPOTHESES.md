@@ -40,6 +40,11 @@ Baseline facts the loop must not re-derive:
 
 ## Done
 
+- **A page that lives** (round 8): generated app-shaped page, three modes,
+  gated and with the mutations asserted. The library adds about 205ms over
+  the 12-second scroll (0.3ms a frame), 172ms with scoped.css, no frame over
+  25ms. The low-end table was re-measured with the new default in the same
+  round. Stamped on the bench page and in the README block.
 - **The consumer watch's own cost** (found after the queue emptied, round
   7): the rescan on every frame that adds an element serialized every rule
   of every sheet, 3.2ms a frame at 5000 rules on a page that mounts one
