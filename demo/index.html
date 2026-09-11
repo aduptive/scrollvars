@@ -4547,6 +4547,8 @@ var SV = (() => {
 
   /* ── wire the page ── */
   SV.setPageOutputs(false);
+  // No setPageOutputs(false) any more: nothing on this page reads --sv-page
+  // or --sv-v, and the driver detects that itself. The site runs the default.
   document.querySelectorAll('[data-sv]').forEach(function (el) {
     register(el, { once: el.hasAttribute('data-once'), hud: el.getAttribute('data-hud') });
   });

@@ -311,14 +311,14 @@ compat()   // once, before anything else</code></pre>
 <h4>Performance</h4>
 
 <ul>
-<li>The published main-900 benchmark, measured on the same page with the same four repetitions: total task time 1543.5ms against gsap-batched's 1374.5ms and framer-motion's 1820.5ms, with 83ms of script against 230.5ms and 917ms, and 1.1MB of heap against 6.7MB and 10.6MB. Before this change the same page cost 4128.5ms, which was 2.6x GSAP rather than 1.12x.</li>
+<li>The published main-900 benchmark, same page, same methodology: total task time 679ms against gsap-batched's 626ms and framer-motion's 1078ms, with 59ms of script against 117ms and 490ms, and 1.0MB of heap against 6.8MB and 10.9MB. Before this change the same page cost 4144.5ms, 2.6x GSAP rather than 1.08x. On the deep profiles the default still loses to GSAP on style recalculation alone, and <code>styles/scoped.css</code> is the answer there: ahead of GSAP at five descendants per box, the gap at fifty narrowed from 72 percent to 24.</li>
 </ul>
 
 
 <ul>
 <li>Demo: keep the homepage's custom scenes readable before the driver boots. Entrance text stays visible; pinned rails, decks, product-tour panels and map stations return to normal flow; galleries stop clipping static cards. Native carousels remain keyboard-scrollable without JavaScript, including the page-driven rail. Canvas-only effects and inactive controls are omitted from the static preview.</li>
-<li>Demo: disable unused document-wide outputs before homepage tracking. A four-run-per-mode A/B of the complete page records about <b>62% lower median main-thread task time</b> (5039.5→1911.5 ms over the same 12-second scroll), with local effects and HUD preserved. This applies the existing opt-out to this page; it does not change library defaults or establish a general speedup. [Raw measurements](https://scrollvars.dev/bench/results/home-outputs.json).</li>
-<li>Demo benchmark table: use the same dated snapshot as the README and benchmark page; display total task CPU, FPS, both output modes and the batched GSAP comparison.</li>
+<li>Demo: the homepage no longer calls <code>setPageOutputs(false)</code> itself. The default now detects that nothing on the page reads <code>--sv-page</code> or <code>--sv-v</code> and stays silent, which is what the earlier explicit opt-out had been buying (measured at the time at about 62 percent less main-thread task time over the same 12-second scroll, 5039.5 to 1911.5ms).</li>
+<li>Demo benchmark table: the same dated snapshot as the README and the benchmark page, with three ScrollVars rows (the default, the <code>styles/scoped.css</code> opt-in, and the document variables published, which is the cost of that feature rather than a competitor comparison) next to the batched GSAP row.</li>
 </ul>
 
 <h3>1.16.1 (2026-09-09)</h3>
