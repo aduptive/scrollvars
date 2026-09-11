@@ -166,12 +166,12 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8"&gt;
   &lt;div class="sv-marquee-track"&gt;
     {logos}{/* duplicate once, aria-hidden */}
   &lt;/div&gt;
 &lt;/div&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="sv-marquee"&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-marquee"&gt;
   &lt;div class="sv-marquee-track"&gt;
     …content… …content again (aria-hidden)…
   &lt;/div&gt;
@@ -190,7 +190,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sv-marquee-track { animation: none; }
 }</code></pre>
-    <pre data-pane="react"><code>&lt;Marquee speed={24}&gt;
+    <pre tabindex="0" data-pane="react"><code>&lt;Marquee speed={24}&gt;
   {logos.map(l =&gt; &lt;img key={l.id} src={l.src} alt={l.name} className="h-8" /&gt;)}
 &lt;/Marquee&gt;</code></pre>
   </div>

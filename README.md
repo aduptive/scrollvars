@@ -768,6 +768,13 @@ success criterion it serves. It is not a conformance claim for your site.
   entrance runs. The gate proves it can fail on a fixture (a link under a
   fixed header on the way back, a link inside a box that stays at opacity
   0) and that `scroll-padding-top` clears the first.
+- **axe, as a floor** (WCAG 2.x A and AA rules). Every gallery page and the
+  home page pass axe-core with zero violations in CI, audited after boot
+  and again with the page scrolled through and settled, so what an
+  entrance reveals is checked too. The gate proves it can fail (an image
+  without alt, a button without a name). A floor, not proof: axe sees
+  names, roles, contrast and structure, never whether the page makes sense
+  to a screen reader user; that pass is a person's.
 
 Your side of it: CSS of your own that reads `--sv-view`, `--sv-t`, `--mx` or
 `--my` is motion too, so give it the same two guards (the media query and

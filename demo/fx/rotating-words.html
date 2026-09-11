@@ -163,14 +163,14 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;h1 class="text-5xl font-extrabold"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;h1 class="text-5xl font-extrabold"&gt;
   we build
   &lt;span class="sv-words text-violet-400"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
 &lt;/h1&gt;
 &lt;!-- set --sv-word from your state; scenes drive it for free in pinned stories --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;h1&gt;we build
+    <pre tabindex="0" data-pane="css"><code>&lt;h1&gt;we build
   &lt;span class="sv-words"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
@@ -189,7 +189,7 @@
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)</code></pre>
-    <pre data-pane="react"><code>const [word, setWord] = useState(0)
+    <pre tabindex="0" data-pane="react"><code>const [word, setWord] = useState(0)
 &lt;h1&gt;we build{' '}
   &lt;span className="sv-words" style={{ '--sv-word': word }}&gt;
     {words.map(w =&gt; &lt;span key={w}&gt;{w}&lt;/span&gt;)}

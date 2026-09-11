@@ -168,7 +168,7 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
   &lt;div class="sv-stage grid place-items-center"&gt;
     &lt;div class="sv-range sv-range-rise grid gap-3"&gt;
       &lt;h2 data-sv-from="0" data-sv-to=".4" class="text-4xl font-bold"&gt;First&lt;/h2&gt;
@@ -181,7 +181,7 @@
      --sv-r is a registered property (initial-value: 1), so an engine
      that can't compute the division settles there instead of turning
      invalid; still consume it as var(--sv-r, 1). --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
   &lt;div class="sv-stage"&gt;                &lt;!-- the sticky viewport, from pin.css --&gt;
     &lt;div class="sv-range sv-range-rise"&gt;
       &lt;h2 style="--sv-from: 0; --sv-to: .4"&gt;First&lt;/h2&gt;
@@ -208,7 +208,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-range &gt; * { --sv-r: 1; }
 }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
+    <pre tabindex="0" data-pane="react"><code>&lt;Track pin="250vh"&gt;
   &lt;div className="sv-stage grid place-items-center"&gt;
     &lt;div className="sv-range sv-range-rise grid gap-3"&gt;
       {steps.map((s, i, all) =&gt; (

@@ -257,9 +257,9 @@ ${sidebar(fx.slug)}
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
-    <pre data-pane="css"><code>${esc(fx.css)}</code></pre>`}
-    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} data-pane="react"><code>${esc(fx.react)}</code></pre>
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" tabindex="0" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
+    <pre tabindex="0" data-pane="css"><code>${esc(fx.css)}</code></pre>`}
+    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} tabindex="0" data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

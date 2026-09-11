@@ -164,11 +164,11 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div ref={rowRef} class="grid grid-cols-3 gap-6"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div ref={rowRef} class="grid grid-cols-3 gap-6"&gt;
   &lt;div class="sv-tilt rounded-2xl border p-10"&gt;…&lt;/div&gt;
 &lt;/div&gt;
 &lt;!-- tilt/glare read --mx/--my; restyle .sv-tilt::after for the glare --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="grid"&gt;          &lt;!-- any container --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="grid"&gt;          &lt;!-- any container --&gt;
   &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
   &lt;div class="sv-tilt"&gt;…&lt;/div&gt;
 &lt;/div&gt;
@@ -178,7 +178,7 @@
   trackPointer(document.querySelector('.grid'))
 &lt;/script&gt;
 /* preset in styles/tilt.css. Tilt + glare from --mx/--my */</code></pre>
-    <pre data-pane="react"><code>const ref = usePointer()
+    <pre tabindex="0" data-pane="react"><code>const ref = usePointer()
 &lt;div ref={ref} className="grid grid-cols-3 gap-6"&gt;
   {cards.map(c =&gt; &lt;div key={c.id} className="sv-tilt"&gt;…&lt;/div&gt;)}
 &lt;/div&gt;</code></pre>

@@ -164,7 +164,7 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
   &lt;h2 class="sv-rise text-4xl font-bold"&gt;Title&lt;/h2&gt;
   &lt;p class="sv-rise" data-sv-order="1"&gt;Copy&lt;/p&gt;
   &lt;p class="sv-rise" data-sv-order="2" data-sv-distance="3rem"&gt;More&lt;/p&gt;
@@ -174,7 +174,7 @@
      style attr, works with mapped CMS content, adds zero global CSS.
      Also fine: [--sv-order:1] arbitrary classes for static one-offs;
      sv-stagger on the parent for sequential lists (no attrs at all). --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; sets --sv-live in the band --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;section data-sv&gt;            &lt;!-- tracked; sets --sv-live in the band --&gt;
   &lt;h2 class="sv-rise"&gt;Title&lt;/h2&gt;
   &lt;p class="sv-rise" style="--sv-order: 1"&gt;Copy&lt;/p&gt;
 &lt;/section&gt;
@@ -194,7 +194,7 @@
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
     transition: none; animation: none; opacity: 1; translate: none; }
 }</code></pre>
-    <pre data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
+    <pre tabindex="0" data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
   &lt;h2&gt;Title&lt;/h2&gt;
   &lt;p&gt;Copy&lt;/p&gt;
 &lt;/Reveal&gt;

@@ -120,10 +120,10 @@ the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats eac
 </nav>
 
 <h2 id="quickstart">Quickstart</h2>
-<pre><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
+<pre tabindex="0"><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
 <p><b>Next.js (zero-wrapper, recommended):</b> one boot in the root layout, then plain
 server components with data attributes.</p>
-<pre><code>// app/layout.tsx
+<pre tabindex="0"><code>// app/layout.tsx
 import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
@@ -248,7 +248,7 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
+<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
@@ -272,6 +272,7 @@ plug in what's missing.</p>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 <tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 400ms later. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
+<tr><td>axe</td><td>every gallery page and the home page pass axe-core (WCAG 2.x A and AA) with zero violations in CI, after boot and again scrolled through and settled; the gate proves it can fail. A floor, not proof</td></tr>
 </table>
 
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
@@ -333,7 +334,7 @@ and the individual-transform floor the rule still matches and its <code>opacity<
 declaration still transitions, so the text fades in without rising. With your bundler
 downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
-<pre><code>import { compat } from 'scrollvars/compat'
+<pre tabindex="0"><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
 <h2 id="trouble">Troubleshooting</h2>

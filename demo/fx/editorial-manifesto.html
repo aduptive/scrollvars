@@ -156,7 +156,7 @@
 .sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
 .sv-manifesto .manifesto-copy { padding-block: 32px; }
 .sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
-.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.55 + .45 * var(--read)); } /* the floor keeps unread copy at 3:1 on this paper (axe, large text) */
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
@@ -169,7 +169,7 @@
   <div class="code">
     <button class="copy">copy</button>
 
-    <pre class="on" data-pane="react"><code>// ScrollVars fx · editorial-manifesto
+    <pre class="on" tabindex="0" data-pane="react"><code>// ScrollVars fx · editorial-manifesto
 // Requires: npm i scrollvars · no preset stylesheet required
 'use client'
 import * as React from 'react'
@@ -180,7 +180,7 @@ const css = `
 .sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
 .sv-manifesto .manifesto-copy { padding-block: 32px; }
 .sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
-.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.55 + .45 * var(--read)); } /* the floor keeps unread copy at 3:1 on this paper (axe, large text) */
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }

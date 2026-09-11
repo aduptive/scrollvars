@@ -177,13 +177,13 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-x&gt;   &lt;!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) --&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div data-x&gt;   &lt;!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) --&gt;
   &lt;div class="sv-stage grid place-items-center"&gt;…&lt;/div&gt;
 &lt;/div&gt;
 &lt;!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() =&gt; tl.progress(
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="scene"&gt;                     &lt;!-- no data-sv: tracked in JS below --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="scene"&gt;                     &lt;!-- no data-sv: tracked in JS below --&gt;
   &lt;div class="sv-stage"&gt;…stage…&lt;/div&gt;   &lt;!-- the sticky viewport, from pin.css --&gt;
 &lt;/div&gt;
 
@@ -198,7 +198,7 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 &lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
+    <pre tabindex="0" data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
 useEffect(() =&gt; {
   tl.current = gsap.timeline({ paused: true })
     .from('.stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })

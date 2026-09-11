@@ -163,13 +163,13 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
   &lt;h2 class="sv-split-rise text-5xl font-extrabold" data-sv-split&gt;
     Words arrive one by one
   &lt;/h2&gt;
 &lt;/section&gt;
 &lt;!-- knobs per element: [--sv-stagger:60ms] [--sv-duration:600ms] --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
   &lt;h2 class="sv-split-rise" data-sv-split&gt;Words arrive one by one&lt;/h2&gt;
 &lt;/section&gt;
 &lt;!-- data-sv-split wraps each word in a span with --sv-order; the full text
@@ -196,7 +196,7 @@
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 &lt;h2 class="sv-reading" data-sv-split&gt;…&lt;/h2&gt;   &lt;!-- inside a data-sv-pin --&gt;</code></pre>
-    <pre data-pane="react"><code>import { Split } from 'scrollvars/react'
+    <pre tabindex="0" data-pane="react"><code>import { Split } from 'scrollvars/react'
 
 &lt;Reveal&gt;
   &lt;Split as="h2" className="sv-split-rise" stagger={60}&gt;

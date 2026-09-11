@@ -166,14 +166,14 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="250vh"&gt;
   &lt;div class="sv-stage"&gt;
     &lt;div class="grid h-full place-items-center"&gt;revealed content&lt;/div&gt;
     &lt;div class="sv-curtain-l absolute inset-y-0 left-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
     &lt;div class="sv-curtain-r absolute inset-y-0 right-0 w-1/2 bg-zinc-900"&gt;&lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div data-sv data-sv-pin="250vh"&gt;     &lt;!-- the pin helper owns the height --&gt;
   &lt;div class="sv-stage"&gt;                &lt;!-- the sticky viewport, from pin.css --&gt;
     &lt;div class="revealed"&gt;…&lt;/div&gt;
     &lt;div class="panel sv-curtain-l"&gt;…&lt;/div&gt;
@@ -192,7 +192,7 @@
   .sv .sv-curtain-l,
   .sv .sv-curtain-r { display: none; }
 }</code></pre>
-    <pre data-pane="react"><code>&lt;Track pin="250vh"&gt;
+    <pre tabindex="0" data-pane="react"><code>&lt;Track pin="250vh"&gt;
   &lt;div className="sv-stage"&gt;
     &lt;Revealed /&gt;
     &lt;div className="sv-curtain-l …" /&gt;

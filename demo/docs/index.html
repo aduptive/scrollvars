@@ -54,10 +54,10 @@ the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats eac
 </nav>
 
 <h2 id="quickstart">Quickstart</h2>
-<pre><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
+<pre tabindex="0"><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
 <p><b>Next.js (zero-wrapper, recommended):</b> one boot in the root layout, then plain
 server components with data attributes.</p>
-<pre><code>// app/layout.tsx
+<pre tabindex="0"><code>// app/layout.tsx
 import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
@@ -194,7 +194,7 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
+<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
@@ -218,6 +218,7 @@ plug in what's missing.</p>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 <tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 400ms later. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
+<tr><td>axe</td><td>every gallery page and the home page pass axe-core (WCAG 2.x A and AA) with zero violations in CI, after boot and again scrolled through and settled; the gate proves it can fail. A floor, not proof</td></tr>
 </table>
 
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
@@ -279,7 +280,7 @@ and the individual-transform floor the rule still matches and its <code>opacity<
 declaration still transitions, so the text fades in without rising. With your bundler
 downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
-<pre><code>import { compat } from 'scrollvars/compat'
+<pre tabindex="0"><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
 <h2 id="trouble">Troubleshooting</h2>
@@ -306,6 +307,7 @@ compat()   // once, before anything else</code></pre>
 <li><code>styles/slider.css</code>: a reduced-motion block (it was the only preset sheet without one) and <code>--sv-dot-target</code>, the hit area of a dot.</li>
 <li>A README section, Accessibility, listing what the library guarantees on its own surfaces with the WCAG criteria each guarantee serves, what stays the page's job, and the published guidance the library follows.</li>
 <li>A keyboard-reach gate in the e2e run (<code>demo/bench/harness/keyboard-gate.mjs</code>): it tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen (in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 400ms later). It proves it can fail on a fixture: a link under a fixed header on the way back, and a link inside a box that stays at opacity 0.</li>
+<li>An axe gate in the e2e run (<code>demo/bench/harness/axe-gate.mjs</code>): every gallery page and the home page pass axe-core's WCAG 2.x A and AA rules with zero violations, audited after boot and again with the page scrolled through and settled (it waits for every finite animation and transition to end first, since text mid-fade reads as low contrast). It proves it can fail on a fixture with an image without alt and a button without a name.</li>
 </ul>
 
 <ul>
@@ -315,6 +317,7 @@ compat()   // once, before anything else</code></pre>
 <h4>Fixed</h4>
 
 <ul>
+<li>Demo: what axe found. Every code block is keyboard focusable (<code>tabindex="0"</code>, WCAG 2.1.1: a scrollable region needs keyboard access); the sticky-steps section keeps an inactive step's text at 4.5:1 (its opacity floor is .65 with the labels at .8, it was .3 with .7 and .75, which read at 1.8:1); the editorial manifesto keeps unread copy at 3:1 (floor .55, it was .28); the cinematic hero's marquee strip has its own ground, its text read at 2.6:1 where an orb passed behind it. The gallery panes and the installed components carry the same values.</li>
 <li>Demo: the gallery pages' fixed header covered a focused element the browser scrolled to the top edge on the way back (Shift+Tab into the code block's controls), WCAG 2.4.11. The pages set <code>scroll-padding-top</code> under the header now; the keyboard gate found it and keeps it.</li>
 </ul>
 

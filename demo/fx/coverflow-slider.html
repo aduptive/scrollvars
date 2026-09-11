@@ -167,7 +167,7 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]"&gt;
   {cards.map(c =&gt; (
     &lt;Slide key={c.id} className="[scale:calc(1-min(abs(var(--sd,0))*0.12,0.3))]"&gt;
@@ -175,7 +175,7 @@
     &lt;/Slide&gt;
   ))}
 &lt;/Slider&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div class="sv-slider" id="cards"&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-slider" id="cards"&gt;
   &lt;div class="slide"&gt;…&lt;/div&gt; ×N
 &lt;/div&gt;
 
@@ -189,7 +189,7 @@
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
 @media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */</code></pre>
-    <pre data-pane="react"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}&gt;
+    <pre tabindex="0" data-pane="react"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots autoplay={5000}&gt;
   {cards.map(c =&gt; &lt;Slide key={c.id}&gt;&lt;Card {...c} /&gt;&lt;/Slide&gt;)}
 &lt;/Slider&gt;
 // chrome: --sv-arrow-* / --sv-dot-* vars, prevIcon/nextIcon, renderDot, or your own UI via ref</code></pre>
