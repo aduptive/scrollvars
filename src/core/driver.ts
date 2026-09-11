@@ -209,6 +209,10 @@ function mentionsPageOutputs(css: string) {
   return PAGE_OUTPUT_NAMES.test(css)
 }
 
+// Owner nodes of sheets whose @import has not loaded yet, found by the last
+// scan: they fire `load` when it lands, and the answer is asked again then.
+let pendingImportOwners: Element[] = []
+
 function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   let rules: CSSRuleList | null
   try {
@@ -220,9 +224,16 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   for (const rule of Array.from(rules)) {
     // An @import's own serialization is just the url: the names live in the
     // sheet it pulls in, and an unreadable imported sheet is the same
-    // uncertainty as an unreadable linked one.
-    const imported = (rule as CSSImportRule).styleSheet
-    if (imported) {
+    // uncertainty as an unreadable linked one. One that has not LOADED yet
+    // (styleSheet still null) is uncertainty too: on a slow connection the
+    // first frame runs before the import lands, and reading its text as "no
+    // consumer" silenced a page whose consumer was on its way (found in CI).
+    if (isImportRule(rule)) {
+      const imported = rule.styleSheet
+      if (!imported) {
+        if (sheet.ownerNode) pendingImportOwners.push(sheet.ownerNode as Element)
+        return true
+      }
       if (depth > 4 || sheetReadsPageOutputs(imported, depth + 1)) return true
       continue
     }
@@ -232,7 +243,10 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   return false
 }
 
+const isImportRule = (rule: CSSRule): rule is CSSImportRule => rule.type === 3 /* IMPORT_RULE, older engines lack the class */
+
 function detectPageConsumers(): boolean {
+  pendingImportOwners = []
   try {
     // The attribute selector can only match a substring, so `--sv-view` (which
     // the driver itself writes inline on every tracked element) matches
@@ -322,21 +336,23 @@ function pendingSheets(): HTMLLinkElement[] {
 
 function resolvePageOutputs() {
   if (pageOutputsMode !== 'auto') return
-  const pending = pendingSheets()
   const found = detectPageConsumers()
+  // a <link> with no parsed sheet yet, or a <style>/<link> whose @import has
+  // not landed: both answer nothing now and fire `load` when they can
+  const pending: Element[] = [...pendingSheets(), ...pendingImportOwners]
   const enabled = found || pending.length > 0
   const was = pageOutputsEnabled
   if (was && !enabled) stopPageOutputs()
   pageOutputsEnabled = enabled
   if (pending.length) {
-    for (const link of pending) {
+    for (const owner of pending) {
       const settled = () => {
-        link.removeEventListener('load', settled)
-        link.removeEventListener('error', settled)
+        owner.removeEventListener('load', settled)
+        owner.removeEventListener('error', settled)
         resolvePageOutputs()
       }
-      link.addEventListener('load', settled)
-      link.addEventListener('error', settled)
+      owner.addEventListener('load', settled)
+      owner.addEventListener('error', settled)
     }
   } else if (!found) watchForPageConsumers()
   // Only a transition earns a frame. Scheduling on every resolution sustains
