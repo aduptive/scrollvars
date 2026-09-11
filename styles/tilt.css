@@ -41,3 +41,14 @@
     display: none;
   }
 }
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-tilt,
+:where([data-sv-motion="reduce"]) .sv-tilt.sv-pointer-leave {
+  transform: none;
+  transition: none;
+}
+:where([data-sv-motion="reduce"]) .sv-tilt::after {
+  display: none;
+}

@@ -6,6 +6,7 @@ import type { EffectOptions } from '../canvas/index.js'
 import { mountEffect } from '../canvas/index.js'
 import type { TrackOptions } from '../core/driver.js'
 import { scrollToScene, setPageOutputs, track } from '../core/driver.js'
+import { reducedMotion as effectiveReduce, onMotionChange } from '../core/motion.js'
 import type { PointerOptions } from '../core/pointer.js'
 import { trackPointer } from '../core/pointer.js'
 import { scan } from '../core/scan.js'
@@ -767,6 +768,17 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     const pointerPause = useRef<boolean | undefined>(undefined)
     const pausedRef = useRef(paused)
     pausedRef.current = paused
+    // Reduced motion (the OS setting or the page's data-sv-motion switch)
+    // starts the rotation paused and pauses it the moment the preference
+    // flips; the visible control still resumes it, that is the user asking.
+    // An effect rather than the initial state: the server rendered "stop
+    // slide rotation" and the first client render has to match it.
+    useEffect(() => {
+      if (!autoplay || autoplay <= 0) return
+      const pause = () => { pausedRef.current = true; setPaused(true) }
+      if (effectiveReduce()) pause()
+      return onMotionChange((reduced) => { if (reduced) pause() })
+    }, [autoplay])
     useEffect(() => {
       if (!autoplay || autoplay <= 0) return
       let onscreen = true

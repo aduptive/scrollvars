@@ -193,3 +193,22 @@ html:not(.sv-on) .sv-spread > * {
     translate: none;
   }
 }
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-spread > *,
+.sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > * {
+  translate: none;
+  rotate: none;
+  transition: none;
+}
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span,
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
+:where([data-sv-motion="reduce"]) .sv-view-fade,
+:where([data-sv-motion="reduce"]) .sv-view-rise {
+  transition: none;
+  animation: none;
+  opacity: 1;
+  translate: none;
+}
