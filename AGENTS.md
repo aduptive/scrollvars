@@ -482,7 +482,10 @@ benchmark below carries the sheet as its own row on every profile.
 
 Browsers without `@property` ignore the registration and keep inheriting, so
 the sheet never breaks a page below the floor; it can only make one faster
-where it is understood. It is deliberately not part of `styles.css`.
+where it is understood. Measured rather than read from a table: in
+Chromium, Firefox and WebKit the registration takes and a page renders the
+same with the sheet as without, and the three-engine CI job checks both on
+every run. It is deliberately not part of `styles.css`.
 
 ## Limit animation work to its consumers
 
