@@ -1747,3 +1747,35 @@ edits of an existing rule. Closed:
 
 Two invariants pin the sharpest of these: a preload link added after boot
 stays silent, and text assigned into an existing empty `<style>` counts.
+
+### Round 7: the consumer watch's own cost, found after the queue emptied
+
+Every screen in rounds 1 to 6 ran on a page whose DOM never changes after
+load. The consumer watch (round 6) rescans the document once per frame that
+adds an element, and that rescan serialized every rule of every stylesheet
+through `cssText`: on a page that mounts one element per frame, the common
+shape of a virtualized list or an infinite scroll, the watch was a per-frame
+tax proportional to the size of the CSS, on exactly the pages the default
+was meant to relieve. `mutation-cost.mjs`, one linked sheet of N rules, 5000
+elements in the body, one element appended per frame for 120 frames, script
+time over the window:
+
+| | watch alive (auto, no consumer) | `setPageOutputs(false)` | per mutated frame |
+|---|---:|---:|---:|
+| 395c920, 5000 rules | 390 / 389ms | 5 / 7ms | 3.2ms |
+| memo by rule count, 5000 rules | 24 / 27ms | 5 / 6ms | 0.17ms |
+
+The pure rescan, median of five in page: 0.80ms at 1000 rules, 4.30ms at
+5000, 16.30ms at 20000, linear at about 0.8us a rule.
+
+Fix: a sheet read in full that reaches neither name is remembered with its
+rule count, and a rescan skips it until the count moves. By count on purpose:
+a CSS-in-JS runtime in production inserts a component's rules into one
+existing sheet as the component mounts, and the mount's own elements are
+what wake the watch, so that insertion is still seen (an invariant pins it).
+An in-place edit that swaps one rule for another keeps the count and is
+missed, but no node is added by such an edit, so the watch never saw it
+either. The residual 0.17ms is the inline-style query over the 5000
+elements; if it ever matters, scan only the added subtree for inline
+readers. The gate counts `cssText` reads through the getter: 1860 for 30
+plain elements before, 0 after.

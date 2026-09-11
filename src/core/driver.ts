@@ -216,6 +216,16 @@ let pendingImportOwners: Element[] = []
 // Owners currently listened to, one pair each, so repeated resolutions do not
 // stack closures and an explicit override can take them all off.
 const listened = new Map<Element, () => void>()
+// Sheets read in full that reach neither name, by their rule count at the
+// time. The watch below rescans on every frame that adds an element, and
+// serializing every rule of every sheet on each of those cost 3.2ms a frame
+// at 5000 rules on a page that mounts one element per frame (390ms of script
+// over 120 frames against 7ms with the watch off). A sheet whose count has
+// not moved is skipped; one that gained or lost a rule is read again, which
+// is how a CSS-in-JS runtime's insertRule on mount is still seen. An edit
+// that swaps one rule for another in place keeps the count and is missed,
+// but no node is added by such an edit, so the watch never saw it either.
+const silentSheets = new WeakMap<CSSStyleSheet, number>()
 function unlistenAll() {
   listened.forEach((off, owner) => {
     owner.removeEventListener('load', off)
@@ -232,6 +242,7 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
     return true // cross-origin without CORS: unreadable, so assume it reads them
   }
   if (!rules) return true
+  if (silentSheets.get(sheet) === rules.length) return false
   for (const rule of Array.from(rules)) {
     // An @import's own serialization is just the url: the names live in the
     // sheet it pulls in, and an unreadable imported sheet is the same
@@ -253,6 +264,7 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
     // cssText of a grouping rule carries its children, so nesting is covered.
     if (mentionsPageOutputs(rule.cssText)) return true
   }
+  silentSheets.set(sheet, rules.length)
   return false
 }
 

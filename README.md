@@ -700,7 +700,9 @@ never reads them should never pay that, so the driver looks before it
 publishes: on the first frame it scans the document's own stylesheets and
 inline styles for the two names, and stays silent when neither appears. A
 stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
-turns publishing back on.
+turns publishing back on. The watch behind that rescans once per frame that
+adds an element and skips every stylesheet it already read in full, so a page
+that mounts elements while it scrolls pays no per-rule work for it.
 
 Detection reads CSS, so it cannot see a JavaScript reader. Call
 `setPageOutputs(true)` (import from `scrollvars`, or

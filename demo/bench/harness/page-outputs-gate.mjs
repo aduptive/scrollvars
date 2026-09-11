@@ -78,6 +78,43 @@ export async function pageOutputsGate({ browser, check, base }) {
         setTimeout(done, 30)
       }))
     }, true],
+    // The watch rescans once per frame that adds an element. A sheet read in
+    // full that reached nothing is remembered by rule count, so those frames
+    // serialize no rule at all: 3.2ms a frame at 5000 rules before the memo,
+    // on a page that mounts one element per frame. Counted at the getter.
+    ['elements added after boot do not serialize the stylesheets again', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        // two frames so the boot scan is over before the counter goes in
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const desc = Object.getOwnPropertyDescriptor(CSSRule.prototype, 'cssText')
+          window.__cssTextReads = 0
+          Object.defineProperty(CSSRule.prototype, 'cssText', { configurable: true, get() { window.__cssTextReads++; return desc.get.call(this) } })
+          let n = 0
+          const tick = () => {
+            document.body.append(document.createElement('div'))
+            if (++n < 30) requestAnimationFrame(tick)
+            else requestAnimationFrame(() => requestAnimationFrame(done))
+          }
+          requestAnimationFrame(tick)
+        }))
+      }))
+      const reads = await page.evaluate(() => window.__cssTextReads)
+      if (reads > 0) throw Error(`${reads} rule serializations for 30 plain elements`)
+    }, false],
+    // The memo is by rule count on purpose: a CSS-in-JS runtime in production
+    // inserts a component's rules into ONE existing sheet as the component
+    // mounts, and the mount's own elements are what wake the watch.
+    ['a rule inserted into an existing sheet at mount time counts', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        const live = document.createElement('style')
+        document.head.append(live)
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          live.sheet.insertRule('.p { width: calc(var(--sv-page) * 100%) }', 0)
+          document.body.append(document.createElement('div'))
+          setTimeout(done, 40)
+        }))
+      }))
+    }, true],
   ]
 
   for (const [name, consumer, setup, expected] of cases) {

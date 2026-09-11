@@ -34,7 +34,12 @@
   267.5ms, so the price was the inheritance rather than the write. The driver
   now scans the document's own stylesheets and inline styles once, on the
   first frame that could publish, and stays silent when neither name appears.
-  A stylesheet added later turns publishing back on.
+  A stylesheet added later turns publishing back on; the watch behind that
+  rescans once per frame that adds an element and skips every stylesheet it
+  already read in full (by rule count, so a rule inserted into an existing
+  sheet as a component mounts is still seen), which is what keeps a page
+  that mounts elements while it scrolls from serializing every rule on
+  every one of those frames.
   **This can change behavior for a page that reads the variables only from
   JavaScript**, which no CSS scan can see: call `setPageOutputs(true)` there.
   Anything unreadable counts as a reader, so a cross-origin stylesheet without

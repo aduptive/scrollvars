@@ -2807,7 +2807,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.6 KB / 3.8 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.7 KB / 3.8 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3138,6 +3138,7 @@ var SV = (() => {
   }
   var pendingImportOwners = [];
   var listened = /* @__PURE__ */ new Map();
+  var silentSheets = /* @__PURE__ */ new WeakMap();
   function unlistenAll() {
     listened.forEach((off, owner) => {
       owner.removeEventListener("load", off);
@@ -3154,6 +3155,8 @@ var SV = (() => {
     }
     if (!rules)
       return true;
+    if (silentSheets.get(sheet) === rules.length)
+      return false;
     for (const rule of Array.from(rules)) {
       if (isImportRule(rule)) {
         const imported = rule.styleSheet;
@@ -3172,6 +3175,7 @@ var SV = (() => {
       if (mentionsPageOutputs(rule.cssText))
         return true;
     }
+    silentSheets.set(sheet, rules.length);
     return false;
   }
   var isImportRule = (rule) => rule.type === 3;

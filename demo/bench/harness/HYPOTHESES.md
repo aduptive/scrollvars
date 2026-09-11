@@ -40,6 +40,11 @@ Baseline facts the loop must not re-derive:
 
 ## Done
 
+- **The consumer watch's own cost** (found after the queue emptied, round
+  7): the rescan on every frame that adds an element serialized every rule
+  of every sheet, 3.2ms a frame at 5000 rules on a page that mounts one
+  element per frame. FIXED on the branch: sheets read in full are memoized
+  by rule count, 0.17ms a frame after, semantics unchanged, invariant added.
 - **Opt-in scoped clocks** (`styles/scoped.css`): SHIPPED on
   `perf/page-outputs-cost`. Seven pages behind the hardened gate: deep-50
   -27.5% task, home -10.5%, sticky-steps -12%, case-study-rail noise,
