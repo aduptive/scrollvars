@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:40:39.418Z",
+    "page": "/fx/sticky-steps.html",
+    "frames": 720,
+    "fps": 60,
+    "note": "self time per event name on CrRendererMain during one traced 12-second workload; tracing overhead included, proportions only"
+  },
+  "totalMs": 364,
+  "rows": [
+    {
+      "name": "UpdateLayoutTree",
+      "ms": 86,
+      "pct": 23.6
+    },
+    {
+      "name": "RunTask",
+      "ms": 83,
+      "pct": 22.7
+    },
+    {
+      "name": "FunctionCall",
+      "ms": 67,
+      "pct": 18.3
+    },
+    {
+      "name": "PrePaint",
+      "ms": 31,
+      "pct": 8.6
+    },
+    {
+      "name": "Commit",
+      "ms": 29,
+      "pct": 8
+    },
+    {
+      "name": "EventDispatch",
+      "ms": 20,
+      "pct": 5.5
+    },
+    {
+      "name": "FireAnimationFrame",
+      "ms": 13,
+      "pct": 3.7
+    },
+    {
+      "name": "Layerize",
+      "ms": 13,
+      "pct": 3.4
+    },
+    {
+      "name": "ScrollLayer",
+      "ms": 11,
+      "pct": 2.9
+    },
+    {
+      "name": "IntersectionObserverController::computeIntersections",
+      "ms": 4,
+      "pct": 1.2
+    },
+    {
+      "name": "Paint",
+      "ms": 3,
+      "pct": 0.7
+    },
+    {
+      "name": "UpdateLayer",
+      "ms": 3,
+      "pct": 0.7
+    }
+  ]
+}

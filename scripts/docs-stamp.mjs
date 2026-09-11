@@ -27,6 +27,7 @@ const STYLE_NOTES = {
   // only stylesheet that declares it: state.css alone leaves it at act zero
   state: 'toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too)',
   ui: 'marquee, accordion',
+  scoped: 'OPT-IN: the clocks stop inheriting, see Scoped clocks below',
 }
 
 /** Greedy wrap to `width` columns, `prefix` on every line. */
@@ -166,7 +167,7 @@ let agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
 agents = stamp(agents, 'vars', varsMarkdown())
 agents = spliceOne(agents, /^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`, 'AGENTS.md: core styles import line')
 agents = spliceOne(agents, /^\/\/ also styles\/pin\.css[^\n]*$/m,
-  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs`,
+  `// also styles/pin.css (${sizes.css.pin}), slider.css (${sizes.css.slider}), tilt.css (${sizes.css.tilt}), state.css (${sizes.css.state}, scroll-driven acts need core too), ui.css (${sizes.css.ui}), per page needs; scoped.css (${sizes.css.scoped}) is opt-in, see Scoped clocks`,
   'AGENTS.md: "also styles/pin.css" line')
 // the "fully animated" browser floor headline, one of five surfaces rendered from BROWSER_FLOOR
 const agentsFloor = /Fully animated: Chrome\/Edge [\d.]+\+, Firefox [\d.]+\+, Safari\/iOS [\d.]+\+/

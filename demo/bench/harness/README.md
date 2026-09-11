@@ -969,3 +969,867 @@ types expose Performance.enable timeDomain = timeTicks/threadTicks. Verify
 what the installed browser actually reports before relying on it.
 The target is a falsifiable new optimization of inherited-style work, not
 another repetition of the failed renderer/hint/property/WAAPI screens.
+
+#### The document-wide outputs, measured directly (`globals-cost.json`)
+
+The renderer, hint, property and WAAPI screens all optimized inside the
+`-off` configuration and treated globals-on as a control. That inverted the
+question: the control condition was the finding. `globals-cost.mjs` measures
+the same page and the same 12-second path in three variants: `on` (the
+shipped default), `off` (`setPageOutputs(false)`), and `noinherit`, which
+writes `--sv-page` and `--sv-v` exactly as `on` does but registers both with
+`inherits: false`. The third variant is the discriminator: identical writes,
+no subtree invalidation. Every run asserts the two properties really are
+present on `<html>` (or absent in `off`) and samples a box's computed
+`translate`/`opacity` at a fixed scroll position.
+
+| profile | on task / recalc | off task / recalc | noinherit task / recalc |
+|---|---:|---:|---:|
+| 900 plain boxes (4 runs) | 4071.5 / 3249 | 1309.5 / 269 | 1243 / 267.5 |
+| 50 boxes (3 runs) | 2047 / 1453 | 1107 / 276 | 1011 / 270 |
+| 150 boxes, 50 text descendants (3 runs) | 1920 / 1222 | 1018 / 250 | 1012 / 266 |
+
+Milliseconds over 12 seconds, medians, balanced order, Chrome 152.0.7977.85.
+`noinherit` tracks `off` in all three profiles while writing both properties
+every frame, so the cost is the inherited invalidation, not the write, the
+velocity timer or the string formatting. The recalculation COUNT is the same
+in all three (708 to 720): the same number of style updates, each traversing
+the whole document instead of the animated elements. Sampled
+`translate`/`opacity` are byte-identical across variants, so no variant wins
+by rendering less.
+
+Against the competitor numbers already recorded in `main-style-confirm.json`
+(4 runs, same page): gsap-batched 1588ms task / 171.5ms recalc and framer
+1855ms / 77.5ms, versus 4128.5ms / 3272ms for the shipped default and
+1696ms / 368.5ms with the outputs off. The default is 2.6x GSAP's total task
+time; without the two document-wide writes the same engine is within 7% of
+GSAP and ahead of framer-motion. That gap, not the renderer, is what a
+reviewer measures.
+
+Nothing in this repository consumes either property: `grep` for
+`var(--sv-page` and `var(--sv-v)` across `styles/`, `demo/`, `src/`, the
+gallery and the docs returns nothing. Every page pays document-wide
+invalidation on every scroll frame for two variables none of the library's
+own presets or demos read.
+
+Next step is a runtime change, not another screen: publish the page outputs
+only when something can consume them. Detect the literal property names in
+the document's own stylesheets at boot, treat any unreadable (cross-origin)
+sheet as a consumer so the default fails safe, re-check when stylesheets
+change, and keep `setPageOutputs(true)` as the explicit override for a JS
+reader that CSS cannot reveal. That preserves the documented contract for
+pages that use the variables and removes the cost for pages that do not.
+Gate it on the published benchmark: the main-900 task median must fall to
+within measurement noise of the `off` variant with the outputs suppressed
+and must not move when a stylesheet does reference them.
+
+#### Adopted, and what it cost the competitor gap (`main-after-autodetect.json`)
+
+The runtime change landed on `perf/page-outputs-cost`: the driver asks the
+document, on the first frame that could publish, whether anything can read the
+two variables, and stays silent when nothing can. `demo/bench/scrollvars.html`
+no longer calls `setPageOutputs(true)` on the default path, because a
+benchmark page that configures the library measures the configuration rather
+than the library, which is how five screens came to be run inside the very
+setting that was the cost.
+
+Same page, same path, four runs:
+
+| engine | script | recalc | task | heap |
+|---|---:|---:|---:|---:|
+| scrollvars | 83ms | 322ms | 1543.5ms | 1.1MB |
+| scrollvars-local | 80ms | 307ms | 1481ms | 1.0MB |
+| gsap | 326.5ms | 124ms | 1394.5ms | 6.15MB |
+| gsap-batched | 230.5ms | 139.5ms | 1374.5ms | 6.7MB |
+| framer-motion | 917ms | 63ms | 1820.5ms | 10.6MB |
+
+1543.5ms against 4128.5ms before, so 1.12x gsap-batched instead of 2.6x, and
+0.85x framer-motion. The remaining gap is style recalculation (322ms against
+139.5ms), which is what a library that writes custom properties and lets CSS
+animate pays for the privilege; script time is 2.8x to 11x lower and heap is
+6x to 10x lower. That is the honest shape of the trade, and it is a shape
+worth publishing rather than the one the old default produced.
+
+An adversarial review of the diff then found the same class of bug the change
+exists to avoid, in a place the first fix had not reached: the inline-style
+selector matches a substring, `--sv-view` matched `--sv-v`, and the driver
+writes `--sv-view` inline on every tracked element, so every rescan after the
+first frame said yes on every page. The invariant that should have caught it
+could not: "a late stylesheet turns publishing back on" would have passed with
+no consumer in that stylesheet at all. Twelve invariants now, including a late
+stylesheet that reads nothing and must stay silent.
+
+Remaining performance work, in the order the numbers justify: the style
+recalculation gap itself (322ms against GSAP's 139.5ms on the same workload)
+is now the largest single line, and it is the cost of writing `--sv-t` on 900
+elements. The callback-only screen already measured 46 to 71 percent less
+recalculation on deep DOM by not publishing an unread local clock, which is
+the same shape of finding one level down. That is the next hypothesis worth a
+protocol, and it should be measured against this new baseline rather than the
+old one.
+
+The stamped bench tables in README and AGENTS still carry the old numbers.
+Regenerating them needs a full `measure.mjs` run (main, deep, gallery) on a
+quiet machine.
+
+#### Write precision: rejected (`precision-cost.json`)
+
+Hypothesis: the driver writes every clock with `toFixed(4)`, so the value
+changes on nearly every frame, and each change invalidates. Fewer decimals
+should make many frames write the same string, which does not dirty style.
+`precision-cost.mjs` wraps `setProperty` before boot and rounds every `--sv-*`
+number the engine writes, keeping the engine's own call so only the browser's
+handling of an unchanged value is measured. Main-900, three balanced runs:
+
+| variant | task | recalc | recalc count |
+|---|---:|---:|---:|
+| four decimals (shipped) | 1431ms | 298ms | 719 |
+| three decimals | 1544ms | 316ms | 719 |
+| two decimals | 1432ms | 294ms | 719 |
+
+No effect, and the reasoning was wrong twice over. The recalculation count is
+one per frame, not one per element, so it was never going to move; and at a
+normal scroll speed the progress of each box changes by more than 0.01 per
+frame anyway, so even two decimals produces a different string almost every
+time. Keep four decimals.
+
+#### Invalid comparison: per-element clocks (`clocks-cost-deep50.json`)
+
+**Withdrawn as performance evidence.** The archived samples show different
+rendered output in every repetition. The baseline sampled opacity `1` and
+translate `0px -121.877px`; `noinherit` sampled opacity `0.3` and translate
+`0px 121.877px`. These values come directly from each variant's `sample`
+field in the raw JSON, which is retained unchanged for audit.
+
+The benchmark tracks each section with `travel: true, view: false`, then
+its descendant boxes read `--sv-t`. Registering that property as
+non-inheriting disconnects the boxes from the section's clock. The old
+harness collected a visual sample but never compared it. Its runner's FPS
+measured the scrolling workload, not whether the boxes still animated.
+
+The timings below are historical observations of **unequal visual work**.
+They do not establish the benefit of a working scoped-clock design.
+
+The original hypothesis concerned inherited invalidation into the text
+descendants of each box. The experiment registered `--sv-t` and `--sv-view`
+with `inherits: false` after page load. Writes remained identical, but both
+invalidation scope and rendered output changed. Historical deep-50 results,
+three balanced runs:
+
+| variant | task | recalc |
+|---|---:|---:|
+| shipped | 1704ms | 745ms |
+| the same writes, not inheriting | 807ms | 167ms |
+
+The previous interpretation extrapolated a competitive advantage from these
+timings. That conclusion is withdrawn because the animation changed.
+
+It cannot simply be adopted. `@property` registration is document-wide, and
+the shipped presets read both clocks from a DESCENDANT of the tracked element:
+`.sv .sv-drift` reads `--sv-view` and `:where(.sv .sv-range)` reads `--sv-t`.
+Inheritance is load-bearing for them, so registering either as non-inheriting
+breaks a preset for anyone who uses it.
+
+Two ways out, both larger than a patch, neither taken here:
+
+1. An explicit opt-in for authors whose own CSS reads the clocks only on the
+   tracked element itself. Cheap to build and it hands the whole 53% to those
+   pages, but it is a footgun: a `.sv-drift` mounted later silently stops
+   animating, and a detection that reads today's CSS and today's markup cannot
+   see tomorrow's. The page-outputs scan can fail safe because publishing more
+   is harmless; here the safe direction is not scoping, which is the status
+   quo, so detection buys nothing.
+2. Stop the presets needing a descendant read: the driver writes the clock on
+   the elements that animate rather than on the wrapper they hang under. More
+   writes, each invalidating only itself, and a net win as soon as a subtree is
+   larger than a handful of nodes. That is a design change to the write model
+   and belongs to a major, with the stagger cases measured first.
+
+No core change is justified by this screen. Scoping remains a plausible
+hypothesis, but its benefit with equivalent animation is unmeasured.
+
+The harness now samples a box through forward and reverse scroll positions,
+requires baseline motion, and compares rendered translate and opacity before
+and after registration. It aborts before accepting the altered workload's
+timings or writing a result file. `test/clock-equivalence.test.mjs` exercises
+that same comparator against the archived samples. The test was first run
+with a no-op comparator and failed with `Missing expected exception`, then
+passed with the comparison enabled. This proves the archived mismatch is
+rejected, not that the browser preflight has executed in this environment.
+
+On the follow-up worktree, Node 20 could not run the requested
+`node measure.mjs --scenarios=main,deep --runs=3`: the sandbox refused the
+server's listen call with `EPERM`. An explicit loopback listen was refused
+too. There are no fresh same-session timings. The redesign is deferred,
+not rejected on measured performance grounds, and the public API is unchanged.
+
+The next valid experiment should retain section geometry and fan out a
+non-inheriting travel clock to the boxes that consume it. It must compare
+rendered motion before timing and count the extra writes. For production,
+explicit consumer ownership must also handle nested trackers, insertion,
+release and retracking. Stagger can retain the discrete inherited live flag;
+pin, scene and range consumers need their own equivalent-motion fixtures.
+
+#### Suppressing one clock of two buys nothing (`view-cost-main.json`)
+
+If an unread `--sv-view` costs something, not writing it should show up.
+`view-cost.mjs` drops every `--sv-view` write on main-900 and leaves `--sv-t`
+alone. Three balanced runs: 1537ms task and 318ms recalculation against
+1500ms and 314ms. Nothing.
+
+The reason matters more than the result. Both clocks are written on the SAME
+element in the same frame, so the subtree is invalidated by the first write
+whether or not the second happens. Suppression only pays when it removes every
+inherited write from an element, which is exactly why the earlier
+callback-only screen won on the deep profiles (46 to 71 percent less
+recalculation, `onTravel` replacing the clock entirely) and lost on the plain
+one. Partial suppression is not a smaller version of the same win; it is no
+win at all.
+
+That closes the write-level ideas. What is left on this workload is the
+invalidation scope itself, which the clocks screen above priced at 53 percent
+and which the shipped presets stand in the way of.
+
+### Round 2: what the deep-DOM gap actually is
+
+Every timing below passed a rendered-output gate before it was kept. The gate
+came out of the previous round's retraction and lives in `ab-runner.mjs`: it
+snapshots the computed animatable properties of every element under a tracked
+ancestor at four scroll positions, twice per position, keeps only the elements
+that held still between the two samples (an entrance transition depends on the
+wall clock and is never identical between two loads), requires the baseline to
+have actually moved, and compares numerically with a 1% tolerance. Three
+candidate designs were rejected by it before any of them produced a number.
+
+#### The benchmark's flat profile is not shaped like a real page
+
+`shape-probe.mjs` counts, per tracked element, how many descendants there are
+against how many direct children:
+
+| page | descendants | children | ratio |
+|---|---:|---:|---:|
+| bench main-900 | 15.0 | 15.0 | 1.0x |
+| bench deep-50 | 260.0 | 5.0 | 52x |
+| gallery sections | 9 to 24 | 1 to 4 | 2.3x to 24x |
+| the scrollvars.dev home page | 23.0 | 1.2 | 18.5x |
+
+Every design that narrows invalidation pays per consumer and saves per
+non-consuming descendant, so this ratio decides whether it wins. The headline
+benchmark sits at 1.0, where every descendant is a consumer, which is the
+worst possible case for such a design and the least like a real page.
+
+#### Two ways to narrow the invalidation, both measured
+
+`scoped-write-cost.mjs` registers the clocks non-inheriting and has the driver
+mirror each value onto the children that consume it, so consumers still
+receive it. `forward-cost.mjs` keeps the single write and stops propagation
+with an explicit `--sv-t: inherit` on the consumer selectors instead.
+
+| workload | design | task | recalc |
+|---|---|---:|---:|
+| deep-50 | as shipped | 694ms | 278ms |
+| deep-50 | mirrored writes | 490ms | 105ms |
+| deep-50 | forwarded inheritance | 504ms | 120ms |
+| main-900 | as shipped | 346ms | 78ms |
+| main-900 | mirrored writes | 432ms | 106ms |
+| main-900 | forwarded inheritance | 425ms | 108ms |
+
+Both win about 60% of the style recalculation at 52x depth and both lose about
+35% at 1x. They are the same trade in two shapes.
+
+On the real home page at 18.5x, with the same gate: 1727ms task and 377ms
+recalculation as shipped, against 1592ms and 365ms forwarded. About 8%, inside
+a run-to-run spread of 1531 to 1932ms. **The synthetic deep profile
+exaggerates by an order of magnitude what a real page stands to gain.**
+
+#### Native scroll timelines do not avoid the style work
+
+The strongest remaining idea was to stop computing the clock in JavaScript at
+all: register `--sv-t` and animate it from 0 to 1 over `animation-timeline:
+view()`, which the driver's own comment says has the same semantics as the
+cover range. Chrome 152 supports it, and the gate confirms the semantics
+claim: the rendered output matched the JavaScript path exactly.
+
+main-900, three balanced runs: 468ms task and 118ms recalculation as shipped,
+against 444ms and 112ms native. Five percent, inside the noise.
+
+That result is the important one in this round. A browser animating a
+registered custom property still resolves style for the affected subtree every
+frame; it only removes the JavaScript that set the value. Our script time is
+already 3 to 11 times lower than the competitors', so there was never much
+there to remove. **The cost is the style resolution that a custom property
+implies, and no amount of moving the write around changes it.**
+
+#### Where that leaves the library
+
+GSAP writes transforms straight onto elements: no custom property, no
+inheritance, no cascade to re-resolve. ScrollVars writes a variable and lets
+CSS own the animation, which is the whole product, and it buys a bundle a
+sixth the size, a heap a sixth the size and a third of the script time. The
+style resolution is what it costs. On a flat page that trade is a draw. On a
+page with large subtrees under a tracked element it loses, in proportion to
+how large those subtrees are.
+
+Two honest options remain, and neither is a core rewrite:
+
+1. Ship the narrowing as an OPT-IN for pages that are deep, with the ratio
+   above as the guidance for when it pays. The measurement says roughly 60% of
+   the style recalculation above 50x, 8% around 18x, a loss below about 5x.
+2. Leave the model alone and say plainly in the benchmark what the trade is,
+   which the restamped table now does.
+
+A third path, tracking the element that animates instead of a wrapper, avoids
+the whole problem for an author who can structure their markup that way and
+costs nothing to document.
+
+#### Two more, both negative, both behind the gate
+
+A tighter culling band (`--variant=cull`, a quarter viewport each way instead
+of a full one) is worse on main-900: 514ms against 420ms task, 131ms against
+104ms recalculation. A narrower band makes elements cross it more often, and
+every crossing costs an observer delivery plus a geometry pass. The shipped
+margin is already on the right side of that trade.
+
+Dropping the continuous view clock (`--variant=noview`) fails the gate on the
+home page, correctly: seven `.sv-drift` elements read it. On sticky-steps,
+which nothing reads it on, 267ms against 294ms: noise. On a real page the
+per-element writes are not where the time goes, and the earlier finding
+holds, since suppressing one write to an element that still gets another
+saves nothing.
+
+#### RETRACTED: every ab-runner variant that touched the DOM measured nothing
+
+`ab-runner.mjs` applied its variants with `evaluateOnNewDocument`, and at
+new-document time `document.head` is null: the `append` threw inside the
+injected script, the page loaded untouched, and the run was recorded under
+the variant's name. A probe confirms it: with the sheet injected that way the
+document has no `@property`, the boxes read the section's clock as before,
+and the page error log says `Cannot read properties of null (reading
+'append')`.
+
+Withdrawn as evidence, all of them baseline-against-baseline noise: the
+"native view() timeline saves 5%" screen on main-900, the "8% on the home
+page" and "14% worse on hero-cinematic" forwarding figures, the one-run
+gallery timings, the timeline-scrub and deep-50 timings of the shipped sheet,
+and the six "gate passes" on the gallery pages, which passed because nothing
+was injected. The conclusion drawn from the native screen, that a browser
+animating a registered property still resolves the subtree, is UNTESTED, not
+established; the paragraph above that states it is wrong until re-measured.
+
+Still valid, because those screens injected after load: the bench-page
+mirror and forward results on deep-50 (490 and 504ms against 694 and 658ms)
+and on main-900 (432 and 425ms against 346 and 357ms), the shape probe, and
+the two negatives that touched no DOM (culling and the dropped view clock).
+
+The runner now applies DOM-touching variants after `load`, and the shipped
+sheet's gate asserts the stylesheet actually attached before it snapshots.
+Registration and forwarding change inheritance the instant they land, so a
+post-load injection is equivalent for the measurement, and it is what the
+valid screens above already did. Everything withdrawn here is re-measured
+below.
+
+#### RETRACTED, the fourth trap: the runner's page query was truncated
+
+`ab-runner.mjs` parsed its arguments by splitting on every `=`, so
+`--page=/bench/scrollvars.html?s=30&p=5&deep=50` became
+`/bench/scrollvars.html?s` and the page fell back to its defaults: 30
+sections of 5 boxes with no deep subtree. Every bench-page run of that runner
+measured the same flat 150-box page under whatever name it was given, which
+is why "forward loses 15% on deep-50" and "the shipped sheet loses 60% on
+deep-50" contradicted the standalone screens that had built the URL
+correctly. Found by review, not by the numbers: the saved JSON records the
+truncated page in its own meta.
+
+Void: every `ab-*.json` result on a bench page before this fix. The standalone
+screens (`forward-cost.mjs`, `scoped-write-cost.mjs`, `clocks-cost.mjs`) stand.
+
+The same review found six more ways the runner could report a number that
+did not mean what it claimed, and the runner now: prints the resolved page and
+refuses a query key with no value; requires each variant to prove it applied
+before timing; takes the rendered-output snapshot in a separate page load
+from the timed run, so the timed page is as cold as the published one; fails
+a variant whose frame count differs from the baseline's by more than 2
+percent, since a run that drops frames visits fewer scroll positions and
+looks cheaper; samples every tracked element and every direct child in full
+plus a stride of deeper descendants, instead of the first 400 elements in
+document order, and refuses to pass a comparison that covered fewer than half
+of them; asserts the scroll height matches; and reverses the rotation every
+round so each configuration follows each other one equally often.
+
+#### Scoped clocks on deep-50, measured with the hardened runner
+
+`ab-deep50-side-by-side.json`: the real deep-50 page (the baseline's 1231ms
+against about 300ms for the flat default the truncated query used to load is
+the proof), six runs with the rotation reversed every round, each variant
+proved applied before timing, the gate in a separate load from the timed run,
+every configuration at exactly 720 frames, rendered output equal on every
+settled sampled element.
+
+| configuration | task | style recalc | script |
+|---|---:|---:|---:|
+| as shipped | 1231ms | 553ms | 54.5ms |
+| forward (JS registration, `.sv > *`) | 966ms | 223ms | 65.5ms |
+| `styles/scoped.css` plus `.box { --sv-t: inherit }` | 892.5ms | 206.5ms | 62ms |
+
+The shipped sheet, with the one line the page's author adds for their own
+readers, takes 27.5% off the total task time and 62.7% off the style
+recalculation on the profile where the library loses to GSAP. That is the
+number the retracted screens were reaching for, and this one has no known
+way to be wrong that the harness does not check for.
+
+The other half of the gate, the flat profile and the real pages, follows.
+
+#### Scoped clocks on main-900, the flat profile, same runner
+
+`ab-main900-side-by-side.json`, six balanced runs, 720 frames in every
+configuration, render equal:
+
+| configuration | task | style recalc | script |
+|---|---:|---:|---:|
+| as shipped | 764.5ms | 155ms | 60.5ms |
+| forward | 787.5ms | 176.5ms | 65.5ms |
+| `styles/scoped.css` plus `.box { --sv-t: inherit }` | 795.5ms | 175ms | 56.5ms |
+
+Four percent more task time and thirteen percent more style recalculation
+where every descendant is a reader: the registration's per-holder cost with
+nothing to save. Within the five percent the predeclared gate allowed. The
+earlier standalone screens put this loss at twenty to thirty-five percent;
+they were three single-load runs with no frame check, and this measurement
+supersedes them.
+
+Both halves of the gate for hypothesis 1 hold: 27.5% less task time on the
+deep profile, 4% more on the flat one, rendering identical on both.
+
+#### The sheet broke the library's own preset on the home page
+
+With the hardened runner, `styles/scoped.css` failed the gate on
+scrollvars.dev's home page: three `.sv-drift` parallax layers rendered
+`0px | 1` under the sheet against `-112px | 0` without it. They are not
+direct children of the tracked element. A non-inheriting property is its
+initial value on every element in between, so `.sv .sv-drift { --sv-view:
+inherit }` read a zero from the layer's parent. The contract's fine print,
+"every element between the tracked ancestor and a reader must declare it
+too", bit the library's own preset first, which is the best possible place
+for it to bite.
+
+The sheet now forwards along the path: `.sv :has(.sv-drift), .sv .sv-drift`
+and the same for `.sv-range`, and the whole sheet sits under `@supports
+selector(:has(a))`, so a browser that could register the clocks but not carry
+them down stays on plain inheritance. The derived-forward test now demands
+the path rule for every descendant reader, not only the reader.
+
+#### Scoped clocks on timeline-scrub, the first real page through the hardened runner
+
+`ab-timeline-scopedcss.json`, the sheet alone (its only clock readers are
+the forwarded presets), six balanced runs, 720 frames each, render equal:
+298ms against 320ms task, 93.5ms against 100ms style recalculation. Seven
+percent worse. The page has three `sv-range` readers under a tracked element
+with 23 descendants; the registration's per-holder cost outweighs what the
+shallow subtrees save. Consistent with the flat profile, and the first
+evidence that the gallery pages, as built, are on the losing side of the
+sheet's trade.
+
+#### Calibration: base against base on the home page
+
+`ab-home-noop.json`, a variant that changes nothing, four runs: 1692.5ms
+against 1714ms task, 433.5ms against 441ms style recalculation, 720 frames
+both, the gate passing on every settled element including the parallax
+layers and the map stations. So the runner's noise floor on this page is
+about 1.3 percent of task time, and the gate does not cry wolf on it. Any
+difference under that on this page is not a result.
+
+Note for the next person who sees `div.map-station` differ under a variant on
+the home page: it reads no clock. Its rotation is `var(--map-ang)`, which the
+camera-path demo writes from a per-frame JavaScript lerp (`mapShown +=
+(mapTarget - mapShown) * 0.1`, then `angleLerp(..., 0.08)`) fed by an
+`onPin` callback. The settled angle depends on how many frames ran since the
+scroll, not on any variable the sheet registers, so a difference there is
+frame timing, not rendering. It passed base against base; a variant that
+slows the preflight frames can move it without changing anything the sheet
+is about. The gate cannot tell those apart, and this is the one known place
+on the shipped pages where that matters.
+
+#### The gate learns to tell time-dependent elements from scroll-dependent ones
+
+With every reader forwarded, the home page still failed on its five map
+stations, and the two values swapped roles between runs (-2.22deg in the
+baseline one time, in the variant the next). The stations rotate by a
+JavaScript lerp fed by an `onPin` callback, converging at 8 percent per frame:
+after the gate's settle window it is 99 percent there, and the last percent
+depends on how many frames ran, which the preflight of a slower or faster
+variant changes. Nothing the sheet registers reaches them.
+
+The position list already visits 0.4 twice, arriving from 0.15 and from 0.65.
+An element that is a function of the scroll position reads the same at both
+visits; a lerp still converging does not, because it arrived with a different
+residual each time. The gate now excludes from the comparison, and from its
+coverage count, every element that differs between the two visits in either
+run, and reports how many it excluded. A unit test pins it. This is the
+general form of the "held still between two samples" rule: the first catches
+motion in time, the second catches motion in frames.
+
+#### Scoped clocks on sticky-steps: a real page on the winning side
+
+`ab-sticky-scopedcss.json`, the sheet alone, six balanced runs, 720 frames
+each, render equal: 292.5ms against 258ms task, 83ms against 75.5ms style
+recalculation. Twelve percent less task time and nine percent less
+recalculation. One tracked element, two direct children, 24 descendants: a
+shallow-looking page that still has ten non-reading nodes for every reader.
+Against timeline-scrub's seven percent loss on a page with three readers,
+this is the trade the sheet's documentation describes, on the library's own
+pages, in both directions.
+
+#### Scoped clocks on the home page, gate passed
+
+`ab-home-scopedcss.json`: the sheet plus the page's own three readers
+forwarded (`.sv :has(.card3d), .card3d, .spread-scrub > *`; the drift layers
+are the sheet's), six balanced runs, 719.5 against 720 frames, the five map
+stations excluded as time-dependent and every other settled element equal.
+1615ms against 1445.5ms task, 408.5ms against 314.5ms style recalculation:
+10.5 percent less task time and 23 percent less recalculation, against a
+noise floor of 1.3 percent measured base against base on this same page.
+
+Forty-six tracked elements at 18.5 non-reading descendants per reader, and
+the sheet pays for itself on the library's own front page. With sticky-steps
+at minus twelve and timeline-scrub at plus seven, the trade is now measured on
+three shipped pages and lands where the shape probe said it would.
+
+#### Scoped clocks on hero-cinematic: a real page on the losing side
+
+`ab-hero-scopedcss.json`, the sheet plus the page's own reader forwarded
+(`.sv :has(.hero-inner), .hero-inner`), six balanced runs, 720 frames each,
+render equal: 281.5ms against 316.5ms task, 83ms against 107ms style
+recalculation. Twelve percent more task time, twenty-nine percent more
+recalculation. One tracked element, one child, eleven descendants, and the
+reader is the child that holds most of them: registration pays on the holder
+and there is almost nothing under it to save. Two wins and two losses on the
+four shipped pages measured so far, each on the side the page's shape put it.
+
+#### editorial-manifesto: the gate finds a gap in the scoped contract
+
+With its reader forwarded (`.sv :has(.manifesto-copy p), .manifesto-copy
+p`) the page still failed: paragraphs at opacity 0.28 under the sheet against
+1 without it. Not a missing forward. The page's rule is
+`--read: clamp(0, calc(var(--sv-t, 1) * ...), 1)`: unread paragraphs are
+fully visible because `--sv-t` is undefined until the section is written and
+the fallback 1 applies. A registered property is never undefined; it reads
+its initial value, 0, and the fallback is dead. That is a semantic
+consequence of registration the sheet's documentation did not state and now
+does: declare the default on the tracked element (`.sv-manifesto { --sv-t: 1
+}`), which the driver's inline write overrides on arrival, and the reader
+sees what it saw before. The runner gained `--author=<css>` to carry such a
+rule, and the page is measured again with it.
+
+#### Scoped clocks on case-study-rail: neutral
+
+`ab-casestudy-scopedcss.json`, the sheet alone, six balanced runs, 720
+frames each, render equal: 282.5ms against 274.5ms task, 80.5ms against 79ms
+style recalculation. Under three percent, inside the noise floor. One tracked
+element, one child, 24 descendants, and a rail whose readers are its own
+cards: nothing much to save, nothing much to pay.
+
+#### editorial-manifesto, second failure: `:has()` is evaluated from the candidate
+
+With the reader forwarded and the default moved, the paragraphs still read a
+clock of 0. A probe through the path: the section holds 0.4283, `.manifesto-
+copy` holds 0, the paragraphs hold 0. The path rule was `.sv
+:has(.manifesto-copy p)`, and `:has()` evaluates its relative selector from
+each candidate: `.manifesto-copy` has no `.manifesto-copy` inside it, so it
+did not match its own path rule and stayed at the initial value, and
+`inherit` on the paragraphs read that.
+
+The rule that works names the reader's LAST compound: `.sv :has(p)` matches
+every element on the way down to a paragraph, `.manifesto-copy` included.
+The sheet's own forwards already had this shape (`:has(.sv-drift)`,
+`:has(.sv-range)`, single-compound readers), which is why the presets never
+hit it; the documentation now states the rule with a two-compound example,
+and the CI gate's entry for the page is corrected.
+
+#### Scoped clocks on editorial-manifesto: gate passed, losing side
+
+`ab-editorial-scopedcss.json`, the sheet plus `.sv :has(p), .manifesto-copy
+p` forwarded and `.sv-manifesto { --sv-t: 1 }` replacing the fallback, six
+balanced runs, 720 frames each, render equal: 227ms against 247.5ms task,
+66.5ms against 112.5ms style recalculation. Nine percent more task time,
+sixty-nine percent more recalculation. The readers are the leaves, every
+element on the way to them now holds a registered value, and there is nothing
+underneath to save. The most expensive shape for the sheet, and the page
+where its contract took two rounds to get right.
+
+#### Hypothesis 1, settled
+
+Seven measurements behind the hardened gate, six runs each, frames equal,
+rendering equal:
+
+| page | task | style recalc |
+|---|---:|---:|
+| deep-50 | -27.5% | -62.7% |
+| home page (three own readers forwarded) | -10.5% | -23% |
+| sticky-steps | -12% | -9% |
+| case-study-rail | -3% (noise) | -2% |
+| main-900 | +4% | +13% |
+| timeline-scrub | +7% | +7% |
+| hero-cinematic | +12% | +29% |
+| editorial-manifesto (reader and default forwarded) | +9% | +69% |
+
+The sheet pays per element that holds a registered value and saves per
+descendant that no longer inherits one. It ships as an opt-in with that
+sentence, the measurements above, the path rule, and the fallback clause,
+and the CI gate keeps every shipped page rendering identically under it with
+the author lines each one needs.
+
+### Round 3
+
+#### Containment: rejected (`ab-deep50-contain.json`)
+
+`contain: layout style paint` on every tracked element that is not pinned
+(`.sv:not([data-sv-pin]):not(:has(.sv-stage))`), deep-50, six balanced runs,
+720 frames each, render equal: 783.5ms against 800ms task, 309ms against
+319.5ms style recalculation. Two percent, noise. Style containment scopes
+counters and quotes, not custom-property inheritance, and layout and paint
+containment never touch style resolution, which is the only cost this page
+has. A note for the next runner: Chrome serializes that value as the
+shorthand `content`, and the first attempt's "did the variant apply" check
+looked for the word `layout` and refused to run, which is the guard doing
+its job on its own author.
+
+#### Where the non-style time goes (`trace-fx-sticky-steps-html.json`)
+
+`trace-breakdown.mjs` records a devtools timeline trace of one timed load
+and sums self time per event on the page's renderer main thread. Tracing has
+overhead, so the numbers are proportions only, never comparable with untraced
+runs. sticky-steps, 720 frames, 364ms of self time:
+
+| event | self | share |
+|---|---:|---:|
+| UpdateLayoutTree (style recalculation) | 86ms | 24% |
+| RunTask (scheduler and uninstrumented task time) | 83ms | 23% |
+| FunctionCall plus FireAnimationFrame (our JavaScript and the runner) | 80ms | 22% |
+| PrePaint, Commit, Layerize, ScrollLayer (producing the frame) | 84ms | 23% |
+| EventDispatch (the scroll event) | 20ms | 6% |
+| IntersectionObserver, Paint, UpdateLayer | 10ms | 3% |
+
+Layout does not make the list. Of the four large slices, two are ours to
+change: the JavaScript, which on this page is already a fifth of what GSAP
+spends, and the style recalculation that our writes cause. The other two,
+producing the frame and scheduling the task, are what any page pays for
+scrolling at 60 frames a second, and a competitor pays them too. There is
+nothing hidden in the remainder to chase. The lever is the one already
+named, and the rest of the time is the browser's.
+
+The first run of this tool reported six milliseconds for the whole workload:
+a `traceConfig` with `excludedCategories: ['*']` next to the includes came
+back nearly empty, and the first of three `CrRendererMain` threads was an
+idle one. An empty trace looks like a fast page. The tool now uses the
+legacy categories string and the busiest renderer thread, and prints both.
+
+`trace-deep50.json`, the deep profile, 720 frames, about 830ms of self time:
+style recalculation 301ms (36%), scheduler 127ms (15%), Layerize 126ms
+(15%), our JavaScript 76ms (9%), Commit 56ms, PrePaint 40ms, Paint 38ms,
+the scroll event 19ms. Layerize is large here because 150 animated boxes are
+150 composited layers reassigned every frame, and GSAP moving the same 150
+transforms pays the same Layerize: the published gap between the two on this
+profile (578ms) is smaller than the style slice alone (685ms of recalculation
+against GSAP's 93), so style is the whole of the gap and the rest is shared.
+
+#### Hypotheses 4 and 5, dropped by their own threshold
+
+Astra's geometry cache and allocation reuse both live inside the JavaScript
+slice, which the traces put at 22 percent on sticky-steps and 9 percent on
+deep-50, and which is already a fifth to a quarter of what GSAP spends. The
+queue's rule for both was "drop if under 5 percent". A change that removed
+the ENTIRE JavaScript slice on deep-50 would save 9 percent; a cache that
+trims part of it cannot reach 5, and on the profile where the library
+actually loses it cannot reach 3. Recorded as bounded rather than screened.
+
+#### One style recalculation per frame, and it touches 121 elements
+
+A three-second scroll of deep-50 under a devtools trace: 182 frames, 180
+`UpdateLayoutTree` events (0.99 per frame), zero `Layout`, no forced
+recalculation from a read after a write, and an average of 121 elements
+resolved per pass. The driver's several `setProperty` calls per element per
+frame coalesce into one recalculation, as they should. So the number of
+recalculations is not a lever; what one costs is the product of the elements
+it touches (scoped clocks already narrowed that) and what resolving each one
+costs, which is the only remaining question and the one Astra is asked.
+
+### Round 4: Astra's second list
+
+#### Selector load in the presets: rejected by the inverse (`ab-sticky-nthload.json`)
+
+core.css's automatic stagger is eleven rules whose rightmost compound is an
+unqualified `:nth-child()`, which puts them in Blink's universal bucket,
+candidate-matched against every element in every recalculation. Rather than
+rebuild the sheet without them, the screen adds eleven MORE of the same
+shape: if those cost nothing measurable, removing the shipped ones saves
+nothing measurable. sticky-steps, six balanced runs, 720 frames, render
+equal: 253.5ms against 256ms task, 74ms against 78.5ms style recalculation.
+Four and a half milliseconds of recalculation over twelve seconds for eleven
+universal rules, so the shipped eleven are worth at most that, under two
+percent of task time. Astra's own guess was 0 to 2 percent. Not worth the
+presets' readability.
+
+#### Typed inheriting clock: rejected (`ab-deep50-typed.json`)
+
+`--sv-t` registered as `<number>`, `inherits: true`, initial `.5` to match
+the fixture's own fallback, every write unchanged. deep-50, six balanced
+runs, 720 frames, render equal: 733ms against 695.5ms task, 292ms against
+287ms style recalculation. The recalculation, which is the cost, does not
+move: resolving an element whose inherited variable changed is not about
+parsing the token, it is about visiting the element. The five percent on
+task sits at the edge of the noise floor and buys nothing on the slice that
+matters. Astra's guess was approximately zero. Rejected.
+
+#### Round 4, settled
+
+Both of Astra's lists are exhausted. Everything that changes WHERE the
+variables live is done (scoped clocks, shipped). Everything that changes HOW
+they are written or resolved is measured at noise: precision, typing,
+registration, containment, selector load, native timelines. The JavaScript
+slice is bounded at 9 percent on the losing profile. The recalculation count
+is one per frame. What remains is the number of elements a recalculation
+visits, and the sheet is the tool for that.
+
+### Round 5: the opt-in in the published table
+
+`demo/bench/scrollvars.html?scoped=1` loads `styles/scoped.css` from a
+served copy that `demo:sync` refreshes and both CI gates diff, plus the two
+author lines the sheet's contract asks of the fixture: the boxes forward the
+clocks, and their `var(--sv-t, 0.5)` fallback becomes a default on the
+section. A probe before the full run: the clock is registered (`<html>`
+reads the initial 0), a section past the viewport holds 1, its boxes hold 1,
+the spans under a box hold 0 (not inheriting), and the sampled box renders
+`0px -121.877px`, the same value the plain page renders at that scroll
+position. `measure.mjs` runs the row on main and deep; `bench-tables.mjs`
+labels it and stamps its bundle as the core plus the sheet.
+
+#### The published run with the scoped row (`results/latest.json`, 24b4f20)
+
+Three runs each, clean tree, the published methodology:
+
+| profile | ScrollVars | with scoped.css | gsap-batched |
+|---|---:|---:|---:|
+| main-900 | 679ms | 766ms | 626ms |
+| deep-5 | 514ms | 442ms | 553ms |
+| deep-20 | 499ms | 437ms | 379ms |
+| deep-50 | 653ms | 471ms | 380ms |
+
+Style recalculation on deep-50: 269ms as shipped, 117ms with the sheet,
+32ms for GSAP. With the sheet the library is ahead of GSAP at five
+descendants per box and the gap at fifty narrows from 72 percent behind to
+24. On the flat profile the sheet costs 13 percent, and the table says so
+next to the win rather than instead of it.
+
+### Round 6: Astra reviews the day's driver code
+
+Eight findings, six real, all in the consumer detection for the document
+outputs; the two left as documented limits are shadow roots and in-place
+edits of an existing rule. Closed:
+
+1. Publishing became its own consumer: the inline scan matched the two
+   outputs the driver itself writes on `<html>`, so a page that published
+   "meanwhile" for a pending sheet never unpublished when the sheet turned
+   out to read nothing. `<html>` is excluded from the inline scan.
+2. Text assigned into an existing `<style>` is a text node, which the
+   observer ignored. It counts now.
+3. A pending `<link>` inside an inserted wrapper, an `@import` found by the
+   observer, and any `<link>` at all (an icon, a preload) were all handled by
+   a shortcut that adopted the consumer without installing a load listener or
+   checking `rel`. The observer's rescan goes through `resolvePageOutputs()`
+   like the first frame does, so the same pending logic and listeners apply.
+4. Listeners stacked: every resolution added a fresh load/error pair to every
+   pending owner, and an explicit `setPageOutputs()` left them all in place.
+   One pair per owner, removed on settle, on override and on the last release.
+5. An `@import` inside an imported sheet has no owner node of its own; the
+   owner is found up the `parentStyleSheet` chain.
+6. A rescan frame queued before the last tracker was released could wake a
+   driver with no work; it now does nothing once the watch is gone.
+
+Two invariants pin the sharpest of these: a preload link added after boot
+stays silent, and text assigned into an existing empty `<style>` counts.
+
+### Round 7: the consumer watch's own cost, found after the queue emptied
+
+Every screen in rounds 1 to 6 ran on a page whose DOM never changes after
+load. The consumer watch (round 6) rescans the document once per frame that
+adds an element, and that rescan serialized every rule of every stylesheet
+through `cssText`: on a page that mounts one element per frame, the common
+shape of a virtualized list or an infinite scroll, the watch was a per-frame
+tax proportional to the size of the CSS, on exactly the pages the default
+was meant to relieve. `mutation-cost.mjs`, one linked sheet of N rules, 5000
+elements in the body, one element appended per frame for 120 frames, script
+time over the window:
+
+| | watch alive (auto, no consumer) | `setPageOutputs(false)` | per mutated frame |
+|---|---:|---:|---:|
+| 395c920, 5000 rules | 390 / 389ms | 5 / 7ms | 3.2ms |
+| memo by rule count, 5000 rules | 24 / 27ms | 5 / 6ms | 0.17ms |
+
+The pure rescan, median of five in page: 0.80ms at 1000 rules, 4.30ms at
+5000, 16.30ms at 20000, linear at about 0.8us a rule.
+
+Fix: a sheet read in full that reaches neither name is remembered with its
+rule count, and a rescan skips it until the count moves. By count on purpose:
+a CSS-in-JS runtime in production inserts a component's rules into one
+existing sheet as the component mounts, and the mount's own elements are
+what wake the watch, so that insertion is still seen (an invariant pins it).
+An in-place edit that swaps one rule for another keeps the count and is
+missed, but no node is added by such an edit, so the watch never saw it
+either. The residual 0.17ms is the inline-style query over the 5000
+elements; if it ever matters, scan only the added subtree for inline
+readers. The gate counts `cssText` reads through the getter: 1860 for 30
+plain elements before, 0 after.
+
+### Round 8: the low-end table refreshed, and a page that lives
+
+Two measurements that are about publishing honestly rather than about a
+new lever.
+
+**Low-end profile (4x CPU throttle, headful Chrome, main-900, 5 runs).**
+The published table still showed the 1.15.0 snapshot, whose "page outputs
+on" row (10711ms) described a default that no longer exists. Re-measured in
+the calmest window the night offered (1-minute load 5.5 before, 3.8 after;
+other sessions' Next.js builds held the machine between 20 and 110 the rest
+of the time, and a conditional re-run at load 21 was skipped by its own
+rule). Medians, with the run spread:
+
+| engine | task total | runs |
+|---|---:|---|
+| ScrollVars (default) | 1735 ms | 1682 / 2563 / 1915 / 1735 / 1221 |
+| ScrollVars + scoped.css | 2052 ms | 1809 / 2750 / 2178 / 2052 / 1467 |
+| ScrollVars (document variables published) | 10743 ms | 10099 / 11661 / 11969 / 10743 / 10391 |
+| gsap idiomatic | 1607 ms | 934 / 1773 / 1607 / 1912 / 1134 |
+| gsap batched | 1519 ms | 1382 / 1541 / 1576 / 1519 / 1413 |
+| framer-motion | 3232 ms | 3232 / 3744 / 3341 / 2933 / 2816 |
+
+Run 2 is high for every engine (a load spike); the medians carry it. The
+1.15.0 snapshot, taken on a calm machine, had gsap batched at 1068ms and the
+opt-out at 1386ms: absolute numbers are not comparable across the two days,
+the within-snapshot shape is (default at 1.14x gsap batched now, the old
+opt-out at 1.30x then). The bench page says to compare within the profile.
+
+**An app-shaped page (`app-shaped.mjs`, 3 runs, order rotated).** Every
+bench page holds still after load. This one is generated to look like a
+product site on a utility-class framework: sticky header, hero with entrance
+presets, a card grid with stagger, a parallax band, a feed of forty tracked
+items, a stream that mounts two rows and unmounts two every 250ms during the
+scroll, a route change at six seconds that swaps the grid and the feed, and
+a 5000-rule stylesheet. Three modes on the same 12-second scroll: the page
+without the library, the default, the default plus `styles/scoped.css`. The
+scoped mode is gated against the default on the static page (2459 of 2468
+settled elements equal, every run); 240 mutations happened in every timed
+run (asserted, or the run does not count).
+
+| page | task total | script | style recalc | p95 | frames >25ms |
+|---|---:|---:|---:|---:|---:|
+| without the library | 126.8 ms (114.9–146) | 27.4 ms | 3.4 ms | 16.7 ms | 0 |
+| ScrollVars | 331.9 ms (320.2–574.6) | 51.8 ms | 80.4 ms | 16.7 ms | 0 |
+| ScrollVars + scoped.css | 299 ms (255.9–340.3) | 51.4 ms | 56 ms | 16.8 ms | 0 |
+
+What the library adds to this page, animations included: about 205ms of
+main-thread time over 12 seconds, 0.3ms a frame at 60fps; 172ms with the
+sheet. No frame over 25ms in any mode. The round-7 memo is what keeps the
+stream and the route change from costing a stylesheet walk per frame; the
+watch stays alive here because nothing reads the document variables, which
+is the common case this page models. Both results are stamped onto the
+bench page and the README block by `scripts/bench-tables.mjs`.

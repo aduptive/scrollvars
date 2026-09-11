@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:17:31.296Z",
+    "page": "/index.html",
+    "variants": [
+      "scopedcss"
+    ],
+    "forward": ".sv :has(.card3d), .card3d, .spread-scrub > *",
+    "runs": 6,
+    "order": [
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ]
+    ],
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "method": "gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 1615,
+      "recalcMs": 408.5,
+      "scriptMs": 189,
+      "frames": 719.5,
+      "fps": 59.95,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 265,
+          "recalcMs": 447,
+          "layoutMs": 50,
+          "taskMs": 1819,
+          "fps": 59.9,
+          "frames": 719,
+          "framesOver25ms": 1,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 202,
+          "recalcMs": 445,
+          "layoutMs": 48,
+          "taskMs": 1727,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 151,
+          "recalcMs": 325,
+          "layoutMs": 34,
+          "taskMs": 1304,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 221,
+          "recalcMs": 428,
+          "layoutMs": 40,
+          "taskMs": 1762,
+          "fps": 59.2,
+          "frames": 710,
+          "framesOver25ms": 6,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 176,
+          "recalcMs": 376,
+          "layoutMs": 40,
+          "taskMs": 1502,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 171,
+          "recalcMs": 389,
+          "layoutMs": 39,
+          "taskMs": 1503,
+          "fps": 59.9,
+          "frames": 719,
+          "framesOver25ms": 1,
+          "p95Ms": 16.7
+        }
+      ]
+    },
+    "scopedcss": {
+      "taskMs": 1445.5,
+      "recalcMs": 314.5,
+      "scriptMs": 178.5,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 201,
+          "recalcMs": 365,
+          "layoutMs": 48,
+          "taskMs": 1636,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 205,
+          "recalcMs": 371,
+          "layoutMs": 49,
+          "taskMs": 1669,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 167,
+          "recalcMs": 286,
+          "layoutMs": 37,
+          "taskMs": 1355,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 154,
+          "recalcMs": 271,
+          "layoutMs": 39,
+          "taskMs": 1289,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 174,
+          "recalcMs": 305,
+          "layoutMs": 40,
+          "taskMs": 1409,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 183,
+          "recalcMs": 324,
+          "layoutMs": 43,
+          "taskMs": 1482,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    }
+  }
+}

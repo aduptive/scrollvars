@@ -2,9 +2,82 @@
 
 ## Unreleased
 
+### Added
+
+- `scrollvars/styles/scoped.css`, an opt-in sheet that registers `--sv-t`
+  and `--sv-view` non-inheriting so a write re-resolves one element instead
+  of its whole subtree. The rule it imposes: a clock reaches only the
+  elements that declare `inherit` for it, and every element between the
+  tracked ancestor and a reader must declare it too; the shipped presets that
+  read a clock from a descendant (`sv-drift`, `sv-range`) are forwarded inside
+  the sheet, and a test derives that list from the stylesheets so a new
+  preset cannot ship without its forward. A registered property always has
+  a value, so a `var(--sv-t, 1)` fallback is never taken again under the
+  sheet: declare that default on the tracked element instead. Measured
+  behind a rendered-output
+  gate: 63 percent less style recalculation and 28 percent less task time on
+  the benchmark's deep profile, 13 percent more recalculation and 4 percent
+  more task time on its flat profile; on the site's own home page 10 percent
+  less task time and 23 percent less recalculation.
+  Browsers without `@property` keep inheriting, so it never breaks a page
+  below the floor. Not part of `styles.css` on purpose.
+
+### Changed
+
+- `--sv-page` and `--sv-v` are published only when something in the document
+  can read them. Both live on `<html>` and both inherit, so every write asked
+  the browser to recalculate style for the entire document, on every scroll
+  frame, whether or not a single rule referenced them. On the 900-box
+  benchmark that cost 3249ms of style recalculation over a 12-second scroll
+  against 269ms without, and 4128ms of total task time against 1696ms; the
+  same page with the identical writes registered `inherits: false` cost
+  267.5ms, so the price was the inheritance rather than the write. The driver
+  now scans the document's own stylesheets and inline styles once, on the
+  first frame that could publish, and stays silent when neither name appears.
+  A stylesheet added later turns publishing back on; the watch behind that
+  rescans once per frame that adds an element and skips every stylesheet it
+  already read in full (by rule count, so a rule inserted into an existing
+  sheet as a component mounts is still seen), which is what keeps a page
+  that mounts elements while it scrolls from serializing every rule on
+  every one of those frames.
+  **This can change behavior for a page that reads the variables only from
+  JavaScript**, which no CSS scan can see: call `setPageOutputs(true)` there.
+  Anything unreadable counts as a reader, so a cross-origin stylesheet without
+  CORS headers keeps publishing exactly as before. Calling `setPageOutputs()`
+  at all now takes the decision away from detection permanently, in both
+  directions.
+
+### Performance
+
+- The published main-900 benchmark, same page, same methodology: total task
+  time 679ms against gsap-batched's 626ms and framer-motion's 1078ms, with
+  59ms of script against 117ms and 490ms, and 1.0MB of heap against 6.8MB
+  and 10.9MB. Before this change the same page cost 4144.5ms, 2.6x GSAP
+  rather than 1.08x. On the deep profiles the default still loses to GSAP on
+  style recalculation alone, and `styles/scoped.css` is the answer there:
+  ahead of GSAP at five descendants per box, the gap at fifty narrowed from
+  72 percent to 24.
+
+
 - Demo: keep the homepage's custom scenes readable before the driver boots. Entrance text stays visible; pinned rails, decks, product-tour panels and map stations return to normal flow; galleries stop clipping static cards. Native carousels remain keyboard-scrollable without JavaScript, including the page-driven rail. Canvas-only effects and inactive controls are omitted from the static preview.
-- Demo: disable unused document-wide outputs before homepage tracking. A four-run-per-mode A/B of the complete page records about **62% lower median main-thread task time** (5039.5→1911.5 ms over the same 12-second scroll), with local effects and HUD preserved. This applies the existing opt-out to this page; it does not change library defaults or establish a general speedup. [Raw measurements](https://scrollvars.dev/bench/results/home-outputs.json).
-- Demo benchmark table: use the same dated snapshot as the README and benchmark page; display total task CPU, FPS, both output modes and the batched GSAP comparison.
+- Demo: the homepage no longer calls `setPageOutputs(false)` itself. The
+  default now detects that nothing on the page reads `--sv-page` or `--sv-v`
+  and stays silent, which is what the earlier explicit opt-out had been
+  buying (measured at the time at about 62 percent less main-thread task
+  time over the same 12-second scroll, 5039.5 to 1911.5ms).
+- Demo benchmark table: the same dated snapshot as the README and the
+  benchmark page, with three ScrollVars rows (the default, the
+  `styles/scoped.css` opt-in, and the document variables published, which is
+  the cost of that feature rather than a competitor comparison) next to the
+  batched GSAP row.
+- Demo benchmark page: the low-end profile (4x CPU throttle) re-measured with
+  the new default, six rows instead of a table that still described the old
+  one; and a new section for an app-shaped page, generated by the harness
+  (`harness/app-shaped.mjs`: a page that mounts and unmounts rows while it
+  scrolls and swaps its grid and feed at six seconds), showing what the
+  library adds to a page that lives, with the same line stamped into the
+  README's benchmark block. `harness/mutation-cost.mjs` is the diagnostic
+  behind the consumer-watch fix above; both ship with their results.
 
 ## 1.16.1 (2026-09-09)
 

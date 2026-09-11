@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:21:11.495Z",
+    "page": "/fx/hero-cinematic.html",
+    "variants": [
+      "scopedcss"
+    ],
+    "forward": ".sv :has(.hero-inner), .hero-inner",
+    "runs": 6,
+    "order": [
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ]
+    ],
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "method": "gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 281.5,
+      "recalcMs": 83,
+      "scriptMs": 46,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 40,
+          "recalcMs": 76,
+          "layoutMs": 0,
+          "taskMs": 249,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 34,
+          "recalcMs": 70,
+          "layoutMs": 0,
+          "taskMs": 226,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 46,
+          "recalcMs": 90,
+          "layoutMs": 0,
+          "taskMs": 291,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 56,
+          "recalcMs": 100,
+          "layoutMs": 0,
+          "taskMs": 334,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 46,
+          "recalcMs": 72,
+          "layoutMs": 0,
+          "taskMs": 272,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 60,
+          "recalcMs": 105,
+          "layoutMs": 0,
+          "taskMs": 354,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    },
+    "scopedcss": {
+      "taskMs": 316.5,
+      "recalcMs": 107,
+      "scriptMs": 48,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 34,
+          "recalcMs": 88,
+          "layoutMs": 0,
+          "taskMs": 246,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 32,
+          "recalcMs": 78,
+          "layoutMs": 0,
+          "taskMs": 226,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 38,
+          "recalcMs": 93,
+          "layoutMs": 0,
+          "taskMs": 268,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 58,
+          "recalcMs": 122,
+          "layoutMs": 0,
+          "taskMs": 365,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 61,
+          "recalcMs": 131,
+          "layoutMs": 0,
+          "taskMs": 398,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 60,
+          "recalcMs": 121,
+          "layoutMs": 0,
+          "taskMs": 372,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        }
+      ]
+    }
+  }
+}

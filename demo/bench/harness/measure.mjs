@@ -65,14 +65,14 @@ if (WHICH.includes('main'))
   SCENARIOS.push({
     name: 'main-900',
     params: 's=60&p=15',
-    engines: ['scrollvars.html', 'scrollvars-local.html', 'gsap.html', 'gsap-batched.html', 'framer.html'],
+    engines: ['scrollvars.html', 'scrollvars-scoped.html', 'scrollvars-page.html', 'gsap.html', 'gsap-batched.html', 'framer.html'],
   })
 if (WHICH.includes('deep'))
   for (const deep of [5, 20, 50])
     SCENARIOS.push({
       name: `deep-${deep}`,
       params: `s=30&p=5&deep=${deep}`,
-      engines: ['scrollvars.html', 'scrollvars-local.html', 'gsap-batched.html'],
+      engines: ['scrollvars.html', 'scrollvars-scoped.html', 'scrollvars-local.html', 'gsap-batched.html'],
     })
 if (WHICH.includes('gallery'))
   for (const slug of ['hero-cinematic', 'timeline-scrub', 'sticky-steps', 'stats-countup', 'case-study-rail', 'editorial-manifesto'])
@@ -159,12 +159,14 @@ async function measureOnce(engine, params) {
     const marks = {}
     await page.exposeFunction('__benchMark', async name => { marks[name] = await metrics() })
     const local = engine === 'scrollvars-local.html'
+    const pageOut = engine === 'scrollvars-page.html'
+    const scoped = engine === 'scrollvars-scoped.html'
     const direct = engine === 'rail-direct.html'
     const localized = engine === 'rail-local.html'
     const guardedSlider = engine === 'slider-guarded.html'
     const noOutputs = engine === 'slider-no-outputs.html' || engine === 'slider-api-no-outputs.html'
     const plainSlider = noOutputs || engine === 'slider-plain.html' || engine === 'slider-api.html'
-    await page.goto(`${base}${home ? '../index.html' : casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local || styleExperiment ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
+    await page.goto(`${base}${home ? '../index.html' : casework ? '../fx/case-study-rail.html' : guardedSlider || plainSlider ? 'slider-seek.html' : local || pageOut || scoped || styleExperiment ? 'scrollvars.html' : direct || localized ? 'rail.html' : engine}?${params}&harness=1${noOutputs ? '&outputs=off' : guardedSlider ? '&guarded=1' : local ? '&local=1' : pageOut ? '&pageoutputs=1' : scoped ? '&scoped=1' : direct ? '&mode=direct' : localized ? '&mode=localized' : ''}`, { waitUntil: 'load', timeout: 60000 })
     if (styleExperiment) {
       await page.addScriptTag({ url:`${base}main-style.js` })
       await page.evaluate(mode => mountMainStyleExperiment(mode), engine.slice(6, -5))

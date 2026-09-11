@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "date": "2026-09-10T22:27:27.280Z",
+    "page": "/fx/sticky-steps.html",
+    "variant": "forward",
+    "runs": 1,
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 274,
+      "recalcMs": 76,
+      "scriptMs": 58,
+      "fps": 60,
+      "runs": 1
+    },
+    "forward": {
+      "taskMs": 286,
+      "recalcMs": 83,
+      "scriptMs": 61,
+      "fps": 60,
+      "runs": 1
+    }
+  }
+}

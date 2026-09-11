@@ -8,14 +8,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.0 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 3.8 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.0 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.8 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1769,7 +1769,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.0 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.8 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2805,25 +2805,26 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 16.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~5.5 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>7.5 KB / 3.0 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.7 KB / 3.8 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
-    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll <span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 elements; package 1.16.0, 4 runs, measured 2026-09-09T11:54:42.829Z)</span></h3>
+    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll <span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 elements; package 1.16.1, 3 runs, measured 2026-09-10T23:55:45.351Z)</span></h3>
     <div style="overflow-x: auto" tabindex="0" role="region" aria-label="Scroll benchmark results">
     <table class="sv-rise" style="--sv-order: 4">
       <thead><tr><th>engine</th><th>total CPU (12s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>JS heap</th></tr></thead>
       <tbody>
-        <tr><td>ScrollVars (page outputs on)</td><td class="range">4144.5 ms</td><td class="range">59.6</td><td class="range">27 ms</td><td class="range">3378 ms</td><td class="range">1.4 MB</td></tr>
-        <tr><td>ScrollVars (page outputs off)</td><td class="range">1872 ms</td><td class="range">60</td><td class="range">109.5 ms</td><td class="range">382 ms</td><td class="range">1 MB</td></tr>
-        <tr><td>GSAP + ScrollTrigger (idiomatic)</td><td class="range">1800 ms</td><td class="range">60</td><td class="range">441.5 ms</td><td class="range">161 ms</td><td class="range">6.15 MB</td></tr>
-        <tr><td>GSAP + ScrollTrigger (batched)</td><td class="range">1669 ms</td><td class="range">60</td><td class="range">293 ms</td><td class="range">168.5 ms</td><td class="range">6.65 MB</td></tr>
-        <tr><td>framer-motion</td><td class="range">2111.5 ms</td><td class="range">60</td><td class="range">1072.5 ms</td><td class="range">77.5 ms</td><td class="range">10.75 MB</td></tr>
+        <tr><td>ScrollVars (page outputs on)</td><td class="range">679 ms</td><td class="range">60</td><td class="range">59 ms</td><td class="range">137 ms</td><td class="range">1 MB</td></tr>
+        <tr><td>scrollvars-scoped.html</td><td class="range">766 ms</td><td class="range">60</td><td class="range">46 ms</td><td class="range">188 ms</td><td class="range">1 MB</td></tr>
+        <tr><td>scrollvars-page.html</td><td class="range">3791 ms</td><td class="range">59.3</td><td class="range">49 ms</td><td class="range">2604 ms</td><td class="range">1.1 MB</td></tr>
+        <tr><td>GSAP + ScrollTrigger (idiomatic)</td><td class="range">659 ms</td><td class="range">60</td><td class="range">145 ms</td><td class="range">57 ms</td><td class="range">6.1 MB</td></tr>
+        <tr><td>GSAP + ScrollTrigger (batched)</td><td class="range">626 ms</td><td class="range">60</td><td class="range">117 ms</td><td class="range">59 ms</td><td class="range">6.8 MB</td></tr>
+        <tr><td>framer-motion</td><td class="range">1078 ms</td><td class="range">60</td><td class="range">490 ms</td><td class="range">42 ms</td><td class="range">10.9 MB</td></tr>
       </tbody>
     </table></div>
-    <p style="color: var(--muted); font-size: 14px;">Total CPU is accumulated main-thread task time, not per-frame time. Page outputs off applies only when no CSS consumes the global clocks. <a href="bench/results/main-current.json" style="color: var(--accent)">Raw runs</a>; <a href="bench/" style="color: var(--accent)">frame tails and methodology</a>.</p>
+    <p style="color: var(--muted); font-size: 14px;">Total CPU is accumulated main-thread task time, not per-frame time. Page outputs off applies only when no CSS consumes the global clocks. <a href="bench/results/latest.json" style="color: var(--accent)">Raw runs</a>; <a href="bench/" style="color: var(--accent)">frame tails and methodology</a>.</p>
 
     <p class="sv-rise" style="--sv-order: 6; color: var(--muted); font-size: 14px; margin-top: 16px;">
       Frame delivery and CPU cost depend on the workload, browser and device.
@@ -2958,9 +2959,9 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.0 KB gzip · full core 7.4 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.8 KB gzip · full core 8.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 8 KB part. Reduced motion is respected by the driver and every preset.</p>
+<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
@@ -3104,21 +3105,173 @@ var SV = (() => {
   var lastPageStr = "";
   var lastVStr = "";
   var pageOutputs = false;
+  var pageOutputsMode = "auto";
+  var pageOutputsResolved = false;
   var pageOutputsEnabled = true;
+  var consumerWatch = null;
   var offsetsDirty = false;
   var forceAll = false;
   function setPageOutputs(enabled) {
+    pageOutputsMode = enabled ? "on" : "off";
+    consumerWatch?.disconnect();
+    consumerWatch = null;
+    unlistenAll();
     if (enabled && pageOutputsEnabled)
       return;
     pageOutputsEnabled = enabled;
     if (typeof document === "undefined")
       return;
-    if (!enabled) {
-      clearTimeout(velTimer);
-      document.documentElement.style.removeProperty("--sv-page");
-      document.documentElement.style.removeProperty("--sv-v");
-      lastPageStr = lastVStr = "";
-    } else
+    if (!enabled)
+      stopPageOutputs();
+    else
+      schedule();
+  }
+  function stopPageOutputs() {
+    clearTimeout(velTimer);
+    document.documentElement.style.removeProperty("--sv-page");
+    document.documentElement.style.removeProperty("--sv-v");
+    lastPageStr = lastVStr = "";
+  }
+  var PAGE_OUTPUT_NAMES = /--sv-page(?![\w-])|--sv-v(?![\w-])/;
+  function mentionsPageOutputs(css) {
+    return PAGE_OUTPUT_NAMES.test(css);
+  }
+  var pendingImportOwners = [];
+  var listened = /* @__PURE__ */ new Map();
+  var silentSheets = /* @__PURE__ */ new WeakMap();
+  function unlistenAll() {
+    listened.forEach((off, owner) => {
+      owner.removeEventListener("load", off);
+      owner.removeEventListener("error", off);
+    });
+    listened.clear();
+  }
+  function sheetReadsPageOutputs(sheet, depth) {
+    let rules;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      return true;
+    }
+    if (!rules)
+      return true;
+    if (silentSheets.get(sheet) === rules.length)
+      return false;
+    for (const rule of Array.from(rules)) {
+      if (isImportRule(rule)) {
+        const imported = rule.styleSheet;
+        if (!imported) {
+          let owner = sheet;
+          while (owner && !owner.ownerNode)
+            owner = owner.parentStyleSheet;
+          if (owner?.ownerNode)
+            pendingImportOwners.push(owner.ownerNode);
+          return true;
+        }
+        if (depth > 4 || sheetReadsPageOutputs(imported, depth + 1))
+          return true;
+        continue;
+      }
+      if (mentionsPageOutputs(rule.cssText))
+        return true;
+    }
+    silentSheets.set(sheet, rules.length);
+    return false;
+  }
+  var isImportRule = (rule) => rule.type === 3;
+  function detectPageConsumers() {
+    pendingImportOwners = [];
+    try {
+      for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"]:not(html),[style*="--sv-v"]:not(html)')))
+        if (mentionsPageOutputs(el.getAttribute("style") || ""))
+          return true;
+      const adopted = document.adoptedStyleSheets;
+      if (adopted) {
+        for (const sheet of Array.from(adopted))
+          if (sheetReadsPageOutputs(sheet, 0))
+            return true;
+      }
+      for (const sheet of Array.from(document.styleSheets)) {
+        const node = sheet.ownerNode;
+        if (node && node.nodeName === "STYLE" && mentionsPageOutputs(node.textContent || ""))
+          return true;
+        if (sheetReadsPageOutputs(sheet, 0))
+          return true;
+      }
+    } catch {
+      return true;
+    }
+    return false;
+  }
+  function watchForPageConsumers() {
+    if (consumerWatch || typeof MutationObserver === "undefined")
+      return;
+    const root = document.documentElement;
+    if (!root)
+      return;
+    let queued = false;
+    consumerWatch = new MutationObserver((records) => {
+      if (queued)
+        return;
+      for (const record of records) {
+        for (const node of Array.from(record.addedNodes)) {
+          const relevant = node.nodeType === 1 || node.nodeType === 3 && node.parentNode?.nodeName === "STYLE";
+          if (!relevant)
+            continue;
+          queued = true;
+          break;
+        }
+        if (queued)
+          break;
+      }
+      if (queued)
+        requestAnimationFrame(() => {
+          queued = false;
+          if (!consumerWatch || pageOutputsMode !== "auto")
+            return;
+          resolvePageOutputs();
+          if (pageOutputsEnabled && !listened.size) {
+            consumerWatch?.disconnect();
+            consumerWatch = null;
+          }
+        });
+    });
+    consumerWatch.observe(root, { childList: true, subtree: true });
+  }
+  function pendingSheets() {
+    try {
+      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet);
+    } catch {
+      return [];
+    }
+  }
+  function resolvePageOutputs() {
+    if (pageOutputsMode !== "auto")
+      return;
+    const found = detectPageConsumers();
+    const pending = [...pendingSheets(), ...pendingImportOwners];
+    const enabled = found || pending.length > 0;
+    const was = pageOutputsEnabled;
+    if (was && !enabled)
+      stopPageOutputs();
+    pageOutputsEnabled = enabled;
+    if (pending.length) {
+      for (const owner of pending) {
+        if (listened.has(owner))
+          continue;
+        const settled = () => {
+          owner.removeEventListener("load", settled);
+          owner.removeEventListener("error", settled);
+          listened.delete(owner);
+          resolvePageOutputs();
+        };
+        listened.set(owner, settled);
+        owner.addEventListener("load", settled);
+        owner.addEventListener("error", settled);
+      }
+    } else if (!found)
+      watchForPageConsumers();
+    if (!was && enabled)
       schedule();
   }
   function schedule() {
@@ -3140,6 +3293,10 @@ var SV = (() => {
     const now = performance.now();
     const jumped = lastY >= 0 && Math.abs(y - lastY) > vh;
     const docEl = document.documentElement;
+    if (pageOutputs && !pageOutputsResolved) {
+      pageOutputsResolved = true;
+      resolvePageOutputs();
+    }
     const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null;
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];
@@ -3378,6 +3535,12 @@ var SV = (() => {
   function releaseEntry(entry) {
     const { el } = entry;
     entries.delete(el);
+    if (entries.size === 0 && pageOutputsMode === "auto") {
+      consumerWatch?.disconnect();
+      consumerWatch = null;
+      unlistenAll();
+      pageOutputsResolved = false;
+    }
     culler?.unobserve(el);
     unobserveIfUnneeded(el);
     if (entry.opts.root)
@@ -4388,6 +4551,8 @@ var SV = (() => {
 
   /* ── wire the page ── */
   SV.setPageOutputs(false);
+  // No setPageOutputs(false) any more: nothing on this page reads --sv-page
+  // or --sv-v, and the driver detects that itself. The site runs the default.
   document.querySelectorAll('[data-sv]').forEach(function (el) {
     register(el, { once: el.hasAttribute('data-once'), hud: el.getAttribute('data-hud') });
   });
