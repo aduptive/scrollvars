@@ -12,6 +12,10 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -162,14 +166,14 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv class="py-24"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;section data-sv class="py-24"&gt;
   &lt;div class="sv-spread sv-spread-in [--sv-gap:14px]"&gt;
     &lt;div class="[--sv-order:0] rounded-xl border p-8"&gt;01&lt;/div&gt;
     &lt;div class="[--sv-order:1] rounded-xl border p-8"&gt;02&lt;/div&gt;
     &lt;div class="[--sv-order:2] rounded-xl border p-8"&gt;03&lt;/div&gt;
   &lt;/div&gt;
 &lt;/section&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;section data-sv&gt;
   &lt;div class="sv-spread sv-spread-in"&gt;
     &lt;div style="--sv-order: 0"&gt;…&lt;/div&gt;
     &lt;div style="--sv-order: 1"&gt;…&lt;/div&gt;
@@ -192,7 +196,7 @@
   .sv-on .sv .sv-spread.sv-spread-in &gt; * {
     translate: none; rotate: none; transition: none; }
 }</code></pre>
-    <pre data-pane="react"><code>&lt;Track&gt;
+    <pre tabindex="0" data-pane="react"><code>&lt;Track&gt;
   &lt;div className="sv-spread sv-spread-in"&gt;
     {cards.map((c, i) =&gt; (
       &lt;Item key={c.id} order={i}&gt;&lt;Card {...c} /&gt;&lt;/Item&gt;

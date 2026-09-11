@@ -12,6 +12,10 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -159,13 +163,13 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;section data-sv data-sv-once class="py-24"&gt;
   &lt;h2 class="sv-split-rise text-5xl font-extrabold" data-sv-split&gt;
     Words arrive one by one
   &lt;/h2&gt;
 &lt;/section&gt;
 &lt;!-- knobs per element: [--sv-stagger:60ms] [--sv-duration:600ms] --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;section data-sv data-sv-once&gt;
   &lt;h2 class="sv-split-rise" data-sv-split&gt;Words arrive one by one&lt;/h2&gt;
 &lt;/section&gt;
 &lt;!-- data-sv-split wraps each word in a span with --sv-order; the full text
@@ -192,7 +196,7 @@
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 &lt;h2 class="sv-reading" data-sv-split&gt;…&lt;/h2&gt;   &lt;!-- inside a data-sv-pin --&gt;</code></pre>
-    <pre data-pane="react"><code>import { Split } from 'scrollvars/react'
+    <pre tabindex="0" data-pane="react"><code>import { Split } from 'scrollvars/react'
 
 &lt;Reveal&gt;
   &lt;Split as="h2" className="sv-split-rise" stagger={60}&gt;

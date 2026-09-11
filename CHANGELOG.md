@@ -22,6 +22,20 @@
 - A README section, Accessibility, listing what the library guarantees on
   its own surfaces with the WCAG criteria each guarantee serves, what stays
   the page's job, and the published guidance the library follows.
+- A keyboard-reach gate in the e2e run (`demo/bench/harness/keyboard-gate.mjs`):
+  it tabs through every gallery page and the home page, forward and back,
+  and requires each focused element to be seen (in the viewport, effective
+  opacity at least 0.5, `visibility: visible`, not covered at the center of
+  its visible part, still so 400ms later). It proves it can fail on a
+  fixture: a link under a fixed header on the way back, and a link inside a
+  box that stays at opacity 0.
+- An axe gate in the e2e run (`demo/bench/harness/axe-gate.mjs`): every
+  gallery page and the home page pass axe-core's WCAG 2.x A and AA rules
+  with zero violations, audited after boot and again with the page scrolled
+  through and settled (it waits for every finite animation and transition
+  to end first, since text mid-fade reads as low contrast). It proves it
+  can fail on a fixture with an image without alt and a button without a
+  name.
 
 - `scrollvars/styles/scoped.css`, an opt-in sheet that registers `--sv-t`
   and `--sv-view` non-inheriting so a write re-resolves one element instead
@@ -40,6 +54,21 @@
   less task time and 23 percent less recalculation.
   Browsers without `@property` keep inheriting, so it never breaks a page
   below the floor. Not part of `styles.css` on purpose.
+
+### Fixed
+
+- Demo: what axe found. Every code block is keyboard focusable
+  (`tabindex="0"`, WCAG 2.1.1: a scrollable region needs keyboard access);
+  the sticky-steps section keeps an inactive step's text at 4.5:1 (its
+  opacity floor is .65 with the labels at .8, it was .3 with .7 and .75,
+  which read at 1.8:1); the editorial manifesto keeps unread copy at 3:1
+  (floor .55, it was .28); the cinematic hero's marquee strip has its own
+  ground, its text read at 2.6:1 where an orb passed behind it. The gallery
+  panes and the installed components carry the same values.
+- Demo: the gallery pages' fixed header covered a focused element the
+  browser scrolled to the top edge on the way back (Shift+Tab into the code
+  block's controls), WCAG 2.4.11. The pages set `scroll-padding-top` under
+  the header now; the keyboard gate found it and keeps it.
 
 ### Changed
 

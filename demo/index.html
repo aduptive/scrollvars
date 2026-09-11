@@ -103,6 +103,10 @@
   /* ── hero ── */
   /* ── fixed top bar: repo/install, visible in the first fold and on every
      scroll position (the site's own "npm i" pitch, always in reach) ── */
+  /* the bar covers whatever the browser scrolls to the top edge, a focused
+     link on the way back included (WCAG 2.4.11): the scrollport starts
+     under it. The keyboard gate found the reading list's links under it. */
+  html { scroll-padding-top: 64px; }
   header.site {
     position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: 56px;
     display: flex; align-items: center; justify-content: space-between;
@@ -1584,7 +1588,7 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
         <p>Driver and presets honor prefers-reduced-motion: content visible, no movement.</p>
       </div>
     </div>
-    <pre><code><span class="c">// React. Automatic stagger: no classes on children</span>
+    <pre tabindex="0"><code><span class="c">// React. Automatic stagger: no classes on children</span>
 <span class="k">import</span> { Reveal } <span class="k">from</span> <span class="s">'scrollvars/react'</span>
 
 &lt;<span class="k">Reveal</span> as=<span class="s">"section"</span> auto&gt;
@@ -1613,7 +1617,7 @@ And have <em>no transition</em>: continuous value + transition is what causes th
       <div class="layer l2 sv-drift">--sv-distance: 7rem · middle ground</div>
       <div class="layer l3 sv-drift">--sv-distance: 13rem · flies</div>
     </div>
-    <pre><code><span class="c">/* ready-made preset */</span>
+    <pre tabindex="0"><code><span class="c">/* ready-made preset */</span>
 &lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-distance'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
 
 <span class="c">/* or custom CSS: the public API is the variables */</span>
@@ -1658,7 +1662,7 @@ And have <em>no transition</em>: continuous value + transition is what causes th
         <div class="pgal-card h2"><span class="big">13</span><span class="lbl">foreground</span></div>
       </div>
     </div>
-    <pre><code><span class="c">/* markup: a normal section; register feeds the lerp target:
+    <pre tabindex="0"><code><span class="c">/* markup: a normal section; register feeds the lerp target:
    track(section, { onTravel: (t) =&gt; { target = t } }) */</span>
 
 <span class="c">/* different speed = perceived depth */</span>
@@ -1695,7 +1699,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* THE PINNED SKELETON. Every pinned case on this page reuses it:
+    <pre tabindex="0"><code><span class="c">/* THE PINNED SKELETON. Every pinned case on this page reuses it:
    &lt;div class="outer"&gt;          height: 300vh  (the scroll length)
      &lt;div class="sticky"&gt;…&lt;/div&gt;  position: sticky; top: 0; height: 100vh; overflow: hidden
    &lt;/div&gt;
@@ -1738,7 +1742,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: the pinned skeleton (see case 3) at 250vh;
+    <pre tabindex="0"><code><span class="c">/* markup: the pinned skeleton (see case 3) at 250vh;
    the two panels fill the sticky stage side by side */</span>
 
 <span class="c">/* curtain: two panels, opposite directions */</span>
@@ -1775,7 +1779,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; inside the sticky stage:
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; inside the sticky stage:
    &lt;div class="track"&gt; …cards… &lt;/div&gt;   +   track(outer, { pin: true }) */</span>
 
 <span class="c">/* the track overflows the screen; the pin pays the difference */</span>
@@ -1810,7 +1814,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
    track(outer, { pin: true }) */</span>
 
 <span class="c">/* official preset since v0.7. Children stack via grid, auto-indexed */</span>
@@ -1842,7 +1846,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; split the text into &lt;span&gt;s with
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; split the text into &lt;span&gt;s with
    --sv-order 0..n and set --sv-count on the container
    track(outer, { pin: true }) */</span>
 
@@ -1874,7 +1878,7 @@ The counting number is 100% CSS.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 220vh
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 220vh
    track(outer, { pin: true }) */</span>
 
 <span class="c">/* official preset since v0.7 */</span>
@@ -1915,7 +1919,7 @@ there is nothing to get stuck.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh with a &lt;canvas&gt; in the sticky stage;
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh with a &lt;canvas&gt; in the sticky stage;
    frames extracted once:  ffmpeg -i clip.mp4 -vf 'fps=6,scale=640:-2' f%02d.jpg */</span>
 
 <span class="c">// the callback gets the raw pin; the frame index is one line</span>
@@ -1962,7 +1966,7 @@ there is nothing to get stuck.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* frame slices: each act clips 1 unit of the scene */</span>
+    <pre tabindex="0"><code><span class="c">/* frame slices: each act clips 1 unit of the scene */</span>
 --f2: <span class="k">clamp(0, calc(var(--sv-scene) - 1), 1)</span>;
 
 <span class="c">/* discrete act (snap + transition): the word assembles */</span>
@@ -2000,7 +2004,7 @@ The scroll conducts it in both directions.
       <div class="collage-item co-dot" style="top:18%;left:44%;--ex:0px;--ey:-45vh;--dur:800ms;--wait:420ms"></div>
       <div class="collage-item co-dot" style="bottom:24%;right:38%;--ex:12vw;--ey:38vh;--dur:850ms;--wait:500ms;--es:2"></div>
     </div>
-    <pre><code><span class="c">/* markup: a normal section tracked with { once: true }:
+    <pre tabindex="0"><code><span class="c">/* markup: a normal section tracked with { once: true }:
 sv-live latches and every item plays its own entrance */</span>
 
 <span class="c">/* each item declares its own entrance */</span>
@@ -2036,7 +2040,7 @@ Including in reverse.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton; the SVG (path + circle) fills the sticky
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton; the SVG (path + circle) fills the sticky
    stage;  pathLength=1 on the path makes the dash math unitless */</span>
 
 <span class="c">/* the stroke draws itself */</span>
@@ -2093,7 +2097,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">// one orientation target per scene; the pin interpolates between them</span>
+    <pre tabindex="0"><code><span class="c">// one orientation target per scene; the pin interpolates between them</span>
 <span class="k">const</span> TARGETS = [
   { ry: <span class="n">-0.55</span>, zoom: <span class="n">1.12</span> },  <span class="c">// the beak</span>
   { ry: <span class="n">1.82</span>,  zoom: <span class="n">0.92</span> },  <span class="c">// the wing</span>
@@ -2132,7 +2136,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
         </div>
       </div>
     </div>
-    <pre><code><span class="c">/* 1 · CSS 3D (this demo). Cheap, runs on any phone */</span>
+    <pre tabindex="0"><code><span class="c">/* 1 · CSS 3D (this demo). Cheap, runs on any phone */</span>
 .card3d { transform: <span class="k">rotateY(calc(var(--sv-t) * 240deg))</span>; }
 
 <span class="c">// 2 · Scrubbed video (pre-rendered 3D scene,</span>
@@ -2175,7 +2179,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
         <div><h3>Depth</h3><p>Inner layers float at different translateZ heights, so the parallax is real 3D, not fake offsets.</p></div>
       </div>
     </div>
-    <pre><code><span class="c">/* the pointer becomes two variables; CSS does the rest */</span>
+    <pre tabindex="0"><code><span class="c">/* the pointer becomes two variables; CSS does the rest */</span>
 .card {
   transform: <span class="k">perspective(900px) rotateY(calc(var(--mx) * 14deg))
              rotateX(calc(var(--my) * -14deg))</span>;
@@ -2210,7 +2214,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
       <canvas id="amb-canvas"></canvas>
       <div class="amb-hud"><b id="amb-frames">0</b> frames rendered. Only while you watch</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
 
 mountEffect(canvas, {
   setup:  (fx) =&gt; { <span class="c">/* build your particles */</span> },
@@ -2256,7 +2260,7 @@ mountEffect(canvas, {
         and a fade driven by the same variable that drove the stars.
       </p>
     </div>
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; &lt;canvas&gt; fills the sticky stage,
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; &lt;canvas&gt; fills the sticky stage,
    mounted with mountEffect (the harness renders only while visible) */</span>
 
 <span class="c">// the pin drives the camera; the harness only renders while visible</span>
@@ -2287,7 +2291,7 @@ mountEffect(canvas, {
     <div class="blob-hint">move the pointer. The blobs give way</div>
   </div>
   <div class="wrap">
-    <pre style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
 mountEffect(canvas, {
   frame: (fx, dt) =&gt; {
     blob.ox += ((push.x - blob.ox)) * <span class="n">0.06</span>   <span class="c">// spring toward (or back from) the pointer</span>
@@ -2335,7 +2339,7 @@ mountEffect(canvas, {
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* the magnet, scoped: active only while the group is live */</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* the magnet, scoped: active only while the group is live */</span>
 html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
 .panel { scroll-snap-align: <span class="k">start</span>; height: 100vh; }
 
@@ -2377,7 +2381,7 @@ Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
       <div>05<br>all native CSS</div>
       <div>06<br>zero JS in the magnet</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code>.carousel { overflow-x: auto; scroll-snap-type: <span class="k">x proximity</span>; }  <span class="c">/* or x mandatory */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 5"><code>.carousel { overflow-x: auto; scroll-snap-type: <span class="k">x proximity</span>; }  <span class="c">/* or x mandatory */</span>
 .carousel &gt; * { scroll-snap-align: <span class="k">center</span>; }
 .carousel.slideshow &gt; * { scroll-snap-stop: <span class="k">always</span>; }  <span class="c">/* one card per gesture */</span></code></pre>
   </div>
@@ -2437,7 +2441,7 @@ Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 500vh. Inside the sticky stage:
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 500vh. Inside the sticky stage:
    &lt;canvas&gt;                       grid + dashed route, redrawn per frame
    &lt;div class="world"&gt;…stations…  transform-only layer, paints ONLY cards
    &lt;svg hidden&gt;path&lt;/svg&gt;         geometry source for getPointAtLength */</span>
@@ -2496,7 +2500,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
       <div class="slider-dots" id="slider-dots"></div>
       <button id="slider-next" aria-label="next">&#8594;</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup. The whole carousel:
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup. The whole carousel:
    &lt;div class="sv-slider" id="el"&gt; &lt;div&gt;…slide…&lt;/div&gt; ×N &lt;/div&gt;
    import { slider } from 'scrollvars'   (styles.css ships the base CSS) */</span>
 
@@ -2524,7 +2528,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">// the page's vertical scroll becomes the carousel's fuel</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">// the page's vertical scroll becomes the carousel's fuel</span>
 <span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; {
   carousel.scrollLeft = p * (carousel.scrollWidth - carousel.clientWidth)
 }})
@@ -2555,7 +2559,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
         <div class="wheel-pointer"></div>
       </div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* markup: same .sv-slider container, tall padding creates the
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">/* markup: same .sv-slider container, tall padding creates the
    pick-line; a fixed overlay draws the detent lines */</span>
 
 <span class="k">slider</span>(el, { axis: <span class="s">'y'</span>, onSlide: (i) =&gt; pick(OPTIONS[i]) })
@@ -2604,7 +2608,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
    &lt;div class="hub"&gt; &lt;div class="slice" style="--i:0"&gt;&lt;img&gt;… ×5 &lt;/div&gt;
    hub sits at left:50%; top:calc(100% + 8vh): the center below the fold */</span>
 
@@ -2680,7 +2684,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
     <div style="text-align: center;">
       <button class="acts-btn" data-sv-toggle="sv-open" data-sv-target="#acts-stage">play / reverse</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition. That's the engine */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition. That's the engine */</span>
 @property --sv-act { syntax: <span class="s">'&lt;number&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
 .sv-acts { --sv-act: <span class="n">0</span>; transition: <span class="k">--sv-act 2.4s linear</span>; }
 .sv-acts.sv-open { --sv-act: <span class="n">3</span>; }
@@ -2728,7 +2732,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
       <div style="--sv-order: 1">02</div>
       <div style="--sv-order: 2">03</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* cards sit in their real flex row; the deck is just a translate */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">/* cards sit in their real flex row; the deck is just a translate */</span>
 .sv-spread &gt; * {
   --sv-d: <span class="k">calc(var(--sv-order) - var(--sv-mid, 1))</span>;  <span class="c">/* slots from center */</span>
   translate: <span class="k">calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + 16px))</span> 0;
@@ -2758,7 +2762,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
         that we know how to measure. The receipts are above.
       </p>
     </div>
-    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
 npm i scrollvars
 
 <span class="c">// app/layout.tsx: one client component, the whole wiring</span>
@@ -2865,7 +2869,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td><code>.sv-live</code></td><td class="range">class</td><td>On while inside the activation band (75% / 25%). Fires the entrances</td></tr>
       </tbody>
     </table>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla. No React at all</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla. No React at all</span>
 <span class="k">import</span> { track } <span class="k">from</span> <span class="s">'scrollvars'</span>
 
 <span class="k">const</span> untrack = <span class="k">track</span>(el, {

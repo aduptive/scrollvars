@@ -12,6 +12,10 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -159,14 +163,14 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;h1 class="text-5xl font-extrabold"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;h1 class="text-5xl font-extrabold"&gt;
   we build
   &lt;span class="sv-words text-violet-400"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
 &lt;/h1&gt;
 &lt;!-- set --sv-word from your state; scenes drive it for free in pinned stories --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;h1&gt;we build
+    <pre tabindex="0" data-pane="css"><code>&lt;h1&gt;we build
   &lt;span class="sv-words"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
@@ -185,7 +189,7 @@
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)</code></pre>
-    <pre data-pane="react"><code>const [word, setWord] = useState(0)
+    <pre tabindex="0" data-pane="react"><code>const [word, setWord] = useState(0)
 &lt;h1&gt;we build{' '}
   &lt;span className="sv-words" style={{ '--sv-word': word }}&gt;
     {words.map(w =&gt; &lt;span key={w}&gt;{w}&lt;/span&gt;)}
