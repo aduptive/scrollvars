@@ -26,22 +26,26 @@ Frame delivery and CPU cost are reported separately; neither is guaranteed
 across workloads or devices:
 
 <!-- bench:start -->
-Measured 2026-09-10T15:05:07.331Z; package 1.16.1, 3 runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/latest.json); [frame tails and methodology](https://scrollvars.dev/bench/).
+Measured 2026-09-10T23:55:45.351Z; package 1.16.1, 3 runs. CPU is accumulated over 12 seconds (900 elements), not per-frame time. Bundle and runtime measurements refer to this snapshot. [Raw runs](https://scrollvars.dev/bench/results/latest.json); [frame tails and methodology](https://scrollvars.dev/bench/).
 
 | engine | total CPU (12 s) | fps | bundle (gzip) | JS script | style recalc | JS heap |
 |---|---|---|---|---|---|---|
-| ScrollVars | 954 ms | 60 | 8.0 KB | 54 ms | 196 ms | 1 MB |
-| ScrollVars (document variables published) | 3550 ms | 59.8 | 8.0 KB | 46 ms | 2887 ms | 1.4 MB |
-| gsap + ScrollTrigger (idiomatic) | 735 ms | 60 | 45.2 KB | 167 ms | 58 ms | 6.1 MB |
-| gsap + ScrollTrigger (batched, symmetric) | 903 ms | 60 | 45.2 KB | 156 ms | 81 ms | 6.7 MB |
-| framer-motion | 1334 ms | 60 | 46.9 KB (+ React) | 635 ms | 43 ms | 10.8 MB |
+| ScrollVars | 679 ms | 60 | 8.0 KB | 59 ms | 137 ms | 1 MB |
+| ScrollVars + styles/scoped.css | 766 ms | 60 | 9.0 KB | 46 ms | 188 ms | 1 MB |
+| ScrollVars (document variables published) | 3791 ms | 59.3 | 8.0 KB | 49 ms | 2604 ms | 1.1 MB |
+| gsap + ScrollTrigger (idiomatic) | 659 ms | 60 | 45.2 KB | 145 ms | 57 ms | 6.1 MB |
+| gsap + ScrollTrigger (batched, symmetric) | 626 ms | 60 | 45.2 KB | 117 ms | 59 ms | 6.8 MB |
+| framer-motion | 1078 ms | 60 | 46.9 KB (+ React) | 490 ms | 42 ms | 10.9 MB |
 <!-- bench:end -->
 
 The committed results record the measurement date, package version, source
 hashes, individual runs and startup separately from the 12-second scroll.
-The second row is not a competitor comparison: it is what the two document
-variables cost when a page reads them, on this deliberately hostile workload
-of 900 animated boxes. They are inherited properties on `<html>`, so
+Two rows are not competitor comparisons. The one with `styles/scoped.css`
+is the opt-in described under Scoped clocks, run with the two author lines
+its contract asks of this fixture, so a reader can see what the sheet does
+on the deep profile and what it costs on the flat one. The one with the
+document variables published is what those two variables cost when a page
+reads them, on this deliberately hostile workload of 900 animated boxes. They are inherited properties on `<html>`, so
 publishing them asks the browser to recalculate style for the whole document
 on every frame. The default row does not pay it because nothing on that page
 reads them, and the driver checks before publishing. A page that does use
@@ -678,7 +682,8 @@ hero-cinematic 12 percent more, editorial-manifesto 9 percent more and
 case-study-rail within noise, each on the side its shape predicts. Import it
 when a tracked wrapper holds a lot of content that does not animate; leave
 it out when the tracked element's own children are the readers. Measure your
-page, the benchmark harness is in the repository.
+page, the benchmark harness is in the repository, and the published
+benchmark below carries the sheet as its own row on every profile.
 
 Browsers without `@property` ignore the registration and keep inheriting, so
 the sheet never breaks a page below the floor; it can only make one faster

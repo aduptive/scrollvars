@@ -1689,3 +1689,33 @@ registration, containment, selector load, native timelines. The JavaScript
 slice is bounded at 9 percent on the losing profile. The recalculation count
 is one per frame. What remains is the number of elements a recalculation
 visits, and the sheet is the tool for that.
+
+### Round 5: the opt-in in the published table
+
+`demo/bench/scrollvars.html?scoped=1` loads `styles/scoped.css` from a
+served copy that `demo:sync` refreshes and both CI gates diff, plus the two
+author lines the sheet's contract asks of the fixture: the boxes forward the
+clocks, and their `var(--sv-t, 0.5)` fallback becomes a default on the
+section. A probe before the full run: the clock is registered (`<html>`
+reads the initial 0), a section past the viewport holds 1, its boxes hold 1,
+the spans under a box hold 0 (not inheriting), and the sampled box renders
+`0px -121.877px`, the same value the plain page renders at that scroll
+position. `measure.mjs` runs the row on main and deep; `bench-tables.mjs`
+labels it and stamps its bundle as the core plus the sheet.
+
+#### The published run with the scoped row (`results/latest.json`, 24b4f20)
+
+Three runs each, clean tree, the published methodology:
+
+| profile | ScrollVars | with scoped.css | gsap-batched |
+|---|---:|---:|---:|
+| main-900 | 679ms | 766ms | 626ms |
+| deep-5 | 514ms | 442ms | 553ms |
+| deep-20 | 499ms | 437ms | 379ms |
+| deep-50 | 653ms | 471ms | 380ms |
+
+Style recalculation on deep-50: 269ms as shipped, 117ms with the sheet,
+32ms for GSAP. With the sheet the library is ahead of GSAP at five
+descendants per box and the gap at fifty narrows from 72 percent behind to
+24. On the flat profile the sheet costs 13 percent, and the table says so
+next to the win rather than instead of it.

@@ -2811,16 +2811,17 @@ the full API, recipes and performance rules, ready to ingest.
       </tbody>
     </table>
 
-    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll <span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 elements; package 1.16.1, 3 runs, measured 2026-09-10T15:05:07.331Z)</span></h3>
+    <h3 class="sv-rise" style="--sv-order: 4; font-size: 15px; margin: 22px 0 6px;">CPU cost during scroll <span style="color: var(--muted); font-weight: 400;">(12s scroll, 900 elements; package 1.16.1, 3 runs, measured 2026-09-10T23:55:45.351Z)</span></h3>
     <div style="overflow-x: auto" tabindex="0" role="region" aria-label="Scroll benchmark results">
     <table class="sv-rise" style="--sv-order: 4">
       <thead><tr><th>engine</th><th>total CPU (12s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>JS heap</th></tr></thead>
       <tbody>
-        <tr><td>ScrollVars (page outputs on)</td><td class="range">954 ms</td><td class="range">60</td><td class="range">54 ms</td><td class="range">196 ms</td><td class="range">1 MB</td></tr>
-        <tr><td>scrollvars-page.html</td><td class="range">3550 ms</td><td class="range">59.8</td><td class="range">46 ms</td><td class="range">2887 ms</td><td class="range">1.4 MB</td></tr>
-        <tr><td>GSAP + ScrollTrigger (idiomatic)</td><td class="range">735 ms</td><td class="range">60</td><td class="range">167 ms</td><td class="range">58 ms</td><td class="range">6.1 MB</td></tr>
-        <tr><td>GSAP + ScrollTrigger (batched)</td><td class="range">903 ms</td><td class="range">60</td><td class="range">156 ms</td><td class="range">81 ms</td><td class="range">6.7 MB</td></tr>
-        <tr><td>framer-motion</td><td class="range">1334 ms</td><td class="range">60</td><td class="range">635 ms</td><td class="range">43 ms</td><td class="range">10.8 MB</td></tr>
+        <tr><td>ScrollVars (page outputs on)</td><td class="range">679 ms</td><td class="range">60</td><td class="range">59 ms</td><td class="range">137 ms</td><td class="range">1 MB</td></tr>
+        <tr><td>scrollvars-scoped.html</td><td class="range">766 ms</td><td class="range">60</td><td class="range">46 ms</td><td class="range">188 ms</td><td class="range">1 MB</td></tr>
+        <tr><td>scrollvars-page.html</td><td class="range">3791 ms</td><td class="range">59.3</td><td class="range">49 ms</td><td class="range">2604 ms</td><td class="range">1.1 MB</td></tr>
+        <tr><td>GSAP + ScrollTrigger (idiomatic)</td><td class="range">659 ms</td><td class="range">60</td><td class="range">145 ms</td><td class="range">57 ms</td><td class="range">6.1 MB</td></tr>
+        <tr><td>GSAP + ScrollTrigger (batched)</td><td class="range">626 ms</td><td class="range">60</td><td class="range">117 ms</td><td class="range">59 ms</td><td class="range">6.8 MB</td></tr>
+        <tr><td>framer-motion</td><td class="range">1078 ms</td><td class="range">60</td><td class="range">490 ms</td><td class="range">42 ms</td><td class="range">10.9 MB</td></tr>
       </tbody>
     </table></div>
     <p style="color: var(--muted); font-size: 14px;">Total CPU is accumulated main-thread task time, not per-frame time. Page outputs off applies only when no CSS consumes the global clocks. <a href="bench/results/latest.json" style="color: var(--accent)">Raw runs</a>; <a href="bench/" style="color: var(--accent)">frame tails and methodology</a>.</p>
