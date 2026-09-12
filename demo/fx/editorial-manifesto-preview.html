@@ -7,5 +7,7 @@
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-manifesto .manifesto-copy p { opacity: 1; }
 </style><header class="manifesto-label"><span>What we believe</span><span>Scroll to read ↓</span></header><div class="manifesto-copy"><p style="--i:0">Less noise. More meaning.</p><p style="--i:1">We build things people want to spend time with.</p><p style="--i:2">Every detail should earn its place.</p></div><p class="manifesto-end">From the first idea to the final interaction. A small team, accountable for the whole experience.</p></section>
 </body></html>

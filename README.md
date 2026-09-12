@@ -733,8 +733,10 @@ success criterion it serves. It is not a conformance claim for your site.
   `prefersReducedMotion()` reads the effective preference, and the driver,
   the slider's glide, canvas effects (`fx.reducedMotion`) and the React
   `<Slider>` autoplay all follow it live. Persisting the choice is your job:
-  set it before the first frame and nothing animates first and calms down
-  later.
+  set it before the first frame (an inline script in `<head>` that reads
+  your store and sets the attribute) and nothing animates first and calms
+  down later. scrollvars.dev does exactly that: the switch in its header,
+  and every reduced-motion rule of the site's own CSS carries the twin.
 - **Moving content can be stopped** (2.2.2 Pause, Stop, Hide). The marquee
   pauses on hover and on keyboard focus within it. `<Slider autoplay>`
   pauses on hover, focus, offscreen and hidden tab, renders a visible pause

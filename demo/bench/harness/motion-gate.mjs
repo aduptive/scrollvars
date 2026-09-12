@@ -63,6 +63,38 @@ export async function motionGate({ browser, check, base }) {
   } finally {
     await page.close()
   }
+
+  // The site's own switch: the header button sets the attribute through
+  // setMotion(), the gallery's own CSS honors it (sticky-steps dims inactive
+  // steps to .65; its reduced-motion twin brings them to 1), the choice is
+  // stored and applied by the inline head script before the next paint.
+  const site = await browser.newPage()
+  try {
+    await site.goto(`${base}/fx/sticky-steps.html?harness=1`, { waitUntil: 'load' })
+    await site.waitForFunction(() => typeof window.SV !== 'undefined')
+    const before = await site.evaluate(() => ({ attr: document.documentElement.getAttribute('data-sv-motion'), step: getComputedStyle(document.querySelector('.st-steps > li:nth-child(2)')).opacity, label: document.getElementById('sv-motion-switch')?.textContent }))
+    check('site switch: the gallery page starts on auto with an inactive step dimmed', before.attr === null && before.step !== '1' && before.label === 'Motion: auto', JSON.stringify(before))
+    await site.click('#sv-motion-switch')
+    const after = await site.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+      attr: document.documentElement.getAttribute('data-sv-motion'),
+      pref: SV.prefersReducedMotion(),
+      pressed: document.getElementById('sv-motion-switch').getAttribute('aria-pressed'),
+      step: getComputedStyle(document.querySelector('.st-steps > li:nth-child(2)')).opacity,
+      stored: localStorage.getItem('sv-motion'),
+    })))))
+    check("site switch: one click sets data-sv-motion, the driver reads it, the page's own twin rule applies, the choice is stored", after.attr === 'reduce' && after.pref === true && after.pressed === 'true' && after.step === '1' && after.stored === 'reduce', JSON.stringify(after))
+    await site.reload({ waitUntil: 'load' })
+    const reloaded = await site.evaluate(() => ({ attr: document.documentElement.getAttribute('data-sv-motion'), pressed: document.getElementById('sv-motion-switch')?.getAttribute('aria-pressed') }))
+    check('site switch: after a reload the stored choice is on <html> and the control reads pressed', reloaded.attr === 'reduce' && reloaded.pressed === 'true', JSON.stringify(reloaded))
+    await site.click('#sv-motion-switch')
+    const back = await site.evaluate(() => ({ attr: document.documentElement.getAttribute('data-sv-motion'), stored: localStorage.getItem('sv-motion') }))
+    check('site switch: a second click follows the OS again and stores that', back.attr === null && back.stored === 'auto', JSON.stringify(back))
+  } catch (error) {
+    check('site switch: the checks ran to the end', false, error.message)
+  } finally {
+    await site.evaluate(() => { try { localStorage.removeItem('sv-motion') } catch {} }).catch(() => {})
+    await site.close()
+  }
 }
 
 // Standalone: serve demo/ and run the same gate.
