@@ -70,6 +70,7 @@ import { scopedClocksGate } from './scoped-clocks-gate.mjs'
 import { motionGate } from './motion-gate.mjs'
 import { keyboardGate } from './keyboard-gate.mjs'
 import { axeGate } from './axe-gate.mjs'
+import { reflowGate } from './reflow-gate.mjs'
 import { execSync } from 'node:child_process'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -2864,6 +2865,7 @@ await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })
 await keyboardGate({ browser, check, base })
 await axeGate({ browser, check, base })
+await reflowGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
 await reviewGate({ browser, check })
 
