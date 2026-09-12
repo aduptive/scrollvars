@@ -51,6 +51,8 @@ Styles: scrollvars/styles/core.css
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
     transition: none; animation: none; opacity: 1; translate: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }
 ```
 
 ### React
@@ -112,6 +114,8 @@ Styles: scrollvars/styles/core.css, scrollvars/styles/pin.css
   .sv-on .sv .sv-spread.sv-spread-in > * {
     translate: none; rotate: none; transition: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-spread > *, .sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > * { translate: none; rotate: none; transition: none; }
 ```
 
 ### React
@@ -168,6 +172,8 @@ Styles: scrollvars/styles/pin.css
   .sv .sv-curtain-l,
   .sv .sv-curtain-r { display: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-l, :where([data-sv-motion="reduce"]) .sv .sv-curtain-r { display: none; }
 ```
 
 ### React
@@ -220,6 +226,8 @@ Styles: scrollvars/styles/pin.css
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
 ```
 
 ### React
@@ -286,6 +294,8 @@ Styles: scrollvars/styles/pin.css
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-range > * { --sv-r: 1; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-range > * { --sv-r: 1; }
 ```
 
 ### React
@@ -462,6 +472,8 @@ Styles: scrollvars/styles/core.css
   .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
     transition: none; animation: none; opacity: 1; translate: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span { transition: none; animation: none; opacity: 1; translate: none; }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->
@@ -520,6 +532,8 @@ Styles: scrollvars/styles/state.css
 @media (prefers-reduced-motion: reduce) {
   .sv-words > * { transition-duration: .01ms; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-words > * { transition-duration: .01ms; }
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)
@@ -610,7 +624,9 @@ Styles: scrollvars/styles/slider.css
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
-@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .slide { scale: none; opacity: 1; transform: none; }   /* scroll-linked transforms return to flow */
 ```
 
 ### React
@@ -660,6 +676,8 @@ Styles: scrollvars/styles/ui.css
 @media (prefers-reduced-motion: reduce) {
   .sv-marquee-track { animation: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; }
 ```
 
 ### React
@@ -701,6 +719,9 @@ const css = `
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
@@ -913,6 +934,9 @@ const css = `
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-media { gap: 8px; aspect-ratio: auto; }
 .sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
 .sv-steps .st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 (axe) */
 html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
@@ -926,6 +950,9 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
    non-active step would otherwise sit at 30% opacity forever and the copy
    would slide with the raw scroll. Reset both the steps and the dots. */
 @media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-steps .st-steps > li { opacity: 1; translate: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
@@ -1150,6 +1177,9 @@ html:not(.sv-on) .sv-casework .work-card,
   .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
   .sv-casework .work-card { width: 100%; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+:where([data-sv-motion="reduce"]) .sv-casework .work-card { width: 100%; }
 `
 
 export interface CaseStudy {
@@ -1216,6 +1246,8 @@ const css = `
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-manifesto .manifesto-copy p { opacity: 1; }
 `
 
 export function EditorialManifesto({ label = 'What we believe', paragraphs, closing, className, nonce }: {

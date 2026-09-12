@@ -6,6 +6,9 @@
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
