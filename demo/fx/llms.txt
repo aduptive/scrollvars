@@ -287,8 +287,9 @@ Styles: scrollvars/styles/pin.css
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+/* consume --sv-r however you like, ALWAYS with a fallback of 1, and floor
+   an opacity so unread text still meets 4.5:1 (the presets floor at .55): */
+.mine > * { opacity: calc(.55 + .45 * var(--sv-r, 1)); scale: calc(.8 + var(--sv-r, 1) * .2); }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {

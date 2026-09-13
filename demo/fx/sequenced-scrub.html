@@ -18,7 +18,9 @@
      scrollport starts under it instead */
   html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
-  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
@@ -182,8 +184,10 @@
   <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
-      <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
-      <p class="fxp fxaccent" data-sv-from=".6" data-sv-to="1">then this</p>
+      <!-- muted and accent text at the preset's .55 floor read under 4.5:1: the
+           copy takes the text color, the accent line lifts this demo's floor to .8 -->
+      <p class="fxp" style="color:#e6e4f0" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp fxaccent" style="--sv-range-floor:.8" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
 </div>
@@ -228,8 +232,9 @@
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine &gt; * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+/* consume --sv-r however you like, ALWAYS with a fallback of 1, and floor
+   an opacity so unread text still meets 4.5:1 (the presets floor at .55): */
+.mine &gt; * { opacity: calc(.55 + .45 * var(--sv-r, 1)); scale: calc(.8 + var(--sv-r, 1) * .2); }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {

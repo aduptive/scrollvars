@@ -157,7 +157,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.3 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
+(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.4 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -328,6 +328,7 @@ compat()   // once, before anything else</code></pre>
 <h4>Changed</h4>
 
 <ul>
+<li><code>sv-range-rise</code> fades a slice in from <code>--sv-range-floor</code> (default .55) instead of from 0, the way <code>sv-reading</code> already floors at <code>--sv-reading-floor</code>: a child waiting for its slice kept its text at 2:1 or less on the sequenced-scrub and timeline pages (axe, walking the page a viewport at a time). Set <code>--sv-range-floor: 0</code> on the container for the old look, at the cost of that audit.</li>
 <li>Slider dots are 24 by 24 CSS pixel targets (WCAG 2.5.8 Target Size, Minimum): the button is the target and the visual dot is drawn inside it as <code>::before</code>, so <code>--sv-dot-size</code> still sizes what you see and <code>--sv-dot-target</code> what you hit. An override written directly on <code>.sv-dot</code> (rather than through the knobs) now styles the button box; move it to <code>.sv-dot::before</code>. The dots row is 24px tall instead of 8px.</li>
 <li><code>&lt;Slider autoplay></code> starts paused under reduced motion and pauses the moment the preference flips; the visible control still resumes it. It kept rotating before (jumping instead of gliding), and a glide in flight when the preference changed finished animating: it settles now.</li>
 </ul>

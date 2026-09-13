@@ -237,8 +237,10 @@ export const EFFECTS = [
   <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
-      <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
-      <p class="fxp fxaccent" data-sv-from=".6" data-sv-to="1">then this</p>
+      <!-- muted and accent text at the preset's .55 floor read under 4.5:1: the
+           copy takes the text color, the accent line lifts this demo's floor to .8 -->
+      <p class="fxp" style="color:#e6e4f0" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp fxaccent" style="--sv-range-floor:.8" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
 </div>`,
@@ -262,8 +264,9 @@ export const EFFECTS = [
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+/* consume --sv-r however you like, ALWAYS with a fallback of 1, and floor
+   an opacity so unread text still meets 4.5:1 (the presets floor at .55): */
+.mine > * { opacity: calc(.55 + .45 * var(--sv-r, 1)); scale: calc(.8 + var(--sv-r, 1) * .2); }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {

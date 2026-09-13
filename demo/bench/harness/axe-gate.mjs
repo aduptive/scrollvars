@@ -45,8 +45,16 @@ const settle = async (page) => {
 async function audit(page) {
   await page.addScriptTag({ path: AXE })
   await settle(page)
-  const run = async () => page.evaluate(async (tags) => {
-    const result = await axe.run(document, { runOnly: { type: 'tag', values: tags }, resultTypes: ['violations'] })
+  // `rules` narrows a run to the contrast rule for the per-viewport audits
+  // of the walk, which would take minutes with the full set on the home
+  // `onScreenOnly` scopes a run to the elements inside the viewport, which
+  // is what the per-viewport walk audits: the whole document with one rule
+  // took 3.5 minutes on the home, the viewport takes a second
+  const run = async (rules, onScreenOnly = false) => page.evaluate(async (tags, rules, onScreenOnly) => {
+    const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth }
+    const context = onScreenOnly ? [...document.querySelectorAll('body *')].filter((el) => inView(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) : document
+    if (onScreenOnly && context.length === 0) return []
+    const result = await axe.run(context, { runOnly: rules ? { type: 'rule', values: rules } : { type: 'tag', values: tags }, resultTypes: ['violations'] })
     // axe audits the whole document at once, including what the scroll has
     // carried off screen: a subtitle fading out as its section leaves is a
     // contrast failure to nobody. Contrast counts only for text on screen at
@@ -62,26 +70,31 @@ async function audit(page) {
     return result.violations
       .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.filter((n) => v.id !== 'color-contrast' || onScreen(n.target)).map((n) => ({ target: n.target, data: n.any?.[0]?.data ?? null })) }))
       .filter((v) => v.nodes.length > 0)
-  }, TAGS)
+  }, TAGS, rules ?? null, onScreenOnly)
   const atLoad = await run()
   // The page's other states. A jump to the bottom leaves every section in
   // between outside the culler's band, never live, never revealed (review,
-  // ADU-247): walk the page a viewport at a time so each section goes live
-  // on the way, then audit at the bottom, the middle and the top. Sections
-  // that latch once stay revealed; the rest are audited where they are in
-  // view, which is what a reader scrolling gets.
-  await page.evaluate(() => new Promise((resolve) => {
-    const step = Math.max(200, Math.round(innerHeight * 0.8))
-    let y = 0
-    const tick = () => {
-      y += step
-      scrollTo(0, y)
-      if (y < document.documentElement.scrollHeight) setTimeout(tick, 60)
-      else resolve()
+  // ADU-247): walk the page in steps of 0.4 viewport, under the 0.5 viewport
+  // live band, so every section goes live on the way, and at every full
+  // viewport of the walk audit the contrast of what is on screen, since a
+  // section shown only for a while between the fixed positions would
+  // otherwise never be audited (review, second pass). The full rule set
+  // runs at load, at the bottom, at the middle and at the top.
+  const walked = []
+  let y = 0, sinceAudit = 0
+  const height = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, v: innerHeight }))
+  const step = Math.max(160, Math.round(height.v * 0.4))
+  while (y < height.h) {
+    y += step
+    sinceAudit += step
+    await page.evaluate((y) => scrollTo(0, y), y)
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 60)))
+    if (sinceAudit >= height.v || y >= height.h) {
+      sinceAudit = 0
+      await settle(page)
+      walked.push(...await run(['color-contrast'], true))
     }
-    tick()
-  }))
-  await settle(page)
+  }
   const atBottom = await run()
   await page.evaluate(() => scrollTo(0, Math.round(document.documentElement.scrollHeight / 2)))
   await settle(page)
@@ -91,7 +104,7 @@ async function audit(page) {
   const revealed = await run()
   // merge by rule id and target so a violation seen in several states counts once
   const seen = new Map()
-  for (const v of [...atLoad, ...atBottom, ...atMiddle, ...revealed]) {
+  for (const v of [...atLoad, ...walked, ...atBottom, ...atMiddle, ...revealed]) {
     const key = v.id
     if (!seen.has(key)) seen.set(key, { ...v, nodes: [] })
     const bucket = seen.get(key)

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.5 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.5 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
 
 ## Why
 
@@ -120,7 +120,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.3 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.4 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -500,7 +500,10 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 </div>
 ```
 
-`sv-range-rise` is the ready-made flavor (rise + fade per range); or consume
+`sv-range-rise` is the ready-made flavor (rise + fade per range; the fade
+starts at `--sv-range-floor`, .55 by default, so a child waiting for its
+slice still reads at 4.5:1, and 0 gives the dramatic look at the cost of
+that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
 division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
 registered property (`@property`, `initial-value: 1`), so an engine that

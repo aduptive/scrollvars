@@ -102,9 +102,12 @@
     1
   );
 }
-/* Ready-made flavor: rise+fade each child across its own range. */
+/* Ready-made flavor: rise+fade each child across its own range. The fade
+   starts at --sv-range-floor (.55, like sv-reading's floor) so a child
+   waiting for its slice still reads at 4.5:1; 0 for the dramatic look, at
+   the cost of that audit. */
 .sv .sv-range.sv-range-rise > * {
-  opacity: var(--sv-r, 1);
+  opacity: calc(var(--sv-range-floor, 0.55) + (1 - var(--sv-range-floor, 0.55)) * var(--sv-r, 1));
   translate: 0 calc((1 - var(--sv-r, 1)) * var(--sv-distance, 2rem));
 }
 

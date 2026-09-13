@@ -117,6 +117,20 @@ export async function motionGate({ browser, check, base }) {
       setTimeout(() => resolve({ cols: [...document.querySelectorAll('.pgal-col')].map((c) => c.style.translate), map: document.querySelector('#map-demo') ? getComputedStyle(document.querySelector('#map-demo')).getPropertyValue('--map-ang') : 'n/a' }), 500)
     }))
     check('site switch: under reduce the gallery columns carry no inline translate, scrolling included', stopped.cols.every((t) => t === ''), JSON.stringify(stopped))
+    // the map demo clears its transform under reduce too
+    const mapReduced = await home.evaluate(() => new Promise((resolve) => {
+      const map = document.getElementById('map-demo')
+      map.scrollIntoView({ block: 'start' })
+      setTimeout(() => { scrollBy(0, 400); setTimeout(() => resolve({ transform: map.querySelector('[style*="transform"]') ? 'written' : 'none', ang: map.style.getPropertyValue('--map-ang') || getComputedStyle(map).getPropertyValue('--map-ang') }), 500) }, 300)
+    }))
+    check('site switch: under reduce the map demo writes no transform', mapReduced.transform === 'none', JSON.stringify(mapReduced))
+    // back to auto: the gallery resumes writing when the page scrolls
+    await home.click('#sv-motion-switch')
+    const resumed = await home.evaluate(() => new Promise((resolve) => {
+      document.querySelector('.pgal-stage').scrollIntoView({ block: 'center' })
+      setTimeout(() => { scrollBy(0, 300); setTimeout(() => resolve([...document.querySelectorAll('.pgal-col')].map((c) => c.style.translate)), 500) }, 300)
+    }))
+    check('site switch: back on auto the gallery columns write inline translate again', resumed.some((t) => t && t !== ''), JSON.stringify(resumed))
   } catch (error) {
     check('site switch: the home checks ran to the end', false, error.message)
   } finally {
