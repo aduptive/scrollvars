@@ -507,9 +507,10 @@ Styles: scrollvars/styles/state.css
 ```html
 <h1 class="text-5xl font-extrabold">
   we build
-  <span class="sv-words text-violet-400">
+  <span class="sv-words text-violet-400" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
   </span>
+  <span class="sr-only">brands, websites and products</span>
 </h1>
 <!-- set --sv-word from your state; scenes drive it for free in pinned stories -->
 ```
@@ -517,9 +518,11 @@ Styles: scrollvars/styles/state.css
 ### CSS
 ```html
 <h1>we build
-  <span class="sv-words">
+  <span class="sv-words" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
   </span>
+  <!-- the column reads as three words in a row to a screen reader: hide it and say the phrase once -->
+  <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span>
 </h1>
 
 /* the preset (styles/state.css): */
@@ -543,9 +546,11 @@ el.style.setProperty('--sv-word', nextIndex)
 ```tsx
 const [word, setWord] = useState(0)
 <h1>we build{' '}
-  <span className="sv-words" style={{ '--sv-word': word }}>
+  <span className="sv-words" style={{ '--sv-word': word }} aria-hidden="true">
     {words.map(w => <span key={w}>{w}</span>)}
   </span>
+  {/* the column reads as three words in a row to a screen reader: say the phrase once */}
+  <span className="sr-only">{words.join(', ')}</span>
 </h1>
 ```
 
@@ -611,7 +616,7 @@ Styles: scrollvars/styles/slider.css
 
 ### CSS
 ```html
-<div class="sv-slider" id="cards">
+<div class="sv-slider" id="cards" role="region" aria-label="Cards">
   <div class="slide">…</div> ×N
 </div>
 

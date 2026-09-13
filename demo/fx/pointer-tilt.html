@@ -138,7 +138,7 @@
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
         <a href="deck-spread.html">Deck spread</a>
@@ -185,9 +185,9 @@
 <script>addEventListener('load',()=>SV.trackPointer(document.getElementById('fxtiltrow')))</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add pointer-tilt</code><br><b>Styles:</b> <code>import 'scrollvars/styles/tilt.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
-    <button data-tab="react">React</button>
+    <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
@@ -223,7 +223,7 @@
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));

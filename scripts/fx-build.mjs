@@ -225,7 +225,7 @@ const CATEGORIES = [...new Set(EFFECTS.map((e) => e.category))]
 const sidebar = (current) => `<aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       ${CATEGORIES.map(
         (cat) => `<details open><summary>${cat}</summary>
         ${EFFECTS.filter((e) => e.category === cat)
@@ -278,9 +278,9 @@ ${sidebar(fx.slug)}
   ${fx.runway ? `<div class="fxrunway">${fx.preview}</div>` : fx.preview}
   <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>
   <div class="tabs">
-    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button class="on" data-tab="react">Complete component · CLI source</button>' : `<button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
-    <button data-tab="react">React</button>`}
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button type="button" class="on" aria-pressed="true" data-tab="react">Complete component · CLI source</button>' : `<button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>`}
   </div>
   <div class="code">
     <button class="copy">copy</button>
@@ -298,7 +298,7 @@ ${NAV_COLLAPSE}
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));
