@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const MAX_STOPS = 120
+const MAX_STOPS = 400
 
 // evaluated in the page after every Tab: where focus is, and whether it can be seen
 const STATE = `() => {
@@ -52,11 +52,13 @@ const STATE = `() => {
 async function sweep(page, backward = false) {
   const stops = [], violations = []
   const seen = new Set()
+  let finished = false
   for (let i = 0; i < MAX_STOPS; i++) {
+    if (i === MAX_STOPS - 1) break
     if (backward) { await page.keyboard.down('Shift'); await page.keyboard.press('Tab'); await page.keyboard.up('Shift') }
     else await page.keyboard.press('Tab')
     let state = await page.evaluate(`(${STATE})()`)
-    if (state.end) break
+    if (state.end) { finished = true; break }
     if (seen.has(state.name + '@' + i)) break
     // the reveal needs the driver's next frame and the entrance a moment; poll
     const deadline = Date.now() + 1200
@@ -65,9 +67,9 @@ async function sweep(page, backward = false) {
       state = await page.evaluate(`(${STATE})()`)
       if (state.end) break
     }
-    if (state.end) break
+    if (state.end) { finished = true; break }
     const key = state.name
-    if (seen.has(key) && i > 0 && stops.length > 2 && stops[0] === key) break // focus cycled back to the first stop
+    if (seen.has(key) && i > 0 && stops.length > 2 && stops[0] === key) { finished = true; break } // focus cycled back to the first stop
     seen.add(key)
     stops.push(key)
     if (process.env.KEYBOARD_VERBOSE) console.log(`   ${backward ? '<' : '>'} ${key}  visible=${state.visible} inView=${state.inView} opacity=${state.opacity} covered=${state.covered} y=${state.y}`)
@@ -80,6 +82,8 @@ async function sweep(page, backward = false) {
     const later = await page.evaluate(`(${STATE})()`)
     if (!later.end && later.name === key && !later.visible) violations.push(`${key}: visible at first, then not: opacity=${later.opacity} covered=${later.covered}${later.hit ? ' by ' + later.hit : ''}`)
   }
+  // a sweep that ran out of budget examined a prefix and says nothing about the rest
+  if (!finished) violations.push(`${backward ? 'shift+tab' : 'tab'}: the sweep did not reach the end of the page within ${MAX_STOPS} stops (review, ADU-247)`)
   return { stops, violations }
 }
 

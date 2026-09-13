@@ -95,6 +95,34 @@ export async function motionGate({ browser, check, base }) {
     await site.evaluate(() => { try { localStorage.removeItem('sv-motion') } catch {} }).catch(() => {})
     await site.close()
   }
+
+  // The home's JS-driven demos (the parallax gallery writes inline translate
+  // every frame, the map writes a transform) follow the switch too: a CSS
+  // twin cannot beat an inline write, so the writers themselves stop and
+  // clear under reduce (review, ADU-247).
+  const home = await browser.newPage()
+  try {
+    await home.setViewport({ width: 1200, height: 800 })
+    await home.goto(`${base}/index.html?harness=1`, { waitUntil: 'load' })
+    await home.waitForFunction(() => typeof window.SV !== 'undefined')
+    const moving = await home.evaluate(() => new Promise((resolve) => {
+      const stage = document.querySelector('.pgal-stage')
+      stage.scrollIntoView({ block: 'center' })
+      setTimeout(() => { scrollBy(0, 300); setTimeout(() => resolve([...document.querySelectorAll('.pgal-col')].map((c) => c.style.translate)), 400) }, 300)
+    }))
+    check('site switch: on auto the parallax gallery writes inline translate', moving.some((t) => t && t !== '0 0vh' && t !== ''), JSON.stringify(moving))
+    await home.click('#sv-motion-switch')
+    const stopped = await home.evaluate(() => new Promise((resolve) => {
+      scrollBy(0, 200)
+      setTimeout(() => resolve({ cols: [...document.querySelectorAll('.pgal-col')].map((c) => c.style.translate), map: document.querySelector('#map-demo') ? getComputedStyle(document.querySelector('#map-demo')).getPropertyValue('--map-ang') : 'n/a' }), 500)
+    }))
+    check('site switch: under reduce the gallery columns carry no inline translate, scrolling included', stopped.cols.every((t) => t === ''), JSON.stringify(stopped))
+  } catch (error) {
+    check('site switch: the home checks ran to the end', false, error.message)
+  } finally {
+    await home.evaluate(() => { try { localStorage.removeItem('sv-motion') } catch {} }).catch(() => {})
+    await home.close()
+  }
 }
 
 // Standalone: serve demo/ and run the same gate.

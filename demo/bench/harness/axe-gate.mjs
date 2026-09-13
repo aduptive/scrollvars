@@ -33,6 +33,11 @@ const describe = (violations) => violations.map((v) =>
 // forever and is not waited for): text mid-fade reads as low contrast, and
 // the home's CSS timeline demo runs 2.4 seconds on its own after boot.
 const settle = async (page) => {
+  // the driver marks a section live on the frame after the scroll and the
+  // entrance transition starts then: polled at once, getAnimations() sees
+  // nothing running and the audit lands mid-fade (the hero's subtitle read
+  // 1.4:1 that way). Give the transitions a moment to begin, then wait them out.
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 400)))
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming?.().iterations === Infinity), { timeout: 8000, polling: 200 }).catch(() => {})
   await page.evaluate(() => new Promise((r) => setTimeout(r, 300)))
 }
@@ -42,21 +47,51 @@ async function audit(page) {
   await settle(page)
   const run = async () => page.evaluate(async (tags) => {
     const result = await axe.run(document, { runOnly: { type: 'tag', values: tags }, resultTypes: ['violations'] })
-    return result.violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map((n) => ({ target: n.target, data: n.any?.[0]?.data ?? null })) }))
+    // axe audits the whole document at once, including what the scroll has
+    // carried off screen: a subtitle fading out as its section leaves is a
+    // contrast failure to nobody. Contrast counts only for text on screen at
+    // this position; every other rule counts wherever the node is.
+    const onScreen = (target) => {
+      try {
+        const el = document.querySelector(target[target.length - 1])
+        if (!el) return true
+        const r = el.getBoundingClientRect()
+        return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth
+      } catch { return true }
+    }
+    return result.violations
+      .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.filter((n) => v.id !== 'color-contrast' || onScreen(n.target)).map((n) => ({ target: n.target, data: n.any?.[0]?.data ?? null })) }))
+      .filter((v) => v.nodes.length > 0)
   }, TAGS)
   const atLoad = await run()
-  // the page's other state: scrolled through so every section has been
-  // live, then settled: an entrance mid-fade reads as low contrast, and the
-  // presets latch once live, so everything is at its final state after this
+  // The page's other states. A jump to the bottom leaves every section in
+  // between outside the culler's band, never live, never revealed (review,
+  // ADU-247): walk the page a viewport at a time so each section goes live
+  // on the way, then audit at the bottom, the middle and the top. Sections
+  // that latch once stay revealed; the rest are audited where they are in
+  // view, which is what a reader scrolling gets.
   await page.evaluate(() => new Promise((resolve) => {
-    scrollTo(0, document.documentElement.scrollHeight)
-    setTimeout(() => { scrollTo(0, 0); setTimeout(resolve, 500) }, 1200)
+    const step = Math.max(200, Math.round(innerHeight * 0.8))
+    let y = 0
+    const tick = () => {
+      y += step
+      scrollTo(0, y)
+      if (y < document.documentElement.scrollHeight) setTimeout(tick, 60)
+      else resolve()
+    }
+    tick()
   }))
   await settle(page)
+  const atBottom = await run()
+  await page.evaluate(() => scrollTo(0, Math.round(document.documentElement.scrollHeight / 2)))
+  await settle(page)
+  const atMiddle = await run()
+  await page.evaluate(() => scrollTo(0, 0))
+  await settle(page)
   const revealed = await run()
-  // merge by rule id and target so a violation seen in both states counts once
+  // merge by rule id and target so a violation seen in several states counts once
   const seen = new Map()
-  for (const v of [...atLoad, ...revealed]) {
+  for (const v of [...atLoad, ...atBottom, ...atMiddle, ...revealed]) {
     const key = v.id
     if (!seen.has(key)) seen.set(key, { ...v, nodes: [] })
     const bucket = seen.get(key)

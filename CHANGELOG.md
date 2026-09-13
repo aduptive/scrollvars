@@ -30,7 +30,8 @@
   it tabs through every gallery page and the home page, forward and back,
   and requires each focused element to be seen (in the viewport, effective
   opacity at least 0.5, `visibility: visible`, not covered at the center of
-  its visible part, still so 400ms later). It proves it can fail on a
+  its visible part, still so 250ms later on the way forward). It proves it
+  can fail on a
   fixture: a link under a fixed header on the way back, and a link inside a
   box that stays at opacity 0.
 - A reflow gate in the e2e run (`demo/bench/harness/reflow-gate.mjs`): at
@@ -41,9 +42,10 @@
   a fixture with a fixed-width band.
 - An axe gate in the e2e run (`demo/bench/harness/axe-gate.mjs`): every
   gallery page and the home page pass axe-core's WCAG 2.x A and AA rules
-  with zero violations, audited after boot and again with the page scrolled
-  through and settled (it waits for every finite animation and transition
-  to end first, since text mid-fade reads as low contrast). It proves it
+  with zero violations, audited after boot and again after a walk down the
+  page a viewport at a time, at the bottom, the middle and the top (it
+  waits for every finite animation and transition to end first, since
+  text mid-fade reads as low contrast). It proves it
   can fail on a fixture with an image without alt and a button without a
   name.
 

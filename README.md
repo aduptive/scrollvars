@@ -765,7 +765,8 @@ success criterion it serves. It is not a conformance claim for your site.
   and at every stop requires the focused element to be inside the viewport,
   at an effective opacity of at least 0.5 down its ancestors, `visibility:
   visible`, not covered at the center of its visible part, and still so
-  400ms later. Content an entrance or a pin reveals is reached that way: the
+  250ms later on the way forward. Content an entrance or a pin reveals is
+  reached that way: the
   browser scrolls the focused element into view, the section goes live, the
   entrance runs. The gate proves it can fail on a fixture (a link under a
   fixed header on the way back, a link inside a box that stays at opacity
@@ -779,8 +780,8 @@ success criterion it serves. It is not a conformance claim for your site.
   Proved able to fail on a fixture with a fixed-width band.
 - **axe, as a floor** (WCAG 2.x A and AA rules). Every gallery page and the
   home page pass axe-core with zero violations in CI, audited after boot
-  and again with the page scrolled through and settled, so what an
-  entrance reveals is checked too. The gate proves it can fail (an image
+  and again after a walk down the page a viewport at a time (so every
+  section has gone live), at the bottom, the middle and the top. The gate proves it can fail (an image
   without alt, a button without a name). A floor, not proof: axe sees
   names, roles, contrast and structure, never whether the page makes sense
   to a screen reader user; that pass is a person's.
