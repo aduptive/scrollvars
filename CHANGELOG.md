@@ -100,8 +100,11 @@
   instead of from 0, the way `sv-reading` already floors at
   `--sv-reading-floor`: a child waiting for its slice kept its text at
   2:1 or less on the sequenced-scrub and timeline pages (axe, walking the
-  page a viewport at a time). Set `--sv-range-floor: 0` on the container
-  for the old look, at the cost of that audit.
+  page a viewport at a time). The default keeps the sheet's text color at
+  4.5:1 on a dark ground; a muted or accent color needs a higher floor (the
+  sequenced-scrub demo uses .8 for its accent line). Set
+  `--sv-range-floor: 0` on the container for the old look, at the cost of
+  that audit. A unit test pins the floor's arithmetic.
 - Slider dots are 24 by 24 CSS pixel targets (WCAG 2.5.8 Target Size,
   Minimum): the button is the target and the visual dot is drawn inside it
   as `::before`, so `--sv-dot-size` still sizes what you see and

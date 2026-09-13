@@ -52,7 +52,10 @@ async function audit(page) {
   // took 3.5 minutes on the home, the viewport takes a second
   const run = async (rules, onScreenOnly = false) => page.evaluate(async (tags, rules, onScreenOnly) => {
     const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth }
-    const context = onScreenOnly ? [...document.querySelectorAll('body *')].filter((el) => inView(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) : document
+    // text-bearing elements on screen: own text, or a control whose text is
+    // its value or placeholder (review, third pass)
+    const bearsText = (el) => /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName) || [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+    const context = onScreenOnly ? [...document.querySelectorAll('body *')].filter((el) => inView(el) && bearsText(el)) : document
     if (onScreenOnly && context.length === 0) return []
     const result = await axe.run(context, { runOnly: rules ? { type: 'rule', values: rules } : { type: 'tag', values: tags }, resultTypes: ['violations'] })
     // axe audits the whole document at once, including what the scroll has
@@ -80,16 +83,19 @@ async function audit(page) {
   // section shown only for a while between the fixed positions would
   // otherwise never be audited (review, second pass). The full rule set
   // runs at load, at the bottom, at the middle and at the top.
+  // audits every 0.8 viewport, so consecutive snapshots overlap by a fifth
+  // and nothing on the page is off screen for every one of them (the first
+  // version audited every 1.2 viewports and left a gap between snapshots)
   const walked = []
   let y = 0, sinceAudit = 0
   const height = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, v: innerHeight }))
-  const step = Math.max(160, Math.round(height.v * 0.4))
+  const step = Math.max(40, Math.round(height.v * 0.4))
   while (y < height.h) {
     y += step
     sinceAudit += step
     await page.evaluate((y) => scrollTo(0, y), y)
     await page.evaluate(() => new Promise((r) => setTimeout(r, 60)))
-    if (sinceAudit >= height.v || y >= height.h) {
+    if (sinceAudit >= height.v * 0.8 || y >= height.h) {
       sinceAudit = 0
       await settle(page)
       walked.push(...await run(['color-contrast'], true))
@@ -142,6 +148,10 @@ export async function axeGate({ browser, check, base, only }) {
     const red = await audit(page)
     const ids = red.map((v) => v.id)
     check('axe gate: an image without alt and a button without a name are reported', ids.includes('image-alt') && ids.includes('button-name'), ids.join(', ') || 'no violation reported')
+    // the walk's own case: low-contrast text that is on screen only in the
+    // middle of the page, off screen at load, at the bottom and at the top
+    const contrast = red.find((v) => v.id === 'color-contrast')
+    check('axe gate: low-contrast text visible only mid-page is caught by the walk', !!contrast && contrast.nodes.some((n) => n.target.join(' ').includes('mid-page')), contrast ? contrast.nodes.map((n) => n.target.join(' ')).join(', ') : 'no contrast violation reported')
   } finally {
     await page.close()
   }

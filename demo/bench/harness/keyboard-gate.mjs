@@ -61,7 +61,6 @@ async function sweep(page, backward = false) {
     else await page.keyboard.press('Tab')
     let state = await page.evaluate(`(${STATE})()`)
     if (state.end) { finished = true; break }
-    if (seen.has(state.name + '@' + i)) break
     // the reveal needs the driver's next frame and the entrance a moment; poll
     const deadline = Date.now() + 1200
     while (!state.visible && Date.now() < deadline) {

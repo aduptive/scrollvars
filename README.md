@@ -501,9 +501,10 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 ```
 
 `sv-range-rise` is the ready-made flavor (rise + fade per range; the fade
-starts at `--sv-range-floor`, .55 by default, so a child waiting for its
-slice still reads at 4.5:1, and 0 gives the dramatic look at the cost of
-that audit); or consume
+starts at `--sv-range-floor`, .55 by default, which keeps the sheet's text
+color at 4.5:1 on a dark ground while a child waits for its slice; a muted
+or accent color needs a higher floor, and 0 gives the dramatic look at the
+cost of that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
 division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
 registered property (`@property`, `initial-value: 1`), so an engine that
