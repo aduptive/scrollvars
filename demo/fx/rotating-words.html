@@ -138,7 +138,7 @@
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
         <a href="deck-spread.html">Deck spread</a>
@@ -179,28 +179,31 @@
   <p class="tag">One word exits up, the next rises from below. A clipped column on one variable.</p>
   <p class="meta"><b>Use it for:</b> Hero headlines: "We build ______".<br><b>Knobs:</b> --sv-word (index), --sv-duration; drive it from state, scenes or an interval</p>
   <section data-sv class="fxstage">
-  <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords"><span>brands</span><span>websites</span><span>products</span></b></h3>
+  <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords" aria-hidden="true"><span>brands</span><span>websites</span><span>products</span></b><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span></h3>
 </section>
 <script>let fxi=0;setInterval(()=>{document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add rotating-words</code><br><b>Styles:</b> <code>import 'scrollvars/styles/state.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
-    <button data-tab="react">React</button>
+    <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
     <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;h1 class="text-5xl font-extrabold"&gt;
   we build
-  &lt;span class="sv-words text-violet-400"&gt;
+  &lt;span class="sv-words text-violet-400" aria-hidden="true"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
+  &lt;span class="sr-only"&gt;brands, websites and products&lt;/span&gt;
 &lt;/h1&gt;
 &lt;!-- set --sv-word from your state; scenes drive it for free in pinned stories --&gt;</code></pre>
     <pre tabindex="0" data-pane="css"><code>&lt;h1&gt;we build
-  &lt;span class="sv-words"&gt;
+  &lt;span class="sv-words" aria-hidden="true"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;
   &lt;/span&gt;
+  &lt;!-- the column reads as three words in a row to a screen reader: hide it and say the phrase once --&gt;
+  &lt;span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap"&gt;brands, websites and products&lt;/span&gt;
 &lt;/h1&gt;
 
 /* the preset (styles/state.css): */
@@ -220,9 +223,11 @@
 el.style.setProperty('--sv-word', nextIndex)</code></pre>
     <pre tabindex="0" data-pane="react"><code>const [word, setWord] = useState(0)
 &lt;h1&gt;we build{' '}
-  &lt;span className="sv-words" style={{ '--sv-word': word }}&gt;
+  &lt;span className="sv-words" style={{ '--sv-word': word }} aria-hidden="true"&gt;
     {words.map(w =&gt; &lt;span key={w}&gt;{w}&lt;/span&gt;)}
   &lt;/span&gt;
+  {/* the column reads as three words in a row to a screen reader: say the phrase once */}
+  &lt;span className="sr-only"&gt;{words.join(', ')}&lt;/span&gt;
 &lt;/h1&gt;</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.5 KB gzip as ESM (this page's fx/sv.js IIFE: 8.7 KB).
@@ -238,7 +243,7 @@ el.style.setProperty('--sv-word', nextIndex)</code></pre>
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));
