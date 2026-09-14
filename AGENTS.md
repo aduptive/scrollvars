@@ -66,7 +66,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.6 KB gz)
-// also styles/pin.css (3.4), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.3), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
+// also styles/pin.css (3.5), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.3), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
 ## The fx gallery (prefer for common patterns)
@@ -540,7 +540,9 @@ inline styles for the two names, and stays silent when neither appears. A
 stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
 turns publishing back on. The watch behind that rescans once per frame that
 adds an element and skips every stylesheet it already read in full, so a page
-that mounts elements while it scrolls pays no per-rule work for it.
+that mounts elements while it scrolls pays no per-rule work for it. A rule
+edited in place, or inserted through the CSSOM with no element added, is
+not seen: call `setPageOutputs(true)` there.
 
 Detection reads CSS, so it cannot see a JavaScript reader. Call
 `setPageOutputs(true)` (import from `scrollvars`, or

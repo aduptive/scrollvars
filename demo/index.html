@@ -3505,7 +3505,7 @@ var SV = (() => {
       } else {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
       }
-      const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
+      const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
       frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth });
     });
     for (const { entry, geo, overflow, stageWidth } of frames) {
@@ -3560,8 +3560,8 @@ var SV = (() => {
   function computeTravel(geo) {
     return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1);
   }
-  function computePin(geo, offset = 0) {
-    const span = Math.max(geo.height - geo.vp + offset, 1);
+  function computePin(geo, offset = 0, stageHeight) {
+    const span = Math.max(geo.height - (stageHeight || geo.vp) + offset, 1);
     return clamp((offset - geo.top) / span, 0, 1);
   }
   function readPinOffset(el) {
@@ -3660,7 +3660,7 @@ var SV = (() => {
         return;
     }
     if (opts.pin || opts.onPin) {
-      const p = computePin(geo, entry.pinOffset);
+      const p = computePin(geo, entry.pinOffset, entry.stage?.clientHeight);
       if (opts.pin)
         setVar(entry, "--sv-pin", p);
       opts.onPin?.(p);
@@ -3668,7 +3668,7 @@ var SV = (() => {
         return;
     }
     if (opts.scenes && opts.scenes > 1) {
-      const pin = computePin(geo, entry.pinOffset);
+      const pin = computePin(geo, entry.pinOffset, entry.stage?.clientHeight);
       const snap = opts.snap === false ? false : opts.snap ?? SCENE_SNAP;
       const scene = computeScene(pin, opts.scenes, snap);
       setVar(entry, "--sv-scene", scene);
@@ -3858,7 +3858,8 @@ var SV = (() => {
     const rect = el.getBoundingClientRect();
     const vp = root ? root.clientHeight : window.innerHeight;
     const pinOffset = readPinOffset(el);
-    const span = Math.max(rect.height - vp + pinOffset, 1);
+    const stage = el.querySelector(".sv-stage");
+    const span = Math.max(rect.height - (stage?.clientHeight || vp) + pinOffset, 1);
     const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
     const behavior = smooth && !getReducedMotion() ? "smooth" : "instant";
     if (root) {
@@ -3903,6 +3904,7 @@ var SV = (() => {
       if (el.style.getPropertyValue?.("--my") !== my)
         el.style.setProperty("--my", my);
     };
+    const touched = /* @__PURE__ */ new Set();
     const leave = (el) => {
       written.delete(el);
       el.classList.add("sv-pointer-leave");
@@ -3916,6 +3918,7 @@ var SV = (() => {
       if (!written.has(el)) {
         written.forEach(leave);
         written.add(el);
+        touched.add(el);
       }
       if (el.classList.contains("sv-pointer-leave"))
         el.classList.remove("sv-pointer-leave");
@@ -3938,12 +3941,13 @@ var SV = (() => {
       container.removeEventListener("pointerout", onOut);
       if (raf2)
         cancelAnimationFrame(raf2);
-      written.forEach((el) => {
+      touched.forEach((el) => {
         el.style.removeProperty("--mx");
         el.style.removeProperty("--my");
         el.classList.remove("sv-pointer-leave");
       });
       written.clear();
+      touched.clear();
     };
   }
 
@@ -4123,6 +4127,7 @@ var SV = (() => {
       childList: true,
       subtree: true
     });
+    window.__scrollvars = true;
     return () => {
       observer.disconnect();
       tracked.forEach((untrack) => untrack());

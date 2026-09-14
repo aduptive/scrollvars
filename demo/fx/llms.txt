@@ -929,6 +929,7 @@ Styles: scrollvars/styles/pin.css
 // into your own stylesheet.
 'use client'
 import * as React from 'react'
+import { onMotionChange, prefersReducedMotion } from 'scrollvars'
 import { useScenes } from 'scrollvars/react'
 
 const css = `
@@ -990,11 +991,10 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
   React.useEffect(() => {
-    const mq = matchMedia('(prefers-reduced-motion: reduce)')
-    const sync = () => setInteractive(!mq.matches)
-    sync()
-    mq.addEventListener?.('change', sync)
-    return () => mq.removeEventListener?.('change', sync)
+    // the effective preference: the OS setting or the page's data-sv-motion
+    // switch (both show every shot in flow, so every shot must be reachable)
+    setInteractive(!prefersReducedMotion())
+    return onMotionChange((reduced) => setInteractive(!reduced))
   }, [])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so

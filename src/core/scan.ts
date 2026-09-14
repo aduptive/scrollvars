@@ -146,6 +146,11 @@ export function scan(root?: ParentNode): () => void {
     childList: true,
     subtree: true,
   })
+  // The driver is here whether or not this route has anything to track:
+  // ScrollVarsBoot's pre-paint watchdog waits for this flag, and init()
+  // only sets it on the first track(), so a first route with no data-sv
+  // element let the watchdog drop sv-on for the whole session (round 9).
+  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = true
 
   return () => {
     observer.disconnect()

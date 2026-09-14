@@ -39,6 +39,6 @@
    * between and `inherit` on the reader alone would read that. Keep this list
    * in step with styles/*.css: a test fails when a preset reads a clock from a
    * selector whose subject is not .sv and has no forward here. */
-  .sv :has(.sv-drift), .sv .sv-drift { --sv-view: inherit; }
-  .sv :has(.sv-range), .sv .sv-range { --sv-t: inherit; }
+  .sv :has(.sv-drift):not(.sv, [data-sv]), .sv .sv-drift { --sv-view: inherit; }
+  .sv :has(.sv-range):not(.sv, [data-sv]), .sv .sv-range { --sv-t: inherit; }
 }

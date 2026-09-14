@@ -285,6 +285,20 @@ test('driver: view band, live latch, travel, pin, scenes, dedup, cleanup', async
   pump()
   assert.equal(tall.vars['--sv-pin'], '1.0000')
 
+  // ── a stage shorter than the viewport: the span is height - stage, not
+  //    height - vh, so the pin reaches 1 exactly when the stretch ends (round 9) ──
+  const short = makeElement(3000)
+  short.stage = { clientHeight: 600 }
+  short.querySelector = (selector) => (selector === '.sv-stage' ? short.stage : null)
+  const unShort = track(short, { pin: true })
+  place(short, -1200) // 1200 / (3000 - 600)
+  pump()
+  assert.equal(short.vars['--sv-pin'], '0.5000')
+  place(short, -2400)
+  pump()
+  assert.equal(short.vars['--sv-pin'], '1.0000')
+  unShort()
+
   // ── scenes: snap dead-zone → integer; onScene on integer change only ──
   // raw = pin * 3; pin = 1.1/3 → raw 1.1, fraction 0.1 ≤ snap 0.4 → exactly 1
   place(tall, -(1.1 / 3) * 2000)
@@ -1646,10 +1660,14 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   place(el, 0)
   pump()
   assert.ok(Math.abs(Number(el.vars['--sv-pin']) - 64 / 2064) < .0001, 'calc() offset advances pin progress before the wrapper passes viewport top')
-  fit.offsetHeight = 1000
+  // a fixed-height fit box whose content is taller: the content's height
+  // counts, or overflowing copy clips inside a box that "fits" (round 9)
+  fit.offsetHeight = 500
+  fit.scrollHeight = 1000
   listeners.scroll()
   pump()
-  assert.ok(el.hasAttribute('data-sv-flow'))
+  assert.ok(el.hasAttribute('data-sv-flow'), 'overflowing content releases the pin')
+  fit.scrollHeight = undefined
   assert.equal(el.style.height, 'auto', 'no empty authored pin stretch remains')
   assert.equal(el.style.position, '')
   fit.offsetHeight = 200

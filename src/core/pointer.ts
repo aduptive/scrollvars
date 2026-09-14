@@ -58,6 +58,9 @@ export function trackPointer(
   // relax el back to center and drop it from the written set: the same
   // reset a genuine pointerout applies, reused for a handover so a nested
   // match (never seeing its own pointerout, see onOut below) still relaxes
+  // every element that ever carried a write, so destroy() can clean the
+  // ones a leave() already dropped from `written` (round 9)
+  const touched = new Set<HTMLElement>()
   const leave = (el: HTMLElement) => {
     written.delete(el)
     el.classList.add('sv-pointer-leave')
@@ -77,6 +80,7 @@ export function trackPointer(
       // Leave every previously written element right here instead.
       written.forEach(leave)
       written.add(el)
+      touched.add(el)
     }
     if (el.classList.contains('sv-pointer-leave')) el.classList.remove('sv-pointer-leave')
     pending = { el, x: event.clientX, y: event.clientY }
@@ -101,11 +105,12 @@ export function trackPointer(
     // mid-tilt: drop inline vars and the leave class from every element
     // still tracked, not just one, a nested match can leave more than one
     // written between handovers (ADU-169)
-    written.forEach((el) => {
+    touched.forEach((el) => {
       el.style.removeProperty('--mx')
       el.style.removeProperty('--my')
       el.classList.remove('sv-pointer-leave')
     })
     written.clear()
+    touched.clear()
   }
 }

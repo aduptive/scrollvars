@@ -510,7 +510,7 @@ const canvasRef = useCanvasEffect({
   {
     slug: 'rotating-words',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['state'], min: '1.11.1' },
+    requires: { styles: ['state'], min: '1.17.0' },
     category: 'Text',
     title: 'Rotating words',
     tagline: 'One word exits up, the next rises from below. A clipped column on one variable.',
@@ -872,7 +872,7 @@ function Timeline() {
   {
     slug: 'sticky-steps',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.14.0' },
+    requires: { styles: ['pin'], min: '1.17.0' },
     category: 'Sections',
     title: 'Sticky steps',
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
@@ -1310,6 +1310,7 @@ export function TimelineScrub({
 // into your own stylesheet.
 'use client'
 import * as React from 'react'
+import { onMotionChange, prefersReducedMotion } from 'scrollvars'
 import { useScenes } from 'scrollvars/react'
 
 const css = \`
@@ -1371,11 +1372,10 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
   React.useEffect(() => {
-    const mq = matchMedia('(prefers-reduced-motion: reduce)')
-    const sync = () => setInteractive(!mq.matches)
-    sync()
-    mq.addEventListener?.('change', sync)
-    return () => mq.removeEventListener?.('change', sync)
+    // the effective preference: the OS setting or the page's data-sv-motion
+    // switch (both show every shot in flow, so every shot must be reachable)
+    setInteractive(!prefersReducedMotion())
+    return onMotionChange((reduced) => setInteractive(!reduced))
   }, [])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
@@ -1816,6 +1816,11 @@ export function HorizontalRail({
 // Requires: npm i scrollvars · import 'scrollvars/styles/state.css' (layout)
 'use client'
 import * as React from 'react'
+import { onMotionChange, prefersReducedMotion } from 'scrollvars'
+
+// the rotating column reads as every word in a row to a screen reader, so it
+// is aria-hidden and a visually hidden span says the phrase once
+const SR: React.CSSProperties = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }
 
 export function RotatingWords({
   words,
@@ -1827,6 +1832,12 @@ export function RotatingWords({
   className?: string
 }) {
   const [index, setIndex] = React.useState(0)
+  // no rotation under reduced motion (the OS setting or the page's switch)
+  const [reduced, setReduced] = React.useState(false)
+  React.useEffect(() => {
+    setReduced(prefersReducedMotion())
+    return onMotionChange(setReduced)
+  }, [])
   // A shrinking list strands the last index, same shape as useScenes: clamp
   // here, on the render that sees the new length, instead of waiting for the
   // next tick. An empty list schedules no interval at all: (i + 1) % 0 is
@@ -1837,17 +1848,20 @@ export function RotatingWords({
   if (index > last) setIndex(last)
   const current = Math.min(index, last)
   React.useEffect(() => {
-    if (words.length === 0) return
+    if (words.length === 0 || reduced) return
     const t = setInterval(() => setIndex((i) => (i + 1) % words.length), interval)
     return () => clearInterval(t)
-  }, [words.length, interval])
+  }, [words.length, interval, reduced])
   return (
-    <span className={className ? \`sv-words \${className}\` : 'sv-words'}
-      style={{ '--sv-word': current } as React.CSSProperties}>
-      {words.map((w) => (
-        <span key={w}>{w}</span>
-      ))}
-    </span>
+    <>
+      <span className={className ? \`sv-words \${className}\` : 'sv-words'}
+        style={{ '--sv-word': current } as React.CSSProperties} aria-hidden="true">
+        {words.map((w) => (
+          <span key={w}>{w}</span>
+        ))}
+      </span>
+      <span style={SR}>{words.join(', ')}</span>
+    </>
   )
 }
 `,
@@ -1909,7 +1923,8 @@ export function CoverflowSlider({
 }: React.ComponentProps<typeof Slider>) {
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: css }} />
+      {/* the same nonce the Slider gets: under a strict CSP this sheet needs it too */}
+      <style nonce={rest.nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <Slider perView={perView} gap={16} arrows dots {...rest}>
         {/* toArray, not Children.map: a conditional child ({show && <Card/>})
             is false, and Children.map still calls back for it, so the rail
