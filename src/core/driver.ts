@@ -159,23 +159,233 @@ let lastPageStr = ''
 let lastVStr = ''
 
 let pageOutputs = false // true once anything was ever tracked: --sv-page/--sv-v then follow every scroll
-let pageOutputsEnabled = true
+let pageOutputsMode: 'auto' | 'on' | 'off' = 'auto'
+let pageOutputsResolved = false
+let pageOutputsEnabled = true // in auto mode this is the answer detectPageConsumers() gave
+let consumerWatch: MutationObserver | null = null
 let offsetsDirty = false
 let forceAll = false // set by refresh(): give culled entries one geometry pass on the next update()
 
-/** Enable/disable document-wide --sv-page/--sv-v writes. Default true for
- * compatibility. Call once at boot with false when no CSS consumes them.
+/** Enable/disable document-wide --sv-page/--sv-v writes. Calling this at all
+ * takes the decision away from auto-detection, permanently and in both
+ * directions: pass true for a JS reader that no stylesheet reveals.
  * Repeated enabling does not schedule another frame. */
 export function setPageOutputs(enabled: boolean) {
+  pageOutputsMode = enabled ? 'on' : 'off'
+  consumerWatch?.disconnect()
+  consumerWatch = null
+  unlistenAll()
   if (enabled && pageOutputsEnabled) return
   pageOutputsEnabled = enabled
   if (typeof document === 'undefined') return
-  if (!enabled) {
-    clearTimeout(velTimer)
-    document.documentElement.style.removeProperty('--sv-page')
-    document.documentElement.style.removeProperty('--sv-v')
-    lastPageStr = lastVStr = ''
-  } else schedule()
+  if (!enabled) stopPageOutputs()
+  else schedule()
+}
+
+function stopPageOutputs() {
+  clearTimeout(velTimer)
+  document.documentElement.style.removeProperty('--sv-page')
+  document.documentElement.style.removeProperty('--sv-v')
+  lastPageStr = lastVStr = ''
+}
+
+// --sv-page and --sv-v are INHERITED custom properties on <html>: every write
+// invalidates style for the whole document, whether or not anything reads
+// them. Measured on the 900-box benchmark, publishing them unread costs 3249ms
+// of style recalculation over a 12-second scroll against 269ms, and the same
+// page with the same writes registered `inherits: false` costs 267.5ms, so the
+// price is the inheritance, not the write. Pages that use the variables must
+// pay it; pages that do not should not, and until this they all did.
+//
+// So in auto mode the driver asks the document whether anything COULD read
+// them before publishing. Every uncertainty answers yes: an unreadable
+// cross-origin sheet, a thrown DOM call, anything. A JS-only reader is
+// invisible to this and needs setPageOutputs(true).
+// The name has to end where it ends: `--sv-view` starts with `--sv-v`, and a
+// plain substring test called every preset in core.css a consumer, which is
+// every page that uses the library at all.
+const PAGE_OUTPUT_NAMES = /--sv-page(?![\w-])|--sv-v(?![\w-])/
+
+function mentionsPageOutputs(css: string) {
+  return PAGE_OUTPUT_NAMES.test(css)
+}
+
+// Owner nodes of sheets whose @import has not loaded yet, found by the last
+// scan: they fire `load` when it lands, and the answer is asked again then.
+let pendingImportOwners: Element[] = []
+// Owners currently listened to, one pair each, so repeated resolutions do not
+// stack closures and an explicit override can take them all off.
+const listened = new Map<Element, () => void>()
+// Sheets read in full that reach neither name, by their rule count at the
+// time. The watch below rescans on every frame that adds an element, and
+// serializing every rule of every sheet on each of those cost 3.2ms a frame
+// at 5000 rules on a page that mounts one element per frame (390ms of script
+// over 120 frames against 7ms with the watch off). A sheet whose count has
+// not moved is skipped; one that gained or lost a rule is read again, which
+// is how a CSS-in-JS runtime's insertRule on mount is still seen. An edit
+// that swaps one rule for another in place keeps the count and is missed,
+// but no node is added by such an edit, so the watch never saw it either.
+const silentSheets = new WeakMap<CSSStyleSheet, number>()
+function unlistenAll() {
+  listened.forEach((off, owner) => {
+    owner.removeEventListener('load', off)
+    owner.removeEventListener('error', off)
+  })
+  listened.clear()
+}
+
+function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
+  let rules: CSSRuleList | null
+  try {
+    rules = sheet.cssRules
+  } catch {
+    return true // cross-origin without CORS: unreadable, so assume it reads them
+  }
+  if (!rules) return true
+  if (silentSheets.get(sheet) === rules.length) return false
+  for (const rule of Array.from(rules)) {
+    // An @import's own serialization is just the url: the names live in the
+    // sheet it pulls in, and an unreadable imported sheet is the same
+    // uncertainty as an unreadable linked one. One that has not LOADED yet
+    // (styleSheet still null) is uncertainty too: on a slow connection the
+    // first frame runs before the import lands, and reading its text as "no
+    // consumer" silenced a page whose consumer was on its way (found in CI).
+    if (isImportRule(rule)) {
+      const imported = rule.styleSheet
+      if (!imported) {
+        let owner: CSSStyleSheet | null = sheet
+        while (owner && !owner.ownerNode) owner = owner.parentStyleSheet
+        if (owner?.ownerNode) pendingImportOwners.push(owner.ownerNode as Element)
+        return true
+      }
+      if (depth > 4 || sheetReadsPageOutputs(imported, depth + 1)) return true
+      continue
+    }
+    // cssText of a grouping rule carries its children, so nesting is covered.
+    if (mentionsPageOutputs(rule.cssText)) return true
+  }
+  silentSheets.set(sheet, rules.length)
+  return false
+}
+
+const isImportRule = (rule: CSSRule): rule is CSSImportRule => rule.type === 3 /* IMPORT_RULE, older engines lack the class */
+
+function detectPageConsumers(): boolean {
+  pendingImportOwners = []
+  try {
+    // The attribute selector can only match a substring, so `--sv-view` (which
+    // the driver itself writes inline on every tracked element) matches
+    // `--sv-v`. Re-test each candidate with the bounded name instead: without
+    // this, any rescan after the first frame says yes on every page.
+    // :not(html): the driver writes the two outputs inline on <html>, and a
+    // rescan that read its own writes as a consumer never unpublished again.
+    for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"]:not(html),[style*="--sv-v"]:not(html)')))
+      if (mentionsPageOutputs(el.getAttribute('style') || '')) return true
+    const adopted = (document as unknown as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets
+    if (adopted) for (const sheet of Array.from(adopted)) if (sheetReadsPageOutputs(sheet, 0)) return true
+    for (const sheet of Array.from(document.styleSheets)) {
+      const node = sheet.ownerNode as Element | null
+      // A <style> element's text is the cheap path, but a CSS-in-JS runtime in
+      // production inserts rules through the CSSOM and leaves that text empty,
+      // so a miss there has to fall through to the rules rather than skip.
+      if (node && node.nodeName === 'STYLE' && mentionsPageOutputs(node.textContent || '')) return true
+      if (sheetReadsPageOutputs(sheet, 0)) return true
+    }
+  } catch {
+    return true
+  }
+  return false
+}
+
+// A stylesheet that arrives later (a lazily mounted component, a CSS-in-JS
+// runtime, an HMR update) can introduce the first consumer, and so can an
+// element with an inline style. The watch exists only while the answer is
+// "nobody reads them" and stops for good at the first consumer, so a page that
+// uses the variables carries no observer at all. Same shape as the scanner's
+// own observer, which already watches the whole tree for childList.
+function watchForPageConsumers() {
+  if (consumerWatch || typeof MutationObserver === 'undefined') return
+  const root = document.documentElement
+  if (!root) return
+  let queued = false
+  consumerWatch = new MutationObserver(records => {
+    if (queued) return
+    for (const record of records) {
+      for (const node of Array.from(record.addedNodes)) {
+        // text landing in a <style> (textContent = ...) is a new rule too
+        const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
+        if (!relevant) continue
+        queued = true
+        break
+      }
+      if (queued) break
+    }
+    // One rescan per frame at most: a runtime that injects a hundred rules
+    // in a row would otherwise walk every stylesheet a hundred times. The
+    // rescan goes through resolvePageOutputs(), so a <link> or @import that
+    // has not loaded (inserted bare or inside a wrapper) is uncertainty with
+    // a load listener, not a rule read as absent; and it does nothing once
+    // the watch is gone, so a frame queued before the last release cannot
+    // wake a driver with no work.
+    if (queued)
+      requestAnimationFrame(() => {
+        queued = false
+        if (!consumerWatch || pageOutputsMode !== 'auto') return
+        resolvePageOutputs()
+        if (pageOutputsEnabled && !listened.size) {
+          consumerWatch?.disconnect()
+          consumerWatch = null
+        }
+      })
+  })
+  consumerWatch.observe(root, { childList: true, subtree: true })
+}
+
+
+// A <link> whose sheet has not been parsed yet answers nothing: its rules are
+// unreadable at this instant, which is the same uncertainty a cross-origin
+// sheet is. It publishes meanwhile and asks again when the sheet lands, so a
+// slow stylesheet cannot make the page silent and cannot make it loud forever.
+// CI found this: locally the fixture's stylesheet always won the race.
+function pendingSheets(): HTMLLinkElement[] {
+  // Anything that cannot answer is uncertainty, and detectPageConsumers()
+  // already says yes to that, so an empty list here is the honest answer
+  // rather than a second guess.
+  try {
+    return Array.from(document.querySelectorAll('link[rel~="stylesheet"]'))
+      .filter(link => !(link as HTMLLinkElement).sheet) as HTMLLinkElement[]
+  } catch {
+    return []
+  }
+}
+
+function resolvePageOutputs() {
+  if (pageOutputsMode !== 'auto') return
+  const found = detectPageConsumers()
+  // a <link> with no parsed sheet yet, or a <style>/<link> whose @import has
+  // not landed: both answer nothing now and fire `load` when they can
+  const pending: Element[] = [...pendingSheets(), ...pendingImportOwners]
+  const enabled = found || pending.length > 0
+  const was = pageOutputsEnabled
+  if (was && !enabled) stopPageOutputs()
+  pageOutputsEnabled = enabled
+  if (pending.length) {
+    for (const owner of pending) {
+      if (listened.has(owner)) continue
+      const settled = () => {
+        owner.removeEventListener('load', settled)
+        owner.removeEventListener('error', settled)
+        listened.delete(owner)
+        resolvePageOutputs()
+      }
+      listened.set(owner, settled)
+      owner.addEventListener('load', settled)
+      owner.addEventListener('error', settled)
+    }
+  } else if (!found) watchForPageConsumers()
+  // Only a transition earns a frame. Scheduling on every resolution sustains
+  // an idle loop, which is the trap the setPageOutputs guard was written for.
+  if (!was && enabled) schedule()
 }
 
 function schedule() {
@@ -201,6 +411,12 @@ function update() {
   // seeing it intersect: give every entry one geometry pass on such frames.
   const jumped = lastY >= 0 && Math.abs(y - lastY) > vh
   const docEl = document.documentElement
+  // Ask the document once, on the first frame that could publish: by then a
+  // stylesheet written next to the track() call is in place.
+  if (pageOutputs && !pageOutputsResolved) {
+    pageOutputsResolved = true
+    resolvePageOutputs()
+  }
   const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
@@ -563,6 +779,15 @@ function clearReleased(el: HTMLElement) {
 function releaseEntry(entry: Entry) {
   const { el } = entry
   entries.delete(el)
+  // Nothing is tracked any more: stop watching for a consumer that would only
+  // wake a driver with no work, and let the next track() ask the document
+  // again, since the page it asks about will have changed by then.
+  if (entries.size === 0 && pageOutputsMode === 'auto') {
+    consumerWatch?.disconnect()
+    consumerWatch = null
+    unlistenAll()
+    pageOutputsResolved = false
+  }
   culler?.unobserve(el)
   unobserveIfUnneeded(el)
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)

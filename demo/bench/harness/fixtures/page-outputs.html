@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>page outputs fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  .tall { height: 400vh }
+  .card { height: 40vh; background: #333 }
+</style>
+<script>
+  // The consumer arrives BEFORE the engine, the way a real page's CSS does.
+  // Served from the same origin on purpose: a document created with
+  // page.setContent() cannot read a linked sheet's rules, detection then
+  // fails safe and publishes, and that reads as a driver bug when it is not.
+  var CONSUMER = new URLSearchParams(location.search).get('consumer') || 'none'
+  var css = {
+    view: '.card { opacity: var(--sv-view) }',
+    'style-page': '.p { width: calc(var(--sv-page) * 100%) }',
+    'media-v': '@media (min-width: 1px) { .s { rotate: calc(var(--sv-v) * 1deg) } }',
+  }[CONSUMER]
+  if (css) {
+    var style = document.createElement('style')
+    style.textContent = css
+    document.head.append(style)
+  }
+  if (CONSUMER === 'cssom') {
+    // A CSS-in-JS runtime in production inserts rules through the CSSOM and
+    // leaves the element's own text empty.
+    var live = document.createElement('style')
+    document.head.append(live)
+    live.sheet.insertRule('.p { width: calc(var(--sv-page) * 100%) }', 0)
+  }
+  if (CONSUMER === 'import') {
+    var imp = document.createElement('style')
+    imp.textContent = '@import url("/bench/harness/fixtures/page-consumer.css");'
+    document.head.append(imp)
+  }
+  if (CONSUMER === 'link') {
+    var link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = '/bench/harness/fixtures/page-consumer.css'
+    document.head.append(link)
+  }
+</script>
+</head>
+<body>
+<div class="tall"></div>
+<div class="card" data-sv data-sv-travel></div>
+<div class="tall"></div>
+<script>
+  if (CONSUMER === 'inline')
+    document.body.insertAdjacentHTML('beforeend', '<div style="width: calc(var(--sv-page) * 10px)"></div>')
+</script>
+<script src="/fx/sv.js"></script>
+</body>
+</html>

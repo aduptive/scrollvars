@@ -5,7 +5,7 @@
  * twice before this script existed). Run `npm run build` first, or use
  * `npm run demo:sync` / `npm run demo:deploy` which chain it.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, copyFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -245,3 +245,9 @@ if (html !== before) {
 }
 
 }
+
+// The bench page's ?scoped=1 row loads styles/scoped.css from next to itself:
+// a served copy, refreshed on every sync and covered by the CI gate, so it
+// can never drift from the source sheet.
+copyFileSync(join(root, 'styles', 'scoped.css'), join(root, 'demo', 'bench', 'scoped.css'))
+console.log('bench/scoped.css copied from styles/scoped.css')

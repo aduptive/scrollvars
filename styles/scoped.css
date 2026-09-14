@@ -1,0 +1,44 @@
+/* ScrollVars: scoped clocks. OPT-IN, not part of styles.css.
+ *
+ * --sv-t and --sv-view inherit, so every write re-resolves the whole subtree
+ * of a tracked element. Registered non-inheriting, a write reaches one
+ * element. The price: a clock reaches only the elements that declare
+ * `inherit` for it, every element on the path down to a reader included,
+ * and a `var(--sv-t, 1)` fallback is never taken again (declare that default
+ * on the tracked element). The shipped presets are forwarded below; your own
+ * reader needs one rule, its LAST compound inside :has():
+ *
+ *   .sv :has(.my-card), .my-card { --sv-t: inherit; }
+ *
+ * Measured behind a rendered-output gate: -63% style recalculation at 50
+ * descendants per reader, +13% where every descendant is a reader, -23% on
+ * scrollvars.dev's home page. Numbers, rule and when it pays: README,
+ * "Scoped clocks". CSS comments ship, so this one stays short. */
+
+/* Registration only where the path forwarding below can exist: a browser
+ * with @property but without :has() would register the clocks and then have
+ * no way to carry them down to a preset reader that is not a direct child,
+ * which is exactly what the home page's parallax layers are. Below this
+ * floor the sheet is inert and the clocks keep inheriting. */
+@supports selector(:has(a)) {
+  @property --sv-t {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @property --sv-view {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  /* Presets that read a clock from a descendant of the tracked element. The
+   * forward covers the READER and every element on the path down to it,
+   * because a non-inheriting property is the initial value on each step in
+   * between and `inherit` on the reader alone would read that. Keep this list
+   * in step with styles/*.css: a test fails when a preset reads a clock from a
+   * selector whose subject is not .sv and has no forward here. */
+  .sv :has(.sv-drift), .sv .sv-drift { --sv-view: inherit; }
+  .sv :has(.sv-range), .sv .sv-range { --sv-t: inherit; }
+}

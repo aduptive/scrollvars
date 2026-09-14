@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "date": "2026-09-11T00:56:46.525Z",
+    "bundle": "demo/fx/sv.js",
+    "note": "script ms over 120 frames, one element appended per frame; A is the pure rescan median of five"
+  },
+  "rescan": [
+    {
+      "rules": 1000,
+      "medianMs": 0.8
+    },
+    {
+      "rules": 5000,
+      "medianMs": 4.2
+    },
+    {
+      "rules": 20000,
+      "medianMs": 15.5
+    }
+  ],
+  "runs": [
+    {
+      "round": 0,
+      "mode": "auto",
+      "taskMs": 401,
+      "scriptMs": 25,
+      "styleMs": 10,
+      "worstGapMs": 18.6
+    },
+    {
+      "round": 0,
+      "mode": "off",
+      "taskMs": 335,
+      "scriptMs": 6,
+      "styleMs": 10,
+      "worstGapMs": 18.6
+    },
+    {
+      "round": 1,
+      "mode": "auto",
+      "taskMs": 466,
+      "scriptMs": 28,
+      "styleMs": 12,
+      "worstGapMs": 18.4
+    },
+    {
+      "round": 1,
+      "mode": "off",
+      "taskMs": 384,
+      "scriptMs": 6,
+      "styleMs": 12,
+      "worstGapMs": 18.8
+    }
+  ]
+}

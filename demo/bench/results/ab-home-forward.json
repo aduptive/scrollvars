@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "date": "2026-09-10T20:23:20.509Z",
+    "page": "/index.html",
+    "variant": "forward",
+    "runs": 3,
+    "commit": "c6467b47b59fcdcfa29c4ba363d171bc4fb9b71c",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 1727,
+      "recalcMs": 377,
+      "scriptMs": 199,
+      "fps": 60,
+      "runs": 3
+    },
+    "forward": {
+      "taskMs": 1592,
+      "recalcMs": 365,
+      "scriptMs": 189,
+      "fps": 60,
+      "runs": 3
+    }
+  }
+}

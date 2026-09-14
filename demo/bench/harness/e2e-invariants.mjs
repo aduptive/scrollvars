@@ -65,6 +65,8 @@ import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import { installedGate } from './installed-gate.mjs'
 import { reviewGate } from './review-gate.mjs'
+import { pageOutputsGate } from './page-outputs-gate.mjs'
+import { scopedClocksGate } from './scoped-clocks-gate.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
@@ -520,15 +522,28 @@ const MIN_EXAMINED = 1
   await page.addScriptTag({ content: SV_IIFE_JS })
   const r = await page.evaluate(async () => {
     const stop = SV.scan()
-    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-    const hiddenWhileScanning = [...document.querySelectorAll('.sv-rise')].filter(
+    // The hidden state is written by the driver's first frame, not by the
+    // class alone (a synchronous read right after scan() sees opacity 1 on
+    // both), and on a loaded CI runner that frame can come late. So wait for
+    // the STATE with a deadline rather than for a number of frames: the
+    // section below the fold must reach opacity 0 within 1500ms. The above
+    // one is irrelevant, its entrance starts as soon as it goes live.
+    const below = document.querySelectorAll('.sv-rise')[1]
+    const started = performance.now()
+    let reachedMs = -1
+    while (performance.now() - started < 1500) {
+      if (getComputedStyle(below).opacity === '0') { reachedMs = Math.round(performance.now() - started); break }
+      await new Promise((done) => setTimeout(done, 10))
+    }
+    const hiddenWhileScanning = reachedMs >= 0 ? [...document.querySelectorAll('.sv-rise')].filter(
       (el) => getComputedStyle(el).opacity !== '1'
-    ).length
+    ).length : 0
     stop()
     // --sv-duration is 800ms: let the entrance transition finish before reading
     await new Promise((done) => setTimeout(done, 1200))
     return {
       hiddenWhileScanning,
+      reachedMs,
       total: document.querySelectorAll('.sv-rise').length,
       svOn: document.documentElement.classList.contains('sv-on'),
       hidden: [...document.querySelectorAll('.sv-rise')].filter((el) => getComputedStyle(el).opacity !== '1').length,
@@ -537,8 +552,8 @@ const MIN_EXAMINED = 1
   // the fixture only proves anything if something really was hidden first
   check(
     'stopScan(): the fixture starts with a section hidden below the fold',
-    r.hiddenWhileScanning > 0 && r.svOn,
-    `${r.hiddenWhileScanning}/${r.total} hidden while scanning, sv-on=${r.svOn}`
+    r.hiddenWhileScanning > 0 && r.svOn && r.reachedMs >= 0,
+    `${r.hiddenWhileScanning}/${r.total} hidden while scanning, sv-on=${r.svOn}, below-fold hidden after ${r.reachedMs}ms (-1 = never within 1500ms)`
   )
   check(
     `stopScan(): 0/${r.total} entrance elements left hidden after the scan stops`,
@@ -1465,16 +1480,18 @@ const MIN_EXAMINED = 1
     (finished) =>
       new Promise((resolve) => {
         const read = () => Number(getComputedStyle(document.querySelector('#target')).getPropertyValue('--sv-act'))
+        // A transition interpolates on the wall clock and getComputedStyle
+        // reads it at any instant, so sample on a timer: one sample per
+        // animation frame skipped every intermediate value when a loaded CI
+        // runner dropped a frame (ADU-219). Up to two seconds, 5ms apart.
         const samples = []
-        let frames = 0
-        const FRAMES = 20
+        const started = performance.now()
         const tick = () => {
           samples.push(read())
-          frames++
-          if (frames < FRAMES && samples[samples.length - 1] !== finished) requestAnimationFrame(tick)
+          if (performance.now() - started < 2000 && samples[samples.length - 1] !== finished) setTimeout(tick, 5)
           else resolve(samples)
         }
-        requestAnimationFrame(tick)
+        tick()
       }),
     FINISHED
   )
@@ -2835,6 +2852,8 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+await pageOutputsGate({ browser, check, base })
+await scopedClocksGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
 await reviewGate({ browser, check })
 

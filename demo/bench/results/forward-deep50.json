@@ -1,0 +1,375 @@
+{
+  "meta": {
+    "date": "2026-09-10T20:15:03.761Z",
+    "chrome": "Chrome/152.0.7977.85",
+    "runs": 3,
+    "params": "s=30&p=5&deep=50",
+    "commit": "c6467b47b59fcdcfa29c4ba363d171bc4fb9b71c",
+    "dirty": true,
+    "note": "Diagnostic only. noinherit registers the per-element clocks with inherits:false; the writes are identical to base."
+  },
+  "order": [
+    [
+      "base",
+      "forward"
+    ],
+    [
+      "forward",
+      "base"
+    ],
+    [
+      "forward",
+      "base"
+    ]
+  ],
+  "variants": {
+    "base": {
+      "taskMs": 658,
+      "recalcMs": 270,
+      "scriptMs": 47,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 675,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 52,
+          "recalcMs": 287,
+          "layoutMs": 0,
+          "taskMs": 711,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 739,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        },
+        {
+          "scriptMs": 47,
+          "recalcMs": 266,
+          "layoutMs": 0,
+          "taskMs": 649,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 673,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        },
+        {
+          "scriptMs": 45,
+          "recalcMs": 270,
+          "layoutMs": 0,
+          "taskMs": 658,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 675,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        }
+      ]
+    },
+    "forward": {
+      "taskMs": 504,
+      "recalcMs": 120,
+      "scriptMs": 52,
+      "layoutMs": 0,
+      "recalcCount": 719,
+      "threadTimeMs": 523,
+      "fps": 60,
+      "framesOver25ms": 0,
+      "samples": [
+        {
+          "scriptMs": 57,
+          "recalcMs": 148,
+          "layoutMs": 0,
+          "taskMs": 656,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 680,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        },
+        {
+          "scriptMs": 48,
+          "recalcMs": 115,
+          "layoutMs": 0,
+          "taskMs": 487,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 506,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        },
+        {
+          "scriptMs": 52,
+          "recalcMs": 120,
+          "layoutMs": 0,
+          "taskMs": 504,
+          "recalcCount": 719,
+          "layoutCount": 0,
+          "threadTimeMs": 523,
+          "fps": 60,
+          "frames": 720,
+          "worstMs": 16.8,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8,
+          "wrote": {
+            "page": "",
+            "v": ""
+          },
+          "sample": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ],
+          "expected": [
+            {
+              "translate": "0px 66.4719px",
+              "opacity": "0.45911"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            },
+            {
+              "translate": "0px -44.3146px",
+              "opacity": "0.77726"
+            },
+            {
+              "translate": "0px 11.0908px",
+              "opacity": "0.61815"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

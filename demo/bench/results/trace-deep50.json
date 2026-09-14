@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:41:20.140Z",
+    "page": "/bench/scrollvars.html?s=30&p=5&deep=50",
+    "frames": 720,
+    "fps": 60,
+    "note": "self time per event name on CrRendererMain during one traced 12-second workload; tracing overhead included, proportions only"
+  },
+  "totalMs": 830,
+  "rows": [
+    {
+      "name": "UpdateLayoutTree",
+      "ms": 301,
+      "pct": 36.3
+    },
+    {
+      "name": "RunTask",
+      "ms": 127,
+      "pct": 15.3
+    },
+    {
+      "name": "Layerize",
+      "ms": 126,
+      "pct": 15.2
+    },
+    {
+      "name": "FunctionCall",
+      "ms": 67,
+      "pct": 8.1
+    },
+    {
+      "name": "Commit",
+      "ms": 56,
+      "pct": 6.8
+    },
+    {
+      "name": "PrePaint",
+      "ms": 40,
+      "pct": 4.8
+    },
+    {
+      "name": "Paint",
+      "ms": 38,
+      "pct": 4.6
+    },
+    {
+      "name": "EventDispatch",
+      "ms": 19,
+      "pct": 2.3
+    },
+    {
+      "name": "UpdateLayer",
+      "ms": 12,
+      "pct": 1.5
+    },
+    {
+      "name": "IntersectionObserverController::computeIntersections",
+      "ms": 10,
+      "pct": 1.2
+    },
+    {
+      "name": "FireAnimationFrame",
+      "ms": 9,
+      "pct": 1.1
+    },
+    {
+      "name": "ScrollLayer",
+      "ms": 8,
+      "pct": 1
+    },
+    {
+      "name": "V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING",
+      "ms": 7,
+      "pct": 0.9
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { chromium, firefox, webkit } from 'playwright'
+import { snapshotRender, compareRender, rendersMoved, describeMismatch } from './render-equivalence.mjs'
+const SCOPED_CSS = await readFile(fileURLToPath(new URL('../../../styles/scoped.css', import.meta.url)), 'utf8')
 
 const server = createServer(async (req, res) => {
   try {
@@ -32,6 +34,37 @@ try {
     if (selected && selected !== name) continue
     const browser = await engine.launch()
     try {
+      // styles/scoped.css in every engine: it must never change what a page
+      // renders, whether the engine registers the clocks (Chrome 85+, Safari
+      // 16.4+, Firefox 128+, all behind @supports selector(:has(a))) or
+      // ignores the sheet. The gate in e2e-invariants runs in Chrome only;
+      // this is the same comparison in the other two, and it reports whether
+      // the registration took, so the support matrix is measured, not read.
+      {
+        const shot = async css => {
+          const context = await browser.newContext()
+          const page = await context.newPage()
+          await page.setViewportSize({ width: 1400, height: 900 })
+          await page.goto(base + '../fx/sticky-steps.html')
+          await page.waitForFunction(() => document.documentElement.classList.contains('sv-on'))
+          let registered = null
+          if (css) registered = await page.evaluate(text => {
+            const style = document.createElement('style')
+            style.textContent = text
+            document.head.append(style)
+            return getComputedStyle(document.documentElement).getPropertyValue('--sv-t').trim() === '0'
+          }, css)
+          const result = await snapshotRender(page)
+          await context.close()
+          return { result, registered }
+        }
+        const plain = await shot()
+        assert(rendersMoved(plain.result), `${name} scoped.css: the page did not animate between scroll positions, the check proves nothing`)
+        const scoped = await shot(SCOPED_CSS)
+        const cmp = compareRender(plain.result, scoped.result)
+        assert(cmp.ok, `${name} scoped.css: ${describeMismatch('scoped.css', cmp)}`)
+        console.log(`${name} scoped.css: renders the same (${cmp.compared} settled elements compared), registration ${scoped.registered ? 'took' : 'ignored, the sheet is inert here'}`)
+      }
       const staticContext = await browser.newContext({ javaScriptEnabled: false })
       const staticPage = await staticContext.newPage()
       for (const width of [1400, 390]) {

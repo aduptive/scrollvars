@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "date": "2026-09-10T22:26:54.448Z",
+    "page": "/fx/timeline-scrub.html",
+    "variant": "forward",
+    "runs": 1,
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "gate": "rendered output compared against the baseline at four scroll positions before any timing was kept"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 470,
+      "recalcMs": 165,
+      "scriptMs": 67,
+      "fps": 60,
+      "runs": 1
+    },
+    "forward": {
+      "taskMs": 242,
+      "recalcMs": 77,
+      "scriptMs": 39,
+      "fps": 60,
+      "runs": 1
+    }
+  }
+}

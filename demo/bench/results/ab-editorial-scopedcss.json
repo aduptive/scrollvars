@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:30:24.729Z",
+    "page": "/fx/editorial-manifesto.html",
+    "variants": [
+      "scopedcss"
+    ],
+    "forward": ".sv :has(p), .manifesto-copy p",
+    "author": ".sv-manifesto { --sv-t: 1; }",
+    "runs": 6,
+    "order": [
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ]
+    ],
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "method": "gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 227,
+      "recalcMs": 66.5,
+      "scriptMs": 46,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 45,
+          "recalcMs": 67,
+          "layoutMs": 0,
+          "taskMs": 229,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 45,
+          "recalcMs": 66,
+          "layoutMs": 0,
+          "taskMs": 225,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 64,
+          "recalcMs": 89,
+          "layoutMs": 0,
+          "taskMs": 327,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 68,
+          "recalcMs": 120,
+          "layoutMs": 1,
+          "taskMs": 384,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 32,
+          "recalcMs": 48,
+          "layoutMs": 0,
+          "taskMs": 165,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 47,
+          "recalcMs": 62,
+          "layoutMs": 0,
+          "taskMs": 225,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    },
+    "scopedcss": {
+      "taskMs": 247.5,
+      "recalcMs": 112.5,
+      "scriptMs": 37.5,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 37,
+          "recalcMs": 113,
+          "layoutMs": 1,
+          "taskMs": 252,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 33,
+          "recalcMs": 100,
+          "layoutMs": 0,
+          "taskMs": 221,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 63,
+          "recalcMs": 178,
+          "layoutMs": 0,
+          "taskMs": 385,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 38,
+          "recalcMs": 108,
+          "layoutMs": 0,
+          "taskMs": 243,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 36,
+          "recalcMs": 112,
+          "layoutMs": 0,
+          "taskMs": 242,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 46,
+          "recalcMs": 139,
+          "layoutMs": 0,
+          "taskMs": 298,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    }
+  }
+}

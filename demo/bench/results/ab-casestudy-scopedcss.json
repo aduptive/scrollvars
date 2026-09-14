@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:25:15.253Z",
+    "page": "/fx/case-study-rail.html",
+    "variants": [
+      "scopedcss"
+    ],
+    "forward": "",
+    "runs": 6,
+    "order": [
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "base",
+        "scopedcss"
+      ],
+      [
+        "scopedcss",
+        "base"
+      ]
+    ],
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "method": "gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 282.5,
+      "recalcMs": 80.5,
+      "scriptMs": 60,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 66,
+          "recalcMs": 90,
+          "layoutMs": 0,
+          "taskMs": 316,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 59,
+          "recalcMs": 81,
+          "layoutMs": 0,
+          "taskMs": 282,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 64,
+          "recalcMs": 75,
+          "layoutMs": 0,
+          "taskMs": 289,
+          "fps": 60,
+          "frames": 722,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 48,
+          "recalcMs": 74,
+          "layoutMs": 0,
+          "taskMs": 247,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 59,
+          "recalcMs": 81,
+          "layoutMs": 0,
+          "taskMs": 281,
+          "fps": 59.7,
+          "frames": 716,
+          "framesOver25ms": 1,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 61,
+          "recalcMs": 80,
+          "layoutMs": 0,
+          "taskMs": 283,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    },
+    "scopedcss": {
+      "taskMs": 274.5,
+      "recalcMs": 79,
+      "scriptMs": 56.5,
+      "frames": 720,
+      "fps": 60,
+      "runs": 6,
+      "samples": [
+        {
+          "scriptMs": 59,
+          "recalcMs": 82,
+          "layoutMs": 0,
+          "taskMs": 296,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 59,
+          "recalcMs": 76,
+          "layoutMs": 0,
+          "taskMs": 280,
+          "fps": 60,
+          "frames": 721,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 64,
+          "recalcMs": 87,
+          "layoutMs": 0,
+          "taskMs": 304,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 52,
+          "recalcMs": 78,
+          "layoutMs": 0,
+          "taskMs": 259,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 51,
+          "recalcMs": 72,
+          "layoutMs": 0,
+          "taskMs": 248,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 54,
+          "recalcMs": 80,
+          "layoutMs": 0,
+          "taskMs": 269,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        }
+      ]
+    }
+  }
+}

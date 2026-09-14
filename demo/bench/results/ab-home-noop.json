@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "date": "2026-09-10T23:08:05.013Z",
+    "page": "/index.html",
+    "variants": [
+      "noop"
+    ],
+    "forward": "",
+    "runs": 4,
+    "order": [
+      [
+        "base",
+        "noop"
+      ],
+      [
+        "noop",
+        "base"
+      ],
+      [
+        "noop",
+        "base"
+      ],
+      [
+        "base",
+        "noop"
+      ]
+    ],
+    "commit": "ff23baca20ee62c50053c2ed3638390fd3718e94",
+    "dirty": true,
+    "method": "gate load then separate timed load per configuration per run; variant proved applied; frames within 2% of baseline; rotation reversed every round"
+  },
+  "variants": {
+    "base": {
+      "taskMs": 1692.5,
+      "recalcMs": 433.5,
+      "scriptMs": 202.5,
+      "frames": 720,
+      "fps": 60,
+      "runs": 4,
+      "samples": [
+        {
+          "scriptMs": 220,
+          "recalcMs": 421,
+          "layoutMs": 43,
+          "taskMs": 1689,
+          "fps": 59.8,
+          "frames": 718,
+          "framesOver25ms": 2,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 206,
+          "recalcMs": 451,
+          "layoutMs": 49,
+          "taskMs": 1761,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 198,
+          "recalcMs": 432,
+          "layoutMs": 47,
+          "taskMs": 1681,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        },
+        {
+          "scriptMs": 199,
+          "recalcMs": 435,
+          "layoutMs": 46,
+          "taskMs": 1696,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.7
+        }
+      ]
+    },
+    "noop": {
+      "taskMs": 1714,
+      "recalcMs": 441,
+      "scriptMs": 201,
+      "frames": 720,
+      "fps": 60,
+      "runs": 4,
+      "samples": [
+        {
+          "scriptMs": 196,
+          "recalcMs": 428,
+          "layoutMs": 43,
+          "taskMs": 1671,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 226,
+          "recalcMs": 465,
+          "layoutMs": 51,
+          "taskMs": 1822,
+          "fps": 59.3,
+          "frames": 712,
+          "framesOver25ms": 6,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 199,
+          "recalcMs": 438,
+          "layoutMs": 49,
+          "taskMs": 1702,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        },
+        {
+          "scriptMs": 203,
+          "recalcMs": 444,
+          "layoutMs": 49,
+          "taskMs": 1726,
+          "fps": 60,
+          "frames": 720,
+          "framesOver25ms": 0,
+          "p95Ms": 16.8
+        }
+      ]
+    }
+  }
+}
