@@ -89,10 +89,10 @@ export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
 
-  const resolve = (trigger: HTMLElement) => {
+  const resolve = (trigger: HTMLElement, root: Document | HTMLElement = scope) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
     const selector = trigger.getAttribute('data-sv-target')
-    const target = selector ? (scope.querySelector(selector) as HTMLElement | null) : trigger
+    const target = selector ? (root.querySelector(selector) as HTMLElement | null) : trigger
     return { className, selector, target }
   }
   // every trigger of the same state reflects it: on boot, and after any
@@ -112,14 +112,22 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // ARIA describes the TARGET's state, so every trigger of the pair in the
   // whole document reflects it, not only the ones this scope owns: a trigger
   // outside the owning scope kept the aria-expanded it was synced to at boot
-  // (round 10). The owner's document, or the scope itself when detached.
-  const everyTrigger = () => {
+  // (round 10). This scope's triggers resolve here; the document's others
+  // resolve against the document, as an unscoped instance would. ponytail:
+  // a non-unique class selector shared by sibling widgets can match across
+  // them; a registry of live scopes would resolve each in its owner.
+  const everyTrigger = (): Array<[HTMLElement, ReturnType<typeof resolve>]> => {
+    const own = triggers()
+    const pairs: Array<[HTMLElement, ReturnType<typeof resolve>]> = own.map((t) => [t, resolve(t)])
     const doc = (scope as HTMLElement).ownerDocument
-    return doc && doc !== scope ? Array.from(doc.querySelectorAll<HTMLElement>('[data-sv-toggle]')) : triggers()
+    if (doc && doc !== scope)
+      Array.from(doc.querySelectorAll<HTMLElement>('[data-sv-toggle]')).forEach((t) => {
+        if (!own.includes(t)) pairs.push([t, resolve(t, doc)])
+      })
+    return pairs
   }
   const sync = (target: HTMLElement, className: string, on: boolean) => {
-    everyTrigger().forEach((t) => {
-      const other = resolve(t)
+    everyTrigger().forEach(([t, other]) => {
       if (other.target === target && other.className === className)
         t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
     })

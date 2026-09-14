@@ -456,7 +456,14 @@ test('toggles: a trigger outside the owning scope still reflects the target\'s s
   const triggerOut = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const inner = makeRoot([menu, triggerIn])
   const outer = makeRoot([menu, triggerIn, triggerOut])
-  const doc = { querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [triggerIn, triggerOut] : []) }
+  // an unrelated widget elsewhere in the document, its own target under an
+  // id of its own: it must not take the clicked target's state
+  const other = makeElement({ id: 'other' })
+  const triggerOther = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#other' })
+  const doc = {
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [triggerIn, triggerOut, triggerOther] : []),
+    querySelector: (sel) => (sel === '#menu' ? menu : sel === '#other' ? other : null),
+  }
   inner.ownerDocument = doc
   outer.ownerDocument = doc
 
@@ -468,6 +475,7 @@ test('toggles: a trigger outside the owning scope still reflects the target\'s s
   assert.ok(menu.classes.has('open'))
   assert.equal(triggerIn.attrs['aria-expanded'], 'true')
   assert.equal(triggerOut.attrs['aria-expanded'], 'true', 'the trigger outside the owning scope follows the target')
+  assert.equal(triggerOther.attrs['aria-expanded'], undefined, 'a trigger of another target, resolved in the document, is left alone')
 })
 
 test('toggles: a trigger inside two nested scopes toggles exactly once per click (ADU-172)', async () => {

@@ -397,9 +397,10 @@ useEffect(() => {
       camera.updateProjectionMatrix()
     },
     frame(fx, dt) {
+      const p = fx.reducedMotion ? 1 : progress // reduced motion: the finished pose, no scrub
       mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15 // idle drift
-      mesh.rotation.x = progress * Math.PI
-      camera.position.z = 6 - progress * 2.2
+      mesh.rotation.x = p * Math.PI
+      camera.position.z = 6 - p * 2.2
       renderer.render(scene, camera)
     },
   })

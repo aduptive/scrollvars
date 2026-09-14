@@ -4152,10 +4152,10 @@ var SV = (() => {
       return () => {
       };
     const scope = root ?? document;
-    const resolve = (trigger) => {
+    const resolve = (trigger, root2 = scope) => {
       const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
       const selector = trigger.getAttribute("data-sv-target");
-      const target = selector ? scope.querySelector(selector) : trigger;
+      const target = selector ? root2.querySelector(selector) : trigger;
       return { className, selector, target };
     };
     const triggers = () => {
@@ -4165,12 +4165,18 @@ var SV = (() => {
       return list;
     };
     const everyTrigger = () => {
+      const own = triggers();
+      const pairs = own.map((t) => [t, resolve(t)]);
       const doc = scope.ownerDocument;
-      return doc && doc !== scope ? Array.from(doc.querySelectorAll("[data-sv-toggle]")) : triggers();
+      if (doc && doc !== scope)
+        Array.from(doc.querySelectorAll("[data-sv-toggle]")).forEach((t) => {
+          if (!own.includes(t))
+            pairs.push([t, resolve(t, doc)]);
+        });
+      return pairs;
     };
     const sync = (target, className, on) => {
-      everyTrigger().forEach((t) => {
-        const other = resolve(t);
+      everyTrigger().forEach(([t, other]) => {
         if (other.target === target && other.className === className)
           t.setAttribute(t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
       });
@@ -6648,10 +6654,10 @@ function toggles(root) {
     if (typeof window === 'undefined')
         return () => { };
     const scope = root ?? document;
-    const resolve = (trigger) => {
+    const resolve = (trigger, root = scope) => {
         const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
         const selector = trigger.getAttribute('data-sv-target');
-        const target = selector ? scope.querySelector(selector) : trigger;
+        const target = selector ? root.querySelector(selector) : trigger;
         return { className, selector, target };
     };
     // every trigger of the same state reflects it: on boot, and after any
@@ -6672,14 +6678,23 @@ function toggles(root) {
     // ARIA describes the TARGET's state, so every trigger of the pair in the
     // whole document reflects it, not only the ones this scope owns: a trigger
     // outside the owning scope kept the aria-expanded it was synced to at boot
-    // (round 10). The owner's document, or the scope itself when detached.
+    // (round 10). This scope's triggers resolve here; the document's others
+    // resolve against the document, as an unscoped instance would. ponytail:
+    // a non-unique class selector shared by sibling widgets can match across
+    // them; a registry of live scopes would resolve each in its owner.
     const everyTrigger = () => {
+        const own = triggers();
+        const pairs = own.map((t) => [t, resolve(t)]);
         const doc = scope.ownerDocument;
-        return doc && doc !== scope ? Array.from(doc.querySelectorAll('[data-sv-toggle]')) : triggers();
+        if (doc && doc !== scope)
+            Array.from(doc.querySelectorAll('[data-sv-toggle]')).forEach((t) => {
+                if (!own.includes(t))
+                    pairs.push([t, resolve(t, doc)]);
+            });
+        return pairs;
     };
     const sync = (target, className, on) => {
-        everyTrigger().forEach((t) => {
-            const other = resolve(t);
+        everyTrigger().forEach(([t, other]) => {
             if (other.target === target && other.className === className)
                 t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
         });
