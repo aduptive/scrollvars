@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.1 (2026-09-14)
 
 ### Fixed
 
