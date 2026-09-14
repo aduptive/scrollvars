@@ -87,16 +87,18 @@ async function audit(page) {
   // and nothing on the page is off screen for every one of them (the first
   // version audited every 1.2 viewports and left a gap between snapshots)
   const walked = []
-  let y = 0, sinceAudit = 0
+  let y = 0, steps = 0
   const height = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, v: innerHeight }))
-  const step = Math.max(40, Math.round(height.v * 0.4))
+  const step = Math.max(40, Math.floor(height.v * 0.4))
   while (y < height.h) {
     y += step
-    sinceAudit += step
+    steps++
     await page.evaluate((y) => scrollTo(0, y), y)
     await page.evaluate(() => new Promise((r) => setTimeout(r, 60)))
-    if (sinceAudit >= height.v * 0.8 || y >= height.h) {
-      sinceAudit = 0
+    // every second step, counted, never a rounded threshold: at 768px a
+    // rounded step of 307 twice fell 0.4px short of 0.8 viewport and the
+    // audit slipped to the third step, a 153px gap (review, fourth pass)
+    if (steps % 2 === 0 || y >= height.h) {
       await settle(page)
       walked.push(...await run(['color-contrast'], true))
     }
@@ -116,7 +118,7 @@ async function audit(page) {
     const bucket = seen.get(key)
     for (const n of v.nodes) if (!bucket.nodes.some((m) => m.target.join() === n.target.join())) bucket.nodes.push(n)
   }
-  return [...seen.values()]
+  return Object.assign([...seen.values()], { walked })
 }
 
 export async function axeGate({ browser, check, base, only }) {
@@ -148,10 +150,11 @@ export async function axeGate({ browser, check, base, only }) {
     const red = await audit(page)
     const ids = red.map((v) => v.id)
     check('axe gate: an image without alt and a button without a name are reported', ids.includes('image-alt') && ids.includes('button-name'), ids.join(', ') || 'no violation reported')
-    // the walk's own case: low-contrast text that is on screen only in the
-    // middle of the page, off screen at load, at the bottom and at the top
-    const contrast = red.find((v) => v.id === 'color-contrast')
-    check('axe gate: low-contrast text visible only mid-page is caught by the walk', !!contrast && contrast.nodes.some((n) => n.target.join(' ').includes('mid-page')), contrast ? contrast.nodes.map((n) => n.target.join(' ')).join(', ') : 'no contrast violation reported')
+    // the walk's own case: low-contrast text that is on screen only at a
+    // third of the page, off screen at load, at the bottom, at the middle
+    // and at the top, so only the walk's scoped audits can report it
+    const walkOnly = red.walked.filter((v) => v.id === 'color-contrast')
+    check('axe gate: low-contrast text visible only during the walk is caught by the walk itself', walkOnly.some((v) => v.nodes.some((n) => n.target.join(' ').includes('mid-page'))), walkOnly.length ? walkOnly.flatMap((v) => v.nodes.map((n) => n.target.join(' '))).join(', ') : 'the walk reported no contrast violation')
   } finally {
     await page.close()
   }
