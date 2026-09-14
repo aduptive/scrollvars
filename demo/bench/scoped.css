@@ -8,7 +8,7 @@
  * on the tracked element). The shipped presets are forwarded below; your own
  * reader needs one rule, its LAST compound inside :has():
  *
- *   .sv :has(.my-card), .my-card { --sv-t: inherit; }
+ *   .sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
  *
  * Measured behind a rendered-output gate: -63% style recalculation at 50
  * descendants per reader, +13% where every descendant is a reader, -23% on

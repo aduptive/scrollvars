@@ -2929,7 +2929,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.4 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.7 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>10.7 KB / 4.1 KB</b></td><td></td></tr>
       </tbody>
@@ -3083,7 +3083,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.6 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.17.2 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.17.2 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -4147,15 +4147,27 @@ var SV = (() => {
 
   // dist/core/toggles.js
   var claimed = /* @__PURE__ */ new WeakSet();
+  var live = /* @__PURE__ */ new Set();
+  var has = (scope, node) => typeof scope.contains === "function" ? scope.contains(node) : true;
+  function ownerOf(t) {
+    let best;
+    live.forEach((i) => {
+      if (!has(i.scope, t))
+        return;
+      if (!best || has(best.scope, i.scope))
+        best = i;
+    });
+    return best;
+  }
   function toggles(root) {
     if (typeof window === "undefined")
       return () => {
       };
     const scope = root ?? document;
-    const resolve = (trigger, root2 = scope) => {
+    const resolve = (trigger) => {
       const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
       const selector = trigger.getAttribute("data-sv-target");
-      const target = selector ? root2.querySelector(selector) : trigger;
+      const target = selector ? scope.querySelector(selector) : trigger;
       return { className, selector, target };
     };
     const triggers = () => {
@@ -4164,23 +4176,24 @@ var SV = (() => {
         list.unshift(scope);
       return list;
     };
-    const everyTrigger = () => {
-      const own = triggers();
-      const pairs = own.map((t) => [t, resolve(t)]);
-      const doc = scope.ownerDocument;
-      if (doc && doc !== scope)
-        Array.from(doc.querySelectorAll("[data-sv-toggle]")).forEach((t) => {
-          if (!own.includes(t))
-            pairs.push([t, resolve(t, doc)]);
-        });
-      return pairs;
-    };
     const sync = (target, className, on) => {
-      everyTrigger().forEach(([t, other]) => {
+      const seen = /* @__PURE__ */ new Set();
+      live.forEach((instance2) => instance2.triggers().forEach((t) => {
+        if (seen.has(t))
+          return;
+        seen.add(t);
+        let other;
+        try {
+          other = (ownerOf(t) ?? instance2).resolve(t);
+        } catch {
+          return;
+        }
         if (other.target === target && other.className === className)
           t.setAttribute(t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
-      });
+      }));
     };
+    const instance = { scope, triggers, resolve };
+    live.add(instance);
     const write = (target, className, on) => {
       target.style.setProperty("--sv-state", on ? "1" : "0");
       sync(target, className, on);
@@ -4203,7 +4216,13 @@ var SV = (() => {
       target.style.setProperty("transition-duration", saved.value, saved.priority);
     };
     triggers().forEach((trigger) => {
-      const { className, target } = resolve(trigger);
+      let resolved;
+      try {
+        resolved = resolve(trigger);
+      } catch {
+        return;
+      }
+      const { className, target } = resolved;
       if (!target)
         return;
       if (!target.classList.contains("sv-ui")) {
@@ -4244,7 +4263,10 @@ var SV = (() => {
       write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener("click", onClick);
-    return () => scope.removeEventListener("click", onClick);
+    return () => {
+      live.delete(instance);
+      scope.removeEventListener("click", onClick);
+    };
   }
 
   // dist/core/slider.js
@@ -6650,14 +6672,26 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 // destruction leaves a stale entry that silently disowns a trigger, and
 // nothing to leak.
 const claimed = new WeakSet();
+const live = new Set();
+const has = (scope, node) => typeof scope.contains === 'function' ? scope.contains(node) : true;
+function ownerOf(t) {
+    let best;
+    live.forEach((i) => {
+        if (!has(i.scope, t))
+            return;
+        if (!best || has(best.scope, i.scope))
+            best = i;
+    });
+    return best;
+}
 function toggles(root) {
     if (typeof window === 'undefined')
         return () => { };
     const scope = root ?? document;
-    const resolve = (trigger, root = scope) => {
+    const resolve = (trigger) => {
         const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
         const selector = trigger.getAttribute('data-sv-target');
-        const target = selector ? root.querySelector(selector) : trigger;
+        const target = selector ? scope.querySelector(selector) : trigger;
         return { className, selector, target };
     };
     // every trigger of the same state reflects it: on boot, and after any
@@ -6675,30 +6709,30 @@ function toggles(root) {
             list.unshift(scope);
         return list;
     };
-    // ARIA describes the TARGET's state, so every trigger of the pair in the
-    // whole document reflects it, not only the ones this scope owns: a trigger
+    // ARIA describes the TARGET's state, so every trigger of the pair in every
+    // live instance reflects it, not only the ones this scope owns: a trigger
     // outside the owning scope kept the aria-expanded it was synced to at boot
-    // (round 10). This scope's triggers resolve here; the document's others
-    // resolve against the document, as an unscoped instance would. ponytail:
-    // a non-unique class selector shared by sibling widgets can match across
-    // them; a registry of live scopes would resolve each in its owner.
-    const everyTrigger = () => {
-        const own = triggers();
-        const pairs = own.map((t) => [t, resolve(t)]);
-        const doc = scope.ownerDocument;
-        if (doc && doc !== scope)
-            Array.from(doc.querySelectorAll('[data-sv-toggle]')).forEach((t) => {
-                if (!own.includes(t))
-                    pairs.push([t, resolve(t, doc)]);
-            });
-        return pairs;
-    };
+    // (round 10). Each trigger resolves in its nearest live scope, and a
+    // trigger whose selector does not parse is skipped, not thrown on.
     const sync = (target, className, on) => {
-        everyTrigger().forEach(([t, other]) => {
+        const seen = new Set();
+        live.forEach((instance) => instance.triggers().forEach((t) => {
+            if (seen.has(t))
+                return;
+            seen.add(t);
+            let other;
+            try {
+                other = (ownerOf(t) ?? instance).resolve(t);
+            }
+            catch {
+                return;
+            }
             if (other.target === target && other.className === className)
                 t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
-        });
+        }));
     };
+    const instance = { scope, triggers, resolve };
+    live.add(instance);
     // the target's own state, written wherever the class flips
     const write = (target, className, on) => {
         target.style.setProperty('--sv-state', on ? '1' : '0');
@@ -6728,7 +6762,14 @@ function toggles(root) {
         target.style.setProperty('transition-duration', saved.value, saved.priority);
     };
     triggers().forEach((trigger) => {
-        const { className, target } = resolve(trigger);
+        let resolved;
+        try {
+            resolved = resolve(trigger);
+        }
+        catch {
+            return; // a selector that does not parse skips its trigger, not the whole boot (round 10)
+        }
+        const { className, target } = resolved;
         if (!target)
             return;
         if (!target.classList.contains('sv-ui')) {
@@ -6810,7 +6851,10 @@ function toggles(root) {
         write(target, className, target.classList.toggle(className));
     };
     scope.addEventListener('click', onClick);
-    return () => scope.removeEventListener('click', onClick);
+    return () => {
+        live.delete(instance);
+        scope.removeEventListener('click', onClick);
+    };
 }
 
   return toggles;

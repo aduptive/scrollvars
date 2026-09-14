@@ -85,14 +85,35 @@
 // nothing to leak.
 const claimed = new WeakSet<Event>()
 
+// Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
+// is resolved by its NEAREST live scope, the one that would claim its click,
+// so a Marquee's `.sv-marquee-track` never resolves against another
+// Marquee's. stop() removes the entry; the set is otherwise never read.
+type Instance = {
+  scope: Document | HTMLElement
+  triggers: () => HTMLElement[]
+  resolve: (t: HTMLElement) => { className: string; target: HTMLElement | null }
+}
+const live = new Set<Instance>()
+const has = (scope: Document | HTMLElement, node: Node) =>
+  typeof scope.contains === 'function' ? scope.contains(node) : true
+function ownerOf(t: HTMLElement): Instance | undefined {
+  let best: Instance | undefined
+  live.forEach((i) => {
+    if (!has(i.scope, t)) return
+    if (!best || has(best.scope, i.scope as Node)) best = i
+  })
+  return best
+}
+
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
 
-  const resolve = (trigger: HTMLElement, root: Document | HTMLElement = scope) => {
+  const resolve = (trigger: HTMLElement) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
     const selector = trigger.getAttribute('data-sv-target')
-    const target = selector ? (root.querySelector(selector) as HTMLElement | null) : trigger
+    const target = selector ? (scope.querySelector(selector) as HTMLElement | null) : trigger
     return { className, selector, target }
   }
   // every trigger of the same state reflects it: on boot, and after any
@@ -109,29 +130,30 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if ((scope as HTMLElement).matches?.('[data-sv-toggle]')) list.unshift(scope as HTMLElement)
     return list
   }
-  // ARIA describes the TARGET's state, so every trigger of the pair in the
-  // whole document reflects it, not only the ones this scope owns: a trigger
+  // ARIA describes the TARGET's state, so every trigger of the pair in every
+  // live instance reflects it, not only the ones this scope owns: a trigger
   // outside the owning scope kept the aria-expanded it was synced to at boot
-  // (round 10). This scope's triggers resolve here; the document's others
-  // resolve against the document, as an unscoped instance would. ponytail:
-  // a non-unique class selector shared by sibling widgets can match across
-  // them; a registry of live scopes would resolve each in its owner.
-  const everyTrigger = (): Array<[HTMLElement, ReturnType<typeof resolve>]> => {
-    const own = triggers()
-    const pairs: Array<[HTMLElement, ReturnType<typeof resolve>]> = own.map((t) => [t, resolve(t)])
-    const doc = (scope as HTMLElement).ownerDocument
-    if (doc && doc !== scope)
-      Array.from(doc.querySelectorAll<HTMLElement>('[data-sv-toggle]')).forEach((t) => {
-        if (!own.includes(t)) pairs.push([t, resolve(t, doc)])
-      })
-    return pairs
-  }
+  // (round 10). Each trigger resolves in its nearest live scope, and a
+  // trigger whose selector does not parse is skipped, not thrown on.
   const sync = (target: HTMLElement, className: string, on: boolean) => {
-    everyTrigger().forEach(([t, other]) => {
-      if (other.target === target && other.className === className)
-        t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
-    })
+    const seen = new Set<HTMLElement>()
+    live.forEach((instance) =>
+      instance.triggers().forEach((t) => {
+        if (seen.has(t)) return
+        seen.add(t)
+        let other: { className: string; target: HTMLElement | null }
+        try {
+          other = (ownerOf(t) ?? instance).resolve(t)
+        } catch {
+          return
+        }
+        if (other.target === target && other.className === className)
+          t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
+      })
+    )
   }
+  const instance: Instance = { scope, triggers, resolve }
+  live.add(instance)
   // the target's own state, written wherever the class flips
   const write = (target: HTMLElement, className: string, on: boolean) => {
     target.style.setProperty('--sv-state', on ? '1' : '0')
@@ -160,7 +182,13 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   triggers().forEach((trigger) => {
-    const { className, target } = resolve(trigger)
+    let resolved: ReturnType<typeof resolve>
+    try {
+      resolved = resolve(trigger)
+    } catch {
+      return // a selector that does not parse skips its trigger, not the whole boot (round 10)
+    }
+    const { className, target } = resolved
     if (!target) return
     if (!target.classList.contains('sv-ui')) {
       target.classList.add('sv-ui')
@@ -242,5 +270,8 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   scope.addEventListener('click', onClick)
-  return () => scope.removeEventListener('click', onClick)
+  return () => {
+    live.delete(instance)
+    scope.removeEventListener('click', onClick)
+  }
 }

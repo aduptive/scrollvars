@@ -482,7 +482,7 @@ Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
 `:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
 the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
-`.copy p`, the path rule is `.sv :has(p)`, because `:has(.copy p)` is
+`.copy p`, the path rule is `.sv :has(p):not(.sv, [data-sv])`, because `:has(.copy p)` is
 evaluated from each candidate and `.copy` itself has no `.copy` inside it,
 so it would be skipped and read the initial value. The sheet
 registers nothing where `:has()` is unsupported, so a browser that could

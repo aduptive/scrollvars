@@ -520,7 +520,7 @@ const canvasRef = useCanvasEffect({
     preview: `<section data-sv class="fxstage">
   <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords" aria-hidden="true"><span>brands</span><span>websites</span><span>products</span></b><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span></h3>
 </section>
-<script>let fxi=0;setInterval(()=>{if(window.SV&&SV.prefersReducedMotion())return;document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>`,
+<script>let fxi=0;setInterval(()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.getAttribute('data-sv-motion')==='reduce')return;document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>`,
     css: `<h1>we build
   <span class="sv-words" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>

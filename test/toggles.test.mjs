@@ -456,26 +456,61 @@ test('toggles: a trigger outside the owning scope still reflects the target\'s s
   const triggerOut = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
   const inner = makeRoot([menu, triggerIn])
   const outer = makeRoot([menu, triggerIn, triggerOut])
-  // an unrelated widget elsewhere in the document, its own target under an
-  // id of its own: it must not take the clicked target's state
-  const other = makeElement({ id: 'other' })
-  const triggerOther = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#other' })
-  const doc = {
-    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [triggerIn, triggerOut, triggerOther] : []),
-    querySelector: (sel) => (sel === '#menu' ? menu : sel === '#other' ? other : null),
-  }
-  inner.ownerDocument = doc
-  outer.ownerDocument = doc
-
-  toggles(outer)
-  toggles(inner)
+  const stopOuter = toggles(outer)
+  const stopInner = toggles(inner)
   assert.equal(triggerOut.attrs['aria-expanded'], 'false', 'boot')
 
   bubble(triggerIn, [inner, outer])
   assert.ok(menu.classes.has('open'))
   assert.equal(triggerIn.attrs['aria-expanded'], 'true')
   assert.equal(triggerOut.attrs['aria-expanded'], 'true', 'the trigger outside the owning scope follows the target')
-  assert.equal(triggerOther.attrs['aria-expanded'], undefined, 'a trigger of another target, resolved in the document, is left alone')
+  stopOuter()
+  stopInner()
+})
+
+test('toggles: two Marquee-shaped scopes with the same local selector keep their own aria-pressed (round 10 verify 2)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?sibling-scopes')
+
+  // two <Marquee>s: each a scoped instance, each button targets `.track`
+  // inside ITS OWN root. A document-wide resolution matched the first track
+  // for both and pressed both buttons on one click.
+  const marquee = () => {
+    const track = makeElement({ class: 'track' })
+    const button = makeElement({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': '.track' })
+    button.attrs['aria-pressed'] = 'false'
+    const listeners = {}
+    const root = {
+      listeners,
+      contains: (el) => el === track || el === button || el === root,
+      addEventListener: (t, fn) => (listeners[t] = fn),
+      removeEventListener: (t) => delete listeners[t],
+      querySelector: (sel) => (sel === '.track' ? track : null),
+      querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [button] : []),
+    }
+    return { root, track, button }
+  }
+  const a = marquee()
+  const b = marquee()
+  // a stray trigger with a selector that does not parse must not break sync
+  const broken = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '[' })
+  const strayRoot = {
+    listeners: {},
+    contains: (el) => el === broken,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    querySelector: () => { throw new SyntaxError('invalid selector') },
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [broken] : []),
+  }
+  const stops = [toggles(a.root), toggles(b.root), toggles(strayRoot)]
+
+  bubble(a.button, [a.root])
+  assert.ok(a.track.classes.has('sv-paused'))
+  assert.equal(a.button.attrs['aria-pressed'], 'true')
+  assert.equal(b.button.attrs['aria-pressed'], 'false', 'the sibling widget keeps its own state')
+  assert.ok(!b.track.classes.has('sv-paused'))
+  stops.forEach((stop) => stop())
 })
 
 test('toggles: a trigger inside two nested scopes toggles exactly once per click (ADU-172)', async () => {

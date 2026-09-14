@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.6 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.7 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.7 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.7 KB on the wire.
 
 ## Why
 
@@ -149,7 +149,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 2.7 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 8.6 KB |
+| everything in `scrollvars` (the core entry) | 8.7 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 14.4 KB |
 <!-- sizes:end -->
 
@@ -687,7 +687,7 @@ Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
 `:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
 the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
-`.copy p`, the path rule is `.sv :has(p)`, because `:has(.copy p)` is
+`.copy p`, the path rule is `.sv :has(p):not(.sv, [data-sv])`, because `:has(.copy p)` is
 evaluated from each candidate and `.copy` itself has no `.copy` inside it,
 so it would be skipped and read the initial value. The sheet
 registers nothing where `:has()` is unsupported, so a browser that could
