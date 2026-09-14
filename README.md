@@ -15,7 +15,15 @@ ScrollVars keeps continuous scroll values outside React and exposes them directl
   during scroll (`useScenes`/`useSlider` re-render only on a discrete index
   change).
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
-- **`prefers-reduced-motion`** respected by driver and presets, and the page's own switch (`data-sv-motion="reduce"`, `setMotion()`) with it. See Accessibility below.
+- **Reduced motion built into every preset. Accessibility checked every
+  commit.** Every preset honors `prefers-reduced-motion` with no code of
+  yours, the page gets its own switch (`data-sv-motion="reduce"`,
+  `setMotion()`), the kit's carousel follows the APG pattern with a visible
+  pause control, and keyboard, axe, reflow and motion gates run against
+  this site on every commit. Each guarantee names the WCAG criterion it
+  serves; see Accessibility below. GSAP and Framer Motion are stronger for
+  heavy, time-based choreography and leave reduced motion to the author;
+  here it is the default.
 
 ## The receipts (measured: why the design holds up)
 
