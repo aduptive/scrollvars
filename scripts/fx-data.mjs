@@ -519,7 +519,7 @@ const canvasRef = useCanvasEffect({
     preview: `<section data-sv class="fxstage">
   <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords" aria-hidden="true"><span>brands</span><span>websites</span><span>products</span></b><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span></h3>
 </section>
-<script>let fxi=0;setInterval(()=>{document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>`,
+<script>let fxi=0;setInterval(()=>{if(window.SV&&SV.prefersReducedMotion())return;document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>`,
     css: `<h1>we build
   <span class="sv-words" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
@@ -825,7 +825,11 @@ function Hero() {
 /* each milestone rises over its own slice (sv-range-rise) and its dot lights with --sv-r */
 .tl-items > li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; position: absolute; left: -32px;
   background: color-mix(in oklab, var(--accent) calc(var(--sv-r, 1) * 100%), var(--line)); }
-/* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */`,
+/* no JS / old engines: --sv-pin and --sv-r fall back to 1 → the finished timeline renders. */
+/* reduced motion: the stage is in flow and the driver keeps writing --sv-pin, so settle the year and the line */
+@media (prefers-reduced-motion: reduce) { .tl-sticky { --sv-pin: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .tl-sticky { --sv-pin: 1; }`,
     tailwind: `<div data-sv data-sv-pin="320vh" class="[--tl-from:2019] [--tl-span:7]">
   <div class="sv-stage grid grid-cols-[1fr_1.2fr] items-center gap-10 px-12">
     <span class="tl-year font-mono text-[9rem] font-bold tabular-nums text-violet-400
@@ -1223,6 +1227,11 @@ const css = \`
 .sv-timeline .tl-items b { display: block; font-size: 12px; letter-spacing: .12em; margin-bottom: 4px; }
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
 [data-sv-flow].sv-timeline .tl-sticky { min-height: 0; --sv-pin: 1; }
+/* under reduced motion the stage is in flow and the driver keeps writing --sv-pin:
+   settle the year and the line at their finished value, like the shipped presets */
+@media (prefers-reduced-motion: reduce) { .sv-timeline .tl-sticky { --sv-pin: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-timeline .tl-sticky { --sv-pin: 1; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 \`
 
@@ -1641,9 +1650,12 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
     frame(fx, dt) {
       const t = three.current
       if (!t) return
+      // reduced motion: no idle spin, and the scroll-driven camera and tilt hold
+      // their finished pose instead of following the pin (round 10)
+      const p = fx.reducedMotion ? 1 : progress.current
       t.mesh.rotation.y += fx.reducedMotion ? 0 : dt * 0.15
-      t.mesh.rotation.x = progress.current * Math.PI
-      t.camera.position.z = 6 - progress.current * 2.2
+      t.mesh.rotation.x = p * Math.PI
+      t.camera.position.z = 6 - p * 2.2
       t.renderer.render(t.scene, t.camera)
     },
   })

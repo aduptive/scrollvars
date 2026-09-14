@@ -204,6 +204,24 @@ test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last 
   assert.equal(card.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave')
 })
 
+test('trackPointer teardown clears an element that only ever got a pointerout (round 10)', async () => {
+  stubFrame()
+  const container = makeContainer()
+  const card = makeEl({ isTilt: true, parent: container })
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const stop = trackPointer(container)
+
+  // a pointer that enters and leaves between two frames: no move was
+  // flushed, but the out path already wrote the zeros and the leave class
+  container.fire('pointerout', { target: card, relatedTarget: null })
+  assert.equal(card.vars['--mx'], '0')
+  assert.ok(card.classes.has('sv-pointer-leave'))
+
+  stop()
+  assert.equal(card.vars['--mx'], undefined, 'teardown clears the out-only element')
+  assert.ok(!card.classes.has('sv-pointer-leave'))
+})
+
 test('trackPointer teardown clears --mx/--my when the last hovered element IS the container (self-match, ADU-152)', async () => {
   const rafCb = stubFrame()
 

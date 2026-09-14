@@ -109,8 +109,16 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if ((scope as HTMLElement).matches?.('[data-sv-toggle]')) list.unshift(scope as HTMLElement)
     return list
   }
+  // ARIA describes the TARGET's state, so every trigger of the pair in the
+  // whole document reflects it, not only the ones this scope owns: a trigger
+  // outside the owning scope kept the aria-expanded it was synced to at boot
+  // (round 10). The owner's document, or the scope itself when detached.
+  const everyTrigger = () => {
+    const doc = (scope as HTMLElement).ownerDocument
+    return doc && doc !== scope ? Array.from(doc.querySelectorAll<HTMLElement>('[data-sv-toggle]')) : triggers()
+  }
   const sync = (target: HTMLElement, className: string, on: boolean) => {
-    triggers().forEach((t) => {
+    everyTrigger().forEach((t) => {
       const other = resolve(t)
       if (other.target === target && other.className === className)
         t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))

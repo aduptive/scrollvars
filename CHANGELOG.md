@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.17.2 (2026-09-14)
+
+### Fixed
+
+- Pin progress with a measured `.sv-stage` under a sticky header (`--sv-pin-offset`)
+  counted the offset twice (1.17.1 regression): the stage's height already
+  sits below the header, so the pin reached 1 one offset after the stretch
+  ended. `scrollToScene()` used the same span. The span is the wrapper's
+  height minus the stage's border box now; without a stage it is the
+  viewport minus the offset, as before.
+- The stage's height was read inside the driver's write phase; it is part
+  of the read-phase snapshot now, next to its width.
+- Page-output detection skipped `<html>` entirely (to ignore its own inline
+  writes), so an inline `var(--sv-page)` reader on the root never turned
+  publishing on. The root's style attribute is checked for readers now.
+- `toggles()` synced `aria-expanded`/`aria-pressed` only on the triggers
+  inside the scope that handled the click; a trigger of the same target
+  outside that scope kept its boot value. Every trigger in the document
+  reflects the target now.
+- `trackPointer()` cleanup missed an element that only ever received a
+  `pointerout` (zeroed coordinates and the leave class with no move first).
+- Gallery under reduced motion: TimelineScrub's year and line settle at
+  their finished value, ThreeScene holds its scrolled pose and stops
+  following the pin, the rotating-words preview stops cycling.
+- Docs: the scoped-clock forwarding recipe keeps a nested tracker on its own
+  clock (`:not(.sv, [data-sv])`); the no-JS Lighthouse claim is scoped to
+  the no-JS path; AGENTS says Sections ship as complete React source.
+
 ## 1.17.1 (2026-09-14)
 
 ### Fixed

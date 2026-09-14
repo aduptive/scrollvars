@@ -85,7 +85,8 @@ import 'scrollvars/styles/core.css'               // entrances, stagger, drift, 
 ## The fx gallery (prefer for common patterns)
 
 https://scrollvars.dev/fx/ hosts ready-made effects (Tailwind + CSS +
-React) with a machine-readable index at fx/llms.txt. Ingest it before
+React; Sections ship as complete React source instead) with a
+machine-readable index at fx/llms.txt. Ingest it before
 hand-building a common pattern. Install directly:
 `npx scrollvars add <slug> [--dir components/fx]` (registry is remote; new
 effects appear without package updates).
@@ -412,7 +413,7 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so on the no-JS path the page is a complete static page: SSR,
-  SEO and the Lighthouse load profile stay untouched (a JS-enabled
+  SEO and a no-JS Lighthouse load profile stay untouched (a JS-enabled
   Lighthouse run sees the pre-paint script hide entrances before paint
   and the pin helper write heights on attach), with three exceptions by
   design: class-toggled panels (menus, modals) stay closed with no click
@@ -474,10 +475,12 @@ them. Your own reader needs one rule, covering the reader and every element
 between it and the tracked ancestor:
 
 ```css
-.sv :has(.my-card), .my-card { --sv-t: inherit; }
+.sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
 ```
 
-Just `.my-card { --sv-t: inherit; }` when it is a direct child. Put the
+Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
+`:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
+the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
 `.copy p`, the path rule is `.sv :has(p)`, because `:has(.copy p)` is
 evaluated from each candidate and `.copy` itself has no `.copy` inside it,

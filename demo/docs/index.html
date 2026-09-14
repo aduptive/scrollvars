@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.17.1</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.17.2</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -298,6 +298,20 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.17.2 (2026-09-14)</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Pin progress with a measured <code>.sv-stage</code> under a sticky header (<code>--sv-pin-offset</code>) counted the offset twice (1.17.1 regression): the stage's height already sits below the header, so the pin reached 1 one offset after the stretch ended. <code>scrollToScene()</code> used the same span. The span is the wrapper's height minus the stage's border box now; without a stage it is the viewport minus the offset, as before.</li>
+<li>The stage's height was read inside the driver's write phase; it is part of the read-phase snapshot now, next to its width.</li>
+<li>Page-output detection skipped <code>&lt;html></code> entirely (to ignore its own inline writes), so an inline <code>var(--sv-page)</code> reader on the root never turned publishing on. The root's style attribute is checked for readers now.</li>
+<li><code>toggles()</code> synced <code>aria-expanded</code>/<code>aria-pressed</code> only on the triggers inside the scope that handled the click; a trigger of the same target outside that scope kept its boot value. Every trigger in the document reflects the target now.</li>
+<li><code>trackPointer()</code> cleanup missed an element that only ever received a <code>pointerout</code> (zeroed coordinates and the leave class with no move first).</li>
+<li>Gallery under reduced motion: TimelineScrub's year and line settle at their finished value, ThreeScene holds its scrolled pose and stops following the pin, the rotating-words preview stops cycling.</li>
+<li>Docs: the scoped-clock forwarding recipe keeps a nested tracker on its own clock (<code>:not(.sv, [data-sv])</code>); the no-JS Lighthouse claim is scoped to the no-JS path; AGENTS says Sections ship as complete React source.</li>
+</ul>
 
 <h3>1.17.1 (2026-09-14)</h3>
 

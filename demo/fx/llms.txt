@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 8.5 KB gzip as ESM; the fx/sv.js IIFE on these pages is 8.7 KB). Each effect below includes when to
+> (npm i scrollvars, 8.6 KB gzip as ESM; the fx/sv.js IIFE on these pages is 8.8 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -831,6 +831,11 @@ const css = `
 .sv-timeline .tl-items b { display: block; font-size: 12px; letter-spacing: .12em; margin-bottom: 4px; }
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
 [data-sv-flow].sv-timeline .tl-sticky { min-height: 0; --sv-pin: 1; }
+/* under reduced motion the stage is in flow and the driver keeps writing --sv-pin:
+   settle the year and the line at their finished value, like the shipped presets */
+@media (prefers-reduced-motion: reduce) { .sv-timeline .tl-sticky { --sv-pin: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-timeline .tl-sticky { --sv-pin: 1; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 `
 

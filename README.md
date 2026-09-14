@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.5 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.6 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.7 KB on the wire.
 
 ## Why
 
@@ -93,7 +93,7 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   index change), so the per-frame framework bill is never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so on the no-JS path the page is a complete static page: SSR,
-  SEO and the Lighthouse load profile stay untouched (a JS-enabled
+  SEO and a no-JS Lighthouse load profile stay untouched (a JS-enabled
   Lighthouse run sees the pre-paint script hide entrances before paint
   and the pin helper write heights on attach), with three exceptions by
   design: class-toggled panels (menus, modals) stay closed with no click
@@ -145,16 +145,16 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | you import | JS on the wire |
 | --- | --- |
 | `track` (the driver) | 4.1 KB |
-| `track` + `scan` (zero-wrapper mode) | 5.4 KB |
+| `track` + `scan` (zero-wrapper mode) | 5.5 KB |
 | `slider` | 2.7 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 8.5 KB |
+| everything in `scrollvars` (the core entry) | 8.6 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 14.3 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~6.6 KB gzipped, total.**
+**~6.7 KB gzipped, total.**
 
 ## Mental model
 
@@ -680,10 +680,12 @@ them. Your own reader needs one rule, covering the reader and every element
 between it and the tracked ancestor:
 
 ```css
-.sv :has(.my-card), .my-card { --sv-t: inherit; }
+.sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
 ```
 
-Just `.my-card { --sv-t: inherit; }` when it is a direct child. Put the
+Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
+`:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
+the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
 `.copy p`, the path rule is `.sv :has(p)`, because `:has(.copy p)` is
 evaluated from each candidate and `.copy` itself has no `.copy` inside it,

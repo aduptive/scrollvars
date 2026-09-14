@@ -443,6 +443,33 @@ const bubble = (target, roots) => {
   roots.forEach((root) => root.listeners.click?.(event))
 }
 
+test('toggles: a trigger outside the owning scope still reflects the target\'s state (round 10)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?cross-scope-sync')
+
+  // the inner instance owns the click; the outer trigger of the same
+  // (target, class) pair lives outside it and used to keep the
+  // aria-expanded it was synced to at boot
+  const menu = makeElement({ id: 'menu' })
+  const triggerIn = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const triggerOut = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const inner = makeRoot([menu, triggerIn])
+  const outer = makeRoot([menu, triggerIn, triggerOut])
+  const doc = { querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [triggerIn, triggerOut] : []) }
+  inner.ownerDocument = doc
+  outer.ownerDocument = doc
+
+  toggles(outer)
+  toggles(inner)
+  assert.equal(triggerOut.attrs['aria-expanded'], 'false', 'boot')
+
+  bubble(triggerIn, [inner, outer])
+  assert.ok(menu.classes.has('open'))
+  assert.equal(triggerIn.attrs['aria-expanded'], 'true')
+  assert.equal(triggerOut.attrs['aria-expanded'], 'true', 'the trigger outside the owning scope follows the target')
+})
+
 test('toggles: a trigger inside two nested scopes toggles exactly once per click (ADU-172)', async () => {
   global.window = {}
   global.requestAnimationFrame = () => 1
