@@ -513,6 +513,28 @@ test('toggles: two Marquee-shaped scopes with the same local selector keep their
   stops.forEach((stop) => stop())
 })
 
+test('toggles: a click the outer scope handles syncs the inner trigger too (round 10 verify 3)', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?outer-handled')
+
+  // the trigger sits inside a scoped instance, its #menu target outside it:
+  // the inner scope cannot resolve the target and passes the click on, the
+  // document-level instance toggles the menu, and the trigger's aria must
+  // follow through THAT scope, not the nearest one that finds nothing
+  const menu = makeElement({ id: 'menu' })
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const inner = makeRoot([trigger])
+  const doc = makeRoot([menu, trigger])
+  const stops = [toggles(doc), toggles(inner)]
+  assert.equal(trigger.attrs['aria-expanded'], 'false', 'boot, through the document scope')
+
+  bubble(trigger, [inner, doc])
+  assert.ok(menu.classes.has('open'), 'the document scope handled the click')
+  assert.equal(trigger.attrs['aria-expanded'], 'true', 'and synced the trigger the inner scope could not resolve')
+  stops.forEach((stop) => stop())
+})
+
 test('toggles: a trigger inside two nested scopes toggles exactly once per click (ADU-172)', async () => {
   global.window = {}
   global.requestAnimationFrame = () => 1

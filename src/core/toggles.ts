@@ -97,13 +97,28 @@ type Instance = {
 const live = new Set<Instance>()
 const has = (scope: Document | HTMLElement, node: Node) =>
   typeof scope.contains === 'function' ? scope.contains(node) : true
-function ownerOf(t: HTMLElement): Instance | undefined {
+// The nearest containing scope that RESOLVES the trigger's target: a click
+// handled by an outer scope, because the inner one could not find the
+// target, is synced by that outer scope too (round 10, verify 3). A
+// selector that does not parse is skipped, not thrown on.
+function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | null } | undefined {
   let best: Instance | undefined
+  let resolved: { className: string; target: HTMLElement | null } | undefined
   live.forEach((i) => {
     if (!has(i.scope, t)) return
-    if (!best || has(best.scope, i.scope as Node)) best = i
+    let r: { className: string; target: HTMLElement | null }
+    try {
+      r = i.resolve(t)
+    } catch {
+      return
+    }
+    if (!r.target) return
+    if (!best || has(best.scope, i.scope as Node)) {
+      best = i
+      resolved = r
+    }
   })
-  return best
+  return resolved
 }
 
 export function toggles(root?: Document | HTMLElement): () => void {
@@ -141,13 +156,8 @@ export function toggles(root?: Document | HTMLElement): () => void {
       instance.triggers().forEach((t) => {
         if (seen.has(t)) return
         seen.add(t)
-        let other: { className: string; target: HTMLElement | null }
-        try {
-          other = (ownerOf(t) ?? instance).resolve(t)
-        } catch {
-          return
-        }
-        if (other.target === target && other.className === className)
+        const other = ownerOf(t)
+        if (other && other.target === target && other.className === className)
           t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
       })
     )

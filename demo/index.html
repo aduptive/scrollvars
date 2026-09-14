@@ -4151,13 +4151,24 @@ var SV = (() => {
   var has = (scope, node) => typeof scope.contains === "function" ? scope.contains(node) : true;
   function ownerOf(t) {
     let best;
+    let resolved;
     live.forEach((i) => {
       if (!has(i.scope, t))
         return;
-      if (!best || has(best.scope, i.scope))
+      let r;
+      try {
+        r = i.resolve(t);
+      } catch {
+        return;
+      }
+      if (!r.target)
+        return;
+      if (!best || has(best.scope, i.scope)) {
         best = i;
+        resolved = r;
+      }
     });
-    return best;
+    return resolved;
   }
   function toggles(root) {
     if (typeof window === "undefined")
@@ -4182,13 +4193,8 @@ var SV = (() => {
         if (seen.has(t))
           return;
         seen.add(t);
-        let other;
-        try {
-          other = (ownerOf(t) ?? instance2).resolve(t);
-        } catch {
-          return;
-        }
-        if (other.target === target && other.className === className)
+        const other = ownerOf(t);
+        if (other && other.target === target && other.className === className)
           t.setAttribute(t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
       }));
     };
@@ -6674,15 +6680,31 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 const claimed = new WeakSet();
 const live = new Set();
 const has = (scope, node) => typeof scope.contains === 'function' ? scope.contains(node) : true;
+// The nearest containing scope that RESOLVES the trigger's target: a click
+// handled by an outer scope, because the inner one could not find the
+// target, is synced by that outer scope too (round 10, verify 3). A
+// selector that does not parse is skipped, not thrown on.
 function ownerOf(t) {
     let best;
+    let resolved;
     live.forEach((i) => {
         if (!has(i.scope, t))
             return;
-        if (!best || has(best.scope, i.scope))
+        let r;
+        try {
+            r = i.resolve(t);
+        }
+        catch {
+            return;
+        }
+        if (!r.target)
+            return;
+        if (!best || has(best.scope, i.scope)) {
             best = i;
+            resolved = r;
+        }
     });
-    return best;
+    return resolved;
 }
 function toggles(root) {
     if (typeof window === 'undefined')
@@ -6720,14 +6742,8 @@ function toggles(root) {
             if (seen.has(t))
                 return;
             seen.add(t);
-            let other;
-            try {
-                other = (ownerOf(t) ?? instance).resolve(t);
-            }
-            catch {
-                return;
-            }
-            if (other.target === target && other.className === className)
+            const other = ownerOf(t);
+            if (other && other.target === target && other.className === className)
                 t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
         }));
     };
