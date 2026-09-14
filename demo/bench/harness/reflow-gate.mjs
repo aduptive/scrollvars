@@ -39,8 +39,11 @@ const PROBE = `() => {
     const stage = box.closest('.sv-stage')
     const tracker = stage.closest('[data-sv], .sv')
     if (tracker && tracker.hasAttribute('data-sv-flow')) return { over: 0 }
+    // containment, not height: a box shorter than the stage but offset
+    // inside it loses its bottom to the stage's clip just the same
     const b = box.getBoundingClientRect(), s = stage.getBoundingClientRect()
-    return { over: Math.max(0, Math.round(b.height - s.height)), box: box.className || 'data-sv-fit' }
+    const over = Math.max(0, Math.round(s.top - b.top), Math.round(b.bottom - s.bottom), Math.round(s.left - b.left), Math.round(b.right - s.right))
+    return { over, box: box.className || 'data-sv-fit' }
   }).filter((r) => r.over > 1)
   return { sideways: Math.round(sideways), clipped }
 }`

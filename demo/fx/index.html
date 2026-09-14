@@ -16,7 +16,9 @@
      scrollport starts under it instead */
   html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
-  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
@@ -136,7 +138,7 @@
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
         <a href="deck-spread.html">Deck spread</a>

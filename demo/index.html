@@ -1100,9 +1100,10 @@ html.snap-region { scroll-snap-type: y proximity; }
   display: grid;
   place-items: center;
   font: 500 12px var(--mono);
-  color: var(--muted);
+  color: var(--text);
   cursor: pointer;
-  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.3, 0.65));
+  /* dimmed by distance, floored at .6: the farthest thumb's label still reads at 5.8:1 (axe) */
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.15, 0.4));
 }
 .slider-thumbs > div.sv-active { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 700px) { .slider-thumbs { display: none; } }
@@ -2901,7 +2902,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.2 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.6 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>10.5 KB / 4.1 KB</b></td><td></td></tr>
       </tbody>
@@ -4620,7 +4621,9 @@ var SV = (() => {
    build. register() is a thin shim over SV.track that keeps the page's HUD
    instrumentation. Never hand-patch either block.) ════════════════ */
 (function () {
-  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // the effective preference, live: the OS setting or the site's own switch
+  // (data-sv-motion). A flag read once at boot ignored the switch (review).
+  function reducedNow() { return SV.prefersReducedMotion(); }
 
   // top bar install pill: copy-to-clipboard
   var installCopy = document.getElementById('install-copy');
@@ -4821,6 +4824,7 @@ var SV = (() => {
   var pgalRaf = 0;
   function pgalTick() {
     pgalRaf = 0;
+    if (reducedNow()) { for (var q = 0; q < pgalCols.length; q++) pgalCols[q].style.translate = ''; return; }
     var busy = false;
     for (var k = 0; k < pgalCols.length; k++) {
       pgalCur[k] += (pgalTarget - pgalCur[k]) * pgalLags[k];
@@ -4830,15 +4834,13 @@ var SV = (() => {
     }
     if (busy) pgalRaf = requestAnimationFrame(pgalTick);
   }
-  if (!reduced) {
-    register(document.querySelector('.pgal-stage').closest('section'), {
-      hud: 'gallery',
-      onTravel: function (t) {
-        pgalTarget = t;
-        if (!pgalRaf) pgalRaf = requestAnimationFrame(pgalTick);
-      },
-    });
-  }
+  register(document.querySelector('.pgal-stage').closest('section'), {
+    hud: 'gallery',
+    onTravel: function (t) {
+      pgalTarget = t;
+      if (!pgalRaf) pgalRaf = requestAnimationFrame(pgalTick);
+    },
+  });
 
   // scenes demo (the "vanilla track" case)
   var KF_STEPS = [
@@ -5899,6 +5901,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     return a + d * k;
   }
   function mapTick(now) {
+    if (reducedNow()) { mapRaf = 0; mapWorld.style.transform = ''; mapWorld.style.removeProperty('--map-ang'); return; }
     mapRaf = 0;
     mapShown += (mapTarget - mapShown) * 0.1;
     var t = mapShown * mapLen;
@@ -5920,17 +5923,23 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
       mapRaf = requestAnimationFrame(mapTick);
     }
   }
-  if (!reduced) {
-    mapTick(0);
-    register(document.getElementById('map-demo'), {
-      pin: true,
-      hud: 'map',
-      onPin: function (p) {
-        mapTarget = p;
-        if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
-      },
-    });
-  }
+  mapTick(0);
+  register(document.getElementById('map-demo'), {
+    pin: true,
+    hud: 'map',
+    onPin: function (p) {
+      mapTarget = p;
+      if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
+    },
+  });
+  // the two JS-driven demos above follow the preference as it changes: on
+  // reduce their inline writes are cleared at once, on auto they resume
+  SV.onMotionChange(function (r) {
+    cancelAnimationFrame(pgalRaf); pgalRaf = 0;
+    cancelAnimationFrame(mapRaf); mapRaf = 0;
+    if (r) { pgalTick(); mapTick(0); }
+    else { pgalRaf = requestAnimationFrame(pgalTick); mapRaf = requestAnimationFrame(mapTick); }
+  });
   /* ═══════ scrollvars slider, inlined from the built dist, verbatim ═══════ */
   var slider = (function () {
 /**

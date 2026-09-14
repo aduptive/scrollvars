@@ -6,7 +6,7 @@
  * a link inside either can land on an element that has focus and no pixels.
  * This tabs through every gallery page and the home page and, at every
  * stop, requires the focused element to become visible within 1200ms and to
- * stay visible 400ms later: inside the viewport, effective opacity at least
+ * stay visible 250ms later on the way forward: inside the viewport, effective opacity at least
  * 0.5 down the ancestor chain, `visibility: visible`, and not covered at its
  * center (elementFromPoint, so a sticky header or a pin stage on top counts
  * as covering). A bounding box inside the viewport for one frame is not
@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const MAX_STOPS = 120
+const MAX_STOPS = 400
 
 // evaluated in the page after every Tab: where focus is, and whether it can be seen
 const STATE = `() => {
@@ -30,6 +30,9 @@ const STATE = `() => {
     + (el.textContent && el.textContent.trim() ? ' "' + el.textContent.trim().slice(0, 30) + '"' : '')
   const el = document.activeElement
   if (!el || el === document.body || el === document.documentElement) return { end: true }
+  // an identity for the cycle check: two controls with the same label and
+  // class are two stops, not a lap (review, second pass)
+  if (!el.dataset.kbStop) { window.__kbStops = (window.__kbStops || 0) + 1; el.dataset.kbStop = String(window.__kbStops) }
   // an inline link that wraps across lines has a union box whose center can
   // fall in the gap between its two line fragments, where elementFromPoint
   // finds the paragraph: probe the first fragment, which is always painted
@@ -46,18 +49,18 @@ const STATE = `() => {
   const hit = inView ? document.elementFromPoint(cx, cy) : null
   const covered = inView && !(hit && (hit === el || el.contains(hit)))
   const visible = inView && opacity >= 0.5 && getComputedStyle(el).visibility === 'visible' && !covered
-  return { end: false, name: describe(el), visible, inView, opacity: +opacity.toFixed(2), covered, hit: hit ? describe(hit) : null, y: Math.round(scrollY) }
+  return { end: false, id: el.dataset.kbStop, name: describe(el), visible, inView, opacity: +opacity.toFixed(2), covered, hit: hit ? describe(hit) : null, y: Math.round(scrollY) }
 }`
 
 async function sweep(page, backward = false) {
   const stops = [], violations = []
   const seen = new Set()
+  let finished = false, firstId = null
   for (let i = 0; i < MAX_STOPS; i++) {
     if (backward) { await page.keyboard.down('Shift'); await page.keyboard.press('Tab'); await page.keyboard.up('Shift') }
     else await page.keyboard.press('Tab')
     let state = await page.evaluate(`(${STATE})()`)
-    if (state.end) break
-    if (seen.has(state.name + '@' + i)) break
+    if (state.end) { finished = true; break }
     // the reveal needs the driver's next frame and the entrance a moment; poll
     const deadline = Date.now() + 1200
     while (!state.visible && Date.now() < deadline) {
@@ -65,10 +68,11 @@ async function sweep(page, backward = false) {
       state = await page.evaluate(`(${STATE})()`)
       if (state.end) break
     }
-    if (state.end) break
+    if (state.end) { finished = true; break }
     const key = state.name
-    if (seen.has(key) && i > 0 && stops.length > 2 && stops[0] === key) break // focus cycled back to the first stop
-    seen.add(key)
+    if (seen.has(state.id) && i > 0 && stops.length > 2 && firstId === state.id) { finished = true; break } // focus cycled back to the first stop
+    if (i === 0) firstId = state.id
+    seen.add(state.id)
     stops.push(key)
     if (process.env.KEYBOARD_VERBOSE) console.log(`   ${backward ? '<' : '>'} ${key}  visible=${state.visible} inView=${state.inView} opacity=${state.opacity} covered=${state.covered} y=${state.y}`)
     if (!state.visible) { violations.push(`${backward ? 'shift+tab' : 'tab'} ${key}: inView=${state.inView} opacity=${state.opacity} covered=${state.covered}${state.hit ? ' by ' + state.hit : ''} at y=${state.y}`); continue }
@@ -80,6 +84,8 @@ async function sweep(page, backward = false) {
     const later = await page.evaluate(`(${STATE})()`)
     if (!later.end && later.name === key && !later.visible) violations.push(`${key}: visible at first, then not: opacity=${later.opacity} covered=${later.covered}${later.hit ? ' by ' + later.hit : ''}`)
   }
+  // a sweep that ran out of budget examined a prefix and says nothing about the rest
+  if (!finished) violations.push(`${backward ? 'shift+tab' : 'tab'}: the sweep did not reach the end of the page within ${MAX_STOPS} stops (review, ADU-247)`)
   return { stops, violations }
 }
 

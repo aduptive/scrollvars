@@ -18,7 +18,9 @@
      scrollport starts under it instead */
   html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
-  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
@@ -138,7 +140,7 @@
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
         <a href="deck-spread.html">Deck spread</a>
@@ -179,7 +181,7 @@
   <p class="tag">Native-scroll carousel; slides scale, fade and turn by their distance from center.</p>
   <p class="meta"><b>Use it for:</b> Anywhere you were about to install Swiper.<br><b>Knobs:</b> --sd per slide (written by slider()); --sv-per-view breakpoints; chrome vars --sv-arrow-*/--sv-dot-*</p>
   <div class="fxstage">
-  <div class="sv-slider" id="fxslider" style="padding:20px calc(50% - 110px)">
+  <div class="sv-slider" id="fxslider" role="region" aria-label="Coverflow cards" style="padding:20px calc(50% - 110px)">
     <div class="fxcard fxslide">01</div><div class="fxcard fxslide">02</div>
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
@@ -188,9 +190,9 @@
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add coverflow-slider</code><br><b>Styles:</b> <code>import 'scrollvars/styles/slider.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
-    <button data-tab="react">React</button>
+    <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
@@ -202,7 +204,7 @@
     &lt;/Slide&gt;
   ))}
 &lt;/Slider&gt;</code></pre>
-    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-slider" id="cards"&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-slider" id="cards" role="region" aria-label="Cards"&gt;
   &lt;div class="slide"&gt;…&lt;/div&gt; ×N
 &lt;/div&gt;
 
@@ -236,7 +238,7 @@
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));
