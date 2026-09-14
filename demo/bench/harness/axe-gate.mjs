@@ -33,6 +33,11 @@ const describe = (violations) => violations.map((v) =>
 // forever and is not waited for): text mid-fade reads as low contrast, and
 // the home's CSS timeline demo runs 2.4 seconds on its own after boot.
 const settle = async (page) => {
+  // the driver marks a section live on the frame after the scroll and the
+  // entrance transition starts then: polled at once, getAnimations() sees
+  // nothing running and the audit lands mid-fade (the hero's subtitle read
+  // 1.4:1 that way). Give the transitions a moment to begin, then wait them out.
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 400)))
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming?.().iterations === Infinity), { timeout: 8000, polling: 200 }).catch(() => {})
   await page.evaluate(() => new Promise((r) => setTimeout(r, 300)))
 }
@@ -40,29 +45,80 @@ const settle = async (page) => {
 async function audit(page) {
   await page.addScriptTag({ path: AXE })
   await settle(page)
-  const run = async () => page.evaluate(async (tags) => {
-    const result = await axe.run(document, { runOnly: { type: 'tag', values: tags }, resultTypes: ['violations'] })
-    return result.violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map((n) => ({ target: n.target, data: n.any?.[0]?.data ?? null })) }))
-  }, TAGS)
+  // `rules` narrows a run to the contrast rule for the per-viewport audits
+  // of the walk, which would take minutes with the full set on the home
+  // `onScreenOnly` scopes a run to the elements inside the viewport, which
+  // is what the per-viewport walk audits: the whole document with one rule
+  // took 3.5 minutes on the home, the viewport takes a second
+  const run = async (rules, onScreenOnly = false) => page.evaluate(async (tags, rules, onScreenOnly) => {
+    const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth }
+    // text-bearing elements on screen: own text, or a control whose text is
+    // its value or placeholder (review, third pass)
+    const bearsText = (el) => /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName) || [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+    const context = onScreenOnly ? [...document.querySelectorAll('body *')].filter((el) => inView(el) && bearsText(el)) : document
+    if (onScreenOnly && context.length === 0) return []
+    const result = await axe.run(context, { runOnly: rules ? { type: 'rule', values: rules } : { type: 'tag', values: tags }, resultTypes: ['violations'] })
+    // axe audits the whole document at once, including what the scroll has
+    // carried off screen: a subtitle fading out as its section leaves is a
+    // contrast failure to nobody. Contrast counts only for text on screen at
+    // this position; every other rule counts wherever the node is.
+    const onScreen = (target) => {
+      try {
+        const el = document.querySelector(target[target.length - 1])
+        if (!el) return true
+        const r = el.getBoundingClientRect()
+        return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth
+      } catch { return true }
+    }
+    return result.violations
+      .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.filter((n) => v.id !== 'color-contrast' || onScreen(n.target)).map((n) => ({ target: n.target, data: n.any?.[0]?.data ?? null })) }))
+      .filter((v) => v.nodes.length > 0)
+  }, TAGS, rules ?? null, onScreenOnly)
   const atLoad = await run()
-  // the page's other state: scrolled through so every section has been
-  // live, then settled: an entrance mid-fade reads as low contrast, and the
-  // presets latch once live, so everything is at its final state after this
-  await page.evaluate(() => new Promise((resolve) => {
-    scrollTo(0, document.documentElement.scrollHeight)
-    setTimeout(() => { scrollTo(0, 0); setTimeout(resolve, 500) }, 1200)
-  }))
+  // The page's other states. A jump to the bottom leaves every section in
+  // between outside the culler's band, never live, never revealed (review,
+  // ADU-247): walk the page in steps of 0.4 viewport, under the 0.5 viewport
+  // live band, so every section goes live on the way, and at every full
+  // viewport of the walk audit the contrast of what is on screen, since a
+  // section shown only for a while between the fixed positions would
+  // otherwise never be audited (review, second pass). The full rule set
+  // runs at load, at the bottom, at the middle and at the top.
+  // audits every 0.8 viewport, so consecutive snapshots overlap by a fifth
+  // and nothing on the page is off screen for every one of them (the first
+  // version audited every 1.2 viewports and left a gap between snapshots)
+  const walked = []
+  let y = 0, steps = 0
+  const height = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, v: innerHeight }))
+  const step = Math.max(40, Math.floor(height.v * 0.4))
+  while (y < height.h) {
+    y += step
+    steps++
+    await page.evaluate((y) => scrollTo(0, y), y)
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 60)))
+    // every second step, counted, never a rounded threshold: at 768px a
+    // rounded step of 307 twice fell 0.4px short of 0.8 viewport and the
+    // audit slipped to the third step, a 153px gap (review, fourth pass)
+    if (steps % 2 === 0 || y >= height.h) {
+      await settle(page)
+      walked.push(...await run(['color-contrast'], true))
+    }
+  }
+  const atBottom = await run()
+  await page.evaluate(() => scrollTo(0, Math.round(document.documentElement.scrollHeight / 2)))
+  await settle(page)
+  const atMiddle = await run()
+  await page.evaluate(() => scrollTo(0, 0))
   await settle(page)
   const revealed = await run()
-  // merge by rule id and target so a violation seen in both states counts once
+  // merge by rule id and target so a violation seen in several states counts once
   const seen = new Map()
-  for (const v of [...atLoad, ...revealed]) {
+  for (const v of [...atLoad, ...walked, ...atBottom, ...atMiddle, ...revealed]) {
     const key = v.id
     if (!seen.has(key)) seen.set(key, { ...v, nodes: [] })
     const bucket = seen.get(key)
     for (const n of v.nodes) if (!bucket.nodes.some((m) => m.target.join() === n.target.join())) bucket.nodes.push(n)
   }
-  return [...seen.values()]
+  return Object.assign([...seen.values()], { walked })
 }
 
 export async function axeGate({ browser, check, base, only }) {
@@ -94,6 +150,11 @@ export async function axeGate({ browser, check, base, only }) {
     const red = await audit(page)
     const ids = red.map((v) => v.id)
     check('axe gate: an image without alt and a button without a name are reported', ids.includes('image-alt') && ids.includes('button-name'), ids.join(', ') || 'no violation reported')
+    // the walk's own case: low-contrast text that is on screen only at a
+    // third of the page, off screen at load, at the bottom, at the middle
+    // and at the top, so only the walk's scoped audits can report it
+    const walkOnly = red.walked.filter((v) => v.id === 'color-contrast')
+    check('axe gate: low-contrast text visible only during the walk is caught by the walk itself', walkOnly.some((v) => v.nodes.some((n) => n.target.join(' ').includes('mid-page'))), walkOnly.length ? walkOnly.flatMap((v) => v.nodes.map((n) => n.target.join(' '))).join(', ') : 'the walk reported no contrast violation')
   } finally {
     await page.close()
   }
