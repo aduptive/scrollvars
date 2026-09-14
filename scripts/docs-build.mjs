@@ -120,10 +120,10 @@ the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats eac
 </nav>
 
 <h2 id="quickstart">Quickstart</h2>
-<pre><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
+<pre tabindex="0"><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
 <p><b>Next.js (zero-wrapper, recommended):</b> one boot in the root layout, then plain
 server components with data attributes.</p>
-<pre><code>// app/layout.tsx
+<pre tabindex="0"><code>// app/layout.tsx
 import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
@@ -191,7 +191,7 @@ mapping becomes pure CSS.</p>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
 <tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
-<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
+<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion / setMotion / onMotionChange</code></td><td>utilities; the last three read, set and watch the effective motion preference (the OS setting or <code>data-sv-motion="reduce"</code> on <code>&lt;html&gt;</code>).</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
@@ -248,7 +248,7 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
+<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
@@ -264,11 +264,16 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every entrance and scrub preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible; disclosures, <code>sv-pop</code>, Accordion and Modal keep their closed state without JS like the platform's own <code>details</code> and <code>dialog</code>); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow; every block has a twin under <code>html[data-sv-motion="reduce"]</code>, the page's own switch (<code>setMotion()</code>), kept in step by a test and checked rendered in CI</td></tr>
+<tr><td>motion preference</td><td>one effective value, the OS setting or the page switch, read live by the driver, the slider's glide (a running glide settles when it flips), canvas effects (<code>fx.reducedMotion</code>) and the React Slider autoplay (starts paused under reduce; the visible control resumes it)</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
+<tr><td>Slider dots</td><td>the kit's dots are 24 by 24 CSS pixel buttons (WCAG 2.5.8, <code>--sv-dot-target</code>) that never shrink, a crowded row wraps, with the visual dot drawn inside (<code>--sv-dot-size</code>); no transition under reduced motion. Measured in CI. A <code>renderDot</code> of your own is yours to size</td></tr>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
+<tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 250ms later on the way forward. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
+<tr><td>reflow and zoom</td><td>at 320 and 640 CSS pixels of width every gallery page and the home scroll in one direction only, every <code>[data-sv-fit]</code> box fits its stage or has released the pin, and the pinned pages pass the keyboard gate at 320. Proved able to fail on a fixture</td></tr>
+<tr><td>axe</td><td>every gallery page and the home page pass axe-core (WCAG 2.x A and AA) with zero violations in CI, after boot and again after a walk down the page a viewport at a time, at the bottom, the middle and the top; the gate proves it can fail. A floor, not proof</td></tr>
 </table>
 
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
@@ -330,7 +335,7 @@ and the individual-transform floor the rule still matches and its <code>opacity<
 declaration still transitions, so the text fades in without rising. With your bundler
 downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
-<pre><code>import { compat } from 'scrollvars/compat'
+<pre tabindex="0"><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
 <h2 id="trouble">Troubleshooting</h2>

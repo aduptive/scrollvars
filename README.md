@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 3.8 KB, full core incl. the slider 8.1 KB, styles 9.2 KB for every preset or 2.4 KB for the core part. A typical page ships ~6.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.5 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.6 KB on the wire.
 
 ## Why
 
@@ -15,7 +15,7 @@ ScrollVars keeps continuous scroll values outside React and exposes them directl
   during scroll (`useScenes`/`useSlider` re-render only on a discrete index
   change).
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
-- **`prefers-reduced-motion`** respected by driver and presets.
+- **`prefers-reduced-motion`** respected by driver and presets, and the page's own switch (`data-sv-motion="reduce"`, `setMotion()`) with it. See Accessibility below.
 
 ## The receipts (measured: why the design holds up)
 
@@ -67,7 +67,7 @@ that gap. What is left at fifty nodes per box is the price of animating
 through the cascade at all. The authoring rule that keeps a page on the
 cheap side of the curve: keep tracked elements thin, with big static
 content next to the animated element rather than inside it.
-The package ships ~6× less bundle than GSAP + ScrollTrigger; frame delivery
+The package ships ~5× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.
 
@@ -119,12 +119,12 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 // app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.4 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.2 KB gz
-import 'scrollvars/styles/slider.css'  // carousel rails, 1.3 KB gz
-import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.6 KB gz
-import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.2 KB gz
-import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.1 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.4 KB gz
+import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
+import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
+import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.3 KB gz
 import 'scrollvars/styles/scoped.css'  // OPT-IN: the clocks stop inheriting, see Scoped clocks below, 1.0 KB gz
 ```
 
@@ -136,17 +136,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 3.8 KB |
-| `track` + `scan` (zero-wrapper mode) | 5.1 KB |
-| `slider` | 2.4 KB |
+| `track` (the driver) | 4.1 KB |
+| `track` + `scan` (zero-wrapper mode) | 5.4 KB |
+| `slider` | 2.7 KB |
 | `trackPointer` | 0.6 KB |
-| `mountEffect` (canvas) | 1.6 KB |
-| everything in `scrollvars` (the core entry) | 8.1 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 13.9 KB |
+| `mountEffect` (canvas) | 1.9 KB |
+| everything in `scrollvars` (the core entry) | 8.5 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 14.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~6.2 KB gzipped, total.**
+**~6.6 KB gzipped, total.**
 
 ## Mental model
 
@@ -302,7 +302,8 @@ import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
 
 **Customizing the Slider chrome**: three layers, pick your depth:
 1. **Var knobs** (`--sv-arrow-size/-inset/-bg/-color/-radius`, `--sv-dot-size/
-   -gap/-color/-active`, `--sv-dots-justify/-offset`). Set on `:root` for the
+   -gap/-color/-active`, `--sv-dot-target` (the 24px hit area around the
+   visual dot), `--sv-dots-justify/-offset`). Set on `:root` for the
    whole project, or on one slider via className/style.
 2. **Stable classes** (`sv-slider-shell`, `sv-arrow[-prev/-next]`, `sv-dots`,
    `sv-dot.on`). Restyle or reposition freely in project CSS.
@@ -357,7 +358,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.4 KB gzip; Swiper 11 bundle
+Size, measured: this module 2.7 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
@@ -499,7 +500,11 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 </div>
 ```
 
-`sv-range-rise` is the ready-made flavor (rise + fade per range); or consume
+`sv-range-rise` is the ready-made flavor (rise + fade per range; the fade
+starts at `--sv-range-floor`, .55 by default, which keeps the sheet's text
+color at 4.5:1 on a dark ground while a child waits for its slice; a muted
+or accent color needs a higher floor, and 0 gives the dramatic look at the
+cost of that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
 division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
 registered property (`@property`, `initial-value: 1`), so an engine that
@@ -708,6 +713,117 @@ where it is understood. Measured rather than read from a table: in
 Chromium, Firefox and WebKit the registration takes and a page renders the
 same with the sheet as without, and the three-engine CI job checks both on
 every run. It is deliberately not part of `styles.css`.
+
+## Accessibility
+
+What the library guarantees on its own surfaces, each line covered by a test
+in this repository (most of them browser invariants in CI), with the WCAG
+success criterion it serves. It is not a conformance claim for your site.
+
+- **Readable without JavaScript.** Every entrance and scrub preset hides
+  only under `html.sv-on`, which the driver sets. No JS, or an error before
+  boot, and those render as a normal static page with everything visible.
+  Disclosures keep their closed state without JS, as the platform's own
+  `<details>` and `<dialog>` do: an `sv-pop` panel, an Accordion item or a
+  Modal that is closed stays closed, so essential content goes outside them
+  or opens by default (`sv-open`, `open`).
+- **Reduced motion everywhere, from two sources** (2.3.3 Animation from
+  Interactions). Every preset sheet has a `prefers-reduced-motion` block:
+  entrances render their final state, scrub presets settle, the deck and the
+  rail return to flow, parallax stands still, the marquee stops. Each of
+  those blocks has a twin under `html[data-sv-motion="reduce"]`, the page's
+  own switch, because the OS setting is one many people never find.
+  `setMotion('reduce' | 'auto')` sets it, `onMotionChange(fn)` reports it,
+  `prefersReducedMotion()` reads the effective preference, and the driver,
+  the slider's glide, canvas effects (`fx.reducedMotion`) and the React
+  `<Slider>` autoplay all follow it live. Persisting the choice is your job:
+  set it before the first frame (an inline script in `<head>` that reads
+  your store and sets the attribute) and nothing animates first and calms
+  down later. scrollvars.dev does exactly that: the switch in its header,
+  and every reduced-motion rule of the site's own CSS carries the twin.
+- **Moving content can be stopped** (2.2.2 Pause, Stop, Hide). The marquee
+  pauses on hover and on keyboard focus within it. `<Slider autoplay>`
+  pauses on hover, focus, offscreen and hidden tab, renders a visible pause
+  control, and starts paused under reduced motion; the control still resumes
+  it, that is the user asking.
+- **Carousel semantics** (4.1.2 Name, Role, Value; 2.1.1 Keyboard).
+  `<Slider>` follows the APG carousel pattern: `role="region"`,
+  `aria-roledescription="carousel"`, a `label`, slides announced "i of n",
+  labeled arrows and dots, keyboard on the track, `aria-live="polite"` on
+  the track while it is not rotating. Native scroll and scroll snap do the
+  moving, so nothing is hijacked, on sliders or on pins.
+- **Targets** (2.5.8 Target Size, Minimum). Every dot the kit renders is a
+  24 by 24 CSS pixel button that never shrinks (a crowded row wraps), with
+  the visual dot drawn inside it: `--sv-dot-target` sizes what you hit,
+  `--sv-dot-size` what you see. A `renderDot` of your own is yours to size.
+- **Animated text stays text** (1.3.2 Meaningful Sequence). `split()` keeps
+  the full text as a visually hidden first child and marks the animated
+  spans `aria-hidden`. It flattens markup, so give it plain text, never a
+  link or an emphasis.
+- **State stays in sync** (4.1.2). `toggles()` keeps `aria-expanded` (or
+  `aria-pressed`) on every trigger of a target; Modal and Accordion are
+  native `<dialog>` and `<details>`, so focus, Escape and exclusivity come
+  from the platform.
+- **Focus can be seen** (2.4.7 Focus Visible, 2.4.11 Focus Not Obscured). A
+  gate tabs through every gallery page and the home page, forward and back,
+  and at every stop requires the focused element to be inside the viewport,
+  at an effective opacity of at least 0.5 down its ancestors, `visibility:
+  visible`, not covered at the center of its visible part, and still so
+  250ms later on the way forward. Content an entrance or a pin reveals is
+  reached that way: the
+  browser scrolls the focused element into view, the section goes live, the
+  entrance runs. The gate proves it can fail on a fixture (a link under a
+  fixed header on the way back, a link inside a box that stays at opacity
+  0) and that `scroll-padding-top` clears the first.
+- **Reflow and zoom** (1.4.10 Reflow, 1.4.4 Resize Text). At 320 CSS
+  pixels of width and at 640 (a 1280 window at 200 percent), every gallery
+  page and the home page scroll in one direction only, after boot and after
+  a scroll through, and every `[data-sv-fit]` box either fits its stage or
+  has released the pin (`data-sv-flow`, the fit contract), so nothing
+  pinned is clipped; the pinned pages also pass the keyboard gate at 320.
+  Proved able to fail on a fixture with a fixed-width band.
+- **axe, as a floor** (WCAG 2.x A and AA rules). Every gallery page and the
+  home page pass axe-core with zero violations in CI, audited after boot
+  and again after a walk down the page a viewport at a time (so every
+  section has gone live), at the bottom, the middle and the top. The gate proves it can fail (an image
+  without alt, a button without a name). A floor, not proof: axe sees
+  names, roles, contrast and structure, never whether the page makes sense
+  to a screen reader user; that pass is a person's.
+
+Your side of it, as a checklist:
+
+- [ ] CSS of your own that reads `--sv-view`, `--sv-t`, `--sv-pin`, `--mx` or
+      `--my` is motion: give it both guards, `@media (prefers-reduced-motion:
+      reduce)` and `:where([data-sv-motion="reduce"])`, and offer the switch
+      (`setMotion()`) somewhere visible, stored, applied before first paint.
+- [ ] Nothing essential lives only behind a reveal the scroll position
+      opens, or only in a scene the pin shows; the no-JS render is the test.
+- [ ] Anything that moves on its own (a marquee, an autoplay) has a way to
+      stop that works from the keyboard; keep the kit's pause control.
+- [ ] Rotating words and counters keep the readable text in the DOM and mark
+      the animated copy `aria-hidden`; `split()` gets plain text only.
+- [ ] Text dimmed "until you get there" still meets 4.5:1 (3:1 when large)
+      at its dimmest: compute the floor, mixing every nested opacity.
+- [ ] Under a fixed or sticky header, `scroll-padding-top` on `html` equals
+      the header's height, or a focused element scrolled to the top edge
+      lands under it.
+- [ ] Your own controls are 24 by 24 CSS pixels at least (`renderDot` is
+      yours to size); scrollable code blocks carry `tabindex="0"`.
+- [ ] At 320 CSS pixels of width the page scrolls in one direction only;
+      pinned content that can grow (CMS copy, text zoom) sits in
+      `[data-sv-fit]` so the pin releases instead of clipping.
+- [ ] Run axe on the finished page, then walk it once with a screen
+      reader: axe is a floor, and this list is one too.
+
+Where this follows published guidance: the visually hidden copy in
+`split()` uses the technique Sara Soueidan describes in
+[Inclusively Hiding and Styling Checkboxes and Radio Buttons](https://www.sarasoueidan.com/blog/inclusively-hiding-and-styling-checkboxes-and-radio-buttons/),
+the slider track's live region follows her
+[Accessible notifications with ARIA Live Regions](https://www.sarasoueidan.com/blog/accessible-notifications-with-aria-live-regions-part-1/),
+and its arrows and dots her [Accessible Icon Buttons](https://www.sarasoueidan.com/blog/accessible-icon-buttons/).
+The motion rules follow Val Head's
+[Designing Safer Web Animation for Motion Sensitivity](https://alistapart.com/article/designing-safer-web-animation-for-motion-sensitivity/)
+and WCAG 2.3.3.
 
 ## Limit animation work to its consumers
 

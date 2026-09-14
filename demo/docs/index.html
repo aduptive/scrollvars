@@ -54,10 +54,10 @@ the spec) and <a href="../fx/">the fx gallery</a> (copy-paste, three formats eac
 </nav>
 
 <h2 id="quickstart">Quickstart</h2>
-<pre><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
+<pre tabindex="0"><code>npm i scrollvars            # or pin: npm i github:aduptive/scrollvars</code></pre>
 <p><b>Next.js (zero-wrapper, recommended):</b> one boot in the root layout, then plain
 server components with data attributes.</p>
-<pre><code>// app/layout.tsx
+<pre tabindex="0"><code>// app/layout.tsx
 import 'scrollvars/styles/core.css'          // or styles.css for everything
 import { ScrollVarsBoot } from 'scrollvars/react'
 // &lt;ScrollVarsBoot /&gt; once inside &lt;body&gt;
@@ -137,7 +137,7 @@ mapping becomes pure CSS.</p>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
 <tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
-<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
+<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion / setMotion / onMotionChange</code></td><td>utilities; the last three read, set and watch the effective motion preference (the OS setting or <code>data-sv-motion="reduce"</code> on <code>&lt;html&gt;</code>).</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
@@ -157,7 +157,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.2 · slider 1.3 · tilt 0.6 · state 2.2 · ui 1.1).</p>
+(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.4 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -194,7 +194,7 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
 exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre><code>// GSAP reading ScrollVars' clock (no second scroll listener):
+<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
 gsap.ticker.add(() =&gt; {
   const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
   heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
@@ -210,11 +210,16 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every entrance and scrub preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible; disclosures, <code>sv-pop</code>, Accordion and Modal keep their closed state without JS like the platform's own <code>details</code> and <code>dialog</code>); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow; every block has a twin under <code>html[data-sv-motion="reduce"]</code>, the page's own switch (<code>setMotion()</code>), kept in step by a test and checked rendered in CI</td></tr>
+<tr><td>motion preference</td><td>one effective value, the OS setting or the page switch, read live by the driver, the slider's glide (a running glide settles when it flips), canvas effects (<code>fx.reducedMotion</code>) and the React Slider autoplay (starts paused under reduce; the visible control resumes it)</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
+<tr><td>Slider dots</td><td>the kit's dots are 24 by 24 CSS pixel buttons (WCAG 2.5.8, <code>--sv-dot-target</code>) that never shrink, a crowded row wraps, with the visual dot drawn inside (<code>--sv-dot-size</code>); no transition under reduced motion. Measured in CI. A <code>renderDot</code> of your own is yours to size</td></tr>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
+<tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 250ms later on the way forward. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
+<tr><td>reflow and zoom</td><td>at 320 and 640 CSS pixels of width every gallery page and the home scroll in one direction only, every <code>[data-sv-fit]</code> box fits its stage or has released the pin, and the pinned pages pass the keyboard gate at 320. Proved able to fail on a fixture</td></tr>
+<tr><td>axe</td><td>every gallery page and the home page pass axe-core (WCAG 2.x A and AA) with zero violations in CI, after boot and again after a walk down the page a viewport at a time, at the bottom, the middle and the top; the gate proves it can fail. A floor, not proof</td></tr>
 </table>
 
 <h2 id="browsers">Browser support: and the answer for older ones</h2>
@@ -276,7 +281,7 @@ and the individual-transform floor the rule still matches and its <code>opacity<
 declaration still transitions, so the text fades in without rising. With your bundler
 downleveling the ES2020 dist (Next.js already does), the reveal and pin presets above animate on roughly
 <b>Chrome 61+ / Firefox 60+ / Safari 11+</b>:</p>
-<pre><code>import { compat } from 'scrollvars/compat'
+<pre tabindex="0"><code>import { compat } from 'scrollvars/compat'
 compat()   // once, before anything else</code></pre>
 
 <h2 id="trouble">Troubleshooting</h2>
@@ -299,10 +304,34 @@ compat()   // once, before anything else</code></pre>
 <h4>Added</h4>
 
 <ul>
+<li>A motion preference the page can set: <code>html[data-sv-motion="reduce"]</code> asks for less motion whatever the OS says, and every <code>prefers-reduced-motion</code> block in the shipped sheets (core, pin, state, tilt, ui, slider, and the compat fallback) has a twin under it, kept in step by a test and checked rendered in CI. <code>setMotion('reduce' | 'auto')</code> sets the attribute, <code>onMotionChange(fn)</code> reports the effective preference live, and <code>prefersReducedMotion()</code> now reads that effective value. The driver, the slider's glide, canvas effects and the React <code>&lt;Slider></code> autoplay all follow it from one source (<code>core/motion</code>), so a change from the OS or from the page reaches every animation at once. The OS setting alone was the only switch, and it is one many people never find. The twins and the module cost about 0.4 KB gzipped across the sheets and the driver; the stamped sizes moved with them.</li>
+<li><code>styles/slider.css</code>: a reduced-motion block (it was the only preset sheet without one) and <code>--sv-dot-target</code>, the hit area of a dot.</li>
+<li>A README section, Accessibility, listing what the library guarantees on its own surfaces with the WCAG criteria each guarantee serves, the page's side as a checklist (motion guards and the switch, nothing essential behind a reveal, a way to stop what moves, readable text for animated copy, contrast floors for dimmed text, scroll padding under fixed headers, target sizes, reflow and the fit contract, axe then a screen reader), and the published guidance the library follows.</li>
+<li>A keyboard-reach gate in the e2e run (<code>demo/bench/harness/keyboard-gate.mjs</code>): it tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen (in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 250ms later on the way forward). It proves it can fail on a fixture: a link under a fixed header on the way back, and a link inside a box that stays at opacity 0.</li>
+<li>A reflow gate in the e2e run (<code>demo/bench/harness/reflow-gate.mjs</code>): at 320 and 640 CSS pixels of width, every gallery page and the home page scroll in one direction only, after boot and after a scroll through, and every <code>[data-sv-fit]</code> box fits its stage or has released the pin; the pinned pages also pass the keyboard gate at 320. It proves it can fail on a fixture with a fixed-width band.</li>
+<li>An axe gate in the e2e run (<code>demo/bench/harness/axe-gate.mjs</code>): every gallery page and the home page pass axe-core's WCAG 2.x A and AA rules with zero violations, audited after boot and again after a walk down the page a viewport at a time, at the bottom, the middle and the top (it waits for every finite animation and transition to end first, since text mid-fade reads as low contrast). It proves it can fail on a fixture with an image without alt and a button without a name.</li>
+</ul>
+
+<ul>
 <li><code>scrollvars/styles/scoped.css</code>, an opt-in sheet that registers <code>--sv-t</code> and <code>--sv-view</code> non-inheriting so a write re-resolves one element instead of its whole subtree. The rule it imposes: a clock reaches only the elements that declare <code>inherit</code> for it, and every element between the tracked ancestor and a reader must declare it too; the shipped presets that read a clock from a descendant (<code>sv-drift</code>, <code>sv-range</code>) are forwarded inside the sheet, and a test derives that list from the stylesheets so a new preset cannot ship without its forward. A registered property always has a value, so a <code>var(--sv-t, 1)</code> fallback is never taken again under the sheet: declare that default on the tracked element instead. Measured behind a rendered-output gate: 63 percent less style recalculation and 28 percent less task time on the benchmark's deep profile, 13 percent more recalculation and 4 percent more task time on its flat profile; on the site's own home page 10 percent less task time and 23 percent less recalculation. Browsers without <code>@property</code> keep inheriting, so it never breaks a page below the floor. Not part of <code>styles.css</code> on purpose.</li>
 </ul>
 
+<h4>Fixed</h4>
+
+<ul>
+<li>Demo: the site honors its own motion switch. The gallery pages and the home page carry a "Motion" control in the header that sets <code>data-sv-motion="reduce"</code> through <code>setMotion()</code> and remembers it (<code>localStorage</code>), applied by an inline script in <code>&lt;head></code> before anything paints; every reduced-motion rule in the gallery effects (panes and installed components) and in the home's own CSS has its twin under the attribute, kept in step by the same test that covers the library's sheets. Tailwind panes keep <code>motion-reduce:</code>; the consumer guide shows the one-line variant for the attribute.</li>
+<li>Demo: the gallery's code tabs overflowed a 320px viewport by 10px, so twelve pages scrolled sideways (WCAG 1.4.10); the row wraps now. The reflow gate found it.</li>
+<li>Demo: what axe found. Every code block is keyboard focusable (<code>tabindex="0"</code>, WCAG 2.1.1: a scrollable region needs keyboard access); the sticky-steps section keeps an inactive step's text at 4.5:1 (its opacity floor is .65 with the labels at .8, it was .3 with .7 and .75, which read at 1.8:1); the editorial manifesto keeps unread copy at 3:1 (floor .55, it was .28); the cinematic hero's marquee strip has its own ground, its text read at 2.6:1 where an orb passed behind it. The gallery panes and the installed components carry the same values.</li>
+<li>Demo: the gallery pages' fixed header covered a focused element the browser scrolled to the top edge on the way back (Shift+Tab into the code block's controls), WCAG 2.4.11. The pages set <code>scroll-padding-top</code> under the header now; the keyboard gate found it and keeps it.</li>
+</ul>
+
 <h4>Changed</h4>
+
+<ul>
+<li><code>sv-range-rise</code> fades a slice in from <code>--sv-range-floor</code> (default .55) instead of from 0, the way <code>sv-reading</code> already floors at <code>--sv-reading-floor</code>: a child waiting for its slice kept its text at 2:1 or less on the sequenced-scrub and timeline pages (axe, walking the page a viewport at a time). The default keeps the sheet's text color at 4.5:1 on a dark ground; a muted or accent color needs a higher floor (the sequenced-scrub demo uses .8 for its accent line). Set <code>--sv-range-floor: 0</code> on the container for the old look, at the cost of that audit. A unit test pins the floor's arithmetic.</li>
+<li>Slider dots are 24 by 24 CSS pixel targets (WCAG 2.5.8 Target Size, Minimum): the button is the target and the visual dot is drawn inside it as <code>::before</code>, so <code>--sv-dot-size</code> still sizes what you see and <code>--sv-dot-target</code> what you hit. An override written directly on <code>.sv-dot</code> (rather than through the knobs) now styles the button box; move it to <code>.sv-dot::before</code>. The dots row is 24px tall instead of 8px.</li>
+<li><code>&lt;Slider autoplay></code> starts paused under reduced motion and pauses the moment the preference flips; the visible control still resumes it. It kept rotating before (jumping instead of gliding), and a glide in flight when the preference changed finished animating: it settles now.</li>
+</ul>
 
 <ul>
 <li><code>--sv-page</code> and <code>--sv-v</code> are published only when something in the document can read them. Both live on <code>&lt;html></code> and both inherit, so every write asked the browser to recalculate style for the entire document, on every scroll frame, whether or not a single rule referenced them. On the 900-box benchmark that cost 3249ms of style recalculation over a 12-second scroll against 269ms without, and 4128ms of total task time against 1696ms; the same page with the identical writes registered <code>inherits: false</code> cost 267.5ms, so the price was the inheritance rather than the write. The driver now scans the document's own stylesheets and inline styles once, on the first frame that could publish, and stays silent when neither name appears. A stylesheet added later turns publishing back on; the watch behind that rescans once per frame that adds an element and skips every stylesheet it already read in full (by rule count, so a rule inserted into an existing sheet as a component mounts is still seen), which is what keeps a page that mounts elements while it scrolls from serializing every rule on every one of those frames. <b>This can change behavior for a page that reads the variables only from JavaScript</b>, which no CSS scan can see: call <code>setPageOutputs(true)</code> there. Anything unreadable counts as a reader, so a cross-origin stylesheet without CORS headers keeps publishing exactly as before. Calling <code>setPageOutputs()</code> at all now takes the decision away from detection permanently, in both directions.</li>

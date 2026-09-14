@@ -104,21 +104,46 @@
 }
 .sv-dots {
   display: flex;
+  flex-wrap: wrap; /* a crowded row wraps rather than shrinking the targets */
   gap: var(--sv-dot-gap, 8px);
   justify-content: var(--sv-dots-justify, center);
   margin-top: var(--sv-dots-offset, 14px);
 }
+/* The button is the target and the dot is drawn inside it: WCAG 2.5.8 asks
+   24 by 24 CSS pixels of target, an 8px dot with 8px gaps had a third of
+   that. --sv-dot-size still sizes what you see, --sv-dot-target what you hit. */
 .sv-dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--sv-dot-target, 24px);
+  height: var(--sv-dot-target, 24px);
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.sv-dot::before {
+  content: '';
   width: var(--sv-dot-size, 8px);
   height: var(--sv-dot-size, 8px);
   border-radius: 999px;
-  border: 0;
-  padding: 0;
   background: var(--sv-dot-color, rgba(128, 128, 128, 0.35));
-  cursor: pointer;
   transition: background 300ms, scale 300ms;
 }
-.sv-dot.on {
+.sv-dot.on::before {
   background: var(--sv-dot-active, currentColor);
   scale: 1.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-dot::before {
+    transition: none;
+  }
+}
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-dot::before {
+  transition: none;
 }

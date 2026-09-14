@@ -102,9 +102,13 @@
     1
   );
 }
-/* Ready-made flavor: rise+fade each child across its own range. */
+/* Ready-made flavor: rise+fade each child across its own range. The fade
+   starts at --sv-range-floor (.55, like sv-reading's floor): the sheet's
+   text color stays at 4.5:1 on a dark ground while a child waits; a muted
+   or accent color needs more, 0 is the dramatic look, at the cost of that
+   audit. */
 .sv .sv-range.sv-range-rise > * {
-  opacity: var(--sv-r, 1);
+  opacity: calc(var(--sv-range-floor, 0.55) + (1 - var(--sv-range-floor, 0.55)) * var(--sv-r, 1));
   translate: 0 calc((1 - var(--sv-r, 1)) * var(--sv-distance, 2rem));
 }
 
@@ -271,4 +275,35 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   .sv .sv-range > * {
     --sv-r: 1;
   }
+}
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-stage {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-l,
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-r {
+  display: none;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-deck {
+  display: block;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-reading > * {
+  opacity: 1;
+}
+:where([data-sv-motion="reduce"]) .sv .sv-range > * {
+  --sv-r: 1;
 }

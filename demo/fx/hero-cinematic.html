@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Cinematic hero · ScrollVars fx</title>
 <meta name="description" content="Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t). Copy-paste in Tailwind, CSS or React.">
@@ -12,11 +13,20 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
-  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
   footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
     font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   footer.fx b { color: var(--text); }
@@ -46,7 +56,7 @@
     border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
     display:grid; place-items:center; font:600 15px var(--mono); }
   .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
-  .tabs { display:flex; gap:8px; margin: 26px 0 0; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin: 26px 0 0; } /* three tabs overflowed a 320px viewport by 10px (WCAG 1.4.10) */
   .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
     border:1px solid var(--line); border-bottom:0; background:transparent;
     color:var(--muted); cursor:pointer; }
@@ -101,13 +111,36 @@
 </head><body>
 <header class="fx">
   <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
-  <div><a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
 <div class="fxwrap">
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       <details open><summary>Reveals</summary>
         <a href="staggered-reveal.html">Staggered reveal</a>
         <a href="deck-spread.html">Deck spread</a>
@@ -155,10 +188,13 @@
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
-.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
 </style><div class="hero-orb a"></div><div class="hero-orb b"></div><div class="sv"><div class="hero-inner"><p class="hero-eyebrow sv-rise">Studio · 2026 reel</p><h1 class="sv-split hero-title sv-split-rise" style="--sv-count:5"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Sites that move with intent</span><span aria-hidden="true" style="--sv-order:0">Sites</span> <span aria-hidden="true" style="--sv-order:1">that</span> <span aria-hidden="true" style="--sv-order:2">move</span> <span aria-hidden="true" style="--sv-order:3">with</span> <span aria-hidden="true" style="--sv-order:4">intent</span></h1><p class="hero-sub sv-rise" style="--sv-order:6">One scroll listener, one frame, and CSS does the rest. This hero is 40 lines of CSS on top of the presets.</p><p class="sv-rise" style="--sv-order:7">See the work</p></div></div><div class="sv-marquee sv-marquee-controlled hero-strip"><div class="sv-marquee-track"><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span><span class="sv-marquee-dup" aria-hidden="true" inert=""><span>Brand</span><span>·</span><span>Motion</span><span>·</span><span>Web</span><span>·</span><span>Type</span><span>·</span></span></div><button type="button" class="sv-marquee-pause" aria-pressed="false" data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button></div></section>
 <script>addEventListener('load', () => {
@@ -168,12 +204,12 @@
 })</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add hero-cinematic</code><br><b>Styles:</b> <code>import 'scrollvars/styles/core.css'</code> · <code>import 'scrollvars/styles/ui.css'</code></p>
   <div class="tabs">
-    <button class="on" data-tab="react">Complete component · CLI source</button>
+    <button type="button" class="on" aria-pressed="true" data-tab="react">Complete component · CLI source</button>
   </div>
   <div class="code">
     <button class="copy">copy</button>
 
-    <pre class="on" data-pane="react"><code>// ScrollVars fx · hero-cinematic
+    <pre class="on" tabindex="0" data-pane="react"><code>// ScrollVars fx · hero-cinematic
 // Requires: npm i scrollvars · import 'scrollvars/styles/core.css' and 'scrollvars/styles/ui.css'
 // Split headline rising on a beat, pointer-parallax glow, marquee strip; the block
 // fades and scales out as it leaves (--sv-t). The CSS below is the whole section,
@@ -193,10 +229,13 @@ const css = `
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
-.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
 `
 
@@ -254,7 +293,7 @@ export function HeroCinematic({
 }
 </code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.1 KB gzip as ESM (this page's fx/sv.js IIFE: 8.4 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.5 KB gzip as ESM (this page's fx/sv.js IIFE: 8.7 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
@@ -267,7 +306,7 @@ export function HeroCinematic({
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));

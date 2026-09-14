@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars</title>
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 3.8 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 4.1 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 3.8 KB driver, ~6× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.1 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -63,6 +64,8 @@
   @media (prefers-reduced-motion: reduce) {
     .sv .sv-rise, .sv .sv-fade, .sv .sv-drift { transition: none; opacity: 1; translate: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .sv .sv-rise, :where([data-sv-motion="reduce"]) .sv .sv-fade, :where([data-sv-motion="reduce"]) .sv .sv-drift { transition: none; opacity: 1; translate: none; }
 
   /* ══════════════ page ══════════════ */
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
@@ -103,6 +106,10 @@
   /* ── hero ── */
   /* ── fixed top bar: repo/install, visible in the first fold and on every
      scroll position (the site's own "npm i" pitch, always in reach) ── */
+  /* the bar covers whatever the browser scrolls to the top edge, a focused
+     link on the way back included (WCAG 2.4.11): the scrollport starts
+     under it. The keyboard gate found the reading list's links under it. */
+  html { scroll-padding-top: 64px; }
   header.site {
     position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: 56px;
     display: flex; align-items: center; justify-content: space-between;
@@ -118,6 +125,11 @@
     border-radius: 999px; padding: 6px 8px 6px 14px;
   }
   header.site .install b { color: var(--text); font-weight: 400; }
+  header.site .motion {
+    font: 13px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; min-height: 24px;
+  }
+  header.site .motion[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
   header.site .install button {
     display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
     border: 0; border-radius: 999px; background: transparent; color: var(--muted);
@@ -266,6 +278,8 @@
   @media (prefers-reduced-motion: reduce) {
     .pgal-col { translate: none; margin-top: 0; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .pgal-col { translate: none; margin-top: 0; }
 
   /* ── demo 3: pinned scenes ── */
   .kf-outer { height: 400vh; position: relative; }
@@ -334,6 +348,9 @@
     .curtain-panel { display: none; }
     .curtain-reveal .big { letter-spacing: 0.1em; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .curtain-panel { display: none; }
+  :where([data-sv-motion="reduce"]) .curtain-reveal .big { letter-spacing: 0.1em; }
 
   /* ── demo 3c: horizontal carousel ── */
   .hcar-outer { height: 300vh; position: relative; }
@@ -373,6 +390,10 @@
     .hcar-sticky { overflow-x: auto; }
     .hcar-track { translate: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .hcar-outer { height: auto; }
+  :where([data-sv-motion="reduce"]) .hcar-sticky { overflow-x: auto; }
+  :where([data-sv-motion="reduce"]) .hcar-track { translate: none; }
 
   /* ── demo 3d: card deck ── */
   .deck-outer { height: 400vh; position: relative; }
@@ -415,6 +436,10 @@
     .deck-sticky { position: static; height: auto; display: flex; flex-direction: column; gap: 14px; }
     .deck-card { position: static; translate: none; rotate: none; scale: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .deck-outer { height: auto; padding: 40px 0; }
+  :where([data-sv-motion="reduce"]) .deck-sticky { position: static; height: auto; display: flex; flex-direction: column; gap: 14px; }
+  :where([data-sv-motion="reduce"]) .deck-card { position: static; translate: none; rotate: none; scale: none; }
 
   /* ── demo 3e: guided reading ── */
   .read-outer { height: 300vh; position: relative; }
@@ -441,6 +466,10 @@
     .read-sticky { position: static; height: auto; }
     .read-text span { opacity: 1; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .read-outer { height: auto; padding: 40px 0; }
+  :where([data-sv-motion="reduce"]) .read-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .read-text span { opacity: 1; }
 
   /* ── demo 3f: counter ── */
   @property --cnum {
@@ -475,6 +504,10 @@
     .count-sticky { position: static; height: auto; }
     .count-num { --cnum: 421; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .count-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .count-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .count-num { --cnum: 421; }
 
   /* ── demo 3g: scrubbed video ── */
   .vid-outer { height: 350vh; position: relative; }
@@ -511,6 +544,9 @@
     .vid-outer { height: auto; }
     .vid-sticky { position: static; height: auto; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .vid-outer { height: auto; }
+  :where([data-sv-motion="reduce"]) .vid-sticky { position: static; height: auto; }
 
   /* ── demo 4b: kinetic typography ── */
   .type-outer { height: 500vh; position: relative; }
@@ -571,6 +607,11 @@
     .type-word { --f1: 1; --f2: 1; --f3: 0; --f4: 1; }
     .type-letter { transition: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .type-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .type-sticky { position: static; height: auto; min-height: 40vh; }
+  :where([data-sv-motion="reduce"]) .type-word { --f1: 1; --f2: 1; --f3: 0; --f4: 1; }
+  :where([data-sv-motion="reduce"]) .type-letter { transition: none; }
 
   /* ── demo 4c: choreographed collage ── */
   .collage-stage {
@@ -608,6 +649,8 @@
   @media (prefers-reduced-motion: reduce) {
     .collage-item { transition: none; translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .collage-item { transition: none; translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; }
 
   /* ── demo 4d: svg path draw ── */
   .draw-outer { height: 300vh; position: relative; }
@@ -640,6 +683,11 @@
     .draw-car { display: none; }
 
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .draw-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .draw-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .draw-path { stroke-dashoffset: 0; }
+  :where([data-sv-motion="reduce"]) .draw-car { display: none; }
 
   /* ── demo 5: 3D product tour: one panel per scene ── */
   .tour-panel {
@@ -691,6 +739,8 @@
   @media (prefers-reduced-motion: reduce) {
     .gl-outer { height: 100vh; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .gl-outer { height: 100vh; }
 
   /* ── demo 4: 3D ── */
   .stage3d { display: grid; place-items: center; padding: 50px 0; perspective: 1100px; }
@@ -720,6 +770,8 @@
   .face.back { background: linear-gradient(135deg, #2b2418, #1b1a24 60%); transform: rotateY(180deg); color: var(--text); }
   .face.back .big { font-size: 22px; color: var(--num); }
   @media (prefers-reduced-motion: reduce) { .card3d { transform: none; } }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .card3d { transform: none; }
 
   /* ── demo 6: pointer tilt ── */
   .tilt-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 10px; }
@@ -768,6 +820,9 @@
     .tilt-card { transform: none; transition: none; }
     .tilt-card::after { display: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .tilt-card { transform: none; transition: none; }
+  :where([data-sv-motion="reduce"]) .tilt-card::after { display: none; }
 
   /* ── api ── */
   table { border-collapse: collapse; width: 100%; margin-top: 28px; font-size: 13.5px; }
@@ -997,6 +1052,14 @@ html.snap-region { scroll-snap-type: y proximity; }
   .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
   .map-compass { display: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .map-outer { height: auto; }
+:where([data-sv-motion="reduce"]) .map-sticky { position: static; height: auto; overflow: visible; background: none; }
+:where([data-sv-motion="reduce"]) .map-world { position: static; width: auto; height: auto; transform: none !important; background: none; }
+:where([data-sv-motion="reduce"]) .map-world svg { display: none; }
+:where([data-sv-motion="reduce"]) #map-canvas { display: none; }
+:where([data-sv-motion="reduce"]) .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
+:where([data-sv-motion="reduce"]) .map-compass { display: none; }
 
 /* ── case 13 · the slider module ── */
 .sv-slider {
@@ -1037,9 +1100,10 @@ html.snap-region { scroll-snap-type: y proximity; }
   display: grid;
   place-items: center;
   font: 500 12px var(--mono);
-  color: var(--muted);
+  color: var(--text);
   cursor: pointer;
-  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.3, 0.65));
+  /* dimmed by distance, floored at .6: the farthest thumb's label still reads at 5.8:1 (axe) */
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.15, 0.4));
 }
 .slider-thumbs > div.sv-active { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 700px) { .slider-thumbs { display: none; } }
@@ -1242,6 +1306,8 @@ Discrete value + transition = smooth */
 @media (prefers-reduced-motion: reduce) {
   .sv-words > * { transition: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-words > * { transition: none; }
 .pz-head p { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
 .pz-hub {
   position: absolute;
@@ -1326,6 +1392,9 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
   .pz-outer { height: auto; }
   .pz-sticky { position: static; contain: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .pz-outer { height: auto; }
+:where([data-sv-motion="reduce"]) .pz-sticky { position: static; contain: none; }
 
 /* ── case 17 · the CSS timeline (sv-acts, official preset since v1.3) ── */
 @property --sv-act {
@@ -1416,6 +1485,8 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
 @media (prefers-reduced-motion: reduce) {
   .sv-acts { transition-duration: 0.01ms; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-acts { transition-duration: 0.01ms; }
 
 /* ── case 18 · the spread (sv-spread, official preset since v1.4) ── */
 .sv-spread {
@@ -1462,6 +1533,8 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
 @media (prefers-reduced-motion: reduce) {
   .sv-spread > * { translate: none; rotate: none; transition: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-spread > * { translate: none; rotate: none; transition: none; }
 
 /* The custom demos need the same fails-visible contract as the shipped
    presets. Until the driver boots, every scene is ordinary readable content. */
@@ -1518,6 +1591,7 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
 <header class="site">
   <a class="word" href="#hero"><span class="dash">--</span>scrollvars</a>
   <div class="right">
+    <button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button>
     <div class="install">
       <span><b>npm i scrollvars</b></span>
       <button type="button" id="install-copy" aria-label="copy install command">
@@ -1532,6 +1606,29 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
     </a>
   </div>
 </header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
 <main>
 <noscript><p class="wrap" style="padding-top: 80px;">Static preview: all text and cards remain available. Enable JavaScript to try the scroll, pointer and canvas effects.</p></noscript>
 
@@ -1584,7 +1681,7 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
         <p>Driver and presets honor prefers-reduced-motion: content visible, no movement.</p>
       </div>
     </div>
-    <pre><code><span class="c">// React. Automatic stagger: no classes on children</span>
+    <pre tabindex="0"><code><span class="c">// React. Automatic stagger: no classes on children</span>
 <span class="k">import</span> { Reveal } <span class="k">from</span> <span class="s">'scrollvars/react'</span>
 
 &lt;<span class="k">Reveal</span> as=<span class="s">"section"</span> auto&gt;
@@ -1613,7 +1710,7 @@ And have <em>no transition</em>: continuous value + transition is what causes th
       <div class="layer l2 sv-drift">--sv-distance: 7rem · middle ground</div>
       <div class="layer l3 sv-drift">--sv-distance: 13rem · flies</div>
     </div>
-    <pre><code><span class="c">/* ready-made preset */</span>
+    <pre tabindex="0"><code><span class="c">/* ready-made preset */</span>
 &lt;div className=<span class="s">"sv-drift"</span> style={{ <span class="s">'--sv-distance'</span>: <span class="s">'13rem'</span> }}&gt;…&lt;/div&gt;
 
 <span class="c">/* or custom CSS: the public API is the variables */</span>
@@ -1658,7 +1755,7 @@ And have <em>no transition</em>: continuous value + transition is what causes th
         <div class="pgal-card h2"><span class="big">13</span><span class="lbl">foreground</span></div>
       </div>
     </div>
-    <pre><code><span class="c">/* markup: a normal section; register feeds the lerp target:
+    <pre tabindex="0"><code><span class="c">/* markup: a normal section; register feeds the lerp target:
    track(section, { onTravel: (t) =&gt; { target = t } }) */</span>
 
 <span class="c">/* different speed = perceived depth */</span>
@@ -1695,7 +1792,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* THE PINNED SKELETON. Every pinned case on this page reuses it:
+    <pre tabindex="0"><code><span class="c">/* THE PINNED SKELETON. Every pinned case on this page reuses it:
    &lt;div class="outer"&gt;          height: 300vh  (the scroll length)
      &lt;div class="sticky"&gt;…&lt;/div&gt;  position: sticky; top: 0; height: 100vh; overflow: hidden
    &lt;/div&gt;
@@ -1738,7 +1835,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: the pinned skeleton (see case 3) at 250vh;
+    <pre tabindex="0"><code><span class="c">/* markup: the pinned skeleton (see case 3) at 250vh;
    the two panels fill the sticky stage side by side */</span>
 
 <span class="c">/* curtain: two panels, opposite directions */</span>
@@ -1769,13 +1866,13 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 3.8 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.1 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; inside the sticky stage:
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; inside the sticky stage:
    &lt;div class="track"&gt; …cards… &lt;/div&gt;   +   track(outer, { pin: true }) */</span>
 
 <span class="c">/* the track overflows the screen; the pin pays the difference */</span>
@@ -1810,7 +1907,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 400vh; sv-deck is the sticky stage's child
    track(outer, { pin: true }) */</span>
 
 <span class="c">/* official preset since v0.7. Children stack via grid, auto-indexed */</span>
@@ -1842,7 +1939,7 @@ rotate: <span class="k">calc(var(--sv-slice) * -7deg)</span>;</code></pre>
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; split the text into &lt;span&gt;s with
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; split the text into &lt;span&gt;s with
    --sv-order 0..n and set --sv-count on the container
    track(outer, { pin: true }) */</span>
 
@@ -1874,7 +1971,7 @@ The counting number is 100% CSS.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 220vh
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 220vh
    track(outer, { pin: true }) */</span>
 
 <span class="c">/* official preset since v0.7 */</span>
@@ -1915,7 +2012,7 @@ there is nothing to get stuck.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh with a &lt;canvas&gt; in the sticky stage;
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh with a &lt;canvas&gt; in the sticky stage;
    frames extracted once:  ffmpeg -i clip.mp4 -vf 'fps=6,scale=640:-2' f%02d.jpg */</span>
 
 <span class="c">// the callback gets the raw pin; the frame index is one line</span>
@@ -1962,7 +2059,7 @@ there is nothing to get stuck.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* frame slices: each act clips 1 unit of the scene */</span>
+    <pre tabindex="0"><code><span class="c">/* frame slices: each act clips 1 unit of the scene */</span>
 --f2: <span class="k">clamp(0, calc(var(--sv-scene) - 1), 1)</span>;
 
 <span class="c">/* discrete act (snap + transition): the word assembles */</span>
@@ -2000,7 +2097,7 @@ The scroll conducts it in both directions.
       <div class="collage-item co-dot" style="top:18%;left:44%;--ex:0px;--ey:-45vh;--dur:800ms;--wait:420ms"></div>
       <div class="collage-item co-dot" style="bottom:24%;right:38%;--ex:12vw;--ey:38vh;--dur:850ms;--wait:500ms;--es:2"></div>
     </div>
-    <pre><code><span class="c">/* markup: a normal section tracked with { once: true }:
+    <pre tabindex="0"><code><span class="c">/* markup: a normal section tracked with { once: true }:
 sv-live latches and every item plays its own entrance */</span>
 
 <span class="c">/* each item declares its own entrance */</span>
@@ -2036,7 +2133,7 @@ Including in reverse.
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">/* markup: pinned skeleton; the SVG (path + circle) fills the sticky
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton; the SVG (path + circle) fills the sticky
    stage;  pathLength=1 on the path makes the dash math unitless */</span>
 
 <span class="c">/* the stroke draws itself */</span>
@@ -2093,7 +2190,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
     </div>
   </div>
   <div class="wrap" style="padding-bottom: 10vh;">
-    <pre><code><span class="c">// one orientation target per scene; the pin interpolates between them</span>
+    <pre tabindex="0"><code><span class="c">// one orientation target per scene; the pin interpolates between them</span>
 <span class="k">const</span> TARGETS = [
   { ry: <span class="n">-0.55</span>, zoom: <span class="n">1.12</span> },  <span class="c">// the beak</span>
   { ry: <span class="n">1.82</span>,  zoom: <span class="n">0.92</span> },  <span class="c">// the wing</span>
@@ -2132,7 +2229,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
         </div>
       </div>
     </div>
-    <pre><code><span class="c">/* 1 · CSS 3D (this demo). Cheap, runs on any phone */</span>
+    <pre tabindex="0"><code><span class="c">/* 1 · CSS 3D (this demo). Cheap, runs on any phone */</span>
 .card3d { transform: <span class="k">rotateY(calc(var(--sv-t) * 240deg))</span>; }
 
 <span class="c">// 2 · Scrubbed video (pre-rendered 3D scene,</span>
@@ -2175,7 +2272,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
         <div><h3>Depth</h3><p>Inner layers float at different translateZ heights, so the parallax is real 3D, not fake offsets.</p></div>
       </div>
     </div>
-    <pre><code><span class="c">/* the pointer becomes two variables; CSS does the rest */</span>
+    <pre tabindex="0"><code><span class="c">/* the pointer becomes two variables; CSS does the rest */</span>
 .card {
   transform: <span class="k">perspective(900px) rotateY(calc(var(--mx) * 14deg))
              rotateX(calc(var(--my) * -14deg))</span>;
@@ -2210,7 +2307,7 @@ And the cards crossfade in pure CSS, reading <span class="inline-code">--sv-scen
       <canvas id="amb-canvas"></canvas>
       <div class="amb-hud"><b id="amb-frames">0</b> frames rendered. Only while you watch</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="k">import</span> { mountEffect } <span class="k">from</span> <span class="s">'scrollvars/canvas'</span>  <span class="c">// or useCanvasEffect in React</span>
 
 mountEffect(canvas, {
   setup:  (fx) =&gt; { <span class="c">/* build your particles */</span> },
@@ -2256,7 +2353,7 @@ mountEffect(canvas, {
         and a fade driven by the same variable that drove the stars.
       </p>
     </div>
-    <pre><code><span class="c">/* markup: pinned skeleton at 300vh; &lt;canvas&gt; fills the sticky stage,
+    <pre tabindex="0"><code><span class="c">/* markup: pinned skeleton at 300vh; &lt;canvas&gt; fills the sticky stage,
    mounted with mountEffect (the harness renders only while visible) */</span>
 
 <span class="c">// the pin drives the camera; the harness only renders while visible</span>
@@ -2287,7 +2384,7 @@ mountEffect(canvas, {
     <div class="blob-hint">move the pointer. The blobs give way</div>
   </div>
   <div class="wrap">
-    <pre style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">// pointer physics stay in userland; the harness just gives the loop</span>
 mountEffect(canvas, {
   frame: (fx, dt) =&gt; {
     blob.ox += ((push.x - blob.ox)) * <span class="n">0.06</span>   <span class="c">// spring toward (or back from) the pointer</span>
@@ -2335,7 +2432,7 @@ mountEffect(canvas, {
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* the magnet, scoped: active only while the group is live */</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* the magnet, scoped: active only while the group is live */</span>
 html.snap-region { scroll-snap-type: <span class="k">y proximity</span>; }
 .panel { scroll-snap-align: <span class="k">start</span>; height: 100vh; }
 
@@ -2377,7 +2474,7 @@ Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
       <div>05<br>all native CSS</div>
       <div>06<br>zero JS in the magnet</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code>.carousel { overflow-x: auto; scroll-snap-type: <span class="k">x proximity</span>; }  <span class="c">/* or x mandatory */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 5"><code>.carousel { overflow-x: auto; scroll-snap-type: <span class="k">x proximity</span>; }  <span class="c">/* or x mandatory */</span>
 .carousel &gt; * { scroll-snap-align: <span class="k">center</span>; }
 .carousel.slideshow &gt; * { scroll-snap-stop: <span class="k">always</span>; }  <span class="c">/* one card per gesture */</span></code></pre>
   </div>
@@ -2437,7 +2534,7 @@ Drag it after each switch. <strong>free</strong>: no snap, momentum decides.
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 500vh. Inside the sticky stage:
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 500vh. Inside the sticky stage:
    &lt;canvas&gt;                       grid + dashed route, redrawn per frame
    &lt;div class="world"&gt;…stations…  transform-only layer, paints ONLY cards
    &lt;svg hidden&gt;path&lt;/svg&gt;         geometry source for getPointAtLength */</span>
@@ -2460,7 +2557,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 2.4&nbsp;KB carousel, 18× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 2.7&nbsp;KB carousel, 16× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2472,8 +2569,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.0&nbsp;KB minified,
-<strong>2.4&nbsp;KB gzipped, ~18× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.9&nbsp;KB minified,
+<strong>2.7&nbsp;KB gzipped, ~16× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2484,7 +2581,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         <div>03<br>--sd drives the CSS</div>
         <div>04<br>drag me (mouse too)</div>
         <div>05<br>.sv-active for state</div>
-        <div>06<br>2 KB, not 150</div>
+        <div>06<br>3 KB, not 150</div>
       </div>
       <div class="slider-thumbs" id="slider-thumbs" style="scroll-snap-type: none;">
         <div>01</div><div>02</div><div>03</div>
@@ -2496,7 +2593,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
       <div class="slider-dots" id="slider-dots"></div>
       <button id="slider-next" aria-label="next">&#8594;</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup. The whole carousel:
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 5"><code><span class="c">/* markup. The whole carousel:
    &lt;div class="sv-slider" id="el"&gt; &lt;div&gt;…slide…&lt;/div&gt; ×N &lt;/div&gt;
    import { slider } from 'scrollvars'   (styles.css ships the base CSS) */</span>
 
@@ -2524,7 +2621,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">// the page's vertical scroll becomes the carousel's fuel</span>
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">// the page's vertical scroll becomes the carousel's fuel</span>
 <span class="k">track</span>(rail, { pin: true, onPin: (p) =&gt; {
   carousel.scrollLeft = p * (carousel.scrollWidth - carousel.clientWidth)
 }})
@@ -2555,7 +2652,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
         <div class="wheel-pointer"></div>
       </div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* markup: same .sv-slider container, tall padding creates the
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">/* markup: same .sv-slider container, tall padding creates the
    pick-line; a fixed overlay draws the detent lines */</span>
 
 <span class="k">slider</span>(el, { axis: <span class="s">'y'</span>, onSlide: (i) =&gt; pick(OPTIONS[i]) })
@@ -2604,7 +2701,7 @@ s.next(); s.prev(); s.goTo(<span class="n">3</span>)
     </div>
   </div>
   <div class="wrap sv" data-sv data-once>
-    <pre style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
+    <pre tabindex="0" style="margin-top: 28px;"><code><span class="c">/* markup: pinned skeleton at 300vh. In the sticky stage:
    &lt;div class="hub"&gt; &lt;div class="slice" style="--i:0"&gt;&lt;img&gt;… ×5 &lt;/div&gt;
    hub sits at left:50%; top:calc(100% + 8vh): the center below the fold */</span>
 
@@ -2680,7 +2777,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
     <div style="text-align: center;">
       <button class="acts-btn" data-sv-toggle="sv-open" data-sv-target="#acts-stage">play / reverse</button>
     </div>
-    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition. That's the engine */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 3"><code><span class="c">/* the clock: one registered property in transition. That's the engine */</span>
 @property --sv-act { syntax: <span class="s">'&lt;number&gt;'</span>; initial-value: <span class="n">0</span>; inherits: true; }
 .sv-acts { --sv-act: <span class="n">0</span>; transition: <span class="k">--sv-act 2.4s linear</span>; }
 .sv-acts.sv-open { --sv-act: <span class="n">3</span>; }
@@ -2728,7 +2825,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
       <div style="--sv-order: 1">02</div>
       <div style="--sv-order: 2">03</div>
     </div>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">/* cards sit in their real flex row; the deck is just a translate */</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">/* cards sit in their real flex row; the deck is just a translate */</span>
 .sv-spread &gt; * {
   --sv-d: <span class="k">calc(var(--sv-order) - var(--sv-mid, 1))</span>;  <span class="c">/* slots from center */</span>
   translate: <span class="k">calc(var(--sv-d) * (var(--sv-spread, 0) - 1) * (100% + 16px))</span> 0;
@@ -2758,7 +2855,7 @@ Anything linear. Press play; press again <em>mid-flight</em> and watch it revers
         that we know how to measure. The receipts are above.
       </p>
     </div>
-    <pre class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 3"><code><span class="c"># install</span>
 npm i scrollvars
 
 <span class="c">// app/layout.tsx: one client component, the whole wiring</span>
@@ -2805,9 +2902,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 17.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>9.7 KB / 3.8 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.6 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>10.5 KB / 4.1 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -2865,7 +2962,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td><code>.sv-live</code></td><td class="range">class</td><td>On while inside the activation band (75% / 25%). Fires the entrances</td></tr>
       </tbody>
     </table>
-    <pre class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla. No React at all</span>
+    <pre tabindex="0" class="sv-rise" style="--sv-order: 4"><code><span class="c">// vanilla. No React at all</span>
 <span class="k">import</span> { track } <span class="k">from</span> <span class="s">'scrollvars'</span>
 
 <span class="k">const</span> untrack = <span class="k">track</span>(el, {
@@ -2959,7 +3056,7 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 3.8 KB gzip · full core 8.1 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
+  <p><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.5 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.16.1 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
 <p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
 <p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
 </footer>
@@ -3001,10 +3098,12 @@ var SV = (() => {
     clamp: () => clamp,
     easeOutCubic: () => easeOutCubic,
     mapRange: () => mapRange,
+    onMotionChange: () => onMotionChange,
     prefersReducedMotion: () => prefersReducedMotion,
     refresh: () => refresh,
     scan: () => scan,
     scrollToScene: () => scrollToScene,
+    setMotion: () => setMotion,
     setPageOutputs: () => setPageOutputs,
     slider: () => slider,
     snapProgress: () => snapProgress,
@@ -3038,6 +3137,75 @@ var SV = (() => {
     return ease ? ease(raw) : raw;
   }
 
+  // dist/core/motion.js
+  var ATTR = "data-sv-motion";
+  var listeners = /* @__PURE__ */ new Set();
+  var media = null;
+  var wiredWith = null;
+  var mediaMatches = false;
+  var last = false;
+  var attrReduce = () => {
+    const el = typeof document !== "undefined" ? document.documentElement : null;
+    return typeof el?.getAttribute === "function" && el.getAttribute(ATTR) === "reduce";
+  };
+  var mediaReduce = () => media ? mediaMatches : false;
+  var onMedia = (event) => {
+    mediaMatches = typeof event?.matches === "boolean" ? event.matches : !!media?.matches;
+    notify();
+  };
+  function reducedMotion() {
+    wire();
+    return attrReduce() || mediaReduce();
+  }
+  function notify() {
+    const now = reducedMotion();
+    if (now === last)
+      return;
+    last = now;
+    listeners.forEach((fn) => {
+      try {
+        fn(now);
+      } catch (error) {
+        if (typeof reportError === "function")
+          reportError(error);
+        else
+          console.error(error);
+      }
+    });
+  }
+  function wire() {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia === wiredWith)
+      return;
+    wiredWith = window.matchMedia;
+    media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mediaMatches = !!media.matches;
+    if (typeof media.addEventListener === "function")
+      media.addEventListener("change", onMedia);
+    else
+      media.addListener?.(onMedia);
+    if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.documentElement)
+      new MutationObserver(notify).observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] });
+    last = attrReduce() || mediaMatches;
+  }
+  function onMotionChange(fn) {
+    wire();
+    listeners.add(fn);
+    return () => {
+      listeners.delete(fn);
+    };
+  }
+  function setMotion(mode) {
+    const el = typeof document !== "undefined" ? document.documentElement : null;
+    if (!el || typeof el.setAttribute !== "function")
+      return;
+    if (mode === "reduce")
+      el.setAttribute(ATTR, "reduce");
+    else
+      el.removeAttribute(ATTR);
+    wire();
+    notify();
+  }
+
   // dist/core/driver.js
   var SCENE_SNAP = 0.4;
   var LIVE_ENTER = 0.75;
@@ -3048,12 +3216,9 @@ var SV = (() => {
   var resizeObserver = null;
   var culler = null;
   var initialized = false;
-  var reducedMotion = false;
+  var reducedMotion2 = false;
   function getReducedMotion() {
-    if (initialized || typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return reducedMotion;
-    }
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return initialized ? reducedMotion2 : reducedMotion();
   }
   function init() {
     if (initialized || typeof window === "undefined")
@@ -3075,17 +3240,12 @@ var SV = (() => {
       vh = window.innerHeight;
       refresh();
     });
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reducedMotion = media.matches;
-    const onMotionChange = (event) => {
-      reducedMotion = event.matches;
+    reducedMotion2 = reducedMotion();
+    onMotionChange((reduced) => {
+      reducedMotion2 = reduced;
       applyPinHelperAll();
       schedule();
-    };
-    if (typeof media.addEventListener === "function")
-      media.addEventListener("change", onMotionChange);
-    else
-      media.addListener?.(onMotionChange);
+    });
     if (typeof IntersectionObserver !== "undefined") {
       culler = new IntersectionObserver((records) => {
         for (const record of records) {
@@ -3349,7 +3509,7 @@ var SV = (() => {
       const pageStr = clamp(y / pageSpan, 0, 1).toFixed(4);
       if (pageStr !== lastPageStr)
         docEl.style?.setProperty("--sv-page", lastPageStr = pageStr);
-      const vStr = (reducedMotion ? 0 : clamp(v, -20, 20)).toFixed(3);
+      const vStr = (reducedMotion2 ? 0 : clamp(v, -20, 20)).toFixed(3);
       if (vStr !== lastVStr)
         docEl.style?.setProperty("--sv-v", lastVStr = vStr);
       clearTimeout(velTimer);
@@ -3440,7 +3600,7 @@ var SV = (() => {
       const settle = isLive && opts.once && !opts.travel && !opts.pin && !(opts.scenes && opts.scenes > 1) && !opts.onTravel && !opts.onPin && !opts.onScene;
       if (settle) {
         if (opts.view !== false)
-          setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
+          setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
         if (entries.get(entry.el) === entry) {
           entries.delete(entry.el);
           unobserveIfUnneeded(entry.el);
@@ -3462,7 +3622,7 @@ var SV = (() => {
       writeLive(entry);
     }
     if (opts.view !== false) {
-      setVar(entry, "--sv-view", reducedMotion ? 0 : computeView(geo, enter, exit));
+      setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
     }
     if (opts.travel || opts.onTravel) {
       const t = computeTravel(geo);
@@ -3627,7 +3787,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return void 0;
-    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled())
+    if (entry.flow || reducedMotion2 || belowTransformFloor() && !compatInstalled())
       return void 0;
     if (authored.position && authored.position !== "static")
       return void 0;
@@ -3642,7 +3802,7 @@ var SV = (() => {
     const { el, opts, authored } = entry;
     if (typeof opts.pin !== "string" || !authored)
       return;
-    if (entry.flow || reducedMotion || belowTransformFloor() && !compatInstalled()) {
+    if (entry.flow || reducedMotion2 || belowTransformFloor() && !compatInstalled()) {
       el.style.height = authored.height;
       el.style.position = authored.position;
     } else {
@@ -4221,11 +4381,15 @@ var SV = (() => {
       }
       container.classList.remove("sv-gliding");
     };
+    const offMotion = onMotionChange((reduced) => {
+      if (!reduced || target < 0 || destroyed)
+        return;
+      goTo(target, false);
+    });
     const glide = (to) => {
       stopGlide();
       let current = pos();
-      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-      if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+      if (duration <= 0 || reducedMotion() || Math.abs(to - current) < 1) {
         resumeSnap();
         target = -1;
         setPos(to);
@@ -4233,10 +4397,10 @@ var SV = (() => {
       }
       suspendSnap();
       container.classList.add("sv-gliding");
-      let last = performance.now();
+      let last2 = performance.now();
       const step = (now) => {
-        const dt = Math.min(now - last, 50);
-        last = now;
+        const dt = Math.min(now - last2, 50);
+        last2 = now;
         const factor = 1 - Math.pow(2e-3, dt / duration);
         current += (to - current) * factor;
         if (Math.abs(to - current) < 0.5) {
@@ -4426,6 +4590,7 @@ var SV = (() => {
       state,
       destroy: () => {
         destroyed = true;
+        offMotion();
         stopGlide();
         resumeSnap();
         container.classList.remove("sv-slider", "sv-slider-y", "sv-draggable", "sv-dragging");
@@ -4456,7 +4621,9 @@ var SV = (() => {
    build. register() is a thin shim over SV.track that keeps the page's HUD
    instrumentation. Never hand-patch either block.) ════════════════ */
 (function () {
-  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // the effective preference, live: the OS setting or the site's own switch
+  // (data-sv-motion). A flag read once at boot ignored the switch (review).
+  function reducedNow() { return SV.prefersReducedMotion(); }
 
   // top bar install pill: copy-to-clipboard
   var installCopy = document.getElementById('install-copy');
@@ -4657,6 +4824,7 @@ var SV = (() => {
   var pgalRaf = 0;
   function pgalTick() {
     pgalRaf = 0;
+    if (reducedNow()) { for (var q = 0; q < pgalCols.length; q++) pgalCols[q].style.translate = ''; return; }
     var busy = false;
     for (var k = 0; k < pgalCols.length; k++) {
       pgalCur[k] += (pgalTarget - pgalCur[k]) * pgalLags[k];
@@ -4666,15 +4834,13 @@ var SV = (() => {
     }
     if (busy) pgalRaf = requestAnimationFrame(pgalTick);
   }
-  if (!reduced) {
-    register(document.querySelector('.pgal-stage').closest('section'), {
-      hud: 'gallery',
-      onTravel: function (t) {
-        pgalTarget = t;
-        if (!pgalRaf) pgalRaf = requestAnimationFrame(pgalTick);
-      },
-    });
-  }
+  register(document.querySelector('.pgal-stage').closest('section'), {
+    hud: 'gallery',
+    onTravel: function (t) {
+      pgalTarget = t;
+      if (!pgalRaf) pgalRaf = requestAnimationFrame(pgalTick);
+    },
+  });
 
   // scenes demo (the "vanilla track" case)
   var KF_STEPS = [
@@ -5002,6 +5168,7 @@ var SV = (() => {
  * correct test: it fires exactly when the author left the ratio alone, and
  * never overrides one the author set.
  */
+var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 // Browsers cap a canvas's own width/height attribute well above this
 // (platform-dependent, but comfortably higher); guards the proportional
@@ -5032,14 +5199,13 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     const ctx = context === '2d' ? canvas.getContext('2d') : null;
     if (context === '2d' && !ctx)
         return noop;
-    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const fx = {
         ctx,
         canvas,
         width: 0,
         height: 0,
         dpr: 1,
-        reducedMotion: motionQuery.matches,
+        reducedMotion: effectiveReduce(),
     };
     let raf = 0;
     let last = 0;
@@ -5441,10 +5607,9 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         watchDpr();
     };
     watchDpr();
-    const onMotion = () => {
-        fx.reducedMotion = motionQuery.matches;
-    };
-    onMediaChange(motionQuery, onMotion);
+    const offMotion = onMotionChange((reduced) => {
+        fx.reducedMotion = reduced;
+    });
     return {
         pause: () => {
             userPaused = true;
@@ -5474,7 +5639,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
                 ro.disconnect();
                 io.disconnect();
                 document.removeEventListener('visibilitychange', onVisibility);
-                offMediaChange(motionQuery, onMotion);
+                offMotion();
                 if (dprQuery)
                     offMediaChange(dprQuery, onDprChange);
             }
@@ -5736,6 +5901,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     return a + d * k;
   }
   function mapTick(now) {
+    if (reducedNow()) { mapRaf = 0; mapWorld.style.transform = ''; mapWorld.style.removeProperty('--map-ang'); return; }
     mapRaf = 0;
     mapShown += (mapTarget - mapShown) * 0.1;
     var t = mapShown * mapLen;
@@ -5757,17 +5923,23 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
       mapRaf = requestAnimationFrame(mapTick);
     }
   }
-  if (!reduced) {
-    mapTick(0);
-    register(document.getElementById('map-demo'), {
-      pin: true,
-      hud: 'map',
-      onPin: function (p) {
-        mapTarget = p;
-        if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
-      },
-    });
-  }
+  mapTick(0);
+  register(document.getElementById('map-demo'), {
+    pin: true,
+    hud: 'map',
+    onPin: function (p) {
+      mapTarget = p;
+      if (!mapRaf) mapRaf = requestAnimationFrame(mapTick);
+    },
+  });
+  // the two JS-driven demos above follow the preference as it changes: on
+  // reduce their inline writes are cleared at once, on auto they resume
+  SV.onMotionChange(function (r) {
+    cancelAnimationFrame(pgalRaf); pgalRaf = 0;
+    cancelAnimationFrame(mapRaf); mapRaf = 0;
+    if (r) { pgalTick(); mapTick(0); }
+    else { pgalRaf = requestAnimationFrame(pgalTick); mapRaf = requestAnimationFrame(mapTick); }
+  });
   /* ═══════ scrollvars slider, inlined from the built dist, verbatim ═══════ */
   var slider = (function () {
 /**
@@ -5788,6 +5960,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
  * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
 * no per-frame JS, same philosophy as the scroll driver.
  */
+var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
 const noopState = {
     active: 0,
     count: 0,
@@ -6047,11 +6220,20 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         }
         container.classList.remove('sv-gliding');
     };
+    // A preference that flips to reduce mid-glide settles the glide where it
+    // was going, now: checking only when a glide starts left one in flight.
+    // `target` is the slide INDEX the glide is heading for, so the settle goes
+    // through goTo(index, false), which recomputes the pixel destination; the
+    // first version wrote the index as scrollLeft (review, ADU-243).
+    const offMotion = onMotionChange((reduced) => {
+        if (!reduced || target < 0 || destroyed)
+            return;
+        goTo(target, false);
+    });
     const glide = (to) => {
         stopGlide();
         let current = pos();
-        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-        if (duration <= 0 || reduced || Math.abs(to - current) < 1) {
+        if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
             resumeSnap();
             target = -1;
             setPos(to);
@@ -6308,6 +6490,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         state,
         destroy: () => {
             destroyed = true;
+            offMotion();
             stopGlide();
             resumeSnap();
             container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging');

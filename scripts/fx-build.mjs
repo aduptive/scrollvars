@@ -96,11 +96,20 @@ const SHELL_CSS = `
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
-  header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
   footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
     font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   footer.fx b { color: var(--text); }
@@ -130,7 +139,7 @@ const SHELL_CSS = `
     border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
     display:grid; place-items:center; font:600 15px var(--mono); }
   .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
-  .tabs { display:flex; gap:8px; margin: 26px 0 0; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin: 26px 0 0; } /* three tabs overflowed a 320px viewport by 10px (WCAG 1.4.10) */
   .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
     border:1px solid var(--line); border-bottom:0; background:transparent;
     color:var(--muted); cursor:pointer; }
@@ -185,8 +194,31 @@ const SHELL_CSS = `
 
 const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>ScrollVars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
-  <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
-</header>`
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+</header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>`
 
 /* categorized accordion sidebar: same markup on every fx page; native <details>.
    Mobile starts collapsed (script below); desktop hides the outer summary only
@@ -195,7 +227,7 @@ const CATEGORIES = [...new Set(EFFECTS.map((e) => e.category))]
 const sidebar = (current) => `<aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
     <summary>All effects</summary>
-    <nav>
+    <nav aria-label="Effects">
       ${CATEGORIES.map(
         (cat) => `<details open><summary>${cat}</summary>
         ${EFFECTS.filter((e) => e.category === cat)
@@ -230,6 +262,7 @@ for (const fx of EFFECTS) {
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>${fx.title} · ScrollVars fx</title>
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
@@ -247,15 +280,15 @@ ${sidebar(fx.slug)}
   ${fx.runway ? `<div class="fxrunway">${fx.preview}</div>` : fx.preview}
   <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>
   <div class="tabs">
-    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button class="on" data-tab="react">Complete component · CLI source</button>' : `<button class="on" data-tab="tailwind">Tailwind</button>
-    <button data-tab="css">Vanilla · HTML/CSS/JS</button>
-    <button data-tab="react">React</button>`}
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button type="button" class="on" aria-pressed="true" data-tab="react">Complete component · CLI source</button>' : `<button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>`}
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
-    <pre data-pane="css"><code>${esc(fx.css)}</code></pre>`}
-    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} data-pane="react"><code>${esc(fx.react)}</code></pre>
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" tabindex="0" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
+    <pre tabindex="0" data-pane="css"><code>${esc(fx.css)}</code></pre>`}
+    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} tabindex="0" data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
@@ -267,7 +300,7 @@ ${NAV_COLLAPSE}
 <script>
   SV.setPageOutputs(false); // gallery effects only consume local clocks
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     document.querySelectorAll('.code pre').forEach(p =>
       p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
   }));
@@ -284,6 +317,7 @@ ${NAV_COLLAPSE}
 /* hub */
 const hub = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars fx: copy-paste scroll effects</title>
 <meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS. Powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">

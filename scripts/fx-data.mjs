@@ -40,7 +40,9 @@ export const EFFECTS = [
 @media (prefers-reduced-motion: reduce) {
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) {
     transition: none; animation: none; opacity: 1; translate: none; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
   <p class="sv-rise" data-sv-order="1">Copy</p>
@@ -101,7 +103,9 @@ export const EFFECTS = [
   .sv-spread > *,
   .sv-on .sv .sv-spread.sv-spread-in > * {
     translate: none; rotate: none; transition: none; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-spread > *, .sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > * { translate: none; rotate: none; transition: none; }`,
     tailwind: `<section data-sv class="py-24">
   <div class="sv-spread sv-spread-in [--sv-gap:14px]">
     <div class="[--sv-order:0] rounded-xl border p-8">01</div>
@@ -153,7 +157,9 @@ export const EFFECTS = [
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-curtain-l,
   .sv .sv-curtain-r { display: none; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-curtain-l, :where([data-sv-motion="reduce"]) .sv .sv-curtain-r { display: none; }`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage">
     <div class="grid h-full place-items-center">revealed content</div>
@@ -202,7 +208,9 @@ export const EFFECTS = [
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-rail { translate: none; width: auto; flex-wrap: wrap; }`,
     tailwind: `<div data-sv data-sv-pin="300vh">
   <div class="sv-stage flex items-center">
     <div class="sv-rail flex gap-4 px-[10vw]">
@@ -229,8 +237,10 @@ export const EFFECTS = [
   <div class="sv-stage fxsticky" style="display:grid;place-items:center">
     <div class="sv-range sv-range-rise" style="display:grid;gap:12px;text-align:center">
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
-      <p class="fxp" data-sv-from=".3" data-sv-to=".7">then this</p>
-      <p class="fxp fxaccent" data-sv-from=".6" data-sv-to="1">then this</p>
+      <!-- muted and accent text at the preset's .55 floor read under 4.5:1: the
+           copy takes the text color, the accent line lifts this demo's floor to .8 -->
+      <p class="fxp" style="color:#e6e4f0" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp fxaccent" style="--sv-range-floor:.8" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
 </div>`,
@@ -254,13 +264,16 @@ export const EFFECTS = [
   --sv-r: clamp(0, calc((var(--sv-clock) - var(--sv-from, 0)) /
                         (var(--sv-to, 1) - var(--sv-from, 0))), 1);
 }
-/* consume --sv-r however you like, ALWAYS with a fallback of 1: */
-.mine > * { opacity: var(--sv-r, 1); scale: calc(.8 + var(--sv-r, 1) * .2); }
+/* consume --sv-r however you like, ALWAYS with a fallback of 1, and floor
+   an opacity so unread text still meets 4.5:1 (the presets floor at .55): */
+.mine > * { opacity: calc(.55 + .45 * var(--sv-r, 1)); scale: calc(.8 + var(--sv-r, 1) * .2); }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {
   .sv .sv-range > * { --sv-r: 1; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv .sv-range > * { --sv-r: 1; }`,
     tailwind: `<div data-sv data-sv-pin="250vh">
   <div class="sv-stage grid place-items-center">
     <div class="sv-range sv-range-rise grid gap-3">
@@ -471,6 +484,8 @@ const canvasRef = useCanvasEffect({
   .sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
     transition: none; animation: none; opacity: 1; translate: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span { transition: none; animation: none; opacity: 1; translate: none; }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,
@@ -502,13 +517,15 @@ const canvasRef = useCanvasEffect({
     when: 'Hero headlines: "We build ______".',
     knobs: '--sv-word (index), --sv-duration; drive it from state, scenes or an interval',
     preview: `<section data-sv class="fxstage">
-  <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords"><span>brands</span><span>websites</span><span>products</span></b></h3>
+  <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords" aria-hidden="true"><span>brands</span><span>websites</span><span>products</span></b><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span></h3>
 </section>
 <script>let fxi=0;setInterval(()=>{document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3))},1800)</script>`,
     css: `<h1>we build
-  <span class="sv-words">
+  <span class="sv-words" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
   </span>
+  <!-- the column reads as three words in a row to a screen reader: hide it and say the phrase once -->
+  <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span>
 </h1>
 
 /* the preset (styles/state.css): */
@@ -521,21 +538,26 @@ const canvasRef = useCanvasEffect({
 @media (prefers-reduced-motion: reduce) {
   .sv-words > * { transition-duration: .01ms; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-words > * { transition-duration: .01ms; }
 
 // drive it (state, scenes, or a timer):
 el.style.setProperty('--sv-word', nextIndex)`,
     tailwind: `<h1 class="text-5xl font-extrabold">
   we build
-  <span class="sv-words text-violet-400">
+  <span class="sv-words text-violet-400" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
   </span>
+  <span class="sr-only">brands, websites and products</span>
 </h1>
 <!-- set --sv-word from your state; scenes drive it for free in pinned stories -->`,
     react: `const [word, setWord] = useState(0)
 <h1>we build{' '}
-  <span className="sv-words" style={{ '--sv-word': word }}>
+  <span className="sv-words" style={{ '--sv-word': word }} aria-hidden="true">
     {words.map(w => <span key={w}>{w}</span>)}
   </span>
+  {/* the column reads as three words in a row to a screen reader: say the phrase once */}
+  <span className="sr-only">{words.join(', ')}</span>
 </h1>`,
   },
   {
@@ -581,14 +603,14 @@ el.style.setProperty('--sv-word', nextIndex)`,
     when: 'Anywhere you were about to install Swiper.',
     knobs: '--sd per slide (written by slider()); --sv-per-view breakpoints; chrome vars --sv-arrow-*/--sv-dot-*',
     preview: `<div class="fxstage">
-  <div class="sv-slider" id="fxslider" style="padding:20px calc(50% - 110px)">
+  <div class="sv-slider" id="fxslider" role="region" aria-label="Coverflow cards" style="padding:20px calc(50% - 110px)">
     <div class="fxcard fxslide">01</div><div class="fxcard fxslide">02</div>
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
 <style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>`,
-    css: `<div class="sv-slider" id="cards">
+    css: `<div class="sv-slider" id="cards" role="region" aria-label="Cards">
   <div class="slide">…</div> ×N
 </div>
 
@@ -601,7 +623,9 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
   opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
-@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }   /* scroll-linked transforms return to flow */`,
+@media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .slide { scale: none; opacity: 1; transform: none; }   /* scroll-linked transforms return to flow */`,
     tailwind: `<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
   {cards.map(c => (
@@ -649,7 +673,9 @@ el.style.setProperty('--sv-word', nextIndex)`,
    without it a pasted marquee never stops */
 @media (prefers-reduced-motion: reduce) {
   .sv-marquee-track { animation: none; }
-}`,
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; }`,
     tailwind: `<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
@@ -711,8 +737,11 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .hero-orb.b { --hero-parallax: -60px; }                       /* opposite drift = depth */
 .hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
   opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
-@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
+@media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .hero-inner { opacity: 1; scale: none; }   /* no drift, no exit scale */
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); } /* the strip's own ground: its text read 2.6:1 over an orb (axe) */
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
     tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
@@ -727,7 +756,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
   </div>
-  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"><div class="sv-marquee-track">…</div></div>
+  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3 bg-[#17151f]/90"><div class="sv-marquee-track">…</div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>`,
     react: `import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -886,13 +915,18 @@ function Timeline() {
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
-.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
+@media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .st-shot { position: static; opacity: 1; scale: none; }
+:where([data-sv-motion="reduce"]) .st-media { gap: 8px; aspect-ratio: auto; }   /* no crossfade: the shots stack */
+.st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 on this background (axe) */
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
 /* Placed after the rule above (same specificity, later wins, so a media block
    up there would lose): the stage unpins under reduce but --sv-scene keeps
    being written, and every non-active step would sit at 30% forever (ADU-155) */
-@media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }`,
+@media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .st-steps > li { opacity: 1; }`,
     tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
   <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
     <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
@@ -1094,10 +1128,13 @@ const css = \`
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
-.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
 \`
 
@@ -1284,12 +1321,15 @@ const css = \`
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-media { gap: 8px; aspect-ratio: auto; }
 .sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
-.sv-steps .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+.sv-steps .st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 (axe) */
 html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
-.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .8; margin-bottom: 6px; }
 .sv-steps .st-steps h3 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
-.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
+.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .8; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
 /* Placed after the rules above (same specificity, later wins): the stage is
@@ -1297,6 +1337,9 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
    non-active step would otherwise sit at 30% opacity forever and the copy
    would slide with the raw scroll. Reset both the steps and the dots. */
 @media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-steps .st-steps > li { opacity: 1; translate: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
@@ -1855,6 +1898,8 @@ const css = \`
   opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
   transform: perspective(900px) rotateY(clamp(-24deg, calc(var(--sd, 0) * -16deg), 24deg)); }
 @media (prefers-reduced-motion: reduce) { .cf-slide { scale: none; opacity: 1; transform: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .cf-slide { scale: none; opacity: 1; transform: none; }
 \`
 
 export function CoverflowSlider({
@@ -1954,6 +1999,9 @@ html:not(.sv-on) .sv-casework .work-card,
   .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
   .sv-casework .work-card { width: 100%; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+:where([data-sv-motion="reduce"]) .sv-casework .work-card { width: 100%; }
 \`
 
 export interface CaseStudy {
@@ -2005,10 +2053,12 @@ const css = \`
 .sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
 .sv-manifesto .manifesto-copy { padding-block: 32px; }
 .sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
-.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.55 + .45 * var(--read)); } /* the floor keeps unread copy at 3:1 on this paper (axe, large text) */
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-manifesto .manifesto-copy p { opacity: 1; }
 \`
 
 export function EditorialManifesto({ label = 'What we believe', paragraphs, closing, className, nonce }: {

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>axe red fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+</head>
+<body>
+<main>
+  <h1>A page with two deliberate WCAG violations</h1>
+  <!-- image-alt: an informative image with no text alternative -->
+  <img src="/fx/nothing.png" width="120" height="80">
+  <!-- button-name: a control with nothing to announce -->
+  <button type="button"></button>
+  <section data-sv><p class="sv-rise">an entrance, so the driver runs here too</p></section>
+  <!-- the walk's case: a paragraph on screen only in the middle of the page,
+       far from the load, bottom and top audits, at a contrast that fails -->
+  <div style="height: 180vh"></div>
+  <p class="mid-page" style="color: #55535e; background: #17151f; padding: 8px">dim text at a third of a long page</p>
+  <div style="height: 420vh"></div>
+</main>
+<script src="/fx/sv.js"></script>
+</body>
+</html>

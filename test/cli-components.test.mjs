@@ -514,13 +514,18 @@ const targetClasses = (selectorList) =>
 // tracked element carries anyway
 const ruleClasses = (css) =>
   new Set([...stripComments(stripScripts(css)).matchAll(/([^{}]+)\{[^{}]*\}/g)].flatMap((m) => targetClasses(m[1])))
+// The twin of a reduce block under html[data-sv-motion="reduce"] (the site's
+// own switch, ADU-249) sits right below the block with the same declarations:
+// it is the override again, not a preset rule re-declared below it, so both
+// checks here read the pane with the twins removed.
+const TWIN_RULE = /[^{}]*\[data-sv-motion="reduce"\][^{}]*\{[^{}]*\}/g
 const reduceBlocks = (css) => stripComments(stripScripts(css)).match(REDUCE_BLOCK) ?? []
 const reducedClasses = (css) => new Set(reduceBlocks(css).flatMap((block) => [...ruleClasses(block)]))
 const sheetResets = Object.fromEntries(STYLESHEETS.map((name) => [name, reducedClasses(styleSource[name])]))
 
 for (const fx of EFFECTS.filter((e) => e.css)) {
   test(`gallery ${fx.slug}: the CSS tab carries the reduced-motion override of every preset rule it quotes`, () => {
-    const pane = stripComments(stripScripts(fx.css))
+    const pane = stripComments(stripScripts(fx.css)).replace(TWIN_RULE, '')
     const blocks = pane.match(REDUCE_BLOCK) ?? []
     const reset = reducedClasses(fx.css)
     const missing = []
