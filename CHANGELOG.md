@@ -20,8 +20,12 @@
 - `styles/slider.css`: a reduced-motion block (it was the only preset sheet
   without one) and `--sv-dot-target`, the hit area of a dot.
 - A README section, Accessibility, listing what the library guarantees on
-  its own surfaces with the WCAG criteria each guarantee serves, what stays
-  the page's job, and the published guidance the library follows.
+  its own surfaces with the WCAG criteria each guarantee serves, the
+  page's side as a checklist (motion guards and the switch, nothing
+  essential behind a reveal, a way to stop what moves, readable text for
+  animated copy, contrast floors for dimmed text, scroll padding under
+  fixed headers, target sizes, reflow and the fit contract, axe then a
+  screen reader), and the published guidance the library follows.
 - A keyboard-reach gate in the e2e run (`demo/bench/harness/keyboard-gate.mjs`):
   it tabs through every gallery page and the home page, forward and back,
   and requires each focused element to be seen (in the viewport, effective

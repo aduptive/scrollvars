@@ -785,15 +785,30 @@ success criterion it serves. It is not a conformance claim for your site.
   names, roles, contrast and structure, never whether the page makes sense
   to a screen reader user; that pass is a person's.
 
-Your side of it: CSS of your own that reads `--sv-view`, `--sv-t`, `--mx` or
-`--my` is motion too, so give it the same two guards (the media query and
-`:where([data-sv-motion="reduce"])`); keep essential content out of reveals
-that only the scroll position opens; give anything that moves on its own a
-way to stop; put the readable text in the DOM for rotating words and
-counters, with the animated copy `aria-hidden`; and under a fixed or sticky
-header set `scroll-padding-top` on `html` to the header's height, or a
-focused element the browser scrolls to the top edge lands under it (the
-gallery pages carried exactly that until the gate found it).
+Your side of it, as a checklist:
+
+- [ ] CSS of your own that reads `--sv-view`, `--sv-t`, `--sv-pin`, `--mx` or
+      `--my` is motion: give it both guards, `@media (prefers-reduced-motion:
+      reduce)` and `:where([data-sv-motion="reduce"])`, and offer the switch
+      (`setMotion()`) somewhere visible, stored, applied before first paint.
+- [ ] Nothing essential lives only behind a reveal the scroll position
+      opens, or only in a scene the pin shows; the no-JS render is the test.
+- [ ] Anything that moves on its own (a marquee, an autoplay) has a way to
+      stop that works from the keyboard; keep the kit's pause control.
+- [ ] Rotating words and counters keep the readable text in the DOM and mark
+      the animated copy `aria-hidden`; `split()` gets plain text only.
+- [ ] Text dimmed "until you get there" still meets 4.5:1 (3:1 when large)
+      at its dimmest: compute the floor, mixing every nested opacity.
+- [ ] Under a fixed or sticky header, `scroll-padding-top` on `html` equals
+      the header's height, or a focused element scrolled to the top edge
+      lands under it.
+- [ ] Your own controls are 24 by 24 CSS pixels at least (`renderDot` is
+      yours to size); scrollable code blocks carry `tabindex="0"`.
+- [ ] At 320 CSS pixels of width the page scrolls in one direction only;
+      pinned content that can grow (CMS copy, text zoom) sits in
+      `[data-sv-fit]` so the pin releases instead of clipping.
+- [ ] Run axe on the finished page, then walk it once with a screen
+      reader: axe is a floor, and this list is one too.
 
 Where this follows published guidance: the visually hidden copy in
 `split()` uses the technique Sara Soueidan describes in

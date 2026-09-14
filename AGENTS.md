@@ -523,8 +523,12 @@ dots are 24 by 24 CSS pixel targets (`--sv-dot-target`) that never shrink,
 with the visual dot inside (`--sv-dot-size`); a `renderDot` of your own is
 yours to size. `split()` takes plain text only. Under a fixed or sticky
 header set `scroll-padding-top` on `html` to its height, or a focused
-element the browser scrolls to the top edge lands under it. The README's
-Accessibility section lists the guarantees with their WCAG criteria.
+element the browser scrolls to the top edge lands under it. Text dimmed
+until the scroll gets there still meets 4.5:1 at its dimmest (3:1 when
+large). At 320 CSS pixels of width the page scrolls in one direction only,
+and pinned content that can grow sits in `[data-sv-fit]`. Nothing essential
+lives only behind a scroll reveal or a pin scene. The README's Accessibility
+section lists the guarantees with their WCAG criteria and the checklist.
 
 ## Limit animation work to its consumers
 
