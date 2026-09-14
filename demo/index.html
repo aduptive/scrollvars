@@ -1640,7 +1640,8 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
     A scroll-animation engine with no framework in the hot path: one listener, one
     requestAnimationFrame, reads and writes in separate phases. JS computes
     numbers; CSS does the rest. This entire page runs on it. The panel in the
-    corner shows the live variables of the section in focus.
+    corner shows the live variables of the section in focus. Animation that
+    respects motion preferences from the start.
   </p>
   <div class="hero-vars sv-rise" style="--sv-order: 3">
     <span>--sv-view <b id="hv-d">-1.000</b></span>
@@ -2878,6 +2879,32 @@ npm i scrollvars
       Machine-readable docs for AI assistants: <a href="llms.txt" style="color: var(--accent)">/llms.txt</a>:
 the full API, recipes and performance rules, ready to ingest.
     </p>
+  </div>
+</section>
+
+<!-- ══════════════ ACCESSIBILITY ══════════════ -->
+<section class="demo sv" data-sv data-once id="accessibility">
+  <div class="wrap">
+    <div class="demo-head">
+      <p class="eyebrow sv-rise">accessibility · tested</p>
+      <h2 class="sv-rise" style="--sv-order: 1">Give visitors control over motion. Put accessibility to the test.</h2>
+      <p class="sv-rise" style="--sv-order: 2">
+        Every preset honors reduced motion automatically, and the page gets its
+        own switch (the Motion button in the bar above). The kit's carousel
+        follows the APG pattern: a visible pause control, paused from the start
+        under reduce, 24px targets. Keyboard, axe, reflow and motion gates test
+        this site in CI on every commit, serving WCAG 2.3.3, 2.2.2, 4.1.2,
+        2.1.1, 2.5.8, 2.4.11, 1.4.10 and 1.4.4. These safeguards support your
+        accessibility work; they do not establish your page's conformance.
+      </p>
+      <p class="sv-rise" style="--sv-order: 3">
+        GSAP and Framer Motion are stronger for heavy, time-based choreography
+        and leave reduced motion to the author. ScrollVars builds it into every
+        preset, ships the switch and the carousel controls, and tests its own
+        site. The full contract, criterion by criterion, is in the
+        <a href="docs/#a11y" style="color: var(--accent)">docs</a> and the README.
+      </p>
+    </div>
   </div>
 </section>
 
