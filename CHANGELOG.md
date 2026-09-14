@@ -29,6 +29,12 @@
   its visible part, still so 400ms later). It proves it can fail on a
   fixture: a link under a fixed header on the way back, and a link inside a
   box that stays at opacity 0.
+- A reflow gate in the e2e run (`demo/bench/harness/reflow-gate.mjs`): at
+  320 and 640 CSS pixels of width, every gallery page and the home page
+  scroll in one direction only, after boot and after a scroll through, and
+  every `[data-sv-fit]` box fits its stage or has released the pin; the
+  pinned pages also pass the keyboard gate at 320. It proves it can fail on
+  a fixture with a fixed-width band.
 - An axe gate in the e2e run (`demo/bench/harness/axe-gate.mjs`): every
   gallery page and the home page pass axe-core's WCAG 2.x A and AA rules
   with zero violations, audited after boot and again with the page scrolled
@@ -66,6 +72,9 @@
   attribute, kept in step by the same test that covers the library's sheets.
   Tailwind panes keep `motion-reduce:`; the consumer guide shows the
   one-line variant for the attribute.
+- Demo: the gallery's code tabs overflowed a 320px viewport by 10px, so
+  twelve pages scrolled sideways (WCAG 1.4.10); the row wraps now. The
+  reflow gate found it.
 - Demo: what axe found. Every code block is keyboard focusable
   (`tabindex="0"`, WCAG 2.1.1: a scrollable region needs keyboard access);
   the sticky-steps section keeps an inactive step's text at 4.5:1 (its

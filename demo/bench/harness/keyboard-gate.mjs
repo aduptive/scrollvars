@@ -83,12 +83,15 @@ async function sweep(page, backward = false) {
   return { stops, violations }
 }
 
-export async function keyboardGate({ browser, check, base, only }) {
+// `pages` narrows the sweep, `viewport` sets one (the reflow gate runs the
+// pin pages at 320 by 568), `label` keeps the check names apart per viewport
+export async function keyboardGate({ browser, check, base, only, pages: subset, viewport, label = '' }) {
   const root = join(here, '..', '..')
   // the -preview pages are the static no-driver renders the gallery embeds: nothing reveals there
-  const pages = only ? [only] : ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`)]
+  const pages = only ? [only] : subset ?? ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`)]
   for (const path of pages) {
     const page = await browser.newPage()
+    if (viewport) await page.setViewport(viewport)
     let result, detail = ''
     try {
       await page.goto(`${base}${path}?harness=1`, { waitUntil: 'load', timeout: 60000 })
@@ -108,9 +111,9 @@ export async function keyboardGate({ browser, check, base, only }) {
     } finally {
       await page.close()
     }
-    check(`keyboard: ${path}: every focus stop can be seen, tabbing forward and back (${result.stops.length} stops)`, result.stops.length > 0 && result.violations.length === 0, detail || 'no focus stop at all')
+    check(`keyboard${label}: ${path}: every focus stop can be seen, tabbing forward and back (${result.stops.length} stops)`, result.stops.length > 0 && result.violations.length === 0, detail || 'no focus stop at all')
   }
-  if (only) return
+  if (only || subset) return
   // The gate has to be able to fail: a link that lands under a sticky header
   // on the way back, and one inside a box that never leaves opacity 0. And
   // the checklist's answer to the first, scroll-padding-top, has to clear it.

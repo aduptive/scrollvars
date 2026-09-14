@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reflow red fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  /* a fixed-width band wider than a 320px viewport: the page scrolls sideways */
+  .band { width: 480px; height: 120px; background: #ccc }
+  .tall { height: 120vh }
+</style>
+</head>
+<body>
+<p>a paragraph that reflows</p>
+<div class="band">a band that does not</div>
+<div class="tall"></div>
+<section data-sv><p class="sv-rise">an entrance, so the driver runs</p></section>
+<script src="/fx/sv.js"></script>
+</body>
+</html>

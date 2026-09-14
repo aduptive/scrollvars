@@ -52,7 +52,7 @@
     border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
     display:grid; place-items:center; font:600 15px var(--mono); }
   .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
-  .tabs { display:flex; gap:8px; margin: 26px 0 0; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin: 26px 0 0; } /* three tabs overflowed a 320px viewport by 10px (WCAG 1.4.10) */
   .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
     border:1px solid var(--line); border-bottom:0; background:transparent;
     color:var(--muted); cursor:pointer; }

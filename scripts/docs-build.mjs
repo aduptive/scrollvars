@@ -272,6 +272,7 @@ plug in what's missing.</p>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 <tr><td>keyboard reach</td><td>a gate tabs through every gallery page and the home page, forward and back, and requires each focused element to be seen: in the viewport, effective opacity at least 0.5, <code>visibility: visible</code>, not covered at the center of its visible part, still so 400ms later. Proved able to fail on a fixture; the pages set <code>scroll-padding-top</code> under their fixed header</td></tr>
+<tr><td>reflow and zoom</td><td>at 320 and 640 CSS pixels of width every gallery page and the home scroll in one direction only, every <code>[data-sv-fit]</code> box fits its stage or has released the pin, and the pinned pages pass the keyboard gate at 320. Proved able to fail on a fixture</td></tr>
 <tr><td>axe</td><td>every gallery page and the home page pass axe-core (WCAG 2.x A and AA) with zero violations in CI, after boot and again scrolled through and settled; the gate proves it can fail. A floor, not proof</td></tr>
 </table>
 

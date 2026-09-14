@@ -770,6 +770,13 @@ success criterion it serves. It is not a conformance claim for your site.
   entrance runs. The gate proves it can fail on a fixture (a link under a
   fixed header on the way back, a link inside a box that stays at opacity
   0) and that `scroll-padding-top` clears the first.
+- **Reflow and zoom** (1.4.10 Reflow, 1.4.4 Resize Text). At 320 CSS
+  pixels of width and at 640 (a 1280 window at 200 percent), every gallery
+  page and the home page scroll in one direction only, after boot and after
+  a scroll through, and every `[data-sv-fit]` box either fits its stage or
+  has released the pin (`data-sv-flow`, the fit contract), so nothing
+  pinned is clipped; the pinned pages also pass the keyboard gate at 320.
+  Proved able to fail on a fixture with a fixed-width band.
 - **axe, as a floor** (WCAG 2.x A and AA rules). Every gallery page and the
   home page pass axe-core with zero violations in CI, audited after boot
   and again with the page scrolled through and settled, so what an
