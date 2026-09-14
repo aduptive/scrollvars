@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>motion fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  .tall { height: 150vh }
+  .card { height: 40vh; background: #333; color: #fff }
+  .sv-marquee { overflow: hidden; white-space: nowrap }
+</style>
+</head>
+<body>
+<!-- the shipped marquee markup: a track with the copy and its aria-hidden duplicate -->
+<div class="sv-marquee"><div class="sv-marquee-track"><span>ScrollVars</span><span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span></span></div></div>
+<!-- the class contract the React Slider renders for its dots -->
+<div class="sv-dots">
+  <button type="button" class="sv-dot on" aria-label="go to slide 1"></button>
+  <button type="button" class="sv-dot" aria-label="go to slide 2"></button>
+  <button type="button" class="sv-dot" aria-label="go to slide 3"></button>
+</div>
+<div class="tall"></div>
+<section data-sv><div class="card probe sv-rise">below the fold</div></section>
+<div class="tall"></div>
+<script src="/fx/sv.js"></script>
+</body>
+</html>

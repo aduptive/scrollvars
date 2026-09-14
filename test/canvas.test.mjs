@@ -2146,8 +2146,9 @@ test('canvas harness: a MediaQueryList with only addListener (no addEventListene
   const canvas = makeCanvas({ width: 300, height: 150, style })
 
   let handle
+  let fx
   assert.doesNotThrow(() => {
-    handle = mountEffect(canvas, { frame: () => {} })
+    handle = mountEffect(canvas, { frame: (f) => { fx = f } })
   }, 'mountEffect must not throw when MediaQueryList only has addListener')
 
   const motion = queries.find((q) => q.query.includes('prefers-reduced-motion'))
@@ -2155,9 +2156,25 @@ test('canvas harness: a MediaQueryList with only addListener (no addEventListene
   assert.equal(motion.listeners.length, 1, 'the reduced-motion listener registered through the addListener fallback')
   assert.equal(dpr.listeners.length, 1, 'the dpr listener registered through the addListener fallback')
 
+  // the flip reaches the running effect through that listener, live
+  env.resize()
+  env.pump(16)
+  assert.ok(fx, 'the effect ran a frame once it had a size')
+  assert.equal(fx.reducedMotion, false, 'no preference at mount')
+  motion.listeners[0]({ matches: true })
+  env.pump(16)
+  assert.equal(fx.reducedMotion, true, 'a change on the legacy listener reaches fx.reducedMotion')
+  motion.listeners[0]({ matches: false })
+
   handle.destroy()
-  assert.equal(motion.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
+  // The reduced-motion listener belongs to core/motion, one for the whole
+  // page, shared by every effect: destroy() drops the effect's subscription
+  // to it, the list keeps its single listener and a second effect adds none.
+  assert.equal(motion.listeners.length, 1, 'the shared preference keeps its one listener after destroy()')
   assert.equal(dpr.listeners.length, 0, 'destroy() unregisters through the removeListener fallback')
+  const again = mountEffect(canvas, { frame: () => {} })
+  assert.equal(motion.listeners.length, 1, 'a second effect subscribes to core/motion, not to the media list')
+  again.destroy()
 })
 
 test('canvas harness: destroy() is idempotent, a second call runs nothing (ADU-189)', async () => {
@@ -2244,7 +2261,9 @@ test('canvas harness: a throwing cleanup still disconnects both observers and re
   assert.equal(roDisconnects, 1, 'the ResizeObserver is disconnected despite the throwing cleanup')
   assert.equal(ioDisconnects, 1, 'the IntersectionObserver is disconnected despite the throwing cleanup')
   assert.equal(docRemovals.length, 1, 'the visibilitychange listener is removed')
-  assert.equal(mqRemovals.length, 2, 'both the reduced-motion and dpr media query listeners are removed')
+  // the reduced-motion listener is core/motion's, shared and page-long; the
+  // effect's own media listener is the dpr one, and that one must go
+  assert.equal(mqRemovals.length, 1, 'the dpr media query listener is removed')
 })
 
 test('canvas harness: destroy() called reentrantly from inside setup() still runs the cleanup setup() returns (ADU-189)', async () => {

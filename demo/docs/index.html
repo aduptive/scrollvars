@@ -137,7 +137,7 @@ mapping becomes pure CSS.</p>
 <tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
 <tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
-<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion</code></td><td>utilities.</td></tr>
+<tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion / setMotion / onMotionChange</code></td><td>utilities; the last three read, set and watch the effective motion preference (the OS setting or <code>data-sv-motion="reduce"</code> on <code>&lt;html&gt;</code>).</td></tr>
 </table>
 <p class="grp">scrollvars/react ('use client' wrappers. Children stay RSC)</p>
 <table>
@@ -157,7 +157,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.4&nbsp;KB · pin 3.2 · slider 1.3 · tilt 0.6 · state 2.2 · ui 1.1).</p>
+(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.3 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -210,9 +210,11 @@ plug in what's missing.</p>
 <h2 id="a11y">Accessibility contract</h2>
 <table>
 <tr><th>surface</th><th>guarantees</th></tr>
-<tr><td>every preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow</td></tr>
+<tr><td>every entrance and scrub preset</td><td>hiding gated on <code>html.sv-on</code> (no-JS = fully visible; disclosures, <code>sv-pop</code>, Accordion and Modal keep their closed state without JS like the platform's own <code>details</code> and <code>dialog</code>); complete <code>prefers-reduced-motion</code> blocks: entrances render final state, scrub presets settle at end state, deck lays out in flow; every block has a twin under <code>html[data-sv-motion="reduce"]</code>, the page's own switch (<code>setMotion()</code>), kept in step by a test and checked rendered in CI</td></tr>
+<tr><td>motion preference</td><td>one effective value, the OS setting or the page switch, read live by the driver, the slider's glide (a running glide settles when it flips), canvas effects (<code>fx.reducedMotion</code>) and the React Slider autoplay (starts paused under reduce; the visible control resumes it)</td></tr>
 <tr><td>Slider</td><td>APG carousel: <code>role=region</code> + <code>aria-roledescription=carousel</code> + <code>label</code> prop; slides annotated "i of n"; arrows/dots labeled; keyboard: arrows/Home/End on the focusable track, arrow keys inside form fields stay theirs; autoplay pauses on hover, keyboard focus, offscreen and hidden tab, renders a visible pause/resume control, track is <code>aria-live=polite</code> when not rotating; drag never steals plain clicks or focus</td></tr>
 <tr><td>Marquee</td><td>duplicate copy <code>aria-hidden</code> + <code>inert</code>; pauses on hover and keyboard focus-within; reduced motion stops it</td></tr>
+<tr><td>Slider dots</td><td>the kit's dots are 24 by 24 CSS pixel buttons (WCAG 2.5.8, <code>--sv-dot-target</code>) that never shrink, a crowded row wraps, with the visual dot drawn inside (<code>--sv-dot-size</code>); no transition under reduced motion. Measured in CI. A <code>renderDot</code> of your own is yours to size</td></tr>
 <tr><td>Modal / Accordion</td><td>native <code>&lt;dialog&gt;</code> / <code>&lt;details&gt;</code>. Focus management, Escape, exclusivity from the platform</td></tr>
 <tr><td>pinned scenes</td><td>native scroll is never hijacked. The driver only reads; snap is optional and never <code>mandatory</code> on pins</td></tr>
 </table>
@@ -299,10 +301,21 @@ compat()   // once, before anything else</code></pre>
 <h4>Added</h4>
 
 <ul>
+<li>A motion preference the page can set: <code>html[data-sv-motion="reduce"]</code> asks for less motion whatever the OS says, and every <code>prefers-reduced-motion</code> block in the shipped sheets (core, pin, state, tilt, ui, slider, and the compat fallback) has a twin under it, kept in step by a test and checked rendered in CI. <code>setMotion('reduce' | 'auto')</code> sets the attribute, <code>onMotionChange(fn)</code> reports the effective preference live, and <code>prefersReducedMotion()</code> now reads that effective value. The driver, the slider's glide, canvas effects and the React <code>&lt;Slider></code> autoplay all follow it from one source (<code>core/motion</code>), so a change from the OS or from the page reaches every animation at once. The OS setting alone was the only switch, and it is one many people never find. The twins and the module cost about 0.4 KB gzipped across the sheets and the driver; the stamped sizes moved with them.</li>
+<li><code>styles/slider.css</code>: a reduced-motion block (it was the only preset sheet without one) and <code>--sv-dot-target</code>, the hit area of a dot.</li>
+<li>A README section, Accessibility, listing what the library guarantees on its own surfaces with the WCAG criteria each guarantee serves, what stays the page's job, and the published guidance the library follows.</li>
+</ul>
+
+<ul>
 <li><code>scrollvars/styles/scoped.css</code>, an opt-in sheet that registers <code>--sv-t</code> and <code>--sv-view</code> non-inheriting so a write re-resolves one element instead of its whole subtree. The rule it imposes: a clock reaches only the elements that declare <code>inherit</code> for it, and every element between the tracked ancestor and a reader must declare it too; the shipped presets that read a clock from a descendant (<code>sv-drift</code>, <code>sv-range</code>) are forwarded inside the sheet, and a test derives that list from the stylesheets so a new preset cannot ship without its forward. A registered property always has a value, so a <code>var(--sv-t, 1)</code> fallback is never taken again under the sheet: declare that default on the tracked element instead. Measured behind a rendered-output gate: 63 percent less style recalculation and 28 percent less task time on the benchmark's deep profile, 13 percent more recalculation and 4 percent more task time on its flat profile; on the site's own home page 10 percent less task time and 23 percent less recalculation. Browsers without <code>@property</code> keep inheriting, so it never breaks a page below the floor. Not part of <code>styles.css</code> on purpose.</li>
 </ul>
 
 <h4>Changed</h4>
+
+<ul>
+<li>Slider dots are 24 by 24 CSS pixel targets (WCAG 2.5.8 Target Size, Minimum): the button is the target and the visual dot is drawn inside it as <code>::before</code>, so <code>--sv-dot-size</code> still sizes what you see and <code>--sv-dot-target</code> what you hit. An override written directly on <code>.sv-dot</code> (rather than through the knobs) now styles the button box; move it to <code>.sv-dot::before</code>. The dots row is 24px tall instead of 8px.</li>
+<li><code>&lt;Slider autoplay></code> starts paused under reduced motion and pauses the moment the preference flips; the visible control still resumes it. It kept rotating before (jumping instead of gliding), and a glide in flight when the preference changed finished animating: it settles now.</li>
+</ul>
 
 <ul>
 <li><code>--sv-page</code> and <code>--sv-v</code> are published only when something in the document can read them. Both live on <code>&lt;html></code> and both inherit, so every write asked the browser to recalculate style for the entire document, on every scroll frame, whether or not a single rule referenced them. On the 900-box benchmark that cost 3249ms of style recalculation over a 12-second scroll against 269ms without, and 4128ms of total task time against 1696ms; the same page with the identical writes registered <code>inherits: false</code> cost 267.5ms, so the price was the inheritance rather than the write. The driver now scans the document's own stylesheets and inline styles once, on the first frame that could publish, and stays silent when neither name appears. A stylesheet added later turns publishing back on; the watch behind that rescans once per frame that adds an element and skips every stylesheet it already read in full (by rule count, so a rule inserted into an existing sheet as a component mounts is still seen), which is what keeps a page that mounts elements while it scrolls from serializing every rule on every one of those frames. <b>This can change behavior for a page that reads the variables only from JavaScript</b>, which no CSS scan can see: call <code>setPageOutputs(true)</code> there. Anything unreadable counts as a reader, so a cross-origin stylesheet without CORS headers keeps publishing exactly as before. Calling <code>setPageOutputs()</code> at all now takes the decision away from detection permanently, in both directions.</li>

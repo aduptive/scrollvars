@@ -55,11 +55,13 @@ const BLOCKS = [
     name: 'mountEffect',
     label: 'scrollvars/canvas harness',
     dist: 'dist/canvas/index.js',
+    motion: true,
   },
   {
     name: 'slider',
     label: 'scrollvars slider',
     dist: 'dist/core/slider.js',
+    motion: true,
   },
   {
     name: 'toggles',
@@ -79,6 +81,16 @@ for (const block of BLOCKS) {
   if (/^export /m.test(dist)) {
     throw new Error(`${block.dist}: unexpected export left after stripping ${block.name}`)
   }
+  // The motion preference (core/motion) is read from the engine already on
+  // the page, one instance for everything, never from a second inlined copy:
+  // the block's import becomes a lookup on the global SV, which the engine
+  // block above defines before any of these run. Exactly one such import in
+  // the blocks that carry it, none anywhere else.
+  const motionImport = /^import \{ reducedMotion as effectiveReduce, onMotionChange \} from '(?:\.\.\/core|\.)\/motion\.js';$/gm
+  const motionImports = (dist.match(motionImport) || []).length
+  if (motionImports !== (block.motion ? 1 : 0)) throw new Error(`${block.dist}: expected ${block.motion ? 1 : 0} core/motion import, found ${motionImports}`)
+  dist = dist.replace(motionImport, 'var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;')
+  if (/^import /m.test(dist)) throw new Error(`${block.dist}: an import is left in the inlined block`)
   const marker = `/* ═══════ ${block.label}, inlined from the built dist, verbatim ═══════ */`
   const wrapped = `${marker}\n  var ${block.name} = (function () {\n${dist}\n  return ${block.name};\n  })();`
   const markerCount = countLiteral(html, marker)

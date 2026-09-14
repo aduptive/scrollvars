@@ -127,3 +127,11 @@ html:not(.sv-on) .sv-acts:not(.sv-ui) {
     transition-duration: 0.01ms;
   }
 }
+
+/* The same under the page's own switch, html[data-sv-motion="reduce"]
+   (core/motion.ts): a test keeps every rule in step with the block above. */
+:where([data-sv-motion="reduce"]) .sv-pop,
+:where([data-sv-motion="reduce"]) .sv-words > *,
+:where([data-sv-motion="reduce"]) .sv-acts {
+  transition-duration: 0.01ms;
+}

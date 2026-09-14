@@ -304,6 +304,7 @@
  * correct test: it fires exactly when the author left the ratio alone, and
  * never overrides one the author set.
  */
+import { reducedMotion as effectiveReduce, onMotionChange } from '../core/motion.js'
 
 export interface EffectFrame {
   /** The 2D context. Or null when `context: null` (WebGL/Three effects own
@@ -374,14 +375,13 @@ export function mountEffect(
   const ctx = context === '2d' ? canvas.getContext('2d') : null
   if (context === '2d' && !ctx) return noop
 
-  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
   const fx: EffectFrame = {
     ctx,
     canvas,
     width: 0,
     height: 0,
     dpr: 1,
-    reducedMotion: motionQuery.matches,
+    reducedMotion: effectiveReduce(),
   }
 
   let raf = 0
@@ -789,10 +789,9 @@ export function mountEffect(
   }
   watchDpr()
 
-  const onMotion = () => {
-    fx.reducedMotion = motionQuery.matches
-  }
-  onMediaChange(motionQuery, onMotion)
+  const offMotion = onMotionChange((reduced) => {
+    fx.reducedMotion = reduced
+  })
 
   return {
     pause: () => {
@@ -821,7 +820,7 @@ export function mountEffect(
         ro.disconnect()
         io.disconnect()
         document.removeEventListener('visibilitychange', onVisibility)
-        offMediaChange(motionQuery, onMotion)
+        offMotion()
         if (dprQuery) offMediaChange(dprQuery, onDprChange)
       }
     },

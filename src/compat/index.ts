@@ -88,6 +88,22 @@ const FALLBACK_CSS = `
     transition: none;
   }
 }
+
+/* the same under html[data-sv-motion="reduce"] (core/motion.ts) */
+.sv-on[data-sv-motion="reduce"] .sv .sv-rise,
+.sv-on[data-sv-motion="reduce"] .sv .sv-fade,
+.sv-on[data-sv-motion="reduce"] .sv .sv-slide-l,
+.sv-on[data-sv-motion="reduce"] .sv .sv-slide-r,
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > :not(.sv-skip),
+[data-sv-motion="reduce"] .sv .sv-drift,
+[data-sv-motion="reduce"] .sv .sv-curtain-l,
+[data-sv-motion="reduce"] .sv .sv-curtain-r,
+[data-sv-motion="reduce"] .sv .sv-rail,
+[data-sv-motion="reduce"] .sv .sv-deck > * {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
 `
 
 interface RoEntryStub {
