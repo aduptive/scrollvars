@@ -105,6 +105,9 @@ const SHELL_CSS = `
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
   footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
     font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   footer.fx b { color: var(--text); }
@@ -189,8 +192,31 @@ const SHELL_CSS = `
 
 const header = (sub) => `<header class="fx">
   <div><a href="${sub ? '.' : '../'}" style="text-decoration:none"><b>ScrollVars</b>${sub ? ' <span style="color:var(--muted)">/ fx</span>' : ''}</a></div>
-  <div><a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
-</header>`
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="${sub ? '../docs/' : 'docs/'}">docs</a> · <a href="${sub ? '../' : './'}">demo</a> · <a href="${sub ? '../bench/' : 'bench/'}">bench</a> · <a href="${sub ? 'llms.txt' : 'fx/llms.txt'}">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+</header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>`
 
 /* categorized accordion sidebar: same markup on every fx page; native <details>.
    Mobile starts collapsed (script below); desktop hides the outer summary only
@@ -234,6 +260,7 @@ for (const fx of EFFECTS) {
 for (const fx of EFFECTS) {
   const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>${fx.title} · ScrollVars fx</title>
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
@@ -288,6 +315,7 @@ ${NAV_COLLAPSE}
 /* hub */
 const hub = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars fx: copy-paste scroll effects</title>
 <meta name="description" content="A growing library of scroll, pointer and state effects in Tailwind and CSS. Powered by a ${ENGINE_KB} KB engine. Copy-paste for humans and AIs.">

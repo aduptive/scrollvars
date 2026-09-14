@@ -525,9 +525,13 @@ the slider's glide, canvas effects (`fx.reducedMotion`) and the React
 every reduced-motion block in the sheets has a twin under it.
 `setMotion('reduce' | 'auto')` sets the attribute, `onMotionChange(fn)`
 reports the effective preference live, `prefersReducedMotion()` reads it.
-Persist the choice yourself and set it before the first frame. Your own CSS
-on the clocks (`--sv-view`, `--sv-t`, `--mx`, `--my`) is motion too: guard it
-with the media query and `:where([data-sv-motion="reduce"])`. The kit's slider
+Persist the choice yourself and set it before the first frame (an inline
+script in `<head>` that reads your store and sets the attribute, before any
+stylesheet paints). Your own CSS on the clocks (`--sv-view`, `--sv-t`,
+`--mx`, `--my`) is motion too: guard it with the media query and
+`:where([data-sv-motion="reduce"])`; in Tailwind, add a variant next to
+`motion-reduce:` (`addVariant('sv-reduce', 'html[data-sv-motion="reduce"] &')`)
+and use both. The kit's slider
 dots are 24 by 24 CSS pixel targets (`--sv-dot-target`) that never shrink,
 with the visual dot inside (`--sv-dot-size`); a `renderDot` of your own is
 yours to size. `split()` takes plain text only. Under a fixed or sticky

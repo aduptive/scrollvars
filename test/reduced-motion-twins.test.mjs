@@ -88,6 +88,37 @@ test('every reduced-motion block in styles/*.css has its data-sv-motion twin', (
   assert.ok(checked >= 10, `the derivation found only ${checked} reduced-motion rules: it is broken, not the sheets`)
 })
 
+// The site's own CSS: the gallery effects (scripts/fx-data.mjs, panes and
+// installed components in template literals) and the home page. Markup and
+// CSS share those files, so the reduced-motion blocks are found by brace
+// matching in the raw text and each twin rule is searched for, normalized,
+// after the block it mirrors.
+test('the gallery effects and the home page carry a twin for every reduced-motion rule', () => {
+  const files = ['../scripts/fx-data.mjs', '../demo/index.html']
+  let checked = 0
+  for (const file of files) {
+    const text = readFileSync(new URL(file, import.meta.url), 'utf8')
+    const re = /@media \(prefers-reduced-motion: reduce\)[^{]*\{/g
+    let m
+    while ((m = re.exec(text))) {
+      let depth = 0, end = -1
+      for (let k = m.index + m[0].length - 1; k < text.length; k++) {
+        if (text[k] === '{') depth++
+        else if (text[k] === '}' && --depth === 0) { end = k + 1; break }
+      }
+      assert.ok(end > 0, `${file}: unbalanced reduced-motion block at ${m.index}`)
+      const after = norm(strip(text.slice(end)))
+      for (const [selector, body] of [...strip(text.slice(m.index + m[0].length, end - 1)).matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((r) => [norm(r[1]), norm(r[2])])) {
+        checked++
+        const expected = norm(`${twin(selector)} { ${body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => d + ';').join(' ')} }`)
+        assert.ok(after.includes(expected), `${file}: no twin after the block for "${selector}" (expected "${expected.slice(0, 120)}")`)
+      }
+      re.lastIndex = end
+    }
+  }
+  assert.ok(checked >= 30, `the derivation found only ${checked} rules in the site's reduced-motion blocks: it is broken, not the site`)
+})
+
 test('the compat fallback sheet carries the twin too, without :where() for the engines it serves', () => {
   const source = readFileSync(new URL('../src/compat/index.ts', import.meta.url), 'utf8')
   // the template literal that holds the sheet: the nearest backticks around

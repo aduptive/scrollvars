@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Cinematic hero · ScrollVars fx</title>
 <meta name="description" content="Split headline rising on a beat, pointer-parallax glow, a marquee strip, and the whole block fades out as you scroll past (--sv-t). Copy-paste in Tailwind, CSS or React.">
@@ -21,6 +22,9 @@
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
   footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
     font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   footer.fx b { color: var(--text); }
@@ -105,8 +109,31 @@
 </head><body>
 <header class="fx">
   <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
-  <div><a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
 </header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
 <div class="fxwrap">
 <aside class="fxside"><div class="fxsidein">
   <details class="fxnav" open>
@@ -159,6 +186,9 @@
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
@@ -197,6 +227,9 @@ const css = `
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-hero .hero-orb { translate: none; transition: none; }
+:where([data-sv-motion="reduce"]) .sv-hero .hero-inner { opacity: 1; scale: none; }
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }

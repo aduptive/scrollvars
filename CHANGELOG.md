@@ -57,6 +57,15 @@
 
 ### Fixed
 
+- Demo: the site honors its own motion switch. The gallery pages and the
+  home page carry a "Motion" control in the header that sets
+  `data-sv-motion="reduce"` through `setMotion()` and remembers it
+  (`localStorage`), applied by an inline script in `<head>` before anything
+  paints; every reduced-motion rule in the gallery effects (panes and
+  installed components) and in the home's own CSS has its twin under the
+  attribute, kept in step by the same test that covers the library's sheets.
+  Tailwind panes keep `motion-reduce:`; the consumer guide shows the
+  one-line variant for the attribute.
 - Demo: what axe found. Every code block is keyboard focusable
   (`tabindex="0"`, WCAG 2.1.1: a scrollable region needs keyboard access);
   the sticky-steps section keeps an inactive step's text at 4.5:1 (its

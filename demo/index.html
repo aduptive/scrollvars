@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>ScrollVars</title>
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
@@ -63,6 +64,8 @@
   @media (prefers-reduced-motion: reduce) {
     .sv .sv-rise, .sv .sv-fade, .sv .sv-drift { transition: none; opacity: 1; translate: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .sv .sv-rise, :where([data-sv-motion="reduce"]) .sv .sv-fade, :where([data-sv-motion="reduce"]) .sv .sv-drift { transition: none; opacity: 1; translate: none; }
 
   /* ══════════════ page ══════════════ */
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
@@ -122,6 +125,11 @@
     border-radius: 999px; padding: 6px 8px 6px 14px;
   }
   header.site .install b { color: var(--text); font-weight: 400; }
+  header.site .motion {
+    font: 13px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; min-height: 24px;
+  }
+  header.site .motion[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
   header.site .install button {
     display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
     border: 0; border-radius: 999px; background: transparent; color: var(--muted);
@@ -270,6 +278,8 @@
   @media (prefers-reduced-motion: reduce) {
     .pgal-col { translate: none; margin-top: 0; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .pgal-col { translate: none; margin-top: 0; }
 
   /* ── demo 3: pinned scenes ── */
   .kf-outer { height: 400vh; position: relative; }
@@ -338,6 +348,9 @@
     .curtain-panel { display: none; }
     .curtain-reveal .big { letter-spacing: 0.1em; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .curtain-panel { display: none; }
+  :where([data-sv-motion="reduce"]) .curtain-reveal .big { letter-spacing: 0.1em; }
 
   /* ── demo 3c: horizontal carousel ── */
   .hcar-outer { height: 300vh; position: relative; }
@@ -377,6 +390,10 @@
     .hcar-sticky { overflow-x: auto; }
     .hcar-track { translate: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .hcar-outer { height: auto; }
+  :where([data-sv-motion="reduce"]) .hcar-sticky { overflow-x: auto; }
+  :where([data-sv-motion="reduce"]) .hcar-track { translate: none; }
 
   /* ── demo 3d: card deck ── */
   .deck-outer { height: 400vh; position: relative; }
@@ -419,6 +436,10 @@
     .deck-sticky { position: static; height: auto; display: flex; flex-direction: column; gap: 14px; }
     .deck-card { position: static; translate: none; rotate: none; scale: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .deck-outer { height: auto; padding: 40px 0; }
+  :where([data-sv-motion="reduce"]) .deck-sticky { position: static; height: auto; display: flex; flex-direction: column; gap: 14px; }
+  :where([data-sv-motion="reduce"]) .deck-card { position: static; translate: none; rotate: none; scale: none; }
 
   /* ── demo 3e: guided reading ── */
   .read-outer { height: 300vh; position: relative; }
@@ -445,6 +466,10 @@
     .read-sticky { position: static; height: auto; }
     .read-text span { opacity: 1; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .read-outer { height: auto; padding: 40px 0; }
+  :where([data-sv-motion="reduce"]) .read-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .read-text span { opacity: 1; }
 
   /* ── demo 3f: counter ── */
   @property --cnum {
@@ -479,6 +504,10 @@
     .count-sticky { position: static; height: auto; }
     .count-num { --cnum: 421; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .count-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .count-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .count-num { --cnum: 421; }
 
   /* ── demo 3g: scrubbed video ── */
   .vid-outer { height: 350vh; position: relative; }
@@ -515,6 +544,9 @@
     .vid-outer { height: auto; }
     .vid-sticky { position: static; height: auto; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .vid-outer { height: auto; }
+  :where([data-sv-motion="reduce"]) .vid-sticky { position: static; height: auto; }
 
   /* ── demo 4b: kinetic typography ── */
   .type-outer { height: 500vh; position: relative; }
@@ -575,6 +607,11 @@
     .type-word { --f1: 1; --f2: 1; --f3: 0; --f4: 1; }
     .type-letter { transition: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .type-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .type-sticky { position: static; height: auto; min-height: 40vh; }
+  :where([data-sv-motion="reduce"]) .type-word { --f1: 1; --f2: 1; --f3: 0; --f4: 1; }
+  :where([data-sv-motion="reduce"]) .type-letter { transition: none; }
 
   /* ── demo 4c: choreographed collage ── */
   .collage-stage {
@@ -612,6 +649,8 @@
   @media (prefers-reduced-motion: reduce) {
     .collage-item { transition: none; translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .collage-item { transition: none; translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; }
 
   /* ── demo 4d: svg path draw ── */
   .draw-outer { height: 300vh; position: relative; }
@@ -644,6 +683,11 @@
     .draw-car { display: none; }
 
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .draw-outer { height: auto; padding: 60px 0; }
+  :where([data-sv-motion="reduce"]) .draw-sticky { position: static; height: auto; }
+  :where([data-sv-motion="reduce"]) .draw-path { stroke-dashoffset: 0; }
+  :where([data-sv-motion="reduce"]) .draw-car { display: none; }
 
   /* ── demo 5: 3D product tour: one panel per scene ── */
   .tour-panel {
@@ -695,6 +739,8 @@
   @media (prefers-reduced-motion: reduce) {
     .gl-outer { height: 100vh; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .gl-outer { height: 100vh; }
 
   /* ── demo 4: 3D ── */
   .stage3d { display: grid; place-items: center; padding: 50px 0; perspective: 1100px; }
@@ -724,6 +770,8 @@
   .face.back { background: linear-gradient(135deg, #2b2418, #1b1a24 60%); transform: rotateY(180deg); color: var(--text); }
   .face.back .big { font-size: 22px; color: var(--num); }
   @media (prefers-reduced-motion: reduce) { .card3d { transform: none; } }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .card3d { transform: none; }
 
   /* ── demo 6: pointer tilt ── */
   .tilt-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 10px; }
@@ -772,6 +820,9 @@
     .tilt-card { transform: none; transition: none; }
     .tilt-card::after { display: none; }
   }
+  /* the same under html[data-sv-motion="reduce"], the site's own switch */
+  :where([data-sv-motion="reduce"]) .tilt-card { transform: none; transition: none; }
+  :where([data-sv-motion="reduce"]) .tilt-card::after { display: none; }
 
   /* ── api ── */
   table { border-collapse: collapse; width: 100%; margin-top: 28px; font-size: 13.5px; }
@@ -1001,6 +1052,14 @@ html.snap-region { scroll-snap-type: y proximity; }
   .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
   .map-compass { display: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .map-outer { height: auto; }
+:where([data-sv-motion="reduce"]) .map-sticky { position: static; height: auto; overflow: visible; background: none; }
+:where([data-sv-motion="reduce"]) .map-world { position: static; width: auto; height: auto; transform: none !important; background: none; }
+:where([data-sv-motion="reduce"]) .map-world svg { display: none; }
+:where([data-sv-motion="reduce"]) #map-canvas { display: none; }
+:where([data-sv-motion="reduce"]) .map-station { position: static; translate: none; rotate: none; margin: 14px auto; }
+:where([data-sv-motion="reduce"]) .map-compass { display: none; }
 
 /* ── case 13 · the slider module ── */
 .sv-slider {
@@ -1246,6 +1305,8 @@ Discrete value + transition = smooth */
 @media (prefers-reduced-motion: reduce) {
   .sv-words > * { transition: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-words > * { transition: none; }
 .pz-head p { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
 .pz-hub {
   position: absolute;
@@ -1330,6 +1391,9 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
   .pz-outer { height: auto; }
   .pz-sticky { position: static; contain: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .pz-outer { height: auto; }
+:where([data-sv-motion="reduce"]) .pz-sticky { position: static; contain: none; }
 
 /* ── case 17 · the CSS timeline (sv-acts, official preset since v1.3) ── */
 @property --sv-act {
@@ -1420,6 +1484,8 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
 @media (prefers-reduced-motion: reduce) {
   .sv-acts { transition-duration: 0.01ms; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-acts { transition-duration: 0.01ms; }
 
 /* ── case 18 · the spread (sv-spread, official preset since v1.4) ── */
 .sv-spread {
@@ -1466,6 +1532,8 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
 @media (prefers-reduced-motion: reduce) {
   .sv-spread > * { translate: none; rotate: none; transition: none; }
 }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-spread > * { translate: none; rotate: none; transition: none; }
 
 /* The custom demos need the same fails-visible contract as the shipped
    presets. Until the driver boots, every scene is ordinary readable content. */
@@ -1522,6 +1590,7 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
 <header class="site">
   <a class="word" href="#hero"><span class="dash">--</span>scrollvars</a>
   <div class="right">
+    <button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button>
     <div class="install">
       <span><b>npm i scrollvars</b></span>
       <button type="button" id="install-copy" aria-label="copy install command">
@@ -1536,6 +1605,29 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
     </a>
   </div>
 </header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
 <main>
 <noscript><p class="wrap" style="padding-top: 80px;">Static preview: all text and cards remain available. Enable JavaScript to try the scroll, pointer and canvas effects.</p></noscript>
 

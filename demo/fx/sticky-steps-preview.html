@@ -7,6 +7,9 @@
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+.sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-media { gap: 8px; aspect-ratio: auto; }
 .sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
 .sv-steps .st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 (axe) */
 html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
@@ -20,6 +23,9 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
    non-active step would otherwise sit at 30% opacity forever and the copy
    would slide with the raw scroll. Reset both the steps and the dots. */
 @media (prefers-reduced-motion: reduce) { .sv-steps .st-steps > li { opacity: 1; translate: none; } .sv-steps .st-dots i { opacity: 1; scale: none; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-steps .st-steps > li { opacity: 1; translate: none; }
+:where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
