@@ -128,7 +128,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.4 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.5 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -150,7 +150,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.9 KB |
 | everything in `scrollvars` (the core entry) | 8.5 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 14.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 14.3 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -275,7 +275,8 @@ marker you set by hand). It changes what the below-the-floor net in
 ## The fx gallery: copy-paste effects (+ shadcn-style CLI)
 
 A growing library of effects at **https://scrollvars.dev/fx/**. Each
-one live, with Tailwind, CSS and React formats, knobs documented, and a
+one live, the effects in Tailwind, CSS and React formats and the six
+Sections as complete React components, knobs documented, and a
 machine-readable [fx/llms.txt](https://scrollvars.dev/fx/llms.txt)
 so AI assistants can ingest the whole collection in one request. Install an
 effect straight into your project:
@@ -509,8 +510,8 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 ```
 
 `sv-range-rise` is the ready-made flavor (rise + fade per range; the fade
-starts at `--sv-range-floor`, .55 by default, which keeps the sheet's text
-color at 4.5:1 on a dark ground while a child waits for its slice; a muted
+starts at `--sv-range-floor`, .55 by default, which keeps text at 4.5:1
+on the tested pair (#e6e4f0 on #17151f) while a child waits for its slice; a muted
 or accent color needs a higher floor, and 0 gives the dramatic look at the
 cost of that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
@@ -758,7 +759,8 @@ success criterion it serves. It is not a conformance claim for your site.
   `<Slider>` follows the APG carousel pattern: `role="region"`,
   `aria-roledescription="carousel"`, a `label`, slides announced "i of n",
   labeled arrows and dots, keyboard on the track, `aria-live="polite"` on
-  the track while it is not rotating. Native scroll and scroll snap do the
+  the track while rotation is paused by the person (hover, focus, the
+  control), `off` while it rotates or is merely suspended off screen. Native scroll and scroll snap do the
   moving, so nothing is hijacked, on sliders or on pins.
 - **Targets** (2.5.8 Target Size, Minimum). Every dot the kit renders is a
   24 by 24 CSS pixel button that never shrinks (a crowded row wraps), with
@@ -843,7 +845,10 @@ inline styles for the two names, and stays silent when neither appears. A
 stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
 turns publishing back on. The watch behind that rescans once per frame that
 adds an element and skips every stylesheet it already read in full, so a page
-that mounts elements while it scrolls pays no per-rule work for it.
+that mounts elements while it scrolls pays no per-rule work for it. What it
+cannot see: a rule edited in place, or one inserted through the CSSOM with no
+element added at the same time. A page that does that calls
+`setPageOutputs(true)`.
 
 Detection reads CSS, so it cannot see a JavaScript reader. Call
 `setPageOutputs(true)` (import from `scrollvars`, or

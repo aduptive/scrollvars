@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `<ScrollVarsBoot>` on a first route with nothing to track: its pre-paint
+  watchdog waited for a flag the driver set only on the first `track()`,
+  so at three seconds it dropped `html.sv-on` and kept dropping it for the
+  session, and later routes never animated (content stayed visible). The
+  scanner marks the driver's arrival now, trackers or not.
+- Pin progress spanned the wrapper's height minus the viewport's, so an
+  authored stage shorter than the viewport reached `--sv-pin: 1` before
+  its sticky stretch ended; the span uses the stage's rendered height,
+  in the driver and in `scrollToScene()`.
+- `[data-sv-fit]` with a fixed height and overflowing copy passed the fit
+  test and clipped; the test reads the content's height too.
+- `styles/scoped.css` forwarded a clock through a nested tracker, which
+  overrode the nested `.sv`'s own reset until its first inline write; the
+  path rules stop at `.sv` and `[data-sv]`.
+- `trackPointer()`'s cleanup skipped elements a leave had already dropped,
+  leaving their zeroed `--mx`/`--my` and `sv-pointer-leave` behind.
+- `sv-counter` kept counting with the pin clock under reduced motion; it
+  settles on `--sv-max` like every other scrub preset, under the media
+  query and under `data-sv-motion="reduce"`.
+- Installed StickySteps watched the OS query only, so under
+  `setMotion('reduce')` its shots showed in flow while the inactive ones
+  stayed `inert` and `aria-hidden`; it follows the effective preference.
+  Installed RotatingWords hides the column from screen readers, says the
+  phrase once and stops rotating under reduced motion (the gallery preview
+  already did). Both need scrollvars 1.17.0.
+- Installed CoverflowSlider passed the nonce to its Slider but not to its
+  own `<style>`.
+- `scripts/demo-sync.mjs` copied `styles/scoped.css` at import time; the
+  copy sits under the run-as-script guard now.
+- Docs: the Sections ship as complete React components (not three
+  formats); the page-outputs scan cannot see an in-place rule edit or a
+  CSSOM insert with no element added; the range floor's contrast claim
+  names the tested pair; the Slider's live region wording matches the code.
+
 ## 1.17.0 (2026-09-14)
 
 ### Added

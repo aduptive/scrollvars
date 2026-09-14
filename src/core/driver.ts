@@ -434,7 +434,9 @@ function update() {
     } else {
       geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
     }
-    const overflow = !!entry.fit && !entry.flow && entry.fit.offsetHeight >
+    // the box's own height, or its content's when that is taller: a fixed
+    // height on the fit box hid overflowing copy from this test (round 9)
+    const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
       (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
     frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth })
   })
@@ -514,9 +516,12 @@ function computeTravel(geo: Geometry): number {
   return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1)
 }
 
-/** 0..1 across a sticky container's pinned stretch. */
-function computePin(geo: Geometry, offset = 0): number {
-  const span = Math.max(geo.height - geo.vp + offset, 1)
+/** 0..1 across a sticky container's pinned stretch: the wrapper's height
+ * minus the sticky stage's own (the viewport's when there is no stage or
+ * the stage fills it), so an authored shorter stage does not reach 1 while
+ * it is still pinned (round 9). */
+function computePin(geo: Geometry, offset = 0, stageHeight?: number): number {
+  const span = Math.max(geo.height - (stageHeight || geo.vp) + offset, 1)
   return clamp((offset - geo.top) / span, 0, 1)
 }
 
@@ -672,14 +677,14 @@ function apply(entry: Entry, geo: Geometry) {
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(geo, entry.pinOffset)
+    const p = computePin(geo, entry.pinOffset, entry.stage?.clientHeight)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
     if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(geo, entry.pinOffset)
+    const pin = computePin(geo, entry.pinOffset, entry.stage?.clientHeight)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)
@@ -1036,7 +1041,9 @@ export function scrollToScene(
   const rect = el.getBoundingClientRect()
   const vp = root ? root.clientHeight : window.innerHeight
   const pinOffset = readPinOffset(el)
-  const span = Math.max(rect.height - vp + pinOffset, 1)
+  // the same span the driver's pin math uses: the stage's rendered height
+  const stage = el.querySelector<HTMLElement>('.sv-stage')
+  const span = Math.max(rect.height - (stage?.clientHeight || vp) + pinOffset, 1)
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
   // reduced motion outranks the caller's `smooth`, the same way the slider's
   // glide falls back to a jump: a scene jump is navigation, not decoration

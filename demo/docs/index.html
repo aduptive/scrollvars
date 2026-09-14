@@ -157,7 +157,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.4 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
+(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.5 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -298,6 +298,23 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>Unreleased</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li><code>&lt;ScrollVarsBoot></code> on a first route with nothing to track: its pre-paint watchdog waited for a flag the driver set only on the first <code>track()</code>, so at three seconds it dropped <code>html.sv-on</code> and kept dropping it for the session, and later routes never animated (content stayed visible). The scanner marks the driver's arrival now, trackers or not.</li>
+<li>Pin progress spanned the wrapper's height minus the viewport's, so an authored stage shorter than the viewport reached <code>--sv-pin: 1</code> before its sticky stretch ended; the span uses the stage's rendered height, in the driver and in <code>scrollToScene()</code>.</li>
+<li><code>[data-sv-fit]</code> with a fixed height and overflowing copy passed the fit test and clipped; the test reads the content's height too.</li>
+<li><code>styles/scoped.css</code> forwarded a clock through a nested tracker, which overrode the nested <code>.sv</code>'s own reset until its first inline write; the path rules stop at <code>.sv</code> and <code>[data-sv]</code>.</li>
+<li><code>trackPointer()</code>'s cleanup skipped elements a leave had already dropped, leaving their zeroed <code>--mx</code>/<code>--my</code> and <code>sv-pointer-leave</code> behind.</li>
+<li><code>sv-counter</code> kept counting with the pin clock under reduced motion; it settles on <code>--sv-max</code> like every other scrub preset, under the media query and under <code>data-sv-motion="reduce"</code>.</li>
+<li>Installed StickySteps watched the OS query only, so under <code>setMotion('reduce')</code> its shots showed in flow while the inactive ones stayed <code>inert</code> and <code>aria-hidden</code>; it follows the effective preference. Installed RotatingWords hides the column from screen readers, says the phrase once and stops rotating under reduced motion (the gallery preview already did). Both need scrollvars 1.17.0.</li>
+<li>Installed CoverflowSlider passed the nonce to its Slider but not to its own <code>&lt;style></code>.</li>
+<li><code>scripts/demo-sync.mjs</code> copied <code>styles/scoped.css</code> at import time; the copy sits under the run-as-script guard now.</li>
+<li>Docs: the Sections ship as complete React components (not three formats); the page-outputs scan cannot see an in-place rule edit or a CSSOM insert with no element added; the range floor's contrast claim names the tested pair; the Slider's live region wording matches the code.</li>
+</ul>
 
 <h3>1.17.0 (2026-09-14)</h3>
 

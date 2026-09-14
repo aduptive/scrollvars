@@ -471,6 +471,9 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
     height: auto;
     overflow: visible;
   }
+  :is(.sv, [data-sv]) .sv-counter {
+    --sv-int: var(--sv-max, 100); /* the finished number, like every other scrub preset */
+  }
   .sv .sv-curtain-l,
   .sv .sv-curtain-r {
     display: none;
@@ -502,6 +505,9 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   position: static;
   height: auto;
   overflow: visible;
+}
+:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-counter {
+  --sv-int: var(--sv-max, 100);
 }
 :where([data-sv-motion="reduce"]) .sv .sv-curtain-l,
 :where([data-sv-motion="reduce"]) .sv .sv-curtain-r {

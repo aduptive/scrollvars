@@ -422,3 +422,21 @@ test('scan(detachedRoot) keeps a node retained in both lists of one record', asy
 
   stop()
 })
+
+test('scan marks the driver\'s arrival even when the route has nothing to track (round 9)', async () => {
+  // ScrollVarsBoot's pre-paint watchdog waits for window.__scrollvars; init()
+  // only set it on the first track(), so an empty first route lost sv-on for
+  // the whole session
+  global.MutationObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  global.window = { innerHeight: 800, addEventListener: () => {}, matchMedia: () => ({ matches: false, addEventListener: () => {} }) }
+  global.requestAnimationFrame = () => 1
+  global.cancelAnimationFrame = () => {}
+  const root = { querySelectorAll: () => [], contains: () => true }
+  global.document = { documentElement: { classList: { add() {}, remove() {}, contains: () => false } }, querySelectorAll: () => [] }
+  delete global.window.__scrollvars
+  const { scan } = await import('../dist/core/scan.js?arrival')
+  const stop = scan(root)
+  assert.equal(global.window.__scrollvars, true, 'the flag is set with zero trackers')
+  stop()
+})

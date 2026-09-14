@@ -186,10 +186,20 @@ test('trackPointer teardown clears --mx/--my and sv-pointer-leave from the last 
   rafCb()()
   assert.notEqual(card.vars['--mx'], undefined, 'flushed: mid-tilt')
 
-  // teardown while the pointer is still "over" the card, mid-tilt
+  // a second card takes the pointer over: the first is left (zeroed, the
+  // leave class on) and dropped from the written set, and teardown must
+  // still clean it (round 9)
+  const second = makeEl({ isTilt: true, parent: container })
+  container.fire('pointermove', { target: second, clientX: 10, clientY: 10 })
+  rafCb()()
+  assert.equal(card.vars['--mx'], '0', 'the handover relaxed the first card')
+
+  // teardown while the pointer is still "over" the second card, mid-tilt
   stop()
 
-  assert.equal(card.vars['--mx'], undefined, 'teardown clears --mx')
+  assert.equal(card.vars['--mx'], undefined, 'teardown clears the left card too')
+  assert.ok(!card.classes.has('sv-pointer-leave'), 'and its leave class')
+  assert.equal(second.vars['--mx'], undefined, 'teardown clears --mx')
   assert.equal(card.vars['--my'], undefined, 'teardown clears --my')
   assert.equal(card.classes.has('sv-pointer-leave'), false, 'teardown leaves no sv-pointer-leave')
 })
@@ -249,7 +259,11 @@ test('trackPointer clears a still-written outer .sv-tilt on handover to its own 
   assert.notEqual(inner.vars['--mx'], undefined, 'the inner element now receives the vars')
 
   stop()
-  assert.equal(outer.vars['--mx'], '0', 'stop() does not need to touch the outer again: the handover already relaxed it')
+  // stop() releases every element it ever wrote, the handed-over outer
+  // included: the README says stopping releases pointer values, and a
+  // zeroed --mx left behind is a value (round 9 review)
+  assert.equal(outer.vars['--mx'], undefined, 'stop() releases the outer the handover had relaxed')
+  assert.equal(outer.classes.has('sv-pointer-leave'), false, 'and drops its leave class')
   assert.equal(inner.vars['--mx'], undefined, 'stop() clears whichever element is still active')
   assert.equal(inner.classes.has('sv-pointer-leave'), false, 'stop() leaves no sv-pointer-leave on the active element either')
 })
