@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>keyboard red fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  /* a fixed header, like the gallery's, that paints over whatever the browser scrolls under it */
+  .top { position: fixed; top: 0; left: 0; right: 0; height: 80px; background: #123; color: #fff; z-index: 3 }
+  body { padding-top: 80px }
+  .tall { height: 200vh } /* far enough apart that focus has to scroll, whichever way it travels */
+  .card { min-height: 40vh; padding: 24px; background: #eee }
+  /* an author's own reveal that forgot its live state: the box never comes back */
+  .ghost { opacity: 0 }
+</style>
+<script>
+  // ?header=1  a link the browser scrolls under the sticky header when focus
+  //            arrives from below (Shift+Tab lands it at the top edge)
+  // ?fix=1     the standard answer to that: scroll-padding-top on html
+  // ?ghost=1   a link inside a box that stays at opacity 0
+  var Q = new URLSearchParams(location.search)
+  if (Q.has('fix')) document.write('<style>html { scroll-padding-top: 80px }</style>')
+</script>
+</head>
+<body>
+<header class="top">a fixed header</header>
+<p><a href="#a">a link in normal flow, visible</a></p>
+<div class="tall"></div>
+<script>
+  // the gallery's shape: a small control right above a focusable code block
+  // that nearly fills the viewport. Coming back from below, the block is
+  // scrolled into view first and the control lands in the header's strip;
+  // the browser then counts it as visible and scrolls no further.
+  if (Q.has('header')) document.write('<p style="margin:0"><a href="#b">under the header</a></p><pre tabindex="0" style="height:520px;margin:0;background:#ddd">a focusable code block</pre><div class="tall"></div>')
+  if (Q.has('ghost')) document.write('<section data-sv><div class="card ghost"><a href="#c">a link inside a box that stays at opacity 0</a></div></section><div class="tall"></div>')
+</script>
+<p><a href="#z">the last link, visible</a></p>
+<script src="/fx/sv.js"></script>
+</body>
+</html>

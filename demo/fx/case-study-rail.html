@@ -12,6 +12,10 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -190,7 +194,7 @@ html:not(.sv-on) .sv-casework .work-card,
   <div class="code">
     <button class="copy">copy</button>
 
-    <pre class="on" data-pane="react"><code>// ScrollVars fx · case-study-rail
+    <pre class="on" tabindex="0" data-pane="react"><code>// ScrollVars fx · case-study-rail
 // Requires: npm i scrollvars · import 'scrollvars/styles/pin.css'
 'use client'
 import * as React from 'react'

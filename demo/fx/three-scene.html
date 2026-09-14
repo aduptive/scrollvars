@@ -12,6 +12,10 @@
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -192,13 +196,13 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" data-pane="tailwind"><code>&lt;div&gt;   &lt;!-- tracked in JS with pin: '250vh' --&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div&gt;   &lt;!-- tracked in JS with pin: '250vh' --&gt;
   &lt;div class="sv-stage grid place-items-center"&gt;
     &lt;canvas id="scene" class="h-[60vh] w-full max-w-xl"&gt;&lt;/canvas&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 &lt;!-- same JS as the CSS tab, Tailwind only does the skeleton here --&gt;</code></pre>
-    <pre data-pane="css"><code>&lt;div id="outer"&gt;                       &lt;!-- no data-sv: tracked in JS below --&gt;
+    <pre tabindex="0" data-pane="css"><code>&lt;div id="outer"&gt;                       &lt;!-- no data-sv: tracked in JS below --&gt;
   &lt;div class="sv-stage"&gt;&lt;canvas id="scene"&gt;&lt;/canvas&gt;&lt;/div&gt;   &lt;!-- from pin.css --&gt;
 &lt;/div&gt;
 
@@ -218,7 +222,7 @@
   // The harness gives you: DPR cap, resize, pause offscreen/hidden tab,
   // delta-time loop, reduced-motion flag, cleanup, Three stays userland.
 &lt;/script&gt;</code></pre>
-    <pre data-pane="react"><code>'use client'
+    <pre tabindex="0" data-pane="react"><code>'use client'
 const progress = useRef(0)
 const canvasRef = useCanvasEffect({
   context: null,

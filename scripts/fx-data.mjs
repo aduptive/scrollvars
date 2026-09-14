@@ -712,7 +712,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .hero-inner { --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1);   /* --sv-t is .5 with the hero at rest, 1 when it has left */
   opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .hero-orb { translate: none; transition: none; } .hero-inner { opacity: 1; scale: none; } }   /* no drift, no exit scale */
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; }
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); } /* the strip's own ground: its text read 2.6:1 over an orb (axe) */
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
     tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
@@ -727,7 +727,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
   </div>
-  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3"><div class="sv-marquee-track">…</div></div>
+  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3 bg-[#17151f]/90"><div class="sv-marquee-track">…</div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>`,
     react: `import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -887,7 +887,7 @@ function Timeline() {
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }   /* no crossfade: the shots stack */
-.st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); }
+.st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 on this background (axe) */
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
 /* Placed after the rule above (same specificity, later wins, so a media block
    up there would lose): the stage unpins under reduce but --sv-scene keeps
@@ -1097,7 +1097,7 @@ const css = \`
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
-.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
 \`
 
@@ -1285,11 +1285,11 @@ const css = \`
 .sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 .sv-steps .st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(20px, 5vh, 44px); }
-.sv-steps .st-steps > li { opacity: calc(.3 + .7 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; }
+.sv-steps .st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); translate: calc(var(--st-d) * -8px) 0; } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 (axe) */
 html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
-.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.sv-steps .st-steps b { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .8; margin-bottom: 6px; }
 .sv-steps .st-steps h3 { margin: 0 0 6px; font-size: clamp(20px, 2.6vw, 28px); }
-.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .75; }
+.sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .8; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
 /* Placed after the rules above (same specificity, later wins): the stage is
@@ -2005,7 +2005,7 @@ const css = \`
 .sv-manifesto .manifesto-label { display: flex; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid currentColor; font: 12px monospace; text-transform: uppercase; }
 .sv-manifesto .manifesto-copy { padding-block: 32px; }
 .sv-manifesto .manifesto-copy p { font-size: clamp(30px, 5.8vw, 82px); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; margin: 0 0 .55em; }
-.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.28 + .72 * var(--read)); }
+.sv-on .sv-manifesto .manifesto-copy p { --read: clamp(0, calc(var(--sv-t, 1) * (var(--count) + 1) - var(--i)), 1); opacity: calc(.55 + .45 * var(--read)); } /* the floor keeps unread copy at 3:1 on this paper (axe, large text) */
 .sv-manifesto .manifesto-end { max-width: 36ch; margin-left: auto; font-size: 16px; line-height: 1.6; }
 [data-sv-off].sv-manifesto .manifesto-copy p { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-manifesto .manifesto-copy p { opacity: 1; } }

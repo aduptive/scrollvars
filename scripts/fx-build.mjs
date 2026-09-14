@@ -96,6 +96,10 @@ const SHELL_CSS = `
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
   a { color: var(--accent); }
   header.fx { position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
@@ -253,9 +257,9 @@ ${sidebar(fx.slug)}
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
-    <pre data-pane="css"><code>${esc(fx.css)}</code></pre>`}
-    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} data-pane="react"><code>${esc(fx.react)}</code></pre>
+    ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" tabindex="0" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
+    <pre tabindex="0" data-pane="css"><code>${esc(fx.css)}</code></pre>`}
+    <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} tabindex="0" data-pane="react"><code>${esc(fx.react)}</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
