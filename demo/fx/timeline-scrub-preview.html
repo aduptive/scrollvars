@@ -14,6 +14,11 @@
 .sv-timeline .tl-items b { display: block; font-size: 12px; letter-spacing: .12em; margin-bottom: 4px; }
 .sv-timeline .tl-items p { margin: 0; max-width: 34ch; }
 [data-sv-flow].sv-timeline .tl-sticky { min-height: 0; --sv-pin: 1; }
+/* under reduced motion the stage is in flow and the driver keeps writing --sv-pin:
+   settle the year and the line at their finished value, like the shipped presets */
+@media (prefers-reduced-motion: reduce) { .sv-timeline .tl-sticky { --sv-pin: 1; } }
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .sv-timeline .tl-sticky { --sv-pin: 1; }
 @media (max-width: 640px) { .sv-timeline .tl-sticky { grid-template-columns: 1fr; align-content: center; gap: 22px; } }
 </style><div class="sv-stage fxsticky"><div data-sv-fit="" class="tl-sticky"><div><span class="tl-year"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">2026</span><span class="tl-count" aria-hidden="true"></span></span><span class="tl-cap">years of shipping</span></div><div class="tl-track"><i class="tl-line"></i><ol class="sv-range sv-range-rise tl-items"><li style="--sv-from:0;--sv-to:0.35"><b>2019</b><p>First client site on a hand-rolled scroll engine.</p></li><li style="--sv-from:0.25;--sv-to:0.6"><b>2021</b><p>The engine becomes a package; five sites share one codebase.</p></li><li style="--sv-from:0.5;--sv-to:0.85"><b>2024</b><p>Benchmarks published, CSS-variable API frozen.</p></li><li style="--sv-from:0.75;--sv-to:1"><b>2026</b><p>ScrollVars ships on npm. This timeline is one pinned block and four ranges.</p></li></ol></div></div></div></div>
 </body></html>

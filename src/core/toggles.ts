@@ -85,6 +85,42 @@
 // nothing to leak.
 const claimed = new WeakSet<Event>()
 
+// Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
+// is resolved by its NEAREST live scope, the one that would claim its click,
+// so a Marquee's `.sv-marquee-track` never resolves against another
+// Marquee's. stop() removes the entry; the set is otherwise never read.
+type Instance = {
+  scope: Document | HTMLElement
+  triggers: () => HTMLElement[]
+  resolve: (t: HTMLElement) => { className: string; target: HTMLElement | null }
+}
+const live = new Set<Instance>()
+const has = (scope: Document | HTMLElement, node: Node) =>
+  typeof scope.contains === 'function' ? scope.contains(node) : true
+// The nearest containing scope that RESOLVES the trigger's target: a click
+// handled by an outer scope, because the inner one could not find the
+// target, is synced by that outer scope too (round 10, verify 3). A
+// selector that does not parse is skipped, not thrown on.
+function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | null } | undefined {
+  let best: Instance | undefined
+  let resolved: { className: string; target: HTMLElement | null } | undefined
+  live.forEach((i) => {
+    if (!has(i.scope, t)) return
+    let r: { className: string; target: HTMLElement | null }
+    try {
+      r = i.resolve(t)
+    } catch {
+      return
+    }
+    if (!r.target) return
+    if (!best || has(best.scope, i.scope as Node)) {
+      best = i
+      resolved = r
+    }
+  })
+  return resolved
+}
+
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
@@ -109,13 +145,25 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if ((scope as HTMLElement).matches?.('[data-sv-toggle]')) list.unshift(scope as HTMLElement)
     return list
   }
+  // ARIA describes the TARGET's state, so every trigger of the pair in every
+  // live instance reflects it, not only the ones this scope owns: a trigger
+  // outside the owning scope kept the aria-expanded it was synced to at boot
+  // (round 10). Each trigger resolves in its nearest live scope, and a
+  // trigger whose selector does not parse is skipped, not thrown on.
   const sync = (target: HTMLElement, className: string, on: boolean) => {
-    triggers().forEach((t) => {
-      const other = resolve(t)
-      if (other.target === target && other.className === className)
-        t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
-    })
+    const seen = new Set<HTMLElement>()
+    live.forEach((instance) =>
+      instance.triggers().forEach((t) => {
+        if (seen.has(t)) return
+        seen.add(t)
+        const other = ownerOf(t)
+        if (other && other.target === target && other.className === className)
+          t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
+      })
+    )
   }
+  const instance: Instance = { scope, triggers, resolve }
+  live.add(instance)
   // the target's own state, written wherever the class flips
   const write = (target: HTMLElement, className: string, on: boolean) => {
     target.style.setProperty('--sv-state', on ? '1' : '0')
@@ -144,7 +192,13 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   triggers().forEach((trigger) => {
-    const { className, target } = resolve(trigger)
+    let resolved: ReturnType<typeof resolve>
+    try {
+      resolved = resolve(trigger)
+    } catch {
+      return // a selector that does not parse skips its trigger, not the whole boot (round 10)
+    }
+    const { className, target } = resolved
     if (!target) return
     if (!target.classList.contains('sv-ui')) {
       target.classList.add('sv-ui')
@@ -226,5 +280,8 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   scope.addEventListener('click', onClick)
-  return () => scope.removeEventListener('click', onClick)
+  return () => {
+    live.delete(instance)
+    scope.removeEventListener('click', onClick)
+  }
 }

@@ -288,7 +288,7 @@ test('driver: view band, live latch, travel, pin, scenes, dedup, cleanup', async
   // ── a stage shorter than the viewport: the span is height - stage, not
   //    height - vh, so the pin reaches 1 exactly when the stretch ends (round 9) ──
   const short = makeElement(3000)
-  short.stage = { clientHeight: 600 }
+  short.stage = { offsetHeight: 600 }
   short.querySelector = (selector) => (selector === '.sv-stage' ? short.stage : null)
   const unShort = track(short, { pin: true })
   place(short, -1200) // 1200 / (3000 - 600)
@@ -574,6 +574,59 @@ test('driver: --sv-pin-offset shifts the pinned stretch below a sticky header', 
   assert.equal(el.vars['--sv-pin'], (64 / (3000 - 1000 + 64)).toFixed(4))
   untrack()
   delete global.getComputedStyle
+})
+
+test('driver: a measured stage under a sticky header counts the offset once (round 10)', async () => {
+  global.getComputedStyle = () => ({ getPropertyValue: (n) => (n === '--sv-pin-offset' ? '64px' : '') })
+  const { track, scrollToScene } = await import('../dist/core/driver.js?pinoffsetstage')
+  // pin.css: the stage is `100vh - offset` tall and sticks at `offset`, so
+  // the stretch ends when the wrapper's bottom meets the stage's bottom at
+  // 64 + 936 = the viewport's bottom. 1.17.1 added the offset to that
+  // measured span again and reached 1 one offset late.
+  const el = makeElement(3000)
+  el.stage = { offsetHeight: 1000 - 64 }
+  el.querySelector = (selector) => (selector === '.sv-stage' ? el.stage : null)
+  const untrack = track(el, { pin: true })
+  place(el, 64)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '0.0000')
+  place(el, 64 - (3000 - 936) / 2)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '0.5000', 'halfway through the stretch, not through the stretch plus one offset')
+  place(el, 1000 - 3000)
+  pump()
+  assert.equal(el.vars['--sv-pin'], '1.0000', 'exactly 1 where the stage stops sticking')
+  // scrollToScene shares the span: the last of 3 scenes is the end of the stretch
+  place(el, -500)
+  scrollToScene(el, 2, 3, false)
+  assert.equal(Math.round(window.lastScrollTo.top), Math.round(window.scrollY - 500 + (3000 - 936) - 64))
+  untrack()
+  delete global.getComputedStyle
+})
+
+test('driver: an inline var(--sv-page) reader on <html> turns publishing on, its own writes there do not (round 10)', async () => {
+  const run = async (key, style) => {
+    const pageVars = {}
+    global.document = {
+      documentElement: {
+        classList: { add: () => {} },
+        style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+        getAttribute: (n) => (n === 'style' ? style : null),
+        scrollHeight: 3000,
+      },
+      querySelectorAll: () => [],
+      styleSheets: [],
+    }
+    window.scrollY = 1000
+    const { track } = await import(`../dist/core/driver.js?${key}`)
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    untrack()
+    return pageVars['--sv-page']
+  }
+  assert.equal(await run('htmlownwrites', '--sv-page: 0.5; --sv-v: 0;'), undefined, 'a page with no reader stays silent, the driver\'s own root declarations are not a reader')
+  assert.equal(await run('htmlreader', '--sv-page: 0.5; background: hsl(calc(var(--sv-page) * 360) 50% 50%);'), '0.5000', 'an inline reader on the root is a consumer')
 })
 
 

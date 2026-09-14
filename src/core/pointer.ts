@@ -63,6 +63,7 @@ export function trackPointer(
   const touched = new Set<HTMLElement>()
   const leave = (el: HTMLElement) => {
     written.delete(el)
+    touched.add(el) // a pointerout with no move before it still writes (round 10)
     el.classList.add('sv-pointer-leave')
     el.style.setProperty('--mx', '0')
     el.style.setProperty('--my', '0')

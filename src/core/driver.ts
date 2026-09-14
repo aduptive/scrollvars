@@ -200,6 +200,7 @@ function stopPageOutputs() {
 // plain substring test called every preset in core.css a consumer, which is
 // every page that uses the library at all.
 const PAGE_OUTPUT_NAMES = /--sv-page(?![\w-])|--sv-v(?![\w-])/
+const PAGE_OUTPUT_READERS = /var\(\s*(?:--sv-page|--sv-v)(?![\w-])/
 
 function mentionsPageOutputs(css: string) {
   return PAGE_OUTPUT_NAMES.test(css)
@@ -276,6 +277,9 @@ function detectPageConsumers(): boolean {
     // rescan that read its own writes as a consumer never unpublished again.
     for (const el of Array.from(document.querySelectorAll('[style*="--sv-page"]:not(html),[style*="--sv-v"]:not(html)')))
       if (mentionsPageOutputs(el.getAttribute('style') || '')) return true
+    // <html> itself: only a var() READER counts there, never the driver's own
+    // declarations (round 10: an inline consumer on the root was invisible)
+    if (PAGE_OUTPUT_READERS.test(document.documentElement.getAttribute('style') || '')) return true
     const adopted = (document as unknown as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets
     if (adopted) for (const sheet of Array.from(adopted)) if (sheetReadsPageOutputs(sheet, 0)) return true
     for (const sheet of Array.from(document.styleSheets)) {
@@ -414,7 +418,7 @@ function update() {
   }
   const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null
   const rootRects = new Map<HTMLElement, DOMRect>()
-  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number }> = []
+  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number; stageHeight?: number }> = []
   entries.forEach((entry) => {
     if (!entry.near && !entry.opts.root && !jumped && !force) return
     const rect = entry.el.getBoundingClientRect()
@@ -438,13 +442,15 @@ function update() {
     // height on the fit box hid overflowing copy from this test (round 9)
     const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
       (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
-    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth })
+    // both stage boxes belong to the read phase: read from apply() they sat
+    // after the first write of the frame and could force layout (round 10)
+    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight })
   })
   // WRITE phase. `frames` is a snapshot taken before any callback ran: an
   // onLive/onScene fired earlier in this same loop can untrack (or replace)
   // a later entry, and a released entry must not get one more write and one
   // more callback after its untrack returned.
-  for (const { entry, geo, overflow, stageWidth } of frames) {
+  for (const { entry, geo, overflow, stageWidth, stageHeight } of frames) {
     if (entries.get(entry.el) !== entry) continue
     if (entry.fit && entry.flow === undefined && !overflow) {
       entry.flow = false
@@ -462,7 +468,7 @@ function update() {
       schedule() // geometry changed; read the flow layout on the next frame
     }
     if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
-    apply(entry, geo)
+    apply(entry, geo, stageHeight)
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
   // --sv-v (signed velocity, viewport-heights per second). Velocity decays to
@@ -517,12 +523,17 @@ function computeTravel(geo: Geometry): number {
 }
 
 /** 0..1 across a sticky container's pinned stretch: the wrapper's height
- * minus the sticky stage's own (the viewport's when there is no stage or
- * the stage fills it), so an authored shorter stage does not reach 1 while
- * it is still pinned (round 9). */
+ * minus the sticky stage's border box. The stage already sits below a sticky
+ * header (pin.css: `height: calc(100vh - offset)`), so the offset is in the
+ * measured height and only the no-stage fallback adds it (round 10: adding it
+ * to a measured stage counted the offset twice and ended the pin late).
+ * A stage shorter than the viewport keeps 1 for the end of its own stretch
+ * (round 9). */
+function pinSpan(height: number, vp: number, offset: number, stageHeight?: number): number {
+  return Math.max(height - (stageHeight || vp - offset), 1)
+}
 function computePin(geo: Geometry, offset = 0, stageHeight?: number): number {
-  const span = Math.max(geo.height - (stageHeight || geo.vp) + offset, 1)
-  return clamp((offset - geo.top) / span, 0, 1)
+  return clamp((offset - geo.top) / pinSpan(geo.height, geo.vp, offset, stageHeight), 0, 1)
 }
 
 /** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
@@ -599,7 +610,7 @@ function writeLive(entry: Entry) {
   entry.el.style.setProperty?.('--sv-live', flag)
 }
 
-function apply(entry: Entry, geo: Geometry) {
+function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
   const { opts } = entry
   const enter = opts.enter ?? LIVE_ENTER
   const exit = opts.exit ?? LIVE_EXIT
@@ -677,14 +688,14 @@ function apply(entry: Entry, geo: Geometry) {
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(geo, entry.pinOffset, entry.stage?.clientHeight)
+    const p = computePin(geo, entry.pinOffset, stageHeight)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
     if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(geo, entry.pinOffset, entry.stage?.clientHeight)
+    const pin = computePin(geo, entry.pinOffset, stageHeight)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)
@@ -1043,7 +1054,7 @@ export function scrollToScene(
   const pinOffset = readPinOffset(el)
   // the same span the driver's pin math uses: the stage's rendered height
   const stage = el.querySelector<HTMLElement>('.sv-stage')
-  const span = Math.max(rect.height - (stage?.clientHeight || vp) + pinOffset, 1)
+  const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight)
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
   // reduced motion outranks the caller's `smooth`, the same way the slider's
   // glide falls back to a jump: a scene jump is navigation, not decoration

@@ -194,8 +194,12 @@ try {
       assert.equal(interactions.wheel.inner, 'none')
       await page.waitForFunction(() => {
         const root = document.getElementById('root'), el = document.getElementById('pin')
-        const top = parseFloat(getComputedStyle(el.firstElementChild).top)
-        const expected = (top - el.getBoundingClientRect().top + root.getBoundingClientRect().top) / (el.offsetHeight - root.clientHeight + top)
+        const stage = el.firstElementChild
+        const top = parseFloat(getComputedStyle(stage).top)
+        // the stretch ends when the wrapper's bottom meets the stage's border
+        // box, so the span is wrapper minus stage (round 10), whatever the
+        // stage's height is relative to the root: here 500px inside a 500px root
+        const expected = (top - el.getBoundingClientRect().top + root.getBoundingClientRect().top) / (el.offsetHeight - stage.offsetHeight)
         return top === 80 && Math.abs(+el.style.getPropertyValue('--sv-pin') - expected) < .001
       })
       await page.evaluate(() => window.stopTestPin())
