@@ -919,7 +919,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
                   key={i}
                   type="button"
                   aria-label={`go to slide ${i + 1}`}
-                  onClick={() => goTo(i)}
+                  aria-current={i === active ? 'true' : undefined}
+                  aria-disabled={i === active}
+                  onClick={() => { if (i !== active) goTo(i) }}
                   style={{ all: 'unset', outline: 'revert', cursor: 'pointer' }}
                 >
                   {renderDot(i, i === active)}
@@ -930,7 +932,9 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
                   type="button"
                   className={i === active ? 'sv-dot on' : 'sv-dot'}
                   aria-label={`go to slide ${i + 1}`}
-                  onClick={() => goTo(i)}
+                  aria-current={i === active ? 'true' : undefined}
+                  aria-disabled={i === active}
+                  onClick={() => { if (i !== active) goTo(i) }}
                 />
               )
             )}

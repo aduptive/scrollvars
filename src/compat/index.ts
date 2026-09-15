@@ -68,7 +68,7 @@ const FALLBACK_CSS = `
 }
 .sv .sv-curtain-l { transform: translateX(calc(var(--sv-pin, 0) * -101%)); }
 .sv .sv-curtain-r { transform: translateX(calc(var(--sv-pin, 0) * 101%)); }
-.sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * (100vw - 100%))); }
+.sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * var(--_sv-rail-end, 0px))); }
 .sv .sv-reading > * { opacity: 1; }
 /* The fly-away slice (--sv-slice, pin.css) is bounded 0..1 by a comparison
    function; below the floor that function ships on, it is unparseable and

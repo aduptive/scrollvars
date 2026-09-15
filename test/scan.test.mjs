@@ -441,6 +441,42 @@ test('scan marks the driver\'s arrival even when the route has nothing to track 
   stop()
 })
 
+test('overlapping scanners retain split and pointer ownership until the last stop', async () => {
+  setupScanGlobals()
+  const { scan } = await import('../dist/core/scan.js?round12split')
+  for (const reverse of [false, true]) {
+    const el = makeElement({ 'data-sv-split': '', 'data-sv-pointer': '' })
+    const classes = new Set()
+    const handlers = new Set()
+    let html = 'Hello world'
+    let children = []
+    Object.defineProperties(el, {
+      innerHTML: { get: () => html, set: (v) => { html = v; children = [] } },
+      textContent: { get: () => children.length ? children.map(c => c.textContent).join('') : html },
+    })
+    el.appendChild = (c) => children.push(c)
+    el.style.removeProperty = () => {}
+    el.classList = { add: c => classes.add(c), remove: c => classes.delete(c) }
+    el.addEventListener = (_, fn) => handlers.add(fn)
+    el.removeEventListener = (_, fn) => handlers.delete(fn)
+    const root = makeElement({}, [el])
+    root.querySelectorAll = sel => sel === '[data-sv-split]' || sel === '[data-sv-pointer]' ? [el] : []
+    global.document = makeDocumentStub(root)
+    document.createElement = () => ({ textContent: '', style: { setProperty() {} }, setAttribute() {} })
+    document.createTextNode = textContent => ({ textContent })
+    const stops = [scan(), scan(root)]
+    assert.equal(children[0].textContent, 'Hello world', 'accessible text is split only once')
+    assert.equal(handlers.size, 2, 'one delegated pointer controller')
+    if (reverse) stops.reverse()
+    stops[0]()
+    assert.ok(classes.has('sv-split'))
+    assert.equal(handlers.size, 2)
+    stops[1]()
+    assert.equal(html, 'Hello world')
+    assert.equal(handlers.size, 0)
+  }
+})
+
 test('overlapping scanners retain tracking until the last owner stops', async () => {
   setupScanGlobals()
   const { scan } = await import('../dist/core/scan.js?round11owners')

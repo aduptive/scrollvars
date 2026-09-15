@@ -1,7 +1,28 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { resyncBenchEngine } from '../scripts/fx-build.mjs'
+import { resyncBenchEngine, bundleGallery } from '../scripts/fx-build.mjs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+test('gallery bundling accepts checkout and output paths containing spaces', () => {
+  const root = mkdtempSync(join(tmpdir(), 'scrollvars round12 '))
+  try {
+    mkdirSync(join(root, 'dist/canvas'), { recursive: true })
+    const out = join(root, 'gallery output')
+    mkdirSync(out)
+    symlinkSync(fileURLToPath(new URL('../node_modules', import.meta.url)), join(root, 'node_modules'))
+    writeFileSync(join(root, 'dist/index.js'), 'export const value = 12')
+    bundleGallery(root, out)
+    const result = new Function(`${readFileSync(join(out, 'sv.js'), 'utf8')}; return SV.value`)()
+    assert.equal(result, 12)
+    writeFileSync(join(root, 'dist/canvas/index.js'), 'export const value = 24')
+    bundleGallery(root, out, true)
+    assert.equal(new Function(`${readFileSync(join(out, 'sv-canvas.js'), 'utf8')}; return SVC.value`)(), 24)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
 
 // esbuild's global IIFE output always starts with this literal prefix; the
 // marker relies on it, so fixtures below carry it too, same as the real

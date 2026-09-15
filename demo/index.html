@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 4.3 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 4.7 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.3 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.7 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.3 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.7 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2570,7 +2570,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 2.7&nbsp;KB carousel, 16× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 2.8&nbsp;KB carousel, 15× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2583,7 +2583,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
         (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.9&nbsp;KB minified,
-<strong>2.7&nbsp;KB gzipped, ~16× lighter</strong>. Because the browser
+<strong>2.8&nbsp;KB gzipped, ~15× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>11.3 KB / 4.3 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 19.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.3 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>12.7 KB / 4.7 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.3 KB gzip · full core 8.9 KB · v1.17.3 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.7 KB gzip · full core 9.5 KB · v1.17.4 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3110,7 +3110,7 @@ the full API, recipes and performance rules, ready to ingest.
     </nav>
     <div class="foot-notes">
       <p>Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
+      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 10 KB part. Reduced motion is respected by the driver and every preset.</p>
     </div>
   </div>
 </footer>
@@ -3275,8 +3275,10 @@ var SV = (() => {
     return initialized ? reducedMotion2 : reducedMotion();
   }
   function init() {
-    if (initialized || typeof window === "undefined")
-      return;
+    if (initialized)
+      return true;
+    if (typeof window === "undefined")
+      return false;
     vh = window.innerHeight;
     try {
       resizeObserver = new ResizeObserver(() => {
@@ -3285,8 +3287,10 @@ var SV = (() => {
       });
       resizeObserver.observe(document.documentElement);
     } catch {
+      resizeObserver?.disconnect();
       resizeObserver = null;
-      return;
+      document.documentElement.classList.remove("sv-on");
+      return false;
     }
     initialized = true;
     window.addEventListener("scroll", schedule, { passive: true, capture: true });
@@ -3312,6 +3316,7 @@ var SV = (() => {
     }
     document.documentElement.classList.add("sv-on");
     window.__scrollvars = true;
+    return true;
   }
   var lastY = -1;
   var lastT = 0;
@@ -3501,10 +3506,7 @@ var SV = (() => {
     forceAll = false;
     if (offsetsDirty) {
       offsetsDirty = false;
-      entries.forEach((entry) => {
-        if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin)
-          entry.pinOffset = readPinOffset(entry.el);
-      });
+      entries.forEach(refreshPinGeometry);
     }
     const y = window.scrollY;
     const now = performance.now();
@@ -3536,9 +3538,16 @@ var SV = (() => {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
       }
       const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
-      frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight });
+      const rails = entry.compatRails ? /* @__PURE__ */ new Map() : void 0;
+      if (rails)
+        (entry.stage ?? entry.el).querySelectorAll?.(".sv-rail").forEach((rail) => {
+          if (rail.closest(".sv-stage") !== (entry.stage ?? null))
+            return;
+          rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`);
+        });
+      frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails });
     });
-    for (const { entry, geo, overflow, stageWidth, stageHeight } of frames) {
+    for (const { entry, geo, overflow, stageWidth, stageHeight, rails } of frames) {
       if (entries.get(entry.el) !== entry)
         continue;
       if (entry.fit && entry.flow === void 0 && !overflow) {
@@ -3558,6 +3567,22 @@ var SV = (() => {
       }
       if (stageWidth !== void 0)
         setVar(entry, "--sv-stage-width", stageWidth, "px");
+      if (rails && entry.compatRails) {
+        const previous = entry.compatRails;
+        entry.compatRails = rails;
+        previous.forEach((_, rail) => {
+          if (!rails.has(rail)) {
+            rail.style.removeProperty("--_sv-rail-end");
+            unobserveIfUnneeded(rail);
+          }
+        });
+        rails.forEach((value, rail) => {
+          if (!previous.has(rail))
+            resizeObserver?.observe(rail);
+          if (previous.get(rail) !== value)
+            rail.style.setProperty("--_sv-rail-end", value);
+        });
+      }
       apply(entry, geo, stageHeight);
     }
     if (pageOutputsEnabled && pageSpan !== null) {
@@ -3590,11 +3615,56 @@ var SV = (() => {
   function computeTravel(geo) {
     return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1);
   }
-  function pinSpan(height, vp, offset, stageHeight) {
-    return Math.max(height - (stageHeight || vp - offset), 1);
+  function pinSpan(height, vp, offset, stageHeight, origin = 0) {
+    return Math.max(height - origin - (stageHeight || vp - offset), 1);
   }
-  function computePin(geo, offset = 0, stageHeight) {
-    return clamp((offset - geo.top) / pinSpan(geo.height, geo.vp, offset, stageHeight), 0, 1);
+  function computePin(geo, offset = 0, stageHeight, origin = 0) {
+    return clamp((offset - geo.top - origin) / pinSpan(geo.height, geo.vp, offset, stageHeight, origin), 0, 1);
+  }
+  function readStageOrigin(el, stage) {
+    if (!stage || typeof stage.offsetTop !== "number")
+      return 0;
+    const position = stage.style.getPropertyValue("position");
+    const priority = stage.style.getPropertyPriority("position");
+    stage.style.setProperty("position", "static", "important");
+    const top = (node) => {
+      let value = 0;
+      for (let current = node; current; current = current.offsetParent) {
+        value += current.offsetTop || 0;
+        value += current.offsetParent?.clientTop || 0;
+      }
+      return value;
+    };
+    try {
+      return top(stage) - top(el);
+    } finally {
+      stage.style.setProperty("position", position, priority);
+    }
+  }
+  function refreshPinGeometry(entry) {
+    if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin))
+      return;
+    const previousStage = entry.stage, previousFit = entry.fit;
+    entry.stage = ownedStage(entry.el);
+    entry.fit = Array.from(entry.stage?.children ?? []).find((child) => child.hasAttribute("data-sv-fit"));
+    if (entry.stage !== previousStage) {
+      if (entry.stage)
+        resizeObserver?.observe(entry.stage);
+      if (previousStage)
+        unobserveIfUnneeded(previousStage);
+      if (!entry.stage) {
+        entry.el.style.removeProperty("--sv-stage-width");
+        delete entry.written["--sv-stage-width"];
+      }
+    }
+    if (entry.fit !== previousFit) {
+      if (entry.fit)
+        resizeObserver?.observe(entry.fit);
+      if (previousFit)
+        unobserveIfUnneeded(previousFit);
+    }
+    entry.pinOffset = readPinOffset(entry.el);
+    entry.stageOrigin = readStageOrigin(entry.el, entry.stage);
   }
   function ownedStage(el) {
     const stages = el.querySelectorAll?.(".sv-stage") ?? [el.querySelector?.(".sv-stage")].filter(Boolean);
@@ -3704,7 +3774,7 @@ var SV = (() => {
         return;
     }
     if (opts.pin || opts.onPin) {
-      const p = computePin(geo, entry.pinOffset, stageHeight);
+      const p = computePin(geo, entry.pinOffset, stageHeight, entry.stageOrigin);
       if (opts.pin)
         setVar(entry, "--sv-pin", p);
       opts.onPin?.(p);
@@ -3712,7 +3782,7 @@ var SV = (() => {
         return;
     }
     if (opts.scenes && opts.scenes > 1) {
-      const pin = computePin(geo, entry.pinOffset, stageHeight);
+      const pin = computePin(geo, entry.pinOffset, stageHeight, entry.stageOrigin);
       const snap = opts.snap === false ? false : opts.snap ?? SCENE_SNAP;
       const scene = computeScene(pin, opts.scenes, snap);
       setVar(entry, "--sv-scene", scene);
@@ -3725,7 +3795,7 @@ var SV = (() => {
   }
   function stillNeeded(target) {
     for (const other of entries.values()) {
-      if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target)
+      if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target || other.compatRails?.has(target))
         return true;
     }
     return false;
@@ -3780,6 +3850,10 @@ var SV = (() => {
       unobserveIfUnneeded(entry.fit);
     if (entry.stage)
       unobserveIfUnneeded(entry.stage);
+    entry.compatRails?.forEach((_, rail) => {
+      rail.style.removeProperty("--_sv-rail-end");
+      unobserveIfUnneeded(rail);
+    });
     el.removeAttribute?.("data-sv-flow");
     restorePinHelper(entry);
     el.classList.toggle("sv-live", false);
@@ -3822,6 +3896,7 @@ var SV = (() => {
       scene: -1,
       pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
       written: {},
+      compatRails: compatInstalled() ? /* @__PURE__ */ new Map() : void 0,
       stage: opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : void 0,
       fit: opts.pin || opts.scenes || opts.onPin ? Array.from(ownedStage(el)?.children ?? []).find((child) => child.hasAttribute("data-sv-fit")) : void 0
     };
@@ -3843,6 +3918,7 @@ var SV = (() => {
       };
       applyPinHelper(entry);
     }
+    entry.stageOrigin = readStageOrigin(el, entry.stage);
     if (settled)
       replayEntrance(el);
     pageOutputs = true;
@@ -3898,10 +3974,7 @@ var SV = (() => {
     entry.el.style.setProperty("position", entry.authored.position, entry.authored.positionPriority);
   }
   function refresh() {
-    entries.forEach((entry) => {
-      if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin)
-        entry.pinOffset = readPinOffset(entry.el);
-    });
+    entries.forEach(refreshPinGeometry);
     forceAll = true;
     schedule();
   }
@@ -3912,8 +3985,9 @@ var SV = (() => {
     const vp = root ? root.clientHeight : window.innerHeight;
     const pinOffset = readPinOffset(el);
     const stage = ownedStage(el);
-    const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight);
-    const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
+    const origin = readStageOrigin(el, stage);
+    const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight, origin);
+    const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset + origin;
     const behavior = smooth && !getReducedMotion() ? "smooth" : "instant";
     if (root) {
       root.scrollTo({
@@ -3990,16 +4064,31 @@ var SV = (() => {
     };
     container.addEventListener("pointermove", onMove);
     container.addEventListener("pointerout", onOut);
+    const clear = (el) => {
+      if (pending?.el === el)
+        pending = null;
+      el.style.removeProperty("--mx");
+      el.style.removeProperty("--my");
+      el.classList.remove("sv-pointer-leave");
+      written.delete(el);
+      touched.delete(el);
+    };
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver((records) => {
+      if (records.some((record) => record.removedNodes.length)) {
+        touched.forEach((el) => {
+          if (!container.contains(el))
+            clear(el);
+        });
+      }
+    });
+    observer?.observe(container, { childList: true, subtree: true });
     return () => {
+      observer?.disconnect();
       container.removeEventListener("pointermove", onMove);
       container.removeEventListener("pointerout", onOut);
       if (raf2)
         cancelAnimationFrame(raf2);
-      touched.forEach((el) => {
-        el.style.removeProperty("--mx");
-        el.style.removeProperty("--my");
-        el.classList.remove("sv-pointer-leave");
-      });
+      touched.forEach(clear);
       written.clear();
       touched.clear();
     };
@@ -4097,16 +4186,18 @@ var SV = (() => {
     return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : void 0;
   }
   var registrations = /* @__PURE__ */ new WeakMap();
-  function acquire(el) {
-    let registration = registrations.get(el);
+  var splitRegistrations = /* @__PURE__ */ new WeakMap();
+  var pointerRegistrations = /* @__PURE__ */ new WeakMap();
+  function acquire(el, registrations2, start) {
+    let registration = registrations2.get(el);
     if (!registration) {
-      registration = { owners: 0, stop: track(el, optionsFrom(el)) };
-      registrations.set(el, registration);
+      registration = { owners: 0, stop: start() };
+      registrations2.set(el, registration);
     }
     registration.owners++;
     return () => {
       if (--registration.owners === 0) {
-        registrations.delete(el);
+        registrations2.delete(el);
         registration.stop();
       }
     };
@@ -4116,14 +4207,15 @@ var SV = (() => {
       return () => {
       };
     const scope = root ?? document;
+    const ready = init();
     const tracked = /* @__PURE__ */ new Map();
     const splits = /* @__PURE__ */ new Map();
     const pointers = /* @__PURE__ */ new Map();
     const addPointer = (el) => {
       if (!pointers.has(el))
-        pointers.set(el, trackPointer(el, {
+        pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
           selector: el.getAttribute("data-sv-pointer") || void 0
-        }));
+        })));
     };
     const removePointer = (el) => {
       if (scope.contains(el))
@@ -4135,11 +4227,11 @@ var SV = (() => {
       if (splits.has(el))
         return;
       const by = el.getAttribute("data-sv-split") === "char" ? "char" : "word";
-      splits.set(el, split(el, { by }));
+      splits.set(el, acquire(el, splitRegistrations, () => split(el, { by })));
     };
     const add = (el) => {
       if (!tracked.has(el))
-        tracked.set(el, acquire(el));
+        tracked.set(el, acquire(el, registrations, () => track(el, optionsFrom(el))));
     };
     const remove = (el) => {
       if (scope.contains(el))
@@ -4196,7 +4288,7 @@ var SV = (() => {
       childList: true,
       subtree: true
     });
-    window.__scrollvars = true;
+    window.__scrollvars = ready;
     return () => {
       observer.disconnect();
       tracked.forEach((untrack) => untrack());
@@ -4210,6 +4302,7 @@ var SV = (() => {
 
   // dist/core/toggles.js
   var claimed = /* @__PURE__ */ new WeakSet();
+  var markers = /* @__PURE__ */ new WeakMap();
   var live = /* @__PURE__ */ new Set();
   var has = (scope, node) => typeof scope.contains === "function" ? scope.contains(node) : true;
   function ownerOf(t) {
@@ -4284,6 +4377,29 @@ var SV = (() => {
       longhandHold.delete(target);
       target.style.setProperty("transition-duration", saved.value, saved.priority);
     };
+    const targets = /* @__PURE__ */ new Set();
+    const mark = (target) => {
+      if (targets.has(target))
+        return false;
+      targets.add(target);
+      let marker = markers.get(target);
+      const authored = target.classList.contains("sv-ui");
+      if (!marker) {
+        marker = { owners: 0, release: () => {
+          if (!authored)
+            target.classList.remove("sv-ui");
+          if (settling.has(target)) {
+            settling.delete(target);
+            target.style.removeProperty("--sv-acts-settle");
+            restoreDuration(target);
+          }
+        } };
+        markers.set(target, marker);
+      }
+      marker.owners++;
+      target.classList.add("sv-ui");
+      return !authored;
+    };
     triggers().forEach((trigger) => {
       let resolved;
       try {
@@ -4294,8 +4410,7 @@ var SV = (() => {
       const { className, target } = resolved;
       if (!target)
         return;
-      if (!target.classList.contains("sv-ui")) {
-        target.classList.add("sv-ui");
+      if (mark(target)) {
         if (target.classList.contains("sv-acts")) {
           target.style.setProperty("--sv-acts-settle", "0s");
           holdDuration(target);
@@ -4323,7 +4438,7 @@ var SV = (() => {
       if (!target)
         return;
       claimed.add(event);
-      target.classList.add("sv-ui");
+      mark(target);
       if (settling.has(target)) {
         settling.delete(target);
         target.style.removeProperty("--sv-acts-settle");
@@ -4335,6 +4450,14 @@ var SV = (() => {
     return () => {
       live.delete(instance);
       scope.removeEventListener("click", onClick);
+      targets.forEach((target) => {
+        const marker = markers.get(target);
+        if (--marker.owners === 0) {
+          markers.delete(target);
+          marker.release();
+        }
+      });
+      targets.clear();
     };
   }
 
@@ -4637,6 +4760,10 @@ var SV = (() => {
       container.classList.remove("sv-dragging");
       window.addEventListener("click", suppressClick, true);
       setTimeout(() => window.removeEventListener("click", suppressClick, true), 0);
+      if (snap === "proximity" || snapIsNone) {
+        resumeSnap();
+        return;
+      }
       const center = pos() + viewport() / 2;
       const list = slides();
       let nearest = 0;
@@ -4682,7 +4809,7 @@ var SV = (() => {
       const owner = event.target?.closest?.(".sv-slider");
       if (owner && owner !== container)
         return;
-      if (snapIsNone)
+      if (snapIsNone || snap === "proximity")
         return;
       const along = horizontal ? event.deltaX : event.deltaY;
       const cross = horizontal ? event.deltaY : event.deltaX;
@@ -6513,6 +6640,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         container.classList.remove('sv-dragging');
         window.addEventListener('click', suppressClick, true);
         setTimeout(() => window.removeEventListener('click', suppressClick, true), 0);
+        if (snap === 'proximity' || snapIsNone) {
+            resumeSnap();
+            return;
+        }
         // A final pointermove and pointerup can precede the scroll measurement.
         // Resolve the destination from today's geometry, not the last frame.
         const center = pos() + viewport() / 2;
@@ -6576,7 +6707,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         const owner = event.target?.closest?.('.sv-slider');
         if (owner && owner !== container)
             return;
-        if (snapIsNone)
+        if (snapIsNone || snap === 'proximity')
             return;
         // only react when the gesture's dominant axis is OUR axis. Otherwise
         // this is the page scrolling past the carousel (trackpad gestures are
@@ -6741,6 +6872,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 // destruction leaves a stale entry that silently disowns a trigger, and
 // nothing to leak.
 const claimed = new WeakSet();
+const markers = new WeakMap();
 const live = new Set();
 const has = (scope, node) => typeof scope.contains === 'function' ? scope.contains(node) : true;
 // The nearest containing scope that RESOLVES the trigger's target: a click
@@ -6840,6 +6972,29 @@ function toggles(root) {
         longhandHold.delete(target);
         target.style.setProperty('transition-duration', saved.value, saved.priority);
     };
+    const targets = new Set();
+    const mark = (target) => {
+        if (targets.has(target))
+            return false;
+        targets.add(target);
+        let marker = markers.get(target);
+        const authored = target.classList.contains('sv-ui');
+        if (!marker) {
+            marker = { owners: 0, release: () => {
+                    if (!authored)
+                        target.classList.remove('sv-ui');
+                    if (settling.has(target)) {
+                        settling.delete(target);
+                        target.style.removeProperty('--sv-acts-settle');
+                        restoreDuration(target);
+                    }
+                } };
+            markers.set(target, marker);
+        }
+        marker.owners++;
+        target.classList.add('sv-ui');
+        return !authored;
+    };
     triggers().forEach((trigger) => {
         let resolved;
         try {
@@ -6851,8 +7006,7 @@ function toggles(root) {
         const { className, target } = resolved;
         if (!target)
             return;
-        if (!target.classList.contains('sv-ui')) {
-            target.classList.add('sv-ui');
+        if (mark(target)) {
             // only a .sv-acts target has a no-JS finished value to un-animate
             // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
             // comment): a plain toggle target gets sv-ui above and nothing else,
@@ -6918,7 +7072,7 @@ function toggles(root) {
         // a target that appeared after boot (e.g. inserted later) is marked here
         // instead: its first click shows the finished state with no transition,
         // since it was covered by the no-JS/no-boot fallback up to this instant
-        target.classList.add('sv-ui');
+        mark(target);
         // a click landing inside the boot settle must still animate: drop the
         // hold before the class flips, and cancel the scheduled restore so it
         // does not act on a target a fresh boot may have re-armed since
@@ -6933,6 +7087,14 @@ function toggles(root) {
     return () => {
         live.delete(instance);
         scope.removeEventListener('click', onClick);
+        targets.forEach(target => {
+            const marker = markers.get(target);
+            if (--marker.owners === 0) {
+                markers.delete(target);
+                marker.release();
+            }
+        });
+        targets.clear();
     };
 }
 

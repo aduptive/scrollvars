@@ -85,6 +85,32 @@ function stubFrame() {
   return () => cb
 }
 
+test('trackPointer prunes removed targets before the container is destroyed', async () => {
+  const frame = stubFrame()
+  let mutation
+  let disconnected = false
+  global.MutationObserver = class {
+    constructor(cb) { mutation = cb }
+    observe() {}
+    disconnect() { disconnected = true }
+  }
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  const container = makeContainer()
+  const card = makeEl({ isTilt: true, parent: container })
+  const stop = trackPointer(container)
+  container.fire('pointermove', { target: card, clientX: 80, clientY: 60 })
+  frame()()
+  container.fire('pointerout', { target: card, relatedTarget: null })
+  card.parent = null
+  mutation?.([{ removedNodes: [card] }])
+  assert.deepEqual(card.vars, {})
+  assert.ok(!card.classes.has('sv-pointer-leave'))
+  card.style.removeProperty = () => { throw Error('removed target retained until destroy') }
+  stop()
+  assert.ok(disconnected)
+  delete global.MutationObserver
+})
+
 test('trackPointer handles a target hidden or detached before its queued frame', async () => {
   const frame = stubFrame()
   const container = makeContainer()

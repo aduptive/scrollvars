@@ -56,6 +56,8 @@ interface Entry {
   authored?: { height: string; position: string; heightPriority: string; positionPriority: string }
   written: Record<string, string>
   stage?: HTMLElement
+  stageOrigin?: number
+  compatRails?: Map<HTMLElement, string>
   fit?: HTMLElement
   flow?: boolean
 }
@@ -84,8 +86,10 @@ function getReducedMotion(): boolean {
   return initialized ? reducedMotion : effectiveReduce()
 }
 
-function init() {
-  if (initialized || typeof window === 'undefined') return
+// Internal scanner handshake; not re-exported by the package entry point.
+export function init(): boolean {
+  if (initialized) return true
+  if (typeof window === 'undefined') return false
   vh = window.innerHeight
 
   // Construct the ResizeObserver FIRST, before any listener is installed: a
@@ -100,8 +104,10 @@ function init() {
     // resizing it: watching the document catches those too.
     resizeObserver.observe(document.documentElement)
   } catch {
+    resizeObserver?.disconnect()
     resizeObserver = null
-    return // no ResizeObserver: stay a static page (scrollvars/compat adds a shim)
+    document.documentElement.classList.remove('sv-on')
+    return false // stay static; compat() can enable a later retry
   }
   initialized = true
 
@@ -145,6 +151,7 @@ function init() {
   // ScrollVarsBoot) confirm the driver arrived.
   document.documentElement.classList.add('sv-on')
   ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = true
+  return true
 }
 
 let lastY = -1
@@ -397,9 +404,7 @@ function update() {
   forceAll = false
   if (offsetsDirty) {
     offsetsDirty = false
-    entries.forEach(entry => {
-      if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin) entry.pinOffset = readPinOffset(entry.el)
-    })
+    entries.forEach(refreshPinGeometry)
   }
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
@@ -418,7 +423,7 @@ function update() {
   }
   const pageSpan = pageOutputsEnabled ? Math.max((docEl.scrollHeight || 0) - vh, 1) : null
   const rootRects = new Map<HTMLElement, DOMRect>()
-  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number; stageHeight?: number }> = []
+  const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number; stageHeight?: number; rails?: Map<HTMLElement, string> }> = []
   entries.forEach((entry) => {
     if (!entry.near && !entry.opts.root && !jumped && !force) return
     const rect = entry.el.getBoundingClientRect()
@@ -444,13 +449,18 @@ function update() {
       (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
     // both stage boxes belong to the read phase: read from apply() they sat
     // after the first write of the frame and could force layout (round 10)
-    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight })
+    const rails = entry.compatRails ? new Map<HTMLElement, string>() : undefined
+    if (rails) (entry.stage ?? entry.el).querySelectorAll?.<HTMLElement>('.sv-rail').forEach(rail => {
+      if (rail.closest('.sv-stage') !== (entry.stage ?? null)) return
+      rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`)
+    })
+    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails })
   })
   // WRITE phase. `frames` is a snapshot taken before any callback ran: an
   // onLive/onScene fired earlier in this same loop can untrack (or replace)
   // a later entry, and a released entry must not get one more write and one
   // more callback after its untrack returned.
-  for (const { entry, geo, overflow, stageWidth, stageHeight } of frames) {
+  for (const { entry, geo, overflow, stageWidth, stageHeight, rails } of frames) {
     if (entries.get(entry.el) !== entry) continue
     if (entry.fit && entry.flow === undefined && !overflow) {
       entry.flow = false
@@ -468,6 +478,20 @@ function update() {
       schedule() // geometry changed; read the flow layout on the next frame
     }
     if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
+    if (rails && entry.compatRails) {
+      const previous = entry.compatRails
+      entry.compatRails = rails
+      previous.forEach((_, rail) => {
+        if (!rails.has(rail)) {
+          rail.style.removeProperty('--_sv-rail-end')
+          unobserveIfUnneeded(rail)
+        }
+      })
+      rails.forEach((value, rail) => {
+        if (!previous.has(rail)) resizeObserver?.observe(rail)
+        if (previous.get(rail) !== value) rail.style.setProperty('--_sv-rail-end', value)
+      })
+    }
     apply(entry, geo, stageHeight)
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
@@ -529,11 +553,51 @@ function computeTravel(geo: Geometry): number {
  * to a measured stage counted the offset twice and ended the pin late).
  * A stage shorter than the viewport keeps 1 for the end of its own stretch
  * (round 9). */
-function pinSpan(height: number, vp: number, offset: number, stageHeight?: number): number {
-  return Math.max(height - (stageHeight || vp - offset), 1)
+function pinSpan(height: number, vp: number, offset: number, stageHeight?: number, origin = 0): number {
+  return Math.max(height - origin - (stageHeight || vp - offset), 1)
 }
-function computePin(geo: Geometry, offset = 0, stageHeight?: number): number {
-  return clamp((offset - geo.top) / pinSpan(geo.height, geo.vp, offset, stageHeight), 0, 1)
+function computePin(geo: Geometry, offset = 0, stageHeight?: number, origin = 0): number {
+  return clamp((offset - geo.top - origin) / pinSpan(geo.height, geo.vp, offset, stageHeight, origin), 0, 1)
+}
+
+// offsetTop includes sticky displacement. Briefly disable sticking to read
+// the normal-flow origin on attach/refresh/resize, never on ordinary scroll.
+function readStageOrigin(el: HTMLElement, stage?: HTMLElement): number {
+  if (!stage || typeof stage.offsetTop !== 'number') return 0
+  const position = stage.style.getPropertyValue('position')
+  const priority = stage.style.getPropertyPriority('position')
+  stage.style.setProperty('position', 'static', 'important')
+  const top = (node: HTMLElement) => {
+    let value = 0
+    for (let current: HTMLElement | null = node; current; current = current.offsetParent as HTMLElement | null) {
+      value += current.offsetTop || 0
+      value += (current.offsetParent as HTMLElement | null)?.clientTop || 0
+    }
+    return value
+  }
+  try { return top(stage) - top(el) }
+  finally { stage.style.setProperty('position', position, priority) }
+}
+
+function refreshPinGeometry(entry: Entry) {
+  if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin)) return
+  const previousStage = entry.stage, previousFit = entry.fit
+  entry.stage = ownedStage(entry.el)
+  entry.fit = Array.from(entry.stage?.children ?? []).find(child => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
+  if (entry.stage !== previousStage) {
+    if (entry.stage) resizeObserver?.observe(entry.stage)
+    if (previousStage) unobserveIfUnneeded(previousStage)
+    if (!entry.stage) {
+      entry.el.style.removeProperty('--sv-stage-width')
+      delete entry.written['--sv-stage-width']
+    }
+  }
+  if (entry.fit !== previousFit) {
+    if (entry.fit) resizeObserver?.observe(entry.fit)
+    if (previousFit) unobserveIfUnneeded(previousFit)
+  }
+  entry.pinOffset = readPinOffset(entry.el)
+  entry.stageOrigin = readStageOrigin(entry.el, entry.stage)
 }
 
 function ownedStage(el: HTMLElement): HTMLElement | undefined {
@@ -700,14 +764,14 @@ function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
   }
 
   if (opts.pin || opts.onPin) {
-    const p = computePin(geo, entry.pinOffset, stageHeight)
+    const p = computePin(geo, entry.pinOffset, stageHeight, entry.stageOrigin)
     if (opts.pin) setVar(entry, '--sv-pin', p)
     opts.onPin?.(p)
     if (entries.get(entry.el) !== entry) return
   }
 
   if (opts.scenes && opts.scenes > 1) {
-    const pin = computePin(geo, entry.pinOffset, stageHeight)
+    const pin = computePin(geo, entry.pinOffset, stageHeight, entry.stageOrigin)
     const snap = opts.snap === false ? false : (opts.snap ?? SCENE_SNAP)
     const scene = computeScene(pin, opts.scenes, snap)
     setVar(entry, '--sv-scene', scene)
@@ -726,7 +790,7 @@ function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
  * must never unobserve a target another live entry still depends on. */
 function stillNeeded(target: HTMLElement): boolean {
   for (const other of entries.values()) {
-    if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target) return true
+    if (other.el === target || other.opts.root === target || other.fit === target || other.stage === target || other.compatRails?.has(target)) return true
   }
   return false
 }
@@ -816,6 +880,10 @@ function releaseEntry(entry: Entry) {
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
   if (entry.fit) unobserveIfUnneeded(entry.fit)
   if (entry.stage) unobserveIfUnneeded(entry.stage)
+  entry.compatRails?.forEach((_, rail) => {
+    rail.style.removeProperty('--_sv-rail-end')
+    unobserveIfUnneeded(rail)
+  })
   el.removeAttribute?.('data-sv-flow')
   restorePinHelper(entry)
   el.classList.toggle('sv-live', false)
@@ -925,6 +993,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     scene: -1,
     pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
     written: {},
+    compatRails: compatInstalled() ? new Map() : undefined,
     stage: opts.pin || opts.scenes || opts.onPin
       ? ownedStage(el)
       : undefined,
@@ -952,6 +1021,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
       positionPriority: el.style.getPropertyPriority?.('position') ?? '' }
     applyPinHelper(entry)
   }
+  entry.stageOrigin = readStageOrigin(el, entry.stage)
   // Everything this call writes is in place: commit the `--sv-live: 0` reset
   // before the first frame writes 1 back, or an element the driver had
   // settled visible never replays its entrance.
@@ -1049,9 +1119,7 @@ function restorePinHelper(entry: Entry) {
 /** Force a recompute (e.g. after content changes outside a resize). */
 export function refresh() {
   // a sticky header that changed size changes every pin consumer's offset
-  entries.forEach((entry) => {
-    if (entry.opts.pin || entry.opts.scenes || entry.opts.onPin) entry.pinOffset = readPinOffset(entry.el)
-  })
+  entries.forEach(refreshPinGeometry)
   // culled entries skip the per-frame rect read; give them one anyway so a
   // manual refresh() (content changed, no resize fired) reaches them too
   forceAll = true
@@ -1074,8 +1142,9 @@ export function scrollToScene(
   const pinOffset = readPinOffset(el)
   // the same span the driver's pin math uses: the stage's rendered height
   const stage = ownedStage(el)
-  const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight)
-  const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
+  const origin = readStageOrigin(el, stage)
+  const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight, origin)
+  const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset + origin
   // reduced motion outranks the caller's `smooth`, the same way the slider's
   // glide falls back to a jump: a scene jump is navigation, not decoration
   const behavior: ScrollBehavior = smooth && !getReducedMotion() ? 'smooth' : 'instant'

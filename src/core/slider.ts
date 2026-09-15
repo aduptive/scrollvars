@@ -495,6 +495,10 @@ export function slider(
     container.classList.remove('sv-dragging')
     window.addEventListener('click', suppressClick, true)
     setTimeout(() => window.removeEventListener('click', suppressClick, true), 0)
+    if (snap === 'proximity' || snapIsNone) {
+      resumeSnap()
+      return
+    }
     // A final pointermove and pointerup can precede the scroll measurement.
     // Resolve the destination from today's geometry, not the last frame.
     const center = pos() + viewport() / 2
@@ -552,7 +556,7 @@ export function slider(
   const onWheel = (event: WheelEvent) => {
     const owner = (event.target as Element | null)?.closest?.('.sv-slider')
     if (owner && owner !== container) return
-    if (snapIsNone) return
+    if (snapIsNone || snap === 'proximity') return
     // only react when the gesture's dominant axis is OUR axis. Otherwise
     // this is the page scrolling past the carousel (trackpad gestures are
     // always slightly diagonal) and assisting would yank the slider around

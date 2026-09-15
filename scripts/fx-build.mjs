@@ -6,7 +6,7 @@
  *   fx/sv.js: the engine, IIFE bundle from dist (esbuild)
  *   fx/sv.css. The full preset stylesheet (copy of styles.css)
  */
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { gzipSync } from 'node:zlib'
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -34,6 +34,15 @@ export function resyncBenchEngine(page, iife) {
   return page.replace(re, (_, open) => `${open}${iife.trimEnd()}\n\n\n`)
 }
 
+export function bundleGallery(root, out, canvas = false) {
+  execFileSync(
+    join(root, 'node_modules/.bin/esbuild'),
+    [join(root, canvas ? 'dist/canvas/index.js' : 'dist/index.js'), '--bundle', '--minify', '--format=iife',
+      `--global-name=${canvas ? 'SVC' : 'SV'}`, `--outfile=${join(out, canvas ? 'sv-canvas.js' : 'sv.js')}`],
+    { stdio: 'pipe' }
+  )
+}
+
 // Everything below only runs when this script is executed directly, not
 // when a test imports resyncBenchEngine above.
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
@@ -48,10 +57,7 @@ mkdirSync(out, { recursive: true })
 
 /* ─────────────────────────── shared assets ─────────────────────────── */
 
-execSync(
-  `npx esbuild ${join(root, 'dist/index.js')} --bundle --minify --format=iife --global-name=SV --outfile=${join(out, 'sv.js')}`,
-  { stdio: 'pipe' }
-)
+bundleGallery(root, out)
 // boot: track every [data-sv] on fx pages
 writeFileSync(join(out, 'sv.js'), readFileSync(join(out, 'sv.js'), 'utf8') + '\nSV.scan();\n')
 const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toFixed(1)
@@ -70,10 +76,7 @@ const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toF
 }
 // what a bundler ships: the ESM core, tree-shaken from dist/index.js
 const CORE_KB = measureSizes(root).everything
-execSync(
-  `npx esbuild ${join(root, 'dist/canvas/index.js')} --bundle --minify --format=iife --global-name=SVC --outfile=${join(out, 'sv-canvas.js')}`,
-  { stdio: 'pipe' }
-)
+bundleGallery(root, out, true)
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
 // bench: the ScrollVars workload page inlines the engine. Resync it from

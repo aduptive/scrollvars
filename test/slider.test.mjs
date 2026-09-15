@@ -764,6 +764,32 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   assert.equal(fireChildList(container), 0, 'destroy() disconnects the observer')
 })
 
+test('slider: proximity leaves wheel and drag settling to native snap', async () => {
+  const rafQueue = [], listeners = {}, outer = {}
+  global.window = { addEventListener: (t, fn) => outer[t] = fn, removeEventListener: t => delete outer[t] }
+  global.requestAnimationFrame = fn => rafQueue.push(fn)
+  global.cancelAnimationFrame = () => { rafQueue.length = 0 }
+  global.ResizeObserver = ResizeObserverStub
+  global.getComputedStyle = () => ({ direction: 'ltr', scrollSnapType: 'x proximity' })
+  const slides = [makeSlideBox({ x: 0 }), makeSlideBox({ x: 100 }), makeSlideBox({ x: 200 })]
+  const c = makeBox(slides, { rect: { left: 0, top: 0 }, clientWidth: 100, clientHeight: 100, scrollWidth: 300, scrollHeight: 100, listeners, rafQueue })
+  const { slider } = await import('../dist/core/slider.js?round12proximity')
+  const handle = slider(c, { snap: 'proximity', duration: 0 })
+  try {
+    runFrames(rafQueue)
+    c.scrollLeft = 40
+    listeners.wheel({ deltaX: 40, deltaY: 0 })
+    assert.equal(c.style.scrollSnapType, '', 'wheel keeps native proximity enabled')
+    listeners.pointerdown({ target: { closest: () => null }, pointerType: 'mouse', clientX: 50, preventDefault() {} })
+    outer.pointermove({ clientX: 30, preventDefault() {} })
+    const releasedAt = c.scrollLeft
+    outer.pointerup()
+    assert.equal(c.scrollLeft, releasedAt, 'release does not center the nearest slide')
+    assert.equal(handle.state().gliding, false)
+    assert.equal(c.style.scrollSnapType, '')
+  } finally { handle.destroy() }
+})
+
 test('slider: snap none from a stylesheet (not inline) keeps the wheel assist off', async () => {
   const rafQueue = [], listeners = {}, control = {}
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }

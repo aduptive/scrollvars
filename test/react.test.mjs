@@ -40,6 +40,34 @@ test('react: Slider renders the APG carousel contract', async () => {
   assert.match(html, /aria-label="go to slide 2"/)
 })
 
+test('react: default and custom dots expose the current slide after navigation', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  for (const renderDot of [undefined, i => React.createElement('span', null, String(i))]) {
+    const container = document.createElement('div')
+    const root = createRoot(container)
+    await React.act(async () => root.render(React.createElement(Slider, { dots: true, renderDot },
+      React.createElement('div', null, 'one'), React.createElement('div', null, 'two'))))
+    try {
+      const rail = container.firstChild.children.find(c => c.classes.has('sv-slider'))
+      const dots = container.firstChild.children.find(c => c.classes.has('sv-dots')).children
+      assert.equal(dots[0].getAttribute('aria-current'), 'true')
+      assert.equal(dots[0].getAttribute('aria-disabled'), 'true')
+      rail.clientWidth = 100
+      rail.scrollWidth = 200
+      rail.offsetLeft = 0
+      rail.children.forEach((slide, i) => { slide.offsetLeft = i * 100; slide.offsetWidth = 100; slide.offsetParent = rail })
+      rail.scrollLeft = 100
+      await React.act(async () => { rail._listeners.scroll[0](); flushFrames() })
+      assert.equal(dots[1].getAttribute('aria-current'), 'true')
+      assert.equal(dots[1].getAttribute('aria-disabled'), 'true')
+      assert.notEqual(dots[0].getAttribute('aria-current'), 'true')
+    } finally { await React.act(async () => root.unmount()) }
+  }
+})
+
 test('react: Slider without autoplay has no pause control and is polite', async () => {
   const React = (await import('react')).default
   const { renderToStaticMarkup } = await import('react-dom/server')

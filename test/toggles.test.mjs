@@ -8,6 +8,7 @@ function makeElement(attrs = {}) {
     priorities: {},
     classes: new Set(),
     classList: {
+      remove(c) { el.classes.delete(c) },
       add(c) {
         el.classes.add(c)
       },
@@ -53,6 +54,31 @@ function makeElement(attrs = {}) {
   Object.defineProperty(el.style, 'transition', { value: undefined, writable: false })
   return el
 }
+
+test('toggles release enhancement only after the last controller stops', async () => {
+  global.window = {}
+  const frames = []
+  global.requestAnimationFrame = fn => frames.push(fn)
+  const { toggles } = await import('../dist/core/toggles.js?round12release')
+  for (const reverse of [false, true]) {
+    const target = makeElement({ 'data-sv-toggle': '' })
+    target.classes.add('sv-acts')
+    target.style.setProperty('transition-duration', '2s', 'important')
+    const root = { contains: () => true, querySelectorAll: () => [target], addEventListener() {}, removeEventListener() {} }
+    const stops = [toggles(root), toggles(root)]
+    if (reverse) stops.reverse()
+    stops[0]()
+    stops[0]()
+    assert.ok(target.classes.has('sv-ui'))
+    stops[1]()
+    assert.ok(!target.classes.has('sv-ui'))
+    assert.equal(target.vars['--sv-acts-settle'], undefined)
+    assert.equal(target.vars['transition-duration'], '2s')
+    assert.equal(target.priorities['transition-duration'], 'important')
+    while (frames.length) frames.shift()()
+    assert.ok(!target.classes.has('sv-ui'))
+  }
+})
 
 test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async () => {
   global.window = {}

@@ -183,12 +183,13 @@ mapping becomes pure CSS.</p>
 <h2 id="exports">Every export</h2>
 <p class="grp">scrollvars (vanilla core)</p>
 <table>
-<tr><td><code>track(el, opts?)</code></td><td>drive one element; opts: <code>view/travel/pin/scenes/snap/once/root/enter/exit</code> + <code>onLive/onScene/onTravel/onPin</code>. Returns untrack.</td></tr>
+<tr><td><code>track(el, opts?)</code></td><td>drive one element; opts: <code>view/travel/pin/scenes/snap/once/root/enter/exit</code> + <code>onLive/onScene/onTravel/onPin/onFlow</code>. Returns untrack.</td></tr>
 <tr><td><code>scan(root?)</code></td><td>zero-wrapper mode: tracks every <code>[data-sv]</code>, MutationObserver keeps route changes covered.</td></tr>
 <tr><td><code>slider(el, opts?)</code></td><td>featherweight carousel on native scroll+snap; returns <code>next/prev/goTo/seek/active/state/destroy</code>.</td></tr>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
-<tr><td><code>scrollToScene(el, i, n, smooth?)</code></td><td>scroll the window to scene i of a pinned section.</td></tr>
+<tr><td><code>scrollToScene(el, i, n, smooth?, root?)</code></td><td>scroll the window, or the given inner scroller, to scene i of a pinned section.</td></tr>
+<tr><td><code>setPageOutputs(on)</code></td><td>force the document-wide <code>--sv-page</code> and <code>--sv-v</code> on or off instead of the automatic consumer detection.</td></tr>
 <tr><td><code>split(el, { by })</code> / <code>splitParts</code></td><td>SplitText-lite: word/char spans with <code>--sv-order</code> + <code>--sv-count</code>, aria-safe, restorable. Also zero-wrapper via <code>data-sv-split</code>.</td></tr>
 <tr><td><code>mapRange(t, from, to, ease?)</code></td><td>JS twin of sv-range for <code>onTravel/onPin</code> consumers.</td></tr>
 <tr><td><code>clamp / snapProgress / easeOutCubic / refresh / prefersReducedMotion / setMotion / onMotionChange</code></td><td>utilities; the last three read, set and watch the effective motion preference (the OS setting or <code>data-sv-motion="reduce"</code> on <code>&lt;html&gt;</code>).</td></tr>
