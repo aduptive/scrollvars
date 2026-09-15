@@ -1444,8 +1444,12 @@ const MIN_EXAMINED = 1
     `last sample=${samples[samples.length - 1]}`
   )
   check(
-    'toggles(): an unrelated .sv-acts that no toggle controls stays at the finished value throughout',
-    unrelated.every((n) => n === FINISHED),
+    // since 1.17.4 scan() initializes the driver on an empty route too, so
+    // html.sv-on is on from load and an uncontrolled .sv-acts reads act 0
+    // (no longer the no-JS finished value); what toggles() must never do is
+    // touch it: the value it had when sampling began never changes
+    'toggles(): an unrelated .sv-acts that no toggle controls is never touched (its value never changes)',
+    unrelated.every((n) => n === unrelated[0]),
     unrelated.join(', ')
   )
   const longhandIntermediate = longhandSamples.filter((n) => n !== LONGHAND_FINISHED && n !== 0)

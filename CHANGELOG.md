@@ -5,7 +5,7 @@
 ### Fixed
 
 - Overlapping scanners share split text and pointer controllers until their last owner stops.
-- Failed ResizeObserver initialization releases prepaint hiding and cannot acknowledge a successful boot.
+- Failed ResizeObserver initialization releases prepaint hiding and cannot acknowledge a successful boot. `scan()` now initializes the driver on a route with nothing to track, so `html.sv-on` marks a working driver from the scan on (before, only the first `track()` set it); an `.sv-acts` widget that no `toggles()` controls therefore reads act zero on such a page, as it already did on any page with a tracked element.
 - Refresh resolves replacement stage and fit nodes and transfers their resize subscriptions.
 - Pin progress and scene navigation include the stage's normal-flow offset before sticking starts.
 - Compat rails use measured stage overflow and remain stationary when the rail fits.
