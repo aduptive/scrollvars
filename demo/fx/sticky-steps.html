@@ -324,12 +324,27 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       setInteractive(ready &amp;&amp;
         !prefersReducedMotion() &amp;&amp; !!shot &amp;&amp; getComputedStyle(shot).position === 'absolute')
     }
-    update()
-    const stopMotion = onMotionChange(update)
-    const observer = new MutationObserver(update)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
-    return () =&gt; { stopMotion(); observer.disconnect() }
+    let observer: MutationObserver | undefined
+    let stopMotion: (() =&gt; void) | undefined
+    let stopped = false
+    const stop = () =&gt; {
+      stopped = true
+      observer?.disconnect()
+      stopMotion?.()
+      el.classList.remove('st-ready')
+    }
+    const refresh = () =&gt; { if (!stopped) update() }
+    try {
+      observer = new MutationObserver(refresh)
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+      stopMotion = onMotionChange(refresh)
+      update()
+    } catch {
+      stop()
+      setInteractive(false)
+    }
+    return stop
   }, [flow])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject&lt;T | null&gt; so

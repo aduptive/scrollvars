@@ -497,6 +497,46 @@ test('scan marks the driver\'s arrival even when the route has nothing to track 
   stop()
 })
 
+test('failed pointer acquisition in an overlapping scan preserves its existing owner and retries', async () => {
+  setupScanGlobals()
+  const { scan } = await import('../dist/core/scan.js?round13pointer')
+  const a = makeElement({ 'data-sv-pointer': '' }), b = makeElement({ 'data-sv-pointer': '' })
+  for (const el of [a, b]) {
+    el.handlers = new Set()
+    el.addEventListener = (_, fn) => el.handlers.add(fn)
+    el.removeEventListener = (_, fn) => el.handlers.delete(fn)
+    el.style.removeProperty = () => {}
+  }
+  const root = makeElement({}, [a, b])
+  root.querySelectorAll = sel => sel === '[data-sv-pointer]' ? [a, b] : []
+  global.document = makeDocumentStub(root)
+  let fail = false
+  const observed = new Set()
+  global.MutationObserver = class {
+    observe(el) { observed.add(this); if (fail && el === b) throw Error('pointer observe') }
+    disconnect() { observed.delete(this) }
+  }
+  const errors = []
+  global.reportError = error => errors.push(error)
+  const owner = scan(a)
+  const baseline = observed.size
+  fail = true
+  const failed = scan(root)
+  assert.equal(a.handlers.size, 2, 'shared pointer owner survived')
+  assert.equal(b.handlers.size, 0, 'failed pointer has no listeners')
+  assert.equal(observed.size, baseline, 'partial observer released')
+  assert.equal(errors.length, 1)
+  fail = false
+  const retry = scan(root)
+  assert.equal(b.handlers.size, 2)
+  failed(); retry()
+  assert.equal(a.handlers.size, 2)
+  assert.equal(b.handlers.size, 0)
+  owner()
+  assert.equal(a.handlers.size, 0)
+  assert.equal(observed.size, baseline - 2, 'owner pointer and scanner observers released')
+})
+
 test('overlapping scanners retain split and pointer ownership until the last stop', async () => {
   setupScanGlobals()
   const { scan } = await import('../dist/core/scan.js?round12split')

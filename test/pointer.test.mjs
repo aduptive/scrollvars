@@ -1,6 +1,43 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
+test('pointer acquisition rolls back constructor/observe failures and permits explicit retry', async () => {
+  const { trackPointer } = await import('../dist/core/pointer.js')
+  for (const failure of ['constructor', 'observe']) {
+    const frame = stubFrame()
+    const container = makeContainer()
+    const card = makeEl({ isTilt: true, parent: container })
+    const listeners = new Set()
+    container.addEventListener = (name, fn) => {
+      listeners.add(fn)
+      if (name === 'pointermove') fn({ target: card, clientX: 75, clientY: 25 })
+    }
+    container.removeEventListener = (_, fn) => listeners.delete(fn)
+    const observers = new Set()
+    let fail = true
+    global.MutationObserver = class {
+      constructor() { if (fail && failure === 'constructor') throw Error(failure) }
+      observe() { observers.add(this); if (fail) throw Error(failure) }
+      disconnect() { observers.delete(this) }
+    }
+    assert.throws(() => trackPointer(container), new RegExp(failure))
+    assert.equal(listeners.size, 0, 'failed acquisition removed delegated listeners')
+    assert.equal(observers.size, 0, 'partially observed container disconnected')
+    assert.equal(frame(), null, 'queued pointer frame cancelled')
+    assert.deepEqual(card.vars, {})
+    fail = false
+    const stop = trackPointer(container)
+    assert.equal(listeners.size, 2)
+    frame()()
+    assert.equal(card.vars['--mx'], '0.500', 'retry writes coordinates')
+    stop()
+    assert.equal(listeners.size, 0)
+    assert.equal(observers.size, 0)
+    assert.deepEqual(card.vars, {})
+  }
+  delete global.MutationObserver
+})
+
 // Minimal element stub: a manual `.parent` chain drives closest()/contains(),
 // a classList backed by a Set, inline vars go through style.setProperty.
 // `matchSelector`, when given, is the ONE selector this element answers to

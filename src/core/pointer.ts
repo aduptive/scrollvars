@@ -95,9 +95,6 @@ export function trackPointer(
     leave(el)
   }
 
-  container.addEventListener('pointermove', onMove)
-  container.addEventListener('pointerout', onOut)
-
   const clear = (el: HTMLElement) => {
     if (pending?.el === el) pending = null
     el.style.removeProperty('--mx')
@@ -106,18 +103,14 @@ export function trackPointer(
     written.delete(el)
     touched.delete(el)
   }
-  const observer = typeof MutationObserver === 'undefined' ? null : new MutationObserver((records) => {
-    if (records.some(record => record.removedNodes.length)) {
-      touched.forEach(el => { if (!container.contains(el)) clear(el) })
-    }
-  })
-  observer?.observe(container, { childList: true, subtree: true })
-
-  return () => {
-    observer?.disconnect()
+  let observer: MutationObserver | undefined
+  const stop = () => {
     container.removeEventListener('pointermove', onMove)
     container.removeEventListener('pointerout', onOut)
     if (raf) cancelAnimationFrame(raf)
+    raf = 0
+    pending = null
+    observer?.disconnect()
     // a destroyed instance must not leave a still-hovered element frozen
     // mid-tilt: drop inline vars and the leave class from every element
     // still tracked, not just one, a nested match can leave more than one
@@ -126,4 +119,20 @@ export function trackPointer(
     written.clear()
     touched.clear()
   }
+  try {
+    container.addEventListener('pointermove', onMove)
+    container.addEventListener('pointerout', onOut)
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver((records) => {
+        if (records.some(record => record.removedNodes.length)) {
+          touched.forEach(el => { if (!container.contains(el)) clear(el) })
+        }
+      })
+      observer.observe(container, { childList: true, subtree: true })
+    }
+  } catch (error) {
+    try { stop() } catch { /* preserve the acquisition error */ }
+    throw error
+  }
+  return stop
 }

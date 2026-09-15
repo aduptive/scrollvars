@@ -22,6 +22,26 @@ addEventListener('error', function(event) {
 })
 var fault = new URLSearchParams(location.search).get('case')
 var RO = window.ResizeObserver, IO = window.IntersectionObserver, MO = window.MutationObserver
+window.stepsSubscriptions = 0
+window.stepsObservers = 0
+window.StepsMutationObserver = fault === 'steps-mo-missing' ? undefined : class extends MO {
+  constructor(callback) {
+    if (fault === 'steps-mo-constructor') throw Error('fixture failure: steps constructor')
+    super(callback)
+    this.calls = 0
+    this.live = false
+  }
+  observe(el, options) {
+    super.observe(el, options)
+    if (!this.live) { this.live = true; stepsObservers++ }
+    this.calls++
+    if ((fault === 'steps-mo-first' && this.calls === 1) || (fault === 'steps-mo-second' && this.calls === 2)) throw Error('fixture failure: steps observe')
+  }
+  disconnect() {
+    super.disconnect()
+    if (this.live) { this.live = false; stepsObservers-- }
+  }
+}
 window.restoreObservers = function() { fault = null; window.ResizeObserver = RO; window.IntersectionObserver = IO; window.MutationObserver = MO }
 if (fault === 'ro-missing') delete window.ResizeObserver
 if (fault === 'ro-constructor') window.ResizeObserver = class { constructor() { throw Error('fixture failure: ResizeObserver constructor') } }

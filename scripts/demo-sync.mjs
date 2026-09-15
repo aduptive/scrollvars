@@ -105,9 +105,10 @@ for (const block of BLOCKS) {
 // engine block: the whole built package as an IIFE (global `SV`). The same
 // esbuild invocation fx-build.mjs uses for the bench page
 {
-  const { execSync } = await import('node:child_process')
-  const iife = execSync(
-    `npx esbuild ${join(root, 'dist/index.js')} --bundle --format=iife --global-name=SV`,
+  const { execFileSync } = await import('node:child_process')
+  const iife = execFileSync(
+    join(root, 'node_modules', '.bin', 'esbuild'),
+    [join(root, 'dist/index.js'), '--bundle', '--format=iife', '--global-name=SV'],
     { maxBuffer: 1e7 }
   ).toString().trimEnd()
   new Function(iife) // throws on syntax errors
@@ -133,7 +134,6 @@ if (/^\s*export /m.test(script[0])) throw new Error('an `export` leaked into the
 
 // footer stamp: version + measured wire sizes (esbuild+gzip of the dist)
 {
-  const { execSync } = await import('node:child_process')
   const { measureSizes } = await import('./docs-data.mjs')
   const sizes = measureSizes(root)
   const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version

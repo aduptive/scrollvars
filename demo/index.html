@@ -4192,8 +4192,6 @@ var SV = (() => {
         pending = null;
       leave(el);
     };
-    container.addEventListener("pointermove", onMove);
-    container.addEventListener("pointerout", onOut);
     const clear = (el) => {
       if (pending?.el === el)
         pending = null;
@@ -4203,25 +4201,41 @@ var SV = (() => {
       written.delete(el);
       touched.delete(el);
     };
-    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver((records) => {
-      if (records.some((record) => record.removedNodes.length)) {
-        touched.forEach((el) => {
-          if (!container.contains(el))
-            clear(el);
-        });
-      }
-    });
-    observer?.observe(container, { childList: true, subtree: true });
-    return () => {
-      observer?.disconnect();
+    let observer;
+    const stop = () => {
       container.removeEventListener("pointermove", onMove);
       container.removeEventListener("pointerout", onOut);
       if (raf2)
         cancelAnimationFrame(raf2);
+      raf2 = 0;
+      pending = null;
+      observer?.disconnect();
       touched.forEach(clear);
       written.clear();
       touched.clear();
     };
+    try {
+      container.addEventListener("pointermove", onMove);
+      container.addEventListener("pointerout", onOut);
+      if (typeof MutationObserver !== "undefined") {
+        observer = new MutationObserver((records) => {
+          if (records.some((record) => record.removedNodes.length)) {
+            touched.forEach((el) => {
+              if (!container.contains(el))
+                clear(el);
+            });
+          }
+        });
+        observer.observe(container, { childList: true, subtree: true });
+      }
+    } catch (error) {
+      try {
+        stop();
+      } catch {
+      }
+      throw error;
+    }
+    return stop;
   }
 
   // dist/core/split.js
