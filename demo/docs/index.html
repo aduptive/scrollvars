@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.17.3</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.17.4</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -298,6 +298,24 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.17.4 (2026-09-15)</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Overlapping scanners share split text and pointer controllers until their last owner stops.</li>
+<li>Failed ResizeObserver initialization releases prepaint hiding and cannot acknowledge a successful boot.</li>
+<li>Refresh resolves replacement stage and fit nodes and transfers their resize subscriptions.</li>
+<li>Pin progress and scene navigation include the stage's normal-flow offset before sticking starts.</li>
+<li>Compat rails use measured stage overflow and remain stationary when the rail fits.</li>
+<li>Proximity snap leaves wheel and drag settling to the browser.</li>
+<li>Stopping the last toggle controller releases its enhancement marker and pending settle overrides.</li>
+<li>Default and custom carousel dots expose the current slide and disable redundant activation.</li>
+<li>Pointer tracking clears removed targets without waiting for the container to be destroyed.</li>
+<li>Gallery bundling accepts checkout and output paths containing spaces.</li>
+<li>README accessibility checks describe the actual CI triggers: main pushes and pull-request events.</li>
+</ul>
 
 <h3>1.17.3 (2026-09-15)</h3>
 

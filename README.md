@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.3 KB, full core incl. the slider 8.9 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.9 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.7 KB, full core incl. the slider 9.5 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.3 KB on the wire.
 
 ## Why
 
@@ -15,12 +15,12 @@ ScrollVars keeps continuous scroll values outside React and exposes them directl
   during scroll (`useScenes`/`useSlider` re-render only on a discrete index
   change).
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
-- **Reduced motion built into every preset. Accessibility checked every
-  commit.** Every preset honors `prefers-reduced-motion` with no code of
+- **Reduced motion built into every preset. Accessibility checked in
+  CI.** Every preset honors `prefers-reduced-motion` with no code of
   yours, the page gets its own switch (`data-sv-motion="reduce"`,
   `setMotion()`), the kit's carousel follows the APG pattern with a visible
   pause control, and keyboard, axe, reflow and motion gates run against
-  this site on every commit. Each guarantee names the WCAG criterion it
+  this site on pushes to `main` and pull-request events. Each guarantee names the WCAG criterion it
   serves; see Accessibility below. GSAP and Framer Motion are stronger for
   heavy, time-based choreography and leave reduced motion to the author;
   here it is the default.
@@ -144,17 +144,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 4.3 KB |
-| `track` + `scan` (zero-wrapper mode) | 5.7 KB |
-| `slider` | 2.7 KB |
-| `trackPointer` | 0.6 KB |
+| `track` (the driver) | 4.7 KB |
+| `track` + `scan` (zero-wrapper mode) | 6.2 KB |
+| `slider` | 2.8 KB |
+| `trackPointer` | 0.7 KB |
 | `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 8.9 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 14.7 KB |
+| everything in `scrollvars` (the core entry) | 9.5 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 15.4 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~6.9 KB gzipped, total.**
+**~7.3 KB gzipped, total.**
 
 ## Mental model
 
@@ -201,6 +201,8 @@ Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so 
 Pinning: `data-sv-pin="320vh"` (or `pin: '320vh'` / `<Track pin="320vh">`) sets the height and, when the wrapper is static, `position: relative` (authored positioning is kept); put `class="sv-stage"` on the sticky child. That is the whole pinned skeleton, and it returns to flow without JS, under reduced motion, or below the individual-transform floor without `compat()`. Sticky header? `:root { --sv-pin-offset: 64px }`: the stage sits below it and the pin math starts there. The driver reads the stage's computed `top`, so CSS resolves `calc()`, `env()`, percentages and viewport units in the actual layout. Without a `.sv-stage` (custom `onPin` markup), only px, rem (root font-size), em (the wrapper's font-size), vh (svh, lvh and dvh resolve like vh) and vw resolve in the fallback parser; use a stage for other lengths.
 
 For content that might exceed the stage (CMS copy, text zoom), wrap its layout in `<div class="sv-stage"><div data-sv-fit>…</div></div>`. If that inner box exceeds the available height, the driver marks the tracker `data-sv-flow`, restores its authored height and position, and the pin presets return to flow. This stays latched until retracked; `onFlow(boolean)` reports the initial state and fallback so custom media can release `inert`. TimelineScrub and StickySteps include it.
+
+Pin progress starts at the stage's normal-flow position, including content before it. Call `refresh()` after replacing a stage or its fit layout: it resolves the new nodes, transfers resize observations and recomputes the sticky offset and origin. Measuring the origin temporarily disables sticky positioning and restores the authored declaration; ordinary scroll frames use the cached origin.
 
 ## React
 
@@ -367,7 +369,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.7 KB gzip; Swiper 11 bundle
+Size, measured: this module 2.8 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
@@ -741,7 +743,7 @@ success criterion it serves. It is not a conformance claim for your site.
 - **Carousel semantics** (4.1.2 Name, Role, Value; 2.1.1 Keyboard).
   `<Slider>` follows the APG carousel pattern: `role="region"`,
   `aria-roledescription="carousel"`, a `label`, slides announced "i of n",
-  labeled arrows and dots, keyboard on the track, `aria-live="polite"` on
+  labeled arrows and dots (the current dot has `aria-current` and `aria-disabled`), keyboard on the track, `aria-live="polite"` on
   the track while rotation is paused by the person (hover, focus, the
   control), `off` while it rotates or is merely suspended off screen. Native scroll and scroll snap do the
   moving, so nothing is hijacked, on sliders or on pins.

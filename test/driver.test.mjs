@@ -820,6 +820,7 @@ test('driver: a once entry that declares its own root releases that root once no
 })
 
 test('driver: init() is transactional, a throwing ResizeObserver leaves track() a no-op until it succeeds', async () => {
+  document.documentElement.classList.remove = () => {}
   global.ResizeObserver = class {
     constructor() {
       throw new Error('no ResizeObserver in this browser')
@@ -1724,6 +1725,104 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   assert.equal(el.style.height, '300vh')
   stop()
   delete global.getComputedStyle
+})
+
+test('refresh replaces stage and fit geometry and transfers resize subscriptions', async () => {
+  const { track, refresh } = await import('../dist/core/driver.js?round12replace')
+  const el = makeElement(3000), old = makeElement(600), next = makeElement(800)
+  const oldFit = makeElement(200), nextFit = makeElement(200)
+  for (const [stage, fit, width] of [[old, oldFit, 700], [next, nextFit, 400]]) {
+    nest(el, stage); nest(stage, fit)
+    stage.children = [fit]; stage.clientWidth = width; stage.clientHeight = stage.offsetHeight = stage.rect.height
+    fit.attrs.set('data-sv-fit', ''); fit.offsetHeight = fit.scrollHeight = 200
+  }
+  el.stage = old
+  place(el, -1100)
+  let progress
+  const states = []
+  const stop = track(el, { pin: true, onPin: p => progress = p, onFlow: v => states.push(v) })
+  try {
+    pump()
+    el.stage = next
+    refresh(); pump()
+    assert.equal(el.vars['--sv-stage-width'], '400.0000px')
+    assert.equal(progress, .5)
+    assert.ok(observed.has(next) && observed.has(nextFit))
+    assert.ok(!observed.has(old) && !observed.has(oldFit))
+    nextFit.scrollHeight = 900
+    pump()
+    assert.deepEqual(states, [false, true], 'replacement fit content controls flow fallback')
+  } finally { stop() }
+  assert.ok(!observed.has(next) && !observed.has(nextFit))
+})
+
+test('pin progress and scene navigation use the stage normal-flow origin', async () => {
+  const { track, refresh, scrollToScene } = await import('../dist/core/driver.js?round12origin')
+  const previousStyle = global.getComputedStyle, previousScroll = window.scrollTo
+  global.getComputedStyle = node => ({ top: node.stage ? 'auto' : '50px', position: 'relative', getPropertyValue: () => '50px' })
+  for (const custom of [false, true]) {
+    const el = makeElement(3000), stage = makeElement(600)
+    el.stage = stage; nest(el, stage)
+    el.offsetTop = 1000; el.offsetParent = null; el.clientTop = 0
+    stage.offsetParent = el; stage.offsetHeight = 600
+    let origin = 200
+    // A stuck stage's offsetTop includes its sticky displacement. Reading
+    // with sticky disabled must recover the flow origin, even on late boot.
+    stage.style.setProperty('position', 'sticky', 'important')
+    Object.defineProperty(stage, 'offsetTop', { get: () => stage.style.position === 'sticky' ? 1300 : origin + (stage.style.position === 'relative' ? 50 : 0) })
+    const root = custom ? { clientHeight: 1000, clientTop: 10, scrollTop: 2000,
+      getBoundingClientRect: () => ({ top: 90 }), scrollTo: opts => root.destination = opts.top } : undefined
+    const viewportOrigin = custom ? 100 : 0
+    place(el, viewportOrigin - 1250)
+    let progress, destination
+    window.scrollTo = opts => destination = opts.top
+    const stop = track(el, { pin: true, root, onPin: p => progress = p })
+    try {
+      pump()
+      assert.equal(progress, .5, 'heading and padding shorten the sticky stretch')
+      assert.equal(stage.style.position, 'sticky')
+      assert.equal(stage.priorities.position, 'important')
+      scrollToScene(el, 1, 3, true, root)
+      assert.equal(custom ? root.destination : destination, custom ? root.scrollTop : window.scrollY)
+      origin = 400
+      refresh(); pump()
+      assert.equal(progress, .45, 'refresh recomputes the normal-flow origin')
+      place(el, viewportOrigin + 50 - origin)
+      pump()
+      assert.equal(progress, 0, 'progress starts when the stage starts sticking')
+      place(el, viewportOrigin + 50 - 2400)
+      pump()
+      assert.equal(progress, 1, 'the wrapper bottom ends the stretch')
+    } finally { stop() }
+  }
+  global.getComputedStyle = previousStyle
+  window.scrollTo = previousScroll
+})
+
+test('compat rail travel is clamped to overflow inside its measured stage', async () => {
+  const previous = document.documentElement.hasAttribute
+  document.documentElement.hasAttribute = name => name === 'data-sv-compat'
+  const { track, refresh } = await import('../dist/core/driver.js?round12rail')
+  const el = makeElement(3000), stage = makeElement(600), rail = makeElement(200)
+  nest(el, stage); nest(stage, rail)
+  el.stage = stage; stage.clientWidth = 500; stage.offsetHeight = 600
+  stage.querySelectorAll = selector => selector === '.sv-rail' ? [rail] : []
+  rail.closest = () => stage
+  rail.offsetWidth = 800
+  place(el, -1200)
+  const stop = track(el, { pin: true })
+  try {
+    pump()
+    assert.equal(rail.vars['--_sv-rail-end'], '-300px')
+    assert.ok(observed.has(rail), 'rail content growth wakes measurement')
+    stage.clientWidth = 900
+    refresh(); pump()
+    assert.equal(rail.vars['--_sv-rail-end'], '0px', 'fitting rail never moves rightward')
+    const css = readFileSync(new URL('../src/compat/index.ts', import.meta.url), 'utf8')
+    assert.match(css, /\.sv \.sv-rail \{ transform: translateX\(calc\(var\(--sv-pin, 0\) \* var\(--_sv-rail-end, 0px\)\)\); \}/)
+  } finally { stop(); document.documentElement.hasAttribute = previous }
+  assert.equal(rail.vars['--_sv-rail-end'], undefined)
+  assert.ok(!observed.has(rail))
 })
 
 test('pin stages belong to their tracker for measurement and navigation', async () => {

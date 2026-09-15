@@ -27,6 +27,13 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
 const compatSrc = readFileSync(join(root, 'src/compat/index.ts'), 'utf8')
 const driverSrc = readFileSync(join(root, 'src/core/driver.ts'), 'utf8')
 
+test('README accessibility CI claim matches the workflow triggers', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8')
+  assert.match(workflow, /push:\s+branches: \[main\]\s+pull_request:/)
+  assert.doesNotMatch(readme, /accessibility checked every\s+commit|this site on every commit/i)
+  assert.match(readme, /this site on pushes to `main` and pull-request events/)
+})
+
 function extract(text, re, label) {
   const m = text.match(re)
   assert.ok(m, `${label}: anchor text not found, wording moved`)

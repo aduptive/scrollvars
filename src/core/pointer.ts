@@ -98,7 +98,23 @@ export function trackPointer(
   container.addEventListener('pointermove', onMove)
   container.addEventListener('pointerout', onOut)
 
+  const clear = (el: HTMLElement) => {
+    if (pending?.el === el) pending = null
+    el.style.removeProperty('--mx')
+    el.style.removeProperty('--my')
+    el.classList.remove('sv-pointer-leave')
+    written.delete(el)
+    touched.delete(el)
+  }
+  const observer = typeof MutationObserver === 'undefined' ? null : new MutationObserver((records) => {
+    if (records.some(record => record.removedNodes.length)) {
+      touched.forEach(el => { if (!container.contains(el)) clear(el) })
+    }
+  })
+  observer?.observe(container, { childList: true, subtree: true })
+
   return () => {
+    observer?.disconnect()
     container.removeEventListener('pointermove', onMove)
     container.removeEventListener('pointerout', onOut)
     if (raf) cancelAnimationFrame(raf)
@@ -106,11 +122,7 @@ export function trackPointer(
     // mid-tilt: drop inline vars and the leave class from every element
     // still tracked, not just one, a nested match can leave more than one
     // written between handovers (ADU-169)
-    touched.forEach((el) => {
-      el.style.removeProperty('--mx')
-      el.style.removeProperty('--my')
-      el.classList.remove('sv-pointer-leave')
-    })
+    touched.forEach(clear)
     written.clear()
     touched.clear()
   }

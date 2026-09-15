@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.17.4 (2026-09-15)
+
+### Fixed
+
+- Overlapping scanners share split text and pointer controllers until their last owner stops.
+- Failed ResizeObserver initialization releases prepaint hiding and cannot acknowledge a successful boot.
+- Refresh resolves replacement stage and fit nodes and transfers their resize subscriptions.
+- Pin progress and scene navigation include the stage's normal-flow offset before sticking starts.
+- Compat rails use measured stage overflow and remain stationary when the rail fits.
+- Proximity snap leaves wheel and drag settling to the browser.
+- Stopping the last toggle controller releases its enhancement marker and pending settle overrides.
+- Default and custom carousel dots expose the current slide and disable redundant activation.
+- Pointer tracking clears removed targets without waiting for the container to be destroyed.
+- Gallery bundling accepts checkout and output paths containing spaces.
+- README accessibility checks describe the actual CI triggers: main pushes and pull-request events.
+
 ## 1.17.3 (2026-09-15)
 
 ### Fixed

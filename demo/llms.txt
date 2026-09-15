@@ -308,7 +308,8 @@ the inline script itself running: it is gated on `IntersectionObserver` and
 `ResizeObserver` both existing. Without JS neither the script nor driver runs.
 Without either observer the script skips pre-paint hiding; the later driver
 requires ResizeObserver but can boot without IntersectionObserver (unculled),
-and then adds `sv-on`. Missing ResizeObserver keeps the driver static. Under a strict CSP with no
+and then adds `sv-on`. Missing or throwing ResizeObserver keeps the driver static;
+scanner arrival acknowledges boot only after successful driver initialization, including on empty routes. Under a strict CSP with no
 `'unsafe-inline'`, pass the request's nonce: `<ScrollVarsBoot nonce={nonce} />`.
 Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.
@@ -449,6 +450,10 @@ fake DOM to mount `react-dom/client` for ref and effect tests, and
 version: respect `.nvmrc`.
 
 ## Fit-to-flow and declarative pointer
+
+Pin progress includes the stage's normal-flow offset, so a heading or padding before the stage delays the start until it sticks. After replacing a stage or fit node, call `refresh()` to resolve the new geometry and transfer resize observations. Origin measurement temporarily disables sticky positioning and restores it on attach, refresh, resize and scene navigation; ordinary scroll frames use the cached origin.
+
+Overlapping scans share tracking, split text and pointer controllers until the last scanner releases them. Pointer controllers clear removed targets while their container remains active. Stopping the last `toggles()` controller removes its `sv-ui` marker and restores pending boot-settle overrides, so a controlled marquee becomes static again.
 
 For pinned CMS content use `.sv-stage > [data-sv-fit]`. If that inner layout exceeds the available stage height, the driver sets `data-sv-flow` on the tracked wrapper, restores its authored height/position and the pin presets return to flow. This stays latched until retracked. `onFlow(boolean)` reports the initial state and fallback; release custom `inert` media when true. TimelineScrub and StickySteps ship this guard.
 

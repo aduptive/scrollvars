@@ -84,6 +84,7 @@
 // destruction leaves a stale entry that silently disowns a trigger, and
 // nothing to leak.
 const claimed = new WeakSet<Event>()
+const markers = new WeakMap<HTMLElement, { owners: number; release: () => void }>()
 
 // Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
 // is resolved by its NEAREST live scope, the one that would claim its click,
@@ -190,6 +191,27 @@ export function toggles(root?: Document | HTMLElement): () => void {
     longhandHold.delete(target)
     target.style.setProperty('transition-duration', saved.value, saved.priority)
   }
+  const targets = new Set<HTMLElement>()
+  const mark = (target: HTMLElement) => {
+    if (targets.has(target)) return false
+    targets.add(target)
+    let marker = markers.get(target)
+    const authored = target.classList.contains('sv-ui')
+    if (!marker) {
+      marker = { owners: 0, release: () => {
+        if (!authored) target.classList.remove('sv-ui')
+        if (settling.has(target)) {
+          settling.delete(target)
+          target.style.removeProperty('--sv-acts-settle')
+          restoreDuration(target)
+        }
+      } }
+      markers.set(target, marker)
+    }
+    marker.owners++
+    target.classList.add('sv-ui')
+    return !authored
+  }
 
   triggers().forEach((trigger) => {
     let resolved: ReturnType<typeof resolve>
@@ -200,8 +222,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     }
     const { className, target } = resolved
     if (!target) return
-    if (!target.classList.contains('sv-ui')) {
-      target.classList.add('sv-ui')
+    if (mark(target)) {
       // only a .sv-acts target has a no-JS finished value to un-animate
       // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
       // comment): a plain toggle target gets sv-ui above and nothing else,
@@ -267,7 +288,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // a target that appeared after boot (e.g. inserted later) is marked here
     // instead: its first click shows the finished state with no transition,
     // since it was covered by the no-JS/no-boot fallback up to this instant
-    target.classList.add('sv-ui')
+    mark(target)
     // a click landing inside the boot settle must still animate: drop the
     // hold before the class flips, and cancel the scheduled restore so it
     // does not act on a target a fresh boot may have re-armed since
@@ -283,5 +304,13 @@ export function toggles(root?: Document | HTMLElement): () => void {
   return () => {
     live.delete(instance)
     scope.removeEventListener('click', onClick)
+    targets.forEach(target => {
+      const marker = markers.get(target)!
+      if (--marker.owners === 0) {
+        markers.delete(target)
+        marker.release()
+      }
+    })
+    targets.clear()
   }
 }

@@ -1,5 +1,5 @@
 import type { TrackOptions } from './driver.js'
-import { track } from './driver.js'
+import { init, track } from './driver.js'
 import { split } from './split.js'
 import { trackPointer } from './pointer.js'
 
@@ -52,11 +52,14 @@ function band(el: HTMLElement, attr: string): number | undefined {
   return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : undefined
 }
 
-const registrations = new WeakMap<HTMLElement, { owners: number; stop: () => void }>()
-function acquire(el: HTMLElement): () => void {
+type Registrations = WeakMap<HTMLElement, { owners: number; stop: () => void }>
+const registrations: Registrations = new WeakMap()
+const splitRegistrations: Registrations = new WeakMap()
+const pointerRegistrations: Registrations = new WeakMap()
+function acquire(el: HTMLElement, registrations: Registrations, start: () => () => void): () => void {
   let registration = registrations.get(el)
   if (!registration) {
-    registration = { owners: 0, stop: track(el, optionsFrom(el)) }
+    registration = { owners: 0, stop: start() }
     registrations.set(el, registration)
   }
   registration.owners++
@@ -71,14 +74,15 @@ function acquire(el: HTMLElement): () => void {
 export function scan(root?: ParentNode): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: ParentNode = root ?? document
+  const ready = init()
 
   const tracked = new Map<HTMLElement, () => void>()
   const splits = new Map<HTMLElement, () => void>()
   const pointers = new Map<HTMLElement, () => void>()
   const addPointer = (el: HTMLElement) => {
-    if (!pointers.has(el)) pointers.set(el, trackPointer(el, {
+    if (!pointers.has(el)) pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
       selector: el.getAttribute('data-sv-pointer') || undefined,
-    }))
+    })))
   }
   const removePointer = (el: HTMLElement) => {
     if (scope.contains(el)) return
@@ -89,11 +93,11 @@ export function scan(root?: ParentNode): () => void {
   const addSplit = (el: HTMLElement) => {
     if (splits.has(el)) return
     const by = el.getAttribute('data-sv-split') === 'char' ? 'char' : 'word'
-    splits.set(el, split(el, { by }))
+    splits.set(el, acquire(el, splitRegistrations, () => split(el, { by })))
   }
 
   const add = (el: HTMLElement) => {
-    if (!tracked.has(el)) tracked.set(el, acquire(el))
+    if (!tracked.has(el)) tracked.set(el, acquire(el, registrations, () => track(el, optionsFrom(el))))
   }
   const remove = (el: HTMLElement) => {
     // a mutation batch can carry the same node in both removedNodes and
@@ -162,11 +166,9 @@ export function scan(root?: ParentNode): () => void {
     childList: true,
     subtree: true,
   })
-  // The driver is here whether or not this route has anything to track:
-  // ScrollVarsBoot's pre-paint watchdog waits for this flag, and init()
-  // only sets it on the first track(), so a first route with no data-sv
-  // element let the watchdog drop sv-on for the whole session (round 9).
-  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = true
+  // Empty routes acknowledge a working driver too, but failed initialization
+  // must leave the prepaint watchdog armed.
+  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = ready
 
   return () => {
     observer.disconnect()
