@@ -4,7 +4,7 @@ import { build } from 'esbuild'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { loadComponent, renderStatic, resolveScrollvars } from '../../../scripts/fx-render.mjs'
 
@@ -36,7 +36,10 @@ export function FailureApp({ empty = false }) {
     define: { 'process.env.NODE_ENV': '"production"' },
     plugins: [resolveScrollvars, { name: 'steps-acquisition-probe', setup(api) {
       api.onLoad({ filter: /\.tsx$/ }, args => {
-        if (args.path !== installedPath) return
+        // realpath both sides: macOS hands mkdtemp a /var/folders path while
+        // esbuild resolves /private/var, so a plain compare never matched
+        // locally and the fault was silently not injected (lead, round 13)
+        if (realpathSync(args.path) !== realpathSync(installedPath)) return
         // Instrument only the installed Section's acquisition boundaries.
         // The driver and Boot retain the real globals in these four cases.
         let contents = readFileSync(installedPath, 'utf8')
