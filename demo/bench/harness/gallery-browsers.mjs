@@ -85,7 +85,10 @@ async function staticShots(page, label) {
 
 async function readableEntrances(page, label) {
   for (const el of await page.locator('#scan-first .sv-rise, #scan-last .sv-rise').all()) {
-    await el.scrollIntoViewIfNeeded()
+    // center, not "if needed": when the failed StickySteps keeps no pin
+    // height the page is short and the probe already touches the bottom
+    // edge, below the live band, so it would never go live (lead, lifecycle 1)
+    await el.evaluate(node => node.scrollIntoView({ block: 'center' }))
     await page.waitForFunction(id => {
       const el = document.querySelector('#' + id + ' .sv-rise')
       const css = getComputedStyle(el)
