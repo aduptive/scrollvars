@@ -239,7 +239,7 @@ export const EFFECTS = [
       <h3 class="fxh" data-sv-from="0" data-sv-to=".4">First this</h3>
       <!-- muted and accent text at the preset's .55 floor read under 4.5:1: the
            copy takes the text color, the accent line lifts this demo's floor to .8 -->
-      <p class="fxp" style="color:#e6e4f0" data-sv-from=".3" data-sv-to=".7">then this</p>
+      <p class="fxp" style="color:#e8efe6" data-sv-from=".3" data-sv-to=".7">then this</p>
       <p class="fxp fxaccent" style="--sv-range-floor:.8" data-sv-from=".6" data-sv-to="1">then this</p>
     </div>
   </div>
@@ -742,7 +742,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .hero-orb { translate: none; transition: none; }
 :where([data-sv-motion="reduce"]) .hero-inner { opacity: 1; scale: none; }   /* no drift, no exit scale */
-.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); } /* the strip's own ground: its text read 2.6:1 over an orb (axe) */
+.hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(20, 33, 26, .9); } /* the strip's own ground: its text read 2.6:1 over an orb (axe) */
 /* no JS: --sv-t and --mx/--my are unset → the fallbacks render the finished hero. */`,
     tailwind: `<section data-sv data-sv-travel id="hero" class="sv-hero relative grid min-h-svh place-items-center overflow-hidden isolate
   [&_.inner]:[--hero-out:clamp(0,(var(--sv-t,.5)-.5)*2,1)] [&_.inner]:[opacity:calc(1-var(--hero-out))] [&_.inner]:[scale:calc(1-var(--hero-out)*.12)]
@@ -757,7 +757,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
   </div>
-  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3 bg-[#17151f]/90"><div class="sv-marquee-track">…</div></div>
+  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3 bg-[#14211a]/90"><div class="sv-marquee-track">…</div></div>
 </section>
 <script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>`,
     react: `import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
@@ -1129,7 +1129,7 @@ const css = \`
 .sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; text-align: center; }
 .sv-hero .hero-orb { position: absolute; width: 52vmin; height: 52vmin; border-radius: 50%; filter: blur(70px); opacity: .5; z-index: -1;
   translate: calc(var(--mx, 0) * var(--hero-parallax, 40px)) calc(var(--my, 0) * var(--hero-parallax, 40px)); transition: translate .5s ease-out; }
-.sv-hero .hero-orb.a { background: var(--hero-glow, #a78bfa); top: -14%; left: -8%; }
+.sv-hero .hero-orb.a { background: var(--hero-glow, #f2c14e); top: -14%; left: -8%; }
 .sv-hero .hero-orb.b { background: var(--hero-glow-2, #ffb454); bottom: -16%; right: -10%; --hero-parallax: -60px; }
 .sv-hero .hero-inner { padding: 60px 24px 90px; --hero-out: clamp(0, (var(--sv-t, .5) - .5) * 2, 1); opacity: calc(1 - var(--hero-out)); scale: calc(1 - var(--hero-out) * .12); }
 @media (prefers-reduced-motion: reduce) { .sv-hero .hero-orb { translate: none; transition: none; } .sv-hero .hero-inner { opacity: 1; scale: none; } }
@@ -1139,7 +1139,7 @@ const css = \`
 .sv-hero .hero-eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .8; }
 .sv-hero .hero-title { font-size: clamp(36px, 6.4vw, 78px); line-height: 1.02; letter-spacing: -.03em; max-width: 14ch; margin: 14px auto 18px; font-weight: 800; }
 .sv-hero .hero-sub { max-width: 42ch; margin: 0 auto 26px; font-size: 17px; opacity: .75; }
-.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(23, 21, 31, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.sv-hero .hero-strip { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(20, 33, 26, .9); padding: 14px 0; border-top: 1px solid rgba(128,128,128,.25); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
 .sv-hero .hero-strip span { margin: 0 18px; }
 \`
 

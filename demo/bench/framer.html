@@ -3,7 +3,7 @@
 <title>bench · framer-motion</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
-  body { background: #121118; color: #e6e4f0; font: 14px/1.5 -apple-system, sans-serif; }
+  body { background: #0d1611; color: #e8efe6; font: 14px/1.5 -apple-system, sans-serif; }
   .hud { position: fixed; top: 12px; left: 12px; z-index: 9; background: rgba(0,0,0,.75);
          padding: 14px 18px; border-radius: 10px; font-family: ui-monospace, monospace;
          font-size: 13px; white-space: pre; }
@@ -22,7 +22,7 @@
 
   var Q = new URLSearchParams(location.search);
   var SECTIONS = +Q.get('s') || 30, PER = +Q.get('p') || 5;
-  var COLORS = ['#a78bfa', '#ffb454', '#6ee7a0', '#7dd3fc', '#ff7d90'];
+  var COLORS = ['#f2c14e', '#ffb454', '#6ee7a0', '#7dd3fc', '#ff7d90'];
   function seeded(i) { return (Math.sin(i * 999) + 1) / 2; }
   var h = React.createElement;
 

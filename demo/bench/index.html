@@ -4,20 +4,20 @@
 <title>ScrollVars · engine benchmark</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
-  body { background: #121118; color: #e6e4f0; font: 15px/1.6 -apple-system, sans-serif; padding: 28px; }
+  body { background: #0d1611; color: #e8efe6; font: 15px/1.6 -apple-system, sans-serif; padding: 28px; }
   h1 { font-size: 22px; margin-bottom: 4px; }
-  p.sub { color: #8f8ca6; margin-bottom: 18px; max-width: 720px; }
+  p.sub { color: #8fa898; margin-bottom: 18px; max-width: 720px; }
   table { border-collapse: collapse; margin: 18px 0; font-variant-numeric: tabular-nums; }
   .table-scroll { overflow-x: auto; max-width: 100%; }
   th, td { padding: 8px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.09); }
-  th { color: #8f8ca6; font-weight: 500; font-size: 13px; }
+  th { color: #8fa898; font-weight: 500; font-size: 13px; }
   td.n { font-family: ui-monospace, monospace; }
   .best { color: #6ee7a0; font-weight: 600; }
-  #status { color: #a78bfa; font-family: ui-monospace, monospace; font-size: 13px; margin: 10px 0; }
+  #status { color: #f2c14e; font-family: ui-monospace, monospace; font-size: 13px; margin: 10px 0; }
   iframe { width: 100%; height: 55vh; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #0f0e15; }
   button { font: 600 14px -apple-system, sans-serif; padding: 10px 18px; border-radius: 8px;
-           border: 1px solid #a78bfa; background: transparent; color: #a78bfa; cursor: pointer; }
-  small { color: #8f8ca6; display: block; margin-top: 14px; max-width: 720px; }
+           border: 1px solid #f2c14e; background: transparent; color: #f2c14e; cursor: pointer; }
+  small { color: #8fa898; display: block; margin-top: 14px; max-width: 720px; }
 </style></head><body>
 <h1>Scroll animation: cost, frame delivery and bundle size</h1>
 <p class="sub">Matching boxes and scroll progression across three engines, including idiomatic and batched GSAP.
@@ -39,10 +39,10 @@ deep one below. The "document variables published" row is what the two document 
 reads them, not a competitor comparison. Use the batched GSAP row when comparing one tracker per section.
 Small bundles do not guarantee lower CPU.</p>
 <!-- measured:start -->
-<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#a78bfa"><code>demo/bench/harness</code></a>. Clone the repo,
+<p class="sub">Measured by the committed harness (<a href="https://github.com/aduptive/scrollvars" style="color:#f2c14e"><code>demo/bench/harness</code></a>. Clone the repo,
 <code>cd demo/bench/harness &amp;&amp; npm i &amp;&amp; npm run measure</code>): Chrome 152.0.7977.85,
 median of 3 runs, engine order rotated per repetition.
-Measured 2026-09-10T23:55:45.351Z; package 1.16.1, commit 24b4f2020eac7387c9cc82d9477abd0c0a9231ef. Viewport 800×600. CPU totals accumulate over 12 seconds; they are not per-frame times. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/latest.json" style="color:#a78bfa">results/latest.json</a>.</p>
+Measured 2026-09-10T23:55:45.351Z; package 1.16.1, commit 24b4f2020eac7387c9cc82d9477abd0c0a9231ef. Viewport 800×600. CPU totals accumulate over 12 seconds; they are not per-frame times. Startup is separate; scroll intervals are never filtered. Style cells show median (min–max). Raw runs and source hashes: <a href="results/latest.json" style="color:#f2c14e">results/latest.json</a>.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>engine</th><th>total CPU (12 s)</th><th>fps</th><th>JS script</th><th>style recalc</th><th>layout</th><th>JS heap</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead>
   <tbody>
@@ -54,7 +54,7 @@ Measured 2026-09-10T23:55:45.351Z; package 1.16.1, commit 24b4f2020eac7387c9cc82
     <tr><td>framer-motion (React)</td><td class="n">1078 ms</td><td class="n">60</td><td class="n">490 ms</td><td class="n">42 ms (35–42)</td><td class="n">0 ms</td><td class="n">10.9 MB</td><td class="n">16.7 ms</td><td class="n">16.8</td><td class="n">0</td></tr>
   </tbody>
 </table></div>
-<h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8f8ca6; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">The style-recalc curve <span style="color:#8fa898; font-weight:400;">(the honest cost of the CSS-variable mechanism)</span></h2>
 <p class="sub">Every box gets a realistic subtree (<code>?deep=N</code> spans with distinct
 selectors). A GSAP tween writes a transform on the box, so its cost does not depend on what the box contains; a custom property inherits, so every write re-resolves the box's whole subtree, and <code>styles/scoped.css</code> stops that at the readers. Compare document-wide writes, local writes and batched GSAP:
 150 boxes, medians. Historical snapshot: 2026-09-10T23:55:45.351Z, package 1.16.1; <a href="results/latest.json">raw results</a>. A newer main comparison does not update this snapshot.</p>
@@ -75,7 +75,7 @@ selectors). A GSAP tween writes a transform on the box, so its cost does not dep
     <tr><td>50 nodes/box</td><td>gsap + ScrollTrigger (batched, 1 trigger/section)</td><td class="n">32 ms (27–34)</td><td class="n">68 ms</td><td class="n">380 ms</td><td class="n">3.4 MB</td><td class="n">60</td></tr>
   </tbody>
 </table></div>
-<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8f8ca6; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
+<h2 style="font-size:15px; margin-top:18px;">Low-end profile <span style="color:#8fa898; font-weight:400;">(4× synthetic CPU throttle; not a physical phone)</span></h2>
 <p class="sub">Measured 2026-09-11T04:00:01.804Z; package 1.16.1, 5 runs. Headed Chrome; compare engines within this profile, not as a multiplier of the headless table. Fixed-work calibration ratios are in the raw results.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>engine</th><th>JS script</th><th>style recalc</th><th>task total</th><th>fps</th><th>p95 frame</th></tr></thead>
@@ -88,8 +88,8 @@ selectors). A GSAP tween writes a transform on the box, so its cost does not dep
     <tr><td>framer-motion (React)</td><td class="n">1835 ms</td><td class="n">145 ms (108–160)</td><td class="n">3232 ms</td><td class="n">60</td><td class="n">18.4 ms</td></tr>
   </tbody>
 </table></div>
-<p class="sub">Raw: <a href="results/throttled-4x.json" style="color:#a78bfa">results/throttled-4x.json</a>.</p>
-<h2 style="font-size:15px; margin-top:18px;">An app-shaped page <span style="color:#8f8ca6; font-weight:400;">(what the library adds to a page that lives)</span></h2>
+<p class="sub">Raw: <a href="results/throttled-4x.json" style="color:#f2c14e">results/throttled-4x.json</a>.</p>
+<h2 style="font-size:15px; margin-top:18px;">An app-shaped page <span style="color:#8fa898; font-weight:400;">(what the library adds to a page that lives)</span></h2>
 <p class="sub">Measured 2026-09-11T04:08:34.653Z, 3 runs, order rotated. Generated by <code>harness/app-shaped.mjs</code>: a sticky header, a hero with entrance presets, a card grid with stagger, a parallax band, a feed of forty tracked items, a stream that mounts and unmounts rows every 250ms while the page scrolls, a route change at six seconds that replaces the grid and the feed, and a 5000-rule stylesheet. Same 12-second scroll as the tables above; the difference between the first row and the others is what the library costs here, animations included. The scoped row is gated: it rendered the same as the default at every sampled scroll position before its time counted.</p>
 <div class="table-scroll" tabindex="0"><table>
   <thead><tr><th>page</th><th>task total</th><th>JS script</th><th>style recalc</th><th>fps</th><th>p95 frame</th><th>frames &gt;25ms</th></tr></thead>
@@ -99,7 +99,7 @@ selectors). A GSAP tween writes a transform on the box, so its cost does not dep
     <tr><td>ScrollVars + styles/scoped.css</td><td class="n">299 ms (255.9–340.3)</td><td class="n">51.4 ms</td><td class="n">56 ms (46.2–62.9)</td><td class="n">60</td><td class="n">16.8 ms</td><td class="n">0</td></tr>
   </tbody>
 </table></div>
-<p class="sub">Raw: <a href="results/app-shaped.json" style="color:#a78bfa">results/app-shaped.json</a>.</p><h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees. Historical snapshot: 2026-09-10T23:55:45.351Z, package 1.16.1; <a href="results/latest.json">raw results</a>.</p><div class="table-scroll" tabindex="0"><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody><tr><td>hero-cinematic</td><td>42 ms</td><td>100 ms (72–164)</td><td>302 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>timeline-scrub</td><td>35 ms</td><td>60 ms (57–60)</td><td>196 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>sticky-steps</td><td>63 ms</td><td>92 ms (83–97)</td><td>322 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>stats-countup</td><td>37 ms</td><td>23 ms (21–36)</td><td>210 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>case-study-rail</td><td>35 ms</td><td>49 ms (49–50)</td><td>173 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>editorial-manifesto</td><td>47 ms</td><td>46 ms (45–52)</td><td>194 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr></tbody></table></div>
+<p class="sub">Raw: <a href="results/app-shaped.json" style="color:#f2c14e">results/app-shaped.json</a>.</p><h2>Real gallery sections (page outputs off)</h2><p class="sub">Each complete generated page at 800×600, including gallery UI and any responsive fit-to-flow fallback. These are workload checks, not competitor comparisons or device guarantees. Historical snapshot: 2026-09-10T23:55:45.351Z, package 1.16.1; <a href="results/latest.json">raw results</a>.</p><div class="table-scroll" tabindex="0"><table><thead><tr><th>section</th><th>JS</th><th>style</th><th>task total</th><th>p95</th><th>worst</th><th>frames &gt;25ms</th></tr></thead><tbody><tr><td>hero-cinematic</td><td>42 ms</td><td>100 ms (72–164)</td><td>302 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>timeline-scrub</td><td>35 ms</td><td>60 ms (57–60)</td><td>196 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>sticky-steps</td><td>63 ms</td><td>92 ms (83–97)</td><td>322 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>stats-countup</td><td>37 ms</td><td>23 ms (21–36)</td><td>210 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>case-study-rail</td><td>35 ms</td><td>49 ms (49–50)</td><td>173 ms</td><td>16.8 ms</td><td>16.8 ms</td><td>0</td></tr><tr><td>editorial-manifesto</td><td>47 ms</td><td>46 ms (45–52)</td><td>194 ms</td><td>16.7 ms</td><td>16.8 ms</td><td>0</td></tr></tbody></table></div>
 <!-- measured:end -->
 <p class="sub">Inherited variables can make large subtrees expensive. Keep continuous clocks close to their consumers;
 prefer native view timelines for compatible effects. Interpret script, style, total work and frame stalls together.</p>
@@ -107,10 +107,10 @@ prefer native view timelines for compatible effects. Interpret script, style, to
 CPU metrics use start/end deltas; startup is recorded separately. All frame intervals are retained.
 Raw JSON includes individual runs, version, hashes and fixed-work throttle ratios. The gallery rows measure real sections.
 Bundle sizes for competitors refer to their pinned public builds; React is additional for Framer.
-Sources: <a href="scrollvars.html" style="color:#a78bfa">ScrollVars</a> ·
-<a href="gsap.html" style="color:#a78bfa">gsap</a> ·
-<a href="gsap-batched.html" style="color:#a78bfa">gsap batched</a> ·
-<a href="framer.html" style="color:#a78bfa">framer-motion</a></small>
+Sources: <a href="scrollvars.html" style="color:#f2c14e">ScrollVars</a> ·
+<a href="gsap.html" style="color:#f2c14e">gsap</a> ·
+<a href="gsap-batched.html" style="color:#f2c14e">gsap batched</a> ·
+<a href="framer.html" style="color:#f2c14e">framer-motion</a></small>
 <script>
   var ENGINES = [
     { page: 'scrollvars.html', bundle: '8.7 KB', q: '', n: 150 },

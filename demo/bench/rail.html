@@ -5,19 +5,19 @@
 <style>
   @property --bench-rail-pin { syntax:'<number>'; inherits:false; initial-value:0; }
   * { box-sizing: border-box; margin: 0; }
-  body { background:#121118; color:#e6e4f0; font:14px/1.5 system-ui; }
+  body { background:#0d1611; color:#e8efe6; font:14px/1.5 system-ui; }
   section { position:relative; height:500vh; }
   .sv-stage { display:flex; align-items:center; }
   .sv-rail { display:flex; gap:24px; will-change:translate; }
   article { flex:0 0 320px; width:320px; height:360px; padding:24px; overflow:hidden; background:#252035; border-radius:16px; }
   article span { display:inline-block; margin:2px; }
-  article span:nth-child(3n) { color:#a78bfa; }
+  article span:nth-child(3n) { color:#f2c14e; }
   article span:nth-child(3n + 1) { font-weight:600; }
   .direct .sv-rail { translate:none; }
   .localized .sv-rail {
     translate:calc((1 - var(--bench-rail-pin)) * var(--sv-stage-width, 100vw) + var(--bench-rail-pin) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0;
   }
-  .hud { position:fixed; top:8px; left:8px; white-space:pre; background:#121118; z-index:2; }
+  .hud { position:fixed; top:8px; left:8px; white-space:pre; background:#0d1611; z-index:2; }
 </style></head><body>
 <section><div class="sv-stage"><div class="sv-rail"></div></div></section>
 <script src="../fx/sv.js"></script><script src="runner.js"></script>

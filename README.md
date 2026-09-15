@@ -511,7 +511,7 @@ parent clock (`--sv-pin` when pinned, else `--sv-t`):
 
 `sv-range-rise` is the ready-made flavor (rise + fade per range; the fade
 starts at `--sv-range-floor`, .55 by default, which keeps text at 4.5:1
-on the tested pair (#e6e4f0 on #17151f) while a child waits for its slice; a muted
+on the tested pair (#e8efe6 on #14211a) while a child waits for its slice; a muted
 or accent color needs a higher floor, and 0 gives the dramatic look at the
 cost of that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()

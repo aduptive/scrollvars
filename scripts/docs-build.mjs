@@ -72,13 +72,13 @@ const page = `<!doctype html>
 <meta name="description" content="Quickstart, the variables, every export, coming-from-GSAP mapping, accessibility contract, troubleshooting, changelog.">
 <style>
   * { box-sizing: border-box; margin: 0; }
-  :root { --ink:#121118; --line:rgba(230,228,240,.09); --text:#e6e4f0; --muted:#8f8ca6;
-    --accent:#a78bfa; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  :root { --ink:#0d1611; --line:rgba(232, 239, 230,.09); --text:#e8efe6; --muted:#8fa898;
+    --accent:#f2c14e; --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.65 var(--sans); }
   a { color: var(--accent); }
   header { position:sticky; top:0; z-index:9; display:flex; justify-content:space-between;
-    align-items:center; padding:0 24px; height:56px; background:rgba(18,17,24,.9);
+    align-items:center; padding:0 24px; height:56px; background:rgba(13, 22, 17,.9);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); font-size:14px; }
   header .v { color:var(--muted); font:600 12px var(--mono); }
   main { max-width: 880px; margin: 0 auto; padding: 40px 24px 100px; }
@@ -86,11 +86,11 @@ const page = `<!doctype html>
   h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
   h4 { font-size: 12px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-  p, li { color: #cfcbe4; } p.lead { color: var(--muted); }
+  p, li { color: #d6dfd6; } p.lead { color: var(--muted); }
   p.grp { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-top: 14px; }
-  code { font: 13px var(--mono); background:#1b1a24; padding: 1px 5px; border-radius: 5px; }
-  pre { background:#17151f; border:1px solid var(--line); border-radius:12px; padding:16px;
+  code { font: 13px var(--mono); background:#14211a; padding: 1px 5px; border-radius: 5px; }
+  pre { background:#14211a; border:1px solid var(--line); border-radius:12px; padding:16px;
     overflow-x:auto; font:13px/1.6 var(--mono); margin: 12px 0; }
   pre code { background: none; padding: 0; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 12px 0; }
