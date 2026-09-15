@@ -324,8 +324,11 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
   // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
-  else SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => tl.progress(p) })
+  let progress = 0
+  const settle = () => tl.progress(SV.prefersReducedMotion() ? 1 : progress)
+  settle()
+  SV.onMotionChange(settle)
+  SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => { progress = p; settle() } })
 })</script>`,
     css: `<div class="scene">                     <!-- no data-sv: tracked in JS below -->
   <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
@@ -609,7 +612,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}:where([data-sv-motion="reduce"]) .fxslide{scale:none;opacity:1;transform:none}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>`,
     css: `<div class="sv-slider" id="cards" role="region" aria-label="Cards">
   <div class="slide">…</div> ×N
@@ -1351,6 +1354,12 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 :where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
+@supports not (translate: 0) {
+  .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+  .sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
+}
+.sv-on [data-sv-off].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+[data-sv-off].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
@@ -1382,10 +1391,21 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
   React.useEffect(() => {
-    // the effective preference: the OS setting or the page's data-sv-motion
-    // switch (both show every shot in flow, so every shot must be reachable)
-    setInteractive(!prefersReducedMotion())
-    return onMotionChange((reduced) => setInteractive(!reduced))
+    const el = ref.current
+    if (!el) return
+    // Read the actual layout: failed boot, the watchdog and missing CSS all
+    // leave static shots reachable. Only the crossfade hides inactive shots.
+    const update = () => {
+      const shot = el.querySelector('.st-shot')
+      setInteractive(el.classList.contains('sv') && !el.hasAttribute('data-sv-off') &&
+        !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
+    }
+    update()
+    const stopMotion = onMotionChange(update)
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+    return () => { stopMotion(); observer.disconnect() }
   }, [])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
@@ -1588,14 +1608,18 @@ export function GsapScrub({
 }) {
   const stage = React.useRef<HTMLDivElement>(null)
   const tl = React.useRef<gsap.core.Timeline | null>(null)
+  const progress = React.useRef(0)
   React.useEffect(() => {
-    if (stage.current) tl.current = buildTimeline(stage.current)
+    if (stage.current) {
+      tl.current = buildTimeline(stage.current)
+      tl.current.progress(prefersReducedMotion() ? 1 : progress.current)
+    }
     return () => { tl.current?.kill() }
   }, [buildTimeline])
   return (
     <Track
       pin={height}
-      onPin={(p) => tl.current?.progress(prefersReducedMotion() ? 1 : p)}
+      onPin={(p) => { progress.current = p; tl.current?.progress(prefersReducedMotion() ? 1 : p) }}
       className={className}
     >
       <div ref={stage} className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>

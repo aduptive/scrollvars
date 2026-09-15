@@ -440,3 +440,21 @@ test('scan marks the driver\'s arrival even when the route has nothing to track 
   assert.equal(global.window.__scrollvars, true, 'the flag is set with zero trackers')
   stop()
 })
+
+test('overlapping scanners retain tracking until the last owner stops', async () => {
+  setupScanGlobals()
+  const { scan } = await import('../dist/core/scan.js?round11owners')
+  for (const reverse of [false, true]) {
+    const { el, releaseCalls } = makeChurnProbe()
+    const root = makeElement({}, [el])
+    global.document = makeDocumentStub(root)
+    const stops = [scan(), scan(root)]
+    assert.equal(releaseCalls.length, 0, 'joining does not replace the tracker')
+    if (reverse) stops.reverse()
+    stops[0]()
+    stops[0]()
+    assert.equal(releaseCalls.length, 0, 'one owner remains')
+    stops[1]()
+    assert.equal(releaseCalls.length, 2, 'last owner releases once')
+  }
+})

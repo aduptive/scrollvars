@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 4.1 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 4.3 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.1 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.3 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.1 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.3 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2942,8 +2942,8 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 18.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.7 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>10.7 KB / 4.1 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~6.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>11.3 KB / 4.3 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.7 KB · v1.17.2 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.3 KB gzip · full core 8.9 KB · v1.17.3 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3596,10 +3596,22 @@ var SV = (() => {
   function computePin(geo, offset = 0, stageHeight) {
     return clamp((offset - geo.top) / pinSpan(geo.height, geo.vp, offset, stageHeight), 0, 1);
   }
+  function ownedStage(el) {
+    const stages = el.querySelectorAll?.(".sv-stage") ?? [el.querySelector?.(".sv-stage")].filter(Boolean);
+    return Array.from(stages).find((stage) => {
+      if (entries.has(stage) || stage.hasAttribute?.("data-sv") || stage.classList?.contains("sv"))
+        return false;
+      for (let parent = stage.parentElement; parent && parent !== el; parent = parent.parentElement) {
+        if (entries.has(parent) || parent.classList.contains("sv") || parent.hasAttribute("data-sv"))
+          return false;
+      }
+      return true;
+    });
+  }
   function readPinOffset(el) {
     if (typeof getComputedStyle !== "function")
       return 0;
-    const stage = el.querySelector?.(".sv-stage") ?? el;
+    const stage = ownedStage(el) ?? el;
     const computed = getComputedStyle(stage);
     if (stage !== el && /^-?[\d.]+px$/.test(computed.top))
       return parseFloat(computed.top);
@@ -3810,15 +3822,25 @@ var SV = (() => {
       scene: -1,
       pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
       written: {},
-      stage: opts.pin || opts.scenes || opts.onPin ? el.querySelector?.(".sv-stage") ?? void 0 : void 0,
-      fit: opts.pin || opts.scenes || opts.onPin ? el.querySelector?.(".sv-stage > [data-sv-fit]") ?? void 0 : void 0
+      stage: opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : void 0,
+      fit: opts.pin || opts.scenes || opts.onPin ? Array.from(ownedStage(el)?.children ?? []).find((child) => child.hasAttribute("data-sv-fit")) : void 0
     };
+    if (belowTransformFloor() && entry.stage?.querySelector(".sv-deck")) {
+      entry.flow = true;
+      el.setAttribute("data-sv-flow", "");
+      opts.onFlow?.(true);
+    }
     entries.set(el, entry);
     el.classList.add("sv");
     if (opts.scenes && opts.scenes > 1)
       el.style.setProperty("--sv-scenes", String(opts.scenes));
     if (typeof opts.pin === "string") {
-      entry.authored = { height: el.style.height, position: el.style.position };
+      entry.authored = {
+        height: el.style.height,
+        position: el.style.position,
+        heightPriority: el.style.getPropertyPriority?.("height") ?? "",
+        positionPriority: el.style.getPropertyPriority?.("position") ?? ""
+      };
       applyPinHelper(entry);
     }
     if (settled)
@@ -3862,19 +3884,18 @@ var SV = (() => {
     if (typeof opts.pin !== "string" || !authored)
       return;
     if (entry.flow || reducedMotion2 || belowTransformFloor() && !compatInstalled()) {
-      el.style.height = authored.height;
-      el.style.position = authored.position;
+      restorePinHelper(entry);
     } else {
       const keep = authored.position && authored.position !== "static" ? authored.position : "";
       el.style.height = opts.pin;
-      el.style.position = keep || (!computed || computed === "static" ? "relative" : "");
+      el.style.setProperty("position", keep || (!computed || computed === "static" ? "relative" : ""), keep ? authored.positionPriority : "");
     }
   }
   function restorePinHelper(entry) {
     if (!entry.authored)
       return;
-    entry.el.style.height = entry.authored.height;
-    entry.el.style.position = entry.authored.position;
+    entry.el.style.setProperty("height", entry.authored.height, entry.authored.heightPriority);
+    entry.el.style.setProperty("position", entry.authored.position, entry.authored.positionPriority);
   }
   function refresh() {
     entries.forEach((entry) => {
@@ -3890,7 +3911,7 @@ var SV = (() => {
     const rect = el.getBoundingClientRect();
     const vp = root ? root.clientHeight : window.innerHeight;
     const pinOffset = readPinOffset(el);
-    const stage = el.querySelector(".sv-stage");
+    const stage = ownedStage(el);
     const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight);
     const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset;
     const behavior = smooth && !getReducedMotion() ? "smooth" : "instant";
@@ -4075,6 +4096,21 @@ var SV = (() => {
     const v = Number(el.getAttribute(attr));
     return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : void 0;
   }
+  var registrations = /* @__PURE__ */ new WeakMap();
+  function acquire(el) {
+    let registration = registrations.get(el);
+    if (!registration) {
+      registration = { owners: 0, stop: track(el, optionsFrom(el)) };
+      registrations.set(el, registration);
+    }
+    registration.owners++;
+    return () => {
+      if (--registration.owners === 0) {
+        registrations.delete(el);
+        registration.stop();
+      }
+    };
+  }
   function scan(root) {
     if (typeof window === "undefined")
       return () => {
@@ -4103,7 +4139,7 @@ var SV = (() => {
     };
     const add = (el) => {
       if (!tracked.has(el))
-        tracked.set(el, track(el, optionsFrom(el)));
+        tracked.set(el, acquire(el));
     };
     const remove = (el) => {
       if (scope.contains(el))

@@ -52,6 +52,22 @@ function band(el: HTMLElement, attr: string): number | undefined {
   return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : undefined
 }
 
+const registrations = new WeakMap<HTMLElement, { owners: number; stop: () => void }>()
+function acquire(el: HTMLElement): () => void {
+  let registration = registrations.get(el)
+  if (!registration) {
+    registration = { owners: 0, stop: track(el, optionsFrom(el)) }
+    registrations.set(el, registration)
+  }
+  registration.owners++
+  return () => {
+    if (--registration.owners === 0) {
+      registrations.delete(el)
+      registration.stop()
+    }
+  }
+}
+
 export function scan(root?: ParentNode): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: ParentNode = root ?? document
@@ -77,7 +93,7 @@ export function scan(root?: ParentNode): () => void {
   }
 
   const add = (el: HTMLElement) => {
-    if (!tracked.has(el)) tracked.set(el, track(el, optionsFrom(el)))
+    if (!tracked.has(el)) tracked.set(el, acquire(el))
   }
   const remove = (el: HTMLElement) => {
     // a mutation batch can carry the same node in both removedNodes and

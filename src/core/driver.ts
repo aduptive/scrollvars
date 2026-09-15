@@ -53,7 +53,7 @@ interface Entry {
    * (.sv-stage) and the math. */
   pinOffset: number
   /** inline height/position the pin helper replaced, restored on untrack */
-  authored?: { height: string; position: string }
+  authored?: { height: string; position: string; heightPriority: string; positionPriority: string }
   written: Record<string, string>
   stage?: HTMLElement
   fit?: HTMLElement
@@ -536,6 +536,18 @@ function computePin(geo: Geometry, offset = 0, stageHeight?: number): number {
   return clamp((offset - geo.top) / pinSpan(geo.height, geo.vp, offset, stageHeight), 0, 1)
 }
 
+function ownedStage(el: HTMLElement): HTMLElement | undefined {
+  const stages = el.querySelectorAll?.<HTMLElement>('.sv-stage')
+    ?? [el.querySelector?.<HTMLElement>('.sv-stage')].filter(Boolean) as HTMLElement[]
+  return Array.from(stages).find((stage) => {
+    if (entries.has(stage) || stage.hasAttribute?.('data-sv') || stage.classList?.contains('sv')) return false
+    for (let parent = stage.parentElement; parent && parent !== el; parent = parent.parentElement) {
+      if (entries.has(parent) || parent.classList.contains('sv') || parent.hasAttribute('data-sv')) return false
+    }
+    return true
+  })
+}
+
 /** `--sv-pin-offset` as a number of px (0 when unset or outside a browser).
  * Uses the actual stage's computed top, including calc(), env() and percentages.
  * Without a stage (or when top is auto), the fallback resolves rem (root font-size), em (the stage's font-size), vh/svh/lvh/dvh
@@ -552,7 +564,7 @@ function computePin(geo: Geometry, offset = 0, stageHeight?: number): number {
  * wrapper is the best reference left. */
 function readPinOffset(el: HTMLElement): number {
   if (typeof getComputedStyle !== 'function') return 0
-  const stage = (el.querySelector?.('.sv-stage') as HTMLElement | null) ?? el
+  const stage = ownedStage(el) ?? el
   const computed = getComputedStyle(stage)
   // CSS resolves calc(), percentages, viewport units and env() in the actual
   // sticky containing block. Do not maintain a second CSS length engine.
@@ -914,11 +926,18 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
     pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
     written: {},
     stage: opts.pin || opts.scenes || opts.onPin
-      ? el.querySelector?.<HTMLElement>('.sv-stage') ?? undefined
+      ? ownedStage(el)
       : undefined,
     fit: opts.pin || opts.scenes || opts.onPin
-      ? el.querySelector?.<HTMLElement>('.sv-stage > [data-sv-fit]') ?? undefined
+      ? Array.from(ownedStage(el)?.children ?? []).find((child) => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
       : undefined,
+  }
+  // Compat animates curtains and rails, but its deck is static. Release the
+  // whole stage so an unstacked deck cannot disappear below its clip.
+  if (belowTransformFloor() && entry.stage?.querySelector('.sv-deck')) {
+    entry.flow = true
+    el.setAttribute('data-sv-flow', '')
+    opts.onFlow?.(true)
   }
   entries.set(el, entry)
   el.classList.add('sv')
@@ -928,7 +947,9 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
   // under reduced motion, or below the individual-transform floor without
   // compat(), the wrapper stays in flow instead of an empty scroll
   if (typeof opts.pin === 'string') {
-    entry.authored = { height: el.style.height, position: el.style.position }
+    entry.authored = { height: el.style.height, position: el.style.position,
+      heightPriority: el.style.getPropertyPriority?.('height') ?? '',
+      positionPriority: el.style.getPropertyPriority?.('position') ?? '' }
     applyPinHelper(entry)
   }
   // Everything this call writes is in place: commit the `--sv-live: 0` reset
@@ -1007,8 +1028,7 @@ function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
   const { el, opts, authored } = entry
   if (typeof opts.pin !== 'string' || !authored) return
   if (entry.flow || reducedMotion || (belowTransformFloor() && !compatInstalled())) {
-    el.style.height = authored.height
-    el.style.position = authored.position
+    restorePinHelper(entry)
   } else {
     // only a static element needs the positioning context; one positioned by a
     // stylesheet or inline (absolute, fixed, sticky) keeps it. An authored
@@ -1017,13 +1037,13 @@ function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
     // absolutely positioned curtain escapes the stage.
     const keep = authored.position && authored.position !== 'static' ? authored.position : ''
     el.style.height = opts.pin
-    el.style.position = keep || (!computed || computed === 'static' ? 'relative' : '')
+    el.style.setProperty('position', keep || (!computed || computed === 'static' ? 'relative' : ''), keep ? authored.positionPriority : '')
   }
 }
 function restorePinHelper(entry: Entry) {
   if (!entry.authored) return
-  entry.el.style.height = entry.authored.height
-  entry.el.style.position = entry.authored.position
+  entry.el.style.setProperty('height', entry.authored.height, entry.authored.heightPriority)
+  entry.el.style.setProperty('position', entry.authored.position, entry.authored.positionPriority)
 }
 
 /** Force a recompute (e.g. after content changes outside a resize). */
@@ -1053,7 +1073,7 @@ export function scrollToScene(
   const vp = root ? root.clientHeight : window.innerHeight
   const pinOffset = readPinOffset(el)
   // the same span the driver's pin math uses: the stage's rendered height
-  const stage = el.querySelector<HTMLElement>('.sv-stage')
+  const stage = ownedStage(el)
   const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight)
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset
   // reduced motion outranks the caller's `smooth`, the same way the slider's

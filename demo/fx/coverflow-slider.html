@@ -186,7 +186,7 @@
     <div class="fxcard fxslide">03</div><div class="fxcard fxslide">04</div>
   </div>
 </div>
-<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}</style>
+<style>#fxslider{scrollbar-width:none}.fxslide{scale:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.12,.3));opacity:calc(1 - min(max(var(--sd,0),-1*var(--sd,0))*.35,.7));transform:perspective(900px) rotateY(clamp(-24deg,calc(var(--sd,0)*-16deg),24deg))}@media(prefers-reduced-motion:reduce){.fxslide{scale:none;opacity:1;transform:none}}:where([data-sv-motion="reduce"]) .fxslide{scale:none;opacity:1;transform:none}</style>
 <script>addEventListener('load',()=>SV.slider(document.getElementById('fxslider'),{duration:900}))</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add coverflow-slider</code><br><b>Styles:</b> <code>import 'scrollvars/styles/slider.css'</code></p>
   <div class="tabs">
@@ -225,12 +225,12 @@
 &lt;/Slider&gt;
 // chrome: --sv-arrow-* / --sv-dot-* vars, prevIcon/nextIcon, renderDot, or your own UI via ref</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.7 KB gzip as ESM (this page's fx/sv.js IIFE: 8.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.9 KB gzip as ESM (this page's fx/sv.js IIFE: 9.1 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.17.2. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.17.3. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

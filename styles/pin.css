@@ -218,30 +218,23 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* No individual transforms, JS on (Chrome below 104, Firefox 72, Safari
-   14.1): `html.sv-on` blocks the guards above, and the stacking half of these
-   presets is plain layout. `transform`, not the no-JS `display: none`, so
-   compat's sheet still outranks and animates them. Guarantee: the curtains
-   sit parted and static, nothing overlaps, content stays in flow. */
+/* Without individual transforms, release unsupported layouts. Compat keeps
+   its animated rail and curtains pinned; static decks use data-sv-flow. */
 @supports not (translate: 0) {
-  /* Not under compat(): its sheet animates from --sv-pin, measured from this
-     skeleton, so releasing it snapped the curtains over one pixel. The driver
-     reads the same marker. The guarantee above holds without compat only: with
-     it the stage stays pinned and tall content clips. */
   html:not([data-sv-compat]) .sv-stage {
     position: static;
     height: auto;
     overflow: visible;
   }
-  .sv .sv-curtain-l {
-    transform: translateX(-101%);
+  html:not([data-sv-compat]) .sv .sv-curtain-l,
+  html:not([data-sv-compat]) .sv .sv-curtain-r {
+    display: none;
   }
-  .sv .sv-curtain-r {
-    transform: translateX(101%);
+  html:not([data-sv-compat]) .sv .sv-rail {
+    width: auto;
+    flex-wrap: wrap;
   }
-  .sv .sv-deck {
-    display: block; /* the same line compat's sheet carries, for the same reason */
-  }
+  .sv .sv-deck { display: block; }
 }
 
 /* ---- Accessibility ---- */

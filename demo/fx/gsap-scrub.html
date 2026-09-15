@@ -195,8 +195,11 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
   // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tl.progress(1)
-  else SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => tl.progress(p) })
+  let progress = 0
+  const settle = () => tl.progress(SV.prefersReducedMotion() ? 1 : progress)
+  settle()
+  SV.onMotionChange(settle)
+  SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => { progress = p; settle() } })
 })</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add gsap-scrub</code><br><b>Styles:</b> <code>import 'scrollvars/styles/pin.css'</code></p>
   <div class="tabs">
@@ -238,12 +241,12 @@ useEffect(() =&gt; {
   &lt;div className="sv-stage"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.7 KB gzip as ESM (this page's fx/sv.js IIFE: 8.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.9 KB gzip as ESM (this page's fx/sv.js IIFE: 9.1 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.17.2. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.17.3. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

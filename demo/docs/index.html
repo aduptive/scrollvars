@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.17.2</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.17.3</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -157,7 +157,7 @@ variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page wi
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.5 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
+(gzipped: <code>styles/core.css</code> 2.6&nbsp;KB · pin 3.2 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.3).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -298,6 +298,21 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.17.3 (2026-09-15)</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Share scroll tracking across overlapping scanners until their last owner stops.</li>
+<li>Resolve pin stages within their owning tracker for measurement and scene navigation.</li>
+<li>Preserve authored height and position priorities when releasing pin helpers.</li>
+<li>Honor the page motion switch in Coverflow and GSAP gallery previews.</li>
+<li>Keep static StickySteps shots accessible after failed enhancement or watchdog release.</li>
+<li>Restore the current scroll progress when rebuilding an installed GSAP timeline.</li>
+<li>Wrap unsupported rails, hide decorative curtains and release static legacy deck stages.</li>
+<li>Keep nested scoped-clock readers on their own clocks before the first driver write.</li>
+</ul>
 
 <h3>1.17.2 (2026-09-14)</h3>
 

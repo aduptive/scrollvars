@@ -157,6 +157,9 @@ function makeElement(height = 400) {
     stage: null,
     querySelector: (selector) => (selector === '.sv-stage' ? el.stage : null),
   }
+  for (const name of ['height', 'position']) Object.defineProperty(el.style, name, {
+    configurable: true, get: () => el.vars[name] ?? '', set: value => el.style.setProperty(name, value),
+  })
   return el
 }
 
@@ -1306,7 +1309,7 @@ test('driver: an ancestor that gives up its marker for a new tracker takes it ba
   assert.ok(!middle.attrs.has('data-sv-off'), 'the untracked node in between was never released and stays bare')
 })
 
-test('styles/pin.css: below the individual-transform floor the deck unstacks, the curtains open and the stage releases, with JS on', () => {
+test('styles/pin.css: below the individual-transform floor the deck unstacks, the curtains hide and the stage releases, with JS on', () => {
   // Chrome 88-103, Firefox 60-71, Safari 13-14.0 run the driver, so html.sv-on
   // is on and the no-JS guards cannot fire, while translate/rotate/scale are
   // dropped and the deck's grid stacking (plain layout) survives on its own.
@@ -1316,11 +1319,8 @@ test('styles/pin.css: below the individual-transform floor the deck unstacks, th
   const deck = rules.find((rule) => rule.selectors.includes('.sv .sv-deck'))
   assert.ok(deck && deck.body.includes('display: block'), `the deck unstacks: ${deck?.body}`)
   for (const side of ['l', 'r']) {
-    const curtain = rules.find((rule) => rule.selectors.includes(`.sv .sv-curtain-${side}`))
-    // `transform`, not the no-JS `display: none`: scrollvars/compat's fallback
-    // sheet re-expresses these panels with the same property and is appended
-    // later, so it still outranks this and animates them down there
-    assert.ok(curtain && /transform:\s*translateX\(/.test(curtain.body), `curtain-${side} opens: ${curtain?.body}`)
+    const curtain = rules.find((rule) => rule.selectors.includes(`html:not([data-sv-compat]) .sv .sv-curtain-${side}`))
+    assert.ok(curtain && /display:\s*none/.test(curtain.body), `curtain-${side} hides: ${curtain?.body}`)
   }
   // ADU-149: unstacking the deck is not enough on its own. `.sv-stage` keeps
   // `position: sticky; height: 100vh; overflow: hidden` (its base rule),
@@ -1602,24 +1602,11 @@ test('driver: a motion flip reads every pinned position before it writes any of 
   })
   const { track } = await import('../dist/core/driver.js?pinreadorder')
   const instrument = (el, name) => {
-    let height = ''
-    let position = ''
-    Object.defineProperty(el.style, 'height', {
-      configurable: true,
-      get: () => height,
-      set: (value) => {
-        log.push(`write ${name} height`)
-        height = value
-      },
-    })
-    Object.defineProperty(el.style, 'position', {
-      configurable: true,
-      get: () => position,
-      set: (value) => {
-        log.push(`write ${name} position`)
-        position = value
-      },
-    })
+    const setProperty = el.style.setProperty
+    el.style.setProperty = (property, value, priority) => {
+      if (property === 'height' || property === 'position') log.push(`write ${name} ${property}`)
+      setProperty(property, value, priority)
+    }
     return el
   }
   const els = [instrument(makeElement(400), 'p1'), instrument(makeElement(400), 'p2'), instrument(makeElement(400), 'p3')]
@@ -1697,7 +1684,8 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   const { track } = await import('../dist/core/driver.js?fitflow')
   const el = makeElement(3000)
   const fit = { offsetHeight: 900 }
-  el.stage = {}
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  el.stage = { children: [fit] }
   el.style.height = 'auto'
   el.style.position = ''
   el.querySelector = sel => sel === '.sv-stage' ? el.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
@@ -1736,4 +1724,68 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   assert.equal(el.style.height, '300vh')
   stop()
   delete global.getComputedStyle
+})
+
+test('pin stages belong to their tracker for measurement and navigation', async () => {
+  const { track, scrollToScene } = await import('../dist/core/driver.js?round11stage')
+  const outer = makeElement(3000), inner = makeElement(2000), nested = makeElement(200), own = makeElement(600)
+  inner.attrs.set('data-sv', '')
+  nest(outer, inner); nest(inner, nested); nest(outer, own)
+  outer.stage = nested
+  outer.querySelectorAll = () => [nested, own]
+  own.offsetHeight = 600; own.clientWidth = 700
+  nested.offsetHeight = 200; nested.clientWidth = 100
+  place(outer, -1200)
+  let progress
+  const stop = track(outer, { pin: true, onPin: p => { progress = p } })
+  pump()
+  assert.equal(progress, .5)
+  assert.equal(outer.vars['--sv-stage-width'], '700.0000px')
+  const previous = window.scrollTo
+  let target
+  window.scrollTo = options => { target = options.top }
+  scrollToScene(outer, 1, 3)
+  assert.equal(target, window.scrollY + outer.rect.top + 1200)
+  window.scrollTo = previous
+  stop()
+})
+
+test('pin helper restores authored CSS priorities on motion fallback and cleanup', async () => {
+  const { track } = await import('../dist/core/driver.js?round11priority')
+  const el = makeElement()
+  for (const name of ['height', 'position']) Object.defineProperty(el.style, name, {
+    get: () => el.vars[name] ?? '', set: value => el.style.setProperty(name, value),
+  })
+  el.style.setProperty('height', '42px', 'important')
+  el.style.setProperty('position', 'static', 'important')
+  const stop = track(el, { pin: '300vh' })
+  mediaChange({ matches: true })
+  assert.equal(el.style.height, '42px')
+  assert.equal(el.priorities.height, 'important')
+  assert.equal(el.priorities.position, 'important')
+  mediaChange({ matches: false })
+  stop()
+  assert.equal(el.style.height, '42px')
+  assert.equal(el.priorities.height, 'important')
+  assert.equal(el.priorities.position, 'important')
+})
+
+test('legacy compat releases a deck stage and its empty pin stretch', async () => {
+  window.CSS = { supports: () => false }
+  document.documentElement.hasAttribute = name => name === 'data-sv-compat'
+  const { track } = await import('../dist/core/driver.js?round11legacy')
+  const el = makeElement(3000), stage = makeElement(600), deck = makeElement(1500)
+  deck.classes.add('sv-deck')
+  stage.children = [deck]; nest(stage, deck); nest(el, stage)
+  stage.querySelector = selector => selector === '.sv-deck' ? deck : null
+  el.stage = stage
+  const flows = []
+  const stop = track(el, { pin: '300vh', onFlow: value => flows.push(value) })
+  pump()
+  assert.ok(el.hasAttribute('data-sv-flow'))
+  assert.equal(el.style.height, '')
+  assert.deepEqual(flows, [true])
+  stop()
+  delete window.CSS
+  delete document.documentElement.hasAttribute
 })

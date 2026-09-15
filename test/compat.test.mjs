@@ -178,7 +178,7 @@ test('compat: with the fallback sheet installed the pin skeleton stays whole bel
 
   const { track } = await import('../dist/core/driver.js?compatpin')
   const el = {
-    style: { height: '', position: '', setProperty: () => {}, removeProperty: () => {} },
+    style: { height: '', position: '', setProperty(name, value) { this[name] = value }, removeProperty(name) { delete this[name] } },
     classes: new Set(),
     attrs: new Set(),
     classList: {
