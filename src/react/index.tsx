@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { EffectOptions } from '../canvas/index.js'
 import { mountEffect } from '../canvas/index.js'
 import type { TrackOptions } from '../core/driver.js'
-import { scrollToScene, setPageOutputs, track } from '../core/driver.js'
+import { scrollToScene, setPageOutputs, track, releaseBoot } from '../core/driver.js'
 import { reducedMotion as effectiveReduce, onMotionChange } from '../core/motion.js'
 import type { PointerOptions } from '../core/pointer.js'
 import { trackPointer } from '../core/pointer.js'
@@ -38,10 +38,10 @@ import { splitParts } from '../core/split.js'
  * nothing on the normal path, it is only installed when the watchdog has fired. */
 const PREPAINT =
   "(function(){try{if(!('IntersectionObserver'in window&&'ResizeObserver'in window))return;" +
-  "var h=document.documentElement;h.classList.add('sv-on');" +
-  "setTimeout(function(){if(window.__scrollvars)return;h.classList.remove('sv-on');" +
-  "new MutationObserver(function(){if(h.classList.contains('sv-on'))h.classList.remove('sv-on')})" +
-  ".observe(h,{attributes:true,attributeFilter:['class']})},3000)}catch(e){}})()"
+  "var h=document.documentElement;if(window.__scrollvars==='released')return;h.classList.add('sv-on');" +
+  "setTimeout(function(){if(window.__scrollvars===true)return;window.__scrollvars='released';h.classList.remove('sv-on');" +
+  "try{new MutationObserver(function(){if(h.classList.contains('sv-on'))h.classList.remove('sv-on')})" +
+  ".observe(h,{attributes:true,attributeFilter:['class']})}catch(e){}},3000)}catch(e){}})()"
 
 export interface ScrollVarsBootProps {
   /** Disable document-wide variables when unused. Omit to keep the current global setting. */
@@ -57,7 +57,15 @@ export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce, pageOutpu
   }, [pageOutputs])
   useEffect(() => {
     const stopScan = scan()
-    const stopToggles = toggles()
+    let stopToggles: () => void
+    try { stopToggles = toggles() }
+    catch (error) {
+      stopScan()
+      releaseBoot()
+      if (typeof reportError === 'function') reportError(error)
+      else console.error(error)
+      return
+    }
     // dev convenience: ?sv-debug mounts the overlay (code-split. Costs
     // nothing unless the flag is present)
     let stopDebug: (() => void) | undefined

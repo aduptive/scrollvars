@@ -37,7 +37,9 @@ const registry = JSON.parse(readFileSync(registryPath, 'utf8'))
 const byProps = new Map(EFFECTS.filter((fx) => fx.previewProps).map((fx) => [fx.slug, fx]))
 
 const effects = []
+const failureFixture = process.argv.includes('--enhancement-failure')
 for (const entry of registry.effects) {
+  if (failureFixture && entry.slug !== 'sticky-steps') continue
   const fx = byProps.get(entry.slug)
   if (!fx) continue
   const dir = mkdtempSync(join(tmpdir(), `sv-install-${entry.slug}-`))
@@ -48,6 +50,11 @@ for (const entry of registry.effects) {
   })
   // what a consumer now has on disk, byte for byte: never COMPONENTS[slug]
   const content = readFileSync(join(dir, entry.file), 'utf8')
+  if (failureFixture) {
+    const { buildFailureFixture } = await import('./enhancement-failure-build.mjs')
+    effects.push(await buildFailureFixture(join(dir, entry.file), entry.requires?.styles ?? []))
+    continue
+  }
   const Component = await loadComponent(entry.slug, { file: entry.file, content })
   effects.push({
     slug: entry.slug,

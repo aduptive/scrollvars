@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.7 KB, full core incl. the slider 9.5 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.3 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.2 KB, full core incl. the slider 10.2 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.8 KB on the wire.
 
 ## Why
 
@@ -75,7 +75,7 @@ that gap. What is left at fifty nodes per box is the price of animating
 through the cascade at all. The authoring rule that keeps a page on the
 cheap side of the curve: keep tracked elements thin, with big static
 content next to the animated element rather than inside it.
-The package ships ~5× less bundle than GSAP + ScrollTrigger; frame delivery
+The package ships ~4× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.
 
@@ -144,17 +144,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 4.7 KB |
-| `track` + `scan` (zero-wrapper mode) | 6.2 KB |
+| `track` (the driver) | 5.2 KB |
+| `track` + `scan` (zero-wrapper mode) | 6.9 KB |
 | `slider` | 2.8 KB |
 | `trackPointer` | 0.7 KB |
-| `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 9.5 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 15.4 KB |
+| `mountEffect` (canvas) | 2.0 KB |
+| everything in `scrollvars` (the core entry) | 10.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 16.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~7.3 KB gzipped, total.**
+**~7.8 KB gzipped, total.**
 
 ## Mental model
 
@@ -585,8 +585,28 @@ static card stays reachable. Compat's rail still ignores `--sv-rail-start`
 and starts at `translateX(0)`; it is stationary when its width fits the stage.
 
 Installed StickySteps only applies `inert` and `aria-hidden` to inactive shots
-when its crossfade layout is active. Failed enhancement, watchdog release,
-reduced motion and fit-to-flow leave the static shots accessible.
+after tracking and its first fit evaluation succeed and the crossfade layout
+is active. It starts static, even while another section has booted the driver.
+Failed enhancement, release, reduced motion and fit-to-flow clear layout and
+accessibility hiding so every static shot remains reachable.
+
+Scroll initialization and attachment roll back partial setup on failure.
+Missing or throwing ResizeObserver keeps content static; a missing or throwing
+optional IntersectionObserver runs without culling. A failed scan releases
+only its own tracking, split and pointer leases and settles unprocessed content.
+Overlapping owners keep their resources. Measurement, output and callback
+failures release the affected tracker, restore its pin geometry and report the
+original error once; healthy entries continue. Retry a recoverable failure by
+explicitly tracking or scanning again. `track()` still returns a cleanup function.
+
+Boot acknowledges a working driver and completed scanner setup, including an
+empty route. Its prepaint watchdog releases hiding after three seconds without
+that acknowledgement. Expiry is terminal for that page session: late tracking,
+scanning and remounting remain static, even if mutation observation is unavailable.
+The inline script requires both observers to exist before hiding and accepts
+the request nonce through `<ScrollVarsBoot nonce={nonce} />` under a strict CSP.
+If Boot's toggle setup throws after scanning, Boot also settles the page
+terminally and releases the scroll trackers it had already initialized.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);

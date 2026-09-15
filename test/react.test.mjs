@@ -263,6 +263,7 @@ test('react: a driver boot after the pre-paint watchdog fired does not re-hide t
   assert.equal(late.timers[0][1], 3000)
   late.timers[0][0]() // 3s, no driver: the page is released, content is visible
   assert.ok(!late.on())
+  assert.equal(late.win.__scrollvars, 'released', 'the terminal state survives missing or throwing mutation observation')
   // the bundle finally arrives at 4s and the driver adds sv-on back, which
   // sent every offscreen entrance to opacity 0: content appeared, then vanished
   late.boot()
@@ -1646,5 +1647,33 @@ test('react: StrictMode Slider releases resources across output switches, active
     if (mounted) await React.act(async () => root.unmount())
     Object.assign(global, saved)
     Object.assign(window, savedWindow)
+  }
+})
+
+test('react: Boot releases its acquired scan when toggle setup fails', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { ScrollVarsBoot } = await import('../dist/react/index.js')
+  const query = document.querySelectorAll, report = global.reportError
+  const errors = [], error = Error('toggle setup')
+  const el = document.createElement('section')
+  el.setAttribute('data-sv', '')
+  document.querySelectorAll = selector => {
+    if (selector === '[data-sv-toggle]') throw error
+    return selector === '[data-sv]' ? [el] : []
+  }
+  global.reportError = value => errors.push(value)
+  const root = createRoot(document.createElement('div'))
+  try {
+    await React.act(async () => root.render(React.createElement(ScrollVarsBoot)))
+    assert.equal(observedRO.has(el), false)
+    assert.equal(el.hasAttribute('data-sv-off'), true)
+    assert.deepEqual(errors, [error])
+    assert.equal(window.__scrollvars, 'released')
+  } finally {
+    document.querySelectorAll = query
+    global.reportError = report
+    await React.act(async () => root.unmount())
   }
 })

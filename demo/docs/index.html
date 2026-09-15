@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.17.4</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.17.5</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -299,6 +299,19 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.17.5 (2026-09-15)</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Scroll initialization commits readiness after required setup succeeds and rolls back partial subscriptions on failure. Throwing optional intersection observers fall back to unculled tracking.</li>
+<li>Failed attachments restore their outputs and authored pin geometry. Scanners retain only acquired leases, unwind partial setup and settle unprocessed content while preserving overlapping owners.</li>
+<li>Measurement, output and callback failures release the affected tracker, report the original error once and allow healthy entries to continue. Stale cleanup cannot release a replacement.</li>
+<li>Boot watchdog expiry is terminal for late tracking and remounts, including when mutation observation fails. Boot releases its scanner if toggle setup fails.</li>
+<li>Installed StickySteps starts static, waits for tracking and fit evaluation before enabling crossfade, and releases layout and accessibility hiding on failure.</li>
+<li>The browser gate now exercises actual Boot and CLI-installed StickySteps with React 18 and 19, injected failures, nonce CSP, motion changes, retry and responsive static reachability. No public API changed.</li>
+</ul>
 
 <h3>1.17.4 (2026-09-15)</h3>
 

@@ -880,7 +880,7 @@ function Timeline() {
   {
     slug: 'sticky-steps',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.17.0' },
+    requires: { styles: ['pin'], min: '1.17.5' },
     category: 'Sections',
     title: 'Sticky steps',
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
@@ -902,7 +902,7 @@ function Timeline() {
       ],
       className: 'fxouter',
     },
-    previewScript: `addEventListener('load', () => SV.track(document.querySelector('.sv-steps'), { pin: '300vh', scenes: 3 }))`,
+    previewScript: `addEventListener('load', () => { const el = document.querySelector('.sv-steps'); SV.track(el, { pin: '300vh', scenes: 3, onFlow: flow => el.classList.toggle('st-ready', !flow) }) })`,
     css: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
   <div class="sv-stage st-sticky">
     <div class="st-media">
@@ -1333,7 +1333,9 @@ const css = \`
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps:not(.st-ready) .st-media { overflow: visible; }
+.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -1384,7 +1386,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const [flow, setFlow] = React.useState(false)
+  const [flow, setFlow] = React.useState(true)
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
@@ -1397,7 +1399,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     // leave static shots reachable. Only the crossfade hides inactive shots.
     const update = () => {
       const shot = el.querySelector('.st-shot')
-      setInteractive(el.classList.contains('sv') && !el.hasAttribute('data-sv-off') &&
+      const ready = !flow && el.classList.contains('sv') && !el.hasAttribute('data-sv-off')
+      el.classList.toggle('st-ready', ready)
+      setInteractive(ready &&
         !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
     }
     update()
@@ -1406,7 +1410,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
     return () => { stopMotion(); observer.disconnect() }
-  }, [])
+  }, [flow])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element

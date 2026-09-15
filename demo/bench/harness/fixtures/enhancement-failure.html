@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enhancement failure: actual Boot and installed StickySteps</title>
+<!-- DECLARED_STYLES -->
+<style nonce="sv-fixture">
+body { margin: 0; font: 16px/1.5 sans-serif; }
+#app { margin-top: 20vh; }
+#probes { margin: 20vh 16px; }
+#probes section { min-height: 40vh; }
+</style>
+<script nonce="sv-fixture">
+// Faults are installed before the real SSR prepaint script runs. Restoration
+// permits explicit retry; a watchdog release remains terminal after retry.
+window.failureErrors = []
+addEventListener('error', function(event) {
+  if (String(event.message).includes('fixture failure')) {
+    failureErrors.push(event.message); event.preventDefault()
+  }
+})
+var fault = new URLSearchParams(location.search).get('case')
+var RO = window.ResizeObserver, IO = window.IntersectionObserver, MO = window.MutationObserver
+window.restoreObservers = function() { fault = null; window.ResizeObserver = RO; window.IntersectionObserver = IO; window.MutationObserver = MO }
+if (fault === 'ro-missing') delete window.ResizeObserver
+if (fault === 'ro-constructor') window.ResizeObserver = class { constructor() { throw Error('fixture failure: ResizeObserver constructor') } }
+if (fault === 'ro-observe' || fault === 'attach' || fault === 'later-attach') window.ResizeObserver = class extends RO {
+  observe(el, options) {
+    super.observe(el, options)
+    if (fault === 'ro-observe' || (fault === 'attach' && el.classList.contains('sv-steps')) || (fault === 'later-attach' && el.id === 'scan-last')) throw Error('fixture failure: ResizeObserver observe')
+  }
+}
+if (fault === 'io-missing') delete window.IntersectionObserver
+if (fault === 'io-constructor') window.IntersectionObserver = class { constructor() { throw Error('fixture failure: IntersectionObserver constructor') } }
+if (fault === 'io-observe') window.IntersectionObserver = class extends IO { observe() { throw Error('fixture failure: IntersectionObserver observe') } }
+if (fault === 'scan-observer') window.MutationObserver = class extends MO {
+  observe(el, options) { super.observe(el, options); if (options.childList && el === document.documentElement) throw Error('fixture failure: scanner observer') }
+}
+</script>
+</head>
+<body>
+<main id="app"><!-- APP_MARKUP --></main>
+<div id="probes">
+  <section id="scan-first" data-sv><p class="sv-rise">First scanned content</p></section>
+  <section id="scan-last" data-sv><p class="sv-rise">Later scanned content</p></section>
+  <section id="runtime"><p class="sv-rise">Runtime failure content</p><a href="#after">Runtime link</a></section>
+  <section id="healthy"><p>Healthy sibling</p></section>
+</div>
+<a id="after" href="#app">After the steps</a>
+<script nonce="sv-fixture">
+if (fault !== 'blocked') setTimeout(function() {
+  var script = document.createElement('script')
+  script.src = '/failure-client.js' + location.search
+  script.nonce = 'sv-fixture'
+  document.body.appendChild(script)
+}, fault === 'delayed' ? 3400 : 0)
+</script>
+</body>
+</html>

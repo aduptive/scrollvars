@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 4.7 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.2 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 4.7 KB driver, ~5× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.2 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 4.7 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.2 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2582,7 +2582,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 6.9&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 7.1&nbsp;KB minified,
 <strong>2.8&nbsp;KB gzipped, ~15× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 19.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.3 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>12.7 KB / 4.7 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 19.8 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.8 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.2 KB / 5.2 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.7 KB gzip · full core 9.5 KB · v1.17.4 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.2 KB gzip · full core 10.2 KB · v1.17.5 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3110,7 +3110,7 @@ the full API, recipes and performance rules, ready to ingest.
     </nav>
     <div class="foot-notes">
       <p>Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 10 KB part. Reduced motion is respected by the driver and every preset.</p>
+      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 11 KB part. Reduced motion is respected by the driver and every preset.</p>
     </div>
   </div>
 </footer>
@@ -3198,6 +3198,7 @@ var SV = (() => {
   var wiredWith = null;
   var mediaMatches = false;
   var last = false;
+  var unwire;
   var attrReduce = () => {
     const el = typeof document !== "undefined" ? document.documentElement : null;
     return typeof el?.getAttribute === "function" && el.getAttribute(ATTR) === "reduce";
@@ -3230,15 +3231,42 @@ var SV = (() => {
   function wire() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia === wiredWith)
       return;
+    const next = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let observer;
+    const cleanup = () => {
+      try {
+        if (typeof next.removeEventListener === "function")
+          next.removeEventListener("change", onMedia);
+        else
+          next.removeListener?.(onMedia);
+      } finally {
+        observer?.disconnect();
+      }
+    };
+    try {
+      if (typeof next.addEventListener === "function")
+        next.addEventListener("change", onMedia);
+      else
+        next.addListener?.(onMedia);
+      if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.documentElement) {
+        observer = new MutationObserver(notify);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] });
+      }
+    } catch (error) {
+      try {
+        cleanup();
+      } catch {
+      }
+      throw error;
+    }
+    try {
+      unwire?.();
+    } catch {
+    }
+    unwire = cleanup;
     wiredWith = window.matchMedia;
-    media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    mediaMatches = !!media.matches;
-    if (typeof media.addEventListener === "function")
-      media.addEventListener("change", onMedia);
-    else
-      media.addListener?.(onMedia);
-    if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.documentElement)
-      new MutationObserver(notify).observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] });
+    media = next;
+    mediaMatches = !!next.matches;
     last = attrReduce() || mediaMatches;
   }
   function onMotionChange(fn) {
@@ -3261,6 +3289,30 @@ var SV = (() => {
   }
 
   // dist/core/driver.js
+  function reportFailure(error) {
+    if (typeof reportError === "function")
+      reportError(error);
+    else
+      console.error(error);
+  }
+  function failEntry(entry, error) {
+    if (entry.status.state === "failed")
+      return;
+    const released = entry.status.state === "released";
+    entry.status.state = "failed";
+    if (!released && (!entries.has(entry.el) || entries.get(entry.el) === entry))
+      releaseEntry(entry);
+    reportFailure(error);
+  }
+  function guardEntry(entry, work) {
+    if (entries.get(entry.el) !== entry)
+      return;
+    try {
+      work();
+    } catch (error) {
+      failEntry(entry, error);
+    }
+  }
   var SCENE_SNAP = 0.4;
   var LIVE_ENTER = 0.75;
   var LIVE_EXIT = 0.25;
@@ -3275,48 +3327,81 @@ var SV = (() => {
     return initialized ? reducedMotion2 : reducedMotion();
   }
   function init() {
+    if (bootReleased())
+      return false;
     if (initialized)
       return true;
     if (typeof window === "undefined")
       return false;
     vh = window.innerHeight;
+    let stopMotion;
+    const onResize = () => {
+      vh = window.innerHeight;
+      refresh();
+    };
     try {
-      resizeObserver = new ResizeObserver(() => {
+      const observer = new ResizeObserver(() => {
+        if (resizeObserver !== observer || !initialized)
+          return;
         offsetsDirty = true;
         schedule();
       });
+      resizeObserver = observer;
       resizeObserver.observe(document.documentElement);
+      window.addEventListener("scroll", schedule, { passive: true, capture: true });
+      window.addEventListener("resize", onResize);
+      reducedMotion2 = reducedMotion();
+      stopMotion = onMotionChange((reduced) => {
+        reducedMotion2 = reduced;
+        applyPinHelperAll();
+        schedule();
+      });
+      if (typeof IntersectionObserver !== "undefined") {
+        try {
+          const observer2 = new IntersectionObserver((records) => {
+            if (culler !== observer2 || !initialized)
+              return;
+            for (const record of records) {
+              const entry = entries.get(record.target);
+              if (entry)
+                entry.near = record.isIntersecting;
+            }
+            schedule();
+          }, { rootMargin: "100% 0px 100% 0px" });
+          culler = observer2;
+        } catch {
+          disableCuller();
+        }
+      }
+      document.documentElement.classList.add("sv-on");
+      initialized = true;
+      return true;
     } catch {
-      resizeObserver?.disconnect();
+      safely(() => window.removeEventListener?.("scroll", schedule, true));
+      safely(() => window.removeEventListener?.("resize", onResize));
+      safely(() => stopMotion?.());
+      safely(() => resizeObserver?.disconnect());
       resizeObserver = null;
+      disableCuller();
       document.documentElement.classList.remove("sv-on");
       return false;
     }
-    initialized = true;
-    window.addEventListener("scroll", schedule, { passive: true, capture: true });
-    window.addEventListener("resize", () => {
-      vh = window.innerHeight;
-      refresh();
-    });
-    reducedMotion2 = reducedMotion();
-    onMotionChange((reduced) => {
-      reducedMotion2 = reduced;
-      applyPinHelperAll();
-      schedule();
-    });
-    if (typeof IntersectionObserver !== "undefined") {
-      culler = new IntersectionObserver((records) => {
-        for (const record of records) {
-          const entry = entries.get(record.target);
-          if (entry)
-            entry.near = record.isIntersecting;
-        }
-        schedule();
-      }, { rootMargin: "100% 0px 100% 0px" });
+  }
+  function bootReleased() {
+    return typeof window !== "undefined" && window.__scrollvars === "released";
+  }
+  function safely(work) {
+    try {
+      work();
+    } catch {
     }
-    document.documentElement.classList.add("sv-on");
-    window.__scrollvars = true;
-    return true;
+  }
+  function disableCuller() {
+    safely(() => culler?.disconnect());
+    culler = null;
+    entries.forEach((entry) => {
+      entry.near = true;
+    });
   }
   var lastY = -1;
   var lastT = 0;
@@ -3432,33 +3517,40 @@ var SV = (() => {
     if (!root)
       return;
     let queued = false;
-    consumerWatch = new MutationObserver((records) => {
-      if (queued)
-        return;
-      for (const record of records) {
-        for (const node of Array.from(record.addedNodes)) {
-          const relevant = node.nodeType === 1 || node.nodeType === 3 && node.parentNode?.nodeName === "STYLE";
-          if (!relevant)
-            continue;
-          queued = true;
-          break;
+    try {
+      const observer = new MutationObserver((records) => {
+        if (queued || consumerWatch !== observer)
+          return;
+        for (const record of records) {
+          for (const node of Array.from(record.addedNodes)) {
+            const relevant = node.nodeType === 1 || node.nodeType === 3 && node.parentNode?.nodeName === "STYLE";
+            if (!relevant)
+              continue;
+            queued = true;
+            break;
+          }
+          if (queued)
+            break;
         }
         if (queued)
-          break;
-      }
-      if (queued)
-        requestAnimationFrame(() => {
-          queued = false;
-          if (!consumerWatch || pageOutputsMode !== "auto")
-            return;
-          resolvePageOutputs();
-          if (pageOutputsEnabled && !listened.size) {
-            consumerWatch?.disconnect();
-            consumerWatch = null;
-          }
-        });
-    });
-    consumerWatch.observe(root, { childList: true, subtree: true });
+          requestAnimationFrame(() => {
+            queued = false;
+            if (consumerWatch !== observer || pageOutputsMode !== "auto")
+              return;
+            resolvePageOutputs();
+            if (pageOutputsEnabled && !listened.size) {
+              consumerWatch?.disconnect();
+              consumerWatch = null;
+            }
+          });
+      });
+      consumerWatch = observer;
+      consumerWatch.observe(root, { childList: true, subtree: true });
+    } catch {
+      safely(() => consumerWatch?.disconnect());
+      consumerWatch = null;
+      pageOutputsEnabled = true;
+    }
   }
   function pendingSheets() {
     try {
@@ -3506,7 +3598,7 @@ var SV = (() => {
     forceAll = false;
     if (offsetsDirty) {
       offsetsDirty = false;
-      entries.forEach(refreshPinGeometry);
+      entries.forEach((entry) => guardEntry(entry, () => refreshPinGeometry(entry)));
     }
     const y = window.scrollY;
     const now = performance.now();
@@ -3520,70 +3612,80 @@ var SV = (() => {
     const rootRects = /* @__PURE__ */ new Map();
     const frames = [];
     entries.forEach((entry) => {
-      if (!entry.near && !entry.opts.root && !jumped && !force)
-        return;
-      const rect = entry.el.getBoundingClientRect();
-      const root = entry.opts.root;
-      let geo;
-      if (root) {
-        let rr = rootRects.get(root);
-        if (!rr) {
-          rr = root.getBoundingClientRect();
-          rootRects.set(root, rr);
+      try {
+        if (!entry.near && !entry.opts.root && !jumped && !force)
+          return;
+        const rect = entry.el.getBoundingClientRect();
+        const root = entry.opts.root;
+        let geo;
+        if (root) {
+          let rr = rootRects.get(root);
+          if (!rr) {
+            rr = root.getBoundingClientRect();
+            rootRects.set(root, rr);
+          }
+          const originTop = rr.top + root.clientTop;
+          const vp = root.clientHeight;
+          geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp };
+        } else {
+          geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
         }
-        const originTop = rr.top + root.clientTop;
-        const vp = root.clientHeight;
-        geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp };
-      } else {
-        geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
+        const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
+        const rails = entry.compatRails ? /* @__PURE__ */ new Map() : void 0;
+        if (rails)
+          (entry.stage ?? entry.el).querySelectorAll?.(".sv-rail").forEach((rail) => {
+            if (rail.closest(".sv-stage") !== (entry.stage ?? null))
+              return;
+            rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`);
+          });
+        frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails });
+      } catch (error) {
+        failEntry(entry, error);
       }
-      const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
-      const rails = entry.compatRails ? /* @__PURE__ */ new Map() : void 0;
-      if (rails)
-        (entry.stage ?? entry.el).querySelectorAll?.(".sv-rail").forEach((rail) => {
-          if (rail.closest(".sv-stage") !== (entry.stage ?? null))
-            return;
-          rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`);
-        });
-      frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails });
     });
     for (const { entry, geo, overflow, stageWidth, stageHeight, rails } of frames) {
       if (entries.get(entry.el) !== entry)
         continue;
-      if (entry.fit && entry.flow === void 0 && !overflow) {
-        entry.flow = false;
-        entry.opts.onFlow?.(false);
-        if (entries.get(entry.el) !== entry)
-          continue;
+      try {
+        if (entry.fit && entry.flow === void 0 && !overflow) {
+          entry.flow = false;
+          entry.opts.onFlow?.(false);
+          if (entries.get(entry.el) !== entry)
+            continue;
+        }
+        if (overflow && !entry.flow) {
+          entry.flow = true;
+          entry.el.setAttribute("data-sv-flow", "");
+          restorePinHelper(entry);
+          entry.opts.onFlow?.(true);
+          if (entries.get(entry.el) !== entry)
+            continue;
+          schedule();
+        }
+        if (stageWidth !== void 0)
+          setVar(entry, "--sv-stage-width", stageWidth, "px");
+        if (rails && entry.compatRails) {
+          const previous = entry.compatRails;
+          entry.compatRails = rails;
+          previous.forEach((_, rail) => {
+            if (!rails.has(rail)) {
+              rail.style.removeProperty("--_sv-rail-end");
+              unobserveIfUnneeded(rail);
+            }
+          });
+          rails.forEach((value, rail) => {
+            if (!previous.has(rail))
+              resizeObserver?.observe(rail);
+            if (previous.get(rail) !== value)
+              rail.style.setProperty("--_sv-rail-end", value);
+          });
+        }
+        apply(entry, geo, stageHeight);
+        if (entries.get(entry.el) === entry)
+          entry.status.state = "active";
+      } catch (error) {
+        failEntry(entry, error);
       }
-      if (overflow && !entry.flow) {
-        entry.flow = true;
-        entry.el.setAttribute("data-sv-flow", "");
-        restorePinHelper(entry);
-        entry.opts.onFlow?.(true);
-        if (entries.get(entry.el) !== entry)
-          continue;
-        schedule();
-      }
-      if (stageWidth !== void 0)
-        setVar(entry, "--sv-stage-width", stageWidth, "px");
-      if (rails && entry.compatRails) {
-        const previous = entry.compatRails;
-        entry.compatRails = rails;
-        previous.forEach((_, rail) => {
-          if (!rails.has(rail)) {
-            rail.style.removeProperty("--_sv-rail-end");
-            unobserveIfUnneeded(rail);
-          }
-        });
-        rails.forEach((value, rail) => {
-          if (!previous.has(rail))
-            resizeObserver?.observe(rail);
-          if (previous.get(rail) !== value)
-            rail.style.setProperty("--_sv-rail-end", value);
-        });
-      }
-      apply(entry, geo, stageHeight);
     }
     if (pageOutputsEnabled && pageSpan !== null) {
       const dt = now - lastT;
@@ -3744,10 +3846,11 @@ var SV = (() => {
           setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
         if (entries.get(entry.el) === entry) {
           entries.delete(entry.el);
+          entry.status.state = "completed";
           unobserveIfUnneeded(entry.el);
           if (opts.root)
             unobserveIfUnneeded(opts.root);
-          culler?.unobserve(entry.el);
+          safely(() => culler?.unobserve(entry.el));
           settleDeferred();
         }
       }
@@ -3802,7 +3905,7 @@ var SV = (() => {
   }
   function unobserveIfUnneeded(target) {
     if (!stillNeeded(target))
-      resizeObserver?.unobserve(target);
+      safely(() => resizeObserver?.unobserve(target));
   }
   var deferredOff = /* @__PURE__ */ new Set();
   function containsTracked(el) {
@@ -3825,6 +3928,10 @@ var SV = (() => {
     deferredOff.add(el);
     settleDeferred();
   }
+  function settleUntracked(el) {
+    if (!entries.has(el))
+      markReleased(el);
+  }
   function clearReleased(el) {
     for (let node = el; node; node = node.parentElement) {
       const released = deferredOff.delete(node) || node.hasAttribute?.("data-sv-off") === true;
@@ -3835,14 +3942,18 @@ var SV = (() => {
   }
   function releaseEntry(entry) {
     const { el } = entry;
+    if (entries.has(el) && entries.get(el) !== entry)
+      return;
+    if (entry.status.state !== "failed")
+      entry.status.state = "released";
     entries.delete(el);
     if (entries.size === 0 && pageOutputsMode === "auto") {
-      consumerWatch?.disconnect();
+      safely(() => consumerWatch?.disconnect());
       consumerWatch = null;
-      unlistenAll();
+      safely(unlistenAll);
       pageOutputsResolved = false;
     }
-    culler?.unobserve(el);
+    safely(() => culler?.unobserve(el));
     unobserveIfUnneeded(el);
     if (entry.opts.root)
       unobserveIfUnneeded(entry.opts.root);
@@ -3851,17 +3962,17 @@ var SV = (() => {
     if (entry.stage)
       unobserveIfUnneeded(entry.stage);
     entry.compatRails?.forEach((_, rail) => {
-      rail.style.removeProperty("--_sv-rail-end");
+      safely(() => rail.style.removeProperty("--_sv-rail-end"));
       unobserveIfUnneeded(rail);
     });
-    el.removeAttribute?.("data-sv-flow");
-    restorePinHelper(entry);
-    el.classList.toggle("sv-live", false);
+    safely(() => el.removeAttribute?.("data-sv-flow"));
+    safely(() => restorePinHelper(entry));
+    safely(() => el.classList.toggle("sv-live", false));
     for (const name of Object.keys(entry.written))
-      el.style.removeProperty?.(name);
-    el.style.removeProperty?.("--sv-scenes");
-    el.style.setProperty?.("--sv-live", "1");
-    markReleased(el);
+      safely(() => el.style.removeProperty?.(name));
+    safely(() => el.style.removeProperty?.("--sv-scenes"));
+    safely(() => el.style.setProperty?.("--sv-live", "1"));
+    safely(() => markReleased(el));
   }
   function replayEntrance(el) {
     if (typeof getComputedStyle !== "function")
@@ -3870,73 +3981,89 @@ var SV = (() => {
     const durationPriority = el.style.getPropertyPriority?.("--sv-duration") ?? "";
     const stagger = el.style.getPropertyValue?.("--sv-stagger") ?? "";
     const staggerPriority = el.style.getPropertyPriority?.("--sv-stagger") ?? "";
-    el.style.setProperty?.("--sv-duration", "0s", "important");
-    el.style.setProperty?.("--sv-stagger", "0s", "important");
-    void getComputedStyle(el).opacity;
-    el.style.setProperty?.("--sv-duration", duration, durationPriority);
-    el.style.setProperty?.("--sv-stagger", stagger, staggerPriority);
+    try {
+      el.style.setProperty?.("--sv-duration", "0s", "important");
+      el.style.setProperty?.("--sv-stagger", "0s", "important");
+      void getComputedStyle(el).opacity;
+    } finally {
+      safely(() => el.style.setProperty?.("--sv-duration", duration, durationPriority));
+      safely(() => el.style.setProperty?.("--sv-stagger", stagger, staggerPriority));
+    }
   }
   function track(el, opts = {}) {
-    init();
-    if (!initialized)
-      return () => {
-      };
+    const result = attach(el, opts);
+    if (result.state !== "failed" && !bootReleased())
+      window.__scrollvars = true;
+    return result.stop;
+  }
+  function attach(el, opts = {}) {
+    const status = { state: "attaching", stop: () => {
+    } };
+    if (!init()) {
+      status.state = "failed";
+      safely(() => markReleased(el));
+      return status;
+    }
     const existing = entries.get(el);
     if (existing)
       releaseEntry(existing);
-    const settled = el.style.getPropertyValue?.("--sv-live") === "1";
-    el.style.removeProperty?.("--sv-live");
-    el.classList.remove("sv-live");
-    clearReleased(el);
-    const entry = {
-      el,
-      opts,
-      near: true,
-      live: false,
-      scene: -1,
-      pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
-      written: {},
-      compatRails: compatInstalled() ? /* @__PURE__ */ new Map() : void 0,
-      stage: opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : void 0,
-      fit: opts.pin || opts.scenes || opts.onPin ? Array.from(ownedStage(el)?.children ?? []).find((child) => child.hasAttribute("data-sv-fit")) : void 0
-    };
-    if (belowTransformFloor() && entry.stage?.querySelector(".sv-deck")) {
-      entry.flow = true;
-      el.setAttribute("data-sv-flow", "");
-      opts.onFlow?.(true);
-    }
+    const entry = { el, opts, status, near: true, live: false, scene: -1, pinOffset: 0, written: {} };
     entries.set(el, entry);
-    el.classList.add("sv");
-    if (opts.scenes && opts.scenes > 1)
-      el.style.setProperty("--sv-scenes", String(opts.scenes));
-    if (typeof opts.pin === "string") {
-      entry.authored = {
-        height: el.style.height,
-        position: el.style.position,
-        heightPriority: el.style.getPropertyPriority?.("height") ?? "",
-        positionPriority: el.style.getPropertyPriority?.("position") ?? ""
-      };
-      applyPinHelper(entry);
-    }
-    entry.stageOrigin = readStageOrigin(el, entry.stage);
-    if (settled)
-      replayEntrance(el);
-    pageOutputs = true;
-    resizeObserver?.observe(el);
-    if (entry.fit)
-      resizeObserver?.observe(entry.fit);
-    if (entry.stage)
-      resizeObserver?.observe(entry.stage);
-    if (opts.root)
-      resizeObserver?.observe(opts.root);
-    if (!opts.root)
-      culler?.observe(el);
-    schedule();
-    return () => {
-      if (entries.get(el) !== entry)
-        return;
-      releaseEntry(entry);
+    status.stop = () => {
+      if (entries.get(el) === entry)
+        releaseEntry(entry);
     };
+    try {
+      const settled = el.style.getPropertyValue?.("--sv-live") === "1";
+      el.style.removeProperty?.("--sv-live");
+      el.classList.remove("sv-live");
+      clearReleased(el);
+      entry.pinOffset = opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0;
+      entry.compatRails = compatInstalled() ? /* @__PURE__ */ new Map() : void 0;
+      entry.stage = opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : void 0;
+      entry.fit = Array.from(entry.stage?.children ?? []).find((child) => child.hasAttribute("data-sv-fit"));
+      if (belowTransformFloor() && entry.stage?.querySelector(".sv-deck")) {
+        entry.flow = true;
+        el.setAttribute("data-sv-flow", "");
+        opts.onFlow?.(true);
+        if (entries.get(el) !== entry)
+          return status;
+      }
+      el.classList.add("sv");
+      if (opts.scenes && opts.scenes > 1)
+        el.style.setProperty("--sv-scenes", String(opts.scenes));
+      if (typeof opts.pin === "string") {
+        entry.authored = {
+          height: el.style.height,
+          position: el.style.position,
+          heightPriority: el.style.getPropertyPriority?.("height") ?? "",
+          positionPriority: el.style.getPropertyPriority?.("position") ?? ""
+        };
+        applyPinHelper(entry);
+      }
+      entry.stageOrigin = readStageOrigin(el, entry.stage);
+      if (settled)
+        replayEntrance(el);
+      pageOutputs = true;
+      resizeObserver?.observe(el);
+      if (entry.fit)
+        resizeObserver?.observe(entry.fit);
+      if (entry.stage)
+        resizeObserver?.observe(entry.stage);
+      if (opts.root)
+        resizeObserver?.observe(opts.root);
+      if (!opts.root) {
+        try {
+          culler?.observe(el);
+        } catch {
+          disableCuller();
+        }
+      }
+      schedule();
+    } catch (error) {
+      failEntry(entry, error);
+    }
+    return status;
   }
   var belowTransformFloor = () => window.CSS?.supports?.("translate", "0px") === false;
   var compatInstalled = () => document.documentElement?.hasAttribute?.("data-sv-compat") === true;
@@ -3952,8 +4079,10 @@ var SV = (() => {
   }
   function applyPinHelperAll() {
     const positions = /* @__PURE__ */ new Map();
-    entries.forEach((entry) => positions.set(entry, readPinPosition(entry)));
-    entries.forEach((entry) => applyPinHelper(entry, positions.get(entry)));
+    entries.forEach((entry) => guardEntry(entry, () => {
+      positions.set(entry, readPinPosition(entry));
+    }));
+    entries.forEach((entry) => guardEntry(entry, () => applyPinHelper(entry, positions.get(entry))));
   }
   function applyPinHelper(entry, computed = readPinPosition(entry)) {
     const { el, opts, authored } = entry;
@@ -3970,11 +4099,12 @@ var SV = (() => {
   function restorePinHelper(entry) {
     if (!entry.authored)
       return;
-    entry.el.style.setProperty("height", entry.authored.height, entry.authored.heightPriority);
-    entry.el.style.setProperty("position", entry.authored.position, entry.authored.positionPriority);
+    const { height, heightPriority, position, positionPriority } = entry.authored;
+    safely(() => entry.el.style.setProperty("height", height, heightPriority));
+    safely(() => entry.el.style.setProperty("position", position, positionPriority));
   }
   function refresh() {
-    entries.forEach(refreshPinGeometry);
+    entries.forEach((entry) => guardEntry(entry, () => refreshPinGeometry(entry)));
     forceAll = true;
     schedule();
   }
@@ -4185,19 +4315,31 @@ var SV = (() => {
     const v = Number(el.getAttribute(attr));
     return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : void 0;
   }
+  var failedAttachment = {};
   var registrations = /* @__PURE__ */ new WeakMap();
   var splitRegistrations = /* @__PURE__ */ new WeakMap();
   var pointerRegistrations = /* @__PURE__ */ new WeakMap();
   function acquire(el, registrations2, start) {
     let registration = registrations2.get(el);
+    if (registration && !registration.valid())
+      registration = void 0;
     if (!registration) {
-      registration = { owners: 0, stop: start() };
+      const result = start();
+      const valid = () => typeof result === "function" || ["attaching", "active", "completed"].includes(result.state);
+      if (!valid())
+        throw failedAttachment;
+      registration = { owners: 0, stop: typeof result === "function" ? result : result.stop, valid };
       registrations2.set(el, registration);
     }
     registration.owners++;
+    let released = false;
     return () => {
+      if (released)
+        return;
+      released = true;
       if (--registration.owners === 0) {
-        registrations2.delete(el);
+        if (registrations2.get(el) === registration)
+          registrations2.delete(el);
         registration.stop();
       }
     };
@@ -4211,6 +4353,40 @@ var SV = (() => {
     const tracked = /* @__PURE__ */ new Map();
     const splits = /* @__PURE__ */ new Map();
     const pointers = /* @__PURE__ */ new Map();
+    let observer;
+    let stopped = false;
+    const stop = () => {
+      if (stopped)
+        return;
+      stopped = true;
+      const release = (fn) => {
+        try {
+          fn();
+        } catch {
+        }
+      };
+      release(() => observer?.disconnect());
+      for (const map of [tracked, splits, pointers]) {
+        map.forEach((fn) => release(fn));
+        map.clear();
+      }
+    };
+    const fail = (error) => {
+      stop();
+      if (scope.hasAttribute?.("data-sv"))
+        settleUntracked(scope);
+      scope.querySelectorAll("[data-sv]").forEach(settleUntracked);
+      if (error && error !== failedAttachment) {
+        if (typeof reportError === "function")
+          reportError(error);
+        else
+          console.error(error);
+      }
+    };
+    if (!ready) {
+      fail();
+      return stop;
+    }
     const addPointer = (el) => {
       if (!pointers.has(el))
         pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
@@ -4231,7 +4407,7 @@ var SV = (() => {
     };
     const add = (el) => {
       if (!tracked.has(el))
-        tracked.set(el, acquire(el, registrations, () => track(el, optionsFrom(el))));
+        tracked.set(el, acquire(el, registrations, () => attach(el, optionsFrom(el))));
     };
     const remove = (el) => {
       if (scope.contains(el))
@@ -4270,34 +4446,40 @@ var SV = (() => {
         node.querySelectorAll("[data-sv-pointer]").forEach(removePointer);
       }
     };
-    if (scope.hasAttribute)
-      sweep(scope, add);
-    else {
-      scope.querySelectorAll("[data-sv]").forEach(add);
-      scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
-      scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
-      scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
-    }
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        mutation.addedNodes.forEach((node) => sweep(node, add));
-        mutation.removedNodes.forEach((node) => sweep(node, remove));
+    try {
+      if (scope.hasAttribute)
+        sweep(scope, add);
+      else {
+        scope.querySelectorAll("[data-sv]").forEach(add);
+        scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+        scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
+        scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
       }
-    });
-    observer.observe(scope === document ? document.documentElement : scope, {
-      childList: true,
-      subtree: true
-    });
-    window.__scrollvars = ready;
-    return () => {
-      observer.disconnect();
-      tracked.forEach((untrack) => untrack());
-      tracked.clear();
-      splits.forEach((restore) => restore());
-      splits.clear();
-      pointers.forEach((stop) => stop());
-      pointers.clear();
-    };
+      observer = new MutationObserver((mutations) => {
+        if (stopped)
+          return;
+        if (bootReleased()) {
+          fail();
+          return;
+        }
+        try {
+          for (const mutation of mutations) {
+            mutation.addedNodes.forEach((node) => sweep(node, add));
+            mutation.removedNodes.forEach((node) => sweep(node, remove));
+          }
+        } catch (error) {
+          fail(error);
+        }
+      });
+      observer.observe(scope === document ? document.documentElement : scope, {
+        childList: true,
+        subtree: true
+      });
+      window.__scrollvars = ready;
+    } catch (error) {
+      fail(error);
+    }
+    return stop;
   }
 
   // dist/core/toggles.js
