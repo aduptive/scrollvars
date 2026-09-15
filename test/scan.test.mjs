@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 // Stub enough DOM for driver.init() + scan(). Tracking is observed through
@@ -70,6 +71,61 @@ function makeDocumentStub(body) {
   body.parent = doc
   return doc
 }
+
+for (const failure of ['second attachment', 'observer']) test(`scan: ${failure} rolls back this scope, preserves overlap, and permits retry`, async () => {
+  const watched = new Set()
+  const a = makeElement({ 'data-sv': '' }), b = makeElement({ 'data-sv': '' }), c = makeElement({ 'data-sv': '' })
+  const body = makeElement({}, [a, b, c])
+  global.document = makeDocumentStub(body)
+  document.documentElement.classList.remove = () => {}
+  global.window = { innerHeight: 800, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }
+  global.HTMLElement = Object
+  global.requestAnimationFrame = () => 1
+  let fail = false
+  const errors = []
+  global.reportError = error => errors.push(error)
+  global.ResizeObserver = class { observe(el) { watched.add(el); if (fail && failure === 'second attachment' && el === b) throw Error(failure) } unobserve(el) { watched.delete(el) } disconnect() {} }
+  global.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
+  global.MutationObserver = class { observe(_, options) { if (fail && failure === 'observer' && options.childList) throw Error(failure) } disconnect() {} }
+  const source = readFileSync(new URL('../dist/core/scan.js', import.meta.url), 'utf8').replace(/from ['"](\.\/[^'"]+)['"]/g, (_, path) => `from '${new URL('../dist/core/' + path.slice(2), import.meta.url).href}${path === './driver.js' ? '?lifecycle-scan-' + encodeURIComponent(failure) : ''}'`)
+  const { scan } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+  const owner = scan(a)
+  fail = true
+  const stop = scan(body)
+  assert.ok(watched.has(a), 'overlapping owner remains acquired')
+  assert.ok(!watched.has(b) && !watched.has(c), 'partial scope owns no tracker')
+  assert.ok(b.hasAttribute('data-sv-off') && c.hasAttribute('data-sv-off'), 'unprocessed content is settled')
+  assert.equal(errors.length, 1)
+  fail = false
+  const retry = scan(body)
+  assert.ok(watched.has(b) && watched.has(c))
+  stop(); assert.ok(watched.has(b), 'stale stop cannot release a retry')
+  retry(); assert.ok(watched.has(a)); owner(); assert.ok(!watched.has(a))
+})
+
+test('scan: failed initialization stays visible when another element later boots the driver', async () => {
+  const stale = makeElement({ 'data-sv': '' }), other = makeElement(), watched = new Set()
+  global.document = makeDocumentStub(makeElement({}, [stale]))
+  document.documentElement.classList.remove = () => {}
+  global.window = { innerHeight: 800, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }
+  global.HTMLElement = Object
+  global.requestAnimationFrame = () => 1
+  global.MutationObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = class { constructor() { throw Error('missing resize capability') } }
+  const driverURL = new URL('../dist/core/driver.js?lifecycle-scan-init-retry', import.meta.url).href
+  const source = readFileSync(new URL('../dist/core/scan.js', import.meta.url), 'utf8').replace(/from ['"](\.\/[^'"]+)['"]/g, (_, path) => `from '${path === './driver.js' ? driverURL : new URL('../dist/core/' + path.slice(2), import.meta.url).href}'`)
+  const { scan } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+  const failed = scan()
+  global.ResizeObserver = class { observe(el) { watched.add(el) } unobserve(el) { watched.delete(el) } disconnect() {} }
+  const { track } = await import(driverURL)
+  const stopOther = track(other)
+  assert.ok(watched.has(other))
+  assert.ok(stale.hasAttribute('data-sv-off'), 'the later global sv-on cannot hide the failed scan')
+  const retry = scan()
+  assert.ok(watched.has(stale), 'failed no-op registration did not consume ownership')
+  failed(); assert.ok(watched.has(stale))
+  retry(); stopOther()
+})
 
 test('scan tracks [data-sv] nodes, follows mutations, stops cleanly', async () => {
   const observed = new Set()

@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 9.5 KB gzip as ESM; the fx/sv.js IIFE on these pages is 9.8 KB). Each effect below includes when to
+> (npm i scrollvars, 10.2 KB gzip as ESM; the fx/sv.js IIFE on these pages is 10.5 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -944,7 +944,9 @@ const css = `
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .sv-steps .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps:not(.st-ready) .st-media { overflow: visible; }
+.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -995,7 +997,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const [flow, setFlow] = React.useState(false)
+  const [flow, setFlow] = React.useState(true)
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
@@ -1008,7 +1010,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     // leave static shots reachable. Only the crossfade hides inactive shots.
     const update = () => {
       const shot = el.querySelector('.st-shot')
-      setInteractive(el.classList.contains('sv') && !el.hasAttribute('data-sv-off') &&
+      const ready = !flow && el.classList.contains('sv') && !el.hasAttribute('data-sv-off')
+      el.classList.toggle('st-ready', ready)
+      setInteractive(ready &&
         !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
     }
     update()
@@ -1017,7 +1021,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
     return () => { stopMotion(); observer.disconnect() }
-  }, [])
+  }, [flow])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
     // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element

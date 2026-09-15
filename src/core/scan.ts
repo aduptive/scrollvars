@@ -1,5 +1,5 @@
-import type { TrackOptions } from './driver.js'
-import { init, track } from './driver.js'
+import type { TrackOptions, Attachment } from './driver.js'
+import { init, attach, bootReleased, settleUntracked } from './driver.js'
 import { split } from './split.js'
 import { trackPointer } from './pointer.js'
 
@@ -52,20 +52,28 @@ function band(el: HTMLElement, attr: string): number | undefined {
   return el.hasAttribute(attr) && v >= 0 && v <= 1 ? v : undefined
 }
 
-type Registrations = WeakMap<HTMLElement, { owners: number; stop: () => void }>
+type Registrations = WeakMap<HTMLElement, { owners: number; stop: () => void; valid: () => boolean }>
+const failedAttachment = {}
 const registrations: Registrations = new WeakMap()
 const splitRegistrations: Registrations = new WeakMap()
 const pointerRegistrations: Registrations = new WeakMap()
-function acquire(el: HTMLElement, registrations: Registrations, start: () => () => void): () => void {
+function acquire(el: HTMLElement, registrations: Registrations, start: () => (() => void) | Attachment): () => void {
   let registration = registrations.get(el)
+  if (registration && !registration.valid()) registration = undefined
   if (!registration) {
-    registration = { owners: 0, stop: start() }
+    const result = start()
+    const valid = () => typeof result === 'function' || ['attaching', 'active', 'completed'].includes(result.state)
+    if (!valid()) throw failedAttachment
+    registration = { owners: 0, stop: typeof result === 'function' ? result : result.stop, valid }
     registrations.set(el, registration)
   }
   registration.owners++
+  let released = false
   return () => {
+    if (released) return
+    released = true
     if (--registration.owners === 0) {
-      registrations.delete(el)
+      if (registrations.get(el) === registration) registrations.delete(el)
       registration.stop()
     }
   }
@@ -79,6 +87,28 @@ export function scan(root?: ParentNode): () => void {
   const tracked = new Map<HTMLElement, () => void>()
   const splits = new Map<HTMLElement, () => void>()
   const pointers = new Map<HTMLElement, () => void>()
+  let observer: MutationObserver | undefined
+  let stopped = false
+  const stop = () => {
+    if (stopped) return
+    stopped = true
+    const release = (fn: () => void) => { try { fn() } catch { /* continue releasing this scope */ } }
+    release(() => observer?.disconnect())
+    for (const map of [tracked, splits, pointers]) {
+      map.forEach(fn => release(fn))
+      map.clear()
+    }
+  }
+  const fail = (error?: unknown) => {
+    stop()
+    if ((scope as HTMLElement).hasAttribute?.('data-sv')) settleUntracked(scope as HTMLElement)
+    scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(settleUntracked)
+    if (error && error !== failedAttachment) {
+      if (typeof reportError === 'function') reportError(error)
+      else console.error(error)
+    }
+  }
+  if (!ready) { fail(); return stop }
   const addPointer = (el: HTMLElement) => {
     if (!pointers.has(el)) pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
       selector: el.getAttribute('data-sv-pointer') || undefined,
@@ -97,7 +127,7 @@ export function scan(root?: ParentNode): () => void {
   }
 
   const add = (el: HTMLElement) => {
-    if (!tracked.has(el)) tracked.set(el, acquire(el, registrations, () => track(el, optionsFrom(el))))
+    if (!tracked.has(el)) tracked.set(el, acquire(el, registrations, () => attach(el, optionsFrom(el))))
   }
   const remove = (el: HTMLElement) => {
     // a mutation batch can carry the same node in both removedNodes and
@@ -147,36 +177,33 @@ export function scan(root?: ParentNode): () => void {
   }
 
   // querySelectorAll excludes an element scope itself; sweep it once.
-  if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
-  else {
-    scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
-    scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
-    scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
-    scope.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
-  }
-
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      mutation.addedNodes.forEach((node) => sweep(node, add))
-      mutation.removedNodes.forEach((node) => sweep(node, remove))
+  try {
+    if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
+    else {
+      scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+      scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+      scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+      scope.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
     }
-  })
-  // documentElement, not body: scan() may run from <head> before <body> exists
-  observer.observe(scope === document ? document.documentElement : (scope as Node), {
-    childList: true,
-    subtree: true,
-  })
-  // Empty routes acknowledge a working driver too, but failed initialization
-  // must leave the prepaint watchdog armed.
-  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = ready
 
-  return () => {
-    observer.disconnect()
-    tracked.forEach((untrack) => untrack())
-    tracked.clear()
-    splits.forEach((restore) => restore())
-    splits.clear()
-    pointers.forEach((stop) => stop())
-    pointers.clear()
-  }
+    observer = new MutationObserver((mutations) => {
+      if (stopped) return
+      if (bootReleased()) { fail(); return }
+      try {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach((node) => sweep(node, add))
+          mutation.removedNodes.forEach((node) => sweep(node, remove))
+        }
+      } catch (error) { fail(error) }
+    })
+    // documentElement, not body: scan() may run from <head> before <body> exists
+    observer.observe(scope === document ? document.documentElement : (scope as Node), {
+      childList: true,
+      subtree: true,
+    })
+    // Empty routes acknowledge a working driver too, but failed initialization
+    // must leave the prepaint watchdog armed.
+    ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = ready
+  } catch (error) { fail(error) }
+  return stop
 }

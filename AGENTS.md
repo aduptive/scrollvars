@@ -286,17 +286,16 @@ client wrapper, which closes over that prop inside the render function it
 hands to `<Scenes>` and returns it there, the same trick that lets any
 client component host RSC content as `props.children`). `<ScrollVarsBoot />` (first child of `<body>`) sets
 `sv-on` before first paint and removes it again if the driver has not
-booted within 3 seconds. That release is final: a driver that still boots
-after the deadline (slow network, a bundle behind a long task) has its own
-`sv-on` reverted by a watchdog-installed observer instead of re-hiding
-content the visitor is already reading, so entrances neither flash nor
-fail hidden. That pre-paint hiding depends on
+booted within 3 seconds. That release is terminal for the page session:
+late tracking, scanning and remounting stay static through a private boot
+status, even if mutation observation is unavailable. Content already visible
+cannot be hidden by a late bundle. That pre-paint hiding depends on
 the inline script itself running: it is gated on `IntersectionObserver` and
 `ResizeObserver` both existing. Without JS neither the script nor driver runs.
 Without either observer the script skips pre-paint hiding; the later driver
-requires ResizeObserver but can boot without IntersectionObserver (unculled),
+requires ResizeObserver but can boot with absent or throwing IntersectionObserver (unculled),
 and then adds `sv-on`. Missing or throwing ResizeObserver keeps the driver static;
-scanner arrival acknowledges boot only after successful driver initialization, including on empty routes. Under a strict CSP with no
+scanner arrival acknowledges boot only after successful driver initialization and scanner setup, including on empty routes. Under a strict CSP with no
 `'unsafe-inline'`, pass the request's nonce: `<ScrollVarsBoot nonce={nonce} />`.
 Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.
@@ -323,8 +322,9 @@ without `compat()`, stages return to flow, decorative curtains hide and rails
 wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and
 rails keep their fallback animation. Tracked stages containing static decks
 return to flow, including the wrapper height, so every card stays reachable.
-Installed StickySteps makes inactive shots inert only while its crossfade
-layout is active; static shots stay accessible after failed boot, watchdog
+Installed StickySteps starts static and enables crossfade only after tracking
+and its first fit evaluation succeed. Inactive shots become inert only while
+that layout is active; static shots stay accessible after failed boot, watchdog
 release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
@@ -382,7 +382,7 @@ that gap. What is left at fifty nodes per box is the price of animating
 through the cascade at all. The authoring rule that keeps a page on the
 cheap side of the curve: keep tracked elements thin, with big static
 content next to the animated element rather than inside it.
-The package ships ~5× less bundle than GSAP + ScrollTrigger; frame delivery
+The package ships ~4× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.
 
@@ -441,6 +441,15 @@ version: respect `.nvmrc`.
 Pin progress includes the stage's normal-flow offset, so a heading or padding before the stage delays the start until it sticks. After replacing a stage or fit node, call `refresh()` to resolve the new geometry and transfer resize observations. Origin measurement temporarily disables sticky positioning and restores it on attach, refresh, resize and scene navigation; ordinary scroll frames use the cached origin.
 
 Overlapping scans share tracking, split text and pointer controllers until the last scanner releases them. Pointer controllers clear removed targets while their container remains active. Stopping the last `toggles()` controller removes its `sv-ui` marker and restores pending boot-settle overrides, so a controlled marquee becomes static again.
+
+Scroll initialization and attachment are transactional. Failed scans release
+their acquired leases and settle unprocessed content without disturbing other
+owners. A measurement, output or callback failure releases only that tracker,
+restores authored pin geometry and reports the original error once; healthy
+entries continue. Retry recoverable failures with an explicit track or scan.
+Watchdog expiry remains terminal. The public cleanup-function return is unchanged.
+Failure of Boot's toggle setup also releases the scroll trackers and makes
+that page session terminally static.
 
 For pinned CMS content use `.sv-stage > [data-sv-fit]`. If that inner layout exceeds the available stage height, the driver sets `data-sv-flow` on the tracked wrapper, restores its authored height/position and the pin presets return to flow. This stays latched until retracked. `onFlow(boolean)` reports the initial state and fallback; release custom `inert` media when true. TimelineScrub and StickySteps ship this guard.
 

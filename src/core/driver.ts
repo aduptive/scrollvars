@@ -39,6 +39,7 @@ export interface TrackOptions {
 }
 
 interface Entry {
+  status: Attachment
   el: HTMLElement
   opts: TrackOptions
   /** Inside the culling margin (one viewport around the screen). Far-away
@@ -60,6 +61,32 @@ interface Entry {
   compatRails?: Map<HTMLElement, string>
   fit?: HTMLElement
   flow?: boolean
+}
+
+/** Internal lease status, deliberately absent from the package exports. */
+export interface Attachment {
+  state: 'attaching' | 'active' | 'completed' | 'released' | 'failed'
+  stop: () => void
+}
+
+function reportFailure(error: unknown) {
+  if (typeof reportError === 'function') reportError(error)
+  else console.error(error)
+}
+
+function failEntry(entry: Entry, error: unknown) {
+  if (entry.status.state === 'failed') return
+  const released = entry.status.state === 'released'
+  entry.status.state = 'failed'
+  // A callback may have replaced itself before throwing. The successor owns
+  // the DOM now; neither rollback nor an old handle may touch it.
+  if (!released && (!entries.has(entry.el) || entries.get(entry.el) === entry)) releaseEntry(entry)
+  reportFailure(error)
+}
+
+function guardEntry(entry: Entry, work: () => void) {
+  if (entries.get(entry.el) !== entry) return
+  try { work() } catch (error) { failEntry(entry, error) }
 }
 
 const SCENE_SNAP = 0.4
@@ -88,6 +115,7 @@ function getReducedMotion(): boolean {
 
 // Internal scanner handshake; not re-exported by the package entry point.
 export function init(): boolean {
+  if (bootReleased()) return false
   if (initialized) return true
   if (typeof window === 'undefined') return false
   vh = window.innerHeight
@@ -95,63 +123,85 @@ export function init(): boolean {
   // Construct the ResizeObserver FIRST, before any listener is installed: a
   // throwing constructor must leave nothing behind to undo, so a later
   // track() (after scrollvars/compat shims one in) can retry init() clean.
+  let stopMotion: (() => void) | undefined
+  const onResize = () => { vh = window.innerHeight; refresh() }
   try {
-    resizeObserver = new ResizeObserver(() => {
+    const observer = new ResizeObserver(() => {
+      if (resizeObserver !== observer || !initialized) return
       offsetsDirty = true
       schedule()
     })
+    resizeObserver = observer
     // Layout shifts above an element (images loading, fonts) move it without
     // resizing it: watching the document catches those too.
     resizeObserver.observe(document.documentElement)
+
+    // Capture hears nested scrollers too. Register named listeners so a
+    // later setup failure can unwind both, including add-then-throw shims.
+    window.addEventListener('scroll', schedule, { passive: true, capture: true })
+    window.addEventListener('resize', onResize)
+    reducedMotion = effectiveReduce()
+    stopMotion = onMotionChange((reduced) => {
+      reducedMotion = reduced
+      applyPinHelperAll()
+      schedule()
+    })
+
+    // Culling is optional. An unusable observer runs the same unculled path
+    // as an absent one; queued records from discarded observers are stale.
+    if (typeof IntersectionObserver !== 'undefined') {
+      try {
+        const observer = new IntersectionObserver((records) => {
+          if (culler !== observer || !initialized) return
+          for (const record of records) {
+            const entry = entries.get(record.target as HTMLElement)
+            if (entry) entry.near = record.isIntersecting
+          }
+          schedule()
+        }, { rootMargin: '100% 0px 100% 0px' })
+        culler = observer
+      } catch { disableCuller() }
+    }
+
+    // Commit only after required setup. Track or scan acknowledges its own
+    // successful attachment separately, including scans of empty routes.
+    document.documentElement.classList.add('sv-on')
+    initialized = true
+    return true
   } catch {
-    resizeObserver?.disconnect()
+    safely(() => window.removeEventListener?.('scroll', schedule, true))
+    safely(() => window.removeEventListener?.('resize', onResize))
+    safely(() => stopMotion?.())
+    safely(() => resizeObserver?.disconnect())
     resizeObserver = null
+    disableCuller()
     document.documentElement.classList.remove('sv-on')
-    return false // stay static; compat() can enable a later retry
+    return false
   }
-  initialized = true
+}
 
-  // capture: scroll doesn't bubble, but it does capture-descend. One
-  // listener covers nested scrollers (modals, inner panels) for free
-  window.addEventListener('scroll', schedule, { passive: true, capture: true })
-  window.addEventListener('resize', () => {
-    vh = window.innerHeight
-    refresh() // a responsive sticky header changes every pin offset too
-  })
+// Private boot terminal state, shared with the inline watchdog. No DOM API
+// newer than the fallback floor is needed to keep late bundles static.
+export function bootReleased(): boolean {
+  return typeof window !== 'undefined' && (window as unknown as { __scrollvars?: boolean | string }).__scrollvars === 'released'
+}
 
-  // The effective preference (OS setting or the page's own data-sv-motion
-  // switch) lives in core/motion.ts and reaches every part of the library
-  // at once; the driver only keeps a copy for the hot path.
-  reducedMotion = effectiveReduce()
-  onMotionChange((reduced) => {
-    reducedMotion = reduced
-    applyPinHelperAll()
-    schedule()
-  })
+export function releaseBoot() {
+  ;(window as unknown as { __scrollvars?: string }).__scrollvars = 'released'
+  entries.forEach(releaseEntry)
+  document.documentElement.classList.remove('sv-on')
+  pageOutputs = false
+  if (raf) cancelAnimationFrame(raf)
+  raf = 0
+  clearTimeout(velTimer)
+}
 
-  // Offscreen culling: a viewport of margin on each side keeps fast scrolls
-  // correct; far outside it the rect read is skipped entirely.
-  if (typeof IntersectionObserver !== 'undefined') {
-    culler = new IntersectionObserver(
-      (records) => {
-        for (const record of records) {
-          const entry = entries.get(record.target as HTMLElement)
-          if (entry) entry.near = record.isIntersecting
-        }
-        schedule()
-      },
-      { rootMargin: '100% 0px 100% 0px' }
-    )
-  }
+function safely(work: () => void) { try { work() } catch { /* finish the remaining rollback */ } }
 
-  // No-JS guard: preset styles only hide content under `html.sv-on`, so a
-  // failed bundle degrades to a static, fully visible page. The class lands
-  // last, once every observer exists, so a throwing constructor can never
-  // leave the page hidden. __scrollvars lets the SSR pre-paint script (React
-  // ScrollVarsBoot) confirm the driver arrived.
-  document.documentElement.classList.add('sv-on')
-  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = true
-  return true
+function disableCuller() {
+  safely(() => culler?.disconnect())
+  culler = null
+  entries.forEach(entry => { entry.near = true })
 }
 
 let lastY = -1
@@ -314,37 +364,46 @@ function watchForPageConsumers() {
   const root = document.documentElement
   if (!root) return
   let queued = false
-  consumerWatch = new MutationObserver(records => {
-    if (queued) return
-    for (const record of records) {
-      for (const node of Array.from(record.addedNodes)) {
-        // text landing in a <style> (textContent = ...) is a new rule too
-        const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
-        if (!relevant) continue
-        queued = true
-        break
-      }
-      if (queued) break
-    }
-    // One rescan per frame at most: a runtime that injects a hundred rules
-    // in a row would otherwise walk every stylesheet a hundred times. The
-    // rescan goes through resolvePageOutputs(), so a <link> or @import that
-    // has not loaded (inserted bare or inside a wrapper) is uncertainty with
-    // a load listener, not a rule read as absent; and it does nothing once
-    // the watch is gone, so a frame queued before the last release cannot
-    // wake a driver with no work.
-    if (queued)
-      requestAnimationFrame(() => {
-        queued = false
-        if (!consumerWatch || pageOutputsMode !== 'auto') return
-        resolvePageOutputs()
-        if (pageOutputsEnabled && !listened.size) {
-          consumerWatch?.disconnect()
-          consumerWatch = null
+  try {
+    const observer = new MutationObserver(records => {
+      if (queued || consumerWatch !== observer) return
+      for (const record of records) {
+        for (const node of Array.from(record.addedNodes)) {
+          // text landing in a <style> (textContent = ...) is a new rule too
+          const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
+          if (!relevant) continue
+          queued = true
+          break
         }
-      })
-  })
-  consumerWatch.observe(root, { childList: true, subtree: true })
+        if (queued) break
+      }
+      // One rescan per frame at most: a runtime that injects a hundred rules
+      // in a row would otherwise walk every stylesheet a hundred times. The
+      // rescan goes through resolvePageOutputs(), so a <link> or @import that
+      // has not loaded (inserted bare or inside a wrapper) is uncertainty with
+      // a load listener, not a rule read as absent; and it does nothing once
+      // the watch is gone, so a frame queued before the last release cannot
+      // wake a driver with no work.
+      if (queued)
+        requestAnimationFrame(() => {
+          queued = false
+          if (consumerWatch !== observer || pageOutputsMode !== 'auto') return
+          resolvePageOutputs()
+          if (pageOutputsEnabled && !listened.size) {
+            consumerWatch?.disconnect()
+            consumerWatch = null
+          }
+        })
+    })
+    consumerWatch = observer
+    consumerWatch.observe(root, { childList: true, subtree: true })
+  } catch {
+    safely(() => consumerWatch?.disconnect())
+    consumerWatch = null
+    // Discovery is optional. If it cannot watch future readers, conservatively
+    // publish the document outputs without interrupting the entry frame.
+    pageOutputsEnabled = true
+  }
 }
 
 
@@ -404,7 +463,7 @@ function update() {
   forceAll = false
   if (offsetsDirty) {
     offsetsDirty = false
-    entries.forEach(refreshPinGeometry)
+    entries.forEach(entry => guardEntry(entry, () => refreshPinGeometry(entry)))
   }
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
@@ -425,36 +484,38 @@ function update() {
   const rootRects = new Map<HTMLElement, DOMRect>()
   const frames: Array<{ entry: Entry; geo: Geometry; overflow: boolean; stageWidth?: number; stageHeight?: number; rails?: Map<HTMLElement, string> }> = []
   entries.forEach((entry) => {
-    if (!entry.near && !entry.opts.root && !jumped && !force) return
-    const rect = entry.el.getBoundingClientRect()
-    const root = entry.opts.root
-    let geo: Geometry
-    if (root) {
-      let rr = rootRects.get(root)
-      if (!rr) {
-        rr = root.getBoundingClientRect()
-        rootRects.set(root, rr)
+    try {
+      if (!entry.near && !entry.opts.root && !jumped && !force) return
+      const rect = entry.el.getBoundingClientRect()
+      const root = entry.opts.root
+      let geo: Geometry
+      if (root) {
+        let rr = rootRects.get(root)
+        if (!rr) {
+          rr = root.getBoundingClientRect()
+          rootRects.set(root, rr)
+        }
+        // clientTop/clientHeight (not the border-inclusive bounding rect) so a
+        // bordered root measures the same origin here as scrollToScene uses.
+        const originTop = rr.top + root.clientTop
+        const vp = root.clientHeight
+        geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp }
+      } else {
+        geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
       }
-      // clientTop/clientHeight (not the border-inclusive bounding rect) so a
-      // bordered root measures the same origin here as scrollToScene uses.
-      const originTop = rr.top + root.clientTop
-      const vp = root.clientHeight
-      geo = { top: rect.top - originTop, bottom: rect.bottom - originTop, height: rect.height, vp }
-    } else {
-      geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
-    }
-    // the box's own height, or its content's when that is taller: a fixed
-    // height on the fit box hid overflowing copy from this test (round 9)
-    const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
-      (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
-    // both stage boxes belong to the read phase: read from apply() they sat
-    // after the first write of the frame and could force layout (round 10)
-    const rails = entry.compatRails ? new Map<HTMLElement, string>() : undefined
-    if (rails) (entry.stage ?? entry.el).querySelectorAll?.<HTMLElement>('.sv-rail').forEach(rail => {
-      if (rail.closest('.sv-stage') !== (entry.stage ?? null)) return
-      rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`)
-    })
-    frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails })
+      // the box's own height, or its content's when that is taller: a fixed
+      // height on the fit box hid overflowing copy from this test (round 9)
+      const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
+        (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
+      // both stage boxes belong to the read phase: read from apply() they sat
+      // after the first write of the frame and could force layout (round 10)
+      const rails = entry.compatRails ? new Map<HTMLElement, string>() : undefined
+      if (rails) (entry.stage ?? entry.el).querySelectorAll?.<HTMLElement>('.sv-rail').forEach(rail => {
+        if (rail.closest('.sv-stage') !== (entry.stage ?? null)) return
+        rails.set(rail, `${Math.min(0, (entry.stage?.clientWidth ?? geo.vp) - rail.offsetWidth)}px`)
+      })
+      frames.push({ entry, geo, overflow, stageWidth: entry.stage?.clientWidth, stageHeight: entry.stage?.offsetHeight, rails })
+    } catch (error) { failEntry(entry, error) }
   })
   // WRITE phase. `frames` is a snapshot taken before any callback ran: an
   // onLive/onScene fired earlier in this same loop can untrack (or replace)
@@ -462,37 +523,40 @@ function update() {
   // more callback after its untrack returned.
   for (const { entry, geo, overflow, stageWidth, stageHeight, rails } of frames) {
     if (entries.get(entry.el) !== entry) continue
-    if (entry.fit && entry.flow === undefined && !overflow) {
-      entry.flow = false
-      entry.opts.onFlow?.(false)
-      if (entries.get(entry.el) !== entry) continue
-    }
-    if (overflow && !entry.flow) {
-      // ponytail: latch until retracked; measuring the expanded flow layout to
-      // re-enable pinning would oscillate and interrupt someone reading it.
-      entry.flow = true
-      entry.el.setAttribute('data-sv-flow', '')
-      restorePinHelper(entry)
-      entry.opts.onFlow?.(true)
-      if (entries.get(entry.el) !== entry) continue
-      schedule() // geometry changed; read the flow layout on the next frame
-    }
-    if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
-    if (rails && entry.compatRails) {
-      const previous = entry.compatRails
-      entry.compatRails = rails
-      previous.forEach((_, rail) => {
-        if (!rails.has(rail)) {
-          rail.style.removeProperty('--_sv-rail-end')
-          unobserveIfUnneeded(rail)
-        }
-      })
-      rails.forEach((value, rail) => {
-        if (!previous.has(rail)) resizeObserver?.observe(rail)
-        if (previous.get(rail) !== value) rail.style.setProperty('--_sv-rail-end', value)
-      })
-    }
-    apply(entry, geo, stageHeight)
+    try {
+      if (entry.fit && entry.flow === undefined && !overflow) {
+        entry.flow = false
+        entry.opts.onFlow?.(false)
+        if (entries.get(entry.el) !== entry) continue
+      }
+      if (overflow && !entry.flow) {
+        // ponytail: latch until retracked; measuring the expanded flow layout to
+        // re-enable pinning would oscillate and interrupt someone reading it.
+        entry.flow = true
+        entry.el.setAttribute('data-sv-flow', '')
+        restorePinHelper(entry)
+        entry.opts.onFlow?.(true)
+        if (entries.get(entry.el) !== entry) continue
+        schedule() // geometry changed; read the flow layout on the next frame
+      }
+      if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
+      if (rails && entry.compatRails) {
+        const previous = entry.compatRails
+        entry.compatRails = rails
+        previous.forEach((_, rail) => {
+          if (!rails.has(rail)) {
+            rail.style.removeProperty('--_sv-rail-end')
+            unobserveIfUnneeded(rail)
+          }
+        })
+        rails.forEach((value, rail) => {
+          if (!previous.has(rail)) resizeObserver?.observe(rail)
+          if (previous.get(rail) !== value) rail.style.setProperty('--_sv-rail-end', value)
+        })
+      }
+      apply(entry, geo, stageHeight)
+      if (entries.get(entry.el) === entry) entry.status.state = 'active'
+    } catch (error) { failEntry(entry, error) }
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
   // --sv-v (signed velocity, viewport-heights per second). Velocity decays to
@@ -717,12 +781,13 @@ function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
       // would drop that replacement instead of this entry.
       if (entries.get(entry.el) === entry) {
         entries.delete(entry.el)
+        entry.status.state = 'completed'
         // entry.el can be another live entry's root (a shared scroll container),
         // and this entry can declare its own root: only drop each resize watch
         // once no other entry still needs it.
         unobserveIfUnneeded(entry.el)
         if (opts.root) unobserveIfUnneeded(opts.root)
-        culler?.unobserve(entry.el)
+        safely(() => culler?.unobserve(entry.el))
         // this element stays LIVE (that is what `once` latches), but it just
         // left `entries`: a released ancestor waiting on it can take its
         // marker now, and nothing else on this path would ever tell it.
@@ -801,7 +866,7 @@ function stillNeeded(target: HTMLElement): boolean {
  * cannot drift apart again: both must release the tracked element AND its
  * `root`, or a `{ once: true, root }` entry leaks the root's watch. */
 function unobserveIfUnneeded(target: HTMLElement) {
-  if (!stillNeeded(target)) resizeObserver?.unobserve(target)
+  if (!stillNeeded(target)) safely(() => resizeObserver?.unobserve(target))
 }
 
 /** Released elements still holding a tracked descendant: they take the marker
@@ -842,6 +907,10 @@ function markReleased(el: HTMLElement) {
   settleDeferred()
 }
 
+export function settleUntracked(el: HTMLElement) {
+  if (!entries.has(el)) markReleased(el)
+}
+
 /** Drop the released marker off an element AND its ancestors: an ancestor's
  * marker reaches this element just as well, so a tracker starting under a
  * released one (stopScan() then a single section re-mounting) would run its
@@ -865,30 +934,32 @@ function clearReleased(el: HTMLElement) {
  * track. */
 function releaseEntry(entry: Entry) {
   const { el } = entry
+  if (entries.has(el) && entries.get(el) !== entry) return
+  if (entry.status.state !== 'failed') entry.status.state = 'released'
   entries.delete(el)
   // Nothing is tracked any more: stop watching for a consumer that would only
   // wake a driver with no work, and let the next track() ask the document
   // again, since the page it asks about will have changed by then.
   if (entries.size === 0 && pageOutputsMode === 'auto') {
-    consumerWatch?.disconnect()
+    safely(() => consumerWatch?.disconnect())
     consumerWatch = null
-    unlistenAll()
+    safely(unlistenAll)
     pageOutputsResolved = false
   }
-  culler?.unobserve(el)
+  safely(() => culler?.unobserve(el))
   unobserveIfUnneeded(el)
   if (entry.opts.root) unobserveIfUnneeded(entry.opts.root)
   if (entry.fit) unobserveIfUnneeded(entry.fit)
   if (entry.stage) unobserveIfUnneeded(entry.stage)
   entry.compatRails?.forEach((_, rail) => {
-    rail.style.removeProperty('--_sv-rail-end')
+    safely(() => rail.style.removeProperty('--_sv-rail-end'))
     unobserveIfUnneeded(rail)
   })
-  el.removeAttribute?.('data-sv-flow')
-  restorePinHelper(entry)
-  el.classList.toggle('sv-live', false)
-  for (const name of Object.keys(entry.written)) el.style.removeProperty?.(name)
-  el.style.removeProperty?.('--sv-scenes')
+  safely(() => el.removeAttribute?.('data-sv-flow'))
+  safely(() => restorePinHelper(entry))
+  safely(() => el.classList.toggle('sv-live', false))
+  for (const name of Object.keys(entry.written)) safely(() => el.style.removeProperty?.(name))
+  safely(() => el.style.removeProperty?.('--sv-scenes'))
   // A released element settles VISIBLE. `.sv` and `[data-sv]` both declare
   // `--sv-live: 0`, only `.sv.sv-live` lifts it to 1, and `html.sv-on` is
   // never taken off: without this, stopScan() or a ScrollVarsBoot unmount
@@ -896,7 +967,7 @@ function releaseEntry(entry: Entry) {
   // option change would flash content out and back. Inline rather than
   // dropping `.sv`, because server markup keeps its authored `[data-sv]`
   // (which hides on its own) and the driver must not rewrite that attribute.
-  el.style.setProperty?.('--sv-live', '1')
+  safely(() => el.style.setProperty?.('--sv-live', '1'))
   // The same promise for everything the presets style on this element's
   // DESCENDANTS, which no inline variable here could reach: `[data-sv-off]` is
   // the marker the guards in styles/pin.css and styles/core.css read, so a
@@ -907,7 +978,7 @@ function releaseEntry(entry: Entry) {
   // `className={'sv ' + className}`), and a released element has no tracker
   // left to put a dropped class back. setAttribute, not toggleAttribute:
   // fallback-reachable code stays inside the supported floor (Safari 11).
-  markReleased(el)
+  safely(() => markReleased(el))
 }
 
 /** Replay the entrance of an element the driver had settled visible.
@@ -953,98 +1024,101 @@ function replayEntrance(el: HTMLElement) {
   const durationPriority = el.style.getPropertyPriority?.('--sv-duration') ?? ''
   const stagger = el.style.getPropertyValue?.('--sv-stagger') ?? ''
   const staggerPriority = el.style.getPropertyPriority?.('--sv-stagger') ?? ''
-  el.style.setProperty?.('--sv-duration', '0s', 'important')
-  el.style.setProperty?.('--sv-stagger', '0s', 'important')
-  // reading a property is what flushes the pending style update, not the
-  // getComputedStyle() call itself
-  void getComputedStyle(el).opacity
-  el.style.setProperty?.('--sv-duration', duration, durationPriority)
-  el.style.setProperty?.('--sv-stagger', stagger, staggerPriority)
+  try {
+    el.style.setProperty?.('--sv-duration', '0s', 'important')
+    el.style.setProperty?.('--sv-stagger', '0s', 'important')
+    // reading a property is what flushes the pending style update, not the
+    // getComputedStyle() call itself
+    void getComputedStyle(el).opacity
+  } finally {
+    safely(() => el.style.setProperty?.('--sv-duration', duration, durationPriority))
+    safely(() => el.style.setProperty?.('--sv-stagger', stagger, staggerPriority))
+  }
 }
 
 /** Track an element. Returns an untrack function. */
 export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
-  init()
+  const result = attach(el, opts)
+  if (result.state !== 'failed' && !bootReleased()) (window as unknown as { __scrollvars?: boolean }).__scrollvars = true
+  return result.stop
+}
+
+export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
+  const status: Attachment = { state: 'attaching', stop: () => {} }
   // A failed init() (no ResizeObserver) leaves the driver uninitialized: stay
   // a no-op so the page stays static until compat() shims one in and a later
   // track() call retries init() clean.
-  if (!initialized) return () => {}
+  if (!init()) {
+    status.state = 'failed'
+    safely(() => markReleased(el))
+    return status
+  }
   // re-tracking an already-tracked element must behave like untrack then
   // track: release the previous entry's outputs first, or a variable only it
   // ever wrote (e.g. --sv-t from a first call with travel:true) stays inline
   // forever once the identity guard blocks its own untrack.
   const existing = entries.get(el)
   if (existing) releaseEntry(existing)
-  // a previous release settled the element visible with an inline --sv-live: 1
-  // (and `data-sv-off`); tracking hands the flag back to the driver, so drop
-  // both before the first frame. `sv-live` goes too: a settled `once` entry
-  // keeps the class with no tracker behind it, and a new entry starts at
-  // live:false, so leaving it would skip the entrance and desync the DOM from
-  // the driver.
-  const settled = el.style.getPropertyValue?.('--sv-live') === '1'
-  el.style.removeProperty?.('--sv-live')
-  el.classList.remove('sv-live')
-  clearReleased(el)
-  const entry: Entry = {
-    el,
-    opts,
-    near: true,
-    live: false,
-    scene: -1,
-    pinOffset: opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0,
-    written: {},
-    compatRails: compatInstalled() ? new Map() : undefined,
-    stage: opts.pin || opts.scenes || opts.onPin
-      ? ownedStage(el)
-      : undefined,
-    fit: opts.pin || opts.scenes || opts.onPin
-      ? Array.from(ownedStage(el)?.children ?? []).find((child) => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
-      : undefined,
-  }
-  // Compat animates curtains and rails, but its deck is static. Release the
-  // whole stage so an unstacked deck cannot disappear below its clip.
-  if (belowTransformFloor() && entry.stage?.querySelector('.sv-deck')) {
-    entry.flow = true
-    el.setAttribute('data-sv-flow', '')
-    opts.onFlow?.(true)
-  }
+  const entry: Entry = { el, opts, status, near: true, live: false, scene: -1, pinOffset: 0, written: {} }
   entries.set(el, entry)
-  el.classList.add('sv')
-  // constants CSS can read: how many scenes, so progress bars need no hard-coded count
-  if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
-  // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
-  // under reduced motion, or below the individual-transform floor without
-  // compat(), the wrapper stays in flow instead of an empty scroll
-  if (typeof opts.pin === 'string') {
-    entry.authored = { height: el.style.height, position: el.style.position,
-      heightPriority: el.style.getPropertyPriority?.('height') ?? '',
-      positionPriority: el.style.getPropertyPriority?.('position') ?? '' }
-    applyPinHelper(entry)
+  status.stop = () => {
+    if (entries.get(el) === entry) releaseEntry(entry)
   }
-  entry.stageOrigin = readStageOrigin(el, entry.stage)
-  // Everything this call writes is in place: commit the `--sv-live: 0` reset
-  // before the first frame writes 1 back, or an element the driver had
-  // settled visible never replays its entrance.
-  if (settled) replayEntrance(el)
-  pageOutputs = true
-  resizeObserver?.observe(el)
-  if (entry.fit) resizeObserver?.observe(entry.fit)
-  if (entry.stage) resizeObserver?.observe(entry.stage)
-  // a root scrolls its own content; watch it too so a resize of the scroller
-  // itself (not just the tracked element) reschedules a measure. A root can
-  // be shared by several entries (or be a standalone tracked element too),
-  // so release() only unobserves it once no live entry needs it any more.
-  if (opts.root) resizeObserver?.observe(opts.root)
-  if (!opts.root) culler?.observe(el)
-  schedule()
-
-  return () => {
-    // a second track() on the same element replaces this entry in the map;
-    // an untrack from the first call must not release or unobserve the
-    // replacement, only its own bookkeeping.
-    if (entries.get(el) !== entry) return
-    releaseEntry(entry)
-  }
+  try {
+    // a previous release settled the element visible with an inline --sv-live: 1
+    // (and `data-sv-off`); tracking hands the flag back to the driver, so drop
+    // both before the first frame. `sv-live` goes too: a settled `once` entry
+    // keeps the class with no tracker behind it, and a new entry starts at
+    // live:false, so leaving it would skip the entrance and desync the DOM from
+    // the driver.
+    const settled = el.style.getPropertyValue?.('--sv-live') === '1'
+    el.style.removeProperty?.('--sv-live')
+    el.classList.remove('sv-live')
+    clearReleased(el)
+    entry.pinOffset = opts.pin || opts.scenes || opts.onPin ? readPinOffset(el) : 0
+    entry.compatRails = compatInstalled() ? new Map() : undefined
+    entry.stage = opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : undefined
+    entry.fit = Array.from(entry.stage?.children ?? []).find(child => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
+    // Compat animates curtains and rails, but its deck is static. Release the
+    // whole stage so an unstacked deck cannot disappear below its clip.
+    if (belowTransformFloor() && entry.stage?.querySelector('.sv-deck')) {
+      entry.flow = true
+      el.setAttribute('data-sv-flow', '')
+      opts.onFlow?.(true)
+      if (entries.get(el) !== entry) return status
+    }
+    el.classList.add('sv')
+    // constants CSS can read: how many scenes, so progress bars need no hard-coded count
+    if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))
+    // pin helper: `pin: '320vh'` is the whole skeleton (tall relative wrapper);
+    // under reduced motion, or below the individual-transform floor without
+    // compat(), the wrapper stays in flow instead of an empty scroll
+    if (typeof opts.pin === 'string') {
+      entry.authored = { height: el.style.height, position: el.style.position,
+        heightPriority: el.style.getPropertyPriority?.('height') ?? '',
+        positionPriority: el.style.getPropertyPriority?.('position') ?? '' }
+      applyPinHelper(entry)
+    }
+    entry.stageOrigin = readStageOrigin(el, entry.stage)
+    // Everything this call writes is in place: commit the `--sv-live: 0` reset
+    // before the first frame writes 1 back, or an element the driver had
+    // settled visible never replays its entrance.
+    if (settled) replayEntrance(el)
+    pageOutputs = true
+    resizeObserver?.observe(el)
+    if (entry.fit) resizeObserver?.observe(entry.fit)
+    if (entry.stage) resizeObserver?.observe(entry.stage)
+    // a root scrolls its own content; watch it too so a resize of the scroller
+    // itself (not just the tracked element) reschedules a measure. A root can
+    // be shared by several entries (or be a standalone tracked element too),
+    // so release() only unobserves it once no live entry needs it any more.
+    if (opts.root) resizeObserver?.observe(opts.root)
+    if (!opts.root) {
+      try { culler?.observe(el) } catch { disableCuller() }
+    }
+    schedule()
+  } catch (error) { failEntry(entry, error) }
+  return status
 }
 
 // Below the individual-transform floor (Chrome 104 / Firefox 72 / Safari
@@ -1090,8 +1164,8 @@ function readPinPosition(entry: Entry): string | undefined {
 // element in as `computed` (and the compiler says so).
 function applyPinHelperAll() {
   const positions = new Map<Entry, string | undefined>()
-  entries.forEach((entry) => positions.set(entry, readPinPosition(entry)))
-  entries.forEach((entry) => applyPinHelper(entry, positions.get(entry)))
+  entries.forEach((entry) => guardEntry(entry, () => { positions.set(entry, readPinPosition(entry)) }))
+  entries.forEach((entry) => guardEntry(entry, () => applyPinHelper(entry, positions.get(entry))))
 }
 
 function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
@@ -1112,14 +1186,15 @@ function applyPinHelper(entry: Entry, computed = readPinPosition(entry)) {
 }
 function restorePinHelper(entry: Entry) {
   if (!entry.authored) return
-  entry.el.style.setProperty('height', entry.authored.height, entry.authored.heightPriority)
-  entry.el.style.setProperty('position', entry.authored.position, entry.authored.positionPriority)
+  const { height, heightPriority, position, positionPriority } = entry.authored
+  safely(() => entry.el.style.setProperty('height', height, heightPriority))
+  safely(() => entry.el.style.setProperty('position', position, positionPriority))
 }
 
 /** Force a recompute (e.g. after content changes outside a resize). */
 export function refresh() {
   // a sticky header that changed size changes every pin consumer's offset
-  entries.forEach(refreshPinGeometry)
+  entries.forEach(entry => guardEntry(entry, () => refreshPinGeometry(entry)))
   // culled entries skip the per-frame rect read; give them one anyway so a
   // manual refresh() (content changed, no resize fired) reaches them too
   forceAll = true

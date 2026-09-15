@@ -8,8 +8,8 @@ import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 function installed(slug) {
   let cursor = 0, pending = [], reduced = false
   const slots = [], observers = [], motion = new Set()
-  const node = { querySelector: () => ({}), classList: { contains: () => enhanced }, hasAttribute: () => false }
-  let enhanced = false
+  const node = { querySelector: () => ({}), classList: { contains: () => enhanced, toggle() {} }, hasAttribute: () => false }
+  let enhanced = false, onFlow
   const React = {
     version: '19', createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial } },
@@ -24,13 +24,14 @@ function installed(slug) {
   const core = { prefersReducedMotion: () => reduced, onMotionChange: fn => { motion.add(fn); return () => motion.delete(fn) } }
   const module = { exports: {} }
   vm.runInNewContext(transformSync(COMPONENTS[slug].content, { loader: 'tsx', format: 'cjs' }).code, {
-    exports: module.exports, module, require: name => name === 'react' ? React : name === 'scrollvars' ? core : name === 'gsap' ? {} : { Track: 'Track', useScenes: () => ({ ref: { current: node }, scene: 0 }) },
+    exports: module.exports, module, require: name => name === 'react' ? React : name === 'scrollvars' ? core : name === 'gsap' ? {} : { Track: 'Track', useScenes: (_, opts) => { onFlow = opts.onFlow; return { ref: { current: node }, scene: 0 } } },
     document: { documentElement: {} }, getComputedStyle: () => ({ position: enhanced ? 'absolute' : 'static' }),
     MutationObserver: class { constructor(fn) { this.fn = fn; observers.push(this) } observe() {} disconnect() { this.stopped = true } },
   })
   return {
     render(props) { cursor = 0; const tree = Object.values(module.exports)[0](props); const assign = t => { if (!t || typeof t !== 'object') return; if (t.props?.ref) t.props.ref.current = node; t.children?.flat(Infinity).forEach(assign) }; assign(tree); const effects = pending; pending = []; effects.forEach(fn => fn()); return tree },
     enhance(value) { enhanced = value; observers.forEach(o => { if (!o.stopped) o.fn() }) },
+    fit(value) { onFlow(value) },
     motion(value) { reduced = value; motion.forEach(fn => fn(value)) },
     destroy() { slots.forEach(slot => slot?.cleanup?.()) },
     observers,
@@ -48,6 +49,9 @@ test('StickySteps only hides inactive shots while its enhanced layout is active'
   app.render(props)
   assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined)
   app.enhance(true)
+  assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined, 'a class alone is not a successful fit measurement')
+  app.fit(false)
+  app.render(props)
   assert.equal(figures(app.render(props))[1].props['aria-hidden'], true)
   app.motion(true)
   assert.equal(figures(app.render(props))[1].props.inert, undefined)
@@ -57,6 +61,14 @@ test('StickySteps only hides inactive shots while its enhanced layout is active'
   assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined)
   app.destroy()
   assert.ok(app.observers.every(o => o.stopped))
+})
+
+test('StickySteps SSR keeps crossfade gated until the first successful fit outcome', () => {
+  const app = installed('sticky-steps')
+  const tree = app.render({ steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] })
+  assert.ok(!tree.props.className.includes('st-ready'))
+  assert.match(COMPONENTS['sticky-steps'].content, /\.sv-on \.sv-steps:where\(\.st-ready\) \.st-shot/)
+  app.destroy()
 })
 
 test('GsapScrub rebuilds at the last scroll progress without waiting for another frame', () => {

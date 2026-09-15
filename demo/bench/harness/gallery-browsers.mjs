@@ -3,13 +3,48 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
 import { chromium, firefox, webkit } from 'playwright'
 import { snapshotRender, compareRender, rendersMoved, describeMismatch } from './render-equivalence.mjs'
 const SCOPED_CSS = await readFile(fileURLToPath(new URL('../../../styles/scoped.css', import.meta.url)), 'utf8')
+// Use the same CLI installation builder as the isolated gate, with actual
+// hydration instead of its static-preview attach script. Fail on a missing
+// React major; never silently omit half of the acceptance matrix.
+execFileSync(process.execPath, [fileURLToPath(new URL('../../../scripts/react18-install.mjs', import.meta.url))], { stdio: 'inherit' })
+const failures = new Map()
+for (const major of [19, 18]) {
+  const args = major === 18 ? ['--import', fileURLToPath(new URL('../../../scripts/react18-register.mjs', import.meta.url))] : []
+  const payload = JSON.parse(execFileSync(process.execPath, [...args, fileURLToPath(new URL('./render-installed.mjs', import.meta.url)), '--enhancement-failure'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }))
+  assert.equal(Number(payload.react.split('.')[0]), major)
+  failures.set(String(major), payload.effects[0])
+}
+const failureTemplate = await readFile(new URL('./fixtures/enhancement-failure.html', import.meta.url), 'utf8')
+const failureStyles = (await Promise.all(['pin', 'core'].map(part => readFile(new URL(`../../../styles/${part}.css`, import.meta.url), 'utf8')))).join('\n')
+for (const fixture of failures.values()) assert.deepEqual(fixture.styles, ['pin'], 'StickySteps declares pin.css; the entrance probes additionally declare core.css')
+const substitute = (text, marker, value) => {
+  assert.equal(text.split(marker).length, 2, `fixture marker must occur once: ${marker}`)
+  return text.replace(marker, () => value)
+}
 
 const server = createServer(async (req, res) => {
   try {
-    const path = new URL(req.url, 'http://localhost').pathname
+    const url = new URL(req.url, 'http://localhost')
+    const path = url.pathname
+    if (['/failure.html', '/failure-client.js', '/failure-styles.css'].includes(path)) {
+      const fixture = failures.get(url.searchParams.get('react') || '19')
+      assert(fixture)
+      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'nonce-sv-fixture'; style-src 'nonce-sv-fixture' 'self'; style-src-attr 'unsafe-inline'; img-src data:; base-uri 'none'")
+      res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html')
+      if (path === '/failure-client.js') return res.end(fixture.script)
+      if (path === '/failure-styles.css') return res.end(failureStyles)
+      let html = substitute(failureTemplate, '<!-- DECLARED_STYLES -->', '<link rel="stylesheet" href="/failure-styles.css">')
+      html = substitute(html, '<!-- APP_MARKUP -->', url.searchParams.get('case') === 'empty' ? fixture.emptyMarkup : fixture.markup)
+      if (url.searchParams.get('case') === 'empty') {
+        assert.equal((html.match(/ data-sv>/g) || []).length, 2)
+        html = html.replace(/ data-sv>/g, '>')
+      }
+      return res.end(html)
+    }
     if (path !== '/index.html' && !/^\/(fx|bench)\/[\w.-]+$/.test(path)) throw Error('not found')
     res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html')
     res.end(await readFile(fileURLToPath(new URL(`../../${path.slice(1)}`, import.meta.url))))
@@ -21,6 +56,176 @@ const sections = ['hero-cinematic', 'timeline-scrub', 'sticky-steps', 'stats-cou
 const selected = process.argv[2]
 assert(!selected || ['chromium', 'firefox', 'webkit'].includes(selected), `Unknown browser: ${selected}`)
 const settle = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
+async function staticShots(page, label) {
+  await page.waitForFunction(() => [...document.querySelectorAll('.st-shot')].every(el =>
+    !el.hasAttribute('inert') && el.getAttribute('aria-hidden') !== 'true' &&
+    getComputedStyle(el).position !== 'absolute' && +getComputedStyle(el).opacity === 1))
+  const shots = page.locator('.st-shot a')
+  assert.equal(await shots.count(), 3, `${label}: all media is present`)
+  for (const link of await shots.all()) {
+    await link.scrollIntoViewIfNeeded()
+    const visible = await link.evaluate(el => {
+      const rect = el.getBoundingClientRect()
+      const x = (Math.max(0, rect.left) + Math.min(innerWidth, rect.right)) / 2
+      const y = (Math.max(0, rect.top) + Math.min(innerHeight, rect.bottom)) / 2
+      const hit = document.elementFromPoint(x, y)
+      return rect.width > 0 && rect.height > 0 && !!hit && (el === hit || el.contains(hit))
+    })
+    assert(visible, `${label}: media is not clipped or covered`)
+  }
+  // Actual keyboard navigation, not just an inert attribute inspection.
+  await shots.first().focus()
+  for (let i = 1; i < 3; i++) {
+    await page.keyboard.press('Tab')
+    assert(await shots.nth(i).evaluate(el => document.activeElement === el), `${label}: Tab reaches media ${i + 1}`)
+  }
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), `${label}: no horizontal overflow`)
+}
+
+async function readableEntrances(page, label) {
+  for (const el of await page.locator('#scan-first .sv-rise, #scan-last .sv-rise').all()) {
+    await el.scrollIntoViewIfNeeded()
+    await page.waitForFunction(id => {
+      const el = document.querySelector('#' + id + ' .sv-rise')
+      const css = getComputedStyle(el)
+      return +css.opacity === 1 && css.visibility === 'visible' && el.getBoundingClientRect().height > 0
+    }, await el.evaluate(node => node.parentElement.id))
+  }
+  assert.equal(await page.locator('#probes [inert], #probes [aria-hidden="true"]').count(), 0, `${label}: static copy remains accessible`)
+}
+
+async function enhancementFailures(browser, name) {
+  for (const major of [19, 18]) for (const width of [1400, 320]) {
+    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'empty', 'normal', 'reduced']) {
+      const label = `${name} React ${major} ${width} ${mode}`
+      const context = await browser.newContext({ viewport: { width, height: 900 }, javaScriptEnabled: mode !== 'no-js', reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference' })
+      const page = await context.newPage()
+      const unexpected = []
+      page.on('pageerror', error => { if (!error.message.includes('fixture failure')) unexpected.push(error.message) })
+      try {
+        await page.goto(`${base}../failure.html?react=${major}&case=${mode}`)
+        if (mode === 'no-js') {
+          await staticShots(page, label)
+          await readableEntrances(page, label)
+          continue
+        }
+        if (['blocked', 'delayed'].includes(mode)) {
+          assert(await page.locator('.st-shot').evaluateAll(els => els.every(el => getComputedStyle(el).position === 'static')), `${label}: SSR stays static during prepaint`)
+          await page.waitForFunction(() => window.__scrollvars === 'released')
+          await staticShots(page, label + ' after watchdog')
+          await readableEntrances(page, label)
+          if (mode === 'delayed') {
+            await page.waitForFunction(() => window.failureHydrated)
+            await page.evaluate(() => { failureControl.remount(); failureControl.SV.scan() })
+            await settle(page)
+            assert.equal(await page.evaluate(() => document.documentElement.classList.contains('sv-on')), false, `${label}: late remount cannot hide again`)
+            await staticShots(page, label + ' after late hydration')
+            assert.equal(await page.locator('.sv-steps').evaluate(el => el.style.height), '', `${label}: terminal attachment cannot leave an empty pin stretch`)
+          }
+          continue
+        }
+        await page.waitForFunction(() => window.failureHydrated)
+        if (['ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'reduced'].includes(mode)) {
+          await staticShots(page, label)
+          await readableEntrances(page, label)
+          if (mode !== 'reduced') {
+            // Retry before the three-second watchdog expires. Recoverable
+            // attachment failure is distinct from terminal boot expiry.
+            const terminal = await page.evaluate(() => window.__scrollvars === 'released')
+            await page.evaluate(() => { restoreObservers(); failureControl.remount(); failureControl.SV.scan() })
+            if (terminal) await staticShots(page, label + ' terminal retry')
+            else await page.waitForFunction(() => document.querySelector('.sv-steps').style.getPropertyValue('--sv-scene') !== '')
+          }
+          continue
+        }
+        if (mode === 'empty') {
+          assert.equal(await page.locator('.sv-steps').count(), 0)
+          assert.equal(await page.evaluate(() => window.__scrollvars), true, `${label}: empty scan acknowledges readiness`)
+          await page.evaluate(() => {
+            const late = document.createElement('section')
+            late.id = 'empty-late'; late.setAttribute('data-sv', ''); late.textContent = 'Populated route'
+            document.body.appendChild(late)
+            failureControl.show(true)
+          })
+          await page.waitForFunction(() => document.getElementById('empty-late').classList.contains('sv'))
+        }
+        if (mode === 'scan-observer' || mode === 'later-attach') {
+          assert(await page.locator('#scan-first').evaluate(el => el.hasAttribute('data-sv-off')), `${label}: partial scan released`)
+          assert(await page.locator('#scan-last').evaluate(el => el.hasAttribute('data-sv-off')), `${label}: last element is static too`)
+          await readableEntrances(page, label)
+          await page.evaluate(() => { restoreObservers(); window.retryScan = failureControl.SV.scan() })
+          assert(await page.locator('#scan-last').evaluate(el => !el.hasAttribute('data-sv-off')), `${label}: explicit retry acquired content`)
+        }
+        await page.waitForFunction(() => document.querySelector('.sv-steps')?.style.getPropertyValue('--sv-scene') !== '')
+        if (width === 1400) {
+          await page.waitForFunction(() => document.querySelectorAll('.st-shot[inert][aria-hidden="true"]').length === 2)
+          assert.equal(await page.locator('.st-shot').first().evaluate(el => getComputedStyle(el).position), 'absolute', `${label}: successful tracker actually crossfades`)
+          await pin(page, '.sv-steps', 1)
+          await page.waitForFunction(() => {
+            const last = document.querySelector('.st-shot:last-child')
+            return !last.hasAttribute('inert') && last.getAttribute('aria-hidden') !== 'true' && +getComputedStyle(last).opacity > .99
+          })
+          assert(await page.locator('.st-shot').first().evaluate(el => +getComputedStyle(el).opacity < .01), `${label}: scene navigation changes rendered media`)
+        }
+        if (mode !== 'normal') continue
+
+        // The live page switch and OS switch must each agree with layout and
+        // keyboard reachability. The raw scene clock may continue to scrub.
+        await page.evaluate(() => failureControl.SV.setMotion('reduce'))
+        await staticShots(page, label + ' page reduction')
+        await page.evaluate(() => failureControl.SV.setMotion('auto'))
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await staticShots(page, label + ' OS reduction')
+        await page.emulateMedia({ reducedMotion: 'no-preference' })
+
+        // Failure during a later frame must not prevent the next sibling's
+        // callback, or leave the failed pin's authored geometry overwritten.
+        await page.evaluate(() => {
+          const { SV } = failureControl
+          const bad = document.getElementById('runtime'), good = document.getElementById('healthy')
+          bad.style.setProperty('height', '123px', 'important')
+          window.healthyFrames = 0
+          window.stopBad = SV.track(bad, { root: document.documentElement, pin: '300vh', onPin() { throw Error('fixture failure: onPin') } })
+          window.stopGood = SV.track(good, { root: document.documentElement, onTravel() { healthyFrames++ } })
+        })
+        await page.waitForFunction(() => healthyFrames > 0 && document.getElementById('runtime').hasAttribute('data-sv-off'))
+        assert.deepEqual(await page.locator('#runtime').evaluate(el => [el.style.height, el.style.getPropertyPriority('height')]), ['123px', 'important'], `${label}: failed pin restores authored geometry`)
+        await page.evaluate(() => failureControl.SV.refresh())
+        await settle(page)
+        assert.equal(await page.evaluate(() => failureErrors.filter(s => s.includes('onPin')).length), 1, `${label}: failing callback reported once`)
+        await page.evaluate(() => { stopBad(); stopGood() })
+
+        // Scanner leases overlap. Releasing an inner scan cannot release the
+        // Boot-owned nodes, and a completed stop is harmless after a retry.
+        await page.evaluate(() => {
+          const { SV } = failureControl, root = document.getElementById('probes')
+          const stop = SV.scan(root); stop(); stop()
+        })
+        assert(await page.locator('#scan-first').evaluate(el => !el.hasAttribute('data-sv-off')), `${label}: overlap preserves Boot ownership`)
+
+        // Replacing the React component releases the old generation; only the
+        // current instance may publish layout and accessibility restrictions.
+        await page.evaluate(() => failureControl.show(false))
+        await page.waitForFunction(() => !document.querySelector('.sv-steps'))
+        await page.evaluate(() => failureControl.show(true))
+        await page.waitForFunction(() => document.querySelector('.sv-steps')?.style.getPropertyValue('--sv-scene') !== '')
+
+        // Real CMS overflow must release both pin height and hidden media.
+        await page.locator('.st-steps').evaluate(el => { el.style.minHeight = '1400px' })
+        await page.evaluate(() => failureControl.SV.refresh())
+        await page.waitForFunction(() => document.querySelector('.sv-steps').hasAttribute('data-sv-flow'))
+        await staticShots(page, label + ' fit overflow')
+        assert.equal(await page.locator('.sv-steps').evaluate(el => el.style.height), '', `${label}: fit fallback restores wrapper height`)
+      } finally {
+        await context.close()
+        assert.deepEqual(unexpected, [], `${label}: no unexpected runtime errors`)
+      }
+    }
+    console.log(`ok ${name}: enhancement failure, React ${major}, ${width}px, nonce CSP, actual Boot and installed StickySteps`)
+  }
+}
+
 async function pin(page, selector, progress) {
   await page.locator(selector).evaluate((el, p) => {
     const stage = el.querySelector('.sv-stage')
@@ -34,6 +239,7 @@ try {
     if (selected && selected !== name) continue
     const browser = await engine.launch()
     try {
+      await enhancementFailures(browser, name)
       // styles/scoped.css in every engine: it must never change what a page
       // renders, whether the engine registers the clocks (Chrome 85+, Safari
       // 16.4+, Firefox 128+, all behind @supports selector(:has(a))) or

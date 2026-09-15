@@ -1888,3 +1888,133 @@ test('legacy compat releases a deck stage and its empty pin stretch', async () =
   delete window.CSS
   delete document.documentElement.hasAttribute
 })
+function failureEnvironment() {
+  const frames = [], errors = [], watched = new Set()
+  global.window = { innerHeight: 1000, scrollY: 0, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }
+  global.document = { documentElement: makeElement(), querySelectorAll: () => [], styleSheets: [] }
+  global.requestAnimationFrame = fn => frames.push(fn)
+  global.MutationObserver = class { observe() {} disconnect() {} }
+  global.ResizeObserver = class { observe(el) { watched.add(el) } unobserve(el) { watched.delete(el) } disconnect() { watched.clear() } }
+  global.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
+  global.getComputedStyle = () => ({ getPropertyValue: () => '', position: 'static' })
+  global.reportError = error => errors.push(error)
+  return { frames, errors, watched, flush() { for (let n = 0; frames.length && n < 20; n++) frames.shift()() } }
+}
+
+test('driver: failed second attachment restores geometry and permits explicit retry', async () => {
+  const env = failureEnvironment(), RO = global.ResizeObserver
+  const good = makeElement(), bad = makeElement()
+  bad.style.setProperty('height', '123px', 'important')
+  global.ResizeObserver = class extends RO { observe(el) { super.observe(el); if (el === bad) throw Error('attach') } }
+  const { track } = await import('../dist/core/driver.js?lifecycle-attach')
+  const stopGood = track(good)
+  const stopBad = track(bad, { pin: '300vh' })
+  assert.equal(typeof stopBad, 'function')
+  assert.ok(env.watched.has(good))
+  assert.ok(!env.watched.has(bad))
+  assert.equal(bad.style.height, '123px')
+  assert.equal(bad.priorities.height, 'important')
+  assert.ok(bad.hasAttribute('data-sv-off'))
+  assert.equal(env.errors.length, 1)
+  global.ResizeObserver.prototype.observe = RO.prototype.observe
+  const retry = track(bad)
+  assert.ok(env.watched.has(bad))
+  stopBad(); assert.ok(env.watched.has(bad))
+  retry(); stopGood()
+})
+
+test('driver: optional observe failure disables culling for existing and future entries', async () => {
+  const env = failureEnvironment()
+  global.IntersectionObserver = class { observe() { throw Error('optional observe') } disconnect() {} }
+  const { track } = await import('../dist/core/driver.js?lifecycle-cull-observe')
+  const el = makeElement(); place(el, 300)
+  const stop = track(el, { travel: true })
+  env.flush()
+  assert.ok(el.vars['--sv-t'])
+  assert.equal(env.errors.length, 0)
+  stop()
+})
+
+for (const callback of ['onLive', 'onTravel', 'onPin', 'onScene', 'onFlow']) test(`driver: ${callback} failure settles only its entry and reports once`, async () => {
+  const env = failureEnvironment(), error = Error(callback)
+  const { track, refresh } = await import(`../dist/core/driver.js?lifecycle-${callback}`)
+  const bad = makeElement(), good = makeElement()
+  place(bad, 300); place(good, 300)
+  if (callback === 'onFlow') {
+    const stage = makeElement(), fit = makeElement()
+    stage.children = [fit]; stage.clientHeight = stage.offsetHeight = 500
+    fit.offsetHeight = fit.scrollHeight = 100; fit.parentElement = stage
+    fit.setAttribute('data-sv-fit', ''); stage.parentElement = bad; bad.stage = stage
+  }
+  let calls = 0, healthy = 0
+  const stopBad = track(bad, { pin: '300vh', scenes: 3, [callback]: () => { calls++; throw error } })
+  const stopGood = track(good, { onTravel: () => healthy++ })
+  env.flush(); refresh(); env.flush()
+  assert.equal(calls, 1)
+  assert.ok(healthy >= 2)
+  assert.deepEqual(env.errors, [error])
+  assert.ok(bad.hasAttribute('data-sv-off'))
+  assert.equal(bad.style.height, '')
+  assert.ok(!env.watched.has(bad))
+  stopBad(); stopGood()
+})
+
+test('driver: throwing measurement cannot abort a healthy sibling frame', async () => {
+  const env = failureEnvironment(), error = Error('measurement')
+  const { track } = await import('../dist/core/driver.js?lifecycle-measure')
+  const bad = makeElement(), good = makeElement()
+  bad.getBoundingClientRect = () => { throw error }
+  let frames = 0
+  const a = track(bad), b = track(good, { onTravel: () => frames++ })
+  env.flush()
+  assert.ok(frames > 0)
+  assert.ok(bad.hasAttribute('data-sv-off'))
+  assert.deepEqual(env.errors, [error])
+  a(); b()
+})
+
+test('driver: cleanup continues after observer teardown throws', async () => {
+  const env = failureEnvironment()
+  global.IntersectionObserver = class { observe() {} unobserve() { throw Error('teardown') } disconnect() {} }
+  const { track } = await import('../dist/core/driver.js?lifecycle-cleanup')
+  const el = makeElement()
+  el.style.setProperty('position', 'absolute', 'important')
+  const stop = track(el, { pin: '300vh' })
+  stop(); stop()
+  assert.ok(!env.watched.has(el))
+  assert.equal(el.style.height, '')
+  assert.equal(el.style.position, 'absolute')
+  assert.equal(el.priorities.position, 'important')
+  assert.ok(el.hasAttribute('data-sv-off'))
+})
+
+test('driver: replacement made by a throwing callback owns the DOM and survives the old cleanup', async () => {
+  const env = failureEnvironment(), error = Error('reentrant')
+  const { track, refresh } = await import('../dist/core/driver.js?lifecycle-generation')
+  const el = makeElement(); place(el, 300)
+  let replacement, frames = 0
+  const stop = track(el, { onTravel() {
+    replacement = track(el, { onTravel: () => frames++ })
+    throw error
+  } })
+  env.flush(); stop(); refresh(); env.flush()
+  assert.ok(frames > 0)
+  assert.ok(!el.hasAttribute('data-sv-off'))
+  assert.ok(env.watched.has(el))
+  assert.deepEqual(env.errors, [error])
+  replacement()
+})
+
+test('driver: optional document consumer observation cannot abort entry updates', async () => {
+  const env = failureEnvironment()
+  document.documentElement.getAttribute = () => null
+  global.MutationObserver = class { observe(_, options) { if (options.childList) throw Error('consumer watch') } disconnect() {} }
+  const { track } = await import('../dist/core/driver.js?lifecycle-consumer-watch')
+  const el = makeElement()
+  let frames = 0
+  const stop = track(el, { onTravel: () => frames++ })
+  env.flush()
+  assert.ok(frames > 0)
+  assert.ok(!el.hasAttribute('data-sv-off'))
+  stop()
+})

@@ -17,6 +17,7 @@ let media: MediaQueryList | null = null
 let wiredWith: unknown = null // the matchMedia the list came from: a replaced one (tests, iframes) is wired again
 let mediaMatches = false
 let last = false
+let unwire: (() => void) | undefined
 
 const attrReduce = () => {
   const el = typeof document !== 'undefined' ? document.documentElement : null
@@ -58,15 +59,32 @@ function notify() {
 
 function wire() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia === wiredWith) return
+  const next = window.matchMedia('(prefers-reduced-motion: reduce)')
+  let observer: MutationObserver | undefined
+  const cleanup = () => {
+    try {
+      if (typeof next.removeEventListener === 'function') next.removeEventListener('change', onMedia)
+      else next.removeListener?.(onMedia)
+    } finally { observer?.disconnect() }
+  }
+  try {
+    // addEventListener on a MediaQueryList is Safari 14; inside the supported
+    // floor only the deprecated addListener exists.
+    if (typeof next.addEventListener === 'function') next.addEventListener('change', onMedia)
+    else next.addListener?.(onMedia)
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
+      observer = new MutationObserver(notify)
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] })
+    }
+  } catch (error) {
+    try { cleanup() } catch { /* preserve the setup error */ }
+    throw error
+  }
+  try { unwire?.() } catch { /* the replacement is already wired */ }
+  unwire = cleanup
   wiredWith = window.matchMedia
-  media = window.matchMedia('(prefers-reduced-motion: reduce)')
-  mediaMatches = !!media.matches
-  // addEventListener on a MediaQueryList is Safari 14; inside the supported
-  // floor only the deprecated addListener exists.
-  if (typeof media.addEventListener === 'function') media.addEventListener('change', onMedia)
-  else media.addListener?.(onMedia)
-  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement)
-    new MutationObserver(notify).observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] })
+  media = next
+  mediaMatches = !!next.matches
   last = attrReduce() || mediaMatches
 }
 

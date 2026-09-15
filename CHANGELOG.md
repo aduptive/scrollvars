@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.17.5 (2026-09-15)
+
+### Fixed
+
+- Scroll initialization commits readiness after required setup succeeds and rolls back partial subscriptions on failure. Throwing optional intersection observers fall back to unculled tracking.
+- Failed attachments restore their outputs and authored pin geometry. Scanners retain only acquired leases, unwind partial setup and settle unprocessed content while preserving overlapping owners.
+- Measurement, output and callback failures release the affected tracker, report the original error once and allow healthy entries to continue. Stale cleanup cannot release a replacement.
+- Boot watchdog expiry is terminal for late tracking and remounts, including when mutation observation fails. Boot releases its scanner if toggle setup fails.
+- Installed StickySteps starts static, waits for tracking and fit evaluation before enabling crossfade, and releases layout and accessibility hiding on failure.
+- The browser gate now exercises actual Boot and CLI-installed StickySteps with React 18 and 19, injected failures, nonce CSP, motion changes, retry and responsive static reachability. No public API changed.
+
 ## 1.17.4 (2026-09-15)
 
 ### Fixed
