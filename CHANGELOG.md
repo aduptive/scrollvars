@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.17.3 (2026-09-15)
+
+### Fixed
+
+- Share scroll tracking across overlapping scanners until their last owner stops.
+- Resolve pin stages within their owning tracker for measurement and scene navigation.
+- Preserve authored height and position priorities when releasing pin helpers.
+- Honor the page motion switch in Coverflow and GSAP gallery previews.
+- Keep static StickySteps shots accessible after failed enhancement or watchdog release.
+- Restore the current scroll progress when rebuilding an installed GSAP timeline.
+- Wrap unsupported rails, hide decorative curtains and release static legacy deck stages.
+- Keep nested scoped-clock readers on their own clocks before the first driver write.
+
 ## 1.17.2 (2026-09-14)
 
 ### Fixed

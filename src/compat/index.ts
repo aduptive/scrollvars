@@ -78,6 +78,7 @@ const FALLBACK_CSS = `
    either. */
 .sv .sv-deck { display: block; }
 .sv .sv-deck > * { transform: none; }
+[data-sv-flow] .sv-rail { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),

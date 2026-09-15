@@ -208,6 +208,12 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 :where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
+@supports not (translate: 0) {
+  .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+  .sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
+}
+.sv-on [data-sv-off].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+[data-sv-off].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
@@ -266,6 +272,12 @@ html:not(.sv-on) .sv-steps .st-steps &gt; li { opacity: 1; translate: none; }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-steps .st-steps &gt; li { opacity: 1; translate: none; }
 :where([data-sv-motion="reduce"]) .sv-steps .st-dots i { opacity: 1; scale: none; }
+@supports not (translate: 0) {
+  .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+  .sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
+}
+.sv-on [data-sv-off].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
+[data-sv-off].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
 [data-sv-flow].sv-steps .st-grid { min-height: 0; }
 .sv-on [data-sv-flow].sv-steps .st-shot { position: static; opacity: 1; scale: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
@@ -297,10 +309,21 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
   React.useEffect(() =&gt; {
-    // the effective preference: the OS setting or the page's data-sv-motion
-    // switch (both show every shot in flow, so every shot must be reachable)
-    setInteractive(!prefersReducedMotion())
-    return onMotionChange((reduced) =&gt; setInteractive(!reduced))
+    const el = ref.current
+    if (!el) return
+    // Read the actual layout: failed boot, the watchdog and missing CSS all
+    // leave static shots reachable. Only the crossfade hides inactive shots.
+    const update = () =&gt; {
+      const shot = el.querySelector('.st-shot')
+      setInteractive(el.classList.contains('sv') &amp;&amp; !el.hasAttribute('data-sv-off') &amp;&amp;
+        !prefersReducedMotion() &amp;&amp; !!shot &amp;&amp; getComputedStyle(shot).position === 'absolute')
+    }
+    update()
+    const stopMotion = onMotionChange(update)
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+    return () =&gt; { stopMotion(); observer.disconnect() }
   }, [])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject&lt;T | null&gt; so
@@ -341,12 +364,12 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
 }
 </code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.7 KB gzip as ESM (this page's fx/sv.js IIFE: 8.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 8.9 KB gzip as ESM (this page's fx/sv.js IIFE: 9.1 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.17.2. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.17.3. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

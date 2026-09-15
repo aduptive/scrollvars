@@ -79,7 +79,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.6 KB gz)
-// also styles/pin.css (3.5), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.3), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
+// also styles/pin.css (3.2), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.3), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
 ## The fx gallery (prefer for common patterns)
@@ -331,14 +331,13 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-view-*` native tier is Chromium 115+). Below the floor and
-without `compat()`, the page is static but 100% visible; `sv-rail` is
-the one exception, its track stays unwrapped and can run past the
-viewport edge, reachable by a page-wide horizontal scroll.
-With `compat()` installed (`data-sv-compat` on `<html>`) the stage stays
-pinned instead so the module's own fallback can keep animating the
-curtains and rail from `--sv-pin`, and content taller than the stage
-clips there, a real trade: skip `compat()` on a page whose below-floor
-deck matters more than its below-floor animation. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+without `compat()`, stages return to flow, decorative curtains hide and rails
+wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and
+rails keep their fallback animation. Tracked stages containing static decks
+return to flow, including the wrapper height, so every card stays reachable.
+Installed StickySteps makes inactive shots inert only while its crossfade
+layout is active; static shots stay accessible after failed boot, watchdog
+release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler
@@ -475,11 +474,11 @@ them. Your own reader needs one rule, covering the reader and every element
 between it and the tracked ancestor:
 
 ```css
-.sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
+.sv :has(.my-card):not(.sv, [data-sv]), .my-card:not(.sv, [data-sv]) { --sv-t: inherit; }
 ```
 
-Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
-`:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
+Just `.my-card:not(.sv, [data-sv]) { --sv-t: inherit; }` when it is a direct child. The
+`:not(.sv, [data-sv])` keeps a nested tracker, including a reader itself, on its own clock,
 the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
 `.copy p`, the path rule is `.sv :has(p):not(.sv, [data-sv])`, because `:has(.copy p)` is

@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.1 KB, full core incl. the slider 8.7 KB, styles 9.8 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.7 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 4.3 KB, full core incl. the slider 8.9 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~6.9 KB on the wire.
 
 ## Why
 
@@ -128,7 +128,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.5 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.2 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -144,17 +144,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 4.1 KB |
-| `track` + `scan` (zero-wrapper mode) | 5.5 KB |
+| `track` (the driver) | 4.3 KB |
+| `track` + `scan` (zero-wrapper mode) | 5.7 KB |
 | `slider` | 2.7 KB |
 | `trackPointer` | 0.6 KB |
 | `mountEffect` (canvas) | 1.9 KB |
-| everything in `scrollvars` (the core entry) | 8.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 14.5 KB |
+| everything in `scrollvars` (the core entry) | 8.9 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 14.7 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~6.7 KB gzipped, total.**
+**~6.9 KB gzipped, total.**
 
 ## Mental model
 
@@ -570,40 +570,21 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
 | Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
-| Anything older, or no JS | content 100% visible, static | `html.sv-on` guard for no JS. With JS running below the transform floor and without `compat()`, `pin.css`'s own net keeps the stage, curtains and deck in flow and readable (see below); with `compat()` installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); `sv-rail` is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; `compat()`'s rail fallback ignores `--sv-rail-start` and starts at `translateX(0)` instead of offscreen, so it is stationary whenever the track's own width equals the viewport |
+| Anything older, or no JS | content visible, static | Below the transform floor without `compat()`, stages return to flow, curtains hide and rails wrap. With `compat()`, curtains and rails keep their fallback animation; stages containing static decks return to flow. |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
 
-Below the transform floor, with JS still running, `styles/pin.css` carries
-its own `@supports not (translate: 0)` net, but only for four of its rules:
-the stage, both curtains and the deck. The curtains sit parted and static
-rather than animated, the deck unstacks to a static, non-overlapping
-layout, and, without `compat()` installed, the stage resets to flow so
-nothing is clipped by the stage itself (`sv-reading`, `sv-range` and
-`sv-counter` need no net of their own, they settle for unrelated reasons).
-With `compat()` installed the net exempts `.sv-stage` instead (its own
-`data-sv-compat` marker on `<html>` is the switch): the module's fallback
-sheet still animates the curtains and rail from `--sv-pin`, measured off
-that stage, so releasing it there would snap them over one pixel instead.
-The trade is real: measured on a four-card `sv-deck` pinned below the
-floor with `compat()` installed, the stage stayed a fixed height while the
-deck unstacked to its full static column, so cards three and four sat
-past the clip, unreachable, for the roughly 1800px of scroll the pin
-still consumed doing nothing visible. A page whose below-floor deck
-matters more than its below-floor animation gets the flow layout back by
-not calling `compat()` there, the same escape the closing paragraph below
-already promises. `sv-rail` stays the one exception either way:
-with JS running the no-JS guard's `width: auto; flex-wrap: wrap` does not
-apply, so a track built wider than the viewport runs past the right edge,
-reachable only by a page-wide horizontal scroll, and not at all under an
-`overflow-x: hidden` ancestor. `compat()`'s own `sv-rail` fallback does
-not really fix that: it ignores `--sv-rail-start`, starts at
-`translateX(0)` instead of entering from offscreen, and is stationary
-whenever the track's own width equals the viewport, so wrap the rail
-yourself below the floor regardless. One
-more caveat until ADU-150 lands: a released stage can also leave a parked
-curtain panel sitting outside it, extending the document so a reader can
-scroll sideways to an empty panel.
+Below the transform floor, with JS still running, `styles/pin.css` releases
+stages, hides decorative curtains and wraps rails when `compat()` is absent.
+Decks unstack. With `compat()` installed, curtains and rails keep their
+fallback animation and pinned geometry. A tracked stage containing a deck
+returns to flow through `data-sv-flow`, including its wrapper height, so every
+static card stays reachable. Compat's rail still ignores `--sv-rail-start`
+and starts at `translateX(0)`; it is stationary when its width fits the stage.
+
+Installed StickySteps only applies `inert` and `aria-hidden` to inactive shots
+when its crossfade layout is active. Failed enhancement, watchdog release,
+reduced motion and fit-to-flow leave the static shots accessible.
 
 **Extended floor**: `scrollvars/compat`, an opt-in module for legacy
 targets. On modern browsers it runs three feature checks (ResizeObserver, IntersectionObserver, individual transforms) and exits (free);
@@ -680,11 +661,11 @@ them. Your own reader needs one rule, covering the reader and every element
 between it and the tracked ancestor:
 
 ```css
-.sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
+.sv :has(.my-card):not(.sv, [data-sv]), .my-card:not(.sv, [data-sv]) { --sv-t: inherit; }
 ```
 
-Just `.my-card { --sv-t: inherit; }` when it is a direct child. The
-`:not(.sv, [data-sv])` keeps a nested tracker on the path on its own clock,
+Just `.my-card:not(.sv, [data-sv]) { --sv-t: inherit; }` when it is a direct child. The
+`:not(.sv, [data-sv])` keeps a nested tracker, including a reader itself, on its own clock,
 the same boundary the sheet draws for its presets. Put the
 reader's LAST compound inside `:has()`: for a reader written as
 `.copy p`, the path rule is `.sv :has(p):not(.sv, [data-sv])`, because `:has(.copy p)` is

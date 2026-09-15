@@ -21,7 +21,7 @@ const unwrap = css => css.replace(/@supports[^{]*\{([\s\S]*)\}\s*$/m, '$1')
 const rules = css => [...stripComments(unwrap(css)).matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => [m[1].trim(), m[2]])
 
 const subject = selector => selector.split(',')[0].trim().split(/\s+/).pop().replace(/\)$/, '')
-const subjects = selectorList => selectorList.split(',').map(sel => sel.trim().split(/\s+/).pop().replace(/\)$/, ''))
+const subjects = selectorList => selectorList.replace(/:not\(\.sv, \[data-sv\]\)/g, '').split(',').map(sel => sel.trim().split(/\s+/).pop().replace(/\)$/, ''))
 
 const descendantReaders = () => {
   const found = []
@@ -68,4 +68,10 @@ test('registration is guarded on :has(), so no browser can register without bein
 test('scoped.css stays out of the aggregate styles.css', () => {
   const aggregate = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
   assert.ok(!/@property\s+--sv-t/.test(aggregate), 'the aggregate must not register the clocks: scoped mode is opt-in')
+})
+
+test('scoped reader forwarding excludes nested trackers before their first inline write', () => {
+  for (const reader of ['sv-drift', 'sv-range']) {
+    assert.ok(scoped.includes(`.sv .${reader}:not(.sv, [data-sv])`), `${reader} reader must keep its own clock`)
+  }
 })

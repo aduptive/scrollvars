@@ -8,7 +8,7 @@
  * on the tracked element). The shipped presets are forwarded below; your own
  * reader needs one rule, its LAST compound inside :has():
  *
- *   .sv :has(.my-card):not(.sv, [data-sv]), .my-card { --sv-t: inherit; }
+ *   .sv :has(.my-card):not(.sv, [data-sv]), .my-card:not(.sv, [data-sv]) { --sv-t: inherit; }
  *
  * Measured behind a rendered-output gate: -63% style recalculation at 50
  * descendants per reader, +13% where every descendant is a reader, -23% on
@@ -39,6 +39,6 @@
    * between and `inherit` on the reader alone would read that. Keep this list
    * in step with styles/*.css: a test fails when a preset reads a clock from a
    * selector whose subject is not .sv and has no forward here. */
-  .sv :has(.sv-drift):not(.sv, [data-sv]), .sv .sv-drift { --sv-view: inherit; }
-  .sv :has(.sv-range):not(.sv, [data-sv]), .sv .sv-range { --sv-t: inherit; }
+  .sv :has(.sv-drift):not(.sv, [data-sv]), .sv .sv-drift:not(.sv, [data-sv]) { --sv-view: inherit; }
+  .sv :has(.sv-range):not(.sv, [data-sv]), .sv .sv-range:not(.sv, [data-sv]) { --sv-t: inherit; }
 }
