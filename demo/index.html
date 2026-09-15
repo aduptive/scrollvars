@@ -20,13 +20,13 @@
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
-    --ink: #121118;
-    --surface: #1b1a24;
-    --line: rgba(230, 228, 240, 0.09);
-    --text: #e6e4f0;
-    --muted: #8f8ca6;
-    --accent: #a78bfa;
-    --accent-dim: rgba(167, 139, 250, 0.16);
+    --ink: #0d1611;
+    --surface: #14211a;
+    --line: rgba(232, 239, 230, 0.09);
+    --text: #e8efe6;
+    --muted: #8fa898;
+    --accent: #f2c14e;
+    --accent-dim: rgba(242, 193, 78, 0.16);
     --num: #ffb454;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -113,7 +113,7 @@
   header.site {
     position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: 56px;
     display: flex; align-items: center; justify-content: space-between;
-    gap: 14px; padding: 0 20px; background: rgba(18, 17, 24, 0.82);
+    gap: 14px; padding: 0 20px; background: rgba(13, 22, 17, 0.82);
     backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
   }
   header.site .word { font: 600 15px var(--mono); color: var(--text); text-decoration: none; }
@@ -180,7 +180,7 @@
     right: 14px;
     bottom: 14px;
     z-index: 50;
-    background: #1b1a24;
+    background: #14211a;
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 10px 14px;
@@ -261,7 +261,7 @@
   .pgal-card {
     border-radius: 10px;
     border: 1px solid var(--line);
-    background: linear-gradient(155deg, #232035, var(--surface) 70%);
+    background: linear-gradient(155deg, #1a2b21, var(--surface) 70%);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -410,7 +410,7 @@
     width: min(420px, 82vw);
     height: min(300px, 52vh);
     border-radius: 12px;
-    background: linear-gradient(150deg, #221f31, var(--surface) 65%);
+    background: linear-gradient(150deg, #1a2a20, var(--surface) 65%);
     border: 1px solid var(--line);
     padding: 26px;
     display: flex;
@@ -643,7 +643,7 @@
   .co-ball { width: 110px; aspect-ratio: 1; border-radius: 999px; background: var(--accent); color: var(--ink); font-size: 12px; }
   .co-ring { width: 130px; aspect-ratio: 1; border-radius: 999px; border: 2px solid var(--num); }
   .co-pill { padding: 22px 34px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: clamp(16px, 3vw, 26px); color: var(--text); white-space: nowrap; }
-  .co-card { width: 150px; height: 100px; border-radius: 10px; background: linear-gradient(140deg, #262138, var(--surface)); border: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+  .co-card { width: 150px; height: 100px; border-radius: 10px; background: linear-gradient(140deg, #1c2d22, var(--surface)); border: 1px solid var(--line); color: var(--muted); font-size: 11px; }
   .co-tri { width: 0; height: 0; border-left: 44px solid transparent; border-right: 44px solid transparent; border-bottom: 76px solid var(--num); }
   .co-dot { width: 22px; aspect-ratio: 1; border-radius: 999px; background: var(--text); }
   @media (prefers-reduced-motion: reduce) {
@@ -695,7 +695,7 @@
     --pabs: max(var(--pd), calc(var(--pd) * -1));
     position: absolute;
     max-width: min(300px, 72vw);
-    background: rgba(27, 26, 36, 0.9);
+    background: rgba(20, 33, 26, 0.9);
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 18px 20px;
@@ -721,7 +721,7 @@
     overflow: hidden;
     display: grid;
     place-items: center;
-    background: radial-gradient(ellipse at 50% 60%, #1c1930 0%, var(--ink) 62%);
+    background: radial-gradient(ellipse at 50% 60%, #172a1f 0%, var(--ink) 62%);
   }
   #phone-canvas { width: 100%; height: 100%; display: block; }
   .gl-caption {
@@ -765,9 +765,9 @@
     font-size: 13px;
     border: 1px solid var(--line);
   }
-  .face.front { background: linear-gradient(135deg, #262138, #1b1a24 60%); color: var(--text); }
+  .face.front { background: linear-gradient(135deg, #1c2d22, #14211a 60%); color: var(--text); }
   .face.front .big { font-size: 22px; color: var(--accent); }
-  .face.back { background: linear-gradient(135deg, #2b2418, #1b1a24 60%); transform: rotateY(180deg); color: var(--text); }
+  .face.back { background: linear-gradient(135deg, #2b2418, #14211a 60%); transform: rotateY(180deg); color: var(--text); }
   .face.back .big { font-size: 22px; color: var(--num); }
   @media (prefers-reduced-motion: reduce) { .card3d { transform: none; } }
   /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -783,7 +783,7 @@
     aspect-ratio: 4 / 5;
     border-radius: 12px;
     border: 1px solid var(--line);
-    background: linear-gradient(160deg, #232035, var(--surface) 70%);
+    background: linear-gradient(160deg, #1a2b21, var(--surface) 70%);
     padding: 22px;
     display: flex;
     flex-direction: column;
@@ -849,8 +849,20 @@
   .refs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .refs .by { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; margin-top: 2px; }
 
-  footer { padding: 80px 24px 120px; text-align: center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+  footer { padding: 72px 24px 96px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
   footer code { color: var(--accent); }
+  .foot { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.3fr) auto minmax(0, 1.4fr); gap: 40px 56px; align-items: start; }
+  .foot-word { font: 600 18px var(--mono); color: var(--text); text-decoration: none; display: inline-block; margin-bottom: 12px; }
+  .foot-word span { color: var(--accent); }
+  .foot-stamp { margin: 0 0 14px; line-height: 1.7; }
+  .foot-stamp a { color: var(--accent); }
+  .foot-made { margin: 0; color: var(--text); font-size: 14px; }
+  .foot-links { display: grid; gap: 8px; font: 13px var(--mono); }
+  .foot-links a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 4px; width: max-content; }
+  .foot-links a:hover, .foot-links a:focus-visible { color: var(--accent); border-color: var(--accent); }
+  .foot-notes p { margin: 0 0 10px; font-size: 12px; line-height: 1.6; }
+  .foot-notes a { color: var(--accent); }
+  @media (max-width: 860px) { .foot { grid-template-columns: 1fr; gap: 28px; } }
 .amb-stage {
   position: relative;
   /* full-bleed: break out of .wrap to cover the whole viewport */
@@ -858,7 +870,7 @@
   margin-left: calc(50% - 50vw);
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(160deg, #17151f, var(--surface) 75%);
+  background: linear-gradient(160deg, #14211a, var(--surface) 75%);
 }
 .amb-stage canvas { display: block; width: 100%; height: 100%; }
 .amb-hud {
@@ -878,7 +890,7 @@
   top: 0;
   height: 100vh;
   overflow: hidden;
-  background: #0d0c13;
+  background: #0b1410;
   /* the whole stage fades near the end of the pin: the journey ends,
      the page continues */
   opacity: clamp(0, 5.5 - var(--sv-pin) * 6.2, 1);
@@ -915,7 +927,7 @@
   margin-left: calc(50% - 50vw);
   height: 82vh;
   overflow: hidden;
-  background: #131118;
+  background: #0f1a13;
   cursor: crosshair;
 }
 .blob-stage canvas { display: block; width: 100%; height: 100%; }
@@ -940,7 +952,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   place-items: center;
   text-align: center;
 }
-.snap-panel:nth-child(1) { background: linear-gradient(170deg, #1d1930, var(--ink) 80%); }
+.snap-panel:nth-child(1) { background: linear-gradient(170deg, #172a1f, var(--ink) 80%); }
 .snap-panel:nth-child(2) { background: linear-gradient(170deg, #241d18, var(--ink) 80%); }
 .snap-panel:nth-child(3) { background: linear-gradient(170deg, #16211d, var(--ink) 80%); }
 .snap-panel .big {
@@ -955,7 +967,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   gap: 16px;
   overflow-x: auto;
   padding: 18px 24px;
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   -webkit-overflow-scrolling: touch;
 }
@@ -966,7 +978,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   flex: 0 0 min(340px, 78vw);
   height: 200px;
   border-radius: 12px;
-  background: linear-gradient(150deg, #221f31, var(--surface) 65%);
+  background: linear-gradient(150deg, #1a2a20, var(--surface) 65%);
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
@@ -1000,7 +1012,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   top: 0;
   height: 100vh;
   overflow: hidden;
-  background: #12101a;
+  background: #0f1a13;
   contain: strict;
 }
 .map-world {
@@ -1024,7 +1036,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   padding: 20px 24px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(27, 26, 36, 0.92);
+  background: rgba(20, 33, 26, 0.92);
   translate: -50% -50%;
   rotate: var(--map-ang, 0rad); /* counter-rotation: cards stay upright */
 }
@@ -1038,7 +1050,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   font: 500 12px/1 var(--mono);
   color: var(--muted);
   letter-spacing: 0.08em;
-  background: rgba(18, 16, 26, 0.8);
+  background: rgba(13, 22, 17, 0.8);
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -1086,7 +1098,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   height: 340px;
   align-self: center;
   padding: 140px 0;
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   scrollbar-width: none;
   gap: 10px;
@@ -1113,7 +1125,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 
 .demo-slider {
   padding: 40px calc(50% - 150px);
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   scrollbar-width: none;
 }
@@ -1122,7 +1134,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   width: 300px;
   height: 210px;
   border-radius: 14px;
-  background: linear-gradient(150deg, #221f31, var(--surface) 65%);
+  background: linear-gradient(150deg, #1a2a20, var(--surface) 65%);
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
@@ -1134,7 +1146,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.75));
   transform: perspective(900px) rotateY(clamp(-28deg, calc(var(--sd, 0) * -18deg), 28deg));
 }
-.demo-slider > div.sv-active { border-color: rgba(167, 139, 250, 0.5); color: var(--text); }
+.demo-slider > div.sv-active { border-color: rgba(242, 193, 78, 0.5); color: var(--text); }
 .slider-controls { display: flex; align-items: center; gap: 16px; margin-top: 18px; justify-content: center; }
 .slider-controls button {
   font: 600 16px/1 var(--mono);
@@ -1184,7 +1196,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   width: min(360px, 80vw);
   height: 300px;
   padding: 118px 0;
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   scrollbar-width: none;
   gap: 8px;
@@ -1217,7 +1229,7 @@ html.snap-region { scroll-snap-type: y proximity; }
 /* ── case 16 · window parallax gallery ── */
 .wingal {
   padding: 30px calc(50% - min(34vw, 300px));
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   scrollbar-width: none;
 }
@@ -1241,10 +1253,10 @@ html.snap-region { scroll-snap-type: y proximity; }
 }
 .wingal .far { translate: calc(var(--sd, 0) * 8%) 0; }
 .wingal .near { translate: calc(var(--sd, 0) * 26%) 0; }
-.wingal .g1 { background: linear-gradient(180deg, #2b1d4d, #7c5cd4 70%, #ffb454); }
+.wingal .g1 { background: linear-gradient(180deg, #1f3a2b, #3f8f5b 70%, #a7f3d0); }
 .wingal .g2 { background: linear-gradient(180deg, #0f2b28, #1f8a70 70%, #a7f3d0); }
 .wingal .g3 { background: linear-gradient(180deg, #33121f, #c2455c 70%, #ffd9a0); }
-.wingal .g4 { background: linear-gradient(180deg, #101f38, #2563b0 70%, #93c5fd); }
+.wingal .g4 { background: linear-gradient(180deg, #2b2418, #a8843a 70%, #f2c14e); }
 .wingal h3 {
   position: relative;
   margin: 0 0 22px 26px;
@@ -1261,7 +1273,7 @@ html.snap-region { scroll-snap-type: y proximity; }
   top: 0;
   height: 100vh;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 120%, #2a1214, #140b10 60%, #0f0b12);
+  background: radial-gradient(circle at 50% 120%, #2a1214, #140b10 60%, #0b1410);
   contain: strict;
 }
 .pz-head {
@@ -1417,7 +1429,7 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
   --a2: clamp(0, calc(var(--sv-act) - 1), 1);
   --a3: clamp(0, calc(var(--sv-act) - 2), 1);
   padding: 56px 28px 40px;
-  background: #17151f;
+  background: #14211a;
   border-radius: 16px;
   text-align: center;
   overflow: hidden;
@@ -1519,7 +1531,7 @@ Vw only guards narrow phones (px caps made it tiny on big screens) */
   font: 500 13px var(--mono);
   color: var(--text);
 }
-.spread-cards > :nth-child(1) { background: linear-gradient(150deg, #2b1d4d, var(--surface) 75%); }
+.spread-cards > :nth-child(1) { background: linear-gradient(150deg, #1f3a2b, var(--surface) 75%); }
 .spread-cards > :nth-child(2) { background: linear-gradient(150deg, #103029, var(--surface) 75%); z-index: 2; }
 .spread-cards > :nth-child(3) { background: linear-gradient(150deg, #33121f, var(--surface) 75%); }
 .spread-scrub > * { --sv-spread: clamp(0, calc(var(--sv-t, 0) * 2), 1); }
@@ -3083,9 +3095,24 @@ the full API, recipes and performance rules, ready to ingest.
 
 </main>
 <footer>
-  <p><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.7 KB · <a href="docs/" style="color: var(--accent)">docs</a> · <a href="fx/" style="color: var(--accent)">fx gallery</a> · <a href="#benchmarks" style="color: var(--accent)">benchmarks</a> · <a href="llms.txt" style="color: var(--accent)">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars" style="color: var(--accent)">GitHub</a> · v1.17.2 · MIT · by <a href="https://github.com/aduptive" style="color: var(--accent)">aduptive</a></p>
-<p style="font-size: 12px; color: var(--muted);">Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-<p style="font-size: 12px; color: var(--muted);">honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
+  <div class="foot">
+    <div class="foot-brand">
+      <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 4.1 KB gzip · full core 8.7 KB · v1.17.2 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
+    </div>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="docs/">docs</a>
+      <a href="fx/">fx gallery</a>
+      <a href="#benchmarks">benchmarks</a>
+      <a href="llms.txt">llms.txt</a>
+      <a href="https://github.com/aduptive/scrollvars">GitHub</a>
+    </nav>
+    <div class="foot-notes">
+      <p>Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
+      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 9 KB part. Reduced motion is respected by the driver and every preset.</p>
+    </div>
+  </div>
 </footer>
 
 <!-- ══════════════ HUD ══════════════ -->
@@ -5755,7 +5782,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
           ctx.beginPath();
           ctx.arc(x, y, 0.8 + depth * 1.9 + (wave + 1) * 0.4, 0, 6.2832);
           ctx.fillStyle =
-            'rgba(167,139,250,' +
+            'rgba(242, 193, 78,' +
             Math.max(0.05, 0.12 + depth * 0.45 + wave * 0.14).toFixed(3) +
             ')';
           ctx.fill();
@@ -5825,7 +5852,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         // streak: project the same star slightly deeper and connect
         var z2 = Math.min(1, z + 0.05 * vel);
         var k2 = persp / z2;
-        ctx.strokeStyle = 'rgba(230,228,240,' + (a * 0.9).toFixed(3) + ')';
+        ctx.strokeStyle = 'rgba(232, 239, 230,' + (a * 0.9).toFixed(3) + ')';
         ctx.lineWidth = Math.max(0.6, (1 - z) * 2.4);
         ctx.beginPath();
         ctx.moveTo(w / 2 + s.x * k2, h / 2 + s.y * k2);
@@ -5836,8 +5863,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
       var arrive = Math.max(0, warpShown - 0.75) * 4;
       if (arrive > 0) {
         var g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.6);
-        g.addColorStop(0, 'rgba(167,139,250,' + (arrive * 0.5).toFixed(3) + ')');
-        g.addColorStop(1, 'rgba(167,139,250,0)');
+        g.addColorStop(0, 'rgba(242, 193, 78,' + (arrive * 0.5).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(242, 193, 78,0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
       }
@@ -5960,12 +5987,12 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     ctx.beginPath();
     for (var gx = 0; gx <= 2400; gx += 240) { ctx.moveTo(gx, 0); ctx.lineTo(gx, 1800); }
     for (var gy = 0; gy <= 1800; gy += 240) { ctx.moveTo(0, gy); ctx.lineTo(2400, gy); }
-    ctx.strokeStyle = 'rgba(167,139,250,0.06)';
+    ctx.strokeStyle = 'rgba(242, 193, 78,0.06)';
     ctx.lineWidth = 1;
     ctx.stroke();
     // the dashed treasure route
     ctx.setLineDash([18, 16]);
-    ctx.strokeStyle = 'rgba(167,139,250,0.55)';
+    ctx.strokeStyle = 'rgba(242, 193, 78,0.55)';
     ctx.lineWidth = 5;
     ctx.stroke(mapRouteD);
     ctx.setLineDash([]);

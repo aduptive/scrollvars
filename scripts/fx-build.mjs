@@ -91,8 +91,8 @@ const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 
 const SHELL_CSS = `
   * { box-sizing: border-box; margin: 0; }
-  :root { --ink:#121118; --surface:#1b1a24; --line:rgba(230,228,240,.09);
-    --text:#e6e4f0; --muted:#8f8ca6; --accent:#a78bfa;
+  :root { --ink:#0d1611; --surface:#14211a; --line:rgba(232, 239, 230,.09);
+    --text:#e8efe6; --muted:#8fa898; --accent:#f2c14e;
     --mono:ui-monospace,"SF Mono",Menlo,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
@@ -103,9 +103,9 @@ const SHELL_CSS = `
   a { color: var(--accent); }
   /* the bar is translucent, so over a light section (the manifesto's paper)
      its muted text read 4.37:1: a brighter muted inside the bar only */
-  header.fx { --muted:#aca9c2; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+  header.fx { --muted:#b8c6bb; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
     display:flex; justify-content:space-between; align-items:center; gap:16px;
-    padding:0 24px; font-size:14px; background:rgba(18,17,24,.88);
+    padding:0 24px; font-size:14px; background:rgba(13, 22, 17,.88);
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
   header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
     border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
@@ -117,7 +117,7 @@ const SHELL_CSS = `
   p.tag { color: var(--muted); margin-bottom: 6px; }
   p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
   p.meta b { color: var(--text); font-weight: 600; }
-  .fxstage { background:#17151f; border:1px solid var(--line); border-radius:16px;
+  .fxstage { background:#14211a; border:1px solid var(--line); border-radius:16px;
     padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
   /* on-arrival effects need the stage to start BELOW the live band, or the driver
      flags it live on the first frame and the entrance is over before it is seen */
@@ -127,7 +127,7 @@ const SHELL_CSS = `
     text-transform:uppercase; color:var(--muted); }
   /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
   .fxouter { border-radius:16px; margin:18px 0; }
-  .fxsticky { background:#17151f; border:1px solid var(--line); border-radius:16px; }
+  .fxsticky { background:#14211a; border:1px solid var(--line); border-radius:16px; }
   .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
     display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
   .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
@@ -143,19 +143,19 @@ const SHELL_CSS = `
   .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
     border:1px solid var(--line); border-bottom:0; background:transparent;
     color:var(--muted); cursor:pointer; }
-  .tabs button.on { background:#17151f; color:var(--accent); }
+  .tabs button.on { background:#14211a; color:var(--accent); }
   .code { position: relative; }
-  .code pre { background:#17151f; border:1px solid var(--line); border-radius:0 12px 12px 12px;
-    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#cfcbe4; display:none; }
+  .code pre { background:#14211a; border:1px solid var(--line); border-radius:0 12px 12px 12px;
+    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#d6dfd6; display:none; }
   .code pre.on { display:block; }
   .copy { position:absolute; top:10px; right:10px; font:600 12px var(--mono);
     padding:6px 12px; border-radius:8px; border:1px solid var(--line);
     background:rgba(0,0,0,.4); color:var(--muted); cursor:pointer; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
   .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
-    text-decoration:none; color:var(--text); background:#17151f; }
+    text-decoration:none; color:var(--text); background:#14211a; }
   .fxlink:hover { border-color: var(--accent); }
-  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#17151f; }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#14211a; }
   .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
   .fxlink b { display:block; margin-bottom:6px; }
   .fxlink span { color:var(--muted); font-size:13px; }
@@ -185,10 +185,10 @@ const SHELL_CSS = `
     .fxsidein { position:static; max-height:none; padding:20px 20px 0; }
     .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
       font:600 14px var(--sans);
-      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#17151f; }
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#14211a; }
     .fxnav[open] > summary { border-radius:12px 12px 0 0; }
     .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
-      padding:10px 16px 14px; background:#17151f; }
+      padding:10px 16px 14px; background:#14211a; }
   }
 `
 
@@ -255,7 +255,7 @@ for (const fx of EFFECTS) {
     // The source shown and copied is exactly what the CLI installs.
     fx.react = COMPONENTS[fx.slug].content
     const staticPreview = fx.preview.replace(/<script>[\s\S]*?<\/script>/g, '')
-    writeFileSync(join(out, `${fx.slug}-preview.html`), `<!doctype html><html lang="en"><meta charset="utf-8"><link rel="stylesheet" href="sv.css"><style>body{margin:0;background:#17151f;color:#eee;font:18px/1.5 system-ui}*{box-sizing:border-box}</style><body>${staticPreview}</body></html>`)
+    writeFileSync(join(out, `${fx.slug}-preview.html`), `<!doctype html><html lang="en"><meta charset="utf-8"><link rel="stylesheet" href="sv.css"><style>body{margin:0;background:#14211a;color:#eee;font:18px/1.5 system-ui}*{box-sizing:border-box}</style><body>${staticPreview}</body></html>`)
   }
 }
 
