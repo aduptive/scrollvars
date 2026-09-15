@@ -801,8 +801,26 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       const onFocusIn = () => { pausedRef.current = true; setPaused(true) }
       const focusEl = shellRef.current ?? el
       focusEl?.addEventListener('focusin', onFocusIn)
-      const timer = setInterval(() => {
+      const pointers = new Set<number>()
+      let touching = false
+      const restart = () => {
+        clearInterval(timer)
+        timer = setInterval(advance, autoplay)
+      }
+      const onDown = (event: PointerEvent) => { pointers.add(event.pointerId); clearInterval(timer) }
+      const onUp = (event: PointerEvent) => {
+        if (pointers.delete(event.pointerId) && !pointers.size && !touching) restart()
+      }
+      // Native touch scrolling cancels its pointer before the finger lifts.
+      const onTouchStart = () => { touching = true; clearInterval(timer) }
+      const onTouchEnd = (event: TouchEvent) => {
+        if (!touching || event.touches.length) return
+        touching = false
+        if (!pointers.size) restart()
+      }
+      const advance = () => {
         if (
+          pointers.size || touching ||
           pausedRef.current ||
           hovering.current ||
           !onscreen ||
@@ -812,11 +830,25 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         const h = handle.current
         if (!h) return
         const s = h.state()
+        if (s.dragging) return
         if (s.active >= s.count - 1 || s.progress >= 0.999) h.goTo(0)
         else h.next()
-      }, autoplay)
+      }
+      let timer = setInterval(advance, autoplay)
+      el?.addEventListener('pointerdown', onDown)
+      el?.addEventListener('touchstart', onTouchStart, { passive: true })
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+      window.addEventListener('touchend', onTouchEnd)
+      window.addEventListener('touchcancel', onTouchEnd)
       return () => {
         clearInterval(timer)
+        el?.removeEventListener('pointerdown', onDown)
+        el?.removeEventListener('touchstart', onTouchStart)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        window.removeEventListener('touchend', onTouchEnd)
+        window.removeEventListener('touchcancel', onTouchEnd)
         io.disconnect()
         focusEl?.removeEventListener('focusin', onFocusIn)
       }

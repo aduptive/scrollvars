@@ -113,7 +113,7 @@ The container is N viewports tall by default (one per scene); a string
 `pin` (`pin="320vh"`) overrides that and wins over `height` too, matching
 `<Track pin>`. Content is `position: sticky`. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
-`sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides it: enters from offscreen right and still moves
+`sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides only the starting position, while the endpoint uses stage overflow: enters from offscreen right and still moves
 when the track fits the viewport:
 `translate: calc((1 - var(--sv-pin)) * var(--sv-stage-width, 100vw) + var(--sv-pin) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0`).
 
@@ -165,7 +165,9 @@ the container, `--sv-order` per span), `sv-counter` (scroll-driven integer via
 
 **Carousel / slider (do NOT add Swiper):** in React prefer the kit:
 `<Slider perView={{base:1.2, md:2.5, xl:4}} gap={16} arrows dots autoplay={5000}>`
-with `<Slide span={2}>` for per-slide overrides. Breakpoints are media
+with `<Slide span={2}>` for per-slide overrides. Autoplay suspends during pointer
+and touch gestures and starts a full countdown on release or cancel; focus and
+explicit pause still require the resume control. Breakpoints are media
 queries (map keys = Tailwind names, or a bare number of px as a raw
 min-width, e.g. `900: 4`; a string with a unit, `'900px'`, is coerced with
 `Number()` and comes out `@media (min-width:NaNpx)`, an invalid query
@@ -323,7 +325,9 @@ wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and
 rails keep their fallback animation. Tracked stages containing static decks
 return to flow, including the wrapper height, so every card stays reachable.
 Installed StickySteps starts static and enables crossfade only after tracking
-and its first fit evaluation succeed. Inactive shots become inert only while
+and its first fit evaluation succeed. Missing or throwing mutation observation
+keeps it static and releases partial observation and motion subscriptions.
+Inactive shots become inert only while
 that layout is active; static shots stay accessible after failed boot, watchdog
 release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. If a client contractually requires legacy browsers:
@@ -448,6 +452,8 @@ owners. A measurement, output or callback failure releases only that tracker,
 restores authored pin geometry and reports the original error once; healthy
 entries continue. Retry recoverable failures with an explicit track or scan.
 Watchdog expiry remains terminal. The public cleanup-function return is unchanged.
+Pointer acquisition unwinds listeners, observation and queued work before
+rethrowing a setup error, and permits an explicit retry.
 Failure of Boot's toggle setup also releases the scroll trackers and makes
 that page session terminally static.
 

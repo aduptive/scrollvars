@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Slider autoplay suspends during pointer and touch gestures and restarts a full countdown after release or cancel, preserving focus and explicit pause controls.
+- The horizontal rail preset and copied formula apply the start override only at the start and align the endpoint to measured stage overflow.
+- Installed StickySteps acquires mutation observation and motion subscriptions transactionally, retaining static, reachable shots when setup fails.
+- Failed pointer setup releases listeners, its observer and queued work before rethrowing, preserving overlapping scanner owners and explicit retry.
+- Demo bundling passes executable arguments separately so checkout paths containing spaces work.
 - Scroll initialization commits readiness after required setup succeeds and rolls back partial subscriptions on failure. Throwing optional intersection observers fall back to unculled tracking.
 - Failed attachments restore their outputs and authored pin geometry. Scanners retain only acquired leases, unwind partial setup and settle unprocessed content while preserving overlapping owners.
 - Measurement, output and callback failures release the affected tracker, report the original error once and allow healthy entries to continue. Stale cleanup cannot release a replacement.

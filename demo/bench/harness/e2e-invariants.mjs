@@ -64,6 +64,7 @@ import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import { installedGate } from './installed-gate.mjs'
+import { autoplayInteraction } from './autoplay-interaction.mjs'
 import { reviewGate } from './review-gate.mjs'
 import { pageOutputsGate } from './page-outputs-gate.mjs'
 import { scopedClocksGate } from './scoped-clocks-gate.mjs'
@@ -2871,6 +2872,7 @@ await keyboardGate({ browser, check, base })
 await axeGate({ browser, check, base })
 await reflowGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
+await autoplayInteraction({ browser, check })
 await reviewGate({ browser, check })
 
 await browser.close()

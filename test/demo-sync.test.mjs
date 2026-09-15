@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-
-import { resyncBenchEngine, bundleGallery } from '../scripts/fx-build.mjs'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
+import { Script } from 'node:vm'
+import { resyncBenchEngine, bundleGallery } from '../scripts/fx-build.mjs'
 
 test('gallery bundling accepts checkout and output paths containing spaces', () => {
   const root = mkdtempSync(join(tmpdir(), 'scrollvars round12 '))
@@ -49,4 +50,27 @@ test('resyncBenchEngine: heals a page that already drifted with extra blank line
 
 test('resyncBenchEngine: throws when the marker is missing', () => {
   assert.throws(() => resyncBenchEngine('<script>no marker here</script>', iife), /marker not found/)
+})
+
+test('demo sync bundles valid JavaScript from a checkout path containing spaces', () => {
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const checkout = realpathSync(mkdtempSync(join(tmpdir(), 'scrollvars checkout with spaces ')))
+  try {
+    for (const path of ['scripts', 'dist', 'styles', 'styles.css', 'package.json']) cpSync(join(root, path), join(checkout, path), { recursive: true })
+    mkdirSync(join(checkout, 'demo', 'bench'), { recursive: true })
+    cpSync(join(root, 'demo', 'index.html'), join(checkout, 'demo', 'index.html'))
+    cpSync(join(root, 'demo', 'bench', 'results'), join(checkout, 'demo', 'bench', 'results'), { recursive: true })
+    symlinkSync(join(root, 'node_modules'), join(checkout, 'node_modules'), 'dir')
+    const output = execFileSync(process.execPath, [join(checkout, 'scripts', 'demo-sync.mjs')], { cwd: checkout, encoding: 'utf8', stdio: 'pipe' })
+    assert.match(output, /bench\/scoped.css copied/, 'the main sync path actually executed')
+    const html = readFileSync(join(checkout, 'demo', 'index.html'), 'utf8')
+    const engine = html.match(/\/\* ═+ scrollvars engine,[^\n]+\n([\s\S]*?)\/\* ═+ end scrollvars engine/)
+    assert(engine, 'the real inline bundle was emitted')
+    const context = {}
+    new Script(engine[1]).runInNewContext(context)
+    assert.equal(typeof context.SV.track, 'function', 'generated IIFE exports the core API')
+    const driver = html.match(/<script>\n\s*\/\* ═+ demo driver[\s\S]*?<\/script>/)
+    assert(driver)
+    new Script(driver[0].replace(/<\/?script>/g, ''))
+  } finally { rmSync(checkout, { recursive: true, force: true }) }
 })

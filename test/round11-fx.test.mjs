@@ -8,7 +8,7 @@ import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 function installed(slug) {
   let cursor = 0, pending = [], reduced = false
   const slots = [], observers = [], motion = new Set()
-  const node = { querySelector: () => ({}), classList: { contains: () => enhanced, toggle() {} }, hasAttribute: () => false }
+  const node = { querySelector: () => ({}), classList: { contains: () => enhanced, toggle() {}, remove() {} }, hasAttribute: () => false }
   let enhanced = false, onFlow
   const React = {
     version: '19', createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),

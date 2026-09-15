@@ -1601,6 +1601,7 @@ test('react: StrictMode Slider releases resources across output switches, active
   const api = React.createRef(), container = document.createElement('div'), root = createRoot(container)
   let mounted = true
   const pending = () => rafQueue.filter(entry => entry.epoch === rafEpoch).length
+  const listenerCount = () => [...listeners.values()].reduce((sum, handlers) => sum + handlers.size, 0)
   const view = cssVars => React.createElement(React.StrictMode, null,
     React.createElement(Slider, { ref:api, autoplay:4000, cssVars },
       React.createElement('div', null, 'one'), React.createElement('div', null, 'two')))
@@ -1620,13 +1621,17 @@ test('react: StrictMode Slider releases resources across output switches, active
       assert.equal(facade.state().gliding, false)
       assert.equal(pending(), 0, 'option reattachment cancels the old glide and measurement')
       assert.equal(observers.size, 3, 'old core observers were disconnected')
-      rail._listeners.pointerdown[0]({ target:rail, pointerType:'mouse', button:0, clientX:50, preventDefault() {} })
-      assert.equal(listeners.size, 3, 'press installs global move/up/cancel handlers')
+      const baseline = listenerCount()
+      for (const fn of [...rail._listeners.pointerdown]) fn({ target:rail, pointerId:1, pointerType:'mouse', button:0, clientX:50, preventDefault() {} })
+      assert.equal(listenerCount(), baseline + 3, 'press installs global move/up/cancel handlers')
+      assert.equal(intervals.size, 0, 'press suspends autoplay')
       listeners.get('pointermove').values().next().value({ clientX:30 })
       assert.equal(facade.state().dragging, true)
       await React.act(async () => root.render(view(cssVars === false ? true : false)))
-      assert.equal(listeners.size, 0, 'reattachment cancels the active press listeners')
+      assert.equal(listenerCount(), baseline, 'reattachment cancels the core press listeners')
       assert.equal(facade.state().dragging, false)
+      for (const fn of [...listeners.get('pointerup')]) fn({ pointerId:1 })
+      assert.equal(intervals.size, 1, 'release restarts autoplay after reattachment')
     }
     intervals.values().next().value()
     assert(facade.state().gliding)

@@ -389,6 +389,29 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
     return p
   }
   try {
+    // Render the copied rail declaration, including its percentage reference
+    // box, rather than comparing a second spelling of the formula in JS.
+    const railPage = await newPage()
+    const railErrors = []
+    railPage.on('pageerror', error => railErrors.push(error.message))
+    const pane = EFFECTS.find(fx => fx.slug === 'horizontal-rail').css
+    const { css } = splitPane(pane)
+    for (const [source, sheet] of [['copied', css], ['preset', readFileSync(join(repo, 'styles/pin.css'), 'utf8')]])
+    for (const stage of [280, 700]) for (const rail of [180, 1100]) for (const start of [null, 0, 125]) {
+      await railPage.setContent(`<html class="sv-on"><style>${sheet}</style><div class="sv" style="--sv-stage-width:${stage}px"><div class="rail-stage" style="width:${stage}px"><div class="sv-rail" style="box-sizing:border-box;flex-shrink:0;width:${rail}px;padding:0;${start === null ? '' : `--sv-rail-start:${start}px`}">Cards</div></div></div></html>`)
+      for (const progress of [0, 1]) {
+        const x = await railPage.evaluate(p => {
+          const el = document.querySelector('.sv-rail')
+          el.style.setProperty('--sv-pin', p)
+          return el.getBoundingClientRect().left - el.parentElement.getBoundingClientRect().left
+        }, String(progress))
+        const expected = progress === 0 ? start ?? stage : Math.min(stage - rail, 0)
+        check(`${source} rail: stage ${stage}, rail ${rail}, start ${start}, endpoint ${progress}`, Math.abs(x - expected) < 1, `${x} vs ${expected}`)
+      }
+    }
+    check('copied rail: no browser errors', railErrors.length === 0, railErrors.join('\n'))
+    await railPage.close()
+    open.delete(railPage)
     // The React 18 pass is not optional: a <style> child serialized differently
     // by the other supported major is exactly the class of bug this gate exists
     // for, so a missing install fails loudly instead of quietly halving coverage.

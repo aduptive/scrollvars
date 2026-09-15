@@ -4,6 +4,8 @@ import { build } from 'esbuild'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
 import { loadComponent, renderStatic, resolveScrollvars } from '../../../scripts/fx-render.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
@@ -32,7 +34,24 @@ export function FailureApp({ empty = false }) {
     stdin: { contents: source + `\nimport { hydrateRoot } from 'react-dom/client'\nhydrateRoot(document.getElementById('app'), <FailureApp empty={new URLSearchParams(location.search).get('case') === 'empty'} />)`, loader: 'tsx', resolveDir: root },
     bundle: true, write: false, format: 'iife', platform: 'browser', jsx: 'automatic',
     define: { 'process.env.NODE_ENV': '"production"' },
-    plugins: [resolveScrollvars, { name: 'fixture-react-major', setup(api) {
+    plugins: [resolveScrollvars, { name: 'steps-acquisition-probe', setup(api) {
+      api.onLoad({ filter: /\.tsx$/ }, args => {
+        if (args.path !== installedPath) return
+        // Instrument only the installed Section's acquisition boundaries.
+        // The driver and Boot retain the real globals in these four cases.
+        let contents = readFileSync(installedPath, 'utf8')
+        const token = /\bonMotionChange\b(?=[^\n]*from 'scrollvars')/g
+        assert.equal([...contents.matchAll(token)].length, 1)
+        contents = contents.replace(token, 'onMotionChange as subscribeMotion')
+        contents += `\nconst MutationObserver = window.StepsMutationObserver;
+          const onMotionChange = (fn) => {
+            const stop = subscribeMotion(fn); window.stepsSubscriptions++;
+            let live = true;
+            return () => { if (live) { live = false; window.stepsSubscriptions--; stop(); } };
+          };`
+        return { contents, loader: 'tsx' }
+      })
+    } }, { name: 'fixture-react-major', setup(api) {
       api.onResolve({ filter: /^react(?:-dom)?(?:\/.*)?$/ }, args => ({ path: requireReact.resolve(args.path) }))
     } }],
   })

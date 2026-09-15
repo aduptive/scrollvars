@@ -150,7 +150,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `trackPointer` | 0.7 KB |
 | `mountEffect` (canvas) | 2.0 KB |
 | everything in `scrollvars` (the core entry) | 10.2 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 16.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 16.3 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -589,6 +589,8 @@ after tracking and its first fit evaluation succeed and the crossfade layout
 is active. It starts static, even while another section has booted the driver.
 Failed enhancement, release, reduced motion and fit-to-flow clear layout and
 accessibility hiding so every static shot remains reachable.
+Missing or throwing mutation observation also keeps the Section static and
+releases any partially acquired observer or motion subscription.
 
 Scroll initialization and attachment roll back partial setup on failure.
 Missing or throwing ResizeObserver keeps content static; a missing or throwing
@@ -598,6 +600,8 @@ Overlapping owners keep their resources. Measurement, output and callback
 failures release the affected tracker, restore its pin geometry and report the
 original error once; healthy entries continue. Retry a recoverable failure by
 explicitly tracking or scanning again. `track()` still returns a cleanup function.
+Pointer setup also unwinds listeners, observation and queued work before
+rethrowing an acquisition error; an explicit call can retry it.
 
 Boot acknowledges a working driver and completed scanner setup, including an
 empty route. Its prepaint watchdog releases hiding after three seconds without
@@ -757,9 +761,10 @@ success criterion it serves. It is not a conformance claim for your site.
   and every reduced-motion rule of the site's own CSS carries the twin.
 - **Moving content can be stopped** (2.2.2 Pause, Stop, Hide). The marquee
   pauses on hover and on keyboard focus within it. `<Slider autoplay>`
-  pauses on hover, focus, offscreen and hidden tab, renders a visible pause
+  pauses during pointer and touch gestures, on hover, focus, offscreen and hidden tab, renders a visible pause
   control, and starts paused under reduced motion; the control still resumes
-  it, that is the user asking.
+  it, that is the user asking. Releasing or cancelling a gesture starts a full
+  autoplay countdown; focus and explicit pause still require the resume control.
 - **Carousel semantics** (4.1.2 Name, Role, Value; 2.1.1 Keyboard).
   `<Slider>` follows the APG carousel pattern: `role="region"`,
   `aria-roledescription="carousel"`, a `label`, slides announced "i of n",

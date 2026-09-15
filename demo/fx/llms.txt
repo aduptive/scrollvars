@@ -220,7 +220,7 @@ Styles: scrollvars/styles/pin.css
 /* --sv-stage-width is measured by the driver; --sv-rail-start overrides it */
 .sv .sv-rail { width: max-content; display: flex; gap: 1rem; padding: 0 10vw;
   translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) +
-                  var(--sv-pin, 0) * min(var(--sv-rail-start, var(--sv-stage-width, 100vw)) - 100%, 0px)) 0; }
+                  var(--sv-pin, 0) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order: */
 @media (prefers-reduced-motion: reduce) {
@@ -1015,12 +1015,27 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       setInteractive(ready &&
         !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
     }
-    update()
-    const stopMotion = onMotionChange(update)
-    const observer = new MutationObserver(update)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
-    return () => { stopMotion(); observer.disconnect() }
+    let observer: MutationObserver | undefined
+    let stopMotion: (() => void) | undefined
+    let stopped = false
+    const stop = () => {
+      stopped = true
+      observer?.disconnect()
+      stopMotion?.()
+      el.classList.remove('st-ready')
+    }
+    const refresh = () => { if (!stopped) update() }
+    try {
+      observer = new MutationObserver(refresh)
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+      stopMotion = onMotionChange(refresh)
+      update()
+    } catch {
+      stop()
+      setInteractive(false)
+    }
+    return stop
   }, [flow])
   return (
     // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so

@@ -100,7 +100,7 @@ async function readableEntrances(page, label) {
 
 async function enhancementFailures(browser, name) {
   for (const major of [19, 18]) for (const width of [1400, 320]) {
-    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'empty', 'normal', 'reduced']) {
+    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'steps-mo-missing', 'steps-mo-constructor', 'steps-mo-first', 'steps-mo-second', 'empty', 'normal', 'reduced']) {
       const label = `${name} React ${major} ${width} ${mode}`
       const context = await browser.newContext({ viewport: { width, height: 900 }, javaScriptEnabled: mode !== 'no-js', reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference' })
       const page = await context.newPage()
@@ -129,6 +129,18 @@ async function enhancementFailures(browser, name) {
           continue
         }
         await page.waitForFunction(() => window.failureHydrated)
+        if (mode.startsWith('steps-mo-')) {
+          await staticShots(page, label)
+          assert.deepEqual(await page.evaluate(() => [stepsSubscriptions, stepsObservers, failureErrors.length]), [0, 0, 0], `${label}: failed acquisition leaves no resources or escaped effect error`)
+          await page.evaluate(() => failureControl.SV.setMotion('reduce'))
+          await page.evaluate(() => failureControl.SV.setMotion('auto'))
+          await staticShots(page, label + ' motion reversal')
+          await page.evaluate(() => failureControl.remount())
+          await settle(page)
+          await staticShots(page, label + ' remount')
+          assert.deepEqual(await page.evaluate(() => [stepsSubscriptions, stepsObservers, failureErrors.length]), [0, 0, 0])
+          continue
+        }
         if (['ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'reduced'].includes(mode)) {
           await staticShots(page, label)
           await readableEntrances(page, label)
