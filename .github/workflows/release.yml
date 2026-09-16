@@ -1,6 +1,6 @@
 # Publishing happens HERE, never from a laptop: push a version tag and the
 # release only reaches npm if every gate is green. Requires the NPM_TOKEN
-# secret (repo Settings → Secrets → Actions) — until it exists, the publish
+# secret (repo Settings → Secrets → Actions): until it exists, the publish
 # step fails safely and nothing ships.
 name: release
 on:
@@ -34,13 +34,21 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           PKG=$(node -p "require('./package.json').version")
           [ "$TAG" = "$PKG" ] || { echo "tag v$TAG != package.json $PKG"; exit 1; }
-      - name: pack smoke — the tarball actually installs and imports
+      - name: 'pack smoke: the tarball actually installs and imports'
+        id: pack
         run: |
-          npm pack
+          npm pack --json > "$RUNNER_TEMP/scrollvars-pack.json"
+          TARBALL=$(node -e 'const fs = require("node:fs"); const [pack] = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(pack.filename)' "$RUNNER_TEMP/scrollvars-pack.json")
+          echo "tarball=$GITHUB_WORKSPACE/$TARBALL" >> "$GITHUB_OUTPUT"
           mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
-          npm i "$GITHUB_WORKSPACE"/scrollvars-*.tgz
+          npm i "$GITHUB_WORKSPACE/$TARBALL"
           node --input-type=module -e "import * as sv from 'scrollvars'; import * as c from 'scrollvars/canvas'; if (typeof sv.track !== 'function' || typeof c.mountEffect !== 'function') process.exit(1); console.log('consumer import ok (ESM)')"
-      - name: publish to npm (with provenance)
-        run: npm publish --provenance --access public
+      - name: packed acceptance in Chromium, Firefox and WebKit
+        run: npm run test:packed
         env:
+          SCROLLVARS_TARBALL: ${{ steps.pack.outputs.tarball }}
+      - name: publish to npm (with provenance)
+        run: npm publish "$SCROLLVARS_TARBALL" --provenance --access public
+        env:
+          SCROLLVARS_TARBALL: ${{ steps.pack.outputs.tarball }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

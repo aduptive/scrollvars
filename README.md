@@ -830,6 +830,8 @@ Chromium, Firefox and WebKit the registration takes and a page renders the
 same with the sheet as without, and the three-engine CI job checks both on
 every run. It is deliberately not part of `styles.css`.
 
+CI also checks isolated packed-tarball consumers on React 18 and 19 in Chromium, Firefox and WebKit; the release gate publishes that tested tarball with provenance.
+
 ## Accessibility
 
 What the library guarantees on its own surfaces, each line covered by a test
