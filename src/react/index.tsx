@@ -14,6 +14,7 @@ import { toggles } from '../core/toggles.js'
 import type { SliderHandle, SliderOptions } from '../core/slider.js'
 import { slider } from '../core/slider.js'
 import { splitParts } from '../core/split.js'
+import { lifetime, reportFailure } from '../core/lifetime.js'
 
 /**
  * Zero-wrapper mode: drop one `<ScrollVarsBoot />` in the root layout and
@@ -114,12 +115,21 @@ function useAttachedRef<T extends HTMLElement>(
   const cleanupRef = useRef<(() => void) | undefined>(undefined)
   const attachRef = useRef(attach)
   attachRef.current = attach
+  const generation = useRef(0)
 
   const retrack = useCallback((node: T | null) => {
-    cleanupRef.current?.()
+    const current = ++generation.current
+    const cleanup = cleanupRef.current
     cleanupRef.current = undefined
     nodeRef.current = node
-    if (node) cleanupRef.current = attachRef.current(node) ?? undefined
+    try { cleanup?.() } catch (error) { reportFailure(error) }
+    if (node && current === generation.current) {
+      try {
+        const release = attachRef.current(node) ?? undefined
+        if (current === generation.current) cleanupRef.current = release
+        else release?.()
+      } catch (error) { reportFailure(error) }
+    }
   }, [])
 
   const [ref] = useState<React.RefObject<T>>(() =>
@@ -764,8 +774,19 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
 
     const onSlideRef = useRef(onSlide)
     onSlideRef.current = onSlide
+    const failedSlider = useRef(false)
+    const stopAutoplay = useRef<(() => void) | undefined>(undefined)
     useEffect(() => {
-      onSlideRef.current?.(active)
+      if (failedSlider.current) return
+      try { onSlideRef.current?.(active) }
+      catch (error) {
+        failedSlider.current = true
+        const failed = handle.current
+        handle.current = null
+        try { failed?.destroy() } catch { /* retain callback failure */ }
+        try { stopAutoplay.current?.() } catch { /* retain callback failure */ }
+        reportFailure(error)
+      }
     }, [active])
 
     // autoplay: pauses on hover, offscreen and hidden tab
@@ -782,43 +803,48 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
     // An effect rather than the initial state: the server rendered "stop
     // slide rotation" and the first client render has to match it.
     useEffect(() => {
-      if (!autoplay || autoplay <= 0) return
+      if (!autoplay || autoplay <= 0 || failedSlider.current) return
+      const life = lifetime()
       const pause = () => { pausedRef.current = true; setPaused(true) }
-      if (effectiveReduce()) pause()
-      return onMotionChange((reduced) => { if (reduced) pause() })
+      try {
+        life.setup(() => {
+          if (effectiveReduce()) pause()
+          life.defer(onMotionChange(life.guard((reduced: boolean) => { if (reduced) pause() })))
+        })
+      } catch (error) { reportFailure(error) }
+      return life.stop
     }, [autoplay])
     useEffect(() => {
-      if (!autoplay || autoplay <= 0) return
+      if (!autoplay || autoplay <= 0 || failedSlider.current) return
+      const life = lifetime()
+      stopAutoplay.current = life.stop
       let onscreen = true
-      const io = new IntersectionObserver((entries) => {
-        onscreen = entries[entries.length - 1].isIntersecting
-      })
+      let io: IntersectionObserver | undefined
+      let timer: ReturnType<typeof setInterval> | undefined
       const el = ref.current
-      if (el) io.observe(el)
       // WCAG 2.2.2: the pause must be reachable without a mouse. Keyboard
       // focus anywhere inside the slider halts autoplay like hover does
       // Keyboard focus stops rotation until the user explicitly resumes it.
-      const onFocusIn = () => { pausedRef.current = true; setPaused(true) }
+      const onFocusIn = life.guard(() => { pausedRef.current = true; setPaused(true) })
       const focusEl = shellRef.current ?? el
-      focusEl?.addEventListener('focusin', onFocusIn)
       const pointers = new Set<number>()
       let touching = false
-      const restart = () => {
+      const restart = life.guard(() => {
         clearInterval(timer)
         timer = setInterval(advance, autoplay)
-      }
-      const onDown = (event: PointerEvent) => { pointers.add(event.pointerId); clearInterval(timer) }
-      const onUp = (event: PointerEvent) => {
+      })
+      const onDown = life.guard((event: PointerEvent) => { pointers.add(event.pointerId); clearInterval(timer) })
+      const onUp = life.guard((event: PointerEvent) => {
         if (pointers.delete(event.pointerId) && !pointers.size && !touching) restart()
-      }
+      })
       // Native touch scrolling cancels its pointer before the finger lifts.
-      const onTouchStart = () => { touching = true; clearInterval(timer) }
-      const onTouchEnd = (event: TouchEvent) => {
+      const onTouchStart = life.guard(() => { touching = true; clearInterval(timer) })
+      const onTouchEnd = life.guard((event: TouchEvent) => {
         if (!touching || event.touches.length) return
         touching = false
         if (!pointers.size) restart()
-      }
-      const advance = () => {
+      })
+      const advance = life.guard(() => {
         if (
           pointers.size || touching ||
           pausedRef.current ||
@@ -833,24 +859,32 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         if (s.dragging) return
         if (s.active >= s.count - 1 || s.progress >= 0.999) h.goTo(0)
         else h.next()
+      })
+      const listen = (node: EventTarget | null, type: string, fn: EventListener, options?: AddEventListenerOptions) => {
+        life.defer(() => node?.removeEventListener(type, fn, options))
+        node?.addEventListener(type, fn, options)
       }
-      let timer = setInterval(advance, autoplay)
-      el?.addEventListener('pointerdown', onDown)
-      el?.addEventListener('touchstart', onTouchStart, { passive: true })
-      window.addEventListener('pointerup', onUp)
-      window.addEventListener('pointercancel', onUp)
-      window.addEventListener('touchend', onTouchEnd)
-      window.addEventListener('touchcancel', onTouchEnd)
+      life.defer(() => clearInterval(timer))
+      life.defer(() => io?.disconnect())
+      try {
+        life.setup(() => {
+          io = new IntersectionObserver(life.guard((entries: IntersectionObserverEntry[]) => {
+            if (entries.length) onscreen = entries[entries.length - 1].isIntersecting
+          }))
+          if (el) io.observe(el)
+          listen(focusEl, 'focusin', onFocusIn)
+          listen(el, 'pointerdown', onDown as EventListener)
+          listen(el, 'touchstart', onTouchStart, { passive: true })
+          listen(window, 'pointerup', onUp as EventListener)
+          listen(window, 'pointercancel', onUp as EventListener)
+          listen(window, 'touchend', onTouchEnd as EventListener)
+          listen(window, 'touchcancel', onTouchEnd as EventListener)
+          timer = setInterval(advance, autoplay)
+        })
+      } catch (error) { reportFailure(error) }
       return () => {
-        clearInterval(timer)
-        el?.removeEventListener('pointerdown', onDown)
-        el?.removeEventListener('touchstart', onTouchStart)
-        window.removeEventListener('pointerup', onUp)
-        window.removeEventListener('pointercancel', onUp)
-        window.removeEventListener('touchend', onTouchEnd)
-        window.removeEventListener('touchcancel', onTouchEnd)
-        io.disconnect()
-        focusEl?.removeEventListener('focusin', onFocusIn)
+        if (stopAutoplay.current === life.stop) stopAutoplay.current = undefined
+        try { life.stop() } catch (error) { reportFailure(error) }
       }
     }, [autoplay, handle, ref])
 
@@ -1074,10 +1108,17 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
   const initialOpen = useRef(open).current
   // Whether THIS effect already promoted the dialog into the top layer.
   const promoted = useRef(false)
+  const failed = useRef(false)
+  const attached = useRef(false)
+  useEffect(() => {
+    attached.current = true
+    return () => { attached.current = false }
+  }, [])
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
+    try {
     // Branch once on real <dialog> support. Without it the element is
     // unknown: `dialog.open` is undefined, so a check on it can only ever
     // open and never close. Drive the attribute in both directions instead,
@@ -1088,7 +1129,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
     // Firefox below 98), and Safari 11 / Firefox 60 to 62 are inside the
     // README floor while predating toggleAttribute. There it would throw
     // and React would tear the tree down.
-    if (typeof dialog.showModal !== 'function') {
+    if (failed.current || typeof dialog.showModal !== 'function') {
       if (open) dialog.setAttribute('open', '')
       else dialog.removeAttribute('open')
       return
@@ -1121,6 +1162,17 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
       promoted.current = false
       if (dialog.open) dialog.close()
     }
+    } catch (error) {
+      const firstFailure = !failed.current
+      failed.current = true
+      promoted.current = false
+      try {
+        if (typeof dialog.close === 'function' && dialog.open) dialog.close()
+        if (open) dialog.setAttribute('open', '')
+        else dialog.removeAttribute('open')
+      } catch { /* preserve the promotion error */ }
+      if (firstFailure) reportFailure(error)
+    }
   }, [open])
 
   return (
@@ -1128,7 +1180,11 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, className, children
       ref={ref}
       className={className ? `sv-pop ${className}` : 'sv-pop'}
       open={initialOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (failed.current || !attached.current) return
+        try { onClose?.() }
+        catch (error) { failed.current = true; reportFailure(error) }
+      }}
       {...rest}
     >
       {children}

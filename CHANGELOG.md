@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.17.6 (2026-09-16)
+
+### Fixed
+
+- Slider, toggles, pointer and canvas setup release partial acquisitions and restore owned DOM writes before rethrowing the original error.
+- Runtime measurement, output, observer and callback failures stop and report only the affected instance, preserving siblings and the scroll driver.
+- Cleanup is idempotent during callbacks, dragging and gliding; stale events, observers and queued frames cannot write after release or replacement.
+- Slider and pointer cleanup restore owned styles, classes and focusability while preserving subsequent author changes and authored native scrolling.
+- Failed toggle operations restore semantic class, state-variable and ARIA values; shared controllers retain their marker and release pending transition holds correctly.
+- Canvas setup, resize and frame failures stop the loop and restore authored sizing without changing fallback content, even when a consumer disposer throws. `destroy()` restores the authored sizing too, which resets the bitmap; `pause()` keeps the last frame.
+- React auxiliary attachments and autoplay contain failures locally, while failed Modal promotion preserves static open/closed content and close callback failures report once.
+- Repeated attachment and release return listeners, observers, timers, frames and toggle ownership to baseline. Public exports and signatures are unchanged.
+
 ## 1.17.5 (2026-09-15)
 
 ### Fixed

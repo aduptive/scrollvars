@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.2 KB, full core incl. the slider 10.2 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.8 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.2 KB, full core incl. the slider 11.2 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.8 KB on the wire.
 
 ## Why
 
@@ -145,12 +145,12 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | you import | JS on the wire |
 | --- | --- |
 | `track` (the driver) | 5.2 KB |
-| `track` + `scan` (zero-wrapper mode) | 6.9 KB |
-| `slider` | 2.8 KB |
-| `trackPointer` | 0.7 KB |
-| `mountEffect` (canvas) | 2.0 KB |
-| everything in `scrollvars` (the core entry) | 10.2 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 16.3 KB |
+| `track` + `scan` (zero-wrapper mode) | 7.5 KB |
+| `slider` | 3.6 KB |
+| `trackPointer` | 1.4 KB |
+| `mountEffect` (canvas) | 2.7 KB |
+| everything in `scrollvars` (the core entry) | 11.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 17.7 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -369,7 +369,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 2.8 KB gzip; Swiper 11 bundle
+Size, measured: this module 3.6 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
@@ -600,8 +600,30 @@ Overlapping owners keep their resources. Measurement, output and callback
 failures release the affected tracker, restore its pin geometry and report the
 original error once; healthy entries continue. Retry a recoverable failure by
 explicitly tracking or scanning again. `track()` still returns a cleanup function.
-Pointer setup also unwinds listeners, observation and queued work before
-rethrowing an acquisition error; an explicit call can retry it.
+Slider, toggles, pointer and canvas setup also roll back partial listeners,
+observers, subscriptions and queued work before rethrowing the original error.
+Runtime measurement, output and callback failures stop only that instance and
+report the original error once (`reportError`, or `console.error` as a fallback).
+Cleanup is idempotent, including inside callbacks and during slider gestures;
+late observer and frame deliveries cannot revive a released instance.
+Explicit cleanup attempts every release before rethrowing its first cleanup error;
+React reports cleanup errors locally.
+Call the module again to retry a recoverable failure.
+
+Slider cleanup restores its owned styles, classes and tabindex without
+overwriting later author changes. Author the native rail layout (for example,
+`class="sv-slider"`) in markup so it remains scrollable before and after enhancement.
+Pointer cleanup likewise restores its owned coordinates and leave class.
+A failed toggle operation restores its previous class, state variable and ARIA;
+successful open/closed state survives controller release. Shared controllers
+retain their marker until the last release, and pending transition holds are restored.
+Canvas setup, resize and frame failures stop the loop and restore authored sizing
+without changing fallback children; `destroy()` restores that sizing too, which
+resets the bitmap (`pause()` keeps the last frame). Consumer drawing and external
+resources still belong to the consumer; return their disposer from `setup`.
+React auxiliary hooks contain attachment and cleanup errors locally and can retry
+on target or option replacement. Failed autoplay stops its own timer; failed Modal
+promotion keeps the requested state as a static panel. No public API changed.
 
 Boot acknowledges a working driver and completed scanner setup, including an
 empty route. Its prepaint watchdog releases hiding after three seconds without

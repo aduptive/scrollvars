@@ -57,6 +57,7 @@
  * 0s for two frames, snapping instead of animating any change to it that
  * landed inside the hold window.
  */
+import { lifetime, ownership } from './lifetime.js'
 
 // One click, one state change, across every live instance. `toggles(root?)`
 // is public optional-root API and the documented setup runs two instances at
@@ -83,8 +84,9 @@
 // registry of live scopes to keep in step with stop(), no instance whose
 // destruction leaves a stale entry that silently disowns a trigger, and
 // nothing to leak.
+
 const claimed = new WeakSet<Event>()
-const markers = new WeakMap<HTMLElement, { owners: number; release: () => void }>()
+const markers = new WeakMap<HTMLElement, { owners: number; release: () => void; settle: () => void }>()
 
 // Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
 // is resolved by its NEAREST live scope, the one that would claim its click,
@@ -94,6 +96,7 @@ type Instance = {
   scope: Document | HTMLElement
   triggers: () => HTMLElement[]
   resolve: (t: HTMLElement) => { className: string; target: HTMLElement | null }
+  run: (work: () => void) => void
 }
 const live = new Set<Instance>()
 const has = (scope: Document | HTMLElement, node: Node) =>
@@ -125,6 +128,14 @@ function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | nul
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
+  const life = lifetime()
+  let transaction = ownership()
+  let siblingWrites: ReturnType<typeof ownership>[] = []
+  const rollback = () => {
+    for (const journal of [transaction, ...siblingWrites]) {
+      try { journal.restore() } catch { /* retain the operation's error */ }
+    }
+  }
 
   const resolve = (trigger: HTMLElement) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
@@ -153,26 +164,43 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // trigger whose selector does not parse is skipped, not thrown on.
   const sync = (target: HTMLElement, className: string, on: boolean) => {
     const seen = new Set<HTMLElement>()
-    live.forEach((instance) =>
-      instance.triggers().forEach((t) => {
+    live.forEach((otherInstance) => {
+      const journal = otherInstance === instance ? transaction : ownership()
+      if (otherInstance !== instance) siblingWrites.push(journal)
+      const update = () => otherInstance.triggers().forEach((t) => {
         if (seen.has(t)) return
         seen.add(t)
         const other = ownerOf(t)
         if (other && other.target === target && other.className === className)
-          t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
+          journal.attr(t, t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
       })
-    )
+      // The click's own sync belongs to its semantic transaction. A broken
+      // sibling's query or ARIA write belongs to that sibling's lifetime.
+      if (otherInstance === instance) update()
+      else otherInstance.run(() => {
+        try { update() }
+        catch (error) {
+          try { journal.restore() } catch { /* retain the sibling failure */ }
+          throw error
+        }
+      })
+    })
   }
-  const instance: Instance = { scope, triggers, resolve }
-  live.add(instance)
+  const instance: Instance = { scope, triggers, resolve, run: life.guard(work => work()) }
   // the target's own state, written wherever the class flips
   const write = (target: HTMLElement, className: string, on: boolean) => {
-    target.style.setProperty('--sv-state', on ? '1' : '0')
+    transaction.style(target, '--sv-state', on ? '1' : '0')
     sync(target, className, on)
   }
   // targets currently inside their boot settle: cancellable by a click that
   // lands inside the two-frame hold, so it still gets its transition
   const settling = new WeakSet<HTMLElement>()
+  const frames = new Set<number>()
+  const hold = ownership()
+  const frame = (fn: () => void) => {
+    const id = requestAnimationFrame(life.guard(() => { frames.delete(id); fn() }))
+    frames.add(id)
+  }
   // an inline transition-duration LONGHAND held for the same settle, saved
   // per target (value and priority, exact). --sv-acts-settle above cannot
   // reach this case: an inline longhand outranks it regardless of what the
@@ -183,13 +211,13 @@ export function toggles(root?: Document | HTMLElement): () => void {
     if (!value) return // no inline longhand: the --sv-acts-settle knob alone covers this target
     const priority = target.style.getPropertyPriority('transition-duration')
     longhandHold.set(target, { value, priority })
-    target.style.setProperty('transition-duration', '0s', priority)
+    hold.style(target, 'transition-duration', '0s', priority)
   }
   const restoreDuration = (target: HTMLElement) => {
     const saved = longhandHold.get(target)
     if (!saved) return
     longhandHold.delete(target)
-    target.style.setProperty('transition-duration', saved.value, saved.priority)
+    hold.restore(target, 'style:transition-duration')
   }
   const targets = new Set<HTMLElement>()
   const mark = (target: HTMLElement) => {
@@ -198,27 +226,48 @@ export function toggles(root?: Document | HTMLElement): () => void {
     let marker = markers.get(target)
     const authored = target.classList.contains('sv-ui')
     if (!marker) {
-      marker = { owners: 0, release: () => {
+      marker = { owners: 0, settle: () => {
+        if (settling.has(target)) {
+          settling.delete(target)
+          hold.restore(target)
+          restoreDuration(target)
+        }
+      }, release: () => {
         if (!authored) target.classList.remove('sv-ui')
         if (settling.has(target)) {
           settling.delete(target)
-          target.style.removeProperty('--sv-acts-settle')
+          hold.restore(target)
           restoreDuration(target)
         }
       } }
       markers.set(target, marker)
     }
     marker.owners++
+    life.defer(() => {
+      // Finish a departing owner's hold even if another controller remains.
+      // It must not retain 0s after this owner's queued frames are cancelled.
+      try { marker!.settle() }
+      finally {
+        if (--marker!.owners === 0) {
+          markers.delete(target)
+          marker!.release()
+        }
+      }
+    })
     target.classList.add('sv-ui')
     return !authored
   }
 
-  triggers().forEach((trigger) => {
+  const boot = () => triggers().forEach((trigger) => {
     let resolved: ReturnType<typeof resolve>
     try {
       resolved = resolve(trigger)
-    } catch {
-      return // a selector that does not parse skips its trigger, not the whole boot (round 10)
+    } catch (error) {
+      // a selector that does not parse skips its trigger, not the whole boot
+      // (round 10). Browsers throw a DOMException NAMED SyntaxError, never a
+      // JS SyntaxError instance, so the name is the only cross-surface check.
+      if ((error as { name?: unknown } | null)?.name === 'SyntaxError') return
+      throw error
     }
     const { className, target } = resolved
     if (!target) return
@@ -236,14 +285,14 @@ export function toggles(root?: Document | HTMLElement): () => void {
         // scoped to --sv-acts-settle (styles/state.css): two frames is
         // enough for the cascade to apply the new --sv-act before the acts
         // transition comes back.
-        target.style.setProperty('--sv-acts-settle', '0s')
-        holdDuration(target)
         settling.add(target)
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
+        hold.style(target, '--sv-acts-settle', '0s')
+        holdDuration(target)
+        frame(() => {
+          frame(() => {
             if (settling.has(target)) {
               settling.delete(target)
-              target.style.removeProperty('--sv-acts-settle')
+              hold.restore(target)
               restoreDuration(target)
             }
           })
@@ -257,7 +306,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
     write(target, className, target.classList.contains(className))
   })
 
-  const onClick = (event: Event) => {
+  const click = (event: Event) => {
     // a nearer scope already owned this click: not our trigger, and nothing
     // here runs, not even the sv-ui marking or the settle cancel
     if (claimed.has(event)) return
@@ -292,25 +341,41 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // a click landing inside the boot settle must still animate: drop the
     // hold before the class flips, and cancel the scheduled restore so it
     // does not act on a target a fresh boot may have re-armed since
-    if (settling.has(target)) {
-      settling.delete(target)
-      target.style.removeProperty('--sv-acts-settle')
-      restoreDuration(target)
-    }
-    write(target, className, target.classList.toggle(className))
+    markers.get(target)?.settle()
+    const on = !target.classList.contains(className)
+    transaction.class(target, className, on)
+    write(target, className, on)
   }
 
-  scope.addEventListener('click', onClick)
-  return () => {
+  const onClick = life.guard((event: Event) => {
+    transaction = ownership()
+    siblingWrites = []
+    try { click(event) }
+    catch (error) {
+      rollback()
+      throw error
+    } finally { transaction = ownership(); siblingWrites = [] }
+  })
+  life.defer(() => {
+    frames.forEach(id => { if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(id) })
+    frames.clear()
+  })
+  life.defer(() => {
     live.delete(instance)
-    scope.removeEventListener('click', onClick)
-    targets.forEach(target => {
-      const marker = markers.get(target)!
-      if (--marker.owners === 0) {
-        markers.delete(target)
-        marker.release()
-      }
-    })
     targets.clear()
+  })
+  life.defer(() => scope.removeEventListener('click', onClick))
+  try {
+    life.setup(() => {
+      live.add(instance)
+      boot()
+      scope.addEventListener('click', onClick)
+    })
+  } catch (error) {
+    rollback()
+    throw error
   }
+  transaction = ownership()
+  siblingWrites = []
+  return life.stop
 }

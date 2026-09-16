@@ -1,5 +1,45 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { lifecycleEnv } from './lifecycle-fixture.mjs'
+
+test('pointer failure: runtime measurement is local and stale events cannot write after replacement', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { trackPointer } = await import('../dist/core/pointer.js')
+    const a = env.element(), b = env.element(), error = Error('pointer measurement')
+    a.classList.add('sv-tilt'); b.classList.add('sv-tilt')
+    const stop = trackPointer(a), good = trackPointer(b)
+    const move = [...a.handlers.get('pointermove')][0], observer = env.deliveries[0]
+    a.getBoundingClientRect = () => { throw error }
+    move({ target: a, clientX: 80, clientY: 50 }); b.fire('pointermove', { clientX: 80, clientY: 50 })
+    const stale = [...env.frames.values()][0]
+    assert.doesNotThrow(() => env.flush())
+    assert.deepEqual(env.errors, [error])
+    assert.equal(b.style.getPropertyValue('--mx'), '0.600')
+    stop(); stop()
+    a.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 })
+    const replacement = trackPointer(a)
+    move({ target: a, clientX: 0, clientY: 0 }); stale(); observer.cb([{ removedNodes: [a] }])
+    assert.equal(a.style.getPropertyValue('--mx'), '')
+    replacement(); good()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('pointer release: 100 cycles restore authored values and resource baseline', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { trackPointer } = await import('../dist/core/pointer.js')
+    const a = env.element(); a.classList.add('sv-tilt')
+    a.style.setProperty('--mx', '0.25', 'important')
+    for (let i = 0; i < 100; i++) {
+      const stop = trackPointer(a); a.fire('pointermove', { clientX: 80, clientY: 50 }); env.flush(); stop(); stop()
+      assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+      assert.equal(a.style.getPropertyValue('--mx'), '0.25')
+      assert.equal(a.style.getPropertyPriority('--mx'), 'important')
+    }
+  } finally { env.restore() }
+})
 
 test('pointer acquisition rolls back constructor/observe failures and permits explicit retry', async () => {
   const { trackPointer } = await import('../dist/core/pointer.js')

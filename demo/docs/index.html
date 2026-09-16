@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.17.5</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.17.6</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -299,6 +299,21 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.17.6 (2026-09-16)</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Slider, toggles, pointer and canvas setup release partial acquisitions and restore owned DOM writes before rethrowing the original error.</li>
+<li>Runtime measurement, output, observer and callback failures stop and report only the affected instance, preserving siblings and the scroll driver.</li>
+<li>Cleanup is idempotent during callbacks, dragging and gliding; stale events, observers and queued frames cannot write after release or replacement.</li>
+<li>Slider and pointer cleanup restore owned styles, classes and focusability while preserving subsequent author changes and authored native scrolling.</li>
+<li>Failed toggle operations restore semantic class, state-variable and ARIA values; shared controllers retain their marker and release pending transition holds correctly.</li>
+<li>Canvas setup, resize and frame failures stop the loop and restore authored sizing without changing fallback content, even when a consumer disposer throws. <code>destroy()</code> restores the authored sizing too, which resets the bitmap; <code>pause()</code> keeps the last frame.</li>
+<li>React auxiliary attachments and autoplay contain failures locally, while failed Modal promotion preserves static open/closed content and close callback failures report once.</li>
+<li>Repeated attachment and release return listeners, observers, timers, frames and toggle ownership to baseline. Public exports and signatures are unchanged.</li>
+</ul>
 
 <h3>1.17.5 (2026-09-15)</h3>
 

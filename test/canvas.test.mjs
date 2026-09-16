@@ -1,5 +1,136 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { lifecycleEnv } from './lifecycle-fixture.mjs'
+
+test('canvas failure: late acquisition rolls back observers, subscriptions and queued work', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const error = Error('intersection observe')
+    global.IntersectionObserver = class extends global.IntersectionObserver { observe(n) { super.observe(n); throw error } }
+    assert.throws(() => mountEffect(env.canvas(), { frame() {} }), e => e === error)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+for (const point of ['setup', 'resize', 'measurement', 'frame', 'output']) test(`canvas failure: runtime error stops locally and restores static sizing (${point})`, async () => {
+  const { mountEffect } = await import('../dist/canvas/index.js')
+  const env = lifecycleEnv()
+  try {
+    const a = env.canvas(), b = env.canvas(), error = Error(point)
+    if (point === 'output') a.getContext = () => ({ setTransform() { throw error } })
+    let fail = false, calls = 0
+    a.append(env.element({ 'data-fallback': 'authored' }))
+    const off = mountEffect(a, { setup() { if (point === 'setup') throw error }, resize() { if (fail && point === 'resize') throw error }, frame() { if (point === 'frame') throw error } })
+    const good = mountEffect(b, { frame() { calls++ } })
+    const ro = env.deliveries.filter(o => o.kind === 'ResizeObserver')
+    if (point === 'measurement') a.getBoundingClientRect = () => { throw error }
+    assert.doesNotThrow(() => ro[0].cb([]))
+    ro[1].cb([])
+    if (point === 'resize') { fail = true; ro[0].cb([{ contentRect: { width: 200, height: 200 } }]) }
+    assert.doesNotThrow(() => env.flush())
+    assert.deepEqual(env.errors, [error])
+    assert.equal(calls, 1)
+    assert.equal(a.width, 300); assert.equal(a.height, 150)
+    assert.equal(a.style.width, '100px'); assert.equal(a.style.height, '100px')
+    assert.equal(a.children[0].getAttribute('data-fallback'), 'authored')
+    off.destroy(); off.destroy(); good.destroy()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('canvas release: callback destroy and stale deliveries cannot restart or resize a replacement', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const a = env.canvas()
+    let disposed = 0
+    const h = mountEffect(a, { setup() { h.destroy(); return () => disposed++ }, frame() { assert.fail('destroyed frame') } })
+    const old = [...env.deliveries]
+    old[0].cb([])
+    assert.equal(disposed, 1)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    const next = mountEffect(a, { frame() {} }), before = env.baseline()
+    old.forEach(o => o.cb([{ isIntersecting: true, contentRect: { width: 999, height: 999 } }]))
+    assert.deepEqual(env.baseline(), before)
+    assert.equal(a.width, 300)
+    next.destroy()
+  } finally { env.restore() }
+})
+
+test('canvas release: 100 active cycles restore sizing and resource baseline', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const a = env.canvas()
+    for (let i = 0; i < 100; i++) {
+      const h = mountEffect(a, { frame() {} })
+      env.deliveries.at(-2).cb([]); env.flush(); h.destroy(); h.destroy()
+      assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+      assert.equal(a.width, 300); assert.equal(a.height, 150)
+    }
+  } finally { env.restore() }
+})
+
+test('canvas failure: synchronous first resize is rolled back when later observation fails', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const error = Error('late observer'), canvas = env.canvas()
+    let disposed = 0
+    global.ResizeObserver = class extends global.ResizeObserver { observe(n) { super.observe(n); this.cb([]) } }
+    global.IntersectionObserver = class extends global.IntersectionObserver { observe(n) { super.observe(n); throw error } }
+    assert.throws(() => mountEffect(canvas, { setup: () => () => disposed++, frame() {} }), e => e === error)
+    assert.equal(disposed, 1)
+    assert.equal(canvas.width, 300); assert.equal(canvas.height, 150)
+    assert.equal(canvas.getAttribute('width'), null); assert.equal(canvas.getAttribute('height'), null)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    env.deliveries.forEach(o => o.cb([{ isIntersecting: true }]))
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('canvas failure: a mid-probe measurement failure restores authored attributes and styles', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const canvas = env.canvas(), error = Error('probe')
+    canvas.width = 301; canvas.height = 157
+    Object.defineProperty(canvas, 'clientWidth', { get() { if (canvas.width !== 301) throw error; return 100 } })
+    const h = mountEffect(canvas, { frame() {} })
+    env.deliveries.find(o => o.kind === 'ResizeObserver').cb([])
+    assert.deepEqual(env.errors, [error])
+    assert.equal(canvas.width, 301); assert.equal(canvas.height, 157)
+    assert.equal(canvas.style.width, '100px')
+    h.destroy(); assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('canvas failure: a throwing disposer cannot replace the original frame error or leak siblings', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    const error = Error('frame'), cleanup = Error('cleanup')
+    const h = mountEffect(env.canvas(), { setup: () => () => { throw cleanup }, frame() { throw error } })
+    env.deliveries.find(o => o.kind === 'ResizeObserver').cb([])
+    env.flush()
+    assert.deepEqual(env.errors, [error])
+    h.destroy(); assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+for (const callback of ['resize', 'frame']) test(`canvas release: destroy inside ${callback} leaves no scheduled work`, async () => {
+  const env = lifecycleEnv()
+  try {
+    const { mountEffect } = await import('../dist/canvas/index.js')
+    let disposed = 0, frames = 0
+    const h = mountEffect(env.canvas(), { setup: () => () => disposed++, resize() { if (callback === 'resize') h.destroy() }, frame() { frames++; if (callback === 'frame') h.destroy() } })
+    env.deliveries.find(o => o.kind === 'ResizeObserver').cb([]); env.flush()
+    assert.equal(disposed, 1)
+    assert.equal(frames, callback === 'frame' ? 1 : 0)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
 
 // Minimal DOM stubs — enough to drive mountEffect's gates by hand.
 function makeEnv() {
