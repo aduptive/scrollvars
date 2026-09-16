@@ -1,6 +1,12 @@
 # Changelog
 
-## 1.17.6 (2026-09-16)
+## 1.18.0 (2026-09-16)
+
+### Added
+
+- `AttachmentStatus` and `TrackOptions.onStatus` report each attachment lease transition, including successful output, completion, failure and release. `track()` keeps returning its cleanup function.
+- `useTrack`, `useScenes`, `<Track>` and `<Scenes>` expose the same status callback. StickySteps uses it alongside fit and computed CSS checks before crossfading or making shots inaccessible.
+- A docs-types gate extracts actual README hook and installed Section examples and compiles them through public package exports under React 18 and 19.
 
 ### Fixed
 
@@ -11,7 +17,7 @@
 - Failed toggle operations restore semantic class, state-variable and ARIA values; shared controllers retain their marker and release pending transition holds correctly.
 - Canvas setup, resize and frame failures stop the loop and restore authored sizing without changing fallback content, even when a consumer disposer throws. `destroy()` restores the authored sizing too, which resets the bitmap; `pause()` keeps the last frame.
 - React auxiliary attachments and autoplay contain failures locally, while failed Modal promotion preserves static open/closed content and close callback failures report once.
-- Repeated attachment and release return listeners, observers, timers, frames and toggle ownership to baseline. Public exports and signatures are unchanged.
+- Repeated attachment and release return listeners, observers, timers, frames and toggle ownership to baseline. Existing exports and signatures are preserved.
 
 ## 1.17.5 (2026-09-15)
 

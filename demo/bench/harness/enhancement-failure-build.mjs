@@ -46,6 +46,9 @@ export function FailureApp({ empty = false }) {
         const token = /\bonMotionChange\b(?=[^\n]*from 'scrollvars')/g
         assert.equal([...contents.matchAll(token)].length, 1)
         contents = contents.replace(token, 'onMotionChange as subscribeMotion')
+        const statusToken = /onStatus: value => \{/g
+        assert.equal([...contents.matchAll(statusToken)].length, 1)
+        contents = contents.replace(statusToken, 'onStatus: value => { window.stepsStatuses.push(value);')
         contents += `\nconst MutationObserver = window.StepsMutationObserver;
           const onMotionChange = (fn) => {
             const stop = subscribeMotion(fn); window.stepsSubscriptions++;

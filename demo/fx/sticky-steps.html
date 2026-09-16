@@ -189,7 +189,7 @@
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 .sv-steps:not(.st-ready) .st-media { overflow: visible; }
-.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
+.sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -223,7 +223,48 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 [data-sv-flow].sv-steps .st-dots { display: none; }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 </style><div class="sv-stage fxsticky"><div data-sv-fit="" class="st-grid"><div class="st-media"><figure class="st-shot" style="--i:0">01</figure><figure class="st-shot" style="--i:1">02</figure><figure class="st-shot" style="--i:2">03</figure></div><ol class="st-steps"><li style="--i:0"><b>Step 1</b><h3>Track the section</h3><p>One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.</p></li><li style="--i:1"><b>Step 2</b><h3>Give each piece an index</h3><p>Shots and steps carry --i. Distance to the scene is one max(). That is the crossfade.</p></li><li style="--i:2"><b>Step 3</b><h3>Ship it</h3><p>No observers per step, no timeline library. Three scenes here; make it thirty.</p></li></ol><div class="st-dots" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div></div></div></div>
-<script>addEventListener('load', () => { const el = document.querySelector('.sv-steps'); SV.track(el, { pin: '300vh', scenes: 3, onFlow: flow => el.classList.toggle('st-ready', !flow) }) })</script>
+<script>addEventListener('load', () => { (function mountSteps(el, SV) {
+  let status = 'attaching', flow = true, scene = 0, stopped = false
+  let observer, stopMotion, stopTrack
+  const shots = Array.from(el.querySelectorAll('.st-shot'))
+  const update = () => {
+    if (stopped) return
+    let ready = status === 'active' && !flow && !SV.prefersReducedMotion()
+    if (ready) el.classList.remove('st-static')
+    el.classList.toggle('st-ready', ready)
+    const stage = el.querySelector('.sv-stage')
+    ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
+      shots.length > 0 && getComputedStyle(shots[0]).position === 'absolute'
+    const fit = el.querySelector('[data-sv-fit]')
+    ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage.clientHeight + 1
+    el.classList.toggle('st-ready', ready)
+    el.classList.toggle('st-static', !ready && status !== 'attaching')
+    shots.forEach((shot, i) => {
+      if (ready && i !== scene) { shot.setAttribute('inert', ''); shot.setAttribute('aria-hidden', 'true') }
+      else { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') }
+    })
+    // Drain our own class writes; an external class rewrite still triggers a check.
+    observer?.takeRecords()
+  }
+  const stop = () => {
+    stopped = true
+    observer?.disconnect(); stopMotion?.(); stopTrack?.()
+    el.classList.remove('st-ready')
+    el.classList.add('st-static')
+    shots.forEach(shot => { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') })
+  }
+  try {
+    observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
+    stopMotion = SV.onMotionChange(update)
+    stopTrack = SV.track(el, { pin: shots.length * 100 + 'vh', scenes: shots.length,
+      onStatus: value => { status = value; update() },
+      onFlow: value => { flow = value; update() },
+      onScene: value => { scene = value; update() } })
+  } catch { stop() }
+  return stop
+})(document.querySelector('.sv-steps'), SV) })</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add sticky-steps</code><br><b>Styles:</b> <code>import 'scrollvars/styles/pin.css'</code></p>
   <div class="tabs">
     <button type="button" class="on" aria-pressed="true" data-tab="react">Complete component · CLI source</button>
@@ -255,7 +296,7 @@ const css = `
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 .sv-steps:not(.st-ready) .st-media { overflow: visible; }
-.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
+.sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -306,8 +347,16 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const [flow, setFlow] = React.useState(true)
-  const { ref, scene } = useScenes&lt;HTMLDivElement&gt;(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
+  const status = React.useRef&lt;import('scrollvars').AttachmentStatus&gt;('attaching')
+  const flow = React.useRef(true)
+  const sync = React.useRef&lt;(() =&gt; void) | undefined&gt;(undefined)
+  const { ref, scene } = useScenes&lt;HTMLDivElement&gt;(steps.length, {
+    pin: steps.length * 100 + 'vh',
+    onStatus: value =&gt; { status.current = value; sync.current?.() },
+    onFlow: value =&gt; { flow.current = value; sync.current?.() },
+  })
+  const currentScene = React.useRef(scene)
+  currentScene.current = scene
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
@@ -319,25 +368,54 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     // leave static shots reachable. Only the crossfade hides inactive shots.
     const update = () =&gt; {
       const shot = el.querySelector('.st-shot')
-      const ready = !flow &amp;&amp; el.classList.contains('sv') &amp;&amp; !el.hasAttribute('data-sv-off')
+      const stage = el.querySelector('.sv-stage')
+      // Probe the candidate layout, then keep it only when both sheets apply.
+      let ready = status.current === 'active' &amp;&amp; !flow.current &amp;&amp; !prefersReducedMotion()
+      if (ready) el.classList.remove('st-static')
       el.classList.toggle('st-ready', ready)
-      setInteractive(ready &amp;&amp;
-        !prefersReducedMotion() &amp;&amp; !!shot &amp;&amp; getComputedStyle(shot).position === 'absolute')
+      ready = ready &amp;&amp; !!stage &amp;&amp; getComputedStyle(stage).position === 'sticky' &amp;&amp;
+        !!shot &amp;&amp; getComputedStyle(shot).position === 'absolute'
+      const fit = el.querySelector&lt;HTMLElement&gt;('[data-sv-fit]')
+      ready = ready &amp;&amp; !!fit &amp;&amp; Math.max(fit.offsetHeight, fit.scrollHeight) &lt;= stage!.clientHeight + 1
+      el.classList.toggle('st-ready', ready)
+      el.classList.toggle('st-static', !ready &amp;&amp; status.current !== 'attaching')
+      el.querySelectorAll('.st-shot').forEach((shot, i) =&gt; {
+        // Set both directions even when React batches reduce then auto into
+        // one render whose interactive state has not changed.
+        if (ready &amp;&amp; i !== currentScene.current) {
+          shot.setAttribute('inert', '')
+          shot.setAttribute('aria-hidden', 'true')
+        } else {
+          shot.removeAttribute('inert')
+          shot.removeAttribute('aria-hidden')
+        }
+      })
+      setInteractive(ready)
+      // Candidate probing writes classes too. Do not observe our own writes
+      // again, especially when missing CSS rejects that candidate.
+      observer?.takeRecords()
     }
     let observer: MutationObserver | undefined
     let stopMotion: (() =&gt; void) | undefined
     let stopped = false
     const stop = () =&gt; {
       stopped = true
+      sync.current = undefined
       observer?.disconnect()
       stopMotion?.()
       el.classList.remove('st-ready')
+      el.classList.add('st-static')
+      el.querySelectorAll('.st-shot').forEach(shot =&gt; {
+        shot.removeAttribute('inert')
+        shot.removeAttribute('aria-hidden')
+      })
     }
     const refresh = () =&gt; { if (!stopped) update() }
+    sync.current = refresh
     try {
       observer = new MutationObserver(refresh)
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
       update()
     } catch {
@@ -345,11 +423,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       setInteractive(false)
     }
     return stop
-  }, [flow])
+  }, [ref])
   return (
-    // the cast satisfies React 18's stricter ref types: useScenes returns RefObject&lt;T | null&gt; so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject&lt;T&gt; on a host element
-    &lt;div ref={ref as React.RefObject&lt;HTMLDivElement&gt;} className={className ? 'sv-steps ' + className : 'sv-steps'}&gt;
+    &lt;div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}&gt;
       &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
       &lt;div className="sv-stage"&gt;&lt;div data-sv-fit="" className="st-grid"&gt;
         &lt;div className="st-media"&gt;
@@ -358,8 +434,8 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive &amp;&amp; !flow &amp;&amp; i !== scene ? INERT : {})}
-              aria-hidden={interactive &amp;&amp; !flow &amp;&amp; i !== scene ? true : undefined}
+              {...(interactive &amp;&amp; i !== scene ? INERT : {})}
+              aria-hidden={interactive &amp;&amp; i !== scene ? true : undefined}
             &gt;
               {s.media}
             &lt;/figure&gt;
@@ -385,12 +461,12 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
 }
 </code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.2 KB gzip as ESM (this page's fx/sv.js IIFE: 11.4 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.3 KB gzip as ESM (this page's fx/sv.js IIFE: 11.6 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
 <footer class="fx">
-  <div><b>ScrollVars</b> v1.17.6. One scroll listener in, CSS variables out. MIT.</div>
+  <div><b>ScrollVars</b> v1.18.0. One scroll listener in, CSS variables out. MIT.</div>
   <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
 </footer>
 <script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>

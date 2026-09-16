@@ -584,6 +584,29 @@ async function ensureDomAndWarmDriver() {
   track(warmup)()
 }
 
+for (const api of ['useTrack', 'useScenes', 'Track', 'Scenes']) test(`react: ${api} forwards lease status to the latest callback without retracking`, async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const hooks = await import('../dist/react/index.js')
+  const first = [], latest = []
+  function Consumer({ onStatus }) {
+    if (api === 'Track') return React.createElement(hooks.Track, { onStatus })
+    if (api === 'Scenes') return React.createElement(hooks.Scenes, { count: 3, onStatus }, () => 'Scene')
+    const result = api === 'useTrack' ? hooks.useTrack({ onStatus }) : hooks.useScenes(3, { onStatus })
+    return React.createElement('div', { ref: api === 'useTrack' ? result : result.ref })
+  }
+  const container = document.createElement('div'), root = createRoot(container)
+  await React.act(async () => { root.render(React.createElement(Consumer, { onStatus: s => first.push(s) })) })
+  await React.act(async () => { flushFrames() })
+  assert.deepEqual(first, ['attaching', 'active'])
+  await React.act(async () => { root.render(React.createElement(Consumer, { onStatus: s => latest.push(s) })) })
+  assert.deepEqual(latest, [], 'callback identity changes neither replay nor reattach')
+  await React.act(async () => { root.unmount(); flushFrames() })
+  assert.deepEqual(first, ['attaching', 'active'])
+  assert.deepEqual(latest, ['released'])
+})
+
 test('react: useTrack attaches through the ref setter (conditional mount), untracks on unmount', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

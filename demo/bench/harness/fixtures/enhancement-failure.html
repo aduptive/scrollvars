@@ -10,6 +10,7 @@ body { margin: 0; font: 16px/1.5 sans-serif; }
 #app { margin-top: 20vh; }
 #probes { margin: 20vh 16px; }
 #probes section { min-height: 40vh; }
+html[data-fixture="oversized"] .st-grid { min-height: 1400px; }
 </style>
 <script nonce="sv-fixture">
 // Faults are installed before the real SSR prepaint script runs. Restoration
@@ -21,6 +22,8 @@ addEventListener('error', function(event) {
   }
 })
 var fault = new URLSearchParams(location.search).get('case')
+document.documentElement.setAttribute('data-fixture', fault || 'normal')
+window.stepsStatuses = []
 var RO = window.ResizeObserver, IO = window.IntersectionObserver, MO = window.MutationObserver
 window.stepsSubscriptions = 0
 window.stepsObservers = 0

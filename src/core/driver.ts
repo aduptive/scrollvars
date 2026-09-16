@@ -1,7 +1,13 @@
 import { clamp, easeOutCubic } from './math.js'
 import { reducedMotion as effectiveReduce, onMotionChange } from './motion.js'
 
+/** State of one track() lease, independent of motion preference or fit-to-flow. */
+export type AttachmentStatus = 'attaching' | 'active' | 'completed' | 'released' | 'failed'
+
 export interface TrackOptions {
+  /** Once per lease transition. Active follows successful measurement/output;
+   * failed/released follow static settlement. Cleanup remains track()'s return. */
+  onStatus?: (status: AttachmentStatus) => void
   /** Write `--sv-view` (-1 below viewport → 0 in scene → 1 gone above). Default true. */
   view?: boolean
   /** Write `--sv-t` (0..1 across the element's full travel through the viewport,
@@ -65,7 +71,7 @@ interface Entry {
 
 /** Internal lease status, deliberately absent from the package exports. */
 export interface Attachment {
-  state: 'attaching' | 'active' | 'completed' | 'released' | 'failed'
+  state: AttachmentStatus
   stop: () => void
 }
 
@@ -77,11 +83,16 @@ function reportFailure(error: unknown) {
 function failEntry(entry: Entry, error: unknown) {
   if (entry.status.state === 'failed') return
   const released = entry.status.state === 'released'
-  entry.status.state = 'failed'
   // A callback may have replaced itself before throwing. The successor owns
   // the DOM now; neither rollback nor an old handle may touch it.
-  if (!released && (!entries.has(entry.el) || entries.get(entry.el) === entry)) releaseEntry(entry)
+  if (!released && (!entries.has(entry.el) || entries.get(entry.el) === entry)) releaseEntry(entry, 'failed')
   reportFailure(error)
+}
+
+function transition(entry: Entry, state: AttachmentStatus) {
+  if (entry.status.state === state || entry.status.state === 'released' || entry.status.state === 'failed') return
+  entry.status.state = state
+  entry.opts.onStatus?.(state)
 }
 
 function guardEntry(entry: Entry, work: () => void) {
@@ -96,6 +107,8 @@ const LIVE_ENTER = 0.75
 const LIVE_EXIT = 0.25
 
 const entries = new Map<HTMLElement, Entry>()
+// A release notification can track again before the replacing call resumes.
+const requests = new WeakMap<HTMLElement, Attachment>()
 let raf = 0
 let vh = 0
 let resizeObserver: ResizeObserver | null = null
@@ -188,7 +201,7 @@ export function bootReleased(): boolean {
 
 export function releaseBoot() {
   ;(window as unknown as { __scrollvars?: string }).__scrollvars = 'released'
-  entries.forEach(releaseEntry)
+  entries.forEach(entry => releaseEntry(entry))
   document.documentElement.classList.remove('sv-on')
   pageOutputs = false
   if (raf) cancelAnimationFrame(raf)
@@ -555,7 +568,7 @@ function update() {
         })
       }
       apply(entry, geo, stageHeight)
-      if (entries.get(entry.el) === entry) entry.status.state = 'active'
+      if (entries.get(entry.el) === entry) transition(entry, 'active')
     } catch (error) { failEntry(entry, error) }
   }
   // Page-level outputs on <html>: --sv-page (0..1 through the document) and
@@ -781,7 +794,6 @@ function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
       // would drop that replacement instead of this entry.
       if (entries.get(entry.el) === entry) {
         entries.delete(entry.el)
-        entry.status.state = 'completed'
         // entry.el can be another live entry's root (a shared scroll container),
         // and this entry can declare its own root: only drop each resize watch
         // once no other entry still needs it.
@@ -792,6 +804,7 @@ function apply(entry: Entry, geo: Geometry, stageHeight?: number) {
         // left `entries`: a released ancestor waiting on it can take its
         // marker now, and nothing else on this path would ever tell it.
         settleDeferred()
+        transition(entry, 'completed')
       }
     }
     opts.onLive?.(isLive)
@@ -932,10 +945,11 @@ function clearReleased(el: HTMLElement) {
  * Shared by the identity-guarded untrack and by track() replacing an
  * already-tracked element, so a replacing track() is exactly untrack then
  * track. */
-function releaseEntry(entry: Entry) {
+function releaseEntry(entry: Entry, state: 'released' | 'failed' = 'released') {
   const { el } = entry
+  if (entry.status.state === 'released' || entry.status.state === 'failed') return
   if (entries.has(el) && entries.get(el) !== entry) return
-  if (entry.status.state !== 'failed') entry.status.state = 'released'
+  entry.status.state = state
   entries.delete(el)
   // Nothing is tracked any more: stop watching for a consumer that would only
   // wake a driver with no work, and let the next track() ask the document
@@ -979,6 +993,9 @@ function releaseEntry(entry: Entry) {
   // left to put a dropped class back. setAttribute, not toggleAttribute:
   // fallback-reachable code stays inside the supported floor (Safari 11).
   safely(() => markReleased(el))
+  // Notify after rollback, so consumers can immediately restore accessibility.
+  // A terminal callback cannot turn release into another transition.
+  try { entry.opts.onStatus?.(state) } catch (error) { reportFailure(error) }
 }
 
 /** Replay the entrance of an element the driver had settled visible.
@@ -1045,14 +1062,7 @@ export function track(el: HTMLElement, opts: TrackOptions = {}): () => void {
 
 export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
   const status: Attachment = { state: 'attaching', stop: () => {} }
-  // A failed init() (no ResizeObserver) leaves the driver uninitialized: stay
-  // a no-op so the page stays static until compat() shims one in and a later
-  // track() call retries init() clean.
-  if (!init()) {
-    status.state = 'failed'
-    safely(() => markReleased(el))
-    return status
-  }
+  requests.set(el, status)
   // re-tracking an already-tracked element must behave like untrack then
   // track: release the previous entry's outputs first, or a variable only it
   // ever wrote (e.g. --sv-t from a first call with travel:true) stays inline
@@ -1060,11 +1070,26 @@ export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
   const existing = entries.get(el)
   if (existing) releaseEntry(existing)
   const entry: Entry = { el, opts, status, near: true, live: false, scene: -1, pinOffset: 0, written: {} }
+  if (requests.get(el) !== status) {
+    try { opts.onStatus?.('attaching') } catch (error) { reportFailure(error) }
+    status.state = 'released'
+    try { opts.onStatus?.('released') } catch (error) { reportFailure(error) }
+    return status
+  }
   entries.set(el, entry)
   status.stop = () => {
     if (entries.get(el) === entry) releaseEntry(entry)
   }
   try {
+    opts.onStatus?.('attaching')
+    if (entries.get(el) !== entry) return status
+    // Failed initialization can be retried explicitly; the watchdog cannot.
+    if (!init()) {
+      entries.delete(el)
+      safely(() => markReleased(el))
+      try { transition(entry, 'failed') } catch (error) { reportFailure(error) }
+      return status
+    }
     // a previous release settled the element visible with an inline --sv-live: 1
     // (and `data-sv-off`); tracking hands the flag back to the driver, so drop
     // both before the first frame. `sv-live` goes too: a settled `once` entry

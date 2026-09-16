@@ -52,3 +52,11 @@ try {
   process.exit(1)
 }
 console.log('react18-tsc: src type-checks under React 18 types')
+
+// The same README extraction gate npm test runs under React 19, redirected
+// with the consumer fixture's existing SV_REACT18_DIR signal.
+execFileSync(process.execPath, ['--test', join(root, 'test', 'docs-types.test.mjs')], {
+  cwd: root,
+  env: { ...process.env, SV_REACT18_DIR: REACT18_ROOT },
+  stdio: 'inherit',
+})

@@ -5,6 +5,51 @@
  * prove that every component compiles and renders with the presets its preview
  * uses. scripts/fx-build.mjs turns this into pages, llms.txt and registry.json.
  */
+// Shared by the rendered gallery and the standalone CSS pane. React consumers
+// install the Section below, which owns the same status/fit/layout contract.
+const STICKY_ATTACH = `function mountSteps(el, SV) {
+  let status = 'attaching', flow = true, scene = 0, stopped = false
+  let observer, stopMotion, stopTrack
+  const shots = Array.from(el.querySelectorAll('.st-shot'))
+  const update = () => {
+    if (stopped) return
+    let ready = status === 'active' && !flow && !SV.prefersReducedMotion()
+    if (ready) el.classList.remove('st-static')
+    el.classList.toggle('st-ready', ready)
+    const stage = el.querySelector('.sv-stage')
+    ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
+      shots.length > 0 && getComputedStyle(shots[0]).position === 'absolute'
+    const fit = el.querySelector('[data-sv-fit]')
+    ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage.clientHeight + 1
+    el.classList.toggle('st-ready', ready)
+    el.classList.toggle('st-static', !ready && status !== 'attaching')
+    shots.forEach((shot, i) => {
+      if (ready && i !== scene) { shot.setAttribute('inert', ''); shot.setAttribute('aria-hidden', 'true') }
+      else { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') }
+    })
+    // Drain our own class writes; an external class rewrite still triggers a check.
+    observer?.takeRecords()
+  }
+  const stop = () => {
+    stopped = true
+    observer?.disconnect(); stopMotion?.(); stopTrack?.()
+    el.classList.remove('st-ready')
+    el.classList.add('st-static')
+    shots.forEach(shot => { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') })
+  }
+  try {
+    observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
+    stopMotion = SV.onMotionChange(update)
+    stopTrack = SV.track(el, { pin: shots.length * 100 + 'vh', scenes: shots.length,
+      onStatus: value => { status = value; update() },
+      onFlow: value => { flow = value; update() },
+      onScene: value => { scene = value; update() } })
+  } catch { stop() }
+  return stop
+}`
+
 export const EFFECTS = [
   {
     slug: 'staggered-reveal',
@@ -880,20 +925,14 @@ function Timeline() {
   {
     slug: 'sticky-steps',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], min: '1.17.5' },
+    requires: { styles: ['pin'], min: '1.18.0' },
     category: 'Sections',
     title: 'Sticky steps',
     tagline: 'Media stays put while the copy scrolls; each step swaps the shot. The product-page pattern, with --sv-scene doing the swapping.',
     when: 'Product features, "how it works", case-study walkthroughs, onboarding explainers.',
     knobs: 'data-sv-scenes (step count), wrapper height (scroll per step), --i on each shot/step, the crossfade math (see CSS)',
-    // Rendered from StickySteps itself (see scripts/fx-render.mjs). useScenes
-    // attaches imperatively, so the gallery page keeps the same tiny attach
-    // script the hand-written preview used, deferred to `load` so
-    // `window.SV` (sv.js, loaded later in the page) exists by the time it
-    // runs. The rendered markup never hydrates, so the scene-driven
-    // inert/aria-hidden swap (tested live in
-    // demo/bench/harness/fixtures/sticky-steps-inert.html) is out of scope
-    // here: the static preview stays in its initial, fully reachable state.
+    // SSR from the installed Section; the shared controller attaches the
+    // non-hydrated gallery after SV loads, using the supported lease status.
     previewProps: {
       steps: [
         { title: 'Track the section', text: 'One data-sv-pin wrapper, one sticky child. The driver writes --sv-scene as you scroll.', media: '01' },
@@ -902,9 +941,9 @@ function Timeline() {
       ],
       className: 'fxouter',
     },
-    previewScript: `addEventListener('load', () => { const el = document.querySelector('.sv-steps'); SV.track(el, { pin: '300vh', scenes: 3, onFlow: flow => el.classList.toggle('st-ready', !flow) }) })`,
-    css: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3" class="st">   <!-- --sv-scene: 0..2, eased + snapped; 100vh per scene -->
-  <div class="sv-stage st-sticky">
+    previewScript: `addEventListener('load', () => { (${STICKY_ATTACH})(document.querySelector('.sv-steps'), SV) })`,
+    css: `<div class="st">   <!-- --sv-scene: 0..2; mountSteps below owns tracking -->
+  <div class="sv-stage"><div data-sv-fit class="st-sticky">
     <div class="st-media">
       <img class="st-shot" style="--i: 0" src="shot-1.jpg" alt="">
       <img class="st-shot" style="--i: 1" src="shot-2.jpg" alt="">
@@ -915,14 +954,15 @@ function Timeline() {
       <li style="--i: 1"><h3>Give each piece an index</h3><p>…</p></li>
       <li style="--i: 2"><h3>Ship it</h3><p>…</p></li>
     </ol>
-  </div>
+  </div></div>
 </div>
 
+.st.st-static > div { position: static; height: auto; overflow: visible; }
 .st-sticky { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; }   /* sv-stage pins it */
 .st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-on :where(.st.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .st-shot { position: static; opacity: 1; scale: none; }
@@ -934,44 +974,46 @@ html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots 
    being written, and every non-active step would sit at 30% forever (ADU-155) */
 @media (prefers-reduced-motion: reduce) { .st-steps > li { opacity: 1; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-:where([data-sv-motion="reduce"]) .st-steps > li { opacity: 1; }`,
-    tailwind: `<div data-sv data-sv-pin="300vh" data-sv-scenes="3">
-  <div class="sv-stage grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
-    <div class="relative grid aspect-[4/3] overflow-hidden rounded-2xl">
+:where([data-sv-motion="reduce"]) .st-steps > li { opacity: 1; }
+
+<script type="module">
+import * as SV from 'scrollvars'
+${STICKY_ATTACH}
+const stop = mountSteps(document.querySelector('.st'), SV)
+// Call stop() when removing the section.
+</script>`,
+    tailwind: `<div class="st">
+  <div class="sv-stage"><div data-sv-fit class="grid grid-cols-[1.1fr_1fr] items-center gap-12 px-12">
+    <div class="st-media rounded-2xl">
       <img class="st-shot [--i:0]" src="shot-1.jpg" alt="">
       <img class="st-shot [--i:1]" src="shot-2.jpg" alt="">
       <img class="st-shot [--i:2]" src="shot-3.jpg" alt="">
     </div>
     <ol class="st-steps grid gap-10">
-      <li class="[--i:0] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Track the section</h3></li>
-      <li class="[--i:1] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Give each piece an index</h3></li>
-      <li class="[--i:2] [opacity:calc(.3+.7*(1-var(--st-d)))]"><h3>Ship it</h3></li>
+      <li class="[--i:0]"><h3>Track the section</h3></li>
+      <li class="[--i:1]"><h3>Give each piece an index</h3></li>
+      <li class="[--i:2]"><h3>Ship it</h3></li>
     </ol>
-  </div>
+  </div></div>
 </div>
-<!-- --st-d and the .st-shot crossfade are 3 lines of global CSS (CSS tab); the math does not fit a class name -->`,
-    react: `import { Track } from 'scrollvars/react'
+<!-- Use the CSS tab's styles and mountSteps controller, including its status and fit checks. -->`,
+    react: `// npx scrollvars add sticky-steps
+import { StickySteps } from './components/fx/StickySteps'
 
 const steps = [
   { title: 'Track the section', text: '…', src: 'shot-1.jpg' },
   { title: 'Give each piece an index', text: '…', src: 'shot-2.jpg' },
   { title: 'Ship it', text: '…', src: 'shot-3.jpg' },
 ]
-function StickySteps() {
+function ProductSteps() {
   return (
-    <Track pin={steps.length * 100 + 'vh'} scenes={steps.length} className="st">
-      <div className="sv-stage st-sticky">
-        <div className="st-media">
-          {steps.map((s, i) => <img key={i} className="st-shot" style={{ '--i': i }} src={s.src} alt="" />)}
-        </div>
-        <ol className="st-steps">
-          {steps.map((s, i) => <li key={i} style={{ '--i': i }}><h3>{s.title}</h3><p>{s.text}</p></li>)}
-        </ol>
-      </div>
-    </Track>
+    <StickySteps steps={steps.map(s => ({
+      title: s.title, text: s.text, media: <img src={s.src} alt="" />,
+    }))} />
   )
 }
-// npx scrollvars add sticky-steps → components/fx/StickySteps.tsx (CSS included)`,
+// The installed Section uses useScenes({ onStatus, onFlow }) and checks its
+// rendered CSS before enabling crossfade and making inactive shots inert.`,
   },
   {
     slug: 'stats-countup',
@@ -1335,7 +1377,7 @@ const css = \`
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 .sv-steps:not(.st-ready) .st-media { overflow: visible; }
-.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
+.sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -1386,8 +1428,16 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const [flow, setFlow] = React.useState(true)
-  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
+  const status = React.useRef<import('scrollvars').AttachmentStatus>('attaching')
+  const flow = React.useRef(true)
+  const sync = React.useRef<(() => void) | undefined>(undefined)
+  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, {
+    pin: steps.length * 100 + 'vh',
+    onStatus: value => { status.current = value; sync.current?.() },
+    onFlow: value => { flow.current = value; sync.current?.() },
+  })
+  const currentScene = React.useRef(scene)
+  currentScene.current = scene
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
@@ -1399,25 +1449,54 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     // leave static shots reachable. Only the crossfade hides inactive shots.
     const update = () => {
       const shot = el.querySelector('.st-shot')
-      const ready = !flow && el.classList.contains('sv') && !el.hasAttribute('data-sv-off')
+      const stage = el.querySelector('.sv-stage')
+      // Probe the candidate layout, then keep it only when both sheets apply.
+      let ready = status.current === 'active' && !flow.current && !prefersReducedMotion()
+      if (ready) el.classList.remove('st-static')
       el.classList.toggle('st-ready', ready)
-      setInteractive(ready &&
-        !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
+      ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
+        !!shot && getComputedStyle(shot).position === 'absolute'
+      const fit = el.querySelector<HTMLElement>('[data-sv-fit]')
+      ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage!.clientHeight + 1
+      el.classList.toggle('st-ready', ready)
+      el.classList.toggle('st-static', !ready && status.current !== 'attaching')
+      el.querySelectorAll('.st-shot').forEach((shot, i) => {
+        // Set both directions even when React batches reduce then auto into
+        // one render whose interactive state has not changed.
+        if (ready && i !== currentScene.current) {
+          shot.setAttribute('inert', '')
+          shot.setAttribute('aria-hidden', 'true')
+        } else {
+          shot.removeAttribute('inert')
+          shot.removeAttribute('aria-hidden')
+        }
+      })
+      setInteractive(ready)
+      // Candidate probing writes classes too. Do not observe our own writes
+      // again, especially when missing CSS rejects that candidate.
+      observer?.takeRecords()
     }
     let observer: MutationObserver | undefined
     let stopMotion: (() => void) | undefined
     let stopped = false
     const stop = () => {
       stopped = true
+      sync.current = undefined
       observer?.disconnect()
       stopMotion?.()
       el.classList.remove('st-ready')
+      el.classList.add('st-static')
+      el.querySelectorAll('.st-shot').forEach(shot => {
+        shot.removeAttribute('inert')
+        shot.removeAttribute('aria-hidden')
+      })
     }
     const refresh = () => { if (!stopped) update() }
+    sync.current = refresh
     try {
       observer = new MutationObserver(refresh)
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
       update()
     } catch {
@@ -1425,11 +1504,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       setInteractive(false)
     }
     return stop
-  }, [flow])
+  }, [ref])
   return (
-    // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+    <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage"><div data-sv-fit="" className="st-grid">
         <div className="st-media">
@@ -1438,8 +1515,8 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive && !flow && i !== scene ? INERT : {})}
-              aria-hidden={interactive && !flow && i !== scene ? true : undefined}
+              {...(interactive && i !== scene ? INERT : {})}
+              aria-hidden={interactive && i !== scene ? true : undefined}
             >
               {s.media}
             </figure>

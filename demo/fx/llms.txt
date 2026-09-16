@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 11.2 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.4 KB). Each effect below includes when to
+> (npm i scrollvars, 11.3 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.6 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -946,7 +946,7 @@ const css = `
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
 .sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 .sv-steps:not(.st-ready) .st-media { overflow: visible; }
-.sv-steps:not(.sv) .sv-stage { position: static; height: auto; overflow: visible; }
+.sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -997,8 +997,16 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
   // server markup stays fully usable without JS
-  const [flow, setFlow] = React.useState(true)
-  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, { pin: steps.length * 100 + 'vh', onFlow: setFlow })
+  const status = React.useRef<import('scrollvars').AttachmentStatus>('attaching')
+  const flow = React.useRef(true)
+  const sync = React.useRef<(() => void) | undefined>(undefined)
+  const { ref, scene } = useScenes<HTMLDivElement>(steps.length, {
+    pin: steps.length * 100 + 'vh',
+    onStatus: value => { status.current = value; sync.current?.() },
+    onFlow: value => { flow.current = value; sync.current?.() },
+  })
+  const currentScene = React.useRef(scene)
+  currentScene.current = scene
   // after mount only (server markup stays fully usable), and never under reduced
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
@@ -1010,25 +1018,54 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     // leave static shots reachable. Only the crossfade hides inactive shots.
     const update = () => {
       const shot = el.querySelector('.st-shot')
-      const ready = !flow && el.classList.contains('sv') && !el.hasAttribute('data-sv-off')
+      const stage = el.querySelector('.sv-stage')
+      // Probe the candidate layout, then keep it only when both sheets apply.
+      let ready = status.current === 'active' && !flow.current && !prefersReducedMotion()
+      if (ready) el.classList.remove('st-static')
       el.classList.toggle('st-ready', ready)
-      setInteractive(ready &&
-        !prefersReducedMotion() && !!shot && getComputedStyle(shot).position === 'absolute')
+      ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
+        !!shot && getComputedStyle(shot).position === 'absolute'
+      const fit = el.querySelector<HTMLElement>('[data-sv-fit]')
+      ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage!.clientHeight + 1
+      el.classList.toggle('st-ready', ready)
+      el.classList.toggle('st-static', !ready && status.current !== 'attaching')
+      el.querySelectorAll('.st-shot').forEach((shot, i) => {
+        // Set both directions even when React batches reduce then auto into
+        // one render whose interactive state has not changed.
+        if (ready && i !== currentScene.current) {
+          shot.setAttribute('inert', '')
+          shot.setAttribute('aria-hidden', 'true')
+        } else {
+          shot.removeAttribute('inert')
+          shot.removeAttribute('aria-hidden')
+        }
+      })
+      setInteractive(ready)
+      // Candidate probing writes classes too. Do not observe our own writes
+      // again, especially when missing CSS rejects that candidate.
+      observer?.takeRecords()
     }
     let observer: MutationObserver | undefined
     let stopMotion: (() => void) | undefined
     let stopped = false
     const stop = () => {
       stopped = true
+      sync.current = undefined
       observer?.disconnect()
       stopMotion?.()
       el.classList.remove('st-ready')
+      el.classList.add('st-static')
+      el.querySelectorAll('.st-shot').forEach(shot => {
+        shot.removeAttribute('inert')
+        shot.removeAttribute('aria-hidden')
+      })
     }
     const refresh = () => { if (!stopped) update() }
+    sync.current = refresh
     try {
       observer = new MutationObserver(refresh)
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-off', 'data-sv-flow'] })
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
       update()
     } catch {
@@ -1036,11 +1073,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       setInteractive(false)
     }
     return stop
-  }, [flow])
+  }, [ref])
   return (
-    // the cast satisfies React 18's stricter ref types: useScenes returns RefObject<T | null> so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={className ? 'sv-steps ' + className : 'sv-steps'}>
+    <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <div className="sv-stage"><div data-sv-fit="" className="st-grid">
         <div className="st-media">
@@ -1049,8 +1084,8 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
               key={i}
               className="st-shot"
               style={{ '--i': i } as React.CSSProperties}
-              {...(interactive && !flow && i !== scene ? INERT : {})}
-              aria-hidden={interactive && !flow && i !== scene ? true : undefined}
+              {...(interactive && i !== scene ? INERT : {})}
+              aria-hidden={interactive && i !== scene ? true : undefined}
             >
               {s.media}
             </figure>

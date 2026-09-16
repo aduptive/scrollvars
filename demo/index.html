@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 5.2 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.3 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.2 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.3 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.2 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.3 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 20.8 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.8 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.2 KB / 5.2 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 20.9 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.6 KB / 5.3 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.2 KB gzip · full core 11.2 KB · v1.17.6 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.3 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3299,10 +3299,15 @@ var SV = (() => {
     if (entry.status.state === "failed")
       return;
     const released = entry.status.state === "released";
-    entry.status.state = "failed";
     if (!released && (!entries.has(entry.el) || entries.get(entry.el) === entry))
-      releaseEntry(entry);
+      releaseEntry(entry, "failed");
     reportFailure(error);
+  }
+  function transition(entry, state) {
+    if (entry.status.state === state || entry.status.state === "released" || entry.status.state === "failed")
+      return;
+    entry.status.state = state;
+    entry.opts.onStatus?.(state);
   }
   function guardEntry(entry, work) {
     if (entries.get(entry.el) !== entry)
@@ -3317,6 +3322,7 @@ var SV = (() => {
   var LIVE_ENTER = 0.75;
   var LIVE_EXIT = 0.25;
   var entries = /* @__PURE__ */ new Map();
+  var requests = /* @__PURE__ */ new WeakMap();
   var raf = 0;
   var vh = 0;
   var resizeObserver = null;
@@ -3682,7 +3688,7 @@ var SV = (() => {
         }
         apply(entry, geo, stageHeight);
         if (entries.get(entry.el) === entry)
-          entry.status.state = "active";
+          transition(entry, "active");
       } catch (error) {
         failEntry(entry, error);
       }
@@ -3846,12 +3852,12 @@ var SV = (() => {
           setVar(entry, "--sv-view", reducedMotion2 ? 0 : computeView(geo, enter, exit));
         if (entries.get(entry.el) === entry) {
           entries.delete(entry.el);
-          entry.status.state = "completed";
           unobserveIfUnneeded(entry.el);
           if (opts.root)
             unobserveIfUnneeded(opts.root);
           safely(() => culler?.unobserve(entry.el));
           settleDeferred();
+          transition(entry, "completed");
         }
       }
       opts.onLive?.(isLive);
@@ -3940,12 +3946,13 @@ var SV = (() => {
         deferredOff.add(node);
     }
   }
-  function releaseEntry(entry) {
+  function releaseEntry(entry, state = "released") {
     const { el } = entry;
+    if (entry.status.state === "released" || entry.status.state === "failed")
+      return;
     if (entries.has(el) && entries.get(el) !== entry)
       return;
-    if (entry.status.state !== "failed")
-      entry.status.state = "released";
+    entry.status.state = state;
     entries.delete(el);
     if (entries.size === 0 && pageOutputsMode === "auto") {
       safely(() => consumerWatch?.disconnect());
@@ -3973,6 +3980,11 @@ var SV = (() => {
     safely(() => el.style.removeProperty?.("--sv-scenes"));
     safely(() => el.style.setProperty?.("--sv-live", "1"));
     safely(() => markReleased(el));
+    try {
+      entry.opts.onStatus?.(state);
+    } catch (error) {
+      reportFailure(error);
+    }
   }
   function replayEntrance(el) {
     if (typeof getComputedStyle !== "function")
@@ -3999,21 +4011,44 @@ var SV = (() => {
   function attach(el, opts = {}) {
     const status = { state: "attaching", stop: () => {
     } };
-    if (!init()) {
-      status.state = "failed";
-      safely(() => markReleased(el));
-      return status;
-    }
+    requests.set(el, status);
     const existing = entries.get(el);
     if (existing)
       releaseEntry(existing);
     const entry = { el, opts, status, near: true, live: false, scene: -1, pinOffset: 0, written: {} };
+    if (requests.get(el) !== status) {
+      try {
+        opts.onStatus?.("attaching");
+      } catch (error) {
+        reportFailure(error);
+      }
+      status.state = "released";
+      try {
+        opts.onStatus?.("released");
+      } catch (error) {
+        reportFailure(error);
+      }
+      return status;
+    }
     entries.set(el, entry);
     status.stop = () => {
       if (entries.get(el) === entry)
         releaseEntry(entry);
     };
     try {
+      opts.onStatus?.("attaching");
+      if (entries.get(el) !== entry)
+        return status;
+      if (!init()) {
+        entries.delete(el);
+        safely(() => markReleased(el));
+        try {
+          transition(entry, "failed");
+        } catch (error) {
+          reportFailure(error);
+        }
+        return status;
+      }
       const settled = el.style.getPropertyValue?.("--sv-live") === "1";
       el.style.removeProperty?.("--sv-live");
       el.classList.remove("sv-live");

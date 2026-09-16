@@ -91,7 +91,7 @@ export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce, pageOutpu
  * does not know it and drops booleans, so it gets the empty string instead. Both render inert="". */
 const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
 
-type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin' | 'onFlow'>
+type Callbacks = Pick<TrackOptions, 'onLive' | 'onScene' | 'onTravel' | 'onPin' | 'onFlow' | 'onStatus'>
 
 /**
  * A ref whose `current` is an accessor instead of a plain field. React's
@@ -172,6 +172,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
     onTravel: options.onTravel,
     onPin: options.onPin,
     onFlow: options.onFlow,
+    onStatus: options.onStatus,
   }
 
   const { view, travel, scenes, snap, once, pin, root, enter, exit } = options
@@ -193,6 +194,7 @@ export function useTrack<T extends HTMLElement = HTMLDivElement>(
         exit,
         onLive: (live) => callbacksRef.current.onLive?.(live),
         onFlow: (flow) => callbacksRef.current.onFlow?.(flow),
+        onStatus: (status) => callbacksRef.current.onStatus?.(status),
         onScene: hasSceneCb ? (scene) => callbacksRef.current.onScene?.(scene) : undefined,
         onTravel: hasTravelCb
           ? (t) => callbacksRef.current.onTravel?.(t)
@@ -269,6 +271,7 @@ export const Track: React.FC<TrackProps> = ({
   onTravel,
   onPin,
   onFlow,
+  onStatus,
   order,
   distance,
   stagger,
@@ -279,7 +282,7 @@ export const Track: React.FC<TrackProps> = ({
   children,
   ...rest
 }) => {
-  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin, onFlow })
+  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin, onFlow, onStatus })
 
   return (
     <Tag
@@ -494,6 +497,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   onTravel,
   onPin,
   onFlow,
+  onStatus,
   order,
   distance,
   stagger,
@@ -514,6 +518,7 @@ export const Scenes: React.FC<ScenesProps> = ({
     onTravel,
     onPin,
     onFlow,
+    onStatus,
   })
   const onSceneRef = useRef(onScene)
   onSceneRef.current = onScene
