@@ -23,14 +23,24 @@ export function artifactHashes(tarball) {
     registrySha256: createHash('sha256').update(readFileSync(registryPath)).digest('hex'),
   }
 }
+/** npm 10.8 (the CI runner's) runs `prepare` on pack even with --ignore-scripts
+ * and lets the script's stdout ("styles.css regenerated...") land in front of
+ * the --json payload; npm 10.2 keeps stdout clean. Parse from the first line
+ * that opens the array, and only that line, so a bracket inside a log line
+ * cannot pass for the payload. The release job parses its pack the same way. */
+export function packJson(stdout) {
+  for (const match of stdout.matchAll(/^\[\s*$/gm)) {
+    try { return JSON.parse(stdout.slice(match.index)) } catch { /* a log line, keep looking */ }
+  }
+  throw new Error(`npm pack --json printed no JSON array:\n${stdout.slice(0, 400)}`)
+}
 export function packWorktree(destination) {
-  // Pack with scripts off: on the CI runner's npm the `prepare` script's
-  // own stdout lands in front of the --json payload ("styles.css
-  // regenerated..." is not valid JSON). Like test:e2e, this never rebuilds
-  // dist (node --test runs files in parallel and they import it): npm ci,
-  // pretest and demo:sync build it, and the release job packs the same way.
+  // Like test:e2e, this never rebuilds dist by hand (node --test runs files in
+  // parallel and they import it): npm ci, pretest and demo:sync build it.
   assert(existsSync(join(repo, 'dist/index.js')), 'dist is not built: run npm run build first')
-  const [packed] = JSON.parse(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', destination, '--cache', join(destination, '.npm-cache')], repo))
+  // --ignore-scripts where npm honors it (no dist rebuild under the parallel
+  // unit suite); packJson covers the npm that runs prepare regardless.
+  const [packed] = packJson(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', destination, '--cache', join(destination, '.npm-cache')], repo))
   const tarball = join(destination, packed.filename)
   assert.equal(artifactHashes(tarball).tarballSha512, packed.integrity)
   return { tarball, integrity: packed.integrity, cwd: repo }

@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, mkdirSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { packWorktree, artifactHashes, resolveConsumerImport, installConsumer, buildConsumer, repo, registryPath } from '../demo/bench/harness/packed-acceptance.mjs'
+import { packWorktree, packJson, artifactHashes, resolveConsumerImport, installConsumer, buildConsumer, repo, registryPath } from '../demo/bench/harness/packed-acceptance.mjs'
 
 const scratch = mkdtempSync(join(tmpdir(), 'sv-packed-unit-'))
 let artifact, consumer
@@ -56,4 +56,11 @@ test('packed consumer builds and server renders the integrated page without repo
   assert(fixture.css.length > 1000)
   assert(fixture.script.length > 1000)
   assert(consumer.resolutions.size > 3)
+})
+
+test('packJson skips the prepare script stdout that npm 10.8 prints in front of the payload', () => {
+  const polluted = 'styles.css regenerated from [core.css, pin.css]\n[\n  { "filename": "scrollvars-1.18.0.tgz" }\n]\n'
+  assert.equal(packJson(polluted)[0].filename, 'scrollvars-1.18.0.tgz')
+  assert.equal(packJson('[\n{"filename":"clean.tgz"}\n]')[0].filename, 'clean.tgz')
+  assert.throws(() => packJson('no payload [ here\n'), /printed no JSON array/)
 })

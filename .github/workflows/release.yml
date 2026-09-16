@@ -37,10 +37,10 @@ jobs:
       - name: 'pack smoke: the tarball actually installs and imports'
         id: pack
         run: |
-          # scripts off: this runner's npm prints the prepare script's stdout in
-          # front of the JSON; dist is already built by the test step above
           npm pack --json --ignore-scripts > "$RUNNER_TEMP/scrollvars-pack.json"
-          TARBALL=$(node -e 'const fs = require("node:fs"); const [pack] = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(pack.filename)' "$RUNNER_TEMP/scrollvars-pack.json")
+          # this runner's npm prints the prepare script's stdout in front of the
+          # JSON: the harness's packJson skips it, one parser for both jobs
+          TARBALL=$(node --input-type=module -e 'import fs from "node:fs"; import { packJson } from "./demo/bench/harness/packed-acceptance.mjs"; process.stdout.write(packJson(fs.readFileSync(process.argv[1], "utf8"))[0].filename)' "$RUNNER_TEMP/scrollvars-pack.json")
           echo "tarball=$GITHUB_WORKSPACE/$TARBALL" >> "$GITHUB_OUTPUT"
           mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
           npm i "$GITHUB_WORKSPACE/$TARBALL"
