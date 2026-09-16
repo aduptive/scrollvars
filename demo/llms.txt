@@ -128,7 +128,7 @@ The container is N viewports tall by default (one per scene); a string
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
 `sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides only the starting position, while the endpoint uses stage overflow: enters from offscreen right and still moves
 when the track fits the viewport:
-`translate: calc((1 - var(--sv-pin)) * var(--sv-stage-width, 100vw) + var(--sv-pin) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0`).
+`translate: calc((1 - var(--sv-pin, 0)) * var(--sv-rail-start, var(--sv-stage-width, 100vw)) + var(--sv-pin, 0) * min(var(--sv-stage-width, 100vw) - 100%, 0px)) 0;`).
 
 **Zero-wrapper mode (prefer this in Next.js):** one `<ScrollVarsBoot />` in the
 root layout, then plain RSC sections with `data-sv` attributes (`data-sv-once`,
@@ -337,13 +337,16 @@ without `compat()`, stages return to flow, decorative curtains hide and rails
 wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and
 rails keep their fallback animation. Tracked stages containing static decks
 return to flow, including the wrapper height, so every card stays reachable.
-Installed StickySteps starts static and enables crossfade only after tracking
-and its first fit evaluation succeed. Missing or throwing mutation observation
+Installed StickySteps starts static, temporarily stacks candidate shots without
+accessibility hiding for the first fit evaluation, and enables crossfade only
+after tracking and that evaluation succeed. Missing or throwing mutation observation
 keeps it static and releases partial observation and motion subscriptions.
 Inactive shots become inert only while
 that layout is active; static shots stay accessible after failed boot, watchdog
 release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
-never a dependency. If a client contractually requires legacy browsers:
+never a dependency. StatsCountup shows its final numbers before activation under
+both reduced-motion controls; click-driven `sv-acts` keeps its open/closed state.
+If a client contractually requires legacy browsers:
 `import { compat } from 'scrollvars/compat'; compat()` once at boot (free on
 modern browsers, feature-checks and exits) + let the consumer bundler
 downlevel ES2020 per browserslist. That extends the animated floor to
@@ -495,6 +498,8 @@ owners. A measurement, output or callback failure releases only that tracker,
 restores authored pin geometry and reports the original error once; healthy
 entries continue. Retry recoverable failures with an explicit track or scan.
 Watchdog expiry remains terminal. The public cleanup-function return is unchanged.
+`<Scenes onScene>` is a React notification: a throwing consumer is reported once
+and disabled until remount, while scene state and healthy siblings keep working.
 Slider, toggles, pointer and canvas acquisition roll back partial resources and
 owned DOM writes before rethrowing the original setup error. Runtime failures
 stop only that instance and report once through `reportError` or `console.error`.
@@ -504,7 +509,9 @@ an explicit attachment. React auxiliary hooks contain attachment and cleanup
 errors locally; target or option replacement retries attachment.
 
 Slider release restores owned styles, classes and tabindex while preserving later
-author changes. Keep native rail styling in authored markup (`class="sv-slider"`)
+author changes. Child replacement restores departed slides' owned outputs and
+classes on mutation delivery and releases their ownership records.
+Keep native rail styling in authored markup (`class="sv-slider"`)
 so native scrolling survives without enhancement. Pointer release restores its
 owned coordinates and leave class. Failed toggle operations restore prior class,
 state-variable and ARIA values; successful semantic state survives release.

@@ -6,5 +6,7 @@
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
 .sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .sv-stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .sv-stats .stat { counter-reset: n var(--sv-max); }
 </style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span><span class="count" data-suffix="+" aria-hidden="true"></span></dd></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div></dl></div>
 </body></html>

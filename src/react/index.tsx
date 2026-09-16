@@ -522,8 +522,11 @@ export const Scenes: React.FC<ScenesProps> = ({
   })
   const onSceneRef = useRef(onScene)
   onSceneRef.current = onScene
+  const sceneCallbackFailed = useRef(false)
   useEffect(() => {
-    onSceneRef.current?.(scene)
+    if (sceneCallbackFailed.current) return
+    try { onSceneRef.current?.(scene) }
+    catch (error) { sceneCallbackFailed.current = true; reportFailure(error) }
   }, [scene])
 
   return (

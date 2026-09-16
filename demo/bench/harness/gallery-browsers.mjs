@@ -39,7 +39,7 @@ const server = createServer(async (req, res) => {
       if (path === '/failure-styles.css') return res.end(failureStyles)
       let html = substitute(failureTemplate, '<!-- DECLARED_STYLES -->', url.searchParams.get('case') === 'missing-css'
         ? '' : '<link rel="stylesheet" href="/failure-styles.css">')
-      html = substitute(html, '<!-- APP_MARKUP -->', url.searchParams.get('case') === 'empty' ? fixture.emptyMarkup : fixture.markup)
+      html = substitute(html, '<!-- APP_MARKUP -->', url.searchParams.get('case') === 'empty' ? fixture.emptyMarkup : url.searchParams.get('case') === 'images' ? fixture.imageMarkup : fixture.markup)
       if (url.searchParams.get('case') === 'empty') {
         assert.equal((html.match(/ data-sv>/g) || []).length, 2)
         html = html.replace(/ data-sv>/g, '>')
@@ -112,7 +112,8 @@ async function workingCrossfade(page, label) {
 
 async function enhancementFailures(browser, name) {
   for (const major of [19, 18]) for (const width of [1400, 320]) {
-    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'steps-mo-missing', 'steps-mo-constructor', 'steps-mo-first', 'steps-mo-second', 'empty', 'normal', 'reduced', 'missing-css', 'oversized', 'steps-runtime', 'steps-release']) {
+    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'steps-mo-missing', 'steps-mo-constructor', 'steps-mo-first', 'steps-mo-second', 'empty', 'normal', 'reduced', 'missing-css', 'oversized', 'images', 'steps-runtime', 'steps-release']) {
+      if (mode === 'images' && width !== 1400) continue
       const label = `${name} React ${major} ${width} ${mode}`
       const context = await browser.newContext({ viewport: { width, height: 900 }, javaScriptEnabled: mode !== 'no-js', reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference' })
       const page = await context.newPage()
@@ -141,6 +142,18 @@ async function enhancementFailures(browser, name) {
           continue
         }
         await page.waitForFunction(() => window.failureHydrated)
+        if (mode === 'images') {
+          await page.waitForFunction(() => stepsStatuses.includes('active') &&
+            [...document.images].every(img => img.complete && img.naturalWidth > 0))
+          await settle(page)
+          assert.deepEqual(await page.locator('.st-shot img').evaluateAll(images =>
+            images.map(img => [img.naturalWidth, img.naturalHeight])), [[1200, 900], [1200, 900], [1200, 900]], `${label}: intrinsic media is loaded`)
+          await workingCrossfade(page, label)
+          assert(await page.locator('.sv-steps').evaluate(el =>
+            el.classList.contains('st-ready') && !el.classList.contains('st-measuring') && !el.hasAttribute('data-sv-flow')),
+          `${label}: three intrinsic images fit the candidate at 1400x900 without latching static rows`)
+          continue
+        }
         if (mode === 'missing-css' || mode === 'oversized') {
           await page.waitForFunction(() => stepsStatuses.includes('active'))
           await staticShots(page, label)

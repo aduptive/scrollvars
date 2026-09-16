@@ -320,11 +320,16 @@ export function slider(
   })
   let ro: ResizeObserver | undefined
   let mo: MutationObserver | undefined
+  let watchedSlides = new Set<HTMLElement>()
   const watchSlides = () => {
+    const current = new Set(slides())
+    watchedSlides.forEach(slide => { if (!current.has(slide)) owned.restore(slide) })
+    watchedSlides = current
     ro?.disconnect()
     ro?.observe(container)
-    slides().forEach((slide) => ro?.observe(slide))
+    current.forEach((slide) => ro?.observe(slide))
   }
+  life.defer(() => watchedSlides.clear())
 
   // pending glide destination: rapid next/prev clicks accumulate from here,
   // not from `active` (which lags mid-glide and would swallow the clicks)

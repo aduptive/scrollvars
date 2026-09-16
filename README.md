@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.3 KB, full core incl. the slider 11.3 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.9 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.3 KB, full core incl. the slider 11.4 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.9 KB on the wire.
 
 ## Why
 
@@ -149,8 +149,8 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.6 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 11.3 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 17.8 KB |
+| everything in `scrollvars` (the core entry) | 11.4 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 17.9 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -300,8 +300,9 @@ the inline `--sv-live: 1`, so it stays live and untracked instead of
 released.
 
 `scrollvars/compat`'s `compat()` writes one more, `data-sv-compat` on
-`<html>`, only when its fallback stylesheet actually installs (never a
-marker you set by hand). It changes what the below-the-floor net in
+`<html>`, when it appends the fallback `<style>` (never a marker you set by
+hand). The marker does not verify that the stylesheet applies, for example
+under a blocking style CSP; `compat()` has no nonce option. It changes what the below-the-floor net in
 `styles/pin.css` releases: see Browser support.
 
 ## The fx gallery: copy-paste effects (+ shadcn-style CLI)
@@ -661,8 +662,10 @@ and starts at `translateX(0)`; it is stationary when its width fits the stage.
 
 Installed StickySteps only applies `inert` and `aria-hidden` to inactive shots
 after `onStatus('active')`, its first fit evaluation and computed CSS checks
-confirm the crossfade layout
-is active. It starts static, even while another section has booted the driver.
+confirm the crossfade layout is active. It starts static, even while another
+section has booted the driver. Before the first fit evaluation it temporarily
+stacks the candidate shots without accessibility hiding, so intrinsic images
+are measured in the crossfade layout instead of the taller static rows.
 Failed enhancement, release, reduced motion and fit-to-flow clear layout and
 accessibility hiding so every static shot remains reachable.
 Missing or throwing mutation observation also keeps the Section static and
@@ -676,6 +679,8 @@ Overlapping owners keep their resources. Measurement, output and callback
 failures release the affected tracker, restore its pin geometry and report the
 original error once; healthy entries continue. Retry a recoverable failure by
 explicitly tracking or scanning again. `track()` still returns a cleanup function.
+`<Scenes onScene>` is a React notification: a throwing consumer is reported
+once and disabled until remount, while scene state and healthy siblings keep working.
 Slider, toggles, pointer and canvas setup also roll back partial listeners,
 observers, subscriptions and queued work before rethrowing the original error.
 Runtime measurement, output and callback failures stop only that instance and
@@ -687,7 +692,9 @@ React reports cleanup errors locally.
 Call the module again to retry a recoverable failure.
 
 Slider cleanup restores its owned styles, classes and tabindex without
-overwriting later author changes. Author the native rail layout (for example,
+overwriting later author changes. Child replacement restores departed slides'
+owned outputs and classes immediately on mutation delivery and releases their
+ownership records. Author the native rail layout (for example,
 `class="sv-slider"`) in markup so it remains scrollable before and after enhancement.
 Pointer cleanup likewise restores its owned coordinates and leave class.
 A failed toggle operation restores its previous class, state variable and ARIA;
@@ -851,6 +858,8 @@ success criterion it serves. It is not a conformance claim for your site.
   rail return to flow, parallax stands still, the marquee stops. Each of
   those blocks has a twin under `html[data-sv-motion="reduce"]`, the page's
   own switch, because the OS setting is one many people never find.
+  StatsCountup shows final numbers under either control even before activation;
+  click-driven `sv-acts` still follows its open/closed state.
   `setMotion('reduce' | 'auto')` sets it, `onMotionChange(fn)` reports it,
   `prefersReducedMotion()` reads the effective preference, and the driver,
   the slider's glide, canvas effects (`fx.reducedMotion`) and the React
@@ -870,8 +879,9 @@ success criterion it serves. It is not a conformance claim for your site.
   `aria-roledescription="carousel"`, a `label`, slides announced "i of n",
   labeled arrows and dots (the current dot has `aria-current` and `aria-disabled`), keyboard on the track, `aria-live="polite"` on
   the track while rotation is paused by the person (hover, focus, the
-  control), `off` while it rotates or is merely suspended off screen. Native scroll and scroll snap do the
-  moving, so nothing is hijacked, on sliders or on pins.
+  control), `off` while it rotates or is merely suspended off screen. Sliders
+  retain native scrolling and snap, with custom mandatory-snap wheel settling
+  and keyboard navigation. Pins use native page scrolling and sticky positioning.
 - **Targets** (2.5.8 Target Size, Minimum). Every dot the kit renders is a
   24 by 24 CSS pixel button that never shrinks (a crowded row wraps), with
   the visual dot drawn inside it: `--sv-dot-target` sizes what you hit,

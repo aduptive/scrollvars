@@ -5,8 +5,9 @@
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-.sv-steps:not(.st-ready) .st-media { overflow: visible; }
+.sv-on .sv-steps:where(.st-ready, .st-measuring) .st-shot { position: absolute; inset: 0; }
+.sv-on .sv-steps:where(.st-ready) .st-shot { opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps:not(.st-ready):not(.st-measuring) .st-media { overflow: visible; }
 .sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
