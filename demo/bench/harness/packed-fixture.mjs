@@ -35,7 +35,7 @@ export function instrumentResources() {
   for (const name of ['ResizeObserver', 'IntersectionObserver', 'MutationObserver']) {
     const Native = window[name]
     window[name] = class extends Native {
-      constructor(callback) { super(callback); this.targets = new Set(); this.kind = name }
+      constructor(callback) { super(callback); this.deliver = callback; this.targets = new Set(); this.kind = name }
       // Playwright's injected script observes `document` itself (childList, to
       // re-arm its listeners on a document element swap); nothing in the
       // package observes `document` (documentElement and elements only), so an
@@ -69,6 +69,32 @@ export function instrumentResources() {
   // Harness settling uses the native scheduler so it cannot count itself.
   window.packedSettle = () => new Promise(resolve => request(() => request(resolve)))
   window.packedFaults = []
+  window.packedControllerReports = []
+  const report = console.error.bind(console)
+  console.error = (...args) => {
+    if (String(args[0]).includes('[scrollvars] StickySteps enhancement failed')) window.packedControllerReports.push(args.map(String))
+    else report(...args)
+  }
+  window.packedControllerFault = kind => {
+    const el = document.querySelector('#failed-section .sv-steps')
+    const observer = [...observers].find(o => o.kind === 'MutationObserver' && o.targets.has(el) && o.targets.has(document.documentElement))
+    if (!observer) throw Error('Section controller was not observing')
+    const computed = window.getComputedStyle, shot = el.querySelectorAll('.st-shot')[1], set = shot.setAttribute
+    let injected = false
+    if (kind === 'read') window.getComputedStyle = (...args) => {
+      if (!injected && args[0] === el.querySelector('.sv-stage')) { injected = true; throw Error('packed controller: style read') }
+      return computed(...args)
+    }
+    else shot.setAttribute = function(...args) {
+      if (!injected) { injected = true; throw Error('packed controller: accessibility write') }
+      return set.apply(this, args)
+    }
+    const disconnect = observer.disconnect.bind(observer)
+    observer.disconnect = () => { disconnect(); throw Error('packed controller: disposer after release') }
+    try { observer.deliver([]) } finally { window.getComputedStyle = computed; shot.setAttribute = set }
+    window.packedQueuedController = () => observer.deliver([])
+    return { injected, disconnected: !observers.has(observer) }
+  }
   window.addEventListener('error', event => {
     if (window.packedFaultArmed && event.message.includes('packed fixture: measurement')) {
       window.packedFaults.push(event.message)
@@ -82,6 +108,9 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import { flushSync } from 'react-dom'
 import * as SV from 'scrollvars'
 import { App } from './app'
+import { ContentApp } from './content'
+const contentMode = location.pathname.startsWith('/content/') ? location.pathname.split('/')[2] : null
+const application = () => contentMode ? <ContentApp media={contentMode} /> : <App />
 const container = document.getElementById('app')
 const markup = container.innerHTML
 container.innerHTML = ''
@@ -100,11 +129,12 @@ stop()
   window.packedBaseline = window.packedResources()
   container.innerHTML = markup
   window.packedHydrationErrors = []
-  let root = hydrateRoot(container, <App />, { onRecoverableError: error => window.packedHydrationErrors.push(String(error)) })
+  let root = hydrateRoot(container, application(), { onRecoverableError: error => window.packedHydrationErrors.push(String(error)) })
   window.packed = {
     SV,
+    rerender() { flushSync(() => root.render(application())) },
     unmount() { root.unmount() },
-    mount() { root = createRoot(container); flushSync(() => root.render(<App />)) },
+    mount() { root = createRoot(container); flushSync(() => root.render(application())) },
     fail() {
       const el = document.querySelector('#failed-section .sv-steps')
       window.packedFaultArmed = true

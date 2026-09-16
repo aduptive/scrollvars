@@ -5,6 +5,8 @@
 ### Changed
 
 - The release gate runs packed-tarball acceptance in Chromium, Firefox and WebKit and publishes the same tested file.
+- Packed acceptance now checks real JPEGs, delayed and failed images, live CMS copy and step replacement, narrow layouts, doubled text and both motion controls under React 18 and 19.
+- CI and release retain acceptance results and failure diagnostics with source, package, tarball, registry and runtime attribution; the release still publishes the tested tarball.
 
 ### Added
 
@@ -14,6 +16,8 @@
 
 ### Fixed
 
+- StickySteps contains later controller failures, attempts every cleanup, restores flowing media and React accessibility state, reports once and retries only through explicit remount.
+- StickySteps keeps an overflowing replacement candidate measurable until the driver latches flow, and synchronizes accessibility after scene and content changes.
 - `<Scenes onScene>` contains a throwing consumer, reports it once and keeps scene state and sibling components working.
 - Slider child replacement restores departed slides' owned outputs and active classes and releases their ownership records.
 - StatsCountup renders final numbers before activation under both reduced-motion controls in the installed component, gallery CSS and Tailwind panes.

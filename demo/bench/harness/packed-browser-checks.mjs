@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
+import { readFileSync } from 'node:fs'
 import { chromium, firefox, webkit } from 'playwright'
+import { mediaFiles } from './fixtures/section-content.mjs'
 
 const settle = page => page.evaluate(() => window.packedSettle())
 const failed = '#failed-section .sv-steps'
@@ -54,22 +56,187 @@ function visible(el) {
   })
 }
 
-async function staticShots(page, selector) {
-  await page.waitForFunction(sel => {
+async function staticShots(page, selector, count = 3) {
+  await page.waitForFunction(({ sel, count }) => {
     const shots = [...document.querySelectorAll(sel + ' .st-shot')]
-    return shots.length === 3 && shots.every(el => !el.inert && !el.hasAttribute('aria-hidden') &&
+    return shots.length === count && shots.every(el => !el.inert && !el.hasAttribute('aria-hidden') &&
       getComputedStyle(el).position === 'static' && +getComputedStyle(el).opacity === 1)
-  }, selector)
+  }, { sel: selector, count })
   for (const link of await page.locator(selector + ' .st-shot a').all()) {
     await link.scrollIntoViewIfNeeded()
     assert(await link.evaluate(visible), 'static shot clipped, covered or hidden')
   }
   const links = page.locator(selector + ' .st-shot a')
+  if (!count) return
   await links.first().focus()
-  for (let i = 1; i < 3; i++) {
+  assert(await links.first().evaluate(visible), 'first static shot focus is hidden')
+  for (let i = 1; i < count; i++) {
     await page.keyboard.press('Tab')
     assert(await links.nth(i).evaluate(el => document.activeElement === el), 'Tab skipped static shot')
     assert(await links.nth(i).evaluate(visible), 'focused static shot not visible')
+  }
+}
+
+const contentSteps = '#content-steps .sv-steps'
+const contentPins = [contentSteps, '#content-timeline .sv-timeline', '#content-rail .sv-casework > .sv']
+
+async function contentReachable(page) {
+  const copy = page.locator('[data-content-title],[data-content-body],#content-rail h3,#content-rail p')
+  assert(await copy.count() >= 12, 'content fixture is empty')
+  for (const node of await copy.all()) {
+    await node.scrollIntoViewIfNeeded()
+    assert(await node.evaluate(visible), `copy clipped or hidden: ${await node.textContent()}`)
+    assert(await node.evaluate(el => [...el.getClientRects()].every(r => r.left >= -2 && r.right <= innerWidth + 2)), 'copy extends outside the viewport')
+  }
+  // Real focus and hit testing, including links surrounding failed images.
+  for (const link of await page.locator('[data-content-lease] a').all()) {
+    if (await link.evaluate(el => !!el.closest('[inert]'))) continue
+    await link.focus()
+    assert(await link.evaluate(el => document.activeElement === el), 'content link refused focus')
+    assert(await link.evaluate(visible), 'focused content link is clipped or covered')
+  }
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'content creates horizontal page overflow')
+}
+
+async function contentFlow(page) {
+  for (const selector of contentPins) {
+    await page.waitForFunction(sel => {
+      const el = document.querySelector(sel), stage = el.querySelector('.sv-stage')
+      return el.hasAttribute('data-sv-flow') && getComputedStyle(stage).position === 'static' && stage.scrollHeight <= stage.clientHeight + 1
+    }, selector)
+  }
+  await staticShots(page, contentSteps)
+  await contentReachable(page)
+}
+
+async function contentActive(page) {
+  await crossfade(page, contentSteps)
+  for (const selector of contentPins.slice(1)) {
+    await pin(page, selector, .5)
+    assert(await page.locator(selector).evaluate(el => {
+      const fit = el.querySelector('[data-sv-fit]'), stage = el.querySelector('.sv-stage')
+      return !el.hasAttribute('data-sv-flow') && getComputedStyle(stage).position === 'sticky' && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage.clientHeight + 1
+    }), `${selector}: short content never enhanced`)
+  }
+}
+
+async function contentMotion(page) {
+  for (const mode of ['OS', 'page']) {
+    if (mode === 'OS') await page.emulateMedia({ reducedMotion: 'reduce' })
+    else await page.evaluate(() => window.packed.SV.setMotion('reduce'))
+    await staticShots(page, contentSteps)
+    await contentReachable(page)
+    if (mode === 'OS') await page.emulateMedia({ reducedMotion: 'no-preference' })
+    else await page.evaluate(() => window.packed.SV.setMotion('auto'))
+    await crossfade(page, contentSteps)
+  }
+  const immediate = await page.evaluate(() => {
+    const snapshot = () => [...document.querySelectorAll('#content-steps .st-shot')].map(el => ({ inert: el.inert, hidden: el.hasAttribute('aria-hidden'), position: getComputedStyle(el).position }))
+    window.packed.SV.setMotion('reduce')
+    const reduced = snapshot()
+    window.packed.SV.setMotion('auto')
+    return { reduced, restored: snapshot() }
+  })
+  assert(immediate.reduced.every(s => !s.inert && !s.hidden && s.position === 'static'))
+  assert.equal(immediate.restored.filter(s => s.inert && s.hidden && s.position === 'absolute').length, 2, 'consecutive calls failed to restore eligibility before React rendered')
+  await crossfade(page, contentSteps)
+}
+
+async function runContentChecks({ browser, label, url, check, diagnose }) {
+  const scenarios = [
+    ['decoded JPEGs, first and last scenes, and live motion', 'normal', async page => {
+      await page.waitForFunction(() => [...document.images].every(img => img.complete && img.naturalWidth === 1200 && img.naturalHeight === 900))
+      await page.evaluate(() => Promise.all([...document.images].map(img => img.decode())))
+      await contentActive(page)
+      await contentMotion(page)
+    }],
+    ['held image across hydration and both motion controls', 'held', async page => {
+      assert(await page.locator('#content-steps img').nth(1).evaluate(img => !img.complete), 'image was not held after hydration')
+      await crossfade(page, contentSteps)
+      await contentMotion(page)
+      await page.request.get(url + 'release-images')
+      await page.waitForFunction(() => [...document.images].every(img => img.complete && img.naturalWidth === 1200))
+      await contentActive(page)
+      await contentMotion(page)
+    }],
+    ['separate image 404 preserves surrounding copy and links', 'broken', async page => {
+      await page.waitForFunction(() => [...document.images].every(img => img.complete))
+      assert.equal(await page.locator('#content-steps img').nth(1).evaluate(img => img.naturalWidth), 0)
+      await crossfade(page, contentSteps)
+      await page.evaluate(() => window.packed.SV.setMotion('reduce'))
+      await staticShots(page, contentSteps)
+      await contentReachable(page)
+    }],
+    ['200-word bodies and 120-character titles latch actual overflow until remount', 'normal', async page => {
+      await contentActive(page)
+      await page.evaluate(() => window.packedContent.replace(true))
+      await page.waitForFunction(() => document.querySelector('[data-content-body]').textContent.trim().split(/\s+/).length === 200)
+      assert(await page.locator('[data-content-title],#content-rail h3').evaluateAll(nodes => nodes.length === 9 && nodes.every(el => el.textContent.length === 120)))
+      await contentFlow(page)
+      for (const selector of contentPins) assert(await page.locator(selector + ' .sv-stage').evaluate(el => el.clientHeight > innerHeight), `${selector}: long replacement did not create actual overflow`)
+      await page.evaluate(() => window.packedContent.replace(false))
+      await page.waitForFunction(() => document.querySelector('[data-content-title]').textContent === 'Step 1')
+      await contentFlow(page)
+      for (const mode of ['OS', 'page']) {
+        if (mode === 'OS') await page.emulateMedia({ reducedMotion: 'reduce' })
+        else await page.evaluate(() => window.packed.SV.setMotion('reduce'))
+        await contentFlow(page)
+        if (mode === 'OS') await page.emulateMedia({ reducedMotion: 'no-preference' })
+        else await page.evaluate(() => window.packed.SV.setMotion('auto'))
+        await contentFlow(page)
+      }
+      await page.evaluate(() => window.packedContent.remount())
+      await page.waitForFunction(() => document.querySelector('[data-content-lease]').dataset.contentLease === '1')
+      await contentActive(page)
+    }],
+    ['step replacement 3 to 1 to 0 to 3 clears scene restrictions', 'normal', async page => {
+      await crossfade(page, contentSteps) // leave scene 2 selected before shrinking
+      for (const count of [1, 0, 3]) {
+        await page.evaluate(n => window.packedContent.count(n), count)
+        await page.waitForFunction(n => document.querySelectorAll('#content-steps .st-shot').length === n, count)
+        // the re-attached lease settles on the driver's next frame: assert the
+        // settled state, never the measuring frame between render and fit read
+        await page.waitForFunction(() => !document.querySelector('#content-steps .sv-steps').classList.contains('st-measuring'))
+        if (count === 3) await crossfade(page, contentSteps)
+        else {
+          await page.waitForFunction(() => [...document.querySelectorAll('#content-steps .st-shot')].every(el => !el.inert && !el.hasAttribute('aria-hidden') && +getComputedStyle(el).opacity > .99))
+          assert.equal(await page.locator('#content-steps [inert],#content-steps .st-media [aria-hidden="true"]').count(), 0, 'orphaned media accessibility restriction')
+          if (count) {
+            const link = page.locator('#content-steps .st-shot a')
+            await link.focus(); assert(await link.evaluate(visible), 'surviving shot is not focus-visible')
+          } else assert(await page.locator(contentSteps + ' .sv-stage').evaluate(el => getComputedStyle(el).position === 'static' && el.scrollHeight <= el.clientHeight + 1), 'empty section kept a clipped stage')
+        }
+      }
+    }],
+    ...['320px', 'double text'].map(size => [`${size} long content is reachable without horizontal overflow`, 'normal', async page => {
+      if (size === '320px') await page.setViewportSize({ width: 320, height: 900 })
+      await page.evaluate(() => window.packedContent.replace(true))
+      await page.waitForFunction(() => document.querySelector('[data-content-title]').textContent.length === 120)
+      if (size === 'double text') await page.evaluate(() => {
+        const text = [...document.querySelectorAll('[data-content-lease] *')].filter(el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))
+        const sizes = text.map(el => parseFloat(getComputedStyle(el).fontSize) * 2)
+        text.forEach((el, i) => { el.style.fontSize = sizes[i] + 'px' })
+      })
+      await contentFlow(page)
+    }]),
+  ]
+  for (const [title, mode, run] of scenarios) {
+    await check(`${label}: content ${title}`, async () => {
+      const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, reducedMotion: 'no-preference' })
+      let page
+      try {
+        page = await context.newPage()
+        const errors = []
+        page.on('pageerror', error => errors.push(error.message))
+        await page.goto(url + 'content/' + mode, { waitUntil: 'domcontentloaded' })
+        await page.waitForFunction(() => window.packedContent && window.packed, null, { polling: 100 })
+        await run(page)
+        assert.deepEqual(errors, [])
+        assert.deepEqual(await page.evaluate(() => window.packedHydrationErrors), [])
+        assert.deepEqual(await page.evaluate(() => window.packedControllerReports), [])
+      } catch (error) { await diagnose(page, `${label}-content-${title}`); throw error }
+      finally { await context.close() }
+    })
   }
 }
 
@@ -157,10 +324,28 @@ async function sectionMotion(page) {
   await page.waitForFunction(() => [...document.querySelectorAll('.stat')].every(el => /n [1-9]/.test(getComputedStyle(el).counterReset)))
 }
 
-export async function runBrowsers({ fixture, browsers, react, check }) {
+export async function runBrowsers({ fixture, browsers, react, check: recordCheck, recordBrowser = () => {}, diagnose = async () => {} }) {
+  let activePage
+  const check = (name, run) => recordCheck(name, async () => {
+    try { await run() } catch (error) { await diagnose(activePage, name); throw error }
+  })
   const resources = new Map([['/', ['text/html', fixture.html]], ['/client.js', ['text/javascript', fixture.script]], ['/consumer.css', ['text/css', fixture.css]]])
+  for (const [mode, html] of Object.entries(fixture.content)) resources.set('/content/' + mode, ['text/html', html])
+  for (const name of mediaFiles) resources.set('/media/' + name, ['image/jpeg', readFileSync(new URL('./fixtures/media/' + name, import.meta.url))])
+  const held = new Set()
+  let released = false
   const server = createServer((req, res) => {
-    const resource = resources.get(new URL(req.url, 'http://localhost').pathname)
+    const path = new URL(req.url, 'http://localhost').pathname
+    res.setHeader('Cache-Control', 'no-store')
+    if (path === '/content/held') released = false
+    const jpeg = () => { res.setHeader('Content-Type', 'image/jpeg'); res.end(resources.get('/media/step-2.jpg')[1]) }
+    if (path === '/media/held.jpg') {
+      if (released) jpeg()
+      else { held.add(jpeg); res.on('close', () => held.delete(jpeg)) }
+      return
+    }
+    if (path === '/release-images') { released = true; for (const send of held) send(); held.clear(); res.end('released'); return }
+    const resource = resources.get(path)
     if (!resource) return res.writeHead(404).end()
     res.setHeader('Content-Type', resource[0]); res.end(resource[1])
   })
@@ -169,23 +354,25 @@ export async function runBrowsers({ fixture, browsers, react, check }) {
   try {
     for (const name of browsers) {
       const browser = await ({ chromium, firefox, webkit })[name].launch()
+      recordBrowser(name, browser.version())
       const label = `${name} React ${react}`
       try {
         let noJsShape, independent
         await check(`${label}: no-JS computed reachability and keyboard`, async () => {
           const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1400, height: 900 } })
           try {
-            const page = await context.newPage()
+            const page = activePage = await context.newPage()
             await page.goto(url)
             await fallback(page)
             noJsShape = await page.evaluate(shape)
             independent = await page.evaluate(isolation)
             assert.deepEqual(independent.slice(1), ['rgb(11, 22, 33)', '17px', 'matrix(1, 0, 0, 1, 0, 3)', '0.83'])
-          } finally { await context.close() }
+          } catch (error) { await diagnose(activePage, `${label}-no-JS`); throw error }
+          finally { await context.close() }
         })
         const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, reducedMotion: 'no-preference' })
         try {
-          const page = await context.newPage(), errors = []
+          const page = activePage = await context.newPage(), errors = []
           page.on('pageerror', error => { if (!error.message.includes('packed fixture: measurement')) errors.push(error.message) })
           page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
           await check(`${label}: SSR hydration and all installed enhancements execute`, async () => {
@@ -227,6 +414,30 @@ export async function runBrowsers({ fixture, browsers, react, check }) {
             })
           }
           await check(`${label}: independent page style is untouched`, async () => assert.deepEqual(await page.evaluate(isolation), independent))
+          for (const fault of ['read', 'write']) {
+            await check(`${label}: later controller ${fault} failure settles locally and remount retries`, async () => {
+              await page.evaluate(() => { window.packed.unmount(); window.packed.mount() })
+              await crossfade(page, failed)
+              await pin(page, failed, 0)
+              await page.waitForFunction(sel => !document.querySelector(sel + ' .st-shot').inert, failed)
+              const before = await page.evaluate(() => window.packedControllerReports.length)
+              assert.deepEqual(await page.evaluate(kind => window.packedControllerFault(kind), fault), { injected: true, disconnected: true })
+              await staticShots(page, failed)
+              assert(await page.locator(failed + ' .sv-stage').evaluate(el => getComputedStyle(el).position === 'static' && el.scrollHeight <= el.clientHeight + 1))
+              await page.evaluate(() => {
+                window.packedQueuedController()
+                window.packed.SV.setMotion('reduce'); window.packed.SV.setMotion('auto')
+                window.packed.SV.refresh()
+                window.packed.rerender()
+              })
+              await staticShots(page, failed)
+              assert.equal(await page.evaluate(() => window.packedControllerReports.length), before + 1)
+              await crossfade(page, healthy)
+              await kitWorks(page)
+              await page.evaluate(() => { window.packed.unmount(); window.packed.mount() })
+              await crossfade(page, failed)
+            })
+          }
           for (let cycle = 1; cycle <= 2; cycle++) {
             await check(`${label}: route replacement ${cycle} returns resources to baseline and remounts`, async () => {
               await page.evaluate(() => window.packed.unmount())
@@ -256,8 +467,9 @@ export async function runBrowsers({ fixture, browsers, react, check }) {
                 await new Promise(resolve => setTimeout(resolve, 100))
               }
               assert.equal(await page.locator('#app > *').count(), 0, 'React root really unmounted')
+              const mounts = await page.evaluate(() => window.packedMounted)
               await page.evaluate(() => window.packed.mount())
-              await page.waitForFunction(n => window.packedMounted === n + 1, cycle)
+              await page.waitForFunction(n => window.packedMounted === n + 1, mounts)
               await crossfade(page, failed)
               await crossfade(page, healthy)
               await kitWorks(page)
@@ -270,7 +482,8 @@ export async function runBrowsers({ fixture, browsers, react, check }) {
             assert.equal(await page.evaluate(() => window.packedFaults.length), 1, 'failed lease must not report again after replacement')
           })
         } finally { await context.close() }
+        await runContentChecks({ browser, label, url, check, diagnose })
       } finally { await browser.close() }
     }
-  } finally { await new Promise(resolve => server.close(resolve)) }
+  } finally { for (const send of held) send(); await new Promise(resolve => server.close(resolve)) }
 }
