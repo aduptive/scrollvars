@@ -13,8 +13,9 @@ const STICKY_ATTACH = `function mountSteps(el, SV) {
   const shots = Array.from(el.querySelectorAll('.st-shot'))
   const update = () => {
     if (stopped) return
-    const measuring = status === 'attaching' && !el.hasAttribute('data-sv-flow') && !SV.prefersReducedMotion()
-    let ready = status === 'active' && !flow && !SV.prefersReducedMotion()
+    const empty = !shots.length
+    const measuring = !empty && status === 'attaching' && !el.hasAttribute('data-sv-flow') && !SV.prefersReducedMotion()
+    let ready = !empty && status === 'active' && !flow && !SV.prefersReducedMotion()
     if (ready || measuring) el.classList.remove('st-static')
     el.classList.toggle('st-measuring', measuring)
     el.classList.toggle('st-ready', ready)
@@ -22,36 +23,58 @@ const STICKY_ATTACH = `function mountSteps(el, SV) {
     ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
       shots.length > 0 && getComputedStyle(shots[0]).position === 'absolute'
     const fit = el.querySelector('[data-sv-fit]')
+    const pendingFit = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) > stage.clientHeight + 1
     ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage.clientHeight + 1
+    el.classList.toggle('st-measuring', measuring || pendingFit)
     el.classList.toggle('st-ready', ready)
-    el.classList.toggle('st-static', !ready && status !== 'attaching')
+    el.classList.toggle('st-static', !ready && !pendingFit && (empty || status !== 'attaching'))
     shots.forEach((shot, i) => {
       if (ready && i !== scene) { shot.setAttribute('inert', ''); shot.setAttribute('aria-hidden', 'true') }
       else { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') }
     })
     // Drain our own class writes; an external class rewrite still triggers a check.
     observer?.takeRecords()
+    if (pendingFit) SV.refresh()
   }
   const stop = () => {
+    if (stopped) return
     stopped = true
-    observer?.disconnect(); stopMotion?.(); stopTrack?.()
-    el.classList.remove('st-measuring')
-    el.classList.remove('st-ready')
-    el.classList.add('st-static')
-    shots.forEach(shot => { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') })
+    const attempt = fn => { try { fn() } catch { /* continue settling this controller */ } }
+    attempt(() => observer?.disconnect())
+    attempt(() => stopMotion?.())
+    attempt(() => stopTrack?.())
+    attempt(() => el.classList.remove('st-measuring'))
+    attempt(() => el.classList.remove('st-ready'))
+    attempt(() => el.classList.add('st-static'))
+    shots.forEach(shot => {
+      attempt(() => shot.removeAttribute('inert'))
+      attempt(() => shot.removeAttribute('aria-hidden'))
+    })
+  }
+  const fail = error => {
+    if (stopped) return
+    stop()
+    try { console.error('[scrollvars] StickySteps enhancement failed', error) } catch { /* reporting is best effort */ }
+  }
+  const refresh = () => {
+    if (stopped) return
+    try { update() } catch (error) { fail(error) }
   }
   try {
-    observer = new MutationObserver(update)
+    observer = new MutationObserver(refresh)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
-    stopMotion = SV.onMotionChange(update)
-    stopTrack = SV.track(el, { pin: shots.length * 100 + 'vh', scenes: shots.length,
-      onStatus: value => { status = value; update() },
-      onFlow: value => { flow = value; update() },
-      onScene: value => { scene = value; update() } })
+    stopMotion = SV.onMotionChange(refresh)
+    if (stopped) { stopMotion(); return stop }
+    stopTrack = SV.track(el, { pin: shots.length ? shots.length * 100 + 'vh' : undefined, scenes: shots.length,
+      onStatus: value => { status = value; refresh() },
+      onFlow: value => { flow = value; refresh() },
+      onScene: value => { scene = value; refresh() } })
+    // A synchronous attachment notification may fail before track returns.
+    if (stopped) { stopTrack(); return stop }
     // Evaluate the candidate on the next frame even when this section is culled.
     if (status === 'attaching') SV.refresh()
-  } catch { stop() }
+  } catch (error) { fail(error) }
   return stop
 }`
 
@@ -963,6 +986,8 @@ function Timeline() {
 </div>
 
 .st.st-static > div { position: static; height: auto; overflow: visible; }
+.st.st-static { height: auto !important; }
+.st.st-static .st-media { aspect-ratio: auto; gap: 8px; overflow: visible; }
 .st-sticky { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; }   /* sv-stage pins it */
 .st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
@@ -975,6 +1000,7 @@ function Timeline() {
 :where([data-sv-motion="reduce"]) .st-media { gap: 8px; aspect-ratio: auto; }   /* no crossfade: the shots stack */
 .st-steps > li { opacity: calc(.65 + .35 * (1 - var(--st-d))); } /* the floor, with the labels at .8, keeps an inactive step's text at 4.5:1 on this background (axe) */
 html:not(.sv-on) .st-steps > li { opacity: 1; }                 /* no JS: shots stack, every step readable */
+.st.st-static .st-steps > li { opacity: 1; }
 /* Placed after the rule above (same specificity, later wins, so a media block
    up there would lose): the stage unpins under reduce but --sv-scene keeps
    being written, and every non-active step would sit at 30% forever (ADU-155) */
@@ -1396,6 +1422,9 @@ const css = \`
 .sv-on .sv-steps:where(.st-ready) .st-shot { opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 .sv-steps:not(.st-ready):not(.st-measuring) .st-media { overflow: visible; }
 .sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
+.sv-steps.st-static { height: auto !important; }
+.sv-steps.st-static .st-grid { min-height: 0; }
+.sv-steps.st-static .st-media { aspect-ratio: auto; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .sv-steps .st-shot { position: static; opacity: 1; scale: none; }
@@ -1408,6 +1437,7 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 .sv-steps .st-steps p { margin: 0; max-width: 36ch; opacity: .8; }
 .sv-steps .st-dots { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; display: flex; gap: 8px; }
 .sv-steps .st-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: calc(1 - var(--st-d) * .7); scale: calc(1.6 - var(--st-d) * .6); }
+.sv-steps.st-static .st-steps > li { opacity: 1; translate: none; }
 /* Placed after the rules above (same specificity, later wins): the stage is
    unpinned under reduced motion, so --sv-scene keeps writing but every
    non-active step would otherwise sit at 30% opacity forever and the copy
@@ -1427,6 +1457,7 @@ html:not(.sv-on) .sv-steps .st-steps > li { opacity: 1; translate: none; }
 [data-sv-flow].sv-steps .st-media { aspect-ratio: auto; gap: 8px; }
 [data-sv-flow].sv-steps .st-steps > li { opacity: 1; translate: none; }
 [data-sv-flow].sv-steps .st-dots { display: none; }
+.sv-steps.st-static .st-dots { display: none; }
 @media (max-width: 640px) { .sv-steps .st-grid { grid-template-columns: 1fr; align-content: center; gap: 18px; } }
 \`
 
@@ -1450,7 +1481,9 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   const flow = React.useRef(true)
   const sync = React.useRef<(() => void) | undefined>(undefined)
   const { ref, scene } = useScenes<HTMLDivElement>(steps.length, {
-    pin: steps.length * 100 + 'vh',
+    // an empty list (a CMS editor removed every step) pins nothing: the stage
+    // stays in flow at its natural height instead of a 0vh wrapper
+    pin: steps.length ? steps.length * 100 + 'vh' : undefined,
     onStatus: value => { status.current = value; sync.current?.() },
     onFlow: value => { flow.current = value; sync.current?.() },
   })
@@ -1469,17 +1502,22 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       const shot = el.querySelector('.st-shot')
       const stage = el.querySelector('.sv-stage')
       // Stack before the driver's first fit read, without hiding shots from AT.
-      const measuring = status.current === 'attaching' && !el.hasAttribute('data-sv-flow') && !prefersReducedMotion()
-      let ready = status.current === 'active' && !flow.current && !prefersReducedMotion()
+      const empty = !shot
+      const measuring = !empty && status.current === 'attaching' && !el.hasAttribute('data-sv-flow') && !prefersReducedMotion()
+      let ready = !empty && status.current === 'active' && !flow.current && !prefersReducedMotion()
       if (ready || measuring) el.classList.remove('st-static')
       el.classList.toggle('st-measuring', measuring)
       el.classList.toggle('st-ready', ready)
       ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
         !!shot && getComputedStyle(shot).position === 'absolute'
       const fit = el.querySelector<HTMLElement>('[data-sv-fit]')
+      // Keep the candidate's stage constrained until the driver reads overflow.
+      // Expanding it here would swallow the fit latch on content replacement.
+      const pendingFit = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) > stage!.clientHeight + 1
       ready = ready && !!fit && Math.max(fit.offsetHeight, fit.scrollHeight) <= stage!.clientHeight + 1
+      el.classList.toggle('st-measuring', measuring || pendingFit)
       el.classList.toggle('st-ready', ready)
-      el.classList.toggle('st-static', !ready && status.current !== 'attaching')
+      el.classList.toggle('st-static', !ready && !pendingFit && (empty || status.current !== 'attaching'))
       el.querySelectorAll('.st-shot').forEach((shot, i) => {
         // Set both directions even when React batches reduce then auto into
         // one render whose interactive state has not changed.
@@ -1495,39 +1533,50 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       // Candidate probing writes classes too. Do not observe our own writes
       // again, especially when missing CSS rejects that candidate.
       observer?.takeRecords()
+      if (pendingFit) refreshFit()
     }
     let observer: MutationObserver | undefined
     let stopMotion: (() => void) | undefined
     let stopped = false
     const stop = () => {
+      if (stopped) return
       stopped = true
       sync.current = undefined
-      observer?.disconnect()
-      stopMotion?.()
-      el.classList.remove('st-measuring')
-      el.classList.remove('st-ready')
-      el.classList.add('st-static')
+      const attempt = (fn: () => void) => { try { fn() } catch { /* continue settling this controller */ } }
+      attempt(() => observer?.disconnect())
+      attempt(() => stopMotion?.())
+      attempt(() => el.classList.remove('st-measuring'))
+      attempt(() => el.classList.remove('st-ready'))
+      attempt(() => el.classList.add('st-static'))
       el.querySelectorAll('.st-shot').forEach(shot => {
-        shot.removeAttribute('inert')
-        shot.removeAttribute('aria-hidden')
+        attempt(() => shot.removeAttribute('inert'))
+        attempt(() => shot.removeAttribute('aria-hidden'))
       })
+      setInteractive(false)
     }
-    const refresh = () => { if (!stopped) update() }
+    const fail = (error: unknown) => {
+      if (stopped) return
+      stop()
+      try { console.error('[scrollvars] StickySteps enhancement failed', error) } catch { /* reporting is best effort */ }
+    }
+    const refresh = () => {
+      if (stopped) return
+      try { update() } catch (error) { fail(error) }
+    }
     sync.current = refresh
     try {
       observer = new MutationObserver(refresh)
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
       observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
-      update()
+      if (stopped) { stopMotion(); return stop }
+      refresh()
       // The first fit must run next frame, including for an offscreen section.
-      if (status.current === 'attaching') refreshFit()
-    } catch {
-      stop()
-      setInteractive(false)
-    }
+      if (!stopped && status.current === 'attaching') refreshFit()
+    } catch (error) { fail(error) }
     return stop
   }, [ref])
+  useLayoutEffect(() => { sync.current?.() }, [scene, steps])
   return (
     <div ref={ref} className={className ? 'sv-steps ' + className : 'sv-steps'}>
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />

@@ -670,6 +670,13 @@ Failed enhancement, release, reduced motion and fit-to-flow clear layout and
 accessibility hiding so every static shot remains reachable.
 Missing or throwing mutation observation also keeps the Section static and
 releases any partially acquired observer or motion subscription.
+Later controller failures also stop observation and motion updates, attempt every
+cleanup, restore normally flowing media and clear React's rendered accessibility
+state. They report once and ignore queued callbacks; explicitly remount the
+Section to retry. Replacement copy keeps its candidate stage constrained until
+the driver can record overflow and latch flow. The
+[packed acceptance gate](docs/acceptance/packed-sections.md) checks real media and CMS
+replacement, and saves attributable results and failure diagnostics in CI.
 
 Scroll initialization and attachment roll back partial setup on failure.
 Missing or throwing ResizeObserver keeps content static; a missing or throwing

@@ -21,6 +21,14 @@ jobs:
       - run: npx --prefix demo/bench/harness playwright install --with-deps ${{ matrix.browser }}
       - run: npm run test:browsers -- ${{ matrix.browser }}
       - run: npm run test:packed -- ${{ matrix.browser }}
+        env:
+          SCROLLVARS_ACCEPTANCE_DIR: ${{ runner.temp }}/packed-acceptance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: packed-acceptance-${{ matrix.browser }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/packed-acceptance
+          if-no-files-found: warn
 
   test:
     runs-on: ubuntu-latest

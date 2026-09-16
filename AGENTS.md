@@ -328,6 +328,10 @@ Installed StickySteps starts static, temporarily stacks candidate shots without
 accessibility hiding for the first fit evaluation, and enables crossfade only
 after tracking and that evaluation succeed. Missing or throwing mutation observation
 keeps it static and releases partial observation and motion subscriptions.
+Later controller failures attempt every cleanup, restore flowing media and
+React accessibility state, report once and ignore stale callbacks. Retry with
+an explicit Section remount. Replacement content keeps the candidate constrained
+until the driver records overflow; shortening content does not clear a flow latch.
 Inactive shots become inert only while
 that layout is active; static shots stay accessible after failed boot, watchdog
 release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,

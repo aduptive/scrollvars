@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 // Data only. Runtime, styles and components always come from the consumer.
 import { EFFECTS } from '../../../scripts/fx-data.mjs'
+import { sectionContentSource } from './fixtures/section-content.mjs'
 
 export const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 export const registryPath = join(repo, 'demo/fx/registry.json')
@@ -22,6 +23,43 @@ export function artifactHashes(tarball) {
     tarballSha512: 'sha512-' + createHash('sha512').update(readFileSync(tarball)).digest('base64'),
     registrySha256: createHash('sha256').update(readFileSync(registryPath)).digest('hex'),
   }
+}
+export function sourceEvidence(env = process.env) {
+  return {
+    sourceCommit: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
+    sourceDirty: !!execFileSync('/usr/bin/git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim(),
+    packageVersion: JSON.parse(readFileSync(join(repo, 'package.json'))).version,
+    ciRunUrl: env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null,
+    ciCommit: env.GITHUB_SHA || null,
+    ciRunAttempt: env.GITHUB_RUN_ATTEMPT || null,
+    nodeVersion: process.version,
+  }
+}
+export function writeAcceptanceResult(directory, results) {
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(join(directory, 'result.json'), JSON.stringify(results, null, 2) + '\n')
+}
+
+export async function failureDiagnostics(directory, page, name) {
+  if (!page || page.isClosed()) return
+  const prefix = name.replace(/[^a-z0-9]+/gi, '-').slice(0, 160)
+  mkdirSync(directory, { recursive: true })
+  // Diagnostics must never mask the original assertion or block cleanup.
+  const capture = async (suffix, read) => {
+    try { writeFileSync(join(directory, prefix + suffix), await read()) }
+    catch (error) { writeFileSync(join(directory, prefix + suffix + '.error.txt'), String(error)) }
+  }
+  await capture('.html', () => page.content())
+  await capture('.png', () => page.screenshot({ fullPage: true, timeout: 5000 }))
+  await capture('.json', async () => JSON.stringify(await page.evaluate(() => ({
+    url: location.href, viewport: [innerWidth, innerHeight], scroll: [scrollX, scrollY],
+    hydration: window.packedHydrationErrors, faults: window.packedFaults, controllerReports: window.packedControllerReports,
+    baseline: window.packedBaseline, resources: window.packedResources?.(),
+    layout: [...document.querySelectorAll('.sv-stage,[data-sv-fit],.st-shot,.work-rail')].map(el => {
+      const css = getComputedStyle(el), rect = el.getBoundingClientRect()
+      return { html: el.outerHTML.slice(0, 1000), rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, height: el.clientHeight, scrollHeight: el.scrollHeight, position: css.position, opacity: css.opacity, transform: css.transform, inert: el.inert }
+    }),
+  })), null, 2))
 }
 /** npm 10.8 (the CI runner's) runs `prepare` on pack even with --ignore-scripts
  * and lets the script's stdout ("styles.css regenerated...") land in front of
@@ -145,14 +183,17 @@ export function App() {
   </>
 }`
   writeFileSync(join(dir, 'app.tsx'), source)
+  writeFileSync(join(dir, 'content.tsx'), sectionContentSource)
   const plugins = [{ name: 'consumer-package-boundary', setup(api) {
     api.onResolve({ filter: /^scrollvars(?:\/.*)?$/ }, args => ({ path: guard(args.path) }))
   } }]
   const options = { absWorkingDir: dir, bundle: true, jsx: 'automatic', plugins, logLevel: 'silent', metafile: true }
   // React stays external in SSR and resolves normally from this fresh consumer.
-  writeFileSync(join(dir, 'server.tsx'), `import { renderToString } from 'react-dom/server'; import { App } from './app'; console.log(renderToString(<App />))`)
+  writeFileSync(join(dir, 'server.tsx'), `import { renderToString } from 'react-dom/server'; import { App } from './app'; import { ContentApp } from './content'; console.log(renderToString(process.argv[2] ? <ContentApp media={process.argv[2]} /> : <App />))`)
   const server = await build({ ...options, entryPoints: ['server.tsx'], outfile: join(dir, 'server.mjs'), platform: 'node', format: 'esm', external: ['react', 'react-dom', 'react/*'] })
   const markup = execFileSync(process.execPath, [join(dir, 'server.mjs')], { cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
+  const contentMarkup = Object.fromEntries(['normal', 'held', 'broken'].map(mode => [mode,
+    execFileSync(process.execPath, [join(dir, 'server.mjs'), mode], { cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })]))
   const { clientSource, instrumentResources } = await import('./packed-fixture.mjs')
   writeFileSync(join(dir, 'client.tsx'), clientSource)
   const bundled = await build({ ...options, entryPoints: ['client.tsx'], outfile: join(dir, 'client.js'), write: false, platform: 'browser', format: 'iife', define: { 'process.env.NODE_ENV': '"production"' } })
@@ -162,10 +203,10 @@ export function App() {
   }
   const styles = [...new Set(entries.flatMap(entry => entry.requires?.styles ?? []))]
   const css = styles.map(name => readFileSync(guard(`scrollvars/styles/${name}.css`), 'utf8')).join('\n')
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packed consumer</title>
+  const document = body => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packed consumer</title>
 <link rel="stylesheet" href="/consumer.css"><style>body{margin:0;font:16px/1.5 sans-serif}#app>section{margin-block:15vh}#before,#after{display:block;padding:20px}#isolation{color:rgb(11,22,33);padding:17px;transform:translateY(3px);opacity:.83}#kit span{padding:24px}</style>
-<script>(${instrumentResources.toString()})()</script></head><body><a id="before" href="#after">Start of publication</a><aside id="isolation">Independent page style</aside><main id="app">${markup}</main><script src="/client.js"></script></body></html>`
-  return { html, css, script: bundled.outputFiles[0].text }
+<script>(${instrumentResources.toString()})()</script></head><body><a id="before" href="#after">Start of publication</a><aside id="isolation">Independent page style</aside><main id="app">${body}</main><script src="/client.js"></script></body></html>`
+  return { html: document(markup), content: Object.fromEntries(Object.entries(contentMarkup).map(([mode, body]) => [mode, document(body)])), css, script: bundled.outputFiles[0].text }
 }
 
 async function main() {
@@ -173,14 +214,23 @@ async function main() {
   const browsers = selected ? [selected] : ['chromium', 'firefox', 'webkit']
   assert(browsers.every(name => ['chromium', 'firefox', 'webkit'].includes(name)), `Unknown browser: ${selected}`)
   const scratch = mkdtempSync(join(tmpdir(), 'sv-packed-acceptance-'))
-  const results = { browsers, reactVersions: [], checks: [] }
+  const artifactDir = process.env.SCROLLVARS_ACCEPTANCE_DIR || mkdtempSync(join(tmpdir(), 'sv-packed-evidence-'))
+  const results = { status: 'running', startedAt: new Date().toISOString(), browsers, browserVersions: [], reactVersions: [], checks: [] }
+  const persist = () => writeAcceptanceResult(artifactDir, results)
+  persist()
   const check = async (name, run) => {
     try { await run(); results.checks.push({ name, ok: true }); console.log(`ok ${name}`) }
     catch (error) { results.checks.push({ name, ok: false, error: error.stack }); console.error(`not ok ${name}: ${error.stack}`); throw error }
+    finally { persist() }
   }
   try {
+    Object.assign(results, sourceEvidence())
+    persist()
     const tarball = process.env.SCROLLVARS_TARBALL ? resolve(process.env.SCROLLVARS_TARBALL) : packWorktree(scratch).tarball
     Object.assign(results, { tarball, ...artifactHashes(tarball) })
+    const packedVersion = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], { encoding: 'utf8' })).version
+    assert.equal(packedVersion, results.packageVersion, 'tarball package version disagrees with source')
+    persist()
     const { runBrowsers } = await import('./packed-browser-checks.mjs')
     for (const major of [18, 19]) {
       let consumer, fixture
@@ -189,16 +239,24 @@ async function main() {
         results.reactVersions.push(consumer.react)
         fixture = await buildConsumer(consumer)
       })
-      await runBrowsers({ fixture, browsers, react: consumer.react, check })
+      await runBrowsers({ fixture, browsers, react: consumer.react, check,
+        recordBrowser: (name, version) => { results.browserVersions.push({ name, version, react: consumer.react }); persist() },
+        diagnose: (page, name) => failureDiagnostics(artifactDir, page, name),
+      })
     }
     assert.deepEqual(artifactHashes(tarball), { tarballSha512: results.tarballSha512, registrySha256: results.registrySha256 }, 'artifacts changed during acceptance')
+    results.status = 'passed'
   } catch (error) {
+    results.status = 'failed'
     if (!results.checks.some(check => !check.ok)) {
       results.checks.push({ name: 'setup or artifact integrity', ok: false, error: error.stack })
       console.error(`not ok setup or artifact integrity: ${error.stack}`)
     }
     process.exitCode = 1
   } finally {
+    results.finishedAt = new Date().toISOString()
+    persist()
+    console.log(`Acceptance artifact: ${join(artifactDir, 'result.json')}`)
     console.log(JSON.stringify(results))
     rmSync(scratch, { recursive: true, force: true })
   }
