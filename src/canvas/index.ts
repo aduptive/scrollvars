@@ -305,6 +305,7 @@
  * never overrides one the author set.
  */
 import { reducedMotion as effectiveReduce, onMotionChange } from '../core/motion.js'
+import { lifetime, ownership } from '../core/lifetime.js'
 
 export interface EffectFrame {
   /** The 2D context. Or null when `context: null` (WebGL/Three effects own
@@ -375,6 +376,19 @@ export function mountEffect(
   const ctx = context === '2d' ? canvas.getContext('2d') : null
   if (context === '2d' && !ctx) return noop
 
+  const life = lifetime()
+  const owned = ownership()
+  life.defer(() => owned.restore())
+  const dimension = (key: 'width' | 'height', value: number) => {
+    if (typeof canvas.getAttribute === 'function') owned.attr(canvas, key, String(value))
+    else owned.property(canvas, key, value)
+  }
+  const style = (key: 'width' | 'boxSizing' | 'aspectRatio', value: string) => {
+    if (typeof canvas.style.getPropertyValue === 'function')
+      owned.style(canvas, key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`), value)
+    else owned.property(canvas.style, key, value)
+  }
+
   const fx: EffectFrame = {
     ctx,
     canvas,
@@ -389,6 +403,7 @@ export function mountEffect(
   let ready = false
   let cleanup: (() => void) | undefined
   let destroyed = false
+  life.defer(() => { destroyed = true })
   // the loop runs only when every gate is open
   let userPaused = false
   let onscreen = true
@@ -397,12 +412,12 @@ export function mountEffect(
 
   const running = () => raf !== 0
 
-  const tick = (now: number) => {
+  const tick = life.guard((now: number) => {
     raf = requestAnimationFrame(tick)
     const dt = Math.min((now - last) / 1000, 0.05)
     last = now
     frame(fx, dt)
-  }
+  })
 
   const sync = () => {
     const shouldRun =
@@ -491,7 +506,7 @@ export function mountEffect(
   let lastWriteContent: { width: number; height: number } | undefined
   let lastWriteDpr: number | undefined
 
-  const applySize = (entries?: ResizeObserverEntry[]) => {
+  const applySize = life.guard((entries?: ResizeObserverEntry[]) => {
     if (destroyed) return
     const entry = entries?.[0]
 
@@ -538,8 +553,8 @@ export function mountEffect(
     // overridden. Called from both the primary pin decision below and the
     // escape check further down.
     const pinAtW0 = () => {
-      canvas.style.boxSizing = 'content-box'
-      canvas.style.width = `${w0}px`
+      style('boxSizing', 'content-box')
+      style('width', `${w0}px`)
       // Chrome always reports a canvas's computed `aspectRatio` as
       // `auto W / H` (the intrinsic ratio appended to the keyword), never
       // the bare `auto`, so an equality check against `'auto'` never fires
@@ -562,7 +577,7 @@ export function mountEffect(
       // derivation below anchors height to `ratio0` instead.
       const aspectRatio = window.getComputedStyle(canvas).aspectRatio
       if (typeof aspectRatio !== 'string') return
-      if (aspectRatio.startsWith('auto')) canvas.style.aspectRatio = `${w0} / ${h0}`
+      if (aspectRatio.startsWith('auto')) style('aspectRatio', `${w0} / ${h0}`)
       pinned = true
     }
 
@@ -589,8 +604,8 @@ export function mountEffect(
     // probe cannot safely reason about.
     if (!pinned && w0 > 0 && h0 > 0) {
       const current = { width: canvas.width, height: canvas.height }
-      canvas.width = w0
-      canvas.height = h0
+      dimension('width', w0)
+      dimension('height', h0)
       const baseW = canvas.clientWidth
       const baseH = canvas.clientHeight
       const canGrow = 2 * w0 <= GIANT_CANVAS_LIMIT && 2 * h0 <= GIANT_CANVAS_LIMIT
@@ -598,20 +613,20 @@ export function mountEffect(
 
       let widthFollows = false
       if (canGrow) {
-        canvas.width = 2 * w0
-        canvas.height = 2 * h0
+        dimension('width', 2 * w0)
+        dimension('height', 2 * h0)
         const grownW = canvas.clientWidth
         if (grownW !== baseW) widthFollows = true
-        canvas.width = w0
-        canvas.height = h0
+        dimension('width', w0)
+        dimension('height', h0)
       }
       if (!widthFollows && canShrink) {
-        canvas.width = w0 / 2
-        canvas.height = h0 / 2
+        dimension('width', w0 / 2)
+        dimension('height', h0 / 2)
         const shrunkW = canvas.clientWidth
         if (shrunkW !== baseW) widthFollows = true
-        canvas.width = w0
-        canvas.height = h0
+        dimension('width', w0)
+        dimension('height', h0)
       }
 
       // Two SEPARATE, single-axis perturbations decide which axis (if
@@ -636,27 +651,27 @@ export function mountEffect(
       if (!widthFollows) {
         let hFixed: boolean | undefined
         if (2 * h0 <= GIANT_CANVAS_LIMIT) {
-          canvas.height = 2 * h0
+          dimension('height', 2 * h0)
           const grownHAlone = canvas.clientHeight
-          canvas.height = h0
+          dimension('height', h0)
           hFixed = grownHAlone === baseH
         } else if (h0 > 1) {
-          canvas.height = h0 - 1
+          dimension('height', h0 - 1)
           const shrunkHAlone = canvas.clientHeight
-          canvas.height = h0
+          dimension('height', h0)
           hFixed = shrunkHAlone === baseH
         }
 
         let wFixed: boolean | undefined
         if (2 * w0 <= GIANT_CANVAS_LIMIT) {
-          canvas.width = 2 * w0
+          dimension('width', 2 * w0)
           const grownWAlone = canvas.clientWidth
-          canvas.width = w0
+          dimension('width', w0)
           wFixed = grownWAlone === baseW
         } else if (w0 > 1) {
-          canvas.width = w0 - 1
+          dimension('width', w0 - 1)
           const shrunkWAlone = canvas.clientWidth
-          canvas.width = w0
+          dimension('width', w0)
           wFixed = shrunkWAlone === baseW
         }
 
@@ -665,8 +680,8 @@ export function mountEffect(
         else freeAxis = undefined
       }
 
-      canvas.width = current.width
-      canvas.height = current.height
+      dimension('width', current.width)
+      dimension('height', current.height)
 
       if (widthFollows) pinAtW0()
     }
@@ -710,21 +725,21 @@ export function mountEffect(
     // not, this canvas pins now, at `w0`, same as the primary pin above,
     // never at the candidate itself.
     if (!pinned) {
-      canvas.width = w
-      canvas.height = h
+      dimension('width', w)
+      dimension('height', h)
       const baseW = canvas.clientWidth
       if (2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT) {
-        canvas.width = 2 * w
-        canvas.height = 2 * h
+        dimension('width', 2 * w)
+        dimension('height', 2 * h)
         const grownW = canvas.clientWidth
-        canvas.width = w
-        canvas.height = h
+        dimension('width', w)
+        dimension('height', h)
         if (grownW !== baseW) pinAtW0()
       }
     }
 
-    canvas.width = w
-    canvas.height = h
+    dimension('width', w)
+    dimension('height', h)
     lastWriteContent = size
     lastWriteDpr = fx.dpr
 
@@ -757,22 +772,20 @@ export function mountEffect(
     // resize's own write would otherwise sit blank until whatever resumes
     // it. Paint one frame here, synchronously, without starting the loop.
     if (!destroyed && ready && !running()) frame(fx, 0)
-  }
+  })
 
-  const ro = new ResizeObserver(applySize)
-  ro.observe(canvas)
-
-  const io = new IntersectionObserver((entries) => {
+  let ro: ResizeObserver | undefined
+  let io: IntersectionObserver | undefined
+  const onIntersection = life.guard((entries: IntersectionObserverEntry[]) => {
+    if (!entries.length) return
     onscreen = entries[entries.length - 1].isIntersecting
     sync()
   })
-  io.observe(canvas)
 
-  const onVisibility = () => {
+  const onVisibility = life.guard(() => {
     visible = document.visibilityState !== 'hidden'
     sync()
-  }
-  document.addEventListener('visibilitychange', onVisibility)
+  })
 
   // A fixed-CSS-size canvas gets no ResizeObserver callback when it moves to
   // a monitor with a different devicePixelRatio. Watch the resolution too.
@@ -783,46 +796,36 @@ export function mountEffect(
     dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
     onMediaChange(dprQuery, onDprChange)
   }
-  const onDprChange = () => {
+  const onDprChange = life.guard(() => {
     applySize()
     watchDpr()
-  }
-  watchDpr()
+  })
 
-  const offMotion = onMotionChange((reduced) => {
-    fx.reducedMotion = reduced
+  life.defer(() => { if (raf) cancelAnimationFrame(raf); raf = 0 })
+  life.defer(() => ro?.disconnect())
+  life.defer(() => io?.disconnect())
+  life.defer(() => document.removeEventListener('visibilitychange', onVisibility))
+  life.defer(() => { if (dprQuery) offMediaChange(dprQuery, onDprChange) })
+  life.defer(() => { const dispose = cleanup; cleanup = undefined; dispose?.() })
+  life.setup(() => {
+    ro = new ResizeObserver(applySize)
+    ro.observe(canvas)
+    io = new IntersectionObserver(onIntersection)
+    io.observe(canvas)
+    document.addEventListener('visibilitychange', onVisibility)
+    watchDpr()
+    life.defer(onMotionChange(life.guard((reduced: boolean) => { fx.reducedMotion = reduced })))
   })
 
   return {
-    pause: () => {
+    pause: life.guard(() => {
       userPaused = true
       sync()
-    },
-    resume: () => {
+    }),
+    resume: life.guard(() => {
       userPaused = false
       sync()
-    },
-    destroy: () => {
-      // Idempotent: a second call is a no-op, not a second run of the
-      // consumer's own setup() cleanup (a WebGL context or a renderer
-      // disposed twice can itself throw). Exception-safe: the observers and
-      // listener removals below run in the `finally`, so a throwing cleanup
-      // still cannot leak them for the life of the page (ADU-189, the
-      // untouched twin of ADU-165).
-      if (destroyed) return
-      destroyed = true
-      const dispose = cleanup
-      cleanup = undefined
-      try {
-        dispose?.()
-      } finally {
-        sync()
-        ro.disconnect()
-        io.disconnect()
-        document.removeEventListener('visibilitychange', onVisibility)
-        offMotion()
-        if (dprQuery) offMediaChange(dprQuery, onDprChange)
-      }
-    },
+    }),
+    destroy: life.stop,
   }
 }

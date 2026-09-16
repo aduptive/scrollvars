@@ -90,6 +90,16 @@ for (const block of BLOCKS) {
   const motionImports = (dist.match(motionImport) || []).length
   if (motionImports !== (block.motion ? 1 : 0)) throw new Error(`${block.dist}: expected ${block.motion ? 1 : 0} core/motion import, found ${motionImports}`)
   dist = dist.replace(motionImport, 'var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;')
+  // The acquisition helper (core/lifetime) is private, so the engine block
+  // exposes nothing to look it up on: its dist lands inside the block's own
+  // IIFE in place of the import, exports stripped. Exactly one such import
+  // in every block, none with any other shape.
+  const lifetimeImport = /^import \{ lifetime, ownership \} from '(?:\.\.\/core|\.)\/lifetime\.js';$/gm
+  const lifetimeImports = (dist.match(lifetimeImport) || []).length
+  if (lifetimeImports !== 1) throw new Error(`${block.dist}: expected 1 core/lifetime import, found ${lifetimeImports}`)
+  const lifetime = readFileSync(join(root, 'dist/core/lifetime.js'), 'utf8').replace(/^export function /gm, 'function ')
+  if (/^(import|export) /m.test(lifetime)) throw new Error('dist/core/lifetime.js: an import or export is left after stripping')
+  dist = dist.replace(lifetimeImport, () => lifetime)
   if (/^import /m.test(dist)) throw new Error(`${block.dist}: an import is left in the inlined block`)
   const marker = `/* ═══════ ${block.label}, inlined from the built dist, verbatim ═══════ */`
   const wrapped = `${marker}\n  var ${block.name} = (function () {\n${dist}\n  return ${block.name};\n  })();`

@@ -17,6 +17,7 @@
 * no per-frame JS, same philosophy as the scroll driver.
  */
 import { reducedMotion as effectiveReduce, onMotionChange } from './motion.js'
+import { lifetime, ownership } from './lifetime.js'
 
 export interface SliderState {
   active: number
@@ -96,6 +97,10 @@ export function slider(
 ): SliderHandle {
   if (typeof window === 'undefined') return noop
 
+  const life = lifetime()
+  const owned = ownership()
+  life.defer(() => owned.restore())
+
   const horizontal = axis === 'x'
   // RTL: normalize to logical coordinates: pos() runs 0 → range() from the
   // start of content regardless of direction (raw scrollLeft is 0 → -range
@@ -104,10 +109,6 @@ export function slider(
     horizontal &&
     typeof getComputedStyle === 'function' &&
     getComputedStyle(container).direction === 'rtl'
-  container.classList.add('sv-slider')
-  container.classList.toggle('sv-slider-y', !horizontal)
-  container.classList.toggle('sv-draggable', !!drag) // grab cursor only where dragging works
-  container.style.setProperty('--sv-snap', snap)
 
   // axis accessors: the only place the orientation matters
   const pos = () =>
@@ -182,10 +183,12 @@ export function slider(
     (typeof getComputedStyle === 'function' &&
       getComputedStyle(container).scrollSnapType === 'none')
   const suspendSnap = () => {
-    container.style.scrollSnapType = 'none'
+    if (typeof container.style.getPropertyValue === 'function') owned.style(container, 'scroll-snap-type', 'none')
+    else owned.property(container.style, 'scrollSnapType', 'none')
   }
   const resumeSnap = () => {
-    container.style.scrollSnapType = authoredSnap
+    owned.restore(container, 'style:scroll-snap-type')
+    owned.restore(container.style, 'property:scrollSnapType')
   }
 
   let active = -1
@@ -203,6 +206,7 @@ export function slider(
   // scroll a slider the page has already let go of (the React kit's autoplay
   // interval kept calling next() on one).
   let destroyed = false
+  life.defer(() => { destroyed = true; dragging = false })
 
   const slides = () => Array.from(container.children) as HTMLElement[]
 
@@ -211,7 +215,8 @@ export function slider(
   // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
   // that same pass. Called with no argument (the public `state()`, any time
   // outside a measure pass) it reads fresh, same as before.
-  const state = (p?: number): SliderState => ({
+  let lastState = { ...noopState }
+  const readState = (p?: number): SliderState => ({
     active: Math.max(active, 0),
     count: container.children.length,
     position,
@@ -219,8 +224,12 @@ export function slider(
     dragging,
     gliding: anim !== 0,
   })
+  const state = (): SliderState => {
+    life.guard(() => { lastState = readState() })()
+    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState
+  }
 
-  const measure = () => {
+  const measure = life.guard(() => {
     raf = 0
     const center = pos() + viewport() / 2
     let best = 0
@@ -244,7 +253,7 @@ export function slider(
       // centre 101 instead of their midpoint, 150.
       if (cssVars) {
         const sd = (centers[i] - center) / sizes[i]
-        slide.style.setProperty('--sd', sd.toFixed(4))
+        owned.style(slide, '--sd', sd.toFixed(4))
       }
       // an exact tie keeps the first slide, as before
       const dist = Math.abs(centers[i] - center)
@@ -267,7 +276,7 @@ export function slider(
       const raw = span > 0 ? seg + (center - centers[seg]) / span : seg
       position = Math.min(Math.max(raw, 0), centers.length - 1)
     }
-    if (cssVars) container.style.setProperty('--sv-progress', p.toFixed(4))
+    if (cssVars) owned.style(container, '--sv-progress', p.toFixed(4))
     // Something outside the slider can rewrite the class attribute of the rail
     // or of a slide (React committing `className`), dropping what the engine
     // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -279,55 +288,43 @@ export function slider(
       classes.contains?.('sv-slider-y') !== !horizontal ||
       classes.contains?.('sv-draggable') !== !!drag
     ) {
-      classes.add('sv-slider')
-      classes.toggle('sv-slider-y', !horizontal)
-      classes.toggle('sv-draggable', !!drag)
+      owned.class(container, 'sv-slider', true)
+      owned.class(container, 'sv-slider-y', !horizontal)
+      owned.class(container, 'sv-draggable', !!drag)
     }
     list.forEach((slide, i) => {
       const wanted = i === best
       if (slide.classList.contains?.('sv-active') !== wanted)
-        slide.classList.toggle('sv-active', wanted)
+        owned.class(slide, 'sv-active', wanted)
     })
     const bestEl = list[best] ?? null
     if (best !== active || bestEl !== activeEl) {
       const indexChanged = best !== active
       active = best
       activeEl = bestEl
-      if (cssVars) container.style.setProperty('--sv-slide', String(best))
+      if (cssVars) owned.style(container, '--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
     }
-    if (!destroyed) onScroll?.(state(p))
-  }
+    if (!life.stopped) { lastState = readState(p); onScroll?.(lastState) }
+  })
 
-  const schedule = () => {
-    if (!raf && !destroyed) raf = requestAnimationFrame(measure)
-  }
+  const schedule = life.guard(() => {
+    if (!raf && !life.stopped) raf = requestAnimationFrame(measure)
+  })
 
   // Geometry changes can invalidate an in-flight destination. Reuse goTo's
   // fresh bounds only on observer delivery, not on every animation frame.
-  const onLayout = () => {
+  const onLayout = life.guard(() => {
     if (anim) goTo(target)
     schedule()
-  }
-  container.addEventListener('scroll', schedule, { passive: true })
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(onLayout) : null
-  ro?.observe(container)
+  })
+  let ro: ResizeObserver | undefined
+  let mo: MutationObserver | undefined
   const watchSlides = () => {
     ro?.disconnect()
     ro?.observe(container)
     slides().forEach((slide) => ro?.observe(slide))
   }
-  watchSlides()
-  // replaced or added children re-measure even when the container box stays the same
-  const mo =
-    typeof MutationObserver === 'function'
-      ? new MutationObserver(() => {
-          watchSlides()
-          onLayout()
-        })
-      : null
-  mo?.observe(container, { childList: true })
-  measure()
 
   // pending glide destination: rapid next/prev clicks accumulate from here,
   // not from `active` (which lags mid-glide and would swallow the clicks)
@@ -340,14 +337,14 @@ export function slider(
       // the stopped state once; schedule() coalesces a pending measurement.
       schedule()
     }
-    container.classList.remove('sv-gliding')
+    owned.class(container, 'sv-gliding', false)
   }
   // A preference that flips to reduce mid-glide settles the glide where it
   // was going, now: checking only when a glide starts left one in flight.
   // `target` is the slide INDEX the glide is heading for, so the settle goes
   // through goTo(index, false), which recomputes the pixel destination; the
   // first version wrote the index as scrollLeft (review, ADU-243).
-  const offMotion = onMotionChange((reduced) => {
+  const motionChanged = life.guard((reduced: boolean) => {
     if (!reduced || target < 0 || destroyed) return
     goTo(target, false)
   })
@@ -361,13 +358,13 @@ export function slider(
       return
     }
     suspendSnap() // native snap must not tug while we animate
-    container.classList.add('sv-gliding')
+    owned.class(container, 'sv-gliding', true)
     // exponential lerp, not a fixed tween: velocity is proportional to the
     // remaining distance, so short release settles feel as soft as long
     // button glides, and retargets (rapid clicks) stay continuous.
     // `duration` calibrates the settle time (~99.8% covered by then).
     let last = performance.now()
-    const step = (now: number) => {
+    const step = life.guard((now: number) => {
       const dt = Math.min(now - last, 50)
       last = now
       const factor = 1 - Math.pow(0.002, dt / duration)
@@ -381,7 +378,7 @@ export function slider(
         setPos(current)
         anim = requestAnimationFrame(step)
       }
-    }
+    })
     anim = requestAnimationFrame(step)
   }
 
@@ -400,7 +397,7 @@ export function slider(
 
   // next, prev and the keyboard all route through goTo; seek is the other
   // writer. Two guards cover every command.
-  const goTo = (index: number, smooth = true) => {
+  const goTo = life.guard((index: number, smooth = true) => {
     if (destroyed) return
     clearWheel() // this call owns the position now, not the pending settle
     const all = slides()
@@ -424,16 +421,16 @@ export function slider(
       target = -1
       setPos(to)
     }
-  }
+  })
 
-  const seek = (progress: number) => {
+  const seek = life.guard((progress: number) => {
     if (destroyed) return
     clearWheel()
     stopGlide()
     target = -1
     suspendSnap() // the driver owns this instance's position
     setPos(Math.max(0, Math.min(progress, 1)) * range())
-  }
+  })
 
   /** Where the next relative step counts from: the in-flight destination if
    * a glide is running, the measured active slide otherwise. */
@@ -449,7 +446,7 @@ export function slider(
   let pressed = false // mouse is down; becomes a drag only after real movement
   const DRAG_THRESHOLD = 5
 
-  const onMove = (event: PointerEvent) => {
+  const onMove = life.guard((event: PointerEvent) => {
     const point = horizontal ? event.clientX : event.clientY
     if (!dragging) {
       // pending press: activating only after real movement keeps a plain
@@ -458,24 +455,25 @@ export function slider(
       if (Math.abs(point - startPoint) < DRAG_THRESHOLD) return
       dragging = true
       suspendSnap()
-      container.classList.add('sv-dragging') // slider.css: user-select none
+      owned.class(container, 'sv-dragging', true) // slider.css: user-select none
       lastPointer = point
       return
     }
     const step = point - lastPointer
     setPos(pos() - (rtl ? -step : step))
     lastPointer = point
-  }
+  })
   // the click that follows a real drag would activate whatever link the
   // pointer happens to be over. Swallow exactly that one
-  const suppressClick = (event: MouseEvent) => {
+  const suppressClick = life.guard((event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
     window.removeEventListener('click', suppressClick, true)
-  }
+  })
+  let clickTimer: ReturnType<typeof setTimeout> | undefined
   const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]'
   let pressedTarget: HTMLElement | null = null
-  const endDrag = () => {
+  const endDrag = life.guard(() => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', endDrag)
     window.removeEventListener('pointercancel', endDrag)
@@ -492,9 +490,9 @@ export function slider(
       return
     }
     dragging = false
-    container.classList.remove('sv-dragging')
+    owned.class(container, 'sv-dragging', false)
     window.addEventListener('click', suppressClick, true)
-    setTimeout(() => window.removeEventListener('click', suppressClick, true), 0)
+    clickTimer = setTimeout(life.guard(() => window.removeEventListener('click', suppressClick, true)), 0)
     if (snap === 'proximity' || snapIsNone) {
       resumeSnap()
       return
@@ -510,13 +508,12 @@ export function slider(
       if (d < distance) { distance = d; nearest = i }
     })
     goTo(nearest)
-  }
+  })
   // native image/link drag-and-drop would hijack the gesture mid-press
-  const onDragStart = (event: Event) => {
+  const onDragStart = life.guard((event: Event) => {
     if (pressed) event.preventDefault()
-  }
-  container.addEventListener('dragstart', onDragStart)
-  const onDown = (event: PointerEvent) => {
+  })
+  const onDown = life.guard((event: PointerEvent) => {
     const owner = (event.target as Element | null)?.closest?.('.sv-slider')
     if (owner && owner !== container) return
     const wasGliding = anim !== 0
@@ -546,14 +543,13 @@ export function slider(
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', endDrag)
     window.addEventListener('pointercancel', endDrag)
-  }
-  container.addEventListener('pointerdown', onDown)
+  })
 
   // trackpad/wheel pan: native mandatory snap settles fast and can't be
   // slowed, so replace it. Suspend snap while wheeling, then glide to the
   // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
   // instances authored with snap none (scroll-driven ones own their position).
-  const onWheel = (event: WheelEvent) => {
+  const onWheel = life.guard((event: WheelEvent) => {
     const owner = (event.target as Element | null)?.closest?.('.sv-slider')
     if (owner && owner !== container) return
     if (snapIsNone || snap === 'proximity') return
@@ -571,8 +567,7 @@ export function slider(
       wheelTimer = undefined
       goTo(active)
     }, 200)
-  }
-  container.addEventListener('wheel', onWheel, { passive: true })
+  })
 
   const next = (smooth = true) => goTo(stepBase() + 1, smooth)
   const prev = (smooth = true) => goTo(stepBase() - 1, smooth)
@@ -580,8 +575,7 @@ export function slider(
   // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
   // hard after each. Replace it with the same soft glide as everything else.
   // The container is made focusable (Safari never focuses scrollers on its own).
-  if (container.tabIndex === -1) container.tabIndex = 0
-  const onKey = (event: KeyboardEvent) => {
+  const onKey = life.guard((event: KeyboardEvent) => {
     if (event.target !== container) return // arrows inside inputs stay theirs
     const nextKey = horizontal ? (rtl ? 'ArrowLeft' : 'ArrowRight') : 'ArrowDown'
     const prevKey = horizontal ? (rtl ? 'ArrowRight' : 'ArrowLeft') : 'ArrowUp'
@@ -591,8 +585,44 @@ export function slider(
     else if (event.key === 'End') goTo(container.children.length - 1)
     else return
     event.preventDefault()
+  })
+
+  // Register each release before its acquisition, including APIs that throw
+  // after adding a listener or observing a node.
+  const listen = (node: EventTarget, type: string, fn: EventListener, options?: AddEventListenerOptions) => {
+    life.defer(() => node.removeEventListener(type, fn, options))
+    node.addEventListener(type, fn, options)
   }
-  container.addEventListener('keydown', onKey)
+  life.defer(() => { if (raf) cancelAnimationFrame(raf); raf = 0 })
+  life.defer(() => { if (anim) cancelAnimationFrame(anim); anim = 0 })
+  life.defer(clearWheel)
+  life.defer(() => { if (clickTimer !== undefined) clearTimeout(clickTimer) })
+  life.defer(() => ro?.disconnect())
+  life.defer(() => mo?.disconnect())
+  life.defer(() => window.removeEventListener('click', suppressClick, true))
+  life.defer(() => window.removeEventListener('pointermove', onMove))
+  life.defer(() => window.removeEventListener('pointerup', endDrag))
+  life.defer(() => window.removeEventListener('pointercancel', endDrag))
+  life.setup(() => {
+    owned.class(container, 'sv-slider', true)
+    owned.class(container, 'sv-slider-y', !horizontal)
+    owned.class(container, 'sv-draggable', !!drag)
+    owned.style(container, '--sv-snap', snap)
+    if (container.tabIndex === -1) owned.attr(container, 'tabindex', '0')
+    listen(container, 'scroll', schedule, { passive: true })
+    if (typeof ResizeObserver === 'function') ro = new ResizeObserver(onLayout)
+    watchSlides()
+    if (typeof MutationObserver === 'function') {
+      mo = new MutationObserver(life.guard(() => { watchSlides(); onLayout() }))
+      mo.observe(container, { childList: true })
+    }
+    life.defer(onMotionChange(motionChanged))
+    listen(container, 'dragstart', onDragStart)
+    listen(container, 'pointerdown', onDown as EventListener)
+    listen(container, 'wheel', onWheel as EventListener, { passive: true })
+    listen(container, 'keydown', onKey as EventListener)
+    measure()
+  })
 
   return {
     next,
@@ -601,25 +631,6 @@ export function slider(
     seek,
     active: () => Math.max(active, 0),
     state,
-    destroy: () => {
-      destroyed = true
-      offMotion()
-      stopGlide()
-      resumeSnap()
-      container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging')
-      clearWheel()
-      container.removeEventListener('wheel', onWheel)
-      container.removeEventListener('keydown', onKey)
-      container.removeEventListener('scroll', schedule)
-      container.removeEventListener('pointerdown', onDown)
-      container.removeEventListener('dragstart', onDragStart)
-      window.removeEventListener('click', suppressClick, true)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', endDrag)
-      window.removeEventListener('pointercancel', endDrag)
-      ro?.disconnect()
-      mo?.disconnect()
-      if (raf) cancelAnimationFrame(raf)
-    },
+    destroy: life.stop,
   }
 }

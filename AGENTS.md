@@ -452,8 +452,27 @@ owners. A measurement, output or callback failure releases only that tracker,
 restores authored pin geometry and reports the original error once; healthy
 entries continue. Retry recoverable failures with an explicit track or scan.
 Watchdog expiry remains terminal. The public cleanup-function return is unchanged.
-Pointer acquisition unwinds listeners, observation and queued work before
-rethrowing a setup error, and permits an explicit retry.
+Slider, toggles, pointer and canvas acquisition roll back partial resources and
+owned DOM writes before rethrowing the original setup error. Runtime failures
+stop only that instance and report once through `reportError` or `console.error`.
+Release is idempotent, including inside callbacks and during a drag or glide;
+stale observers, events and frames cannot revive released instances. Retry with
+an explicit attachment. React auxiliary hooks contain attachment and cleanup
+errors locally; target or option replacement retries attachment.
+
+Slider release restores owned styles, classes and tabindex while preserving later
+author changes. Keep native rail styling in authored markup (`class="sv-slider"`)
+so native scrolling survives without enhancement. Pointer release restores its
+owned coordinates and leave class. Failed toggle operations restore prior class,
+state-variable and ARIA values; successful semantic state survives release.
+Shared toggle markers remain until the last owner stops, with settle holds and
+queued frames released. Canvas setup, resize and frame failures stop its loop,
+restore authored sizing and leave fallback children untouched (`destroy()`
+restores that sizing too, resetting the bitmap; `pause()` keeps the last frame);
+consumer drawing
+and external resources remain the consumer's responsibility. Return their cleanup
+from `setup`. React autoplay contains its own failures; failed Modal promotion
+preserves the requested open/closed state as static content. No public API changed.
 Failure of Boot's toggle setup also releases the scroll trackers and makes
 that page session terminally static.
 

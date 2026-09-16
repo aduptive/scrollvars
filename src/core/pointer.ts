@@ -8,6 +8,8 @@
  * and toggles `sv-pointer-leave` on exit so CSS can relax the return.
  */
 
+import { lifetime, ownership } from './lifetime.js'
+
 export interface PointerOptions {
   /** Which descendants react (default '.sv-tilt'). */
   selector?: string
@@ -18,6 +20,10 @@ export function trackPointer(
   { selector = '.sv-tilt' }: PointerOptions = {}
 ): () => void {
   if (typeof window === 'undefined') return () => {}
+
+  const life = lifetime()
+  const owned = ownership()
+  life.defer(() => owned.restore())
 
   let pending: { el: HTMLElement; x: number; y: number } | null = null
   let raf = 0
@@ -40,7 +46,7 @@ export function trackPointer(
     return el && container.contains(el) ? el : null
   }
 
-  const flush = () => {
+  const flush = life.guard(() => {
     raf = 0
     if (!pending) return
     const { el, x, y } = pending
@@ -51,9 +57,9 @@ export function trackPointer(
     const mx = rect.width > 0 ? unit(((x - rect.left) / rect.width) * 2 - 1) : '0.000'
     const my = rect.height > 0 ? unit(((y - rect.top) / rect.height) * 2 - 1) : '0.000'
     // Read inline values so a consumer replacing its styles can be repaired.
-    if (el.style.getPropertyValue?.('--mx') !== mx) el.style.setProperty('--mx', mx)
-    if (el.style.getPropertyValue?.('--my') !== my) el.style.setProperty('--my', my)
-  }
+    if (el.style.getPropertyValue?.('--mx') !== mx) owned.style(el, '--mx', mx)
+    if (el.style.getPropertyValue?.('--my') !== my) owned.style(el, '--my', my)
+  })
 
   // relax el back to center and drop it from the written set: the same
   // reset a genuine pointerout applies, reused for a handover so a nested
@@ -64,12 +70,12 @@ export function trackPointer(
   const leave = (el: HTMLElement) => {
     written.delete(el)
     touched.add(el) // a pointerout with no move before it still writes (round 10)
-    el.classList.add('sv-pointer-leave')
-    el.style.setProperty('--mx', '0')
-    el.style.setProperty('--my', '0')
+    owned.class(el, 'sv-pointer-leave', true)
+    owned.style(el, '--mx', '0')
+    owned.style(el, '--my', '0')
   }
 
-  const onMove = (event: PointerEvent) => {
+  const onMove = life.guard((event: PointerEvent) => {
     const el = matchIn(event.target)
     if (!el) return
     if (!written.has(el)) {
@@ -83,56 +89,50 @@ export function trackPointer(
       written.add(el)
       touched.add(el)
     }
-    if (el.classList.contains('sv-pointer-leave')) el.classList.remove('sv-pointer-leave')
+    if (el.classList.contains('sv-pointer-leave')) owned.class(el, 'sv-pointer-leave', false)
     pending = { el, x: event.clientX, y: event.clientY }
     if (!raf) raf = requestAnimationFrame(flush)
-  }
+  })
 
-  const onOut = (event: PointerEvent) => {
+  const onOut = life.guard((event: PointerEvent) => {
     const el = matchIn(event.target)
     if (!el || el.contains(event.relatedTarget as Node)) return
     if (pending?.el === el) pending = null // drop queued move. It's stale now
     leave(el)
-  }
+  })
 
   const clear = (el: HTMLElement) => {
     if (pending?.el === el) pending = null
-    el.style.removeProperty('--mx')
-    el.style.removeProperty('--my')
-    el.classList.remove('sv-pointer-leave')
+    owned.restore(el)
     written.delete(el)
     touched.delete(el)
   }
   let observer: MutationObserver | undefined
-  const stop = () => {
-    container.removeEventListener('pointermove', onMove)
-    container.removeEventListener('pointerout', onOut)
+  life.defer(() => {
     if (raf) cancelAnimationFrame(raf)
     raf = 0
     pending = null
-    observer?.disconnect()
     // a destroyed instance must not leave a still-hovered element frozen
     // mid-tilt: drop inline vars and the leave class from every element
     // still tracked, not just one, a nested match can leave more than one
     // written between handovers (ADU-169)
-    touched.forEach(clear)
     written.clear()
     touched.clear()
-  }
-  try {
+  })
+  life.defer(() => container.removeEventListener('pointermove', onMove))
+  life.defer(() => container.removeEventListener('pointerout', onOut))
+  life.defer(() => observer?.disconnect())
+  life.setup(() => {
     container.addEventListener('pointermove', onMove)
     container.addEventListener('pointerout', onOut)
     if (typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver((records) => {
+      observer = new MutationObserver(life.guard((records: MutationRecord[]) => {
         if (records.some(record => record.removedNodes.length)) {
           touched.forEach(el => { if (!container.contains(el)) clear(el) })
         }
-      })
+      }))
       observer.observe(container, { childList: true, subtree: true })
     }
-  } catch (error) {
-    try { stop() } catch { /* preserve the acquisition error */ }
-    throw error
-  }
-  return stop
+  })
+  return life.stop
 }

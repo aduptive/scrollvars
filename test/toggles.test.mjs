@@ -1,5 +1,102 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { lifecycleEnv } from './lifecycle-fixture.mjs'
+
+test('toggles failure: setup rollback preserves semantic state and releases the live registry', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2')
+    const root = env.element(), target = env.element({ 'data-sv-toggle': 'open', 'aria-expanded': 'authored' })
+    target.classList.add('open', 'sv-acts'); root.append(target)
+    target.style.setProperty('--sv-state', 'author')
+    target.style.setProperty('--sv-acts-settle', '3s', 'important')
+    target.style.setProperty('transition-duration', '2s', 'important')
+    const error = Error('late listener'), add = root.addEventListener
+    root.addEventListener = (type, fn) => { add(type, fn); throw error }
+    assert.throws(() => toggles(root), e => e === error)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    assert.equal(target.getAttribute('aria-expanded'), 'authored')
+    assert.ok(target.classes.has('open'))
+    assert.equal(target.style.getPropertyValue('--sv-state'), 'author')
+    assert.equal(target.style.getPropertyValue('--sv-acts-settle'), '3s')
+    assert.equal(target.style.getPropertyPriority('--sv-acts-settle'), 'important')
+    root.querySelectorAll = () => { throw Error('failed scope retained in live registry') }
+    const healthy = env.element({ 'data-sv-toggle': '' })
+    const off = toggles(healthy); healthy.fire('click'); off()
+    assert.equal(healthy.getAttribute('aria-expanded'), 'true')
+  } finally { env.restore() }
+})
+
+test('toggles failure: a partial click rolls back semantics and leaves sibling controllers usable', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2runtime')
+    const a = env.element({ 'data-sv-toggle': 'open', open: '' }), b = env.element({ 'data-sv-toggle': '' })
+    const off = toggles(a), good = toggles(b), error = Error('ARIA write')
+    const set = a.setAttribute
+    a.setAttribute = (key, value) => { set(key, value); if (value === 'true') throw error }
+    const stale = [...a.handlers.get('click')][0]
+    assert.doesNotThrow(() => a.fire('click'))
+    assert.deepEqual(env.errors, [error])
+    assert.equal(a.getAttribute('aria-expanded'), 'false')
+    assert.equal(a.getAttribute('open'), '')
+    assert.ok(!a.classes.has('open'))
+    stale({ target: a })
+    b.fire('click'); assert.equal(b.getAttribute('aria-expanded'), 'true')
+    off(); off(); good()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('toggles release: 100 cycles cancel settle frames and stale delivery cannot disturb replacement', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2cycles')
+    const a = env.element({ 'data-sv-toggle': '' }); a.classList.add('sv-acts')
+    for (let i = 0; i < 100; i++) {
+      const off = toggles(a), stale = [...env.frames.values()]
+      off(); off()
+      assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+      const replacement = toggles(a), before = env.baseline()
+      stale.forEach(fn => fn())
+      assert.deepEqual(env.baseline(), before)
+      assert.equal(a.style.getPropertyValue('--sv-acts-settle'), '0s')
+      replacement()
+    }
+  } finally { env.restore() }
+})
+
+test('toggles release: stopping the settle owner does not disable a surviving controller transition', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2shared')
+    const a = env.element({ 'data-sv-toggle': '' }); a.classList.add('sv-acts')
+    a.style.setProperty('transition-duration', '2s', 'important')
+    const first = toggles(a), second = toggles(a)
+    first(); env.flush(); env.flush()
+    assert.equal(a.style.getPropertyValue('transition-duration'), '2s')
+    assert.equal(a.style.getPropertyValue('--sv-acts-settle'), '')
+    assert.ok(a.classes.has('sv-ui'))
+    a.fire('click'); assert.equal(a.getAttribute('aria-expanded'), 'true')
+    second(); assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('toggles failure: a broken sibling scope cannot stop a healthy click', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2sibling')
+    const a = env.element({ 'data-sv-toggle': '' }), b = env.element({ 'data-sv-toggle': '' }), error = Error('sibling query')
+    const first = toggles(a), second = toggles(b)
+    b.querySelectorAll = () => { throw error }
+    a.fire('click')
+    assert.equal(a.getAttribute('aria-expanded'), 'true')
+    assert.ok(a.classes.has('sv-open'))
+    assert.deepEqual(env.errors, [error])
+    a.fire('click'); assert.equal(a.getAttribute('aria-expanded'), 'false')
+    first(); second(); assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
 
 function makeElement(attrs = {}) {
   const el = {
@@ -526,7 +623,9 @@ test('toggles: two Marquee-shaped scopes with the same local selector keep their
     contains: (el) => el === broken,
     addEventListener: () => {},
     removeEventListener: () => {},
-    querySelector: () => { throw new SyntaxError('invalid selector') },
+    // what a browser throws: a DOMException named SyntaxError, which is NOT
+    // an instanceof SyntaxError; an instanceof check reads it as a boot failure
+    querySelector: () => { throw new DOMException('invalid selector', 'SyntaxError') },
     querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [broken] : []),
   }
   const stops = [toggles(a.root), toggles(b.root), toggles(strayRoot)]

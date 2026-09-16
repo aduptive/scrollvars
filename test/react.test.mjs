@@ -1655,6 +1655,250 @@ test('react: StrictMode Slider releases resources across output switches, active
   }
 })
 
+for (const kind of ['slider', 'pointer', 'canvas']) test(`react auxiliary failure: hook acquisition errors stay local and retry on replacement (${kind})`, async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const api = await import('../dist/react/index.js')
+  const saved = { ResizeObserver, MutationObserver, reportError: global.reportError }
+  const errors = [], observed = new Set(), error = Error(kind)
+  let fail = true
+  class Observer {
+    observe(n) { observed.add(this); if (fail) throw error }
+    disconnect() { observed.delete(this) }
+  }
+  global.ResizeObserver = global.MutationObserver = Observer
+  global.reportError = e => errors.push(e)
+  function Hook({ revision }) {
+    const ref = kind === 'slider' ? api.useSlider().ref : kind === 'pointer' ? api.usePointer() : api.useCanvasEffect({ context: null, frame() {} })
+    return React.createElement(kind === 'canvas' ? 'canvas' : 'div', { ref, key: revision })
+  }
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(React.Fragment, null, React.createElement(Hook, { revision: 0 }), React.createElement('p', null, 'sibling'))))
+    assert.deepEqual(errors, [error])
+    assert.equal(container.children.length, 2)
+    assert.equal(observed.size, 0)
+    fail = false
+    await React.act(async () => root.render(React.createElement(Hook, { revision: 1 })))
+    assert.ok(observed.size > 0)
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved) }
+  assert.equal(observed.size, 0)
+})
+
+test('react auxiliary failure: autoplay observer rollback leaves the native slider mounted', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const saved = { IntersectionObserver, reportError: global.reportError }
+  const error = Error('autoplay observer'), errors = [], observed = new Set()
+  global.reportError = e => errors.push(e)
+  global.IntersectionObserver = class { observe() { observed.add(this); throw error }; disconnect() { observed.delete(this) } }
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(Slider, { autoplay: 3000 }, React.createElement('div', null, 'slide'))))
+    assert.equal(container.children.length, 1)
+    assert.deepEqual(errors, [error])
+    assert.equal(observed.size, 0)
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved) }
+})
+
+test('react auxiliary failure: a throwing Slider onSlide callback stops its autoplay without touching siblings', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const saved = { setInterval, clearInterval, reportError: global.reportError }
+  const intervals = new Map(), errors = [], error = Error('onSlide')
+  let id = 0
+  global.reportError = e => errors.push(e)
+  global.setInterval = fn => { intervals.set(++id, fn); return id }
+  global.clearInterval = key => intervals.delete(key)
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(React.Fragment, null,
+      React.createElement(Slider, { autoplay: 3000, onSlide() { throw error } }, React.createElement('div', null, 'failed')),
+      React.createElement(Slider, { autoplay: 3000 }, React.createElement('div', null, 'healthy')))))
+    assert.deepEqual(errors, [error])
+    assert.equal(container.children.length, 2)
+    assert.equal(intervals.size, 1)
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved) }
+})
+
+test('react auxiliary failure: Modal promotion preserves open static content on failure', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Modal } = await import('../dist/react/index.js')
+  const create = document.createElement, report = global.reportError, errors = [], error = Error('showModal')
+  document.createElement = tag => { const n = create(tag); if (tag === 'dialog') { Object.defineProperty(n, 'open', { get: () => n.hasAttribute('open') }); n.showModal = () => { throw error } }; return n }
+  global.reportError = e => errors.push(e)
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(Modal, { open: true }, 'fallback')))
+    assert.ok(container.firstChild.hasAttribute('open'))
+    assert.deepEqual(errors, [error])
+    const dialog = container.firstChild, remove = dialog.removeAttribute
+    dialog.removeAttribute = key => { remove(key); throw Error('late static attribute failure') }
+    await React.act(async () => root.render(React.createElement(Modal, { open: false }, 'fallback')))
+    assert.ok(!dialog.hasAttribute('open'))
+    assert.deepEqual(errors, [error], 'a failed instance reports only its original error')
+  } finally { await React.act(async () => root.unmount()); document.createElement = create; global.reportError = report }
+})
+
+test('react auxiliary release: 100 hook, Marquee and Accordion mount cycles return resources to baseline', async () => {
+  await ensureDomAndWarmDriver()
+  flushFrames()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const api = await import('../dist/react/index.js')
+  const saved = { ResizeObserver, MutationObserver, IntersectionObserver }
+  const create = document.createElement, observed = new Set(), nodes = []
+  class Observer { observe() { observed.add(this) }; disconnect() { observed.delete(this) } }
+  global.ResizeObserver = global.MutationObserver = global.IntersectionObserver = Observer
+  document.createElement = tag => {
+    const n = create(tag); nodes.push(n)
+    n.querySelectorAll = () => []
+    return n
+  }
+  function Hooks() {
+    const slider = api.useSlider(), pointer = api.usePointer(), canvas = api.useCanvasEffect({ context: null, frame() {} })
+    return React.createElement(React.Fragment, null, React.createElement('div', { ref: slider.ref }), React.createElement('div', { ref: pointer }), React.createElement('canvas', { ref: canvas }), React.createElement(api.Marquee, null, 'logos'), React.createElement(api.Accordion, { title: 'Native', open: true }, 'content'))
+  }
+  const root = createRoot(document.createElement('div'))
+  const pending = () => rafQueue.filter(entry => entry.epoch === rafEpoch).length
+  try {
+    for (let i = 0; i < 100; i++) {
+      const start = nodes.length
+      await React.act(async () => root.render(React.createElement(Hooks)))
+      assert.ok(observed.size >= 5)
+      const attached = nodes.slice(start), counts = attached.map(n => Object.values(n._listeners).reduce((sum, v) => sum + v.length, 0))
+      assert.ok(counts.some(n => n > 0))
+      await React.act(async () => root.render(null))
+      assert.equal(observed.size, 0)
+      assert.equal(pending(), 0)
+      // React owns its own delegated handlers on the root, not these hooks.
+      for (const n of attached) for (const type of ['pointermove', 'pointerout', 'pointerdown', 'wheel', 'keydown', 'dragstart', 'click'])
+        assert.equal(n._listeners[type]?.length ?? 0, 0)
+    }
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved); document.createElement = create }
+})
+
+test('react auxiliary failure: Marquee setup rolls back without unmounting its sibling', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Marquee } = await import('../dist/react/index.js')
+  const create = document.createElement, report = global.reportError, errors = [], error = Error('marquee query')
+  document.createElement = tag => { const n = create(tag); n.querySelectorAll = () => { throw error }; return n }
+  global.reportError = e => errors.push(e)
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(React.Fragment, null, React.createElement(Marquee, null, 'logos'), React.createElement('p', null, 'sibling'))))
+    assert.equal(container.children.length, 2)
+    assert.deepEqual(errors, [error])
+    assert.equal(container.firstChild._listeners.click?.length ?? 0, 0)
+  } finally { await React.act(async () => root.unmount()); document.createElement = create; global.reportError = report }
+})
+
+test('react auxiliary failure: Modal close callback reports once and preserves the sibling', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Modal } = await import('../dist/react/index.js')
+  const report = global.reportError, errors = [], error = Error('close callback')
+  global.reportError = e => errors.push(e)
+  const container = document.createElement('div'), root = createRoot(container)
+  try {
+    await React.act(async () => root.render(React.createElement(React.Fragment, null, React.createElement(Modal, { open: false, onClose() { throw error } }, 'dialog'), React.createElement('p', null, 'sibling'))))
+    const dialog = container.firstChild, props = dialog[Object.keys(dialog).find(k => k.startsWith('__reactProps$'))]
+    assert.doesNotThrow(() => { props.onClose(); props.onClose() })
+    assert.deepEqual(errors, [error])
+    assert.equal(container.children.length, 2)
+  } finally { await React.act(async () => root.unmount()); global.reportError = report }
+})
+
+test('react auxiliary release: a queued Modal close after unmount cannot call the consumer', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Modal } = await import('../dist/react/index.js')
+  const container = document.createElement('div'), root = createRoot(container)
+  let calls = 0
+  await React.act(async () => root.render(React.createElement(Modal, { open: false, onClose() { calls++ } }, 'dialog')))
+  const dialog = container.firstChild, props = dialog[Object.keys(dialog).find(k => k.startsWith('__reactProps$'))]
+  await React.act(async () => root.unmount())
+  props.onClose()
+  assert.equal(calls, 0)
+})
+
+test('react auxiliary release: throwing canvas cleanup does not escape unmount or retain observers', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { useCanvasEffect } = await import('../dist/react/index.js')
+  const saved = { ResizeObserver, IntersectionObserver, reportError: global.reportError }
+  const error = Error('consumer disposer'), errors = [], observed = new Set()
+  let resize
+  global.reportError = e => errors.push(e)
+  global.ResizeObserver = class { constructor(cb) { resize = cb }; observe() { observed.add(this) }; disconnect() { observed.delete(this) } }
+  global.IntersectionObserver = class { observe() { observed.add(this) }; disconnect() { observed.delete(this) } }
+  function Canvas() { const ref = useCanvasEffect({ context: null, setup: () => () => { throw error }, frame() {} }); return React.createElement('canvas', { ref }) }
+  const container = document.createElement('div'), root = createRoot(container)
+  let mounted = true
+  try {
+    await React.act(async () => root.render(React.createElement(Canvas)))
+    const canvas = container.firstChild
+    for (const [key, fallback] of [['width', 300], ['height', 150]]) Object.defineProperty(canvas, key, { get: () => Number(canvas.getAttribute(key) ?? fallback), set: value => canvas.setAttribute(key, value) })
+    resize([{ contentRect: { width: 100, height: 100 } }])
+    await React.act(async () => root.unmount()); mounted = false
+    assert.deepEqual(errors, [error])
+    assert.equal(observed.size, 0)
+    assert.equal(rafQueue.filter(entry => entry.epoch === rafEpoch).length, 0)
+  } finally { if (mounted) await React.act(async () => root.unmount()); Object.assign(global, saved) }
+})
+
+test('react auxiliary failure: autoplay runtime observer failure is local and stale releases cannot restart timers', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const saved = { IntersectionObserver, setInterval, clearInterval, reportError: global.reportError }
+  const add = window.addEventListener, remove = window.removeEventListener
+  const intervals = new Map(), observers = new Set(), callbacks = [], events = new Map(), errors = [], error = Error('intersection delivery')
+  let id = 0
+  global.reportError = e => errors.push(e)
+  global.setInterval = fn => { intervals.set(++id, fn); return id }
+  global.clearInterval = key => intervals.delete(key)
+  window.addEventListener = (type, fn) => { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn) }
+  window.removeEventListener = (type, fn) => events.get(type)?.delete(fn)
+  global.IntersectionObserver = class { constructor(cb) { callbacks.push(cb) }; observe() { observers.add(this) }; disconnect() { observers.delete(this) } }
+  const container = document.createElement('div'), root = createRoot(container)
+  const view = interval => React.createElement(React.Fragment, null, ...['a', 'b'].map(key => React.createElement(Slider, { key, autoplay: interval }, React.createElement('div', null, key))))
+  try {
+    await React.act(async () => root.render(view(3000)))
+    const stale = [...events.get('pointerup')]
+    assert.equal(intervals.size, 2)
+    const rail = container.firstChild.children.find(n => n.classes.has('sv-slider'))
+    rail._listeners.pointerdown.at(-1)({ pointerId: 0 })
+    assert.equal(intervals.size, 1, 'a pending release belongs to the failed autoplay')
+    assert.doesNotThrow(() => callbacks[0]([{ get isIntersecting() { throw error } }]))
+    assert.equal(intervals.size, 1)
+    assert.equal(observers.size, 1)
+    assert.deepEqual(errors, [error])
+    await React.act(async () => root.render(view(4000)))
+    assert.equal(intervals.size, 2)
+    stale.forEach(fn => fn({ pointerId: 0 }))
+    callbacks[0]([{ get isIntersecting() { throw error } }])
+    assert.equal(intervals.size, 2)
+    assert.deepEqual(errors, [error])
+    await React.act(async () => root.render(null))
+    assert.equal(intervals.size, 0); assert.equal(observers.size, 0)
+    assert.equal([...events.values()].reduce((sum, set) => sum + set.size, 0), 0)
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved); window.addEventListener = add; window.removeEventListener = remove }
+})
+
 test('react: Boot releases its acquired scan when toggle setup fails', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

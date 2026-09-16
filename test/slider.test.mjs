@@ -1,5 +1,134 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { lifecycleEnv } from './lifecycle-fixture.mjs'
+
+for (const point of ['observe', 'listener', 'callback']) test(`slider failure: partial setup restores ownership and all resources (${point})`, async () => {
+  const { slider } = await import('../dist/core/slider.js')
+  const env = lifecycleEnv()
+  try {
+    const c = env.rail(), error = Error(point)
+    c.classList.add('sv-slider-y')
+    c.style.setProperty('--sv-snap', 'authored', 'important')
+    const baseline = env.baseline()
+    if (point === 'observe') global.MutationObserver = class extends global.MutationObserver { observe(n) { super.observe(n); throw error } }
+    if (point === 'listener') { const add = c.addEventListener; c.addEventListener = (type, fn) => { add(type, fn); if (type === 'keydown') throw error } }
+    assert.throws(() => slider(c, { onScroll() { if (point === 'callback') throw error } }), e => e === error)
+    assert.deepEqual(env.baseline(), baseline)
+    assert.deepEqual([...c.classes], ['sv-slider-y'])
+    assert.equal(c.style.getPropertyValue('--sv-snap'), 'authored')
+    assert.equal(c.style.getPropertyPriority('--sv-snap'), 'important')
+    assert.equal(c.getAttribute('tabindex'), null)
+    assert.equal(c.children[0].style.getPropertyValue('--sd'), '')
+  } finally { env.restore() }
+})
+
+for (const point of ['callback', 'measurement', 'observer', 'output']) test(`slider failure: runtime failure stops only its instance (${point})`, async () => {
+  const { slider } = await import('../dist/core/slider.js')
+  const env = lifecycleEnv()
+  try {
+    const bad = env.rail(), good = env.rail(), error = Error(point)
+    let fail = false, calls = 0
+    const a = slider(bad, { onScroll() { if (fail && point === 'callback') throw error } })
+    const b = slider(good, { onScroll() { calls++ } })
+    if (point === 'output') { const set = bad.children[0].style.setProperty; bad.children[0].style.setProperty = (...args) => { set(...args); throw error } }
+    if (point === 'measurement') Object.defineProperty(bad, 'scrollWidth', { get() { throw error } })
+    if (point === 'observer') {
+      const ro = env.deliveries.find(o => o.kind === 'ResizeObserver')
+      ro.observe = () => { throw error }
+      env.deliveries.find(o => o.kind === 'MutationObserver').cb([])
+    }
+    fail = true
+    bad.fire('scroll'); good.fire('scroll')
+    assert.doesNotThrow(() => env.flush())
+    assert.deepEqual(env.errors, [error])
+    assert.equal(calls, 2)
+    a.destroy(); a.destroy(); b.destroy()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+for (const mode of ['callback', 'drag', 'glide']) test(`slider release: callback destroy, drag, glide and stale deliveries preserve replacement and author edits (${mode})`, async () => {
+  const { slider } = await import('../dist/core/slider.js')
+  const env = lifecycleEnv()
+  try {
+    const c = env.rail()
+    let kill = false, h
+    h = slider(c, { onScroll() { if (kill) h.destroy() } })
+    if (mode === 'drag') {
+      c.fire('pointerdown', { pointerType: 'mouse', clientX: 0, preventDefault() {} })
+      env.window.fire('pointermove', { clientX: 20 })
+    } else if (mode === 'glide') h.next()
+    const stale = [...env.frames.values()], observers = [...env.deliveries]
+    c.style.scrollSnapType = 'x proximity'; c.tabIndex = 7
+    c.children[0].style.setProperty('--sd', 'author')
+    if (mode === 'callback') { kill = true; c.fire('scroll'); env.flush() }
+    h.destroy(); h.destroy()
+    assert.equal(c.style.scrollSnapType, 'x proximity')
+    assert.equal(c.tabIndex, 7)
+    if (mode !== 'callback') assert.equal(c.children[0].style.getPropertyValue('--sd'), 'author')
+    const replacement = slider(c)
+    const before = env.baseline(), scroll = c.scrollLeft
+    stale.forEach(fn => fn(500))
+    observers.forEach(o => o.cb([]))
+    assert.deepEqual(env.baseline(), before)
+    assert.equal(c.scrollLeft, scroll)
+    replacement.destroy()
+    c.scrollLeft = 73
+    assert.equal(c.scrollLeft, 73, 'native scrolling remains available')
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('slider release: 100 attach/release cycles return to baseline', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail()
+    for (let i = 0; i < 100; i++) { const h = slider(c); h.next(); h.destroy(); h.destroy(); assert.deepEqual(env.baseline(), [0, 0, 0, 0]); assert.equal(c.getAttribute('tabindex'), null) }
+  } finally { env.restore() }
+})
+
+test('slider release: destroying from onSlide skips onScroll and cancels sibling-independent work', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(); let h, calls = 0
+    h = slider(c, { onSlide() { h?.destroy() }, onScroll() { calls++ } })
+    c.scrollLeft = 100; c.fire('scroll'); env.flush()
+    assert.equal(calls, 1)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('slider failure: drag listener acquisition unwinds a partially acquired gesture', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(), error = Error('pointerup add'), add = env.window.addEventListener
+    const h = slider(c)
+    env.window.addEventListener = (type, fn) => { add(type, fn); if (type === 'pointerup') throw error }
+    c.fire('pointerdown', { pointerType: 'mouse', clientX: 0, preventDefault() {} })
+    assert.deepEqual(env.errors, [error])
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    assert.equal(c.style.scrollSnapType, '')
+    h.destroy()
+  } finally { env.restore() }
+})
+
+test('slider release: authored native rail classes survive failure and teardown', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(), error = Error('scroll')
+    c.classList.add('sv-slider'); c.style.setProperty('overflow-x', 'auto')
+    let fail = false
+    const h = slider(c, { onScroll() { if (fail) throw error } })
+    fail = true; c.fire('scroll'); env.flush(); h.destroy()
+    assert.ok(c.classes.has('sv-slider'))
+    assert.equal(c.style.getPropertyValue('overflow-x'), 'auto')
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
 
 // MutationObserver is from 2012 (Chrome 18, Firefox 14, Safari 6) and
 // ResizeObserver from 2018 (Chrome 64, Firefox 69, Safari 13.1): every engine

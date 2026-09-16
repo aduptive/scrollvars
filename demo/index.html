@@ -2570,7 +2570,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 2.8&nbsp;KB carousel, 15× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 3.6&nbsp;KB carousel, 12× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2582,8 +2582,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 7.1&nbsp;KB minified,
-<strong>2.8&nbsp;KB gzipped, ~15× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 8.9&nbsp;KB minified,
+<strong>3.6&nbsp;KB gzipped, ~12× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2594,7 +2594,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         <div>03<br>--sd drives the CSS</div>
         <div>04<br>drag me (mouse too)</div>
         <div>05<br>.sv-active for state</div>
-        <div>06<br>3 KB, not 150</div>
+        <div>06<br>4 KB, not 150</div>
       </div>
       <div class="slider-thumbs" id="slider-thumbs" style="scroll-snap-type: none;">
         <div>01</div><div>02</div><div>03</div>
@@ -2941,7 +2941,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 19.8 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 20.8 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.8 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.2 KB / 5.2 KB</b></td><td></td></tr>
       </tbody>
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.2 KB gzip · full core 10.2 KB · v1.17.5 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.2 KB gzip · full core 11.2 KB · v1.17.6 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3110,7 +3110,7 @@ the full API, recipes and performance rules, ready to ingest.
     </nav>
     <div class="foot-notes">
       <p>Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 11 KB part. Reduced motion is respected by the driver and every preset.</p>
+      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 12 KB part. Reduced motion is respected by the driver and every preset.</p>
     </div>
   </div>
 </footer>
@@ -4132,11 +4132,167 @@ var SV = (() => {
     return getReducedMotion();
   }
 
+  // dist/core/lifetime.js
+  function reportFailure2(error) {
+    if (typeof reportError === "function")
+      reportError(error);
+    else
+      console.error(error);
+  }
+  function lifetime() {
+    let stopped = false;
+    let acquiring = true;
+    const releases = [];
+    const stop = () => {
+      if (stopped)
+        return;
+      stopped = true;
+      let first;
+      let failed = false;
+      for (const release of releases.splice(0).reverse()) {
+        try {
+          release();
+        } catch (error) {
+          if (!failed) {
+            first = error;
+            failed = true;
+          }
+        }
+      }
+      if (failed)
+        throw first;
+    };
+    const fail = (error) => {
+      try {
+        stop();
+      } catch {
+      }
+      reportFailure2(error);
+    };
+    return {
+      get stopped() {
+        return stopped;
+      },
+      defer(release) {
+        if (stopped)
+          release();
+        else
+          releases.push(release);
+      },
+      stop,
+      guard(fn) {
+        return (...args) => {
+          if (stopped)
+            return;
+          try {
+            fn(...args);
+          } catch (error) {
+            if (acquiring)
+              throw error;
+            fail(error);
+          }
+        };
+      },
+      setup(fn) {
+        try {
+          fn();
+          acquiring = false;
+        } catch (error) {
+          try {
+            stop();
+          } catch {
+          }
+          throw error;
+        }
+      }
+    };
+  }
+  function ownership() {
+    const nodes = /* @__PURE__ */ new Map();
+    const set = (node, key, read, write, value) => {
+      let entries2 = nodes.get(node);
+      if (!entries2)
+        nodes.set(node, entries2 = /* @__PURE__ */ new Map());
+      let entry = entries2.get(key);
+      const current = read();
+      if (!entry)
+        entries2.set(key, entry = { read, write, before: current, last: value });
+      else if (current !== entry.last)
+        entry.before = current;
+      entry.last = value;
+      write(value);
+    };
+    const restore = (node, key) => {
+      let first, failed = false;
+      nodes.forEach((entries2, target) => {
+        if (node && target !== node)
+          return;
+        entries2.forEach((entry, name) => {
+          if (key && name !== key)
+            return;
+          entries2.delete(name);
+          try {
+            if (entry.read() === entry.last)
+              entry.write(entry.before);
+          } catch (error) {
+            if (!failed) {
+              failed = true;
+              first = error;
+            }
+          }
+        });
+        if (!entries2.size)
+          nodes.delete(target);
+      });
+      if (failed)
+        throw first;
+    };
+    return {
+      restore,
+      style(el, key, value, priority = "") {
+        const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? "", el.style.getPropertyPriority?.(key) ?? ""]);
+        set(el, `style:${key}`, read, (saved) => {
+          const [v, p] = JSON.parse(saved);
+          if (v)
+            el.style.setProperty(key, v, p);
+          else
+            el.style.removeProperty?.(key);
+        }, JSON.stringify([value, priority]));
+      },
+      class(el, key, value) {
+        set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, (v) => {
+          if (typeof el.classList.toggle === "function")
+            el.classList.toggle(key, v);
+          else if (v)
+            el.classList.add(key);
+          else
+            el.classList.remove(key);
+        }, value);
+      },
+      attr(el, key, value) {
+        set(el, `attr:${key}`, () => el.getAttribute(key), (v) => {
+          if (v === null)
+            el.removeAttribute(key);
+          else
+            el.setAttribute(key, v);
+        }, value);
+      },
+      property(el, key, value) {
+        set(el, `property:${String(key)}`, () => el[key], (v) => {
+          el[key] = v;
+        }, value);
+      }
+    };
+  }
+
   // dist/core/pointer.js
   function trackPointer(container, { selector = ".sv-tilt" } = {}) {
     if (typeof window === "undefined")
       return () => {
       };
+    const life = lifetime();
+    const owned = ownership();
+    life.defer(() => owned.restore());
     let pending = null;
     let raf2 = 0;
     const written = /* @__PURE__ */ new Set();
@@ -4144,7 +4300,7 @@ var SV = (() => {
       const el = target?.closest?.(selector);
       return el && container.contains(el) ? el : null;
     };
-    const flush = () => {
+    const flush = life.guard(() => {
       raf2 = 0;
       if (!pending)
         return;
@@ -4157,19 +4313,19 @@ var SV = (() => {
       const mx = rect.width > 0 ? unit((x - rect.left) / rect.width * 2 - 1) : "0.000";
       const my = rect.height > 0 ? unit((y - rect.top) / rect.height * 2 - 1) : "0.000";
       if (el.style.getPropertyValue?.("--mx") !== mx)
-        el.style.setProperty("--mx", mx);
+        owned.style(el, "--mx", mx);
       if (el.style.getPropertyValue?.("--my") !== my)
-        el.style.setProperty("--my", my);
-    };
+        owned.style(el, "--my", my);
+    });
     const touched = /* @__PURE__ */ new Set();
     const leave = (el) => {
       written.delete(el);
       touched.add(el);
-      el.classList.add("sv-pointer-leave");
-      el.style.setProperty("--mx", "0");
-      el.style.setProperty("--my", "0");
+      owned.class(el, "sv-pointer-leave", true);
+      owned.style(el, "--mx", "0");
+      owned.style(el, "--my", "0");
     };
-    const onMove = (event) => {
+    const onMove = life.guard((event) => {
       const el = matchIn(event.target);
       if (!el)
         return;
@@ -4179,63 +4335,54 @@ var SV = (() => {
         touched.add(el);
       }
       if (el.classList.contains("sv-pointer-leave"))
-        el.classList.remove("sv-pointer-leave");
+        owned.class(el, "sv-pointer-leave", false);
       pending = { el, x: event.clientX, y: event.clientY };
       if (!raf2)
         raf2 = requestAnimationFrame(flush);
-    };
-    const onOut = (event) => {
+    });
+    const onOut = life.guard((event) => {
       const el = matchIn(event.target);
       if (!el || el.contains(event.relatedTarget))
         return;
       if (pending?.el === el)
         pending = null;
       leave(el);
-    };
+    });
     const clear = (el) => {
       if (pending?.el === el)
         pending = null;
-      el.style.removeProperty("--mx");
-      el.style.removeProperty("--my");
-      el.classList.remove("sv-pointer-leave");
+      owned.restore(el);
       written.delete(el);
       touched.delete(el);
     };
     let observer;
-    const stop = () => {
-      container.removeEventListener("pointermove", onMove);
-      container.removeEventListener("pointerout", onOut);
+    life.defer(() => {
       if (raf2)
         cancelAnimationFrame(raf2);
       raf2 = 0;
       pending = null;
-      observer?.disconnect();
-      touched.forEach(clear);
       written.clear();
       touched.clear();
-    };
-    try {
+    });
+    life.defer(() => container.removeEventListener("pointermove", onMove));
+    life.defer(() => container.removeEventListener("pointerout", onOut));
+    life.defer(() => observer?.disconnect());
+    life.setup(() => {
       container.addEventListener("pointermove", onMove);
       container.addEventListener("pointerout", onOut);
       if (typeof MutationObserver !== "undefined") {
-        observer = new MutationObserver((records) => {
+        observer = new MutationObserver(life.guard((records) => {
           if (records.some((record) => record.removedNodes.length)) {
             touched.forEach((el) => {
               if (!container.contains(el))
                 clear(el);
             });
           }
-        });
+        }));
         observer.observe(container, { childList: true, subtree: true });
       }
-    } catch (error) {
-      try {
-        stop();
-      } catch {
-      }
-      throw error;
-    }
-    return stop;
+    });
+    return life.stop;
   }
 
   // dist/core/split.js
@@ -4527,6 +4674,17 @@ var SV = (() => {
       return () => {
       };
     const scope = root ?? document;
+    const life = lifetime();
+    let transaction = ownership();
+    let siblingWrites = [];
+    const rollback = () => {
+      for (const journal of [transaction, ...siblingWrites]) {
+        try {
+          journal.restore();
+        } catch {
+        }
+      }
+    };
     const resolve = (trigger) => {
       const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
       const selector = trigger.getAttribute("data-sv-target");
@@ -4541,22 +4699,49 @@ var SV = (() => {
     };
     const sync = (target, className, on) => {
       const seen = /* @__PURE__ */ new Set();
-      live.forEach((instance2) => instance2.triggers().forEach((t) => {
-        if (seen.has(t))
-          return;
-        seen.add(t);
-        const other = ownerOf(t);
-        if (other && other.target === target && other.className === className)
-          t.setAttribute(t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
-      }));
+      live.forEach((otherInstance) => {
+        const journal = otherInstance === instance ? transaction : ownership();
+        if (otherInstance !== instance)
+          siblingWrites.push(journal);
+        const update2 = () => otherInstance.triggers().forEach((t) => {
+          if (seen.has(t))
+            return;
+          seen.add(t);
+          const other = ownerOf(t);
+          if (other && other.target === target && other.className === className)
+            journal.attr(t, t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
+        });
+        if (otherInstance === instance)
+          update2();
+        else
+          otherInstance.run(() => {
+            try {
+              update2();
+            } catch (error) {
+              try {
+                journal.restore();
+              } catch {
+              }
+              throw error;
+            }
+          });
+      });
     };
-    const instance = { scope, triggers, resolve };
-    live.add(instance);
+    const instance = { scope, triggers, resolve, run: life.guard((work) => work()) };
     const write = (target, className, on) => {
-      target.style.setProperty("--sv-state", on ? "1" : "0");
+      transaction.style(target, "--sv-state", on ? "1" : "0");
       sync(target, className, on);
     };
     const settling = /* @__PURE__ */ new WeakSet();
+    const frames = /* @__PURE__ */ new Set();
+    const hold = ownership();
+    const frame = (fn) => {
+      const id = requestAnimationFrame(life.guard(() => {
+        frames.delete(id);
+        fn();
+      }));
+      frames.add(id);
+    };
     const longhandHold = /* @__PURE__ */ new WeakMap();
     const holdDuration = (target) => {
       const value = target.style.getPropertyValue("transition-duration");
@@ -4564,14 +4749,14 @@ var SV = (() => {
         return;
       const priority = target.style.getPropertyPriority("transition-duration");
       longhandHold.set(target, { value, priority });
-      target.style.setProperty("transition-duration", "0s", priority);
+      hold.style(target, "transition-duration", "0s", priority);
     };
     const restoreDuration = (target) => {
       const saved = longhandHold.get(target);
       if (!saved)
         return;
       longhandHold.delete(target);
-      target.style.setProperty("transition-duration", saved.value, saved.priority);
+      hold.restore(target, "style:transition-duration");
     };
     const targets = /* @__PURE__ */ new Set();
     const mark = (target) => {
@@ -4581,41 +4766,59 @@ var SV = (() => {
       let marker = markers.get(target);
       const authored = target.classList.contains("sv-ui");
       if (!marker) {
-        marker = { owners: 0, release: () => {
+        marker = { owners: 0, settle: () => {
+          if (settling.has(target)) {
+            settling.delete(target);
+            hold.restore(target);
+            restoreDuration(target);
+          }
+        }, release: () => {
           if (!authored)
             target.classList.remove("sv-ui");
           if (settling.has(target)) {
             settling.delete(target);
-            target.style.removeProperty("--sv-acts-settle");
+            hold.restore(target);
             restoreDuration(target);
           }
         } };
         markers.set(target, marker);
       }
       marker.owners++;
+      life.defer(() => {
+        try {
+          marker.settle();
+        } finally {
+          if (--marker.owners === 0) {
+            markers.delete(target);
+            marker.release();
+          }
+        }
+      });
       target.classList.add("sv-ui");
       return !authored;
     };
-    triggers().forEach((trigger) => {
+    const boot = () => triggers().forEach((trigger) => {
       let resolved;
       try {
         resolved = resolve(trigger);
-      } catch {
-        return;
+      } catch (error) {
+        if (error?.name === "SyntaxError")
+          return;
+        throw error;
       }
       const { className, target } = resolved;
       if (!target)
         return;
       if (mark(target)) {
         if (target.classList.contains("sv-acts")) {
-          target.style.setProperty("--sv-acts-settle", "0s");
-          holdDuration(target);
           settling.add(target);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
+          hold.style(target, "--sv-acts-settle", "0s");
+          holdDuration(target);
+          frame(() => {
+            frame(() => {
               if (settling.has(target)) {
                 settling.delete(target);
-                target.style.removeProperty("--sv-acts-settle");
+                hold.restore(target);
                 restoreDuration(target);
               }
             });
@@ -4624,7 +4827,7 @@ var SV = (() => {
       }
       write(target, className, target.classList.contains(className));
     });
-    const onClick = (event) => {
+    const click = (event) => {
       if (claimed.has(event))
         return;
       const trigger = event.target.closest?.("[data-sv-toggle]");
@@ -4635,26 +4838,49 @@ var SV = (() => {
         return;
       claimed.add(event);
       mark(target);
-      if (settling.has(target)) {
-        settling.delete(target);
-        target.style.removeProperty("--sv-acts-settle");
-        restoreDuration(target);
+      markers.get(target)?.settle();
+      const on = !target.classList.contains(className);
+      transaction.class(target, className, on);
+      write(target, className, on);
+    };
+    const onClick = life.guard((event) => {
+      transaction = ownership();
+      siblingWrites = [];
+      try {
+        click(event);
+      } catch (error) {
+        rollback();
+        throw error;
+      } finally {
+        transaction = ownership();
+        siblingWrites = [];
       }
-      write(target, className, target.classList.toggle(className));
-    };
-    scope.addEventListener("click", onClick);
-    return () => {
-      live.delete(instance);
-      scope.removeEventListener("click", onClick);
-      targets.forEach((target) => {
-        const marker = markers.get(target);
-        if (--marker.owners === 0) {
-          markers.delete(target);
-          marker.release();
-        }
+    });
+    life.defer(() => {
+      frames.forEach((id) => {
+        if (typeof cancelAnimationFrame === "function")
+          cancelAnimationFrame(id);
       });
+      frames.clear();
+    });
+    life.defer(() => {
+      live.delete(instance);
       targets.clear();
-    };
+    });
+    life.defer(() => scope.removeEventListener("click", onClick));
+    try {
+      life.setup(() => {
+        live.add(instance);
+        boot();
+        scope.addEventListener("click", onClick);
+      });
+    } catch (error) {
+      rollback();
+      throw error;
+    }
+    transaction = ownership();
+    siblingWrites = [];
+    return life.stop;
   }
 
   // dist/core/slider.js
@@ -4683,12 +4909,11 @@ var SV = (() => {
   function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, cssVars = true, onSlide, onScroll } = {}) {
     if (typeof window === "undefined")
       return noop;
+    const life = lifetime();
+    const owned = ownership();
+    life.defer(() => owned.restore());
     const horizontal = axis === "x";
     const rtl = horizontal && typeof getComputedStyle === "function" && getComputedStyle(container).direction === "rtl";
-    container.classList.add("sv-slider");
-    container.classList.toggle("sv-slider-y", !horizontal);
-    container.classList.toggle("sv-draggable", !!drag);
-    container.style.setProperty("--sv-snap", snap);
     const pos = () => horizontal ? rtl ? -container.scrollLeft + 0 : container.scrollLeft : container.scrollTop;
     const setPos = (v) => {
       if (horizontal)
@@ -4730,10 +4955,14 @@ var SV = (() => {
     const authoredSnap = container.style.scrollSnapType;
     const snapIsNone = authoredSnap === "none" || typeof getComputedStyle === "function" && getComputedStyle(container).scrollSnapType === "none";
     const suspendSnap = () => {
-      container.style.scrollSnapType = "none";
+      if (typeof container.style.getPropertyValue === "function")
+        owned.style(container, "scroll-snap-type", "none");
+      else
+        owned.property(container.style, "scrollSnapType", "none");
     };
     const resumeSnap = () => {
-      container.style.scrollSnapType = authoredSnap;
+      owned.restore(container, "style:scroll-snap-type");
+      owned.restore(container.style, "property:scrollSnapType");
     };
     let active = -1;
     let activeEl = null;
@@ -4742,8 +4971,13 @@ var SV = (() => {
     let dragging = false;
     let anim = 0;
     let destroyed = false;
+    life.defer(() => {
+      destroyed = true;
+      dragging = false;
+    });
     const slides = () => Array.from(container.children);
-    const state = (p) => ({
+    let lastState = { ...noopState };
+    const readState = (p) => ({
       active: Math.max(active, 0),
       count: container.children.length,
       position,
@@ -4751,7 +4985,13 @@ var SV = (() => {
       dragging,
       gliding: anim !== 0
     });
-    const measure = () => {
+    const state = () => {
+      life.guard(() => {
+        lastState = readState();
+      })();
+      return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
+    };
+    const measure = life.guard(() => {
       raf2 = 0;
       const center = pos() + viewport() / 2;
       let best = 0;
@@ -4763,7 +5003,7 @@ var SV = (() => {
       list.forEach((slide, i) => {
         if (cssVars) {
           const sd = (centers[i] - center) / sizes[i];
-          slide.style.setProperty("--sd", sd.toFixed(4));
+          owned.style(slide, "--sd", sd.toFixed(4));
         }
         const dist = Math.abs(centers[i] - center);
         if (dist < bestDist) {
@@ -4781,17 +5021,17 @@ var SV = (() => {
         position = Math.min(Math.max(raw, 0), centers.length - 1);
       }
       if (cssVars)
-        container.style.setProperty("--sv-progress", p.toFixed(4));
+        owned.style(container, "--sv-progress", p.toFixed(4));
       const classes = container.classList;
       if (classes.contains?.("sv-slider") !== true || classes.contains?.("sv-slider-y") !== !horizontal || classes.contains?.("sv-draggable") !== !!drag) {
-        classes.add("sv-slider");
-        classes.toggle("sv-slider-y", !horizontal);
-        classes.toggle("sv-draggable", !!drag);
+        owned.class(container, "sv-slider", true);
+        owned.class(container, "sv-slider-y", !horizontal);
+        owned.class(container, "sv-draggable", !!drag);
       }
       list.forEach((slide, i) => {
         const wanted = i === best;
         if (slide.classList.contains?.("sv-active") !== wanted)
-          slide.classList.toggle("sv-active", wanted);
+          owned.class(slide, "sv-active", wanted);
       });
       const bestEl = list[best] ?? null;
       if (best !== active || bestEl !== activeEl) {
@@ -4799,37 +5039,31 @@ var SV = (() => {
         active = best;
         activeEl = bestEl;
         if (cssVars)
-          container.style.setProperty("--sv-slide", String(best));
+          owned.style(container, "--sv-slide", String(best));
         if (indexChanged)
           onSlide?.(best);
       }
-      if (!destroyed)
-        onScroll?.(state(p));
-    };
-    const schedule2 = () => {
-      if (!raf2 && !destroyed)
+      if (!life.stopped) {
+        lastState = readState(p);
+        onScroll?.(lastState);
+      }
+    });
+    const schedule2 = life.guard(() => {
+      if (!raf2 && !life.stopped)
         raf2 = requestAnimationFrame(measure);
-    };
-    const onLayout = () => {
+    });
+    const onLayout = life.guard(() => {
       if (anim)
         goTo(target);
       schedule2();
-    };
-    container.addEventListener("scroll", schedule2, { passive: true });
-    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(onLayout) : null;
-    ro?.observe(container);
+    });
+    let ro;
+    let mo;
     const watchSlides = () => {
       ro?.disconnect();
       ro?.observe(container);
       slides().forEach((slide) => ro?.observe(slide));
     };
-    watchSlides();
-    const mo = typeof MutationObserver === "function" ? new MutationObserver(() => {
-      watchSlides();
-      onLayout();
-    }) : null;
-    mo?.observe(container, { childList: true });
-    measure();
     let target = -1;
     const stopGlide = () => {
       if (anim) {
@@ -4837,9 +5071,9 @@ var SV = (() => {
         anim = 0;
         schedule2();
       }
-      container.classList.remove("sv-gliding");
+      owned.class(container, "sv-gliding", false);
     };
-    const offMotion = onMotionChange((reduced) => {
+    const motionChanged = life.guard((reduced) => {
       if (!reduced || target < 0 || destroyed)
         return;
       goTo(target, false);
@@ -4854,9 +5088,9 @@ var SV = (() => {
         return;
       }
       suspendSnap();
-      container.classList.add("sv-gliding");
+      owned.class(container, "sv-gliding", true);
       let last2 = performance.now();
-      const step = (now) => {
+      const step = life.guard((now) => {
         const dt = Math.min(now - last2, 50);
         last2 = now;
         const factor = 1 - Math.pow(2e-3, dt / duration);
@@ -4870,7 +5104,7 @@ var SV = (() => {
           setPos(current);
           anim = requestAnimationFrame(step);
         }
-      };
+      });
       anim = requestAnimationFrame(step);
     };
     let wheelTimer;
@@ -4881,7 +5115,7 @@ var SV = (() => {
       wheelTimer = void 0;
       return true;
     };
-    const goTo = (index, smooth = true) => {
+    const goTo = life.guard((index, smooth = true) => {
       if (destroyed)
         return;
       clearWheel();
@@ -4904,8 +5138,8 @@ var SV = (() => {
         target = -1;
         setPos(to);
       }
-    };
-    const seek = (progress2) => {
+    });
+    const seek = life.guard((progress2) => {
       if (destroyed)
         return;
       clearWheel();
@@ -4913,35 +5147,36 @@ var SV = (() => {
       target = -1;
       suspendSnap();
       setPos(Math.max(0, Math.min(progress2, 1)) * range());
-    };
+    });
     const stepBase = () => anim && target >= 0 ? target : active;
     let lastPointer = 0;
     let startPoint = 0;
     let pressed = false;
     const DRAG_THRESHOLD = 5;
-    const onMove = (event) => {
+    const onMove = life.guard((event) => {
       const point = horizontal ? event.clientX : event.clientY;
       if (!dragging) {
         if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
           return;
         dragging = true;
         suspendSnap();
-        container.classList.add("sv-dragging");
+        owned.class(container, "sv-dragging", true);
         lastPointer = point;
         return;
       }
       const step = point - lastPointer;
       setPos(pos() - (rtl ? -step : step));
       lastPointer = point;
-    };
-    const suppressClick = (event) => {
+    });
+    const suppressClick = life.guard((event) => {
       event.preventDefault();
       event.stopPropagation();
       window.removeEventListener("click", suppressClick, true);
-    };
+    });
+    let clickTimer;
     const FOCUSABLE = "a[href],button,input,select,textarea,[tabindex],[contenteditable]";
     let pressedTarget = null;
-    const endDrag = () => {
+    const endDrag = life.guard(() => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", endDrag);
       window.removeEventListener("pointercancel", endDrag);
@@ -4953,9 +5188,9 @@ var SV = (() => {
         return;
       }
       dragging = false;
-      container.classList.remove("sv-dragging");
+      owned.class(container, "sv-dragging", false);
       window.addEventListener("click", suppressClick, true);
-      setTimeout(() => window.removeEventListener("click", suppressClick, true), 0);
+      clickTimer = setTimeout(life.guard(() => window.removeEventListener("click", suppressClick, true)), 0);
       if (snap === "proximity" || snapIsNone) {
         resumeSnap();
         return;
@@ -4972,13 +5207,12 @@ var SV = (() => {
         }
       });
       goTo(nearest);
-    };
-    const onDragStart = (event) => {
+    });
+    const onDragStart = life.guard((event) => {
       if (pressed)
         event.preventDefault();
-    };
-    container.addEventListener("dragstart", onDragStart);
-    const onDown = (event) => {
+    });
+    const onDown = life.guard((event) => {
       const owner = event.target?.closest?.(".sv-slider");
       if (owner && owner !== container)
         return;
@@ -4999,9 +5233,8 @@ var SV = (() => {
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", endDrag);
       window.addEventListener("pointercancel", endDrag);
-    };
-    container.addEventListener("pointerdown", onDown);
-    const onWheel = (event) => {
+    });
+    const onWheel = life.guard((event) => {
       const owner = event.target?.closest?.(".sv-slider");
       if (owner && owner !== container)
         return;
@@ -5019,13 +5252,10 @@ var SV = (() => {
         wheelTimer = void 0;
         goTo(active);
       }, 200);
-    };
-    container.addEventListener("wheel", onWheel, { passive: true });
+    });
     const next = (smooth = true) => goTo(stepBase() + 1, smooth);
     const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
-    if (container.tabIndex === -1)
-      container.tabIndex = 0;
-    const onKey = (event) => {
+    const onKey = life.guard((event) => {
       if (event.target !== container)
         return;
       const nextKey = horizontal ? rtl ? "ArrowLeft" : "ArrowRight" : "ArrowDown";
@@ -5041,8 +5271,57 @@ var SV = (() => {
       else
         return;
       event.preventDefault();
+    });
+    const listen = (node, type, fn, options) => {
+      life.defer(() => node.removeEventListener(type, fn, options));
+      node.addEventListener(type, fn, options);
     };
-    container.addEventListener("keydown", onKey);
+    life.defer(() => {
+      if (raf2)
+        cancelAnimationFrame(raf2);
+      raf2 = 0;
+    });
+    life.defer(() => {
+      if (anim)
+        cancelAnimationFrame(anim);
+      anim = 0;
+    });
+    life.defer(clearWheel);
+    life.defer(() => {
+      if (clickTimer !== void 0)
+        clearTimeout(clickTimer);
+    });
+    life.defer(() => ro?.disconnect());
+    life.defer(() => mo?.disconnect());
+    life.defer(() => window.removeEventListener("click", suppressClick, true));
+    life.defer(() => window.removeEventListener("pointermove", onMove));
+    life.defer(() => window.removeEventListener("pointerup", endDrag));
+    life.defer(() => window.removeEventListener("pointercancel", endDrag));
+    life.setup(() => {
+      owned.class(container, "sv-slider", true);
+      owned.class(container, "sv-slider-y", !horizontal);
+      owned.class(container, "sv-draggable", !!drag);
+      owned.style(container, "--sv-snap", snap);
+      if (container.tabIndex === -1)
+        owned.attr(container, "tabindex", "0");
+      listen(container, "scroll", schedule2, { passive: true });
+      if (typeof ResizeObserver === "function")
+        ro = new ResizeObserver(onLayout);
+      watchSlides();
+      if (typeof MutationObserver === "function") {
+        mo = new MutationObserver(life.guard(() => {
+          watchSlides();
+          onLayout();
+        }));
+        mo.observe(container, { childList: true });
+      }
+      life.defer(onMotionChange(motionChanged));
+      listen(container, "dragstart", onDragStart);
+      listen(container, "pointerdown", onDown);
+      listen(container, "wheel", onWheel, { passive: true });
+      listen(container, "keydown", onKey);
+      measure();
+    });
     return {
       next,
       prev,
@@ -5050,27 +5329,7 @@ var SV = (() => {
       seek,
       active: () => Math.max(active, 0),
       state,
-      destroy: () => {
-        destroyed = true;
-        offMotion();
-        stopGlide();
-        resumeSnap();
-        container.classList.remove("sv-slider", "sv-slider-y", "sv-draggable", "sv-dragging");
-        clearWheel();
-        container.removeEventListener("wheel", onWheel);
-        container.removeEventListener("keydown", onKey);
-        container.removeEventListener("scroll", schedule2);
-        container.removeEventListener("pointerdown", onDown);
-        container.removeEventListener("dragstart", onDragStart);
-        window.removeEventListener("click", suppressClick, true);
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", endDrag);
-        window.removeEventListener("pointercancel", endDrag);
-        ro?.disconnect();
-        mo?.disconnect();
-        if (raf2)
-          cancelAnimationFrame(raf2);
-      }
+      destroy: life.stop
     };
   }
   return __toCommonJS(index_exports);
@@ -5631,6 +5890,154 @@ var SV = (() => {
  * never overrides one the author set.
  */
 var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
+/** Private acquisition and callback boundary for independently mounted units. */
+function reportFailure(error) {
+    if (typeof reportError === 'function')
+        reportError(error);
+    else
+        console.error(error);
+}
+function lifetime() {
+    let stopped = false;
+    let acquiring = true;
+    const releases = [];
+    const stop = () => {
+        if (stopped)
+            return;
+        stopped = true;
+        let first;
+        let failed = false;
+        for (const release of releases.splice(0).reverse()) {
+            try {
+                release();
+            }
+            catch (error) {
+                if (!failed) {
+                    first = error;
+                    failed = true;
+                }
+            }
+        }
+        if (failed)
+            throw first;
+    };
+    const fail = (error) => {
+        try {
+            stop();
+        }
+        catch { /* retain the original failure */ }
+        reportFailure(error);
+    };
+    return {
+        get stopped() { return stopped; },
+        defer(release) { if (stopped)
+            release();
+        else
+            releases.push(release); },
+        stop,
+        guard(fn) {
+            return (...args) => {
+                if (stopped)
+                    return;
+                try {
+                    fn(...args);
+                }
+                catch (error) {
+                    if (acquiring)
+                        throw error;
+                    fail(error);
+                }
+            };
+        },
+        setup(fn) {
+            try {
+                fn();
+                acquiring = false;
+            }
+            catch (error) {
+                try {
+                    stop();
+                }
+                catch { /* retain the acquisition error */ }
+                throw error;
+            }
+        },
+    };
+}
+/** Restore only our last write. A later author write becomes the new baseline. */
+function ownership() {
+    const nodes = new Map();
+    const set = (node, key, read, write, value) => {
+        let entries = nodes.get(node);
+        if (!entries)
+            nodes.set(node, entries = new Map());
+        let entry = entries.get(key);
+        const current = read();
+        if (!entry)
+            entries.set(key, entry = { read, write, before: current, last: value });
+        else if (current !== entry.last)
+            entry.before = current;
+        entry.last = value;
+        write(value);
+    };
+    const restore = (node, key) => {
+        let first, failed = false;
+        nodes.forEach((entries, target) => {
+            if (node && target !== node)
+                return;
+            entries.forEach((entry, name) => {
+                if (key && name !== key)
+                    return;
+                entries.delete(name);
+                try {
+                    if (entry.read() === entry.last)
+                        entry.write(entry.before);
+                }
+                catch (error) {
+                    if (!failed) {
+                        failed = true;
+                        first = error;
+                    }
+                }
+            });
+            if (!entries.size)
+                nodes.delete(target);
+        });
+        if (failed)
+            throw first;
+    };
+    return {
+        restore,
+        style(el, key, value, priority = '') {
+            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
+            set(el, `style:${key}`, read, (saved) => {
+                const [v, p] = JSON.parse(saved);
+                if (v)
+                    el.style.setProperty(key, v, p);
+                else
+                    el.style.removeProperty?.(key);
+            }, JSON.stringify([value, priority]));
+        },
+        class(el, key, value) {
+            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
+                el.classList.toggle(key, v);
+            else if (v)
+                el.classList.add(key);
+            else
+                el.classList.remove(key); }, value);
+        },
+        attr(el, key, value) {
+            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
+                el.removeAttribute(key);
+            else
+                el.setAttribute(key, v); }, value);
+        },
+        property(el, key, value) {
+            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
+        },
+    };
+}
+
 const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
 // Browsers cap a canvas's own width/height attribute well above this
 // (platform-dependent, but comfortably higher); guards the proportional
@@ -5661,6 +6068,21 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     const ctx = context === '2d' ? canvas.getContext('2d') : null;
     if (context === '2d' && !ctx)
         return noop;
+    const life = lifetime();
+    const owned = ownership();
+    life.defer(() => owned.restore());
+    const dimension = (key, value) => {
+        if (typeof canvas.getAttribute === 'function')
+            owned.attr(canvas, key, String(value));
+        else
+            owned.property(canvas, key, value);
+    };
+    const style = (key, value) => {
+        if (typeof canvas.style.getPropertyValue === 'function')
+            owned.style(canvas, key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`), value);
+        else
+            owned.property(canvas.style, key, value);
+    };
     const fx = {
         ctx,
         canvas,
@@ -5674,18 +6096,19 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     let ready = false;
     let cleanup;
     let destroyed = false;
+    life.defer(() => { destroyed = true; });
     // the loop runs only when every gate is open
     let userPaused = false;
     let onscreen = true;
     let hasArea = false;
     let visible = document.visibilityState !== 'hidden';
     const running = () => raf !== 0;
-    const tick = (now) => {
+    const tick = life.guard((now) => {
         raf = requestAnimationFrame(tick);
         const dt = Math.min((now - last) / 1000, 0.05);
         last = now;
         frame(fx, dt);
-    };
+    });
     const sync = () => {
         const shouldRun = !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible && hasArea));
         if (shouldRun && !running()) {
@@ -5770,7 +6193,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
     // first write, so the dead band never fires on mount.
     let lastWriteContent;
     let lastWriteDpr;
-    const applySize = (entries) => {
+    const applySize = life.guard((entries) => {
         if (destroyed)
             return;
         const entry = entries?.[0];
@@ -5813,8 +6236,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         // overridden. Called from both the primary pin decision below and the
         // escape check further down.
         const pinAtW0 = () => {
-            canvas.style.boxSizing = 'content-box';
-            canvas.style.width = `${w0}px`;
+            style('boxSizing', 'content-box');
+            style('width', `${w0}px`);
             // Chrome always reports a canvas's computed `aspectRatio` as
             // `auto W / H` (the intrinsic ratio appended to the keyword), never
             // the bare `auto`, so an equality check against `'auto'` never fires
@@ -5839,7 +6262,7 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             if (typeof aspectRatio !== 'string')
                 return;
             if (aspectRatio.startsWith('auto'))
-                canvas.style.aspectRatio = `${w0} / ${h0}`;
+                style('aspectRatio', `${w0} / ${h0}`);
             pinned = true;
         };
         // The causal probe (see the module doc for the full reasoning): tries
@@ -5865,30 +6288,30 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         // probe cannot safely reason about.
         if (!pinned && w0 > 0 && h0 > 0) {
             const current = { width: canvas.width, height: canvas.height };
-            canvas.width = w0;
-            canvas.height = h0;
+            dimension('width', w0);
+            dimension('height', h0);
             const baseW = canvas.clientWidth;
             const baseH = canvas.clientHeight;
             const canGrow = 2 * w0 <= GIANT_CANVAS_LIMIT && 2 * h0 <= GIANT_CANVAS_LIMIT;
             const canShrink = w0 % 2 === 0 && h0 % 2 === 0;
             let widthFollows = false;
             if (canGrow) {
-                canvas.width = 2 * w0;
-                canvas.height = 2 * h0;
+                dimension('width', 2 * w0);
+                dimension('height', 2 * h0);
                 const grownW = canvas.clientWidth;
                 if (grownW !== baseW)
                     widthFollows = true;
-                canvas.width = w0;
-                canvas.height = h0;
+                dimension('width', w0);
+                dimension('height', h0);
             }
             if (!widthFollows && canShrink) {
-                canvas.width = w0 / 2;
-                canvas.height = h0 / 2;
+                dimension('width', w0 / 2);
+                dimension('height', h0 / 2);
                 const shrunkW = canvas.clientWidth;
                 if (shrunkW !== baseW)
                     widthFollows = true;
-                canvas.width = w0;
-                canvas.height = h0;
+                dimension('width', w0);
+                dimension('height', h0);
             }
             // Two SEPARATE, single-axis perturbations decide which axis (if
             // either) this canvas's write derives from the other through
@@ -5912,28 +6335,28 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
             if (!widthFollows) {
                 let hFixed;
                 if (2 * h0 <= GIANT_CANVAS_LIMIT) {
-                    canvas.height = 2 * h0;
+                    dimension('height', 2 * h0);
                     const grownHAlone = canvas.clientHeight;
-                    canvas.height = h0;
+                    dimension('height', h0);
                     hFixed = grownHAlone === baseH;
                 }
                 else if (h0 > 1) {
-                    canvas.height = h0 - 1;
+                    dimension('height', h0 - 1);
                     const shrunkHAlone = canvas.clientHeight;
-                    canvas.height = h0;
+                    dimension('height', h0);
                     hFixed = shrunkHAlone === baseH;
                 }
                 let wFixed;
                 if (2 * w0 <= GIANT_CANVAS_LIMIT) {
-                    canvas.width = 2 * w0;
+                    dimension('width', 2 * w0);
                     const grownWAlone = canvas.clientWidth;
-                    canvas.width = w0;
+                    dimension('width', w0);
                     wFixed = grownWAlone === baseW;
                 }
                 else if (w0 > 1) {
-                    canvas.width = w0 - 1;
+                    dimension('width', w0 - 1);
                     const shrunkWAlone = canvas.clientWidth;
-                    canvas.width = w0;
+                    dimension('width', w0);
                     wFixed = shrunkWAlone === baseW;
                 }
                 if (wFixed === true && hFixed === false)
@@ -5943,8 +6366,8 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
                 else
                     freeAxis = undefined;
             }
-            canvas.width = current.width;
-            canvas.height = current.height;
+            dimension('width', current.width);
+            dimension('height', current.height);
             if (widthFollows)
                 pinAtW0();
         }
@@ -5989,21 +6412,21 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         // not, this canvas pins now, at `w0`, same as the primary pin above,
         // never at the candidate itself.
         if (!pinned) {
-            canvas.width = w;
-            canvas.height = h;
+            dimension('width', w);
+            dimension('height', h);
             const baseW = canvas.clientWidth;
             if (2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT) {
-                canvas.width = 2 * w;
-                canvas.height = 2 * h;
+                dimension('width', 2 * w);
+                dimension('height', 2 * h);
                 const grownW = canvas.clientWidth;
-                canvas.width = w;
-                canvas.height = h;
+                dimension('width', w);
+                dimension('height', h);
                 if (grownW !== baseW)
                     pinAtW0();
             }
         }
-        canvas.width = w;
-        canvas.height = h;
+        dimension('width', w);
+        dimension('height', h);
         lastWriteContent = size;
         lastWriteDpr = fx.dpr;
         fx.width = size.width;
@@ -6040,19 +6463,19 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         // it. Paint one frame here, synchronously, without starting the loop.
         if (!destroyed && ready && !running())
             frame(fx, 0);
-    };
-    const ro = new ResizeObserver(applySize);
-    ro.observe(canvas);
-    const io = new IntersectionObserver((entries) => {
+    });
+    let ro;
+    let io;
+    const onIntersection = life.guard((entries) => {
+        if (!entries.length)
+            return;
         onscreen = entries[entries.length - 1].isIntersecting;
         sync();
     });
-    io.observe(canvas);
-    const onVisibility = () => {
+    const onVisibility = life.guard(() => {
         visible = document.visibilityState !== 'hidden';
         sync();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
+    });
     // A fixed-CSS-size canvas gets no ResizeObserver callback when it moves to
     // a monitor with a different devicePixelRatio. Watch the resolution too.
     let dprQuery = null;
@@ -6064,48 +6487,37 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
         dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
         onMediaChange(dprQuery, onDprChange);
     };
-    const onDprChange = () => {
+    const onDprChange = life.guard(() => {
         applySize();
         watchDpr();
-    };
-    watchDpr();
-    const offMotion = onMotionChange((reduced) => {
-        fx.reducedMotion = reduced;
+    });
+    life.defer(() => { if (raf)
+        cancelAnimationFrame(raf); raf = 0; });
+    life.defer(() => ro?.disconnect());
+    life.defer(() => io?.disconnect());
+    life.defer(() => document.removeEventListener('visibilitychange', onVisibility));
+    life.defer(() => { if (dprQuery)
+        offMediaChange(dprQuery, onDprChange); });
+    life.defer(() => { const dispose = cleanup; cleanup = undefined; dispose?.(); });
+    life.setup(() => {
+        ro = new ResizeObserver(applySize);
+        ro.observe(canvas);
+        io = new IntersectionObserver(onIntersection);
+        io.observe(canvas);
+        document.addEventListener('visibilitychange', onVisibility);
+        watchDpr();
+        life.defer(onMotionChange(life.guard((reduced) => { fx.reducedMotion = reduced; })));
     });
     return {
-        pause: () => {
+        pause: life.guard(() => {
             userPaused = true;
             sync();
-        },
-        resume: () => {
+        }),
+        resume: life.guard(() => {
             userPaused = false;
             sync();
-        },
-        destroy: () => {
-            // Idempotent: a second call is a no-op, not a second run of the
-            // consumer's own setup() cleanup (a WebGL context or a renderer
-            // disposed twice can itself throw). Exception-safe: the observers and
-            // listener removals below run in the `finally`, so a throwing cleanup
-            // still cannot leak them for the life of the page (ADU-189, the
-            // untouched twin of ADU-165).
-            if (destroyed)
-                return;
-            destroyed = true;
-            const dispose = cleanup;
-            cleanup = undefined;
-            try {
-                dispose?.();
-            }
-            finally {
-                sync();
-                ro.disconnect();
-                io.disconnect();
-                document.removeEventListener('visibilitychange', onVisibility);
-                offMotion();
-                if (dprQuery)
-                    offMediaChange(dprQuery, onDprChange);
-            }
-        },
+        }),
+        destroy: life.stop,
     };
 }
 
@@ -6423,6 +6835,154 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
 * no per-frame JS, same philosophy as the scroll driver.
  */
 var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
+/** Private acquisition and callback boundary for independently mounted units. */
+function reportFailure(error) {
+    if (typeof reportError === 'function')
+        reportError(error);
+    else
+        console.error(error);
+}
+function lifetime() {
+    let stopped = false;
+    let acquiring = true;
+    const releases = [];
+    const stop = () => {
+        if (stopped)
+            return;
+        stopped = true;
+        let first;
+        let failed = false;
+        for (const release of releases.splice(0).reverse()) {
+            try {
+                release();
+            }
+            catch (error) {
+                if (!failed) {
+                    first = error;
+                    failed = true;
+                }
+            }
+        }
+        if (failed)
+            throw first;
+    };
+    const fail = (error) => {
+        try {
+            stop();
+        }
+        catch { /* retain the original failure */ }
+        reportFailure(error);
+    };
+    return {
+        get stopped() { return stopped; },
+        defer(release) { if (stopped)
+            release();
+        else
+            releases.push(release); },
+        stop,
+        guard(fn) {
+            return (...args) => {
+                if (stopped)
+                    return;
+                try {
+                    fn(...args);
+                }
+                catch (error) {
+                    if (acquiring)
+                        throw error;
+                    fail(error);
+                }
+            };
+        },
+        setup(fn) {
+            try {
+                fn();
+                acquiring = false;
+            }
+            catch (error) {
+                try {
+                    stop();
+                }
+                catch { /* retain the acquisition error */ }
+                throw error;
+            }
+        },
+    };
+}
+/** Restore only our last write. A later author write becomes the new baseline. */
+function ownership() {
+    const nodes = new Map();
+    const set = (node, key, read, write, value) => {
+        let entries = nodes.get(node);
+        if (!entries)
+            nodes.set(node, entries = new Map());
+        let entry = entries.get(key);
+        const current = read();
+        if (!entry)
+            entries.set(key, entry = { read, write, before: current, last: value });
+        else if (current !== entry.last)
+            entry.before = current;
+        entry.last = value;
+        write(value);
+    };
+    const restore = (node, key) => {
+        let first, failed = false;
+        nodes.forEach((entries, target) => {
+            if (node && target !== node)
+                return;
+            entries.forEach((entry, name) => {
+                if (key && name !== key)
+                    return;
+                entries.delete(name);
+                try {
+                    if (entry.read() === entry.last)
+                        entry.write(entry.before);
+                }
+                catch (error) {
+                    if (!failed) {
+                        failed = true;
+                        first = error;
+                    }
+                }
+            });
+            if (!entries.size)
+                nodes.delete(target);
+        });
+        if (failed)
+            throw first;
+    };
+    return {
+        restore,
+        style(el, key, value, priority = '') {
+            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
+            set(el, `style:${key}`, read, (saved) => {
+                const [v, p] = JSON.parse(saved);
+                if (v)
+                    el.style.setProperty(key, v, p);
+                else
+                    el.style.removeProperty?.(key);
+            }, JSON.stringify([value, priority]));
+        },
+        class(el, key, value) {
+            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
+                el.classList.toggle(key, v);
+            else if (v)
+                el.classList.add(key);
+            else
+                el.classList.remove(key); }, value);
+        },
+        attr(el, key, value) {
+            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
+                el.removeAttribute(key);
+            else
+                el.setAttribute(key, v); }, value);
+        },
+        property(el, key, value) {
+            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
+        },
+    };
+}
+
 const noopState = {
     active: 0,
     count: 0,
@@ -6443,6 +7003,9 @@ const noop = {
 function slider(container, { axis = 'x', snap = 'mandatory', drag = true, duration = 600, cssVars = true, onSlide, onScroll, } = {}) {
     if (typeof window === 'undefined')
         return noop;
+    const life = lifetime();
+    const owned = ownership();
+    life.defer(() => owned.restore());
     const horizontal = axis === 'x';
     // RTL: normalize to logical coordinates: pos() runs 0 → range() from the
     // start of content regardless of direction (raw scrollLeft is 0 → -range
@@ -6450,10 +7013,6 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     const rtl = horizontal &&
         typeof getComputedStyle === 'function' &&
         getComputedStyle(container).direction === 'rtl';
-    container.classList.add('sv-slider');
-    container.classList.toggle('sv-slider-y', !horizontal);
-    container.classList.toggle('sv-draggable', !!drag); // grab cursor only where dragging works
-    container.style.setProperty('--sv-snap', snap);
     // axis accessors: the only place the orientation matters
     const pos = () => horizontal ? (rtl ? -container.scrollLeft + 0 : container.scrollLeft) : container.scrollTop;
     const setPos = (v) => {
@@ -6525,10 +7084,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         (typeof getComputedStyle === 'function' &&
             getComputedStyle(container).scrollSnapType === 'none');
     const suspendSnap = () => {
-        container.style.scrollSnapType = 'none';
+        if (typeof container.style.getPropertyValue === 'function')
+            owned.style(container, 'scroll-snap-type', 'none');
+        else
+            owned.property(container.style, 'scrollSnapType', 'none');
     };
     const resumeSnap = () => {
-        container.style.scrollSnapType = authoredSnap;
+        owned.restore(container, 'style:scroll-snap-type');
+        owned.restore(container.style, 'property:scrollSnapType');
     };
     let active = -1;
     // The active DOM node, not just its index: a MutationObserver-driven
@@ -6545,13 +7108,15 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // scroll a slider the page has already let go of (the React kit's autoplay
     // interval kept calling next() on one).
     let destroyed = false;
+    life.defer(() => { destroyed = true; dragging = false; });
     const slides = () => Array.from(container.children);
     // `p` lets measure() hand in the progress it already snapshotted during
     // its read phase, so the onScroll call at the end of a measure pass never
     // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
     // that same pass. Called with no argument (the public `state()`, any time
     // outside a measure pass) it reads fresh, same as before.
-    const state = (p) => ({
+    let lastState = { ...noopState };
+    const readState = (p) => ({
         active: Math.max(active, 0),
         count: container.children.length,
         position,
@@ -6559,7 +7124,11 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         dragging,
         gliding: anim !== 0,
     });
-    const measure = () => {
+    const state = () => {
+        life.guard(() => { lastState = readState(); })();
+        return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
+    };
+    const measure = life.guard(() => {
         raf = 0;
         const center = pos() + viewport() / 2;
         let best = 0;
@@ -6583,7 +7152,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             // centre 101 instead of their midpoint, 150.
             if (cssVars) {
                 const sd = (centers[i] - center) / sizes[i];
-                slide.style.setProperty('--sd', sd.toFixed(4));
+                owned.style(slide, '--sd', sd.toFixed(4));
             }
             // an exact tie keeps the first slide, as before
             const dist = Math.abs(centers[i] - center);
@@ -6608,7 +7177,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             position = Math.min(Math.max(raw, 0), centers.length - 1);
         }
         if (cssVars)
-            container.style.setProperty('--sv-progress', p.toFixed(4));
+            owned.style(container, '--sv-progress', p.toFixed(4));
         // Something outside the slider can rewrite the class attribute of the rail
         // or of a slide (React committing `className`), dropping what the engine
         // owns with no retrack and no index change to re-toggle on. Re-assert on
@@ -6618,14 +7187,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         if (classes.contains?.('sv-slider') !== true ||
             classes.contains?.('sv-slider-y') !== !horizontal ||
             classes.contains?.('sv-draggable') !== !!drag) {
-            classes.add('sv-slider');
-            classes.toggle('sv-slider-y', !horizontal);
-            classes.toggle('sv-draggable', !!drag);
+            owned.class(container, 'sv-slider', true);
+            owned.class(container, 'sv-slider-y', !horizontal);
+            owned.class(container, 'sv-draggable', !!drag);
         }
         list.forEach((slide, i) => {
             const wanted = i === best;
             if (slide.classList.contains?.('sv-active') !== wanted)
-                slide.classList.toggle('sv-active', wanted);
+                owned.class(slide, 'sv-active', wanted);
         });
         const bestEl = list[best] ?? null;
         if (best !== active || bestEl !== activeEl) {
@@ -6633,42 +7202,33 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             active = best;
             activeEl = bestEl;
             if (cssVars)
-                container.style.setProperty('--sv-slide', String(best));
+                owned.style(container, '--sv-slide', String(best));
             if (indexChanged)
                 onSlide?.(best);
         }
-        if (!destroyed)
-            onScroll?.(state(p));
-    };
-    const schedule = () => {
-        if (!raf && !destroyed)
+        if (!life.stopped) {
+            lastState = readState(p);
+            onScroll?.(lastState);
+        }
+    });
+    const schedule = life.guard(() => {
+        if (!raf && !life.stopped)
             raf = requestAnimationFrame(measure);
-    };
+    });
     // Geometry changes can invalidate an in-flight destination. Reuse goTo's
     // fresh bounds only on observer delivery, not on every animation frame.
-    const onLayout = () => {
+    const onLayout = life.guard(() => {
         if (anim)
             goTo(target);
         schedule();
-    };
-    container.addEventListener('scroll', schedule, { passive: true });
-    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(onLayout) : null;
-    ro?.observe(container);
+    });
+    let ro;
+    let mo;
     const watchSlides = () => {
         ro?.disconnect();
         ro?.observe(container);
         slides().forEach((slide) => ro?.observe(slide));
     };
-    watchSlides();
-    // replaced or added children re-measure even when the container box stays the same
-    const mo = typeof MutationObserver === 'function'
-        ? new MutationObserver(() => {
-            watchSlides();
-            onLayout();
-        })
-        : null;
-    mo?.observe(container, { childList: true });
-    measure();
     // pending glide destination: rapid next/prev clicks accumulate from here,
     // not from `active` (which lags mid-glide and would swallow the clicks)
     let target = -1;
@@ -6680,14 +7240,14 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             // the stopped state once; schedule() coalesces a pending measurement.
             schedule();
         }
-        container.classList.remove('sv-gliding');
+        owned.class(container, 'sv-gliding', false);
     };
     // A preference that flips to reduce mid-glide settles the glide where it
     // was going, now: checking only when a glide starts left one in flight.
     // `target` is the slide INDEX the glide is heading for, so the settle goes
     // through goTo(index, false), which recomputes the pixel destination; the
     // first version wrote the index as scrollLeft (review, ADU-243).
-    const offMotion = onMotionChange((reduced) => {
+    const motionChanged = life.guard((reduced) => {
         if (!reduced || target < 0 || destroyed)
             return;
         goTo(target, false);
@@ -6702,13 +7262,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             return;
         }
         suspendSnap(); // native snap must not tug while we animate
-        container.classList.add('sv-gliding');
+        owned.class(container, 'sv-gliding', true);
         // exponential lerp, not a fixed tween: velocity is proportional to the
         // remaining distance, so short release settles feel as soft as long
         // button glides, and retargets (rapid clicks) stay continuous.
         // `duration` calibrates the settle time (~99.8% covered by then).
         let last = performance.now();
-        const step = (now) => {
+        const step = life.guard((now) => {
             const dt = Math.min(now - last, 50);
             last = now;
             const factor = 1 - Math.pow(0.002, dt / duration);
@@ -6723,7 +7283,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 setPos(current);
                 anim = requestAnimationFrame(step);
             }
-        };
+        });
         anim = requestAnimationFrame(step);
     };
     // The wheel settle (below) glides to the nearest slide 200 ms after the last
@@ -6741,7 +7301,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     };
     // next, prev and the keyboard all route through goTo; seek is the other
     // writer. Two guards cover every command.
-    const goTo = (index, smooth = true) => {
+    const goTo = life.guard((index, smooth = true) => {
         if (destroyed)
             return;
         clearWheel(); // this call owns the position now, not the pending settle
@@ -6767,8 +7327,8 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             target = -1;
             setPos(to);
         }
-    };
-    const seek = (progress) => {
+    });
+    const seek = life.guard((progress) => {
         if (destroyed)
             return;
         clearWheel();
@@ -6776,7 +7336,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         target = -1;
         suspendSnap(); // the driver owns this instance's position
         setPos(Math.max(0, Math.min(progress, 1)) * range());
-    };
+    });
     /** Where the next relative step counts from: the in-flight destination if
      * a glide is running, the measured active slide otherwise. */
     const stepBase = () => (anim && target >= 0 ? target : active);
@@ -6789,7 +7349,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     let startPoint = 0;
     let pressed = false; // mouse is down; becomes a drag only after real movement
     const DRAG_THRESHOLD = 5;
-    const onMove = (event) => {
+    const onMove = life.guard((event) => {
         const point = horizontal ? event.clientX : event.clientY;
         if (!dragging) {
             // pending press: activating only after real movement keeps a plain
@@ -6799,24 +7359,25 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 return;
             dragging = true;
             suspendSnap();
-            container.classList.add('sv-dragging'); // slider.css: user-select none
+            owned.class(container, 'sv-dragging', true); // slider.css: user-select none
             lastPointer = point;
             return;
         }
         const step = point - lastPointer;
         setPos(pos() - (rtl ? -step : step));
         lastPointer = point;
-    };
+    });
     // the click that follows a real drag would activate whatever link the
     // pointer happens to be over. Swallow exactly that one
-    const suppressClick = (event) => {
+    const suppressClick = life.guard((event) => {
         event.preventDefault();
         event.stopPropagation();
         window.removeEventListener('click', suppressClick, true);
-    };
+    });
+    let clickTimer;
     const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]';
     let pressedTarget = null;
-    const endDrag = () => {
+    const endDrag = life.guard(() => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', endDrag);
         window.removeEventListener('pointercancel', endDrag);
@@ -6833,9 +7394,9 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             return;
         }
         dragging = false;
-        container.classList.remove('sv-dragging');
+        owned.class(container, 'sv-dragging', false);
         window.addEventListener('click', suppressClick, true);
-        setTimeout(() => window.removeEventListener('click', suppressClick, true), 0);
+        clickTimer = setTimeout(life.guard(() => window.removeEventListener('click', suppressClick, true)), 0);
         if (snap === 'proximity' || snapIsNone) {
             resumeSnap();
             return;
@@ -6854,14 +7415,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             }
         });
         goTo(nearest);
-    };
+    });
     // native image/link drag-and-drop would hijack the gesture mid-press
-    const onDragStart = (event) => {
+    const onDragStart = life.guard((event) => {
         if (pressed)
             event.preventDefault();
-    };
-    container.addEventListener('dragstart', onDragStart);
-    const onDown = (event) => {
+    });
+    const onDown = life.guard((event) => {
         const owner = event.target?.closest?.('.sv-slider');
         if (owner && owner !== container)
             return;
@@ -6893,13 +7453,12 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         window.addEventListener('pointermove', onMove);
         window.addEventListener('pointerup', endDrag);
         window.addEventListener('pointercancel', endDrag);
-    };
-    container.addEventListener('pointerdown', onDown);
+    });
     // trackpad/wheel pan: native mandatory snap settles fast and can't be
     // slowed, so replace it. Suspend snap while wheeling, then glide to the
     // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
     // instances authored with snap none (scroll-driven ones own their position).
-    const onWheel = (event) => {
+    const onWheel = life.guard((event) => {
         const owner = event.target?.closest?.('.sv-slider');
         if (owner && owner !== container)
             return;
@@ -6920,16 +7479,13 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             wheelTimer = undefined;
             goTo(active);
         }, 200);
-    };
-    container.addEventListener('wheel', onWheel, { passive: true });
+    });
     const next = (smooth = true) => goTo(stepBase() + 1, smooth);
     const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
     // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
     // hard after each. Replace it with the same soft glide as everything else.
     // The container is made focusable (Safari never focuses scrollers on its own).
-    if (container.tabIndex === -1)
-        container.tabIndex = 0;
-    const onKey = (event) => {
+    const onKey = life.guard((event) => {
         if (event.target !== container)
             return; // arrows inside inputs stay theirs
         const nextKey = horizontal ? (rtl ? 'ArrowLeft' : 'ArrowRight') : 'ArrowDown';
@@ -6945,8 +7501,48 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         else
             return;
         event.preventDefault();
+    });
+    // Register each release before its acquisition, including APIs that throw
+    // after adding a listener or observing a node.
+    const listen = (node, type, fn, options) => {
+        life.defer(() => node.removeEventListener(type, fn, options));
+        node.addEventListener(type, fn, options);
     };
-    container.addEventListener('keydown', onKey);
+    life.defer(() => { if (raf)
+        cancelAnimationFrame(raf); raf = 0; });
+    life.defer(() => { if (anim)
+        cancelAnimationFrame(anim); anim = 0; });
+    life.defer(clearWheel);
+    life.defer(() => { if (clickTimer !== undefined)
+        clearTimeout(clickTimer); });
+    life.defer(() => ro?.disconnect());
+    life.defer(() => mo?.disconnect());
+    life.defer(() => window.removeEventListener('click', suppressClick, true));
+    life.defer(() => window.removeEventListener('pointermove', onMove));
+    life.defer(() => window.removeEventListener('pointerup', endDrag));
+    life.defer(() => window.removeEventListener('pointercancel', endDrag));
+    life.setup(() => {
+        owned.class(container, 'sv-slider', true);
+        owned.class(container, 'sv-slider-y', !horizontal);
+        owned.class(container, 'sv-draggable', !!drag);
+        owned.style(container, '--sv-snap', snap);
+        if (container.tabIndex === -1)
+            owned.attr(container, 'tabindex', '0');
+        listen(container, 'scroll', schedule, { passive: true });
+        if (typeof ResizeObserver === 'function')
+            ro = new ResizeObserver(onLayout);
+        watchSlides();
+        if (typeof MutationObserver === 'function') {
+            mo = new MutationObserver(life.guard(() => { watchSlides(); onLayout(); }));
+            mo.observe(container, { childList: true });
+        }
+        life.defer(onMotionChange(motionChanged));
+        listen(container, 'dragstart', onDragStart);
+        listen(container, 'pointerdown', onDown);
+        listen(container, 'wheel', onWheel, { passive: true });
+        listen(container, 'keydown', onKey);
+        measure();
+    });
     return {
         next,
         prev,
@@ -6954,27 +7550,7 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         seek,
         active: () => Math.max(active, 0),
         state,
-        destroy: () => {
-            destroyed = true;
-            offMotion();
-            stopGlide();
-            resumeSnap();
-            container.classList.remove('sv-slider', 'sv-slider-y', 'sv-draggable', 'sv-dragging');
-            clearWheel();
-            container.removeEventListener('wheel', onWheel);
-            container.removeEventListener('keydown', onKey);
-            container.removeEventListener('scroll', schedule);
-            container.removeEventListener('pointerdown', onDown);
-            container.removeEventListener('dragstart', onDragStart);
-            window.removeEventListener('click', suppressClick, true);
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', endDrag);
-            window.removeEventListener('pointercancel', endDrag);
-            ro?.disconnect();
-            mo?.disconnect();
-            if (raf)
-                cancelAnimationFrame(raf);
-        },
+        destroy: life.stop,
     };
 }
 
@@ -7042,6 +7618,154 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
  * 0s for two frames, snapping instead of animating any change to it that
  * landed inside the hold window.
  */
+/** Private acquisition and callback boundary for independently mounted units. */
+function reportFailure(error) {
+    if (typeof reportError === 'function')
+        reportError(error);
+    else
+        console.error(error);
+}
+function lifetime() {
+    let stopped = false;
+    let acquiring = true;
+    const releases = [];
+    const stop = () => {
+        if (stopped)
+            return;
+        stopped = true;
+        let first;
+        let failed = false;
+        for (const release of releases.splice(0).reverse()) {
+            try {
+                release();
+            }
+            catch (error) {
+                if (!failed) {
+                    first = error;
+                    failed = true;
+                }
+            }
+        }
+        if (failed)
+            throw first;
+    };
+    const fail = (error) => {
+        try {
+            stop();
+        }
+        catch { /* retain the original failure */ }
+        reportFailure(error);
+    };
+    return {
+        get stopped() { return stopped; },
+        defer(release) { if (stopped)
+            release();
+        else
+            releases.push(release); },
+        stop,
+        guard(fn) {
+            return (...args) => {
+                if (stopped)
+                    return;
+                try {
+                    fn(...args);
+                }
+                catch (error) {
+                    if (acquiring)
+                        throw error;
+                    fail(error);
+                }
+            };
+        },
+        setup(fn) {
+            try {
+                fn();
+                acquiring = false;
+            }
+            catch (error) {
+                try {
+                    stop();
+                }
+                catch { /* retain the acquisition error */ }
+                throw error;
+            }
+        },
+    };
+}
+/** Restore only our last write. A later author write becomes the new baseline. */
+function ownership() {
+    const nodes = new Map();
+    const set = (node, key, read, write, value) => {
+        let entries = nodes.get(node);
+        if (!entries)
+            nodes.set(node, entries = new Map());
+        let entry = entries.get(key);
+        const current = read();
+        if (!entry)
+            entries.set(key, entry = { read, write, before: current, last: value });
+        else if (current !== entry.last)
+            entry.before = current;
+        entry.last = value;
+        write(value);
+    };
+    const restore = (node, key) => {
+        let first, failed = false;
+        nodes.forEach((entries, target) => {
+            if (node && target !== node)
+                return;
+            entries.forEach((entry, name) => {
+                if (key && name !== key)
+                    return;
+                entries.delete(name);
+                try {
+                    if (entry.read() === entry.last)
+                        entry.write(entry.before);
+                }
+                catch (error) {
+                    if (!failed) {
+                        failed = true;
+                        first = error;
+                    }
+                }
+            });
+            if (!entries.size)
+                nodes.delete(target);
+        });
+        if (failed)
+            throw first;
+    };
+    return {
+        restore,
+        style(el, key, value, priority = '') {
+            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
+            set(el, `style:${key}`, read, (saved) => {
+                const [v, p] = JSON.parse(saved);
+                if (v)
+                    el.style.setProperty(key, v, p);
+                else
+                    el.style.removeProperty?.(key);
+            }, JSON.stringify([value, priority]));
+        },
+        class(el, key, value) {
+            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
+                el.classList.toggle(key, v);
+            else if (v)
+                el.classList.add(key);
+            else
+                el.classList.remove(key); }, value);
+        },
+        attr(el, key, value) {
+            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
+                el.removeAttribute(key);
+            else
+                el.setAttribute(key, v); }, value);
+        },
+        property(el, key, value) {
+            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
+        },
+    };
+}
+
 // One click, one state change, across every live instance. `toggles(root?)`
 // is public optional-root API and the documented setup runs two instances at
 // once: `<ScrollVarsBoot />` calls it unscoped and a consumer calls it on
@@ -7101,6 +7825,17 @@ function toggles(root) {
     if (typeof window === 'undefined')
         return () => { };
     const scope = root ?? document;
+    const life = lifetime();
+    let transaction = ownership();
+    let siblingWrites = [];
+    const rollback = () => {
+        for (const journal of [transaction, ...siblingWrites]) {
+            try {
+                journal.restore();
+            }
+            catch { /* retain the operation's error */ }
+        }
+    };
     const resolve = (trigger) => {
         const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
         const selector = trigger.getAttribute('data-sv-target');
@@ -7129,25 +7864,52 @@ function toggles(root) {
     // trigger whose selector does not parse is skipped, not thrown on.
     const sync = (target, className, on) => {
         const seen = new Set();
-        live.forEach((instance) => instance.triggers().forEach((t) => {
-            if (seen.has(t))
-                return;
-            seen.add(t);
-            const other = ownerOf(t);
-            if (other && other.target === target && other.className === className)
-                t.setAttribute(t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
-        }));
+        live.forEach((otherInstance) => {
+            const journal = otherInstance === instance ? transaction : ownership();
+            if (otherInstance !== instance)
+                siblingWrites.push(journal);
+            const update = () => otherInstance.triggers().forEach((t) => {
+                if (seen.has(t))
+                    return;
+                seen.add(t);
+                const other = ownerOf(t);
+                if (other && other.target === target && other.className === className)
+                    journal.attr(t, t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
+            });
+            // The click's own sync belongs to its semantic transaction. A broken
+            // sibling's query or ARIA write belongs to that sibling's lifetime.
+            if (otherInstance === instance)
+                update();
+            else
+                otherInstance.run(() => {
+                    try {
+                        update();
+                    }
+                    catch (error) {
+                        try {
+                            journal.restore();
+                        }
+                        catch { /* retain the sibling failure */ }
+                        throw error;
+                    }
+                });
+        });
     };
-    const instance = { scope, triggers, resolve };
-    live.add(instance);
+    const instance = { scope, triggers, resolve, run: life.guard(work => work()) };
     // the target's own state, written wherever the class flips
     const write = (target, className, on) => {
-        target.style.setProperty('--sv-state', on ? '1' : '0');
+        transaction.style(target, '--sv-state', on ? '1' : '0');
         sync(target, className, on);
     };
     // targets currently inside their boot settle: cancellable by a click that
     // lands inside the two-frame hold, so it still gets its transition
     const settling = new WeakSet();
+    const frames = new Set();
+    const hold = ownership();
+    const frame = (fn) => {
+        const id = requestAnimationFrame(life.guard(() => { frames.delete(id); fn(); }));
+        frames.add(id);
+    };
     // an inline transition-duration LONGHAND held for the same settle, saved
     // per target (value and priority, exact). --sv-acts-settle above cannot
     // reach this case: an inline longhand outranks it regardless of what the
@@ -7159,14 +7921,14 @@ function toggles(root) {
             return; // no inline longhand: the --sv-acts-settle knob alone covers this target
         const priority = target.style.getPropertyPriority('transition-duration');
         longhandHold.set(target, { value, priority });
-        target.style.setProperty('transition-duration', '0s', priority);
+        hold.style(target, 'transition-duration', '0s', priority);
     };
     const restoreDuration = (target) => {
         const saved = longhandHold.get(target);
         if (!saved)
             return;
         longhandHold.delete(target);
-        target.style.setProperty('transition-duration', saved.value, saved.priority);
+        hold.restore(target, 'style:transition-duration');
     };
     const targets = new Set();
     const mark = (target) => {
@@ -7176,28 +7938,52 @@ function toggles(root) {
         let marker = markers.get(target);
         const authored = target.classList.contains('sv-ui');
         if (!marker) {
-            marker = { owners: 0, release: () => {
+            marker = { owners: 0, settle: () => {
+                    if (settling.has(target)) {
+                        settling.delete(target);
+                        hold.restore(target);
+                        restoreDuration(target);
+                    }
+                }, release: () => {
                     if (!authored)
                         target.classList.remove('sv-ui');
                     if (settling.has(target)) {
                         settling.delete(target);
-                        target.style.removeProperty('--sv-acts-settle');
+                        hold.restore(target);
                         restoreDuration(target);
                     }
                 } };
             markers.set(target, marker);
         }
         marker.owners++;
+        life.defer(() => {
+            // Finish a departing owner's hold even if another controller remains.
+            // It must not retain 0s after this owner's queued frames are cancelled.
+            try {
+                marker.settle();
+            }
+            finally {
+                if (--marker.owners === 0) {
+                    markers.delete(target);
+                    marker.release();
+                }
+            }
+        });
         target.classList.add('sv-ui');
         return !authored;
     };
-    triggers().forEach((trigger) => {
+    const boot = () => triggers().forEach((trigger) => {
         let resolved;
         try {
             resolved = resolve(trigger);
         }
-        catch {
-            return; // a selector that does not parse skips its trigger, not the whole boot (round 10)
+        catch (error) {
+            // a selector that does not parse skips its trigger, not the whole boot
+            // (round 10). Browsers throw a DOMException NAMED SyntaxError, never a
+            // JS SyntaxError instance, so the name is the only cross-surface check.
+            if (error?.name === 'SyntaxError')
+                return;
+            throw error;
         }
         const { className, target } = resolved;
         if (!target)
@@ -7216,14 +8002,14 @@ function toggles(root) {
                 // scoped to --sv-acts-settle (styles/state.css): two frames is
                 // enough for the cascade to apply the new --sv-act before the acts
                 // transition comes back.
-                target.style.setProperty('--sv-acts-settle', '0s');
-                holdDuration(target);
                 settling.add(target);
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
+                hold.style(target, '--sv-acts-settle', '0s');
+                holdDuration(target);
+                frame(() => {
+                    frame(() => {
                         if (settling.has(target)) {
                             settling.delete(target);
-                            target.style.removeProperty('--sv-acts-settle');
+                            hold.restore(target);
                             restoreDuration(target);
                         }
                     });
@@ -7236,7 +8022,7 @@ function toggles(root) {
         // class until the first click.
         write(target, className, target.classList.contains(className));
     });
-    const onClick = (event) => {
+    const click = (event) => {
         // a nearer scope already owned this click: not our trigger, and nothing
         // here runs, not even the sv-ui marking or the settle cancel
         if (claimed.has(event))
@@ -7272,26 +8058,50 @@ function toggles(root) {
         // a click landing inside the boot settle must still animate: drop the
         // hold before the class flips, and cancel the scheduled restore so it
         // does not act on a target a fresh boot may have re-armed since
-        if (settling.has(target)) {
-            settling.delete(target);
-            target.style.removeProperty('--sv-acts-settle');
-            restoreDuration(target);
+        markers.get(target)?.settle();
+        const on = !target.classList.contains(className);
+        transaction.class(target, className, on);
+        write(target, className, on);
+    };
+    const onClick = life.guard((event) => {
+        transaction = ownership();
+        siblingWrites = [];
+        try {
+            click(event);
         }
-        write(target, className, target.classList.toggle(className));
-    };
-    scope.addEventListener('click', onClick);
-    return () => {
+        catch (error) {
+            rollback();
+            throw error;
+        }
+        finally {
+            transaction = ownership();
+            siblingWrites = [];
+        }
+    });
+    life.defer(() => {
+        frames.forEach(id => { if (typeof cancelAnimationFrame === 'function')
+            cancelAnimationFrame(id); });
+        frames.clear();
+    });
+    life.defer(() => {
         live.delete(instance);
-        scope.removeEventListener('click', onClick);
-        targets.forEach(target => {
-            const marker = markers.get(target);
-            if (--marker.owners === 0) {
-                markers.delete(target);
-                marker.release();
-            }
-        });
         targets.clear();
-    };
+    });
+    life.defer(() => scope.removeEventListener('click', onClick));
+    try {
+        life.setup(() => {
+            live.add(instance);
+            boot();
+            scope.addEventListener('click', onClick);
+        });
+    }
+    catch (error) {
+        rollback();
+        throw error;
+    }
+    transaction = ownership();
+    siblingWrites = [];
+    return life.stop;
 }
 
   return toggles;
