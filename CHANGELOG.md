@@ -2,6 +2,10 @@
 
 ## 1.18.0 (2026-09-16)
 
+### Changed
+
+- The release gate runs packed-tarball acceptance in Chromium, Firefox and WebKit and publishes the same tested file.
+
 ### Added
 
 - `AttachmentStatus` and `TrackOptions.onStatus` report each attachment lease transition, including successful output, completion, failure and release. `track()` keeps returning its cleanup function.
