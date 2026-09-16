@@ -242,7 +242,15 @@ export async function runBrowsers({ fixture, browsers, react, check }) {
                 snapshot = await page.evaluate(() => ({ baseline: window.packedBaseline, actual: window.packedResources() }))
                 if (JSON.stringify(snapshot.actual) === JSON.stringify(snapshot.baseline)) break
                 if (Date.now() > deadline) {
-                  const diff = (a, b) => ({ extra: b.filter(x => !a.includes(x)), missing: a.filter(x => !b.includes(x)) })
+                  // multiset diff: a duplicate signature (one more window:resize:false
+                  // than the baseline had) is a leak that a set difference hides
+                  const diff = (a, b) => {
+                    const count = list => list.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())
+                    const before = count(a), after = count(b), extra = [], missing = []
+                    for (const [x, n] of after) if (n > (before.get(x) || 0)) extra.push(`${x} x${n - (before.get(x) || 0)}`)
+                    for (const [x, n] of before) if (n > (after.get(x) || 0)) missing.push(`${x} x${n - (after.get(x) || 0)}`)
+                    return { extra, missing }
+                  }
                   throw Error(`resources did not return to baseline: listeners ${JSON.stringify(diff(snapshot.baseline.listeners, snapshot.actual.listeners))}, observers ${JSON.stringify(diff(snapshot.baseline.observers, snapshot.actual.observers))}, frames ${snapshot.baseline.frames} -> ${snapshot.actual.frames}`)
                 }
                 await new Promise(resolve => setTimeout(resolve, 100))

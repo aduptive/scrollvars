@@ -36,7 +36,11 @@ export function instrumentResources() {
     const Native = window[name]
     window[name] = class extends Native {
       constructor(callback) { super(callback); this.targets = new Set(); this.kind = name }
-      observe(target, options) { super.observe(target, options); this.targets.add(target); observers.add(this) }
+      // Playwright's injected script observes `document` itself (childList, to
+      // re-arm its listeners on a document element swap); nothing in the
+      // package observes `document` (documentElement and elements only), so an
+      // observer on the document node is the tool's and stays out of the count.
+      observe(target, options) { super.observe(target, options); if (target === document) return; this.targets.add(target); observers.add(this) }
       unobserve(target) { super.unobserve(target); this.targets.delete(target); if (!this.targets.size) observers.delete(this) }
       disconnect() { super.disconnect(); this.targets.clear(); observers.delete(this) }
     }
