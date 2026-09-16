@@ -3,7 +3,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.2 KB, full core incl. the slider 11.2 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.8 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.3 KB, full core incl. the slider 11.3 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.9 KB on the wire.
 
 ## Why
 
@@ -144,17 +144,17 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 5.2 KB |
-| `track` + `scan` (zero-wrapper mode) | 7.5 KB |
+| `track` (the driver) | 5.3 KB |
+| `track` + `scan` (zero-wrapper mode) | 7.6 KB |
 | `slider` | 3.6 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 11.2 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 17.7 KB |
+| everything in `scrollvars` (the core entry) | 11.3 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 17.8 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~7.8 KB gzipped, total.**
+**~7.9 KB gzipped, total.**
 
 ## Mental model
 
@@ -241,6 +241,36 @@ import { Reveal, Parallax, Scenes, Item } from 'scrollvars/react'
 
 Lower level: `<Track>` (the base component) and `useTrack(options)` / `useScenes(count)`.
 
+`TrackOptions.onStatus(status)` reports one lease's `AttachmentStatus` (exported
+from `scrollvars`). The callback is also an option of `useTrack` and `useScenes`,
+and a prop on `<Track>` and `<Scenes>`. Hook refs keep their
+`React.RefObject<T>` return type and pass directly to JSX refs in React 18 and 19.
+
+| Status | Notification |
+| --- | --- |
+| `attaching` | Synchronously when the lease starts, before setup and measurement. |
+| `active` | After its first successful measured frame and output callbacks. This does not prove that a Section's CSS loaded or its content fits. |
+| `completed` | An entrance-only `once` lease has written its final visible output and stopped tracking. It can complete on the first frame without becoming `active`. |
+| `released` | Explicit cleanup, replacement or boot release has settled the lease to static content. |
+| `failed` | Initialization, measurement, output or a callback failed; rollback has settled the content. |
+
+Each transition notifies once, never per frame or after `released`. Cleanup is
+idempotent; a completed entrance stays visible and its cleanup does nothing.
+Callback replacement in React uses the latest callback without retracking or
+replaying the current status. `track()` still returns its cleanup function.
+Use the notification to clear accessibility restrictions on failure or release.
+Keep Section-specific fit and computed CSS checks before hiding inactive media.
+
+Motion reversal does not change an active lease's status: reducing motion
+mid-flight restores static layouts and reachable media, while pin/travel/scene
+clocks still scrub. Returning to normal motion can resume the layout if it fits.
+An overflow fallback marked `data-sv-flow` stays latched even if content shrinks
+or motion reverses. Call `track()` again (or remount the React tracker) to retry
+after fixing a failure or to re-evaluate latched flow. The three-second Boot
+watchdog is terminal for the page session: late tracking, scanning and remounts
+remain static, even after missing dependencies arrive. A later track lease
+reports `attaching`, then `failed`.
+
 **Zero-wrapper mode:** drop one `<ScrollVarsBoot />` in the root layout and write
 plain server components with `data-sv` attributes. No client wrappers anywhere:
 
@@ -292,6 +322,20 @@ npx scrollvars add marquee --dir src/ui
 The CLI fetches a remote registry, so the library grows without package
 releases.
 
+For a complete Section, run `npx scrollvars add sticky-steps`, import
+`scrollvars/styles/pin.css` in your entry file, then use the installed component:
+
+```tsx
+import { StickySteps } from './components/fx/StickySteps'
+
+export function ProductStory() {
+  return <StickySteps steps={[
+    { title: 'Explore', text: 'Find your starting point.', media: <img src="explore.jpg" alt="Product overview" /> },
+    { title: 'Create', text: 'Make it yours.', media: <img src="create.jpg" alt="Product editor" /> },
+  ]} />
+}
+```
+
 ## The component kit (React)
 
 Batteries-included wrappers over the same engine. Less React, less JS,
@@ -339,9 +383,22 @@ from center, in slide widths) and `.sv-active`. Any CSS reading them
 animates the carousel with no per-frame JS of yours (the slider itself measures `--sd` on scroll frames):
 
 ```tsx
-const { ref, active, next, prev } = useSlider()   // or slider(el) in vanilla
-<div ref={ref}>{slides.map(…)}</div>
+import type { ReactNode } from 'react'
+import { useSlider } from 'scrollvars/react'
 
+export function Carousel({ slides }: { slides: ReactNode[] }) {
+  const { ref, next, prev } = useSlider() // or slider(el) in vanilla
+  return <>
+    <div ref={ref} className="sv-slider">
+      {slides.map((slide, i) => <div key={i} className="slide">{slide}</div>)}
+    </div>
+    <button onClick={() => prev()}>Previous</button>
+    <button onClick={() => next()}>Next</button>
+  </>
+}
+```
+
+```css
 /* coverflow in two lines */
 .slide { scale: calc(1 - min(max(var(--sd), -1 * var(--sd)) * 0.12, 0.3)); opacity: calc(1 - abs(var(--sd)) * 0.35); }
 ```
@@ -443,8 +500,19 @@ const ref = usePointer()          // or trackPointer(container) in vanilla
 `onTravel` fires on every driver frame while the element is near the viewport, with the raw 0..1 value. Feed it to whatever JS needs to follow the scroll. Track it with a custom `root` and that near-viewport culling never applies, by design: the callback fires every frame no matter where the root itself sits on screen.
 
 ```tsx
-useTrack({ onTravel: (t) => drawFrame(Math.round(t * (frames.length - 1))) }) // frame sequence, never video.currentTime
-useScenes(4, {})            // or drive an R3F camera from onScene / onTravel
+import { useTrack, useScenes } from 'scrollvars/react'
+
+export function FrameSequence({ frameCount, drawFrame }: { frameCount: number; drawFrame: (index: number) => void }) {
+  const ref = useTrack<HTMLDivElement>({
+    onTravel: t => drawFrame(Math.round(t * Math.max(0, frameCount - 1))),
+  }) // frame sequence, never video.currentTime
+  return <div ref={ref}>Scroll to explore the sequence.</div>
+}
+
+export function Story() {
+  const { ref, scene } = useScenes<HTMLDivElement>(4, { pin: '400vh' })
+  return <div ref={ref}><div className="sv-stage">Scene {scene + 1}</div></div>
+}
 ```
 
 ## Canvas effects (`scrollvars/canvas`)
@@ -455,16 +523,23 @@ cap, delta-time loop, **pause when offscreen or the tab is hidden**,
 `prefers-reduced-motion`, cleanup. Drawing space is CSS pixels.
 
 ```tsx
-const ref = useCanvasEffect({
-  setup: (fx) => { points = makeSphere(1000) },
-  frame: (fx, dt) => {
-    if (!fx.ctx) return // typed nullable: `context: null` effects own the canvas
-    fx.ctx.clearRect(0, 0, fx.width, fx.height)
-    angle += (fx.reducedMotion ? 0.05 : 1) * dt
-    drawSphere(fx.ctx, points, angle)
-  },
-})
-<canvas ref={ref} className="h-full w-full" />
+import { useRef } from 'react'
+import { useCanvasEffect } from 'scrollvars/react'
+
+export function Orbit() {
+  const angle = useRef(0)
+  const ref = useCanvasEffect({
+    frame: (fx, dt) => {
+      if (!fx.ctx) return // context: null effects own the canvas
+      fx.ctx.clearRect(0, 0, fx.width, fx.height)
+      if (!fx.reducedMotion) angle.current += dt
+      fx.ctx.beginPath()
+      fx.ctx.arc(fx.width / 2 + Math.cos(angle.current) * 40, fx.height / 2, 8, 0, Math.PI * 2)
+      fx.ctx.fill()
+    },
+  })
+  return <canvas ref={ref} width={320} height={180} aria-hidden="true" />
+}
 ```
 
 Vanilla: `mountEffect(canvas, { setup, frame })` returns
@@ -585,7 +660,8 @@ static card stays reachable. Compat's rail still ignores `--sv-rail-start`
 and starts at `translateX(0)`; it is stationary when its width fits the stage.
 
 Installed StickySteps only applies `inert` and `aria-hidden` to inactive shots
-after tracking and its first fit evaluation succeed and the crossfade layout
+after `onStatus('active')`, its first fit evaluation and computed CSS checks
+confirm the crossfade layout
 is active. It starts static, even while another section has booted the driver.
 Failed enhancement, release, reduced motion and fit-to-flow clear layout and
 accessibility hiding so every static shot remains reachable.

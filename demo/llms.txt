@@ -455,6 +455,36 @@ version: respect `.nvmrc`.
 
 ## Fit-to-flow and declarative pointer
 
+`TrackOptions.onStatus` is the supported per-lease notification. Import its
+`AttachmentStatus` type from `scrollvars`. `useTrack` and `useScenes` accept
+the same option; `<Track>` and `<Scenes>` accept the same prop. The hook ref
+remains `React.RefObject<T>`, directly usable in JSX under React 18 and 19.
+README hook examples and installed Section usage are compiled from their
+actual fenced snippets against public declarations under both majors.
+
+Status values: `attaching` fires synchronously before setup; `active` follows
+the first successful measurement, output and output callbacks; `completed`
+follows the final visible output of an entrance-only `once` lease, which can
+finish without an `active` notification. `released` follows static settlement
+on cleanup, replacement or boot release. `failed` follows static settlement
+after initialization, measurement, output or callback failure. Each transition
+fires once; no per-frame repeats and no notification after `released`.
+A completed entrance stays visible and its cleanup is a no-op. React reads
+the latest callback without reattaching or replaying status. `track()` keeps
+returning its cleanup function.
+
+An active tracker does not prove that a Section's crossfade CSS exists or
+that the content fits. StickySteps combines status with its fit and computed
+layout checks, then clears `inert` and `aria-hidden` on failure or release.
+Reducing motion mid-flight leaves the lease active but restores static,
+reachable media; returning to normal motion can resume a working crossfade.
+The pin/travel/scene clocks keep scrubbing. An overflow `data-sv-flow` latch
+survives both shrinking content and motion reversal until an explicit retrack.
+Call `track()` again (or remount the React tracker) after fixing a recoverable
+failure. The three-second Boot watchdog is terminal for the page session:
+late tracking, scanning and remounts stay static. A later track lease reports
+`attaching`, then `failed`.
+
 Pin progress includes the stage's normal-flow offset, so a heading or padding before the stage delays the start until it sticks. After replacing a stage or fit node, call `refresh()` to resolve the new geometry and transfer resize observations. Origin measurement temporarily disables sticky positioning and restores it on attach, refresh, resize and scene navigation; ordinary scroll frames use the cached origin.
 
 Overlapping scans share tracking, split text and pointer controllers until the last scanner releases them. Pointer controllers clear removed targets while their container remains active. Stopping the last `toggles()` controller removes its `sv-ui` marker and restores pending boot-settle overrides, so a controlled marquee becomes static again.

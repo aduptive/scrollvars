@@ -8,8 +8,19 @@ import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 function installed(slug) {
   let cursor = 0, pending = [], reduced = false
   const slots = [], observers = [], motion = new Set()
-  const node = { querySelector: () => ({}), classList: { contains: () => enhanced, toggle() {}, remove() {} }, hasAttribute: () => false }
-  let enhanced = false, onFlow
+  const classes = new Set(), stage = { clientHeight: 900 }, fit = { offsetHeight: 400, scrollHeight: 400 }
+  const shots = Array.from({ length: 2 }, () => {
+    const attrs = new Map()
+    return { attrs, setAttribute: (k, v) => attrs.set(k, v), removeAttribute: k => attrs.delete(k) }
+  })
+  const shot = shots[0]
+  const node = { querySelector: selector => selector === '.sv-stage' ? stage : selector === '[data-sv-fit]' ? fit : shot,
+    querySelectorAll: () => shots, classList: {
+      contains: c => classes.has(c), add: c => classes.add(c), remove: c => classes.delete(c),
+      toggle: (c, on) => on ? classes.add(c) : classes.delete(c),
+    }, hasAttribute: () => false }
+  const ref = { current: node }
+  let enhanced = false, onFlow, onStatus
   const React = {
     version: '19', createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial } },
@@ -24,17 +35,20 @@ function installed(slug) {
   const core = { prefersReducedMotion: () => reduced, onMotionChange: fn => { motion.add(fn); return () => motion.delete(fn) } }
   const module = { exports: {} }
   vm.runInNewContext(transformSync(COMPONENTS[slug].content, { loader: 'tsx', format: 'cjs' }).code, {
-    exports: module.exports, module, require: name => name === 'react' ? React : name === 'scrollvars' ? core : name === 'gsap' ? {} : { Track: 'Track', useScenes: (_, opts) => { onFlow = opts.onFlow; return { ref: { current: node }, scene: 0 } } },
-    document: { documentElement: {} }, getComputedStyle: () => ({ position: enhanced ? 'absolute' : 'static' }),
-    MutationObserver: class { constructor(fn) { this.fn = fn; observers.push(this) } observe() {} disconnect() { this.stopped = true } },
+    exports: module.exports, module, require: name => name === 'react' ? React : name === 'scrollvars' ? core : name === 'gsap' ? {} : { Track: 'Track', useScenes: (_, opts) => { onFlow = opts.onFlow; onStatus = opts.onStatus; return { ref, scene: 0 } } },
+    document: { documentElement: {} }, getComputedStyle: el => ({ position: enhanced ? el === stage ? 'sticky' : 'absolute' : 'static' }),
+    MutationObserver: class { constructor(fn) { this.fn = fn; observers.push(this) } observe() {} takeRecords() { return [] } disconnect() { this.stopped = true } },
   })
   return {
     render(props) { cursor = 0; const tree = Object.values(module.exports)[0](props); const assign = t => { if (!t || typeof t !== 'object') return; if (t.props?.ref) t.props.ref.current = node; t.children?.flat(Infinity).forEach(assign) }; assign(tree); const effects = pending; pending = []; effects.forEach(fn => fn()); return tree },
     enhance(value) { enhanced = value; observers.forEach(o => { if (!o.stopped) o.fn() }) },
     fit(value) { onFlow(value) },
+    status(value) { onStatus(value) },
+    oversized(value) { fit.scrollHeight = value ? 1400 : 400 },
     motion(value) { reduced = value; motion.forEach(fn => fn(value)) },
     destroy() { slots.forEach(slot => slot?.cleanup?.()) },
     observers,
+    shots,
   }
 }
 const figures = tree => {
@@ -51,6 +65,8 @@ test('StickySteps only hides inactive shots while its enhanced layout is active'
   app.enhance(true)
   assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined, 'a class alone is not a successful fit measurement')
   app.fit(false)
+  assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined, 'fit and CSS alone cannot prove an active lease')
+  app.status('active')
   app.render(props)
   assert.equal(figures(app.render(props))[1].props['aria-hidden'], true)
   app.motion(true)
@@ -63,11 +79,45 @@ test('StickySteps only hides inactive shots while its enhanced layout is active'
   assert.ok(app.observers.every(o => o.stopped))
 })
 
+for (const status of ['failed', 'released']) test(`StickySteps restores reachable shots on ${status} without waiting for a DOM marker`, () => {
+  const app = installed('sticky-steps')
+  const props = { steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] }
+  app.render(props); app.enhance(true); app.fit(false); app.status('active')
+  assert.equal(figures(app.render(props))[1].props.inert, true)
+  app.status(status)
+  assert.equal(figures(app.render(props))[1].props.inert, undefined)
+  app.motion(true); app.motion(false)
+  assert.equal(figures(app.render(props))[1].props['aria-hidden'], undefined)
+  app.destroy()
+})
+
+for (const failure of ['missing CSS', 'oversized layout']) test(`StickySteps active status cannot hide shots with ${failure}`, () => {
+  const app = installed('sticky-steps')
+  const props = { steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] }
+  app.render(props); app.fit(false)
+  if (failure === 'oversized layout') { app.oversized(true); app.enhance(true) }
+  app.status('active')
+  assert.equal(figures(app.render(props))[1].props.inert, undefined, failure)
+  app.destroy()
+})
+
 test('StickySteps SSR keeps crossfade gated until the first successful fit outcome', () => {
   const app = installed('sticky-steps')
   const tree = app.render({ steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] })
   assert.ok(!tree.props.className.includes('st-ready'))
   assert.match(COMPONENTS['sticky-steps'].content, /\.sv-on \.sv-steps:where\(\.st-ready\) \.st-shot/)
+  app.destroy()
+})
+
+test('StickySteps synchronizes accessibility when motion reverses before React renders', () => {
+  const app = installed('sticky-steps')
+  app.render({ steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] })
+  app.enhance(true); app.fit(false); app.status('active')
+  assert.ok(app.shots[1].attrs.has('inert'))
+  app.motion(true)
+  assert.ok(!app.shots[1].attrs.has('inert'))
+  app.motion(false)
+  assert.ok(app.shots[1].attrs.has('inert'), 'restored without a React render')
   app.destroy()
 })
 

@@ -241,6 +241,10 @@ const REDUCED_BEHAVIOR = {
     // the installed component's own wrapper class, the element the driver
     // writes --sv-scene on
     root: '.sv-steps',
+    // the tab's tracked element: since 1.18.0 the pane's mountSteps calls
+    // track() itself, so the root carries no data-sv (a scanner would
+    // double-track it)
+    tabRoot: '.st',
     // what the driver writes on the tracked element once it is running, for
     // the tab gate, which sets these by hand instead of running the engine
     writes: { '--sv-scene': '1' },
@@ -529,14 +533,19 @@ export async function installedGate({ browser, check, HIDDEN_TEXT }) {
       await t.setViewport({ width: 1200, height: 800 })
       await t.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
       await t.goto(base + url, { waitUntil: 'load' })
-      // every Section tab is one tracked block: the [data-sv] element is what
-      // the driver would carry the class and the vars on
-      await t.evaluate((writes) => {
+      // every Section tab is one tracked block: the [data-sv] element (or the
+      // entry's tabRoot when the pane's own script tracks it) is what the
+      // driver would carry the class and the vars on
+      const tabRoot = reduced.tabRoot ?? '[data-sv]'
+      const found = await t.evaluate((writes, sel) => {
         document.documentElement.classList.add('sv-on')
-        const root = document.querySelector('[data-sv]')
+        const root = document.querySelector(sel)
+        if (!root) return false
         for (const [k, v] of Object.entries(writes)) root.style.setProperty(k, v)
-      }, reduced.writes)
-      const result = await t.evaluate(reduced.probe, '[data-sv]')
+        return true
+      }, reduced.writes, tabRoot)
+      check(`gallery tab ${fx.slug}: the pane's tracked root ${tabRoot} exists`, found, 'no such element in the pasted markup')
+      const result = await t.evaluate(reduced.probe, tabRoot)
       check(`gallery tab ${fx.slug}: reduced motion, ${reduced.what}`, result.ok, result.detail)
       await t.close()
     }

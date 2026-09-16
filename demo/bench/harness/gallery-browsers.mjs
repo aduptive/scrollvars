@@ -37,7 +37,8 @@ const server = createServer(async (req, res) => {
       res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html')
       if (path === '/failure-client.js') return res.end(fixture.script)
       if (path === '/failure-styles.css') return res.end(failureStyles)
-      let html = substitute(failureTemplate, '<!-- DECLARED_STYLES -->', '<link rel="stylesheet" href="/failure-styles.css">')
+      let html = substitute(failureTemplate, '<!-- DECLARED_STYLES -->', url.searchParams.get('case') === 'missing-css'
+        ? '' : '<link rel="stylesheet" href="/failure-styles.css">')
       html = substitute(html, '<!-- APP_MARKUP -->', url.searchParams.get('case') === 'empty' ? fixture.emptyMarkup : fixture.markup)
       if (url.searchParams.get('case') === 'empty') {
         assert.equal((html.match(/ data-sv>/g) || []).length, 2)
@@ -98,9 +99,20 @@ async function readableEntrances(page, label) {
   assert.equal(await page.locator('#probes [inert], #probes [aria-hidden="true"]').count(), 0, `${label}: static copy remains accessible`)
 }
 
+async function workingCrossfade(page, label) {
+  await page.waitForFunction(() => document.querySelectorAll('.st-shot[inert][aria-hidden="true"]').length === 2)
+  assert(await page.locator('.sv-steps').evaluate(el => {
+    const stage = el.querySelector('.sv-stage'), fit = el.querySelector('[data-sv-fit]')
+    return stepsStatuses[stepsStatuses.length - 1] === 'active' &&
+      !el.hasAttribute('data-sv-flow') && getComputedStyle(stage).position === 'sticky' &&
+      Math.max(fit.offsetHeight, fit.scrollHeight) <= stage.clientHeight + 1 &&
+      [...el.querySelectorAll('.st-shot')].every(shot => getComputedStyle(shot).position === 'absolute')
+  }), `${label}: inaccessible shots require an active lease, fitting content and applied crossfade CSS`)
+}
+
 async function enhancementFailures(browser, name) {
   for (const major of [19, 18]) for (const width of [1400, 320]) {
-    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'steps-mo-missing', 'steps-mo-constructor', 'steps-mo-first', 'steps-mo-second', 'empty', 'normal', 'reduced']) {
+    for (const mode of ['no-js', 'blocked', 'delayed', 'ro-missing', 'ro-constructor', 'ro-observe', 'attach', 'later-attach', 'io-missing', 'io-constructor', 'io-observe', 'scan-observer', 'steps-mo-missing', 'steps-mo-constructor', 'steps-mo-first', 'steps-mo-second', 'empty', 'normal', 'reduced', 'missing-css', 'oversized', 'steps-runtime', 'steps-release']) {
       const label = `${name} React ${major} ${width} ${mode}`
       const context = await browser.newContext({ viewport: { width, height: 900 }, javaScriptEnabled: mode !== 'no-js', reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference' })
       const page = await context.newPage()
@@ -129,6 +141,21 @@ async function enhancementFailures(browser, name) {
           continue
         }
         await page.waitForFunction(() => window.failureHydrated)
+        if (mode === 'missing-css' || mode === 'oversized') {
+          await page.waitForFunction(() => stepsStatuses.includes('active'))
+          await staticShots(page, label)
+          assert.equal(await page.locator('.sv-steps.st-ready').count(), 0, `${label}: driver readiness alone cannot enable crossfade`)
+          if (mode === 'oversized') {
+            assert(await page.locator('.sv-steps').evaluate(el => el.hasAttribute('data-sv-flow')), `${label}: initial overflow latches flow`)
+            await page.evaluate(() => document.documentElement.removeAttribute('data-fixture'))
+            await page.evaluate(() => failureControl.SV.refresh())
+            await settle(page)
+            assert(await page.locator('.sv-steps').evaluate(el => el.hasAttribute('data-sv-flow')), `${label}: shrinking content cannot silently re-pin`)
+            await staticShots(page, label + ' smaller content')
+          }
+          assert.deepEqual(await page.evaluate(() => stepsStatuses), ['attaching', 'active'])
+          continue
+        }
         if (mode.startsWith('steps-mo-')) {
           await staticShots(page, label)
           assert.deepEqual(await page.evaluate(() => [stepsSubscriptions, stepsObservers, failureErrors.length]), [0, 0, 0], `${label}: failed acquisition leaves no resources or escaped effect error`)
@@ -174,7 +201,7 @@ async function enhancementFailures(browser, name) {
         }
         await page.waitForFunction(() => document.querySelector('.sv-steps')?.style.getPropertyValue('--sv-scene') !== '')
         if (width === 1400) {
-          await page.waitForFunction(() => document.querySelectorAll('.st-shot[inert][aria-hidden="true"]').length === 2)
+          await workingCrossfade(page, label)
           assert.equal(await page.locator('.st-shot').first().evaluate(el => getComputedStyle(el).position), 'absolute', `${label}: successful tracker actually crossfades`)
           await pin(page, '.sv-steps', 1)
           await page.waitForFunction(() => {
@@ -183,7 +210,39 @@ async function enhancementFailures(browser, name) {
           })
           assert(await page.locator('.st-shot').first().evaluate(el => +getComputedStyle(el).opacity < .01), `${label}: scene navigation changes rendered media`)
         }
+        if (mode === 'steps-runtime' || mode === 'steps-release') {
+          assert.deepEqual(await page.evaluate(() => stepsStatuses), ['attaching', 'active'])
+          await page.evaluate(mode => {
+            const el = document.querySelector('.sv-steps'), { SV } = failureControl
+            if (mode === 'steps-runtime') {
+              el.getBoundingClientRect = () => { throw Error('fixture failure: steps measure') }
+              SV.refresh()
+            } else {
+              // Replacing the installed lease must release its accessibility
+              // restrictions even when a successor successfully tracks the node.
+              window.stopReplacement = SV.track(el)
+            }
+          }, mode)
+          const terminal = mode === 'steps-runtime' ? 'failed' : 'released'
+          await page.waitForFunction(s => stepsStatuses.includes(s), terminal)
+          if (mode === 'steps-runtime') await page.evaluate(() => delete document.querySelector('.sv-steps').getBoundingClientRect)
+          await staticShots(page, label + ' terminal status')
+          await page.evaluate(() => { failureControl.SV.refresh(); window.stopReplacement?.(); window.stopReplacement?.() })
+          await settle(page)
+          assert.deepEqual(await page.evaluate(() => stepsStatuses), ['attaching', 'active', terminal], `${label}: no later status from the old lease`)
+          await page.evaluate(() => failureControl.remount())
+          await page.waitForFunction(() => stepsStatuses.filter(s => s === 'active').length === 2)
+          if (width === 1400) await workingCrossfade(page, label + ' explicit remount')
+          continue
+        }
         if (mode !== 'normal') continue
+
+        if (width === 1400) {
+          await page.locator('.sv-steps').evaluate(el => { el.className = 'sv-steps sv authored-class' })
+          await workingCrossfade(page, label + ' authored class rewrite')
+          await page.evaluate(() => { failureControl.SV.setMotion('reduce'); failureControl.SV.setMotion('auto') })
+          await workingCrossfade(page, label + ' batched motion reversal')
+        }
 
         // The live page switch and OS switch must each agree with layout and
         // keyboard reachability. The raw scene clock may continue to scrub.
@@ -193,6 +252,8 @@ async function enhancementFailures(browser, name) {
         await page.emulateMedia({ reducedMotion: 'reduce' })
         await staticShots(page, label + ' OS reduction')
         await page.emulateMedia({ reducedMotion: 'no-preference' })
+        if (width === 1400) await workingCrossfade(page, label + ' motion reversal')
+        assert.deepEqual(await page.evaluate(() => stepsStatuses), ['attaching', 'active'], `${label}: motion reversal keeps the same lease`)
 
         // Failure during a later frame must not prevent the next sibling's
         // callback, or leave the failed pin's authored geometry overwritten.
