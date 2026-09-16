@@ -24,7 +24,13 @@ export function artifactHashes(tarball) {
   }
 }
 export function packWorktree(destination) {
-  const [packed] = JSON.parse(npm(['pack', '--json', '--pack-destination', destination, '--cache', join(destination, '.npm-cache')], repo))
+  // Pack with scripts off: on the CI runner's npm the `prepare` script's
+  // own stdout lands in front of the --json payload ("styles.css
+  // regenerated..." is not valid JSON). Like test:e2e, this never rebuilds
+  // dist (node --test runs files in parallel and they import it): npm ci,
+  // pretest and demo:sync build it, and the release job packs the same way.
+  assert(existsSync(join(repo, 'dist/index.js')), 'dist is not built: run npm run build first')
+  const [packed] = JSON.parse(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', destination, '--cache', join(destination, '.npm-cache')], repo))
   const tarball = join(destination, packed.filename)
   assert.equal(artifactHashes(tarball).tarballSha512, packed.integrity)
   return { tarball, integrity: packed.integrity, cwd: repo }
