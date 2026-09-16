@@ -41,11 +41,23 @@ export function instrumentResources() {
       disconnect() { super.disconnect(); this.targets.clear(); observers.delete(this) }
     }
   }
-  window.packedResources = () => ({
+  // Playwright's injected script adds its own window listeners whenever it
+  // first acts in a document, before or after the baseline depending on the
+  // run: a hit-target interceptor (one callback on auxclick, contextmenu,
+  // dblclick and the pointer events, capture) and a `__playwright_*` check
+  // event. Nothing in the library listens to contextmenu or dblclick, so a
+  // callback registered on all three is the tool's, not the package's.
+  const playwrightCallbacks = () => {
+    const on = type => new Set([...listeners].filter(r => r.target === window && r.type === type && r.capture).map(r => r.callback))
+    const [a, b, c] = ['auxclick', 'contextmenu', 'dblclick'].map(on)
+    return new Set([...a].filter(fn => b.has(fn) && c.has(fn)))
+  }
+  window.packedResources = (tool = playwrightCallbacks()) => ({
     // Detached DOM listeners (React delegation and controls) have no live event
     // source and are GC-owned. Global, media-query and connected DOM listeners
     // remain counted, including every library subscription on those targets.
     listeners: [...listeners].filter(r => !(r.target instanceof Node) || r.target.isConnected)
+      .filter(r => !tool.has(r.callback) && !String(r.type).startsWith('__playwright'))
       .map(r => `${r.target === window ? 'window' : r.target === document ? 'document' : r.target.nodeName || 'media'}:${r.type}:${r.capture}`).sort(),
     observers: [...observers].map(o => `${o.kind}:${o.targets.size}`).sort(),
     frames: frames.size,
