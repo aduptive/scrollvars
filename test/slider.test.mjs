@@ -881,15 +881,23 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   const replacement = makeSlide(100)
   replacement.style._owner = replacement
   replacement.classList._owner = replacement
+  const departed = slides[1]
+  departed.style.getPropertyValue = k => departed.vars[k] ?? ''
+  departed.style.removeProperty = k => { delete departed.vars[k] }
+  departed.classList.contains = k => departed.classes.has(k)
   slides[1] = replacement
 
   assert.equal(fireChildList(container), 1, 'the slider observes the container for childList records')
   while (rafQueue.length) rafQueue.shift()(0)
 
   assert.ok(replacement.classes.has('sv-active'), 'the new node at the active index carries sv-active')
+  assert.equal(departed.vars['--sd'], undefined, 'the departed slide releases its output before destroy')
+  assert.ok(!departed.classes.has('sv-active'), 'the departed slide releases the active class')
+  departed.style.setProperty('--sd', 'author-after-removal')
   assert.equal(container.vars['--sv-slide'], '1')
   assert.deepEqual(onSlideCalls, [1], 'the index did not change: onSlide must not fire again')
   handle.destroy()
+  assert.equal(departed.vars['--sd'], 'author-after-removal', 'destroy no longer owns the departed slide')
   assert.equal(fireChildList(container), 0, 'destroy() disconnects the observer')
 })
 

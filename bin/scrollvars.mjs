@@ -37,9 +37,19 @@ function installedVersion() {
   }
 }
 function olderThan(a, b) {
-  const pa = a.split('.').map(Number)
-  const pb = b.split('.').map(Number)
-  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0)
+  const parse = value => /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?(?:\+[\w.-]+)?$/.exec(value)
+  const pa = parse(a), pb = parse(b)
+  if (!pa || !pb) return false
+  for (let i = 1; i <= 3; i++) if (Number(pa[i]) !== Number(pb[i])) return Number(pa[i]) < Number(pb[i])
+  if (!pa[4] || !pb[4]) return !!pa[4] && !pb[4]
+  const preA = pa[4].split('.'), preB = pb[4].split('.')
+  for (let i = 0; i < Math.max(preA.length, preB.length); i++) {
+    if (preA[i] === preB[i]) continue
+    if (preA[i] === undefined || preB[i] === undefined) return preA[i] === undefined
+    const numA = /^\d+$/.test(preA[i]), numB = /^\d+$/.test(preB[i])
+    if (numA !== numB) return numA
+    return numA ? Number(preA[i]) < Number(preB[i]) : preA[i] < preB[i]
+  }
   return false
 }
 

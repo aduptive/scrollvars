@@ -459,9 +459,11 @@ const sharedSelectors = (selectors, otherDocumented) =>
 for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && COMPONENTS[e.slug])) {
   test(`gallery ${fx.slug}: the CSS tab and the installed component reset the same classes under reduced motion`, () => {
     const installed = COMPONENTS[fx.slug].content
-    const cssSelectors = sharedSelectors(reducedMotionSelectors(fx.css), documentedClasses(installed))
+    // Stats uses .stats in the panes and .sv-stats on its installed dl;
+    // neither is the Track wrapper that wrapperScope extracts.
+    const cssSelectors = sharedSelectors(reducedMotionSelectors(fx.css, fx.slug === 'stats-countup' ? 'stats' : undefined), documentedClasses(installed))
     const installedSelectors = sharedSelectors(
-      reducedMotionSelectors(installed, wrapperScope(installed)),
+      reducedMotionSelectors(installed, fx.slug === 'stats-countup' ? 'sv-stats' : wrapperScope(installed)),
       documentedClasses(fx.css)
     )
     const missing = installedSelectors.filter((s) => !cssSelectors.includes(s))

@@ -14,14 +14,17 @@ export async function buildFailureFixture(installedPath, styles) {
 import { StickySteps } from ${JSON.stringify(installedPath)}
 import { ScrollVarsBoot } from 'scrollvars/react'
 import * as SV from 'scrollvars'
-export function FailureApp({ empty = false }) {
+export function FailureApp({ empty = false, images = false }) {
   const [shown, show] = React.useState(!empty)
   const [generation, remount] = React.useState(0)
   React.useEffect(() => {
     window.failureControl = { SV, show, remount: () => remount(n => n + 1) }
     window.failureHydrated = true
   }, [])
-  return <><ScrollVarsBoot nonce="sv-fixture" />{shown && <StickySteps key={generation} nonce="sv-fixture" steps={[
+  const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="teal"/></svg>')
+  return <><ScrollVarsBoot nonce="sv-fixture" />{shown && <StickySteps key={generation} nonce="sv-fixture" steps={images ? [0, 1, 2].map(i => ({
+    title: 'Image step ' + i, text: 'A short description.', media: <img src={image} alt={'Shot ' + i} />
+  })) : [
     { title: 'First step', text: 'First description', media: <a href="#after">First media link</a> },
     { title: 'Second step', text: 'Second description', media: <a href="#after">Second media link</a> },
     { title: 'Third step', text: 'Third description', media: <a href="#after">Third media link</a> }
@@ -31,7 +34,7 @@ export function FailureApp({ empty = false }) {
   const App = await loadComponent('enhancement-failure', { file: 'EnhancementFailure.tsx', content: source })
   const requireReact = createRequire(join(process.env.SV_REACT18_DIR || root, 'package.json'))
   const result = await build({
-    stdin: { contents: source + `\nimport { hydrateRoot } from 'react-dom/client'\nhydrateRoot(document.getElementById('app'), <FailureApp empty={new URLSearchParams(location.search).get('case') === 'empty'} />)`, loader: 'tsx', resolveDir: root },
+    stdin: { contents: source + `\nimport { hydrateRoot } from 'react-dom/client'\nhydrateRoot(document.getElementById('app'), <FailureApp empty={new URLSearchParams(location.search).get('case') === 'empty'} images={new URLSearchParams(location.search).get('case') === 'images'} />)`, loader: 'tsx', resolveDir: root },
     bundle: true, write: false, format: 'iife', platform: 'browser', jsx: 'automatic',
     define: { 'process.env.NODE_ENV': '"production"' },
     plugins: [resolveScrollvars, { name: 'steps-acquisition-probe', setup(api) {
@@ -61,5 +64,5 @@ export function FailureApp({ empty = false }) {
       api.onResolve({ filter: /^react(?:-dom)?(?:\/.*)?$/ }, args => ({ path: requireReact.resolve(args.path) }))
     } }],
   })
-  return { styles, markup: renderStatic(App, {}), emptyMarkup: renderStatic(App, { empty: true }), script: result.outputFiles[0].text }
+  return { styles, markup: renderStatic(App, {}), emptyMarkup: renderStatic(App, { empty: true }), imageMarkup: renderStatic(App, { images: true }), script: result.outputFiles[0].text }
 }

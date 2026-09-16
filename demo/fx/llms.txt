@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 11.3 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.6 KB). Each effect below includes when to
+> (npm i scrollvars, 11.4 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.6 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -934,8 +934,10 @@ Styles: scrollvars/styles/pin.css
 // into your own stylesheet.
 'use client'
 import * as React from 'react'
-import { onMotionChange, prefersReducedMotion } from 'scrollvars'
+import { onMotionChange, prefersReducedMotion, refresh as refreshFit } from 'scrollvars'
 import { useScenes } from 'scrollvars/react'
+
+const useLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
 
 const css = `
 .sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
@@ -944,8 +946,9 @@ const css = `
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-.sv-steps:not(.st-ready) .st-media { overflow: visible; }
+.sv-on .sv-steps:where(.st-ready, .st-measuring) .st-shot { position: absolute; inset: 0; }
+.sv-on .sv-steps:where(.st-ready) .st-shot { opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps:not(.st-ready):not(.st-measuring) .st-media { overflow: visible; }
 .sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -1011,7 +1014,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     // Read the actual layout: failed boot, the watchdog and missing CSS all
@@ -1019,9 +1022,11 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     const update = () => {
       const shot = el.querySelector('.st-shot')
       const stage = el.querySelector('.sv-stage')
-      // Probe the candidate layout, then keep it only when both sheets apply.
+      // Stack before the driver's first fit read, without hiding shots from AT.
+      const measuring = status.current === 'attaching' && !el.hasAttribute('data-sv-flow') && !prefersReducedMotion()
       let ready = status.current === 'active' && !flow.current && !prefersReducedMotion()
-      if (ready) el.classList.remove('st-static')
+      if (ready || measuring) el.classList.remove('st-static')
+      el.classList.toggle('st-measuring', measuring)
       el.classList.toggle('st-ready', ready)
       ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
         !!shot && getComputedStyle(shot).position === 'absolute'
@@ -1053,6 +1058,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       sync.current = undefined
       observer?.disconnect()
       stopMotion?.()
+      el.classList.remove('st-measuring')
       el.classList.remove('st-ready')
       el.classList.add('st-static')
       el.querySelectorAll('.st-shot').forEach(shot => {
@@ -1068,6 +1074,8 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
       update()
+      // The first fit must run next frame, including for an offscreen section.
+      if (status.current === 'attaching') refreshFit()
     } catch {
       stop()
       setInteractive(false)
@@ -1149,6 +1157,8 @@ const css = `
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
 .sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .sv-stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .sv-stats .stat { counter-reset: n var(--sv-max); }
 `
 
 // aria-label is prohibited on generic roles (p/span/div). Axe

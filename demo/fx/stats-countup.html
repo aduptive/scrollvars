@@ -188,6 +188,8 @@
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
 .sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .sv-stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .sv-stats .stat { counter-reset: n var(--sv-max); }
 </style><dl class="sv-stats"><div><dt>client sites shipped</dt><dd class="stat" style="--sv-max:248"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">248+</span><span class="count" data-suffix="+" aria-hidden="true"></span></dd></div><div><dt>median Lighthouse performance</dt><dd class="stat" style="--sv-max:99"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">99</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div><div><dt>KB of engine, gzipped</dt><dd class="stat" style="--sv-max:4"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">4</span><span class="count" data-suffix="" aria-hidden="true"></span></dd></div></dl></div>
 <script>addEventListener('load', () => SV.track(document.querySelector('.sv-acts'), { once: true }))</script></div>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add stats-countup</code><br><b>Styles:</b> <code>import 'scrollvars/styles/core.css'</code> · <code>import 'scrollvars/styles/state.css'</code></p>
@@ -222,6 +224,8 @@ const css = `
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
 .sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .sv-stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .sv-stats .stat { counter-reset: n var(--sv-max); }
 `
 
 // aria-label is prohibited on generic roles (p/span/div). Axe
@@ -279,7 +283,7 @@ export function StatsCountup({
 }
 </code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.3 KB gzip as ESM (this page's fx/sv.js IIFE: 11.6 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.4 KB gzip as ESM (this page's fx/sv.js IIFE: 11.6 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

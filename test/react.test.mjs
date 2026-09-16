@@ -1478,6 +1478,32 @@ test('react: Modal without <dialog> support opens AND closes through the attribu
   await act(async () => { root.unmount() })
 })
 
+test('react: a throwing Scenes onScene reports once and leaves the tree working', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Scenes } = await import('../dist/react/index.js')
+  const report = global.reportError, errors = [], error = Error('onScene')
+  global.reportError = e => errors.push(e)
+  const container = document.createElement('div'), root = createRoot(container)
+  const seen = []
+  let calls = 0
+  const render = onScene => React.createElement(React.Fragment, null,
+    React.createElement(Scenes, { count: 3, onScene }, ({ scene }) => { seen.push(scene); return String(scene) }),
+    React.createElement('p', null, 'healthy sibling'))
+  try {
+    await React.act(async () => root.render(render(() => { calls++; throw error })))
+    assert.equal(container.children.length, 2)
+    assert.deepEqual(errors, [error])
+    container.firstChild.getBoundingClientRect = () => ({ top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600 })
+    await React.act(async () => { flushFrames() })
+    assert.equal(seen.at(-1), 2, 'scene state still advances after the consumer fails')
+    assert.equal(calls, 1, 'the failed callback is not called again')
+    assert.deepEqual(errors, [error])
+    assert.equal(container.children.length, 2)
+  } finally { await React.act(async () => root.unmount()); global.reportError = report }
+})
+
 test('react: useScenes clamps the reported scene when the count shrinks', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

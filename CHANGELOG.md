@@ -14,6 +14,11 @@
 
 ### Fixed
 
+- `<Scenes onScene>` contains a throwing consumer, reports it once and keeps scene state and sibling components working.
+- Slider child replacement restores departed slides' owned outputs and active classes and releases their ownership records.
+- StatsCountup renders final numbers before activation under both reduced-motion controls in the installed component, gallery CSS and Tailwind panes.
+- CLI minimum-version checks compare release and prerelease precedence, including numeric prerelease identifiers and build metadata.
+- StickySteps measures its candidate stacked layout before the first fit decision, so intrinsic images that fit can crossfade while oversized content still latches static flow.
 - Slider, toggles, pointer and canvas setup release partial acquisitions and restore owned DOM writes before rethrowing the original error.
 - Runtime measurement, output, observer and callback failures stop and report only the affected instance, preserving siblings and the scroll driver.
 - Cleanup is idempotent during callbacks, dragging and gliding; stale events, observers and queued frames cannot write after release or replacement.

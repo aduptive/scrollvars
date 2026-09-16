@@ -13,8 +13,10 @@ const STICKY_ATTACH = `function mountSteps(el, SV) {
   const shots = Array.from(el.querySelectorAll('.st-shot'))
   const update = () => {
     if (stopped) return
+    const measuring = status === 'attaching' && !el.hasAttribute('data-sv-flow') && !SV.prefersReducedMotion()
     let ready = status === 'active' && !flow && !SV.prefersReducedMotion()
-    if (ready) el.classList.remove('st-static')
+    if (ready || measuring) el.classList.remove('st-static')
+    el.classList.toggle('st-measuring', measuring)
     el.classList.toggle('st-ready', ready)
     const stage = el.querySelector('.sv-stage')
     ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
@@ -33,6 +35,7 @@ const STICKY_ATTACH = `function mountSteps(el, SV) {
   const stop = () => {
     stopped = true
     observer?.disconnect(); stopMotion?.(); stopTrack?.()
+    el.classList.remove('st-measuring')
     el.classList.remove('st-ready')
     el.classList.add('st-static')
     shots.forEach(shot => { shot.removeAttribute('inert'); shot.removeAttribute('aria-hidden') })
@@ -46,6 +49,8 @@ const STICKY_ATTACH = `function mountSteps(el, SV) {
       onStatus: value => { status = value; update() },
       onFlow: value => { flow = value; update() },
       onScene: value => { scene = value; update() } })
+    // Evaluate the candidate on the next frame even when this section is culled.
+    if (status === 'attaching') SV.refresh()
   } catch { stop() }
   return stop
 }`
@@ -962,7 +967,8 @@ function Timeline() {
 .st-media { position: relative; aspect-ratio: 4 / 3; display: grid; }
 /* distance from the active scene, clamped 0..1. Abs() spelled as max(x, -x) for older engines */
 .st-shot, .st-steps > li { --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on :where(.st.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-on :where(.st.st-ready, .st.st-measuring) .st-shot { position: absolute; inset: 0; }
+.sv-on :where(.st.st-ready) .st-shot { opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
 @media (prefers-reduced-motion: reduce) { .sv-on .st-shot { position: static; opacity: 1; scale: none; } .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) .st-shot { position: static; opacity: 1; scale: none; }
@@ -996,7 +1002,8 @@ const stop = mountSteps(document.querySelector('.st'), SV)
     </ol>
   </div></div>
 </div>
-<!-- Use the CSS tab's styles and mountSteps controller, including its status and fit checks. -->`,
+<!-- Use the CSS tab's styles and mountSteps controller: st-measuring stacks the
+     candidate before the first fit check; only st-ready hides inactive shots. -->`,
     react: `// npx scrollvars add sticky-steps
 import { StickySteps } from './components/fx/StickySteps'
 
@@ -1054,7 +1061,9 @@ function ProductSteps() {
 .stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); font-variant-numeric: tabular-nums; }
 .stats .stat .count::after { content: counter(n) attr(data-suffix); }   /* on the span, never on the dd: two rules would announce the number twice */
 html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: final numbers */
-/* reduced motion: sv-acts snaps (.01ms) → final numbers, no count. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
+@media (prefers-reduced-motion: reduce) { .stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .stats .stat { counter-reset: n var(--sv-max); }
+/* Reduced motion shows final numbers even before activation. Needs @property (Chrome 85 / FF 128 / Safari 16.4);
    older engines show the final numbers immediately. */`,
     tailwind: `<section data-sv data-sv-once class="sv-acts py-24 [--sv-acts-count:1] [--sv-acts-duration:1.8s]">
   <dl class="stats grid grid-cols-3 gap-6 text-center">
@@ -1062,7 +1071,13 @@ html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }   /* no JS: fi
     <div><dt class="text-neutral-400">median Lighthouse</dt><dd class="stat font-mono text-6xl font-extrabold tabular-nums text-violet-400 [--sv-max:99]"><span class="count"></span></dd></div>
   </dl>
 </section>
-<!-- .stat's counter-reset and .count's ::after are 3 lines of global CSS (CSS tab) -->`,
+
+/* Global CSS, including both reduced-motion controls. */
+.stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
+.stats .stat .count::after { content: counter(n) attr(data-suffix); }
+html:not(.sv-on) .stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .stats .stat { counter-reset: n var(--sv-max); }`,
     react: `import { Track } from 'scrollvars/react'
 
 const stats = [
@@ -1365,8 +1380,10 @@ export function TimelineScrub({
 // into your own stylesheet.
 'use client'
 import * as React from 'react'
-import { onMotionChange, prefersReducedMotion } from 'scrollvars'
+import { onMotionChange, prefersReducedMotion, refresh as refreshFit } from 'scrollvars'
 import { useScenes } from 'scrollvars/react'
+
+const useLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
 
 const css = \`
 .sv-steps .st-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding: 32px clamp(20px, 5vw, 64px); box-sizing: border-box; min-height: 100%; }
@@ -1375,8 +1392,9 @@ const css = \`
 .sv-steps .st-shot > * { width: 100%; height: 100%; object-fit: cover; }
 .sv-steps .st-shot, .sv-steps .st-steps > li, .sv-steps .st-dots i {
   --st-d: min(1, max(calc(var(--sv-scene, 0) - var(--i)), calc(var(--i) - var(--sv-scene, 0)))); }
-.sv-on .sv-steps:where(.st-ready) .st-shot { position: absolute; inset: 0; opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
-.sv-steps:not(.st-ready) .st-media { overflow: visible; }
+.sv-on .sv-steps:where(.st-ready, .st-measuring) .st-shot { position: absolute; inset: 0; }
+.sv-on .sv-steps:where(.st-ready) .st-shot { opacity: calc(1 - var(--st-d)); scale: calc(1.06 - var(--st-d) * .06); }
+.sv-steps:not(.st-ready):not(.st-measuring) .st-media { overflow: visible; }
 .sv-steps:not(.sv) .sv-stage, .sv-steps.st-static .sv-stage { position: static; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sv-on .sv-steps .st-shot { position: static; opacity: 1; scale: none; } .sv-steps .st-media { gap: 8px; aspect-ratio: auto; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -1442,7 +1460,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
   // motion, where the shots stack in flow and must all stay reachable. Live:
   // a switch mid-session drops or restores inert/aria-hidden immediately.
   const [interactive, setInteractive] = React.useState(false)
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     // Read the actual layout: failed boot, the watchdog and missing CSS all
@@ -1450,9 +1468,11 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
     const update = () => {
       const shot = el.querySelector('.st-shot')
       const stage = el.querySelector('.sv-stage')
-      // Probe the candidate layout, then keep it only when both sheets apply.
+      // Stack before the driver's first fit read, without hiding shots from AT.
+      const measuring = status.current === 'attaching' && !el.hasAttribute('data-sv-flow') && !prefersReducedMotion()
       let ready = status.current === 'active' && !flow.current && !prefersReducedMotion()
-      if (ready) el.classList.remove('st-static')
+      if (ready || measuring) el.classList.remove('st-static')
+      el.classList.toggle('st-measuring', measuring)
       el.classList.toggle('st-ready', ready)
       ready = ready && !!stage && getComputedStyle(stage).position === 'sticky' &&
         !!shot && getComputedStyle(shot).position === 'absolute'
@@ -1484,6 +1504,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       sync.current = undefined
       observer?.disconnect()
       stopMotion?.()
+      el.classList.remove('st-measuring')
       el.classList.remove('st-ready')
       el.classList.add('st-static')
       el.querySelectorAll('.st-shot').forEach(shot => {
@@ -1499,6 +1520,8 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       observer.observe(el, { attributes: true, attributeFilter: ['class', 'data-sv-flow'] })
       stopMotion = onMotionChange(refresh)
       update()
+      // The first fit must run next frame, including for an offscreen section.
+      if (status.current === 'attaching') refreshFit()
     } catch {
       stop()
       setInteractive(false)
@@ -1569,6 +1592,8 @@ const css = \`
 .sv-stats .stat { counter-reset: n calc(var(--sv-act, 1) * var(--sv-max)); }
 .sv-stats .stat .count::after { content: counter(n) attr(data-suffix); }
 html:not(.sv-on) .sv-stats .stat { counter-reset: n var(--sv-max); }
+@media (prefers-reduced-motion: reduce) { .sv-stats .stat { counter-reset: n var(--sv-max); } }
+:where([data-sv-motion="reduce"]) .sv-stats .stat { counter-reset: n var(--sv-max); }
 \`
 
 // aria-label is prohibited on generic roles (p/span/div). Axe

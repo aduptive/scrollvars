@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
+import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 
 // Every `@media (prefers-reduced-motion: reduce)` block in the shipped
 // stylesheets has a twin that applies under `html[data-sv-motion="reduce"]`,
@@ -68,6 +69,25 @@ export const twin = (selector, where = true) => {
 }
 
 const sheets = readdirSync(root).filter((f) => f.endsWith('.css')).map((f) => [f, strip(readFileSync(new URL(f, root), 'utf8'))])
+
+test('StatsCountup settles final counters before activation under both motion guards in all three copies', () => {
+  const effect = EFFECTS.find(fx => fx.slug === 'stats-countup')
+  const installed = COMPONENTS['stats-countup'].content.match(/const css = `([\s\S]*?)`/)[1]
+  for (const [name, source] of [['installed', installed], ['css', effect.css], ['tailwind', effect.tailwind]]) {
+    const css = strip(source.slice(source.includes('</section>') ? source.indexOf('</section>') + 10 : 0).replace(/<!--[\s\S]*?-->/g, ''))
+    const selector = name === 'installed' ? '.sv-stats .stat' : '.stats .stat'
+    const { top, reduced } = parse(css)
+    const normal = top.find(([sel, body]) => sel === selector && body.includes('counter-reset: n calc(var(--sv-act, 1) * var(--sv-max))'))
+    assert.ok(normal, `${name}: the counter still animates on ordinary activation`)
+    const final = reduced.find(([sel]) => sel === selector)
+    assert.ok(final, `${name}: reduced motion must set the counter independently of the zero live/act clock`)
+    assert.equal(final[1], 'counter-reset: n var(--sv-max);')
+    assert.ok(css.indexOf('@media (prefers-reduced-motion: reduce)') > normal[2], `${name}: reset follows the animated declaration`)
+    const override = top.find(([sel]) => sel === twin(selector))
+    assert.ok(override && override[2] > normal[2], `${name}: the page switch has a later twin`)
+    assert.equal(override[1], final[1])
+  }
+})
 
 test('every reduced-motion block in styles/*.css has its data-sv-motion twin', () => {
   let checked = 0

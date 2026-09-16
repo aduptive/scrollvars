@@ -2582,7 +2582,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 8.9&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.0&nbsp;KB minified,
 <strong>3.6&nbsp;KB gzipped, ~12× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -2941,7 +2941,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 20.9 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.6 KB / 5.3 KB</b></td><td></td></tr>
       </tbody>
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.3 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.4 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -5094,11 +5094,19 @@ var SV = (() => {
     });
     let ro;
     let mo;
+    let watchedSlides = /* @__PURE__ */ new Set();
     const watchSlides = () => {
+      const current = new Set(slides());
+      watchedSlides.forEach((slide) => {
+        if (!current.has(slide))
+          owned.restore(slide);
+      });
+      watchedSlides = current;
       ro?.disconnect();
       ro?.observe(container);
-      slides().forEach((slide) => ro?.observe(slide));
+      current.forEach((slide) => ro?.observe(slide));
     };
+    life.defer(() => watchedSlides.clear());
     let target = -1;
     const stopGlide = () => {
       if (anim) {
@@ -7259,11 +7267,17 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     });
     let ro;
     let mo;
+    let watchedSlides = new Set();
     const watchSlides = () => {
+        const current = new Set(slides());
+        watchedSlides.forEach(slide => { if (!current.has(slide))
+            owned.restore(slide); });
+        watchedSlides = current;
         ro?.disconnect();
         ro?.observe(container);
-        slides().forEach((slide) => ro?.observe(slide));
+        current.forEach((slide) => ro?.observe(slide));
     };
+    life.defer(() => watchedSlides.clear());
     // pending glide destination: rapid next/prev clicks accumulate from here,
     // not from `active` (which lags mid-glide and would swallow the clicks)
     let target = -1;
