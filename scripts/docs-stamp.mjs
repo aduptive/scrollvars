@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Writes the shared facts into README.md and AGENTS.md (between markers, or on
+ * Writes the shared facts into docs/guide.md and AGENTS.md (between markers, or on
  * the lines that carry a number) and generates demo/llms.txt from AGENTS.md.
  * Runs in `npm run demo:sync`; CI fails if the committed files differ from
  * what this produces, so nothing here can drift by hand.
@@ -126,7 +126,7 @@ if (isMain) {
 const sizes = measureSizes(root)
 
 // README
-let readme = readFileSync(join(root, 'README.md'), 'utf8')
+let readme = readFileSync(join(root, 'docs/guide.md'), 'utf8')
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
 readme = stamp(readme, 'sizes', [
   `Named imports for \`track\` / \`track\` + \`scan\`; other rows are complete module entries, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
@@ -139,28 +139,28 @@ readme = stamp(readme, 'sizes', [
   `| everything in \`scrollvars\` (the core entry) | ${sizes.everything} KB |`,
   `| \`scrollvars/react\` (wrappers + kit, React external) | ${sizes.react} KB |`,
 ].join('\n'))
-readme = spliceOne(readme, /\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`, 'README.md: total size stamp')
+readme = spliceOne(readme, /\*\*~[\d.]+ KB gzipped, total\.\*\*/, `**~${sizes.typical} KB gzipped, total.**`, 'docs/guide.md: total size stamp')
 for (const [name, note] of Object.entries(STYLE_NOTES)) {
   const re = new RegExp(`^(import 'scrollvars/styles/${name}\\.css'\\s+// )[^\\n]*$`, 'm')
-  readme = spliceOne(readme, re, `$1${note}, ${sizes.css[name]} KB gz`, `README.md: styles import line for ${name}`)
+  readme = spliceOne(readme, re, `$1${note}, ${sizes.css[name]} KB gz`, `docs/guide.md: styles import line for ${name}`)
 }
 // prose mentions: the intro line and the slider section carry one number each
 const intro = /Measured \(JS min\+gzip, CSS gzip as shipped\): driver [\d.]+ KB, full core incl\. the slider [\d.]+ KB, styles [\d.]+ KB for every preset or [\d.]+ KB for the core part\. A typical page ships ~[\d.]+ KB on the wire\./
-readme = spliceOne(readme, intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`, 'README.md: intro sizes sentence')
-readme = spliceOne(readme, /Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`, 'README.md: slider module size stamp')
+readme = spliceOne(readme, intro, `Measured (JS min+gzip, CSS gzip as shipped): driver ${sizes.driver} KB, full core incl. the slider ${sizes.everything} KB, styles ${sizes.stylesAll} KB for every preset or ${sizes.css.core} KB for the core part. A typical page ships ~${sizes.typical} KB on the wire.`, 'docs/guide.md: intro sizes sentence')
+readme = spliceOne(readme, /Size, measured: this module [\d.]+ KB gzip;/, `Size, measured: this module ${sizes.slider} KB gzip;`, 'docs/guide.md: slider module size stamp')
 // compat's fallback preset list, one of three surfaces rendered from COMPAT_PRESETS
 readme = between(
   readme,
   'stylesheet for\n',
   '\n(written without',
   wrap(compatPresetsGrouped((n) => `\`${n}\``)),
-  'README.md Extended floor paragraph'
+  'docs/guide.md Extended floor paragraph'
 )
 // the "fully animated" browser floor table, one of five surfaces rendered from BROWSER_FLOOR
-readme = floorRow(readme, 'Chrome / Edge', floorMd('chrome'), 'README.md')
-readme = floorRow(readme, 'Firefox', floorMd('firefox', { reason: true }), 'README.md')
-readme = floorRow(readme, 'Safari / iOS', floorMd('safari'), 'README.md')
-writeFileSync(join(root, 'README.md'), readme)
+readme = floorRow(readme, 'Chrome / Edge', floorMd('chrome'), 'docs/guide.md')
+readme = floorRow(readme, 'Firefox', floorMd('firefox', { reason: true }), 'docs/guide.md')
+readme = floorRow(readme, 'Safari / iOS', floorMd('safari'), 'docs/guide.md')
+writeFileSync(join(root, 'docs/guide.md'), readme)
 
 // AGENTS
 let agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')

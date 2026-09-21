@@ -59,7 +59,7 @@ until the consumer's own CI proves it harmless.
 `npm run demo:sync` rebuilds everything that is derived, and CI fails if the
 committed copy differs from what the build produces:
 
-- README.md and AGENTS.md: the blocks between `<!-- vars:start -->`,
+- docs/guide.md and AGENTS.md: the blocks between `<!-- vars:start -->`,
   `<!-- sizes:start -->` and `<!-- bench:start -->` markers, plus every line
   that carries a measured size, come from `scripts/docs-data.mjs`
   (`docs-stamp.mjs`, `bench-tables.mjs`). Edit the data, not the block.
