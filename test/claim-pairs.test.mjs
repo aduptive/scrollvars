@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { COMPAT_PRESETS } from '../scripts/docs-data.mjs'
 
 // Some prose claims live in BOTH a shipped source comment (tsc emits it
-// verbatim into dist) and README.md. Nothing enforced the two stayed
+// verbatim into dist) and docs/guide.md. Nothing enforced the two stayed
 // equal, and the same pair escaped three times: ADU-159 shipped a false
 // sentence to npm through src/compat/index.ts's header, ADU-168's
 // narrowing missed the driver's own pin comment, ADU-170's first pass
@@ -23,7 +23,7 @@ import { COMPAT_PRESETS } from '../scripts/docs-data.mjs'
 // against the stylesheet it describes.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const readme = readFileSync(join(root, 'README.md'), 'utf8')
+const readme = readFileSync(join(root, 'docs/guide.md'), 'utf8')
 const compatSrc = readFileSync(join(root, 'src/compat/index.ts'), 'utf8')
 const driverSrc = readFileSync(join(root, 'src/core/driver.ts'), 'utf8')
 
@@ -115,7 +115,7 @@ test('driver pin-helper comment and README pinning paragraph state the same rele
   const doc = extract(
     readme,
     /returns to flow without JS, ([\s\S]*?)\. Sticky header\?/,
-    'README.md pinning paragraph'
+    'docs/guide.md pinning paragraph'
   )[1]
   assert.equal(norm(src), norm(doc))
 })
@@ -179,9 +179,9 @@ test('--sv-pin-offset: the driver comment resolves each unit against what readPi
 })
 
 test('--sv-pin-offset: README names the units readPinOffset resolves, and the same vh group', () => {
-  const doc = extract(readme, /only px[\s\S]*?resolve in the fallback parser/, 'README.md pinning paragraph')[0]
+  const doc = extract(readme, /only px[\s\S]*?resolve in the fallback parser/, 'docs/guide.md pinning paragraph')[0]
   // px is the fallthrough (`default:`), the only resolved unit with no case
   assert.deepEqual(uniq(doc.match(UNIT) ?? []), uniq(['px', ...Object.values(switchGroups()).flat()]))
-  const likeVh = extract(doc, /vh \(([^)]+)\) and vw/, 'README.md vh group')[1]
+  const likeVh = extract(doc, /vh \(([^)]+)\) and vw/, 'docs/guide.md vh group')[1]
   assert.deepEqual(uniq(likeVh.match(UNIT) ?? []), uniq(switchGroups()['window.innerHeight']))
 })

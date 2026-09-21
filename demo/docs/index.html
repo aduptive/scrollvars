@@ -300,11 +300,13 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
-<h3>1.18.0 (2026-09-16)</h3>
+<h3>1.18.0 (2026-09-21)</h3>
 
 <h4>Changed</h4>
 
 <ul>
+<li>Shortened the README to installation, working examples and documentation links. The complete reference, generated measurements and detailed accessibility guidance now live in <code>docs/guide.md</code>.</li>
+<li>Documentation checks compile both the README quick start and guide examples under React 18 and 19. Generated tables and size stamps now update the guide.</li>
 <li>The release gate runs packed-tarball acceptance in Chromium, Firefox and WebKit and publishes the same tested file.</li>
 <li>Packed acceptance now checks real JPEGs, delayed and failed images, live CMS copy and step replacement, narrow layouts, doubled text and both motion controls under React 18 and 19.</li>
 <li>CI and release retain acceptance results and failure diagnostics with source, package, tarball, registry and runtime attribution; the release still publishes the tested tarball.</li>

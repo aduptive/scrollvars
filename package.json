@@ -46,7 +46,9 @@
     "styles",
     "CHANGELOG.md",
     "styles.css",
-    "AGENTS.md"
+    "AGENTS.md",
+    "docs",
+    "CONTRIBUTING.md"
   ],
   "scripts": {
     "build": "tsc && node scripts/build-styles.mjs",

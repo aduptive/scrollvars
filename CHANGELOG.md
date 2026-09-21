@@ -1,9 +1,11 @@
 # Changelog
 
-## 1.18.0 (2026-09-16)
+## 1.18.0 (2026-09-21)
 
 ### Changed
 
+- Shortened the README to installation, working examples and documentation links. The complete reference, generated measurements and detailed accessibility guidance now live in `docs/guide.md`.
+- Documentation checks compile both the README quick start and guide examples under React 18 and 19. Generated tables and size stamps now update the guide.
 - The release gate runs packed-tarball acceptance in Chromium, Firefox and WebKit and publishes the same tested file.
 - Packed acceptance now checks real JPEGs, delayed and failed images, live CMS copy and step replacement, narrow layouts, doubled text and both motion controls under React 18 and 19.
 - CI and release retain acceptance results and failure diagnostics with source, package, tarball, registry and runtime attribution; the release still publishes the tested tarball.
