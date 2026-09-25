@@ -184,14 +184,18 @@
     line-height: 1.6;
   }
   .hero .ai-line b { color: var(--text); font-weight: 400; }
+  .hero .ai-line .cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
+  }
   .hero .ai-line button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 22px;
     height: 22px;
-    margin-left: 2px;
-    vertical-align: -6px;
     border-radius: 999px;
     border: none;
     background: transparent;
@@ -1684,10 +1688,11 @@ html:not(.sv-on) :is(.demo-slider, .wheel, .wingal)::-webkit-scrollbar { display
     respects motion preferences from the start.
   </p>
   <p class="ai-line sv-rise" style="--sv-order: 3">
-    Use it with your AI agent: <b>npx scrollvars skill</b>
+    Use it with your AI agent:
+    <span class="cmd"><b>npx scrollvars skill</b>
     <button type="button" id="skill-copy" aria-label="copy AI agent skill install command">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-    </button>
+    </button></span>
   </p>
   <div class="hero-vars sv-rise" style="--sv-order: 4">
     <span>--sv-view <b id="hv-d">-1.000</b></span>
