@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 11.6 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.9 KB). Each effect below includes when to
+> (npm i scrollvars, 11.7 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.9 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -1383,7 +1383,7 @@ export function EditorialManifesto({ label = 'What we believe', paragraphs, clos
 ## Cube windows (cube-windows)
 
 A box turns in 3D as the section scrolls by and tilts to the pointer; its outline becomes the clip-path of the photo inside. The photo itself never moves.
-Category: Sections
+Category: Pointer
 Use for: Portfolio thumbnails, about-page portraits, product shots. Anywhere a plain crop feels flat.
 Knobs: box (width, height, depth, a share of the element), turn (ry0 ry1 rx0 rx1 radians across the scroll travel); pointer tilt is built in
 Install: npx scrollvars add cube-windows
@@ -1461,6 +1461,10 @@ function cubeWindowNumbers(value, count) {
 }
 
 function mountCubeWindow(el, boxSize, turn) {
+  // Below Safari 13.1 without compat(): fail visible, not fail loud. No
+  // clip-path is ever set, so the whole photo stays visible, same contract
+  // as the no-JS/old-engine case below.
+  if (typeof ResizeObserver !== 'function') return () => {}
   const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
   const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
   const [ry0, ry1, rx0, rx1] = turn

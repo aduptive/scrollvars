@@ -150,6 +150,13 @@ function makeElement(height = 400) {
       for (let node = other; node; node = node.parentElement) if (node === el) return true
       return false
     },
+    // attach()'s ancestor-flow check reads `[data-sv-flow]`; a minimal
+    // attribute-selector closest is all the driver ever calls this with.
+    closest: (selector) => {
+      const attr = /^\[([\w-]+)\]$/.exec(selector)?.[1]
+      for (let node = el; node; node = node.parentElement) if (attr && node.hasAttribute(attr)) return node
+      return null
+    },
     // readPinOffset reads `--sv-pin-offset` on the sticky `.sv-stage` inside
     // the wrapper, the element the CSS consumes it on; a test that needs one
     // sets `el.stage`. No stage: the driver falls back to the wrapper, so the
@@ -1806,6 +1813,53 @@ test('driver: an outer flow latches every nested tracked entry too, not only its
   // is the latch this fix adds, exactly once.
   assert.deepEqual(innerFlows, [true], 'the nested entry gets its own onFlow(true), one call')
   stopOuter(); stopInner()
+})
+
+test('driver: attach() latches a tracker mounted under an ancestor already in flow', async () => {
+  // a React <Track> retrack (releaseEntry drops data-sv-flow, the new entry
+  // starts with flow undefined), a CMS block mounted later, or a manual
+  // retrack: the entry was never live when its ancestor overflowed, so the
+  // round-15 propagation above never reaches it, its own stage is already
+  // static (`[data-sv-flow] .sv-stage`, pin.css), and it can never overflow
+  // on its own to latch itself. attach() must latch it immediately
+  // (round 16 item 2).
+  const { track } = await import('../dist/core/driver.js?attachflow')
+  const outer = makeElement(3000)
+  const fit = { offsetHeight: 900 }
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  outer.stage = { children: [fit] }
+  outer.style.height = 'auto'
+  outer.style.position = ''
+  outer.querySelector = sel => sel === '.sv-stage' ? outer.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  place(outer, 0)
+  const stopOuter = track(outer, { pin: '300vh' })
+  pump()
+  assert.ok(!outer.hasAttribute('data-sv-flow'))
+  fit.offsetHeight = 500
+  fit.scrollHeight = 1200
+  listeners.scroll()
+  pump()
+  assert.ok(outer.hasAttribute('data-sv-flow'), 'the outer entry has already switched to flow')
+
+  // attach a nested tracker now: it was not live when the outer overflowed
+  const inner = makeElement(400)
+  nest(outer, inner)
+  place(inner, 100)
+  const innerFlows = []
+  const stopInner = track(inner, { pin: '150vh', onFlow: flow => innerFlows.push(flow) })
+  assert.ok(inner.hasAttribute('data-sv-flow'), 'latched at attach() time, before the first frame')
+  assert.equal(inner.style.height, '', 'no pin height is ever authored on it')
+  assert.deepEqual(innerFlows, [true], 'onFlow(true) once, synchronously')
+
+  // untrack and retrack (the React <Track> retrack shape): the ancestor is
+  // still in flow, so the fresh entry latches again
+  stopInner()
+  assert.ok(!inner.hasAttribute('data-sv-flow'))
+  const innerFlows2 = []
+  const stopInner2 = track(inner, { pin: '150vh', onFlow: flow => innerFlows2.push(flow) })
+  assert.ok(inner.hasAttribute('data-sv-flow'))
+  assert.deepEqual(innerFlows2, [true])
+  stopOuter(); stopInner2()
 })
 
 test('refresh replaces stage and fit geometry and transfers resize subscriptions', async () => {

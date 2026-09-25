@@ -27,9 +27,11 @@ the bundle argument.
 
 One global driver reads the scroll position in a single rAF (batched reads,
 then batched writes) and outputs **CSS custom properties** on tracked
-elements. All motion is then plain CSS reading those variables. JavaScript
-never animates styles (the slider's glide scrolls the rail, nothing more); React
-never re-renders per frame, only on discrete index changes. If you find yourself putting
+elements. All motion is then plain CSS reading those variables; the engine
+never animates styles itself (the slider's glide scrolls the rail, nothing
+more), except a few gallery recipes (cube-windows, the canvas effects) that
+run their own frame loop for something CSS cannot express. React never
+re-renders per frame, only on discrete index changes. If you find yourself putting
 scroll values into React state, you are doing it wrong.
 
 ## The variables (the API surface)

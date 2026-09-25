@@ -160,6 +160,7 @@
       </details>
       <details open><summary>Pointer</summary>
         <a href="pointer-tilt.html">Pointer tilt</a>
+        <a href="cube-windows.html" aria-current="page">Cube windows</a>
       </details>
       <details open><summary>Sliders</summary>
         <a href="coverflow-slider.html">Coverflow slider</a>
@@ -172,7 +173,6 @@
         <a href="stats-countup.html">Stats count-up</a>
         <a href="case-study-rail.html">Case-study rail</a>
         <a href="editorial-manifesto.html">Editorial manifesto</a>
-        <a href="cube-windows.html" aria-current="page">Cube windows</a>
       </details>
     </nav>
   </details>
@@ -188,7 +188,11 @@
 </div>
 <style>.cube-window{position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:12px}.cube-photo{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#a78bfa,#312244 70%)}</style>
 <script>
-const { track, prefersReducedMotion, onMotionChange } = SV
+// destructured inside the load handler below, not here: this script runs
+// BEFORE sv.js (the engine bundle that defines SV) loads, so reading SV at
+// the top level threw ReferenceError and the load listener below it was
+// never even registered.
+let track, prefersReducedMotion, onMotionChange
 function corners(box, pose, focal) {
   const { w, h, d } = box;
   const { ry, rx } = pose;
@@ -239,6 +243,10 @@ function cubeWindowNumbers(value, count) {
 }
 
 function mountCubeWindow(el, boxSize, turn) {
+  // Below Safari 13.1 without compat(): fail visible, not fail loud. No
+  // clip-path is ever set, so the whole photo stays visible, same contract
+  // as the no-JS/old-engine case below.
+  if (typeof ResizeObserver !== 'function') return () => {}
   const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
   const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
   const [ry0, ry1, rx0, rx1] = turn
@@ -308,6 +316,7 @@ function mountCubeWindow(el, boxSize, turn) {
   }
 }
 addEventListener('load', () => {
+  ;({ track, prefersReducedMotion, onMotionChange } = SV)
   const el = document.getElementById('fxcube')
   const boxSize = cubeWindowNumbers(el.dataset.box, 3)
   const turn = cubeWindowNumbers(el.dataset.turn, 4)
@@ -388,6 +397,10 @@ function cubeWindowNumbers(value, count) {
 }
 
 function mountCubeWindow(el, boxSize, turn) {
+  // Below Safari 13.1 without compat(): fail visible, not fail loud. No
+  // clip-path is ever set, so the whole photo stays visible, same contract
+  // as the no-JS/old-engine case below.
+  if (typeof ResizeObserver !== 'function') return () =&gt; {}
   const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
   const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
   const [ry0, ry1, rx0, rx1] = turn
@@ -478,7 +491,7 @@ function Portrait() {
 }
 // npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.6 KB gzip as ESM (this page's fx/sv.js IIFE: 11.9 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.7 KB gzip as ESM (this page's fx/sv.js IIFE: 11.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
