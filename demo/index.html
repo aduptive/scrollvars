@@ -4703,8 +4703,8 @@ var SV = (() => {
     } catch (error) {
       fail(error);
     }
-    ;
-    window.__scrollvars = ready;
+    if (ready)
+      window.__scrollvars = true;
     return stop;
   }
 

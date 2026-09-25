@@ -231,7 +231,9 @@ export function scan(root?: ParentNode): () => void {
     })
   } catch (error) { fail(error) }
   // Empty routes acknowledge a working driver too, but failed initialization
-  // must leave the prepaint watchdog armed.
-  ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = ready
+  // must leave the prepaint watchdog armed: writing `false` here would
+  // un-terminate an already-released watchdog (the string 'released'),
+  // turning a permanent settle back into an armed one.
+  if (ready) (window as unknown as { __scrollvars?: boolean }).__scrollvars = true
   return stop
 }
