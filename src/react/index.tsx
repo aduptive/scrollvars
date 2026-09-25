@@ -827,6 +827,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       const life = lifetime()
       stopAutoplay.current = life.stop
       let onscreen = true
+      let hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
       let io: IntersectionObserver | undefined
       let timer: ReturnType<typeof setInterval> | undefined
       const el = ref.current
@@ -837,9 +838,14 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       const focusEl = shellRef.current ?? el
       const pointers = new Set<number>()
       let touching = false
+      // Stops the interval itself off screen or with the tab hidden,
+      // instead of leaving it running and skipping ticks: a background tab
+      // full of never-visible carousels was still waking up on every one
+      // of them. Every resume path (pointer up, touch end, intersection
+      // back in, tab visible again) funnels through this one function.
       const restart = life.guard(() => {
         clearInterval(timer)
-        timer = setInterval(advance, autoplay)
+        timer = onscreen && !hidden ? setInterval(advance, autoplay) : undefined
       })
       const onDown = life.guard((event: PointerEvent) => { pointers.add(event.pointerId); clearInterval(timer) })
       const onUp = life.guard((event: PointerEvent) => {
@@ -877,9 +883,16 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
       try {
         life.setup(() => {
           io = new IntersectionObserver(life.guard((entries: IntersectionObserverEntry[]) => {
-            if (entries.length) onscreen = entries[entries.length - 1].isIntersecting
+            if (!entries.length) return
+            onscreen = entries[entries.length - 1].isIntersecting
+            if (!pointers.size && !touching) restart()
           }))
           if (el) io.observe(el)
+          const onVisibility = life.guard(() => {
+            hidden = document.visibilityState === 'hidden'
+            if (!pointers.size && !touching) restart()
+          })
+          listen(document, 'visibilitychange', onVisibility)
           listen(focusEl, 'focusin', onFocusIn)
           listen(el, 'pointerdown', onDown as EventListener)
           listen(el, 'touchstart', onTouchStart, { passive: true })
@@ -887,7 +900,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
           listen(window, 'pointercancel', onUp as EventListener)
           listen(window, 'touchend', onTouchEnd as EventListener)
           listen(window, 'touchcancel', onTouchEnd as EventListener)
-          timer = setInterval(advance, autoplay)
+          restart()
         })
       } catch (error) { reportFailure(error) }
       return () => {

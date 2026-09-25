@@ -125,6 +125,62 @@ function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | nul
   return resolved
 }
 
+// Marquee: stop work nobody sees. A `.sv-marquee-track` costs a CSS
+// animation running forever even off screen and with the tab in the
+// background; this pauses it there and resumes on return, independent of
+// the user's own pause button (`.sv-paused`, unaffected). One shared
+// IntersectionObserver and one shared visibilitychange listener for
+// however many marquees and toggles() scopes a page has, matching the
+// singleton pattern driver.ts uses for its ResizeObserver. Reduced motion
+// already stops the animation entirely (styles/ui.css); this class costs
+// nothing extra there beyond the toggle itself.
+let marqueeObserver: IntersectionObserver | undefined
+const marqueeOffscreen = new WeakMap<HTMLElement, boolean>()
+const marqueeInstances = new Set<HTMLElement>()
+let visibilityBound = false
+
+function applyMarqueeState(track: HTMLElement) {
+  // classList.toggle's second argument defaults on `undefined`, not on a
+  // falsy value: the OR chain below can evaluate to `undefined` (document
+  // hidden check short-circuiting), which would silently fall back to the
+  // "flip from current state" behavior instead of forcing false.
+  const offscreen = Boolean((marqueeOffscreen.get(track) ?? false) || (typeof document !== 'undefined' && document.hidden))
+  track.classList.toggle('sv-marquee-offscreen', offscreen)
+}
+
+function bindMarqueeVisibility() {
+  if (visibilityBound || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
+  visibilityBound = true
+  document.addEventListener('visibilitychange', () => marqueeInstances.forEach(applyMarqueeState))
+}
+
+function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
+  if (marqueeInstances.has(track)) return
+  marqueeInstances.add(track)
+  marqueeOffscreen.set(track, false)
+  bindMarqueeVisibility()
+  if (typeof IntersectionObserver === 'function') {
+    if (!marqueeObserver) {
+      marqueeObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const el = entry.target as HTMLElement
+          if (!marqueeInstances.has(el)) return
+          marqueeOffscreen.set(el, !entry.isIntersecting)
+          applyMarqueeState(el)
+        })
+      })
+    }
+    marqueeObserver.observe(track)
+  }
+  applyMarqueeState(track)
+  life.defer(() => {
+    marqueeObserver?.unobserve(track)
+    marqueeInstances.delete(track)
+    marqueeOffscreen.delete(track)
+    track.classList.remove('sv-marquee-offscreen')
+  })
+}
+
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
@@ -380,6 +436,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
       live.add(instance)
       boot()
       scope.addEventListener('click', onClick)
+      scope.querySelectorAll<HTMLElement>('.sv-marquee-track').forEach((track) => watchMarquee(track, life))
     })
   } catch (error) {
     rollback()

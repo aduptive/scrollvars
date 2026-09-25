@@ -56,7 +56,12 @@ export function ownership() {
     if (!entry) entries.set(key, entry = { read, write, before: current, last: value })
     else if (current !== entry.last) entry.before = current
     entry.last = value
-    write(value)
+    // The bookkeeping above (before/last) runs every call, restore()'s
+    // correctness depends on it; only the DOM write itself is skippable,
+    // and only when the value already reads back as what we're about to
+    // write (a per-frame `--sd`/`--sv-progress` write is very often the
+    // same number two frames running). Perf-1 #3a.
+    if (current !== value) write(value)
   }
   const restore = (node?: object, key?: string) => {
     let first: unknown, failed = false

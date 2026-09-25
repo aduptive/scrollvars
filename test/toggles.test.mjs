@@ -2,6 +2,53 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { lifecycleEnv } from './lifecycle-fixture.mjs'
 
+test('toggles: a marquee track pauses off screen or with the tab hidden, independent of the user pause button', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marquee')
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    root.append(track)
+    const stop = toggles(root)
+
+    const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+    assert.ok(io, 'a marquee track gets an IntersectionObserver')
+    assert.ok(io.targets.has(track))
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'starts on screen')
+
+    io.cb([{ target: track, isIntersecting: false }])
+    assert.ok(track.classes.has('sv-marquee-offscreen'), 'paused off screen')
+    io.cb([{ target: track, isIntersecting: true }])
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'resumes back on screen')
+
+    document.hidden = true
+    document.fire('visibilitychange')
+    assert.ok(track.classes.has('sv-marquee-offscreen'), 'paused while the tab is hidden, even on screen')
+    document.hidden = false
+    document.fire('visibilitychange')
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'resumes once the tab is visible again')
+
+    // the user's own pause button is a separate class: both can be set independently
+    track.classList.add('sv-paused')
+    assert.ok(track.classes.has('sv-paused') && !track.classes.has('sv-marquee-offscreen'))
+
+    stop()
+    assert.ok(!io.targets.has(track), 'stop() unobserves the track')
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'stop() clears the offscreen class')
+  } finally { env.restore() }
+})
+
+test('toggles: a scope with no marquee track never creates an IntersectionObserver', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2nomarquee')
+    const root = env.element()
+    const stop = toggles(root)
+    assert.equal([...env.deliveries].filter(d => d.kind === 'IntersectionObserver').length, 0)
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles failure: setup rollback preserves semantic state and releases the live registry', async () => {
   const env = lifecycleEnv()
   try {
