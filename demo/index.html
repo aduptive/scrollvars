@@ -173,24 +173,25 @@
   }
   .hero-vars b { font-weight: 400; color: var(--num); font-variant-numeric: tabular-nums; }
   .hero .ai-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    max-width: min(90vw, 480px);
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 6px 8px 6px 16px;
+    border-radius: 16px;
+    padding: 10px 16px;
     font-family: var(--mono);
     font-size: 13px;
     color: var(--muted);
+    line-height: 1.6;
   }
   .hero .ai-line b { color: var(--text); font-weight: 400; }
   .hero .ai-line button {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
+    margin-left: 2px;
+    vertical-align: -6px;
     border-radius: 999px;
     border: none;
     background: transparent;
