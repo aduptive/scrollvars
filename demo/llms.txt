@@ -334,7 +334,14 @@ animations where supported.
 3. Discrete snapped value + transition = smooth. Continuous value + transition = rubber-band. For lag/inertia on a continuous value, use a JS exponential lerp (`current += (target - current) * factor`), not a transition.
 4. Never put `mask-image` or `backdrop-filter` over content that moves every frame (forces re-raster).
 5. Throttle text/HUD updates driven by scroll (~100ms); text layout every frame janks.
-6. `will-change: translate` on elements moved every frame; remove it elsewhere.
+6. Do not add `will-change` by default. Measured on the published benchmark
+   (`demo/bench/harness/README.md`, main-style-css screen), hinting the
+   driver's own moving elements with `will-change: transform, opacity`
+   raised main-profile task time about 9% and gave no measurable gain on
+   the deep-50 profile; a separate screen rejected it outright
+   (`demo/bench/harness/HYPOTHESES.md`). Add it only when a profiler shows
+   a specific moving element repainting every frame, scope it to that
+   element, and remove it (`will-change: auto`) once the motion stops.
 7. Deliberate exceptions inside the kit: `sv-tilt` transitions a pointer-driven transform (small, damped), `sv-counter` rewrites generated text, Accordion animates block-size. Each is local and opt-in; do not generalize them.
 
 ## Browser support (tell clients this)

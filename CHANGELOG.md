@@ -6,6 +6,11 @@
 
 - A public, installable skill for AI coding agents: `skills/scrollvars/SKILL.md`, generated in `npm run demo:sync` from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (`files`). `npx scrollvars skill [--global] [--force]` installs it for Claude Code (`.claude/skills/scrollvars`) and Codex (`.agents/skills/scrollvars`), matching the installed package version; refuses to overwrite a locally modified copy without `--force`, idempotent otherwise. Also installable with the open `npx skills add aduptive/scrollvars` convention (reads a repo's `skills/<name>/SKILL.md`). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match `package.json`.
 
+### Fixed
+
+- The site hero's "use it with your AI agent" pill wrapped `npx` onto its own line at narrow widths. The command now sits in its own `white-space: nowrap` span while the label around it wraps freely; verified at 320, 375 and 1280 with real mobile/desktop viewport emulation (no horizontal overflow, the command never breaks across lines).
+- AGENTS.md's performance rule 6 recommended `will-change: translate` on every scroll-moved element, which our own published benchmark contradicts: hinting `will-change: transform, opacity` on the driver's own moving elements raised main-profile task time about 9% and gave no measurable gain on the deep-50 profile (`demo/bench/harness/README.md`, main-style-css screen), and a separate screen rejected it outright (`demo/bench/harness/HYPOTHESES.md`). Rewritten from the measured facts: do not add `will-change` by default; add it only when a profile shows a specific moving element repainting every frame, and remove it once the motion stops. The skill and llms.txt follow, generated from the same text.
+
 ## 1.18.1 (2026-09-25)
 
 ### Fixed
