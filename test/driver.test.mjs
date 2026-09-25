@@ -831,7 +831,7 @@ test('driver: init() is transactional, a throwing ResizeObserver leaves track() 
   const untrack = track(el, { travel: true })
   pump()
   assert.equal(el.classes.size, 0, 'no .sv class: the page stays static')
-  assert.deepEqual(el.vars, {}, 'no inline vars written')
+  assert.deepEqual(el.vars, { '--sv-live': '1' }, 'settled visible: failed init must not hide content')
   untrack() // the no-op must be safely callable
 
   // scrollvars/compat shims a real ResizeObserver in; a later track() retries init()

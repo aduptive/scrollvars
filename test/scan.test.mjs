@@ -13,7 +13,11 @@ function makeElement(attrs = {}, children = [], isConnected = true) {
     children,
     isConnected,
     parent: null,
-    style: { setProperty: () => {} },
+    vars: {},
+    style: {
+      setProperty(name, value) { el.vars[name] = value },
+      getPropertyValue(name) { return el.vars[name] ?? '' },
+    },
     classList: { add: () => {}, toggle: () => {}, remove: () => {} },
     scrollHeight: 100,
     hasAttribute(name) {
@@ -95,6 +99,8 @@ for (const failure of ['second attachment', 'observer']) test(`scan: ${failure} 
   assert.ok(watched.has(a), 'overlapping owner remains acquired')
   assert.ok(!watched.has(b) && !watched.has(c), 'partial scope owns no tracker')
   assert.ok(b.hasAttribute('data-sv-off') && c.hasAttribute('data-sv-off'), 'unprocessed content is settled')
+  assert.equal(b.vars['--sv-live'], '1', 'settled visible: b')
+  assert.equal(c.vars['--sv-live'], '1', 'settled visible: c')
   assert.equal(errors.length, 1)
   fail = false
   const retry = scan(body)
@@ -121,6 +127,7 @@ test('scan: failed initialization stays visible when another element later boots
   const stopOther = track(other)
   assert.ok(watched.has(other))
   assert.ok(stale.hasAttribute('data-sv-off'), 'the later global sv-on cannot hide the failed scan')
+  assert.equal(stale.vars['--sv-live'], '1', 'settled visible: stale')
   const retry = scan()
   assert.ok(watched.has(stale), 'failed no-op registration did not consume ownership')
   failed(); assert.ok(watched.has(stale))
@@ -524,7 +531,10 @@ test('failed pointer acquisition in an overlapping scan preserves its existing o
   const failed = scan(root)
   assert.equal(a.handlers.size, 2, 'shared pointer owner survived')
   assert.equal(b.handlers.size, 0, 'failed pointer has no listeners')
-  assert.equal(observed.size, baseline, 'partial observer released')
+  // baseline + 1: the failed scan's own top-level observer stays connected in
+  // settle-only mode, to settle a [data-sv] node inserted later, and is
+  // released only by its own stop() (below), not by the failure itself.
+  assert.equal(observed.size, baseline + 1, 'failed scan keeps a settle-only observer')
   assert.equal(errors.length, 1)
   fail = false
   const retry = scan(root)

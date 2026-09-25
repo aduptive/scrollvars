@@ -3927,6 +3927,7 @@ var SV = (() => {
       if (containsTracked(waiting))
         return;
       deferredOff.delete(waiting);
+      safely(() => waiting.style.setProperty?.("--sv-live", "1"));
       waiting.setAttribute?.("data-sv-off", "");
     });
   }
@@ -3978,7 +3979,6 @@ var SV = (() => {
     for (const name of Object.keys(entry.written))
       safely(() => el.style.removeProperty?.(name));
     safely(() => el.style.removeProperty?.("--sv-scenes"));
-    safely(() => el.style.setProperty?.("--sv-live", "1"));
     safely(() => markReleased(el));
     try {
       entry.opts.onStatus?.(state);
@@ -4551,6 +4551,7 @@ var SV = (() => {
     const pointers = /* @__PURE__ */ new Map();
     let observer;
     let stopped = false;
+    let failed = false;
     const stop = () => {
       if (stopped)
         return;
@@ -4567,8 +4568,27 @@ var SV = (() => {
         map.clear();
       }
     };
+    const settleSubtree = (node) => {
+      if (!(node instanceof HTMLElement))
+        return;
+      if (node.hasAttribute("data-sv"))
+        settleUntracked(node);
+      node.querySelectorAll("[data-sv]").forEach(settleUntracked);
+    };
     const fail = (error) => {
-      stop();
+      if (failed)
+        return;
+      failed = true;
+      const release = (fn) => {
+        try {
+          fn();
+        } catch {
+        }
+      };
+      for (const map of [tracked, splits, pointers]) {
+        map.forEach((fn) => release(fn));
+        map.clear();
+      }
       if (scope.hasAttribute?.("data-sv"))
         settleUntracked(scope);
       scope.querySelectorAll("[data-sv]").forEach(settleUntracked);
@@ -4579,10 +4599,6 @@ var SV = (() => {
           console.error(error);
       }
     };
-    if (!ready) {
-      fail();
-      return stop;
-    }
     const addPointer = (el) => {
       if (!pointers.has(el))
         pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
@@ -4642,18 +4658,31 @@ var SV = (() => {
         node.querySelectorAll("[data-sv-pointer]").forEach(removePointer);
       }
     };
-    try {
-      if (scope.hasAttribute)
-        sweep(scope, add);
-      else {
-        scope.querySelectorAll("[data-sv]").forEach(add);
-        scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
-        scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
-        scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
+    if (!ready)
+      fail();
+    else {
+      try {
+        if (scope.hasAttribute)
+          sweep(scope, add);
+        else {
+          scope.querySelectorAll("[data-sv]").forEach(add);
+          scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+          scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
+          scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
+        }
+      } catch (error) {
+        fail(error);
       }
+    }
+    try {
       observer = new MutationObserver((mutations) => {
         if (stopped)
           return;
+        if (failed) {
+          for (const mutation of mutations)
+            mutation.addedNodes.forEach(settleSubtree);
+          return;
+        }
         if (bootReleased()) {
           fail();
           return;
@@ -4671,10 +4700,11 @@ var SV = (() => {
         childList: true,
         subtree: true
       });
-      window.__scrollvars = ready;
     } catch (error) {
       fail(error);
     }
+    ;
+    window.__scrollvars = ready;
     return stop;
   }
 

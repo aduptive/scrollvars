@@ -908,6 +908,13 @@ function settleDeferred() {
   deferredOff.forEach((waiting) => {
     if (containsTracked(waiting)) return
     deferredOff.delete(waiting)
+    // Every settle path (release, an untracked node handed to
+    // settleUntracked(), a failed attach) routes through here, so this is the
+    // one place that has to lift the entrance flag: no entrance preset reads
+    // `data-sv-off`, only `--sv-live`, and releaseEntry's own inline write
+    // never reaches an element settled through settleUntracked() or the
+    // failed-init branch of attach(), both of which were never `entries`.
+    safely(() => waiting.style.setProperty?.('--sv-live', '1'))
     waiting.setAttribute?.('data-sv-off', '')
   })
 }
@@ -978,10 +985,9 @@ function releaseEntry(entry: Entry, state: 'released' | 'failed' = 'released') {
   // `--sv-live: 0`, only `.sv.sv-live` lifts it to 1, and `html.sv-on` is
   // never taken off: without this, stopScan() or a ScrollVarsBoot unmount
   // would leave every not-yet-live section at opacity 0 forever, and an
-  // option change would flash content out and back. Inline rather than
-  // dropping `.sv`, because server markup keeps its authored `[data-sv]`
-  // (which hides on its own) and the driver must not rewrite that attribute.
-  safely(() => el.style.setProperty?.('--sv-live', '1'))
+  // option change would flash content out and back. markReleased() (through
+  // settleDeferred()) writes the inline `--sv-live: 1`, since a deferred
+  // ancestor settles later than this call and needs the same lift.
   // The same promise for everything the presets style on this element's
   // DESCENDANTS, which no inline variable here could reach: `[data-sv-off]` is
   // the marker the guards in styles/pin.css and styles/core.css read, so a
