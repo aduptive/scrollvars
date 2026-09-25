@@ -44,6 +44,7 @@
     "dist",
     "bin",
     "styles",
+    "skills",
     "CHANGELOG.md",
     "styles.css",
     "AGENTS.md",
@@ -61,7 +62,7 @@
     "test:browsers": "node demo/bench/harness/gallery-browsers.mjs",
     "test:packed": "node demo/bench/harness/packed-acceptance.mjs",
     "prepublishOnly": "npm run build && npm test",
-    "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/bench-tables.mjs && node scripts/docs-stamp.mjs && node scripts/docs-build.mjs",
+    "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/bench-tables.mjs && node scripts/docs-stamp.mjs && node scripts/skill-build.mjs && node scripts/docs-build.mjs",
     "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"
   },
   "keywords": [
