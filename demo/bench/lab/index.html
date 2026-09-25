@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScrollVars perf lab</title>
+<link rel="stylesheet" href="lab-page.css">
+</head>
+<body>
+<main class="lab-run">
+  <h1>ScrollVars perf lab</h1>
+  <p>Three reference pages, scrolled top to bottom on this device: a long
+  institutional page, a deep-DOM page and a page of 42 cube-window shapes.
+  About 3 to 5 minutes with the defaults. Open this on any browser you have,
+  and on a phone over the same network.</p>
+  <ul>
+    <li>Turn off Low Power Mode / battery saver: it caps the frame rate.</li>
+    <li>Close other apps and do not touch the screen until the table shows up.</li>
+    <li>Keep the tab in front: leaving it restarts the page it was on.</li>
+  </ul>
+  <button id="run" type="button">Run the lab</button>
+  <button id="resume" type="button" hidden>Continue where it stopped</button>
+  <p id="lab-status" role="status"></p>
+  <pre id="out" hidden tabindex="0"></pre>
+  <button id="copy" type="button" hidden>Copy results</button>
+</main>
+
+<script src="../../fx/sv.js"></script>
+<script>
+const PAGES = ['long', 'deep', 'cubes']
+const KEY = 'sv-perf-lab'
+// ?frames= and ?reps= shorten a dry run; the real run uses the defaults
+const query = new URLSearchParams(location.search)
+const REPS = +(query.get('reps') || 3), FRAMES = +(query.get('frames') || 900)
+const $ = (id) => document.getElementById(id)
+const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
+const pct = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]
+
+$('run').addEventListener('click', () => {
+  const queue = []
+  // alternate page order between reps: a fixed order lets whichever page
+  // goes first (colder caches, warmer CPU) look systematically different
+  for (let rep = 0; rep < REPS; rep++) {
+    const order = rep % 2 === 0 ? PAGES : [...PAGES].reverse()
+    for (const p of order) queue.push(`${p}#${rep}`)
+  }
+  const env = {
+    userAgent: navigator.userAgent,
+    screen: `${screen.width}x${screen.height}`,
+    dpr: devicePixelRatio,
+    viewport: `${innerWidth}x${innerHeight}`,
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  }
+  localStorage.setItem(KEY, JSON.stringify({ queue, runs: [], frames: FRAMES, reps: REPS, env }))
+  location.href = `${queue[0].split('#')[0]}.html?run=${Date.now()}`
+})
+
+let state = null
+try { state = JSON.parse(localStorage.getItem(KEY) || 'null') } catch {}
+
+if (state && state.queue.length) {
+  $('resume').hidden = false
+  $('lab-status').textContent = `${state.runs.length} of ${state.runs.length + state.queue.length} page runs done. Continue, or start over.`
+  $('resume').addEventListener('click', () => {
+    location.href = `${state.queue[0].split('#')[0]}.html?run=${Date.now()}`
+  })
+}
+
+if (state && !state.queue.length && state.runs.length) {
+  const good = state.runs.filter((r) => r.deltas)
+  const all = good.flatMap((r) => r.deltas)
+  const vsync = median(all)
+  const hasLoaf = good.some((r) => r.loaf)
+  const lines = [
+    `device: ${state.env.userAgent}`,
+    `screen: ${state.env.screen} @${state.env.dpr}x, viewport ${state.env.viewport}, reduced motion: ${state.env.reducedMotion}`,
+    `frame interval (median of everything): ${vsync.toFixed(2)} ms, about ${Math.round(1000 / vsync)} Hz`,
+    `${state.frames} frames per run, median of ${state.reps} reps (order alternated); late = frame longer than 1.5x the interval`,
+    '',
+    'page    p50    p95    p99   late%  animated(of ' + state.reps + ')' + (hasLoaf ? '  LoAF  blocking-ms  script-ms' : ''),
+  ]
+  for (const page of PAGES) {
+    const rs = good.filter((r) => r.page === page)
+    if (!rs.length) continue
+    const stat = (fn) => median(rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
+    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
+    const late = stat((d) => (d.filter((x) => x > vsync * 1.5).length / d.length) * 100)
+    const animated = rs.filter((r) => r.animated).length
+    let line = `${page.padEnd(7)} ${p50.toFixed(1).padStart(5)}  ${p95.toFixed(1).padStart(5)}  ${p99.toFixed(1).padStart(5)}  ${late.toFixed(1).padStart(5)}  ${String(animated).padStart(3)}`
+    if (hasLoaf) {
+      const withLoaf = rs.filter((r) => r.loaf)
+      if (withLoaf.length) {
+        const loafCount = median(withLoaf.map((r) => r.loaf.count))
+        const blocking = median(withLoaf.map((r) => r.loaf.totalBlocking))
+        const script = median(withLoaf.map((r) => r.loaf.scriptTotal))
+        line += `  ${String(loafCount).padStart(4)}  ${blocking.toFixed(1).padStart(11)}  ${script.toFixed(1).padStart(9)}`
+      } else {
+        line += '  n/a (no Long Animation Frame support in this engine)'
+      }
+    }
+    lines.push(line)
+  }
+  const failedAnimated = good.filter((r) => !r.animated)
+  if (failedAnimated.length)
+    lines.push('', `WARNING: ${failedAnimated.length} run(s) did not detect any change (frozen page, or the check itself needs a look): ${failedAnimated.map((r) => `${r.page}#${r.rep}`).join(', ')}`)
+  for (const r of state.runs.filter((r) => r.error)) lines.push(`error: ${r.page} run ${r.rep + 1}: ${r.error}`)
+  $('out').textContent = lines.join('\n')
+  $('out').hidden = $('copy').hidden = false
+  $('lab-status').textContent = 'Done. Results were sent to the server (if serve.mjs is running); you can also copy them below.'
+
+  // Send the table and the raw per-run data to the server: it logs every
+  // request, so results arrive even where the clipboard is off limits
+  // (plain http is not a secure context). Chunked to stay under URL limits.
+  const payload = JSON.stringify({ env: state.env, frames: state.frames, reps: state.reps, runs: state.runs, table: $('out').textContent })
+  const id = Date.now()
+  const CHUNK = 1400
+  const n = Math.ceil(payload.length / CHUNK)
+  for (let i = 0; i < n; i++)
+    new Image().src = `result?id=${id}&part=${i + 1}of${n}&data=${encodeURIComponent(payload.slice(i * CHUNK, (i + 1) * CHUNK))}`
+}
+
+$('copy').addEventListener('click', () => {
+  // execCommand works in a click on plain http, where navigator.clipboard is absent
+  const area = document.createElement('textarea')
+  area.value = $('out').textContent
+  area.setAttribute('readonly', '')
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+  document.body.append(area)
+  area.focus(); area.setSelectionRange(0, area.value.length)
+  const ok = document.execCommand('copy')
+  area.remove()
+  $('lab-status').textContent = ok ? 'Copied.' : 'Copy failed: press and hold the text to select it.'
+})
+</script>
+</body></html>

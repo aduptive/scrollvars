@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="lab-version" content="1">
+<title>Cube windows, 42 shapes · ScrollVars perf lab</title>
+<link rel="stylesheet" href="../../fx/sv.css">
+<link rel="stylesheet" href="lab-page.css">
+</head>
+<body>
+<main>
+<header class="lab-hero"><h1>Cube windows, 42 shapes</h1><p>The gallery's cube-windows recipe (a 3D box turning in scroll, its outline as a clip-path), reused at gallery scale.</p></header>
+<div class="lab-cube-grid">
+<div class="cube-window window" id="cube0" data-box="0.76 0.41 0.46" data-turn="0.00 -1.52 0.54 0.51"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube1" data-box="0.76 0.41 0.47" data-turn="-0.04 -1.50 0.56 0.49"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube2" data-box="0.76 0.40 0.47" data-turn="-0.08 -1.49 0.58 0.47"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube3" data-box="0.75 0.40 0.47" data-turn="-0.13 -1.47 0.60 0.45"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube4" data-box="0.75 0.40 0.48" data-turn="-0.17 -1.46 0.61 0.43"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube5" data-box="0.75 0.40 0.48" data-turn="-0.21 -1.44 0.63 0.41"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube6" data-box="0.74 0.40 0.48" data-turn="-0.25 -1.42 0.65 0.39"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube7" data-box="0.74 0.40 0.49" data-turn="-0.29 -1.40 0.66 0.37"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube8" data-box="0.74 0.40 0.49" data-turn="-0.34 -1.38 0.68 0.34"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube9" data-box="0.74 0.40 0.49" data-turn="-0.38 -1.36 0.70 0.32"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube10" data-box="0.73 0.40 0.50" data-turn="-0.42 -1.33 0.71 0.30"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube11" data-box="0.73 0.40 0.50" data-turn="-0.46 -1.31 0.72 0.28"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube12" data-box="0.73 0.40 0.51" data-turn="-0.50 -1.28 0.74 0.25"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube13" data-box="0.73 0.40 0.51" data-turn="-0.54 -1.26 0.75 0.23"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube14" data-box="0.72 0.40 0.51" data-turn="-0.58 -1.23 0.76 0.21"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube15" data-box="0.72 0.40 0.52" data-turn="-0.62 -1.20 0.78 0.19"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube16" data-box="0.72 0.40 0.52" data-turn="-0.66 -1.18 0.79 0.16"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube17" data-box="0.72 0.40 0.52" data-turn="-0.70 -1.15 0.80 0.14"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube18" data-box="0.72 0.40 0.53" data-turn="-0.73 -1.12 0.81 0.12"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube19" data-box="0.71 0.40 0.53" data-turn="-0.77 -1.09 0.82 0.09"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube20" data-box="0.71 0.40 0.54" data-turn="-0.81 -1.05 0.83 0.07"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube21" data-box="0.71 0.40 0.54" data-turn="-0.84 -1.02 0.84 0.04"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube22" data-box="0.71 0.41 0.54" data-turn="-0.88 -0.99 0.85 0.02"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube23" data-box="0.71 0.41 0.55" data-turn="-0.91 -0.96 0.85 -0.00"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube24" data-box="0.71 0.41 0.55" data-turn="-0.95 -0.92 0.86 -0.03"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube25" data-box="0.71 0.41 0.56" data-turn="-0.98 -0.89 0.87 -0.05"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube26" data-box="0.70 0.41 0.56" data-turn="-1.02 -0.85 0.87 -0.08"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube27" data-box="0.70 0.41 0.56" data-turn="-1.05 -0.81 0.88 -0.10"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube28" data-box="0.70 0.41 0.57" data-turn="-1.08 -0.78 0.88 -0.12"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube29" data-box="0.70 0.42 0.57" data-turn="-1.11 -0.74 0.89 -0.15"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube30" data-box="0.70 0.42 0.58" data-turn="-1.14 -0.70 0.89 -0.17"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube31" data-box="0.70 0.42 0.58" data-turn="-1.17 -0.66 0.89 -0.19"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube32" data-box="0.70 0.42 0.58" data-turn="-1.20 -0.63 0.90 -0.22"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube33" data-box="0.70 0.42 0.59" data-turn="-1.23 -0.59 0.90 -0.24"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube34" data-box="0.70 0.43 0.59" data-turn="-1.25 -0.55 0.90 -0.26"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube35" data-box="0.70 0.43 0.60" data-turn="-1.28 -0.51 0.90 -0.28"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+<div class="cube-window window" id="cube36" data-box="0.70 0.43 0.60" data-turn="-1.30 -0.47 0.90 -0.31"><div class="cube-photo" aria-hidden="true" style="--i:0"></div></div>
+<div class="cube-window window" id="cube37" data-box="0.70 0.43 0.60" data-turn="-1.33 -0.43 0.90 -0.33"><div class="cube-photo" aria-hidden="true" style="--i:1"></div></div>
+<div class="cube-window window" id="cube38" data-box="0.70 0.43 0.61" data-turn="-1.35 -0.39 0.90 -0.35"><div class="cube-photo" aria-hidden="true" style="--i:2"></div></div>
+<div class="cube-window window" id="cube39" data-box="0.70 0.44 0.61" data-turn="-1.37 -0.34 0.89 -0.37"><div class="cube-photo" aria-hidden="true" style="--i:3"></div></div>
+<div class="cube-window window" id="cube40" data-box="0.70 0.44 0.61" data-turn="-1.39 -0.30 0.89 -0.39"><div class="cube-photo" aria-hidden="true" style="--i:4"></div></div>
+<div class="cube-window window" id="cube41" data-box="0.70 0.44 0.62" data-turn="-1.41 -0.26 0.89 -0.42"><div class="cube-photo" aria-hidden="true" style="--i:5"></div></div>
+</div>
+<footer class="lab-footer">
+  <p>ScrollVars perf lab reference page. <a href="./">Back to the runner</a>.</p>
+</footer>
+<script>
+// destructured inside the load handler below, not here: this script runs
+// BEFORE sv.js (the engine bundle that defines SV) loads, so reading SV at
+// the top level threw ReferenceError and the load listener below it was
+// never even registered.
+let track, prefersReducedMotion, onMotionChange
+function corners(box, pose, focal) {
+  const { w, h, d } = box;
+  const { ry, rx } = pose;
+  const cosY = Math.cos(ry), sinY = Math.sin(ry);
+  const cosX = Math.cos(rx), sinX = Math.sin(rx);
+  const pts = [];
+  for (let i = 0; i < 8; i++) {
+    let x = (i & 1 ? 0.5 : -0.5) * w, y = (i & 2 ? 0.5 : -0.5) * h, z = (i & 4 ? 0.5 : -0.5) * d;
+    [x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY];
+    [y, z] = [y * cosX - z * sinX, y * sinX + z * cosX];
+    const s = focal / (focal + z);
+    pts.push([x * s, y * s]);
+  }
+  return pts;
+}
+function hull(points) {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list) => {
+    const out = [];
+    for (const q of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+      out.push(q);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+const r1 = (n) => Math.round(n * 10) / 10;
+function toClipPath(points, ox, oy, scale) {
+  return `polygon(${points.map(([x, y]) => `${r1(ox + x * scale)}px ${r1(oy + y * scale)}px`).join(",")})`;
+}
+function bounds(box, poses, focal) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const pose of poses) {
+    for (const [x, y] of corners(box, pose, focal)) {
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return { x0, x1, y0, y1 };
+}
+function cubeWindowNumbers(value, count) {
+  const list = String(value ?? '').trim().split(/\s+/).map(Number)
+  return list.length === count && list.every(Number.isFinite) ? list : null
+}
+
+function mountCubeWindow(el, boxSize, turn) {
+  // Below Safari 13.1 without compat(): fail visible, not fail loud. No
+  // clip-path is ever set, so the whole photo stays visible, same contract
+  // as the no-JS/old-engine case below.
+  if (typeof ResizeObserver !== 'function') return () => {}
+  const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
+  const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
+  const [ry0, ry1, rx0, rx1] = turn
+  const poseAt = (t, hx, hy) => ({
+    ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
+    rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
+  })
+
+  let t = .5, fit = null, last = '', raf = 0
+  const hover = { x: 0, y: 0 }, target = { x: 0, y: 0 }
+
+  // Every pose the scroll travel times the pointer tilt can reach, so the
+  // element fits the shape without cutting a corner off at either extreme.
+  const refit = () => {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || (fit && fit.w === w && fit.h === h)) return false
+    const poses = []
+    for (let s = 0; s <= 20; s++)
+      for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
+    const b = bounds(box3, poses, FOCAL)
+    const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
+    fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
+    return true
+  }
+
+  const draw = () => {
+    if (!fit) return
+    const still = prefersReducedMotion()
+    const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
+    const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
+    if (clip !== last) { el.style.clipPath = clip; last = clip }
+  }
+
+  // Pointer inertia is the only loop of our own, and only while it settles.
+  const settle = () => {
+    raf = 0
+    hover.x += (target.x - hover.x) * EASE
+    hover.y += (target.y - hover.y) * EASE
+    draw()
+    if (Math.abs(target.x - hover.x) + Math.abs(target.y - hover.y) > .002) raf = requestAnimationFrame(settle)
+  }
+  const onMove = (e) => {
+    if (prefersReducedMotion()) return
+    const r = el.getBoundingClientRect()
+    target.x = ((e.clientX - r.left) / r.width) * 2 - 1
+    target.y = ((e.clientY - r.top) / r.height) * 2 - 1
+    if (!raf) raf = requestAnimationFrame(settle)
+  }
+  const onLeave = () => { target.x = target.y = 0; if (!raf) raf = requestAnimationFrame(settle) }
+
+  const ro = new ResizeObserver(() => { if (refit()) { last = ''; draw() } })
+  ro.observe(el)
+  refit()
+  draw()
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerleave', onLeave)
+  const stopMotion = onMotionChange(() => { hover.x = hover.y = target.x = target.y = 0; draw() })
+  // scrollvars: travel t (0..1) through the viewport, from its shared frame loop
+  const stopTrack = track(el, { view: false, onTravel: (v) => { t = v; draw() } })
+
+  return () => {
+    stopTrack(); stopMotion(); ro.disconnect()
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerleave', onLeave)
+    if (raf) cancelAnimationFrame(raf)
+    el.style.clipPath = '' // no JS / stopped: the whole photo shows again
+  }
+}
+
+addEventListener('load', () => {
+  ;({ track, prefersReducedMotion, onMotionChange } = SV)
+  document.querySelectorAll('.cube-window').forEach((el) => {
+    const boxSize = cubeWindowNumbers(el.dataset.box, 3)
+    const turn = cubeWindowNumbers(el.dataset.turn, 4)
+    if (boxSize && turn) mountCubeWindow(el, boxSize, turn)
+  })
+})
+
+</script>
+<p class="lab-foot">Part of the <a href="./">ScrollVars perf lab</a>. Loads the library from the local build; not a claim about any other page.</p>
+</main>
+<script>
+window.LAB_PAGE = {
+  name: 'cubes',
+  animated: function () {
+    var cubes = document.querySelectorAll('.cube-window')
+    if (!cubes.length) return false
+    var seen = new Set()
+    for (var i = 0; i < cubes.length; i++) seen.add(cubes[i].style.clipPath)
+    return seen.size > 1
+  }
+}
+</script>
+<script src="../../fx/sv.js"></script>
+<script src="run-drive.js"></script>
+</body></html>
