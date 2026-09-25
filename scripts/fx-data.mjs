@@ -5,64 +5,24 @@
  * prove that every component compiles and renders with the presets its preview
  * uses. scripts/fx-build.mjs turns this into pages, llms.txt and registry.json.
  */
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { compileMask3dCore } from './fx-lib/compile-mask3d.mjs'
 
-// The mask3d recipes (cube-windows and friends) all copy-paste the same
-// projection math: one module, read once here so the vanilla, React and unit
-// tests can never drift apart. scripts/fx-lib/mask3d-core.mjs is the source
-// of truth and is unit-tested directly (test/mask3d-core.test.mjs); promoting
-// it into a library export later is moving this file, not rewriting it.
-const MASK3D_CORE = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'fx-lib', 'mask3d-core.mjs'),
-  'utf8'
-).trim()
-
-// A typed version of the same module for the TSX panes: strict tsc needs
-// annotations mask3d-core.mjs itself does not carry (it stays plain JS on
-// purpose, the recipe's whole point is that anyone can read and edit it).
-// Each substitution is checked for an exact single match, so a future edit
-// to mask3d-core.mjs that this transform no longer recognizes throws here
-// instead of silently shipping an untyped or mistyped TSX pane.
-function typeMask3dCore(src) {
-  const subs = [
-    ['export function area(poly) {', 'function area(poly: Point[]): number {'],
-    ['export function extrude(contours, depth, pivot = [0, 0]) {', 'function extrude(contours: Point[][], depth: number, pivot: Point = [0, 0]): Piece {'],
-    ['export function faces(piece, angle, pose, focal, out = []) {', 'function faces(piece: Piece, angle: number, pose: Pose, focal: number, out: Point[][] = []): Point[][] {'],
-    ['  const put = (x, y, z) => {', '  const put = (x: number, y: number, z: number): Point => {'],
-    ['export function silhouette(pieces, pose, focal, angles = []) {', 'function silhouette(pieces: Piece[], pose: Pose, focal: number, angles: number[] = []): Point[][] {'],
-    ['  const out = []', '  const out: Point[][] = []'],
-    ['export function pathOf(polys, ox, oy, scale) {', 'function pathOf(polys: Point[][], ox: number, oy: number, scale: number): string {'],
-    ['export function toClipPath(polys, ox, oy, scale) {', 'function toClipPath(polys: Point[][], ox: number, oy: number, scale: number): string {'],
-    ['export function bounds(pieces, poses, focal) {', 'function bounds(pieces: Piece[], poses: Pose[], focal: number): Bounds {'],
-    ['export function box(w, h, d) {', 'function box(w: number, h: number, d: number): Piece {'],
-    ['export function regularPolygon(n, r = .5, depth = .3) {', 'function regularPolygon(n: number, r = .5, depth = .3): Piece {'],
-    ['export function star(n, inner = .45, r = .5, depth = .3) {', 'function star(n: number, inner = .45, r = .5, depth = .3): Piece {'],
-    ['const r1 = (n) => Math.round(n * 10) / 10', 'const r1 = (n: number): number => Math.round(n * 10) / 10'],
-    ['  const c = []', '  const c: Point[] = []', 2],
-  ]
-  let out = src
-  for (const [from, to, expected = 1] of subs) {
-    const count = out.split(from).length - 1
-    if (count !== expected) throw new Error(`typeMask3dCore: expected ${expected} match(es) of ${JSON.stringify(from)}, found ${count}`)
-    out = out.split(from).join(to)
-  }
-  return [
-    'type Point = [number, number]',
-    'type Piece = { contours: Point[][]; depth: number; pivot: Point }',
-    'type Pose = { ry?: number; rx?: number; cx?: number; cy?: number; angles?: number[] }',
-    'type Bounds = { x0: number; x1: number; y0: number; y1: number }',
-    '',
-    out,
-  ].join('\n')
-}
-const MASK3D_CORE_TS = typeMask3dCore(MASK3D_CORE)
+// The cube-windows recipe's projection math lives in scripts/fx-lib/mask3d-
+// core.ts, the source of truth: typed, unit-tested directly (test/mask3d-
+// core.test.mjs, against this exact compiled output). Measured against the
+// alternative (projecting every face and unioning them, needed only for a
+// concave shape or one with a hole) in demo/bench/harness/mask3d-cost.mjs:
+// the hull of the box's 8 corners is consistently cheaper and renders the
+// identical outline for a plain box, so that is what ships. Two views of it
+// feed the gallery panes: the TS source itself (real types, for the TSX
+// pane, own export keywords stripped so it reads as local declarations
+// alongside the component) and the plain-JS esbuild derives from it (for the
+// vanilla <script> and the live preview, same treatment).
+const { source: MASK3D_CORE_SOURCE, jsInline: MASK3D_CORE_JS } = compileMask3dCore()
+const MASK3D_CORE_TSX = MASK3D_CORE_SOURCE.replace(/^export /gm, '')
 
 // cube-windows' own recipe code: a box turns in 3D, its outline becomes the
-// element's clip-path. Ported onto mask3d-core's faces()/silhouette()
-// instead of a convex-hull special case, so it shares the exact same module
-// word-window and hero-lens will reuse.
+// element's clip-path.
 const CUBE_WINDOW_MOUNT = `function cubeWindowNumbers(value, count) {
   const list = String(value ?? '').trim().split(/\\s+/).map(Number)
   return list.length === count && list.every(Number.isFinite) ? list : null
@@ -70,12 +30,11 @@ const CUBE_WINDOW_MOUNT = `function cubeWindowNumbers(value, count) {
 
 function mountCubeWindow(el, boxSize, turn) {
   const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
-  const solid = box(...boxSize)
+  const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
   const [ry0, ry1, rx0, rx1] = turn
   const poseAt = (t, hx, hy) => ({
     ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
     rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
-    cx: 0, cy: 0,
   })
 
   let t = .5, fit = null, last = '', raf = 0
@@ -89,7 +48,7 @@ function mountCubeWindow(el, boxSize, turn) {
     const poses = []
     for (let s = 0; s <= 20; s++)
       for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
-    const b = bounds([solid], poses, FOCAL)
+    const b = bounds(box3, poses, FOCAL)
     const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
     fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
     return true
@@ -99,7 +58,7 @@ function mountCubeWindow(el, boxSize, turn) {
     if (!fit) return
     const still = prefersReducedMotion()
     const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
-    const clip = toClipPath(silhouette([solid], pose, FOCAL), fit.ox, fit.oy, fit.k)
+    const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
     if (clip !== last) { el.style.clipPath = clip; last = clip }
   }
 
@@ -1344,7 +1303,7 @@ function Stats() {
 <style>.cube-window{position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:12px}.cube-photo{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#a78bfa,#312244 70%)}</style>
 <script>
 const { track, prefersReducedMotion, onMotionChange } = SV
-${MASK3D_CORE.replace(/^export /gm, '')}
+${MASK3D_CORE_JS}
 ${CUBE_WINDOW_MOUNT}
 addEventListener('load', () => {
   const el = document.getElementById('fxcube')
@@ -1360,7 +1319,11 @@ addEventListener('load', () => {
 <script type="module">
 import { track, prefersReducedMotion, onMotionChange } from 'scrollvars'
 
-${MASK3D_CORE}
+// mask3d-core: the projection math. Kept commented in its own TypeScript
+// source (scripts/fx-lib/mask3d-core.ts in the scrollvars repo, unit-tested
+// there); this is the plain-JS build of it, so read the source for why the
+// union of faces works if you are going to edit this.
+${MASK3D_CORE_JS}
 
 ${CUBE_WINDOW_MOUNT}
 
@@ -2510,7 +2473,7 @@ export function EditorialManifesto({ label = 'What we believe', paragraphs, clos
 import * as React from 'react'
 import { onMotionChange, prefersReducedMotion, track } from 'scrollvars'
 
-${MASK3D_CORE_TS}
+${MASK3D_CORE_TSX}
 
 const css = \`
 .cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; }
@@ -2526,12 +2489,11 @@ function useCubeWindow(ref: React.RefObject<HTMLDivElement | null>, boxSize: [nu
     const el = ref.current
     if (!el) return
     const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
-    const solid = box(...boxSize)
+    const box3: Box = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
     const [ry0, ry1, rx0, rx1] = turn
     const poseAt = (t: number, hx: number, hy: number): Pose => ({
       ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
       rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
-      cx: 0, cy: 0,
     })
 
     let t = .5, fit: { w: number; h: number; k: number; ox: number; oy: number } | null = null, last = '', raf = 0
@@ -2543,7 +2505,7 @@ function useCubeWindow(ref: React.RefObject<HTMLDivElement | null>, boxSize: [nu
       const poses: Pose[] = []
       for (let s = 0; s <= 20; s++)
         for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
-      const b = bounds([solid], poses, FOCAL)
+      const b = bounds(box3, poses, FOCAL)
       const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
       fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
       return true
@@ -2553,7 +2515,7 @@ function useCubeWindow(ref: React.RefObject<HTMLDivElement | null>, boxSize: [nu
       if (!fit) return
       const still = prefersReducedMotion()
       const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
-      const clip = toClipPath(silhouette([solid], pose, FOCAL), fit.ox, fit.oy, fit.k)
+      const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
       if (clip !== last) { el.style.clipPath = clip; last = clip }
     }
 
