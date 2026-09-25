@@ -903,32 +903,39 @@ function containsTracked(el: HTMLElement): boolean {
  * the second call site an ancestor released while a `once` descendant was
  * still tracked keeps its stage sticky and clipping, curtains closed over the
  * content, until some unrelated later release happens to sweep the backlog. */
+/** Elements queued through settleUntracked() or attach()'s failed-init
+ * branch: never entered `entries`, so releaseEntry()'s own immediate
+ * `--sv-live: 1` write (below) never reaches them. settleDeferred() lifts it
+ * for these once nothing tracked is left inside them, the SAME discipline
+ * the data-sv-off marker already uses; a releaseEntry()-sourced element
+ * needs no such wait, since its own entrance is independent of whatever a
+ * nested tracker is still doing. */
+const deferredLive = new Set<HTMLElement>()
+
 function settleDeferred() {
   if (!deferredOff.size) return
   deferredOff.forEach((waiting) => {
     if (containsTracked(waiting)) return
     deferredOff.delete(waiting)
-    // Every settle path (release, an untracked node handed to
-    // settleUntracked(), a failed attach) routes through here, so this is the
-    // one place that has to lift the entrance flag: no entrance preset reads
-    // `data-sv-off`, only `--sv-live`, and releaseEntry's own inline write
-    // never reaches an element settled through settleUntracked() or the
-    // failed-init branch of attach(), both of which were never `entries`.
-    safely(() => waiting.style.setProperty?.('--sv-live', '1'))
+    if (deferredLive.delete(waiting)) safely(() => waiting.style.setProperty?.('--sv-live', '1'))
     waiting.setAttribute?.('data-sv-off', '')
   })
 }
 
 /** Mark a released element for the static guards, but only once nothing
  * tracked is left inside it. Each release also settles the ancestors that
- * were waiting on it (stopScan() releases outer before inner). */
-function markReleased(el: HTMLElement) {
+ * were waiting on it (stopScan() releases outer before inner). `liftLive`
+ * is for a caller that was never in `entries` (settleUntracked(), a failed
+ * attach): releaseEntry() writes its own element's `--sv-live` itself,
+ * immediately, so it passes nothing here. */
+function markReleased(el: HTMLElement, liftLive = false) {
+  if (liftLive) deferredLive.add(el)
   deferredOff.add(el)
   settleDeferred()
 }
 
 export function settleUntracked(el: HTMLElement) {
-  if (!entries.has(el)) markReleased(el)
+  if (!entries.has(el)) markReleased(el, true)
 }
 
 /** Drop the released marker off an element AND its ancestors: an ancestor's
@@ -985,9 +992,15 @@ function releaseEntry(entry: Entry, state: 'released' | 'failed' = 'released') {
   // `--sv-live: 0`, only `.sv.sv-live` lifts it to 1, and `html.sv-on` is
   // never taken off: without this, stopScan() or a ScrollVarsBoot unmount
   // would leave every not-yet-live section at opacity 0 forever, and an
-  // option change would flash content out and back. markReleased() (through
-  // settleDeferred()) writes the inline `--sv-live: 1`, since a deferred
-  // ancestor settles later than this call and needs the same lift.
+  // option change would flash content out and back. Written immediately and
+  // unconditionally, not deferred like the data-sv-off marker below: THIS
+  // element's own entrance is independent of whatever a still-tracked nested
+  // descendant is doing, and waiting on `containsTracked` here left an
+  // ancestor released while a nested tracker stayed live stuck at opacity 0
+  // until that descendant released too. Inline rather than dropping `.sv`,
+  // because server markup keeps its authored `[data-sv]` (which hides on its
+  // own) and the driver must not rewrite that attribute.
+  safely(() => el.style.setProperty?.('--sv-live', '1'))
   // The same promise for everything the presets style on this element's
   // DESCENDANTS, which no inline variable here could reach: `[data-sv-off]` is
   // the marker the guards in styles/pin.css and styles/core.css read, so a
@@ -1092,7 +1105,8 @@ export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
     // Failed initialization can be retried explicitly; the watchdog cannot.
     if (!init()) {
       entries.delete(el)
-      safely(() => markReleased(el))
+      // never reached releaseEntry(): needs the deferred --sv-live lift too
+      safely(() => markReleased(el, true))
       try { transition(entry, 'failed') } catch (error) { reportFailure(error) }
       return status
     }

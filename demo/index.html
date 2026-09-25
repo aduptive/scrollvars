@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.6 KB / 5.3 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.7 KB / 5.3 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.4 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.5 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3920,6 +3920,7 @@ var SV = (() => {
         return true;
     return false;
   }
+  var deferredLive = /* @__PURE__ */ new Set();
   function settleDeferred() {
     if (!deferredOff.size)
       return;
@@ -3927,17 +3928,20 @@ var SV = (() => {
       if (containsTracked(waiting))
         return;
       deferredOff.delete(waiting);
-      safely(() => waiting.style.setProperty?.("--sv-live", "1"));
+      if (deferredLive.delete(waiting))
+        safely(() => waiting.style.setProperty?.("--sv-live", "1"));
       waiting.setAttribute?.("data-sv-off", "");
     });
   }
-  function markReleased(el) {
+  function markReleased(el, liftLive = false) {
+    if (liftLive)
+      deferredLive.add(el);
     deferredOff.add(el);
     settleDeferred();
   }
   function settleUntracked(el) {
     if (!entries.has(el))
-      markReleased(el);
+      markReleased(el, true);
   }
   function clearReleased(el) {
     for (let node = el; node; node = node.parentElement) {
@@ -3979,6 +3983,7 @@ var SV = (() => {
     for (const name of Object.keys(entry.written))
       safely(() => el.style.removeProperty?.(name));
     safely(() => el.style.removeProperty?.("--sv-scenes"));
+    safely(() => el.style.setProperty?.("--sv-live", "1"));
     safely(() => markReleased(el));
     try {
       entry.opts.onStatus?.(state);
@@ -4041,7 +4046,7 @@ var SV = (() => {
         return status;
       if (!init()) {
         entries.delete(el);
-        safely(() => markReleased(el));
+        safely(() => markReleased(el, true));
         try {
           transition(entry, "failed");
         } catch (error) {
