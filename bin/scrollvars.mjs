@@ -11,7 +11,9 @@
  * the effect library grows without republishing this package.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { homedir } from 'node:os'
 
 // An explicit override (a private registry) must never fall through to the
 // public one on error: that would silently install a public component under
@@ -83,8 +85,48 @@ function usage() {
 
   npx scrollvars list
   npx scrollvars add <effect> [--dir components/fx] [--force]
+  npx scrollvars skill [--global] [--force]
 
 Gallery: https://scrollvars.dev/fx/`)
+}
+
+// The skill this package ships (files: ["skills", ...] in package.json),
+// read from THIS installed copy, never fetched: the installed version's
+// skill always matches the installed library. Codex reads project skills
+// from .agents/skills (scanned from CWD up to the repo root) and user
+// skills from ~/.agents/skills; Claude Code reads project skills from
+// .claude/skills and user skills from ~/.claude/skills. Verified against
+// https://developers.openai.com/codex/build-skills ("Where Codex loads
+// local skills") on 2026-09-25.
+function installSkill() {
+  const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+  const source = readFileSync(join(packageRoot, 'skills', 'scrollvars', 'SKILL.md'), 'utf8')
+  const base = flags.has('--global') ? homedir() : process.cwd()
+  const targets = [join(base, '.claude', 'skills', 'scrollvars', 'SKILL.md'), join(base, '.agents', 'skills', 'scrollvars', 'SKILL.md')]
+  let failed = false
+  for (const target of targets) {
+    if (existsSync(target)) {
+      const current = readFileSync(target, 'utf8')
+      if (current === source) {
+        console.log(`= ${target} (already up to date)`)
+        continue
+      }
+      if (!flags.has('--force')) {
+        console.error(`${target} exists and differs from the shipped skill. Pass --force to overwrite`)
+        failed = true
+        continue
+      }
+    }
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, source)
+    console.log(`✓ ${target}`)
+  }
+  if (failed) process.exit(1)
+}
+
+if (command === 'skill') {
+  installSkill()
+  process.exit(0)
 }
 
 // only the commands that need the registry pay for the network round trip
