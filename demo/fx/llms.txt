@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 11.5 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.8 KB). Each effect below includes when to
+> (npm i scrollvars, 11.6 KB gzip as ESM; the fx/sv.js IIFE on these pages is 11.9 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -755,9 +755,7 @@ export function HeroCinematic({
 }) {
   const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
-    <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
+    <section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}>
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <div className="hero-orb a" />
       <div className="hero-orb b" />

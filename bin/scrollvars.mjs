@@ -11,7 +11,7 @@
  * the effect library grows without republishing this package.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 
 // An explicit override (a private registry) must never fall through to the
 // public one on error: that would silently install a public component under
@@ -110,12 +110,14 @@ if (command === 'list') {
     console.error(`registry entry "${slug}" has an invalid file name: ${effect.file}`)
     process.exit(1)
   }
-  const target = join(process.cwd(), dir, effect.file)
+  // resolve, not join: an absolute --dir must be used as-is, not appended
+  // to cwd (join('/a', '/b') is '/a/b', resolve('/a', '/b') is '/b')
+  const target = join(resolve(process.cwd(), dir), effect.file)
   if (existsSync(target) && !flags.has('--force')) {
     console.error(`${join(dir, effect.file)} already exists. Pass --force to overwrite`)
     process.exit(1)
   }
-  mkdirSync(join(process.cwd(), dir), { recursive: true })
+  mkdirSync(resolve(process.cwd(), dir), { recursive: true })
   writeFileSync(target, effect.content)
   const req = effect.requires || {}
   const styles = (req.styles || []).map((n) => `import 'scrollvars/styles/${n}.css'`)

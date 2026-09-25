@@ -655,6 +655,19 @@ test('consumer-idiom hook refs (no cast) type-check under the installed React ma
   assert.deepEqual(errors, [], `${HOOK_REF_IDIOMS_FILE} fails to type-check:\n${errors.join('\n')}`)
 })
 
+// ---- round 16 item 13: the consumer-idiom fixture above proves the no-cast
+// form type-checks under both React majors (ADU-106: every ref hook returns
+// React.RefObject<T>, never <T | null>), so a redundant cast in a gallery
+// recipe is not just noise, it ships a FALSE comment into consumer code.
+test('no installed component casts a ref hook or claims it returns RefObject<T | null>', () => {
+  const offenders = []
+  for (const [slug, { content }] of Object.entries(COMPONENTS)) {
+    if (/RefObject<T \| null>/.test(content)) offenders.push(`${slug}: comment claims RefObject<T | null>`)
+    if (/as React\.RefObject</.test(content)) offenders.push(`${slug}: redundant ref cast`)
+  }
+  assert.deepEqual(offenders, [])
+})
+
 for (const fx of EFFECTS) {
   test(`cli component ${fx.slug}: type-checks, declares requires, compiles${COMPILE_ONLY.has(fx.slug) ? '' : ', renders, matches its preview'}`, async () => {
     const { file, content } = COMPONENTS[fx.slug]
@@ -951,4 +964,74 @@ test('cli component sequenced-scrub: each card gets the slice its own index earn
   assert.match(markup, /--sv-from:0\.5;/)
   assert.doesNotMatch(markup, /--sv-from:0\.75/)
   assert.match(markup, /loose text/, 'a child that is not an element still renders')
+})
+
+// ---- round 16 item 5: React.Children.toArray does NOT flatten a fragment
+// (it comes back as ONE element), so a fragment of two cards took one fan
+// slot / one scrub window instead of two. Untwinned sibling of the
+// coverflow-slider fragment fix above (round-15 item 2): same recipe,
+// bundle a harness with the installed content together (a Fragment
+// imported separately is still the same React.Fragment symbol, but the
+// build-together shape matches a real consumer app).
+test('cli component deck-spread: a fragment of two cards is opened, not collapsed into one fan slot', async () => {
+  const compSrc = join(dir, 'DeckSpreadFragment.tsx')
+  writeFileSync(compSrc, COMPONENTS['deck-spread'].content)
+  const harnessSrc = join(dir, 'DeckSpreadFragmentHarness.tsx')
+  writeFileSync(
+    harnessSrc,
+    `import * as React from 'react'
+import { DeckSpread } from './DeckSpreadFragment'
+export function Harness() {
+  return (
+    <DeckSpread>
+      <React.Fragment>
+        <div>a</div>
+        <div>b</div>
+      </React.Fragment>
+      <div>c</div>
+    </DeckSpread>
+  )
+}
+`
+  )
+  const out = join(outDir, 'deck-spread-fragment.mjs')
+  await build({
+    entryPoints: [harnessSrc], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const mod = await import(pathToFileURL(out).href)
+  const markup = renderToStaticMarkup(h(mod.Harness))
+  assert.equal(markup.match(/--sv-order:/g).length, 3, 'three cards, three positions')
+  assert.match(markup, /--sv-mid:1(?!\d)/, 'the midpoint of three cards is 1, not 0.5')
+})
+
+test('cli component sequenced-scrub: a fragment of two cards is opened, not collapsed into one window', async () => {
+  const compSrc = join(dir, 'SequencedScrubFragment.tsx')
+  writeFileSync(compSrc, COMPONENTS['sequenced-scrub'].content)
+  const harnessSrc = join(dir, 'SequencedScrubFragmentHarness.tsx')
+  writeFileSync(
+    harnessSrc,
+    `import * as React from 'react'
+import { SequencedScrub } from './SequencedScrubFragment'
+export function Harness() {
+  return (
+    <SequencedScrub>
+      <React.Fragment>
+        <div>a</div>
+        <div>b</div>
+      </React.Fragment>
+      <div>c</div>
+    </SequencedScrub>
+  )
+}
+`
+  )
+  const out = join(outDir, 'sequenced-scrub-fragment.mjs')
+  await build({
+    entryPoints: [harnessSrc], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const mod = await import(pathToFileURL(out).href)
+  const markup = renderToStaticMarkup(h(mod.Harness))
+  assert.equal(markup.match(/--sv-from:/g).length, 3, 'three cards, three windows')
 })

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -65,4 +65,22 @@ process.on('exit', () => {
   assert.equal(error.status, 1)
   assert.deepEqual(calls, ['https://example.invalid/private-registry'], 'the public fallback is never requested')
   assert.match(error.stderr ?? '', /SCROLLVARS_REGISTRY/, 'the error names the override URL')
+})
+
+test('an absolute --dir is used as-is, not appended under cwd', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'sv-dir-cwd-'))
+  const target = mkdtempSync(join(tmpdir(), 'sv-dir-abs-'))
+  const registry = join(cwd, 'registry.json')
+  writeFileSync(registry, JSON.stringify({ effects: [{ slug: 'probe', file: 'Probe.tsx', content: 'x', requires: {} }] }))
+  try {
+    execFileSync(process.execPath, [fileURLToPath(new URL('../bin/scrollvars.mjs', import.meta.url)), 'add', 'probe', '--dir', target, '--force'], {
+      cwd, env: { ...process.env, SCROLLVARS_REGISTRY: registry }, encoding: 'utf8',
+    })
+    assert.ok(existsSync(join(target, 'Probe.tsx')), 'the file landed in the absolute dir')
+    // the bug: join(cwd, dir, file), an absolute dir joined under cwd
+    assert.ok(!existsSync(join(cwd, target, 'Probe.tsx')), 'never written under cwd joined with the absolute path')
+  } finally {
+    rmSync(cwd, { recursive: true, force: true })
+    rmSync(target, { recursive: true, force: true })
+  }
 })

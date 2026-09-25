@@ -1407,9 +1407,7 @@ export function HeroCinematic({
 }) {
   const ref = usePointer<HTMLElement>({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
-    <section ref={ref as React.RefObject<HTMLElement>} className={className ? 'sv-hero ' + className : 'sv-hero'}>
+    <section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}>
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <div className="hero-orb a" />
       <div className="hero-orb b" />
@@ -1868,6 +1866,26 @@ export function StatsCountup({
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
 
+// toArray keys each level from ".0", so a fragment's children collide with
+// their uncles without the parent's key in front (React.Children.toArray
+// does NOT flatten a fragment: it comes back as ONE element). Recurse into
+// one, keyed like the coverflow rail's own normalization. Anything that is
+// not an element (a portal renders elsewhere) passes through untouched: it
+// owns no slice of the pin.
+function scrubSlots(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  const list: React.ReactNode[] = []
+  React.Children.toArray(children).forEach((child) => {
+    if (!React.isValidElement(child)) { list.push(child); return }
+    const key = prefix ? \`\${prefix}:\${child.key ?? ''}\` : (child.key ?? '')
+    if (child.type === React.Fragment) {
+      list.push(...scrubSlots((child.props as { children?: React.ReactNode }).children, key))
+    } else {
+      list.push(React.cloneElement(child, { key }))
+    }
+  })
+  return list
+}
+
 export function SequencedScrub({
   children,
   ranges,
@@ -1880,12 +1898,10 @@ export function SequencedScrub({
   height?: string
   className?: string
 }) {
-  // toArray, not Children.map: a conditional step ({show && <Card/>}) is
-  // false, and Children.map still calls back for it, so the stack got an
-  // empty slice and every step after it scrubbed on the wrong window.
-  // Anything that is not an element (a portal renders elsewhere) passes
-  // through: it owns no slice of the pin.
-  const items = React.Children.toArray(children)
+  // a conditional step ({show && <Card/>}) is false, and Children.map still
+  // calls back for it, so the stack got an empty slice and every step after
+  // it scrubbed on the wrong window.
+  const items = scrubSlots(children)
   const count = items.filter(React.isValidElement).length
   let step = -1
   return (
@@ -2016,10 +2032,7 @@ export function ThreeScene({ height = '250vh', className }: { height?: string; c
   return (
     <Track pin={height} onPin={(p) => (progress.current = p)} className={className}>
       <div className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
-        {/* the cast satisfies React 18's stricter ref types: useCanvasEffect returns
-        RefObject<T | null> so the same hook fits React 19 too, and React 18 wants a
-        bare RefObject<T> on a host element */}
-        <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
+        <canvas ref={canvasRef} style={{ width: 'min(90%, 560px)', height: '60vh' }} />
       </div>
     </Track>
   )
@@ -2083,6 +2096,26 @@ export function StaggeredReveal({ children, ...rest }: React.ComponentProps<type
 import * as React from 'react'
 import { Track } from 'scrollvars/react'
 
+// toArray keys each level from ".0", so a fragment's children collide with
+// their uncles without the parent's key in front (React.Children.toArray
+// does NOT flatten a fragment: it comes back as ONE element). Recurse into
+// one, keyed like the coverflow rail's own normalization. Anything that is
+// not an element (a portal renders elsewhere) passes through untouched: it
+// holds no place in the fan.
+function deckSlots(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  const list: React.ReactNode[] = []
+  React.Children.toArray(children).forEach((child) => {
+    if (!React.isValidElement(child)) { list.push(child); return }
+    const key = prefix ? \`\${prefix}:\${child.key ?? ''}\` : (child.key ?? '')
+    if (child.type === React.Fragment) {
+      list.push(...deckSlots((child.props as { children?: React.ReactNode }).children, key))
+    } else {
+      list.push(React.cloneElement(child, { key }))
+    }
+  })
+  return list
+}
+
 export function DeckSpread({
   children,
   gap = 16,
@@ -2092,12 +2125,10 @@ export function DeckSpread({
   gap?: number
   className?: string
 }) {
-  // toArray, not Children.map: a conditional card ({show && <Card/>}) is
-  // false, and Children.map still calls back for it, so the deck got an empty
-  // cell and --sv-mid centred the fan on a card that is not there. Anything
-  // that is not an element (a portal renders elsewhere) passes through: it
-  // holds no place in the fan.
-  const items = React.Children.toArray(children)
+  // a conditional card ({show && <Card/>}) is false, and Children.map still
+  // calls back for it, so the deck got an empty cell and --sv-mid centred
+  // the fan on a card that is not there.
+  const items = deckSlots(children)
   const count = items.filter(React.isValidElement).length
   let order = -1
   return (
@@ -2249,9 +2280,7 @@ export function PointerTiltGrid({
 }) {
   const ref = usePointer<HTMLDivElement>()
   return (
-    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject<T | null> so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject<T> on a host element
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={className}>
+    <div ref={ref} className={className}>
       {children}
     </div>
   )

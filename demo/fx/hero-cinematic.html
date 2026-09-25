@@ -260,9 +260,7 @@ export function HeroCinematic({
 }) {
   const ref = usePointer&lt;HTMLElement&gt;({ selector: '.sv-hero' }) // --mx/--my (-1..1) on the section itself
   return (
-    // the cast satisfies React 18's stricter ref types: usePointer returns RefObject&lt;T | null&gt; so
-    // the same hook fits React 19 too, and React 18 wants a bare RefObject&lt;T&gt; on a host element
-    &lt;section ref={ref as React.RefObject&lt;HTMLElement&gt;} className={className ? 'sv-hero ' + className : 'sv-hero'}&gt;
+    &lt;section ref={ref} className={className ? 'sv-hero ' + className : 'sv-hero'}&gt;
       &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
       &lt;div className="hero-orb a" /&gt;
       &lt;div className="hero-orb b" /&gt;
@@ -294,7 +292,7 @@ export function HeroCinematic({
 }
 </code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.5 KB gzip as ESM (this page's fx/sv.js IIFE: 11.8 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.6 KB gzip as ESM (this page's fx/sv.js IIFE: 11.9 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>
