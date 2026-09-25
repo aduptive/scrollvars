@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A public, installable skill for AI coding agents: `skills/scrollvars/SKILL.md`, generated in `npm run demo:sync` from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (`files`). `npx scrollvars skill [--global] [--force]` installs it for Claude Code (`.claude/skills/scrollvars`) and Codex (`.agents/skills/scrollvars`), matching the installed package version; refuses to overwrite a locally modified copy without `--force`, idempotent otherwise. Also installable with the open `npx skills add aduptive/scrollvars` convention (reads a repo's `skills/<name>/SKILL.md`). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match `package.json`.
+
 ## 1.18.1 (2026-09-25)
 
 ### Fixed

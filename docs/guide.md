@@ -340,6 +340,19 @@ npx scrollvars add marquee --dir src/ui
 The CLI fetches a remote registry, so the library grows without package
 releases.
 
+The same CLI installs a skill for AI coding agents:
+
+```bash
+npx scrollvars skill              # Claude Code + Codex, current project
+npx scrollvars skill --global     # user-level folders instead
+```
+
+It copies `skills/scrollvars/SKILL.md`, shipped in the package, into
+`.claude/skills/scrollvars` and `.agents/skills/scrollvars`, matching the
+installed version. It refuses to overwrite a locally modified copy without
+`--force`. The same file also works with the open `npx skills add
+aduptive/scrollvars` convention.
+
 For a complete Section, run `npx scrollvars add sticky-steps`, import
 `scrollvars/styles/pin.css` in your entry file, then use the installed component:
 

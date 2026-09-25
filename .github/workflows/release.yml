@@ -22,7 +22,7 @@ jobs:
       - run: npm test                    # pretest builds, then the unit suite
       - run: npm run demo:sync
       - name: generated docs and pages are committed, not hand-patched
-        run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts demo/index.html docs/integration.md docs/guide.md demo/bench/scoped.css
+        run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts demo/index.html docs/integration.md docs/guide.md demo/bench/scoped.css skills/scrollvars/SKILL.md
       - run: npm run test:e2e            # progressive-enhancement invariants
         env: { CHROME: /usr/bin/google-chrome }
       - run: npx --prefix demo/bench/harness playwright install --with-deps chromium firefox webkit
@@ -46,6 +46,12 @@ jobs:
           mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
           npm i "$TARBALL"
           node --input-type=module -e "import * as sv from 'scrollvars'; import * as c from 'scrollvars/canvas'; if (typeof sv.track !== 'function' || typeof c.mountEffect !== 'function') process.exit(1); console.log('consumer import ok (ESM)')"
+      - name: packed tarball ships the skill, and its version matches package.json
+        run: |
+          SKILL="/tmp/consumer/node_modules/scrollvars/skills/scrollvars/SKILL.md"
+          [ -f "$SKILL" ] || { echo "packed tarball has no skills/scrollvars/SKILL.md"; exit 1; }
+          PKG=$(node -p "require('./package.json').version")
+          grep -q "version: \"$PKG\"" "$SKILL" || { echo "packed skill's metadata.version does not match package.json $PKG"; exit 1; }
       - name: packed acceptance in Chromium, Firefox and WebKit
         run: npm run test:packed
         env:

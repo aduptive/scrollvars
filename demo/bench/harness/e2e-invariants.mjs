@@ -2971,6 +2971,26 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── Home hero: the "use it with your AI agent" line stays visible with no
+// JS (fail-visible, same contract as every entrance), and its copy button
+// (clipboard needs JS) is hidden the same way #install-copy already is ──
+{
+  const page = await browser.newPage()
+  await page.setJavaScriptEnabled(false)
+  await page.goto(`${base}/index.html`, { waitUntil: 'load' })
+  const r = await page.evaluate(() => {
+    const line = document.querySelector('.ai-line')
+    const button = document.getElementById('skill-copy')
+    return {
+      text: line ? line.textContent : null,
+      buttonHidden: button ? getComputedStyle(button).display === 'none' : null,
+    }
+  })
+  check('no-JS home hero: the AI agent install line renders its text', (r.text || '').includes('npx scrollvars skill'), r.text)
+  check('no-JS home hero: the copy button (clipboard needs JS) is hidden', r.buttonHidden === true)
+  await page.close()
+}
+
 await pageOutputsGate({ browser, check, base })
 await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })

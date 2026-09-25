@@ -300,6 +300,14 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
+<h3>Unreleased</h3>
+
+<h4>Added</h4>
+
+<ul>
+<li>A public, installable skill for AI coding agents: <code>skills/scrollvars/SKILL.md</code>, generated in <code>npm run demo:sync</code> from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (<code>files</code>). <code>npx scrollvars skill [--global] [--force]</code> installs it for Claude Code (<code>.claude/skills/scrollvars</code>) and Codex (<code>.agents/skills/scrollvars</code>), matching the installed package version; refuses to overwrite a locally modified copy without <code>--force</code>, idempotent otherwise. Also installable with the open <code>npx skills add aduptive/scrollvars</code> convention (reads a repo's <code>skills/&lt;name>/SKILL.md</code>). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match <code>package.json</code>.</li>
+</ul>
+
 <h3>1.18.1 (2026-09-25)</h3>
 
 <h4>Fixed</h4>

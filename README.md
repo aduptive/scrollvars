@@ -8,6 +8,16 @@ with an optional React layer.
 [Live demo](https://scrollvars.dev/) · [FX gallery](https://scrollvars.dev/fx/) ·
 [Documentation](https://scrollvars.dev/docs/) · [Full guide](docs/guide.md)
 
+## Use it with your AI agent
+
+```bash
+npx scrollvars skill
+```
+
+Installs the API, recipes and performance rules as a skill for Claude Code
+and Codex, matching your installed version. `--global` for the user-level
+folders instead of the current project.
+
 ## Install
 
 ```bash
