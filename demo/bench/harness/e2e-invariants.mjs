@@ -73,6 +73,7 @@ import { keyboardGate } from './keyboard-gate.mjs'
 import { axeGate } from './axe-gate.mjs'
 import { reflowGate } from './reflow-gate.mjs'
 import { galleryPageerrorGate } from './gallery-pageerror-gate.mjs'
+import { debugGate } from './debug-gate.mjs'
 import { execSync } from 'node:child_process'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -2998,6 +2999,7 @@ await keyboardGate({ browser, check, base })
 await axeGate({ browser, check, base })
 await reflowGate({ browser, check, base })
 await galleryPageerrorGate({ browser, check, base })
+await debugGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })
 await autoplayInteraction({ browser, check })
 await reviewGate({ browser, check })

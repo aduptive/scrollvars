@@ -153,7 +153,10 @@ mapping becomes pure CSS.</p>
 <code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
 transform-fallback CSS.<br>
 <code>scrollvars/debug</code>. Dev overlay: <code>debug()</code> lists every tracked element with its live
-variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
+variables, outlines it, click scrolls to it, plus a perf HUD (FPS, dropped/late frames, worst frame,
+long-animation-frame blocking where Chrome supports it), <code>{ markers: true }</code> for ScrollTrigger-style
+start/end lines, and a perf lint (default on) flagging a <code>--sv-*</code> read landing in a non-compositable
+property. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
 
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
@@ -305,6 +308,7 @@ compat()   // once, before anything else</code></pre>
 <h4>Added</h4>
 
 <ul>
+<li><code>scrollvars/debug</code>'s <code>debug()</code> gained three new options, all off by default except <code>hud</code> and <code>lint</code>, which is exactly what shipped before minus nothing (the tracked-element panel stays as it was): <code>hud</code> (default true) mounts a performance HUD (FPS, dropped and late frames against the measured refresh interval, the worst frame of the last 5 seconds, and, where <code>PerformanceObserver</code> supports <code>long-animation-frame</code> (Chrome), blocking time with the top script attribution; elsewhere it says so instead of showing zeros); <code>markers</code> (default false) draws, for every tracked element, ScrollTrigger-style start/end lines for its travel and, for pinned elements, its pin stretch, labelled and positioned in page coordinates so they scroll with the page and recompute on resize; <code>lint</code> (default true) scans same-origin stylesheets once for a <code>--sv-*</code> read landing in a property that cannot be composited (width, height, the inset family, margin, padding, font-size, filter, backdrop-filter, box-shadow, background-position, clip-path, mask), directly or through one level of custom-property indirection, and reports selector, property and why, once, in the overlay and the console; a cross-origin sheet is reported as skipped, never silently ignored. <code>DebugOptions</code> gained <code>hud</code>, <code>markers</code> and <code>lint</code> (minor, additive).</li>
 <li>A public, installable skill for AI coding agents: <code>skills/scrollvars/SKILL.md</code>, generated in <code>npm run demo:sync</code> from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (<code>files</code>). <code>npx scrollvars skill [--global] [--force]</code> installs it for Claude Code (<code>.claude/skills/scrollvars</code>) and Codex (<code>.agents/skills/scrollvars</code>), matching the installed package version; refuses to overwrite a locally modified copy without <code>--force</code>, idempotent otherwise. Also installable with the open <code>npx skills add aduptive/scrollvars</code> convention (reads a repo's <code>skills/&lt;name>/SKILL.md</code>). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match <code>package.json</code>.</li>
 </ul>
 

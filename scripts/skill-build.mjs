@@ -78,9 +78,12 @@ see AGENTS.md's "Scoped clocks" section for the exact forwarding rule.
 
 ## Verify
 
-\`import('scrollvars/debug').then(m => m.debug())\` mounts a dev-only overlay
-listing every tracked element with its live variable values. Never ship it
-enabled.
+\`import('scrollvars/debug').then(m => m.debug())\` mounts a dev-only overlay:
+every tracked element with its live variable values, a perf HUD (FPS,
+dropped/late frames, worst frame, long-animation-frame blocking where
+Chrome supports it), and a perf lint (flags a \`--sv-*\` read landing in a
+property that cannot be composited). Pass \`{ markers: true }\` for
+ScrollTrigger-style start/end lines. Never ship it enabled.
 
 ## Links
 

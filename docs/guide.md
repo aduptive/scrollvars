@@ -167,7 +167,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
 | everything in `scrollvars` (the core entry) | 11.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.2 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 20.4 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

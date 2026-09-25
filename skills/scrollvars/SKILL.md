@@ -33,7 +33,7 @@ import { track, trackPointer, scrollToScene, scan, slider, mapRange, split } fro
 import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
          useScenes, usePointer, useCanvasEffect, useSlider } from 'scrollvars/react'           // React ('use client')
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
-import { debug } from 'scrollvars/debug'           // dev overlay, never ship enabled
+import { debug } from 'scrollvars/debug'           // dev overlay: HUD, markers, perf lint; never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.6 KB gz)
 // also styles/pin.css (3.2), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.3), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
@@ -82,9 +82,12 @@ see AGENTS.md's "Scoped clocks" section for the exact forwarding rule.
 
 ## Verify
 
-`import('scrollvars/debug').then(m => m.debug())` mounts a dev-only overlay
-listing every tracked element with its live variable values. Never ship it
-enabled.
+`import('scrollvars/debug').then(m => m.debug())` mounts a dev-only overlay:
+every tracked element with its live variable values, a perf HUD (FPS,
+dropped/late frames, worst frame, long-animation-frame blocking where
+Chrome supports it), and a perf lint (flags a `--sv-*` read landing in a
+property that cannot be composited). Pass `{ markers: true }` for
+ScrollTrigger-style start/end lines. Never ship it enabled.
 
 ## Links
 
