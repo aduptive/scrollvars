@@ -962,6 +962,60 @@ test('slider: snap none from a stylesheet (not inline) keeps the wheel assist of
   on.destroy()
 })
 
+test('slider: an unclassed element reads its OWN snap after .sv-slider lands, not before (round 15 item 6)', async () => {
+  const rafQueue = [], winHandlers = {}
+  global.window = {
+    addEventListener: (type, fn) => (winHandlers[type] = fn),
+    removeEventListener: (type, fn) => { if (winHandlers[type] === fn) delete winHandlers[type] },
+  }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200)]
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+
+  const classes = new Set()
+  const containerHandlers = {}
+  const container = {
+    get children() { slides.forEach((sl) => { sl._c = this; sl.offsetParent = this }); return slides },
+    clientLeft: 0, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 0,
+    clientWidth: 300,
+    scrollWidth: 600,
+    classList: {
+      add: (c) => classes.add(c), remove: (c) => classes.delete(c),
+      toggle: (c, force) => (force ? classes.add(c) : classes.delete(c)),
+      contains: (c) => classes.has(c),
+    },
+    style: { scrollSnapType: '', setProperty: () => {} },
+    addEventListener: (type, fn) => (containerHandlers[type] = fn),
+    removeEventListener: () => {},
+    scrollTo: () => {},
+  }
+  // A real browser: an unclassed element has no scroll-snap-type rule at
+  // all (the initial value, 'none'), and only `.sv-slider`'s own rule sets
+  // it to a real snap. Reading this BEFORE life.setup() adds the class
+  // would latch `snapIsNone` true forever, exactly the report.
+  global.getComputedStyle = () => ({ direction: 'ltr', scrollSnapType: classes.has('sv-slider') ? 'x mandatory' : 'none' })
+
+  const { slider } = await import('../dist/core/slider.js?snaptiming')
+  const handle = slider(container, { duration: 600 })
+  runFrames(rafQueue) // mount-time observer delivery
+
+  containerHandlers.pointerdown({
+    pointerType: 'mouse', clientX: 50, target: { closest: () => null }, preventDefault: () => {},
+  })
+  winHandlers.pointermove({ clientX: 20 }) // 30px > 5px threshold: arms dragging, no move yet
+  winHandlers.pointermove({ clientX: -150 }) // the actual move: far enough to land nearest a different slide
+  winHandlers.pointerup()
+
+  assert.equal(handle.state().gliding, true, 'drag end schedules the glide instead of trusting a native snap that was never really authored')
+  assert.ok(rafQueue.length > 0, 'a glide frame is queued')
+  handle.destroy()
+})
+
 test('slider: elastic overscroll never drives progress outside 0..1', async () => {
   const rafQueue = [], listeners = {}
   global.window = { addEventListener: () => {}, removeEventListener: () => {} }

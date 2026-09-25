@@ -550,6 +550,20 @@ function update() {
         restorePinHelper(entry)
         entry.opts.onFlow?.(true)
         if (entries.get(entry.el) !== entry) continue
+        // `[data-sv-flow] .sv-stage` (styles/pin.css) releases EVERY descendant
+        // stage, not only entry.el's own: a tracked entry nested inside it
+        // (el.contains(other.el)) loses its clip the same way, so its own pin
+        // geometry and onFlow callback must follow here too, or its tall
+        // wrapper is left behind under a now-static stage (round 15 item 3).
+        entries.forEach((other) => {
+          if (other === entry || other.flow || !entry.el.contains(other.el)) return
+          try {
+            other.flow = true
+            other.el.setAttribute('data-sv-flow', '')
+            restorePinHelper(other)
+            other.opts.onFlow?.(true)
+          } catch (error) { failEntry(other, error) }
+        })
         schedule() // geometry changed; read the flow layout on the next frame
       }
       if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')

@@ -177,11 +177,12 @@ export function slider(
   // Authored none is not always inline: a stylesheet rule or a utility class
   // (Tailwind's snap-none) reaches the same state, and an instance that
   // owns its own position must be left alone whichever way it got there.
-  // Read once at init, before suspend/resume start writing the inline value.
-  const snapIsNone =
-    authoredSnap === 'none' ||
-    (typeof getComputedStyle === 'function' &&
-      getComputedStyle(container).scrollSnapType === 'none')
+  // The computed half is read inside life.setup(), AFTER `.sv-slider` lands
+  // (round 15 item 6): that class's own rule sets scroll-snap-type, so
+  // reading it here, before setup, sees a plain unclassed element's `none`
+  // and mistakes it for an authored none forever, on every element `slider()`
+  // is ever called on that did not already carry the class.
+  let snapIsNone = authoredSnap === 'none'
   const suspendSnap = () => {
     if (typeof container.style.getPropertyValue === 'function') owned.style(container, 'scroll-snap-type', 'none')
     else owned.property(container.style, 'scrollSnapType', 'none')
@@ -612,6 +613,11 @@ export function slider(
     owned.class(container, 'sv-slider', true)
     owned.class(container, 'sv-slider-y', !horizontal)
     owned.class(container, 'sv-draggable', !!drag)
+    // Now that `.sv-slider` is in place: an inline/stylesheet/utility none
+    // already latched snapIsNone above and needs no second opinion.
+    if (!snapIsNone && typeof getComputedStyle === 'function') {
+      snapIsNone = getComputedStyle(container).scrollSnapType === 'none'
+    }
     owned.style(container, '--sv-snap', snap)
     if (container.tabIndex === -1) owned.attr(container, 'tabindex', '0')
     listen(container, 'scroll', schedule, { passive: true })

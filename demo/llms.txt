@@ -43,7 +43,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS reads them (or `setPageOutputs(true)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -310,7 +310,7 @@ the inline script itself running: it is gated on `IntersectionObserver` and
 Without either observer the script skips pre-paint hiding; the later driver
 requires ResizeObserver but can boot with absent or throwing IntersectionObserver (unculled),
 and then adds `sv-on`. Missing or throwing ResizeObserver keeps the driver static;
-scanner arrival acknowledges boot only after successful driver initialization and scanner setup, including on empty routes. Under a strict CSP with no
+any successful tracker or scan acknowledges boot, including on empty routes; a failed scan settles its own content visible instead of waiting on boot at all. Under a strict CSP with no
 `'unsafe-inline'`, pass the request's nonce: `<ScrollVarsBoot nonce={nonce} />`.
 Zero-JS tier: `sv-view-*` classes use native CSS scroll-driven
 animations where supported.

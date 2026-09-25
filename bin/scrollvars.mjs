@@ -13,7 +13,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const REGISTRY = process.env.SCROLLVARS_REGISTRY || 'https://scrollvars.dev/fx/registry.json'
+// An explicit override (a private registry) must never fall through to the
+// public one on error: that would silently install a public component under
+// the slug a private registry meant to replace. The fallback is only for
+// the DEFAULT host going down, so it is gated on whether the env var was
+// actually set, not on what REGISTRY happens to equal.
+const REGISTRY_OVERRIDE = process.env.SCROLLVARS_REGISTRY
+const REGISTRY = REGISTRY_OVERRIDE || 'https://scrollvars.dev/fx/registry.json'
 // an independent host: the committed copy on GitHub (scrollvars.vercel.app only redirects to scrollvars.dev)
 const REGISTRY_FALLBACK = 'https://raw.githubusercontent.com/aduptive/scrollvars/main/demo/fx/registry.json'
 
@@ -62,7 +68,10 @@ async function loadRegistry() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return await res.json()
   } catch (err) {
-    if (REGISTRY === REGISTRY_FALLBACK) throw err
+    // SCROLLVARS_REGISTRY set: this IS a private registry, so its failure is
+    // the whole story. Falling back to the public one here would write a
+    // public component under the same slug a private registry meant to own.
+    if (REGISTRY_OVERRIDE) throw new Error(`SCROLLVARS_REGISTRY (${REGISTRY_OVERRIDE}) failed: ${err.message}`)
     const res = await fetch(REGISTRY_FALLBACK)
     if (!res.ok) throw new Error(`registry fetch failed on both hosts: ${err.message} / HTTP ${res.status}`)
     return res.json()

@@ -1728,6 +1728,48 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   delete global.getComputedStyle
 })
 
+test('driver: an outer flow latches every nested tracked entry too, not only its own', async () => {
+  // [data-sv-flow] .sv-stage (styles/pin.css) releases EVERY descendant
+  // stage, not only the outer one's: a nested tracker's own pin geometry
+  // and onFlow callback must follow it there, or its tall wrapper sits
+  // under a now-static stage with nothing to release it (round 15 item 3).
+  const { track } = await import('../dist/core/driver.js?nestedflow')
+  const outer = makeElement(3000)
+  const fit = { offsetHeight: 900 }
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  outer.stage = { children: [fit] }
+  outer.style.height = 'auto'
+  outer.style.position = ''
+  outer.querySelector = sel => sel === '.sv-stage' ? outer.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  const inner = makeElement(400)
+  nest(outer, inner)
+  place(outer, 0)
+  place(inner, 100)
+  const outerFlows = []
+  const innerFlows = []
+  const stopOuter = track(outer, { pin: '300vh', onFlow: flow => outerFlows.push(flow) })
+  const stopInner = track(inner, { pin: '150vh', onFlow: flow => innerFlows.push(flow) })
+  pump()
+  assert.equal(inner.style.height, '150vh', 'the nested entry pinned normally before the outer overflowed')
+  assert.ok(!outer.hasAttribute('data-sv-flow'))
+  assert.ok(!inner.hasAttribute('data-sv-flow'))
+  // no getComputedStyle stub here (pinOffset resolves to 0), so the fit box
+  // must clear the FULL viewport height to overflow: comfortably past 1000.
+  fit.offsetHeight = 500
+  fit.scrollHeight = 1200
+  listeners.scroll()
+  pump()
+  assert.ok(outer.hasAttribute('data-sv-flow'), 'the outer entry flows on its own overflow')
+  assert.ok(inner.hasAttribute('data-sv-flow'), 'the nested entry flows too: its stage is released by the same CSS rule')
+  assert.equal(inner.style.height, '', 'the nested entry drops its own tall wrapper (no height ever authored on it)')
+  assert.deepEqual(outerFlows, [false, true])
+  // the nested entry has no fit box of its own, so it never resolves an
+  // initial false the way a fit-bearing entry does: its first onFlow call
+  // is the latch this fix adds, exactly once.
+  assert.deepEqual(innerFlows, [true], 'the nested entry gets its own onFlow(true), one call')
+  stopOuter(); stopInner()
+})
+
 test('refresh replaces stage and fit geometry and transfers resize subscriptions', async () => {
   const { track, refresh } = await import('../dist/core/driver.js?round12replace')
   const el = makeElement(3000), old = makeElement(600), next = makeElement(800)

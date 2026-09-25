@@ -2281,6 +2281,39 @@ const css = \`
 :where([data-sv-motion="reduce"]) .cf-slide { scale: none; opacity: 1; transform: none; }
 \`
 
+/* Fragments opened, keyed like the kit's own rail (src/react/index.tsx's
+   private slideList): toArray keys each level from ".0", so a fragment's
+   children would collide with their uncles without the parent's key in
+   front. A child that is already a <Slide> (its own span, its own class)
+   gets cf-slide added to it instead of being wrapped a second time, or
+   --sv-span would sit on the inner div while the column rule sizes direct
+   children. Anything that is not an element (a portal renders elsewhere)
+   passes through untouched: it is not a card, and dropping it would delete
+   content the caller wrote. */
+function coverflowSlides(children: React.ReactNode, prefix = ''): React.ReactNode[] {
+  const list: React.ReactNode[] = []
+  React.Children.toArray(children).forEach((child) => {
+    if (!React.isValidElement<Record<string, unknown>>(child)) {
+      list.push(child)
+      return
+    }
+    const key = prefix ? \`\${prefix}:\${child.key ?? ''}\` : (child.key ?? '')
+    if (child.type === React.Fragment) {
+      list.push(...coverflowSlides((child.props as { children?: React.ReactNode }).children, key))
+    } else if (child.type === Slide) {
+      const props = child.props as { className?: string }
+      list.push(React.cloneElement(child, { key, className: ['cf-slide', props.className].filter(Boolean).join(' ') }))
+    } else {
+      list.push(
+        <Slide key={key} className="cf-slide">
+          {child}
+        </Slide>
+      )
+    }
+  })
+  return list
+}
+
 export function CoverflowSlider({
   children,
   perView = { base: 1.2, md: 2.5, xl: 4 },
@@ -2291,21 +2324,7 @@ export function CoverflowSlider({
       {/* the same nonce the Slider gets: under a strict CSP this sheet needs it too */}
       <style nonce={rest.nonce} dangerouslySetInnerHTML={{ __html: css }} />
       <Slider perView={perView} gap={16} arrows dots {...rest}>
-        {/* toArray, not Children.map: a conditional child ({show && <Card/>})
-            is false, and Children.map still calls back for it, so the rail
-            got an empty slide and a dot wired past the end of the engine.
-            Anything that is not an element (a portal renders elsewhere) is
-            handed to the Slider untouched: it is not a card, and dropping it
-            would delete content the caller wrote. */}
-        {React.Children.toArray(children).map((child) =>
-          React.isValidElement(child) ? (
-            <Slide key={child.key} className="cf-slide">
-              {child}
-            </Slide>
-          ) : (
-            child
-          )
-        )}
+        {coverflowSlides(children)}
       </Slider>
     </>
   )

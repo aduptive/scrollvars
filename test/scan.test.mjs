@@ -618,3 +618,76 @@ test('overlapping scanners retain tracking until the last owner stops', async ()
     assert.equal(releaseCalls.length, 2, 'last owner releases once')
   }
 })
+
+test('scan releases a lease when the attribute goes before the node, for a tracker, a split and a pointer', async () => {
+  setupScanGlobals()
+  const { scan } = await import('../dist/core/scan.js?round15leases')
+
+  // tracker + pointer share one element; split gets its own, since the
+  // fake split rewrite (innerHTML/children) does not compose with a real
+  // driver attach on the same node.
+  const { el: tracked, releaseCalls } = makeChurnProbe()
+  tracked.attrs['data-sv-pointer'] = ''
+  tracked.handlers = new Set()
+  tracked.addEventListener = (_, fn) => tracked.handlers.add(fn)
+  tracked.removeEventListener = (_, fn) => tracked.handlers.delete(fn)
+  tracked.style.removeProperty = () => {}
+
+  const split = makeElement({ 'data-sv-split': '' })
+  const classes = new Set()
+  let html = 'Hello'
+  let children = []
+  Object.defineProperties(split, {
+    innerHTML: { get: () => html, set: (v) => { html = v; children = [] } },
+    textContent: { get: () => children.length ? children.map(c => c.textContent).join('') : html },
+  })
+  split.appendChild = (c) => children.push(c)
+  split.style.removeProperty = () => {}
+  split.classList = { add: c => classes.add(c), remove: c => classes.delete(c) }
+
+  const root = makeElement({}, [tracked, split])
+  root.querySelectorAll = sel =>
+    sel === '[data-sv]' ? [tracked] : sel === '[data-sv-pointer]' ? [tracked] : sel === '[data-sv-split]' ? [split] : []
+  global.document = makeDocumentStub(root)
+  document.createElement = () => ({ textContent: '', style: { setProperty() {} }, setAttribute() {} })
+  document.createTextNode = textContent => ({ textContent })
+
+  const stop = scan(root)
+  assert.equal(releaseCalls.length, 0, 'tracker acquired at boot')
+  assert.equal(tracked.handlers.size, 2, 'pointer acquired at boot')
+  assert.ok(classes.has('sv-split'), 'split acquired at boot')
+
+  // strip every attribute, THEN detach both nodes: a removal branch that
+  // matches on the CURRENT attribute would see [data-sv]/[data-sv-split]/
+  // [data-sv-pointer] selectors match nothing any more and leak all three
+  // leases forever (round 15 item 5).
+  tracked.removeAttribute('data-sv')
+  tracked.removeAttribute('data-sv-pointer')
+  split.removeAttribute('data-sv-split')
+  tracked.parent = null
+  split.parent = null
+  global.__mutCb([{ addedNodes: [], removedNodes: [tracked, split] }])
+
+  assert.equal(releaseCalls.length, 2, 'the tracker lease released (toggle + setProperty)')
+  assert.equal(tracked.handlers.size, 0, 'the pointer lease released')
+  assert.equal(html, 'Hello', 'the split lease released (markup restored)')
+  stop()
+})
+
+test('scan: a removal batch touching one node does not release another lease that stays connected', async () => {
+  setupScanGlobals()
+  const { el, releaseCalls } = makeChurnProbe()
+  const other = makeElement({ 'data-sv': '' })
+  const body = makeElement({}, [el, other])
+  global.document = makeDocumentStub(body)
+  const { scan } = await import('../dist/core/scan.js?round15reorder')
+  const stop = scan()
+  assert.equal(releaseCalls.length, 0)
+  // the lease-by-map sweep (round 15 item 5) walks EVERY tracked entry on
+  // any batch that removed anything, not only the node the record names: it
+  // must still guard on scope.contains, or removing an unrelated node would
+  // release el too, still fully connected here (el.parent chains to body).
+  global.__mutCb([{ addedNodes: [], removedNodes: [other] }])
+  assert.equal(releaseCalls.length, 0, 'still connected: the lease-by-map sweep leaves it alone')
+  stop()
+})
