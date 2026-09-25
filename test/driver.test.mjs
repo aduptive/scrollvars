@@ -1891,6 +1891,49 @@ test('refresh replaces stage and fit geometry and transfers resize subscriptions
   assert.ok(!observed.has(next) && !observed.has(nextFit))
 })
 
+test('driver: refresh() batches the pin-origin read across every pinned entry into one flush, not N', async () => {
+  // readStageOrigin toggles position:static then reads offsetTop up the
+  // chain: run per entry in a loop, and the next entry's read forces a
+  // style recalc for the still-pending restore write of the entry before
+  // it (round 16 item 7). A shared "dirty since the last read" flag models
+  // that recalc: any position write sets it, the first offsetTop read
+  // after a write consumes it (one flush), and a batched refresh must
+  // consume it exactly once for three pinned entries, not three times.
+  const { track, refresh } = await import('../dist/core/driver.js?refreshbatch')
+  let dirty = false
+  let flushes = 0
+  const instrument = (el) => {
+    const setProperty = el.style.setProperty
+    el.style.setProperty = (name, value, priority) => {
+      if (name === 'position') dirty = true
+      setProperty(name, value, priority)
+    }
+    Object.defineProperty(el, 'offsetTop', {
+      configurable: true,
+      get() {
+        if (dirty) { flushes++; dirty = false }
+        return 0
+      },
+    })
+  }
+  const stops = []
+  for (let i = 0; i < 3; i++) {
+    const el = makeElement(3000), stage = makeElement(600)
+    nest(el, stage)
+    el.stage = stage
+    instrument(stage)
+    instrument(el)
+    place(el, 100 * i)
+    stops.push(track(el, { pin: true }))
+  }
+  // clear whatever attach() itself left dirty: only refresh()'s own writes count
+  flushes = 0
+  dirty = false
+  refresh()
+  assert.equal(flushes, 1, 'one flush for three pinned entries, not three')
+  stops.forEach((stop) => stop())
+})
+
 test('pin progress and scene navigation use the stage normal-flow origin', async () => {
   const { track, refresh, scrollToScene } = await import('../dist/core/driver.js?round12origin')
   const previousStyle = global.getComputedStyle, previousScroll = window.scrollTo

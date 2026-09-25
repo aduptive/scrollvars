@@ -55,6 +55,20 @@ export async function pageOutputsGate({ browser, check, base }) {
         requestAnimationFrame(() => requestAnimationFrame(done))
       }))
     }, false],
+    // A disabled stylesheet link's .sheet is null too, the same uncertainty
+    // signal as a slow-loading one, but it is not loading: nothing ever
+    // fires its load/error, so treating it as pending publishes for good
+    // (round 16 item 10). It is also never a consumer while disabled.
+    ['a disabled stylesheet link with no other consumer stays silent', 'none', async page => {
+      await page.evaluate(() => new Promise(done => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = '/fx/sv.css'
+        link.disabled = true
+        document.head.append(link)
+        requestAnimationFrame(() => requestAnimationFrame(done))
+      }))
+    }, false],
     ['text assigned into an existing empty <style> after boot counts', 'none', async page => {
       await page.evaluate(() => new Promise(done => {
         const style = document.createElement('style')

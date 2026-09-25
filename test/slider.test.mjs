@@ -1473,3 +1473,41 @@ test('slider: a preference that flips to reduce mid-glide settles on the slide, 
   mq.handlers.forEach((fn) => fn({ matches: true }))
   assert.equal(container.scrollLeft, 0, 'a destroyed slider no longer hears the preference')
 })
+
+test('slider: keeps an authored tabindex="-1" (a follower rail kept out of the tab order), gives a bare rail 0', async () => {
+  const { slider } = await import('../dist/core/slider.js')
+  const env = lifecycleEnv()
+  try {
+    // an authored -1 reads identically to "no tabindex at all" through
+    // .tabIndex (both -1), so the check must read the ATTRIBUTE
+    const authored = env.rail()
+    authored.setAttribute('tabindex', '-1')
+    const a = slider(authored)
+    assert.equal(authored.getAttribute('tabindex'), '-1', 'an authored -1 is kept, not overwritten')
+    a.destroy()
+
+    const bare = env.rail()
+    const b = slider(bare)
+    assert.equal(bare.getAttribute('tabindex'), '0', 'an unauthored rail becomes focusable')
+    b.destroy()
+  } finally { env.restore() }
+})
+
+test('slider: an empty rail fires no phantom onSlide(0); the real first slide gets its own', async () => {
+  const { slider } = await import('../dist/core/slider.js')
+  const env = lifecycleEnv()
+  try {
+    const c = env.element()
+    const calls = []
+    const h = slider(c, { onSlide: (i) => calls.push(i) })
+    assert.deepEqual(calls, [], 'no slide exists yet: measure() must not claim index 0')
+    assert.equal(h.active(), 0, 'active() floors at 0 for display, active itself stayed -1')
+
+    c.append(env.element())
+    c.append(env.element())
+    env.deliveries.find((o) => o.kind === 'MutationObserver').cb([])
+    env.flush()
+    assert.deepEqual(calls, [0], 'the real first slide gets its own onSlide(0), exactly once')
+    h.destroy()
+  } finally { env.restore() }
+})

@@ -99,7 +99,9 @@ effects appear without package updates).
 
 **Tailwind + the vars:** `[--sv-order:1]` is fine for static one-off markup
 (each unique value adds one tiny global rule). For mapped/dynamic content use
-`style={{'--sv-order': i}}`. Required, not just cleaner: Tailwind's JIT scans
+`style={{ '--sv-order': i } as React.CSSProperties}` (the cast is needed: a
+`--sv-*` key is an excess property against `React.CSSProperties`, the library
+itself casts the same way). Required, not just cleaner: Tailwind's JIT scans
 source statically and never generates interpolated arbitrary classes. For
 sequential children skip the bookkeeping entirely: `sv-stagger` on the parent
 orders them via nth-child: the first ten get 0–9, every later child gets 10. Set explicit per-child order for longer sequences.
@@ -455,7 +457,7 @@ version: respect `.nvmrc`.
 `AttachmentStatus` type from `scrollvars`. `useTrack` and `useScenes` accept
 the same option; `<Track>` and `<Scenes>` accept the same prop. The hook ref
 remains `React.RefObject<T>`, directly usable in JSX under React 18 and 19.
-README hook examples and installed Section usage are compiled from their
+The guide's hook examples and installed Section usage are compiled from their
 actual fenced snippets against public declarations under both majors.
 
 Status values: `attaching` fires synchronously before setup; `active` follows
@@ -613,7 +615,7 @@ element the browser scrolls to the top edge lands under it. Text dimmed
 until the scroll gets there still meets 4.5:1 at its dimmest (3:1 when
 large). At 320 CSS pixels of width the page scrolls in one direction only,
 and pinned content that can grow sits in `[data-sv-fit]`. Nothing essential
-lives only behind a scroll reveal or a pin scene. The README's Accessibility
+lives only behind a scroll reveal or a pin scene. The guide's Accessibility
 section lists the guarantees with their WCAG criteria and the checklist.
 
 ## Limit animation work to its consumers

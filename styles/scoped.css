@@ -12,7 +12,7 @@
  *
  * Measured behind a rendered-output gate: -63% style recalculation at 50
  * descendants per reader, +13% where every descendant is a reader, -23% on
- * scrollvars.dev's home page. Numbers, rule and when it pays: README,
+ * scrollvars.dev's home page. Numbers, rule and when it pays: the guide,
  * "Scoped clocks". CSS comments ship, so this one stays short. */
 
 /* Registration only where the path forwarding below can exist: a browser

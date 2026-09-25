@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { COMPAT_PRESETS } from '../scripts/docs-data.mjs'
@@ -184,4 +184,38 @@ test('--sv-pin-offset: README names the units readPinOffset resolves, and the sa
   assert.deepEqual(uniq(doc.match(UNIT) ?? []), uniq(['px', ...Object.values(switchGroups()).flat()]))
   const likeVh = extract(doc, /vh \(([^)]+)\) and vw/, 'docs/guide.md vh group')[1]
   assert.deepEqual(uniq(likeVh.match(UNIT) ?? []), uniq(switchGroups()['window.innerHeight']))
+})
+
+// ---- round 16 item 12: AGENTS.md and styles/ can point a reader at "the
+// README's <Name> section" or "README, "<Name>"", but the prose has moved
+// to docs/guide.md before (ADU-159's rail claim, the hook examples, the
+// Accessibility section, Scoped clocks): a heading that once lived in
+// README and now lives only in the guide makes the pointer false. Every
+// such phrase must name a heading README ACTUALLY HAS.
+test('every "README\'s <Name> section" / \'README, "<Name>"\' phrase in AGENTS.md and styles/ names a heading README has', () => {
+  const readmeMd = readFileSync(join(root, 'README.md'), 'utf8')
+  // exact heading match, not substring: README's own "Performance and
+  // accessibility" heading contains the word "accessibility" and would
+  // silently satisfy a substring check for a claim about a dedicated
+  // "Accessibility" section that moved to the guide whole (round 16 item 12).
+  const headings = new Set([...readmeMd.matchAll(/^#+\s+(.+)$/gm)].map((m) => m[1].trim().toLowerCase()))
+  const problems = []
+  const files = { 'AGENTS.md': readFileSync(join(root, 'AGENTS.md'), 'utf8') }
+  for (const file of readdirSync(join(root, 'styles')).filter((f) => f.endsWith('.css'))) {
+    files[`styles/${file}`] = readFileSync(join(root, 'styles', file), 'utf8')
+  }
+  for (const [name, rawText] of Object.entries(files)) {
+    // both prose (AGENTS.md, wrapped at the column width) and a CSS block
+    // comment's ` * ` continuation break a plain word-boundary regex across
+    // a line wrap: collapse any run of whitespace (with an optional leading
+    // `*`, the CSS comment continuation) to one space first.
+    const text = rawText.replace(/\s*\n\s*\*?\s*/g, ' ')
+    for (const m of text.matchAll(/README's ([A-Z][\w ]*?) section/g)) {
+      if (!headings.has(m[1].trim().toLowerCase())) problems.push(`${name}: "README's ${m[1]} section" names no README heading`)
+    }
+    for (const m of text.matchAll(/README,\s*"([^"]+)"/g)) {
+      if (!headings.has(m[1].trim().toLowerCase())) problems.push(`${name}: README, "${m[1]}" names no README heading`)
+    }
+  }
+  assert.deepEqual(problems, [])
 })

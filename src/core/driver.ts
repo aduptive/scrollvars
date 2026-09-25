@@ -431,7 +431,10 @@ function pendingSheets(): HTMLLinkElement[] {
   // rather than a second guess.
   try {
     return Array.from(document.querySelectorAll('link[rel~="stylesheet"]'))
-      .filter(link => !(link as HTMLLinkElement).sheet) as HTMLLinkElement[]
+      // a disabled link's sheet is null too, but it never fires load/error
+      // (nothing is loading), and it is not a consumer while disabled: a
+      // later enable is a style change the consumer watch already sees.
+      .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled) as HTMLLinkElement[]
   } catch {
     return []
   }
@@ -476,7 +479,7 @@ function update() {
   forceAll = false
   if (offsetsDirty) {
     offsetsDirty = false
-    entries.forEach(entry => guardEntry(entry, () => refreshPinGeometry(entry)))
+    refreshPinGeometryAll()
   }
   // READ phase: batch all layout reads before any style write. Root rects
   // are read once per root per frame and shared by its entries.
@@ -653,42 +656,77 @@ function computePin(geo: Geometry, offset = 0, stageHeight?: number, origin = 0)
 
 // offsetTop includes sticky displacement. Briefly disable sticking to read
 // the normal-flow origin on attach/refresh/resize, never on ordinary scroll.
+// Split so a multi-entry caller can batch the position:static write across
+// every entry before any of them reads (readStageOriginRaw), and a single-
+// entry caller (attach()) still gets one self-contained read.
+function readStageOriginRaw(el: HTMLElement, stage: HTMLElement): number {
+  let value = 0
+  for (let current: HTMLElement | null = stage; current; current = current.offsetParent as HTMLElement | null) {
+    value += current.offsetTop || 0
+    value += (current.offsetParent as HTMLElement | null)?.clientTop || 0
+  }
+  let elValue = 0
+  for (let current: HTMLElement | null = el; current; current = current.offsetParent as HTMLElement | null) {
+    elValue += current.offsetTop || 0
+    elValue += (current.offsetParent as HTMLElement | null)?.clientTop || 0
+  }
+  return value - elValue
+}
 function readStageOrigin(el: HTMLElement, stage?: HTMLElement): number {
   if (!stage || typeof stage.offsetTop !== 'number') return 0
   const position = stage.style.getPropertyValue('position')
   const priority = stage.style.getPropertyPriority('position')
   stage.style.setProperty('position', 'static', 'important')
-  const top = (node: HTMLElement) => {
-    let value = 0
-    for (let current: HTMLElement | null = node; current; current = current.offsetParent as HTMLElement | null) {
-      value += current.offsetTop || 0
-      value += (current.offsetParent as HTMLElement | null)?.clientTop || 0
-    }
-    return value
-  }
-  try { return top(stage) - top(el) }
+  try { return readStageOriginRaw(el, stage) }
   finally { stage.style.setProperty('position', position, priority) }
 }
 
-function refreshPinGeometry(entry: Entry) {
-  if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin)) return
-  const previousStage = entry.stage, previousFit = entry.fit
-  entry.stage = ownedStage(entry.el)
-  entry.fit = Array.from(entry.stage?.children ?? []).find(child => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
-  if (entry.stage !== previousStage) {
-    if (entry.stage) resizeObserver?.observe(entry.stage)
-    if (previousStage) unobserveIfUnneeded(previousStage)
-    if (!entry.stage) {
-      entry.el.style.removeProperty('--sv-stage-width')
-      delete entry.written['--sv-stage-width']
+// Every read first, then every write, so N pinned entries flush one style
+// recalc instead of N: readStageOrigin toggles position:static then reads
+// offsetTop up the chain, and running it per entry in a loop means the next
+// entry's read forces a recalc for the still-pending restore write of the
+// entry before it (round 16 item 7). Same read-all-then-write-all shape as
+// applyPinHelperAll, in four clean phases: the `typeof stage.offsetTop`
+// capability check is ITSELF a layout read, so it has to happen in its own
+// read phase (identity + pinOffset), before any write, not folded into the
+// write phase alongside the entry it belongs to; otherwise that read
+// consumes the PREVIOUS entry's still-pending restore write and the
+// batching gains nothing. Never `entries.forEach(refreshPinGeometry)` with
+// a per-entry version of this: that is exactly the interleaving that costs it.
+function refreshPinGeometryAll() {
+  const jobs: Array<{ entry: Entry; stage?: HTMLElement }> = []
+  entries.forEach(entry => guardEntry(entry, () => {
+    if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin)) return
+    const previousStage = entry.stage, previousFit = entry.fit
+    entry.stage = ownedStage(entry.el)
+    entry.fit = Array.from(entry.stage?.children ?? []).find(child => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
+    if (entry.stage !== previousStage) {
+      if (entry.stage) resizeObserver?.observe(entry.stage)
+      if (previousStage) unobserveIfUnneeded(previousStage)
+      if (!entry.stage) {
+        entry.el.style.removeProperty('--sv-stage-width')
+        delete entry.written['--sv-stage-width']
+      }
     }
-  }
-  if (entry.fit !== previousFit) {
-    if (entry.fit) resizeObserver?.observe(entry.fit)
-    if (previousFit) unobserveIfUnneeded(previousFit)
-  }
-  entry.pinOffset = readPinOffset(entry.el)
-  entry.stageOrigin = readStageOrigin(entry.el, entry.stage)
+    if (entry.fit !== previousFit) {
+      if (entry.fit) resizeObserver?.observe(entry.fit)
+      if (previousFit) unobserveIfUnneeded(previousFit)
+    }
+    entry.pinOffset = readPinOffset(entry.el)
+    jobs.push({ entry, stage: entry.stage && typeof entry.stage.offsetTop === 'number' ? entry.stage : undefined })
+  }))
+  const restores: Array<() => void> = []
+  jobs.forEach(({ stage }) => {
+    if (!stage) return
+    const position = stage.style.getPropertyValue('position')
+    const priority = stage.style.getPropertyPriority('position')
+    stage.style.setProperty('position', 'static', 'important')
+    restores.push(() => stage.style.setProperty('position', position, priority))
+  })
+  jobs.forEach(({ entry, stage }) => guardEntry(entry, () => {
+    entry.stageOrigin = stage ? readStageOriginRaw(entry.el, stage) : 0
+  }))
+  restores.forEach(fn => fn())
 }
 
 function ownedStage(el: HTMLElement): HTMLElement | undefined {
@@ -1276,7 +1314,7 @@ function restorePinHelper(entry: Entry) {
 /** Force a recompute (e.g. after content changes outside a resize). */
 export function refresh() {
   // a sticky header that changed size changes every pin consumer's offset
-  entries.forEach(entry => guardEntry(entry, () => refreshPinGeometry(entry)))
+  refreshPinGeometryAll()
   // culled entries skip the per-frame rect read; give them one anyway so a
   // manual refresh() (content changed, no resize fired) reaches them too
   forceAll = true

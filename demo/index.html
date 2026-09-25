@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 5.4 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.5 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.4 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.5 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.4 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.5 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.2 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.0 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.0 KB / 5.4 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.1 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.5 KB / 5.5 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.4 KB gzip · full core 11.6 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.5 KB gzip · full core 11.7 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3561,7 +3561,7 @@ var SV = (() => {
   }
   function pendingSheets() {
     try {
-      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet);
+      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet && !link.disabled);
     } catch {
       return [];
     }
@@ -3605,7 +3605,7 @@ var SV = (() => {
     forceAll = false;
     if (offsetsDirty) {
       offsetsDirty = false;
-      entries.forEach((entry) => guardEntry(entry, () => refreshPinGeometry(entry)));
+      refreshPinGeometryAll();
     }
     const y = window.scrollY;
     const now = performance.now();
@@ -3742,50 +3742,71 @@ var SV = (() => {
   function computePin(geo, offset = 0, stageHeight, origin = 0) {
     return clamp((offset - geo.top - origin) / pinSpan(geo.height, geo.vp, offset, stageHeight, origin), 0, 1);
   }
+  function readStageOriginRaw(el, stage) {
+    let value = 0;
+    for (let current = stage; current; current = current.offsetParent) {
+      value += current.offsetTop || 0;
+      value += current.offsetParent?.clientTop || 0;
+    }
+    let elValue = 0;
+    for (let current = el; current; current = current.offsetParent) {
+      elValue += current.offsetTop || 0;
+      elValue += current.offsetParent?.clientTop || 0;
+    }
+    return value - elValue;
+  }
   function readStageOrigin(el, stage) {
     if (!stage || typeof stage.offsetTop !== "number")
       return 0;
     const position = stage.style.getPropertyValue("position");
     const priority = stage.style.getPropertyPriority("position");
     stage.style.setProperty("position", "static", "important");
-    const top = (node) => {
-      let value = 0;
-      for (let current = node; current; current = current.offsetParent) {
-        value += current.offsetTop || 0;
-        value += current.offsetParent?.clientTop || 0;
-      }
-      return value;
-    };
     try {
-      return top(stage) - top(el);
+      return readStageOriginRaw(el, stage);
     } finally {
       stage.style.setProperty("position", position, priority);
     }
   }
-  function refreshPinGeometry(entry) {
-    if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin))
-      return;
-    const previousStage = entry.stage, previousFit = entry.fit;
-    entry.stage = ownedStage(entry.el);
-    entry.fit = Array.from(entry.stage?.children ?? []).find((child) => child.hasAttribute("data-sv-fit"));
-    if (entry.stage !== previousStage) {
-      if (entry.stage)
-        resizeObserver?.observe(entry.stage);
-      if (previousStage)
-        unobserveIfUnneeded(previousStage);
-      if (!entry.stage) {
-        entry.el.style.removeProperty("--sv-stage-width");
-        delete entry.written["--sv-stage-width"];
+  function refreshPinGeometryAll() {
+    const jobs = [];
+    entries.forEach((entry) => guardEntry(entry, () => {
+      if (!(entry.opts.pin || entry.opts.scenes || entry.opts.onPin))
+        return;
+      const previousStage = entry.stage, previousFit = entry.fit;
+      entry.stage = ownedStage(entry.el);
+      entry.fit = Array.from(entry.stage?.children ?? []).find((child) => child.hasAttribute("data-sv-fit"));
+      if (entry.stage !== previousStage) {
+        if (entry.stage)
+          resizeObserver?.observe(entry.stage);
+        if (previousStage)
+          unobserveIfUnneeded(previousStage);
+        if (!entry.stage) {
+          entry.el.style.removeProperty("--sv-stage-width");
+          delete entry.written["--sv-stage-width"];
+        }
       }
-    }
-    if (entry.fit !== previousFit) {
-      if (entry.fit)
-        resizeObserver?.observe(entry.fit);
-      if (previousFit)
-        unobserveIfUnneeded(previousFit);
-    }
-    entry.pinOffset = readPinOffset(entry.el);
-    entry.stageOrigin = readStageOrigin(entry.el, entry.stage);
+      if (entry.fit !== previousFit) {
+        if (entry.fit)
+          resizeObserver?.observe(entry.fit);
+        if (previousFit)
+          unobserveIfUnneeded(previousFit);
+      }
+      entry.pinOffset = readPinOffset(entry.el);
+      jobs.push({ entry, stage: entry.stage && typeof entry.stage.offsetTop === "number" ? entry.stage : void 0 });
+    }));
+    const restores = [];
+    jobs.forEach(({ stage }) => {
+      if (!stage)
+        return;
+      const position = stage.style.getPropertyValue("position");
+      const priority = stage.style.getPropertyPriority("position");
+      stage.style.setProperty("position", "static", "important");
+      restores.push(() => stage.style.setProperty("position", position, priority));
+    });
+    jobs.forEach(({ entry, stage }) => guardEntry(entry, () => {
+      entry.stageOrigin = stage ? readStageOriginRaw(entry.el, stage) : 0;
+    }));
+    restores.forEach((fn) => fn());
   }
   function ownedStage(el) {
     const stages = el.querySelectorAll?.(".sv-stage") ?? [el.querySelector?.(".sv-stage")].filter(Boolean);
@@ -4166,7 +4187,7 @@ var SV = (() => {
     safely(() => entry.el.style.setProperty("position", position, positionPriority));
   }
   function refresh() {
-    entries.forEach((entry) => guardEntry(entry, () => refreshPinGeometry(entry)));
+    refreshPinGeometryAll();
     forceAll = true;
     schedule();
   }
@@ -5135,7 +5156,7 @@ var SV = (() => {
           owned.class(slide, "sv-active", wanted);
       });
       const bestEl = list[best] ?? null;
-      if (best !== active || bestEl !== activeEl) {
+      if (list.length > 0 && (best !== active || bestEl !== activeEl)) {
         const indexChanged = best !== active;
         active = best;
         activeEl = bestEl;
@@ -5414,7 +5435,7 @@ var SV = (() => {
         snapIsNone = getComputedStyle(container).scrollSnapType === "none";
       }
       owned.style(container, "--sv-snap", snap);
-      if (container.tabIndex === -1)
+      if (!container.hasAttribute?.("tabindex") && container.tabIndex === -1)
         owned.attr(container, "tabindex", "0");
       listen(container, "scroll", schedule2, { passive: true });
       if (typeof ResizeObserver === "function")
@@ -7311,7 +7332,11 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 owned.class(slide, 'sv-active', wanted);
         });
         const bestEl = list[best] ?? null;
-        if (best !== active || bestEl !== activeEl) {
+        // an empty rail has no slide 0: `best` stays at its 0 default with
+        // nothing behind it, and firing onSlide(0) here claims that phantom
+        // index as active, so the real first slide never gets its own
+        // onSlide(0) once slides arrive. Keep `active` at -1 instead.
+        if (list.length > 0 && (best !== active || bestEl !== activeEl)) {
             const indexChanged = best !== active;
             active = best;
             activeEl = bestEl;
@@ -7651,7 +7676,10 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
             snapIsNone = getComputedStyle(container).scrollSnapType === 'none';
         }
         owned.style(container, '--sv-snap', snap);
-        if (container.tabIndex === -1)
+        // .tabIndex reads -1 for an authored tabindex="-1" AND for no attribute
+        // at all: only the attribute itself tells an author's own -1 (a
+        // follower rail deliberately kept out of the tab order) from unauthored.
+        if (!container.hasAttribute?.('tabindex') && container.tabIndex === -1)
             owned.attr(container, 'tabindex', '0');
         listen(container, 'scroll', schedule, { passive: true });
         if (typeof ResizeObserver === 'function')

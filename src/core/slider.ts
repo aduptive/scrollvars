@@ -299,7 +299,11 @@ export function slider(
         owned.class(slide, 'sv-active', wanted)
     })
     const bestEl = list[best] ?? null
-    if (best !== active || bestEl !== activeEl) {
+    // an empty rail has no slide 0: `best` stays at its 0 default with
+    // nothing behind it, and firing onSlide(0) here claims that phantom
+    // index as active, so the real first slide never gets its own
+    // onSlide(0) once slides arrive. Keep `active` at -1 instead.
+    if (list.length > 0 && (best !== active || bestEl !== activeEl)) {
       const indexChanged = best !== active
       active = best
       activeEl = bestEl
@@ -619,7 +623,10 @@ export function slider(
       snapIsNone = getComputedStyle(container).scrollSnapType === 'none'
     }
     owned.style(container, '--sv-snap', snap)
-    if (container.tabIndex === -1) owned.attr(container, 'tabindex', '0')
+    // .tabIndex reads -1 for an authored tabindex="-1" AND for no attribute
+    // at all: only the attribute itself tells an author's own -1 (a
+    // follower rail deliberately kept out of the tab order) from unauthored.
+    if (!container.hasAttribute?.('tabindex') && container.tabIndex === -1) owned.attr(container, 'tabindex', '0')
     listen(container, 'scroll', schedule, { passive: true })
     if (typeof ResizeObserver === 'function') ro = new ResizeObserver(onLayout)
     watchSlides()

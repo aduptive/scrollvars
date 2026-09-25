@@ -54,3 +54,35 @@ test(`README quick start, guide hook refs and installed Section usage compile un
     assert.ok(selected.some(code => code.includes('export function Intro(')), 'README quick start was extracted')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// ---- round 16 item 14: AGENTS.md's own object-literal --sv-* style snippet
+// is inline prose, not a fenced ```tsx block the fixture above scans, so it
+// is extracted separately here: it must compile EXACTLY as documented (the
+// cast the library itself uses for `style={{ '--sv-*' }}`, an excess
+// property against React.CSSProperties otherwise), agents writing TSX are
+// the audience of this file.
+test(`AGENTS.md's --sv-order style snippet type-checks as written (React ${process.env.SV_REACT18_DIR ? 18 : 19})`, () => {
+  const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+  const snippet = agents.match(/style=\{\{ '--sv-order': i \} as React\.CSSProperties\}/)
+  assert.ok(snippet, 'AGENTS.md no longer has the documented --sv-order snippet verbatim')
+  const dir = mkdtempSync(join(tmpdir(), 'sv-docs-agents-types-'))
+  try {
+    writeFileSync(join(dir, 'agents-order.tsx'),
+      `import * as React from 'react'\nfunction Item({ i }: { i: number }) {\n  return <div ${snippet[0]} />\n}\n`)
+    const types = join(process.env.SV_REACT18_DIR || root, 'node_modules', '@types', 'react')
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: {
+        target: 'ES2020', lib: ['DOM', 'ESNext'], module: 'ESNext', moduleResolution: 'Bundler',
+        jsx: 'react-jsx', strict: true, skipLibCheck: true, noEmit: true,
+        paths: {
+          react: [join(types, 'index.d.ts')],
+          'react/jsx-runtime': [join(types, 'jsx-runtime.d.ts')],
+          'react/jsx-dev-runtime': [join(types, 'jsx-dev-runtime.d.ts')],
+        },
+      },
+      include: ['*.tsx'],
+    }, null, 2))
+    const result = spawnSync(join(root, 'node_modules', '.bin', 'tsc'), ['--project', 'tsconfig.json'], { cwd: dir, encoding: 'utf8' })
+    assert.equal(result.status, 0, `AGENTS.md snippet tsc exit ${result.status}: ${result.error || ''}\n${result.stdout || ''}${result.stderr || ''}`)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
