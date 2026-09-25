@@ -3957,6 +3957,7 @@ var SV = (() => {
       markReleased(el, true);
   }
   function clearReleased(el) {
+    deferredLive.delete(el);
     for (let node = el; node; node = node.parentElement) {
       const released = deferredOff.delete(node) || node.hasAttribute?.("data-sv-off") === true;
       node.removeAttribute?.("data-sv-off");

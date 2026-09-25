@@ -1235,6 +1235,44 @@ test('driver: a released ancestor never settles a still-tracked descendant', asy
   restart()
 })
 
+test('driver: retracking a container settled through settleUntracked() drops the deferred --sv-live lift, not just the marker', async () => {
+  // settleUntracked() (a failed scan's own container, still holding a
+  // nested tracker) queues the element in BOTH the marker set and the
+  // --sv-live lift set while containsTracked() is true. clearReleased()
+  // must clear it from both when the container is tracked again, or the
+  // OLD deferred lift outlives this retrack entirely and fires a second,
+  // spurious --sv-live write whenever the nested tracker eventually
+  // releases, long after this container moved on to its own lifecycle.
+  const { track, settleUntracked } = await import('../dist/core/driver.js?deferredliveretrack')
+  const outer = makeElement(3000)
+  const inner = makeElement(3000)
+  nest(outer, inner)
+  place(outer, -1000)
+  place(inner, -1000)
+  const liveCalls = []
+  const setProperty = outer.style.setProperty
+  outer.style.setProperty = (name, value, priority) => {
+    if (name === '--sv-live' && value === '1') liveCalls.push('live')
+    return setProperty(name, value, priority)
+  }
+
+  const stopInner = track(inner, { pin: true })
+  settleUntracked(outer) // deferred: inner is still tracked, outer.contains(inner)
+  assert.equal(liveCalls.length, 0, 'deferred: nothing tracked settleUntracked() while a descendant is still live')
+  assert.ok(!outer.attrs.has('data-sv-off'))
+
+  const stopOuter = track(outer, {}) // retrack before inner ever releases
+  assert.equal(liveCalls.length, 0, 'retracking clears the pending state, not settling it')
+
+  stopOuter() // an ordinary release now: releaseEntry() writes --sv-live immediately
+  assert.equal(liveCalls.length, 1, 'the immediate write from THIS release')
+  assert.ok(!outer.attrs.has('data-sv-off'), 'still deferred: inner is still tracked')
+
+  stopInner() // the nested tracker finally releases: settleDeferred() resolves outer
+  assert.equal(liveCalls.length, 1, 'no second write from the stale settleUntracked() lift the retrack should have cleared')
+  assert.ok(outer.attrs.has('data-sv-off'))
+})
+
 test('driver: a `once` descendant settling hands the waiting ancestor its marker', async () => {
   // a query string this file uses nowhere else: the same one twice hands the
   // second test the FIRST test's module instance, whose scroll listener was

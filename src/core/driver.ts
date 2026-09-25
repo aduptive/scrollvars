@@ -957,6 +957,14 @@ export function settleUntracked(el: HTMLElement) {
  * released one (stopScan() then a single section re-mounting) would run its
  * clock with every preset already settled static. */
 function clearReleased(el: HTMLElement) {
+  // Only THIS element, never an ancestor: `el` is the one being tracked
+  // again, so it owns its own entrance from here on and settleDeferred()
+  // must not lift --sv-live on it later on some unrelated release. An
+  // ancestor still queued in deferredLive keeps waiting on its OWN nested
+  // descendant, untouched by `el` retracking. Leaving this out kept `el` in
+  // the set forever once it was untracked-then-retracked before whatever it
+  // was waiting on released, a harmless but permanent retention leak.
+  deferredLive.delete(el)
   for (let node: HTMLElement | null = el; node; node = node.parentElement) {
     // An ANCESTOR that carried the marker (or was still waiting for it) is
     // released all the same: it only lends its marker to the tracker starting
