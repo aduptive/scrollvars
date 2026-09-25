@@ -1381,3 +1381,179 @@ export function EditorialManifesto({ label = 'What we believe', paragraphs, clos
 }
 
 ```
+
+## Cube windows (cube-windows)
+
+A box turns in 3D as the section scrolls by and tilts to the pointer; its outline becomes the clip-path of the photo inside. The photo itself never moves.
+Category: Sections
+Use for: Portfolio thumbnails, about-page portraits, product shots. Anywhere a plain crop feels flat.
+Knobs: box (width, height, depth, a share of the element), turn (ry0 ry1 rx0 rx1 radians across the scroll travel); pointer tilt is built in
+Install: npx scrollvars add cube-windows
+Styles: included
+
+### Tailwind
+```html
+<div class="cube-window relative aspect-[4/3] overflow-hidden rounded-xl">
+  <img src="photo.jpg" alt="A photo of the studio" class="block h-full w-full object-cover">
+</div>
+<!-- same mount script as the CSS tab; Tailwind only styles the box and the image -->
+```
+
+### CSS
+```html
+<div class="cube-window">
+  <img src="photo.jpg" alt="A photo of the studio">
+</div>
+
+<script type="module">
+import { track, prefersReducedMotion, onMotionChange } from 'scrollvars'
+
+// mask3d-core: the projection math. Kept commented in its own TypeScript
+// source (scripts/fx-lib/mask3d-core.ts in the scrollvars repo, unit-tested
+// there); this is the plain-JS build of it, so read the source for why the
+// union of faces works if you are going to edit this.
+function corners(box, pose, focal) {
+  const { w, h, d } = box;
+  const { ry, rx } = pose;
+  const cosY = Math.cos(ry), sinY = Math.sin(ry);
+  const cosX = Math.cos(rx), sinX = Math.sin(rx);
+  const pts = [];
+  for (let i = 0; i < 8; i++) {
+    let x = (i & 1 ? 0.5 : -0.5) * w, y = (i & 2 ? 0.5 : -0.5) * h, z = (i & 4 ? 0.5 : -0.5) * d;
+    [x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY];
+    [y, z] = [y * cosX - z * sinX, y * sinX + z * cosX];
+    const s = focal / (focal + z);
+    pts.push([x * s, y * s]);
+  }
+  return pts;
+}
+function hull(points) {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list) => {
+    const out = [];
+    for (const q of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+      out.push(q);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+const r1 = (n) => Math.round(n * 10) / 10;
+function toClipPath(points, ox, oy, scale) {
+  return `polygon(${points.map(([x, y]) => `${r1(ox + x * scale)}px ${r1(oy + y * scale)}px`).join(",")})`;
+}
+function bounds(box, poses, focal) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const pose of poses) {
+    for (const [x, y] of corners(box, pose, focal)) {
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return { x0, x1, y0, y1 };
+}
+
+function cubeWindowNumbers(value, count) {
+  const list = String(value ?? '').trim().split(/\s+/).map(Number)
+  return list.length === count && list.every(Number.isFinite) ? list : null
+}
+
+function mountCubeWindow(el, boxSize, turn) {
+  const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
+  const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
+  const [ry0, ry1, rx0, rx1] = turn
+  const poseAt = (t, hx, hy) => ({
+    ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
+    rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
+  })
+
+  let t = .5, fit = null, last = '', raf = 0
+  const hover = { x: 0, y: 0 }, target = { x: 0, y: 0 }
+
+  // Every pose the scroll travel times the pointer tilt can reach, so the
+  // element fits the shape without cutting a corner off at either extreme.
+  const refit = () => {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || (fit && fit.w === w && fit.h === h)) return false
+    const poses = []
+    for (let s = 0; s <= 20; s++)
+      for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
+    const b = bounds(box3, poses, FOCAL)
+    const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
+    fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
+    return true
+  }
+
+  const draw = () => {
+    if (!fit) return
+    const still = prefersReducedMotion()
+    const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
+    const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
+    if (clip !== last) { el.style.clipPath = clip; last = clip }
+  }
+
+  // Pointer inertia is the only loop of our own, and only while it settles.
+  const settle = () => {
+    raf = 0
+    hover.x += (target.x - hover.x) * EASE
+    hover.y += (target.y - hover.y) * EASE
+    draw()
+    if (Math.abs(target.x - hover.x) + Math.abs(target.y - hover.y) > .002) raf = requestAnimationFrame(settle)
+  }
+  const onMove = (e) => {
+    if (prefersReducedMotion()) return
+    const r = el.getBoundingClientRect()
+    target.x = ((e.clientX - r.left) / r.width) * 2 - 1
+    target.y = ((e.clientY - r.top) / r.height) * 2 - 1
+    if (!raf) raf = requestAnimationFrame(settle)
+  }
+  const onLeave = () => { target.x = target.y = 0; if (!raf) raf = requestAnimationFrame(settle) }
+
+  const ro = new ResizeObserver(() => { if (refit()) { last = ''; draw() } })
+  ro.observe(el)
+  refit()
+  draw()
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerleave', onLeave)
+  const stopMotion = onMotionChange(() => { hover.x = hover.y = target.x = target.y = 0; draw() })
+  // scrollvars: travel t (0..1) through the viewport, from its shared frame loop
+  const stopTrack = track(el, { view: false, onTravel: (v) => { t = v; draw() } })
+
+  return () => {
+    stopTrack(); stopMotion(); ro.disconnect()
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerleave', onLeave)
+    if (raf) cancelAnimationFrame(raf)
+    el.style.clipPath = '' // no JS / stopped: the whole photo shows again
+  }
+}
+
+mountCubeWindow(
+  document.querySelector('.cube-window'),
+  [.9, .5, .5],      // width, height, depth: a share of the element
+  [-1.4, .35, .8, -.1]   // ry0 ry1 rx0 rx1 (radians), across the scroll travel
+)
+</script>
+
+.cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; }
+.cube-window img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* no JS / old engines: no clip-path is ever set, so the whole photo stays visible */
+```
+
+### React
+```tsx
+import { CubeWindows } from './components/fx/CubeWindows'
+
+function Portrait() {
+  return (
+    <CubeWindows box={[.9, .5, .5]} turn={[-1.4, .35, .8, -.1]}>
+      <img src="photo.jpg" alt="A photo of the studio" />
+    </CubeWindows>
+  )
+}
+// npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)
+```

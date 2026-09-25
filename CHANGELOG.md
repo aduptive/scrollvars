@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- fx gallery: `cube-windows`, a Section recipe where a box turns in 3D on scroll and pointer tilt, its outline clipping the content behind it. The projection math (`scripts/fx-lib/mask3d-core.ts`) is a small, dependency-free, unit-tested module meant to be copied whole into a project.
+
 ## 1.18.0 (2026-09-21)
 
 ### Changed

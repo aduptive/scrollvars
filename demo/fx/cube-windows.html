@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Cube windows · ScrollVars fx</title>
+<meta name="description" content="A box turns in 3D as the section scrolls by and tilts to the pointer; its outline becomes the clip-path of the photo inside. The photo itself never moves. Copy-paste in Tailwind, CSS or React.">
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
+<link rel="stylesheet" href="sv.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --ink:#0d1611; --surface:#14211a; --line:rgba(232, 239, 230,.09);
+    --text:#e8efe6; --muted:#8fa898; --accent:#f2c14e;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
+  a { color: var(--accent); }
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#b8c6bb; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    padding:0 24px; font-size:14px; background:rgba(13, 22, 17,.88);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+  footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
+    font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  footer.fx b { color: var(--text); }
+  h1 { font-size: 30px; margin: 6px 0 4px; }
+  p.tag { color: var(--muted); margin-bottom: 6px; }
+  p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  p.meta b { color: var(--text); font-weight: 600; }
+  .fxstage { background:#14211a; border:1px solid var(--line); border-radius:16px;
+    padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
+  /* on-arrival effects need the stage to start BELOW the live band, or the driver
+     flags it live on the first frame and the entrance is over before it is seen */
+  .fxrunway { padding: 62vh 0 46vh; position: relative; }
+  .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
+    text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#14211a; border:1px solid var(--line); border-radius:16px; }
+  .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
+    display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
+  .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
+    font:700 34px var(--sans); }
+  .fxh { font-size: 30px; font-weight: 800; }
+  .fxp { color: var(--muted); }
+  .fxaccent { color: var(--accent); }
+  .fxcard { width:150px; height:110px; flex:0 0 auto; border-radius:12px;
+    border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
+    display:grid; place-items:center; font:600 15px var(--mono); }
+  .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin: 26px 0 0; } /* three tabs overflowed a 320px viewport by 10px (WCAG 1.4.10) */
+  .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
+    border:1px solid var(--line); border-bottom:0; background:transparent;
+    color:var(--muted); cursor:pointer; }
+  .tabs button.on { background:#14211a; color:var(--accent); }
+  .code { position: relative; }
+  .code pre { background:#14211a; border:1px solid var(--line); border-radius:0 12px 12px 12px;
+    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#d6dfd6; display:none; }
+  .code pre.on { display:block; }
+  .copy { position:absolute; top:10px; right:10px; font:600 12px var(--mono);
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(0,0,0,.4); color:var(--muted); cursor:pointer; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
+    text-decoration:none; color:var(--text); background:#14211a; }
+  .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#14211a; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
+  .fxlink b { display:block; margin-bottom:6px; }
+  .fxlink span { color:var(--muted); font-size:13px; }
+  .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
+    color:var(--muted); margin:30px 0 12px; }
+  .fxwrap { display:grid; grid-template-columns:240px minmax(0,1fr); padding-top:56px;
+    min-height:100vh; }
+  .fxwrap > main { max-width:1000px; padding:44px clamp(24px,4vw,64px) 96px; }
+  .fxside { border-right:1px solid var(--line); }
+  .fxsidein { position:sticky; top:56px; max-height:calc(100vh - 56px); overflow-y:auto;
+    padding:24px 20px 40px; font-size:14px; }
+  .fxnav[open] > summary { display:none; }
+  .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
+  .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
+  .fxnav nav details:first-child { border-top:0; padding-top:0; }
+  .fxnav nav summary { cursor:pointer; user-select:none; font:600 11px/2.2 var(--mono);
+    text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+  .fxnav nav summary:hover { color:var(--text); }
+  .fxnav nav a { display:block; padding:4px 0 4px 14px; margin-left:5px; color:var(--text);
+    opacity:.85; text-decoration:none; border-left:1px solid var(--line); }
+  .fxnav nav a:hover { opacity:1; color:var(--accent); }
+  .fxnav nav a[aria-current] { opacity:1; color:var(--accent); font-weight:600;
+    border-left-color:var(--accent); }
+  @media (max-width: 919px) {
+    .fxwrap { display:block; }
+    .fxside { border-right:0; }
+    .fxsidein { position:static; max-height:none; padding:20px 20px 0; }
+    .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
+      font:600 14px var(--sans);
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#14211a; }
+    .fxnav[open] > summary { border-radius:12px 12px 0 0; }
+    .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
+      padding:10px 16px 14px; background:#14211a; }
+  }
+</style>
+</head><body>
+<header class="fx">
+  <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+</header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
+<div class="fxwrap">
+<aside class="fxside"><div class="fxsidein">
+  <details class="fxnav" open>
+    <summary>All effects</summary>
+    <nav aria-label="Effects">
+      <details open><summary>Reveals</summary>
+        <a href="staggered-reveal.html">Staggered reveal</a>
+        <a href="deck-spread.html">Deck spread</a>
+      </details>
+      <details open><summary>Pinned scenes</summary>
+        <a href="curtain.html">Curtain</a>
+        <a href="horizontal-rail.html">Horizontal rail</a>
+        <a href="sequenced-scrub.html">Sequenced scrub</a>
+      </details>
+      <details open><summary>Interop</summary>
+        <a href="gsap-scrub.html">GSAP timeline under scrub</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
+      </details>
+      <details open><summary>Text</summary>
+        <a href="split-reveal.html">Split reveal</a>
+        <a href="rotating-words.html">Rotating words</a>
+      </details>
+      <details open><summary>Pointer</summary>
+        <a href="pointer-tilt.html">Pointer tilt</a>
+      </details>
+      <details open><summary>Sliders</summary>
+        <a href="coverflow-slider.html">Coverflow slider</a>
+        <a href="marquee.html">Marquee</a>
+      </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="editorial-manifesto.html">Editorial manifesto</a>
+        <a href="cube-windows.html" aria-current="page">Cube windows</a>
+      </details>
+    </nav>
+  </details>
+</div></aside>
+<main>
+  <h1>Cube windows</h1>
+  <p class="tag">A box turns in 3D as the section scrolls by and tilts to the pointer; its outline becomes the clip-path of the photo inside. The photo itself never moves.</p>
+  <p class="meta"><b>Use it for:</b> Portfolio thumbnails, about-page portraits, product shots. Anywhere a plain crop feels flat.<br><b>Knobs:</b> box (width, height, depth, a share of the element), turn (ry0 ry1 rx0 rx1 radians across the scroll travel); pointer tilt is built in</p>
+  <div class="fxstage" style="padding:36px 0">
+  <div class="cube-window" id="fxcube" data-box=".9 .5 .5" data-turn="-1.4 .35 .8 -.1" style="width:min(320px,80%);margin:0 auto">
+    <div class="cube-photo" aria-hidden="true"></div>
+  </div>
+</div>
+<style>.cube-window{position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:12px}.cube-photo{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#a78bfa,#312244 70%)}</style>
+<script>
+const { track, prefersReducedMotion, onMotionChange } = SV
+function corners(box, pose, focal) {
+  const { w, h, d } = box;
+  const { ry, rx } = pose;
+  const cosY = Math.cos(ry), sinY = Math.sin(ry);
+  const cosX = Math.cos(rx), sinX = Math.sin(rx);
+  const pts = [];
+  for (let i = 0; i < 8; i++) {
+    let x = (i & 1 ? 0.5 : -0.5) * w, y = (i & 2 ? 0.5 : -0.5) * h, z = (i & 4 ? 0.5 : -0.5) * d;
+    [x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY];
+    [y, z] = [y * cosX - z * sinX, y * sinX + z * cosX];
+    const s = focal / (focal + z);
+    pts.push([x * s, y * s]);
+  }
+  return pts;
+}
+function hull(points) {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list) => {
+    const out = [];
+    for (const q of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+      out.push(q);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+const r1 = (n) => Math.round(n * 10) / 10;
+function toClipPath(points, ox, oy, scale) {
+  return `polygon(${points.map(([x, y]) => `${r1(ox + x * scale)}px ${r1(oy + y * scale)}px`).join(",")})`;
+}
+function bounds(box, poses, focal) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const pose of poses) {
+    for (const [x, y] of corners(box, pose, focal)) {
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return { x0, x1, y0, y1 };
+}
+function cubeWindowNumbers(value, count) {
+  const list = String(value ?? '').trim().split(/\s+/).map(Number)
+  return list.length === count && list.every(Number.isFinite) ? list : null
+}
+
+function mountCubeWindow(el, boxSize, turn) {
+  const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
+  const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
+  const [ry0, ry1, rx0, rx1] = turn
+  const poseAt = (t, hx, hy) => ({
+    ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
+    rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
+  })
+
+  let t = .5, fit = null, last = '', raf = 0
+  const hover = { x: 0, y: 0 }, target = { x: 0, y: 0 }
+
+  // Every pose the scroll travel times the pointer tilt can reach, so the
+  // element fits the shape without cutting a corner off at either extreme.
+  const refit = () => {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || (fit && fit.w === w && fit.h === h)) return false
+    const poses = []
+    for (let s = 0; s <= 20; s++)
+      for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
+    const b = bounds(box3, poses, FOCAL)
+    const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
+    fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
+    return true
+  }
+
+  const draw = () => {
+    if (!fit) return
+    const still = prefersReducedMotion()
+    const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
+    const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
+    if (clip !== last) { el.style.clipPath = clip; last = clip }
+  }
+
+  // Pointer inertia is the only loop of our own, and only while it settles.
+  const settle = () => {
+    raf = 0
+    hover.x += (target.x - hover.x) * EASE
+    hover.y += (target.y - hover.y) * EASE
+    draw()
+    if (Math.abs(target.x - hover.x) + Math.abs(target.y - hover.y) > .002) raf = requestAnimationFrame(settle)
+  }
+  const onMove = (e) => {
+    if (prefersReducedMotion()) return
+    const r = el.getBoundingClientRect()
+    target.x = ((e.clientX - r.left) / r.width) * 2 - 1
+    target.y = ((e.clientY - r.top) / r.height) * 2 - 1
+    if (!raf) raf = requestAnimationFrame(settle)
+  }
+  const onLeave = () => { target.x = target.y = 0; if (!raf) raf = requestAnimationFrame(settle) }
+
+  const ro = new ResizeObserver(() => { if (refit()) { last = ''; draw() } })
+  ro.observe(el)
+  refit()
+  draw()
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerleave', onLeave)
+  const stopMotion = onMotionChange(() => { hover.x = hover.y = target.x = target.y = 0; draw() })
+  // scrollvars: travel t (0..1) through the viewport, from its shared frame loop
+  const stopTrack = track(el, { view: false, onTravel: (v) => { t = v; draw() } })
+
+  return () => {
+    stopTrack(); stopMotion(); ro.disconnect()
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerleave', onLeave)
+    if (raf) cancelAnimationFrame(raf)
+    el.style.clipPath = '' // no JS / stopped: the whole photo shows again
+  }
+}
+addEventListener('load', () => {
+  const el = document.getElementById('fxcube')
+  const boxSize = cubeWindowNumbers(el.dataset.box, 3)
+  const turn = cubeWindowNumbers(el.dataset.turn, 4)
+  if (boxSize && turn) mountCubeWindow(el, boxSize, turn)
+})
+</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add cube-windows</code><br><b>Styles:</b> Included in the component</p>
+  <div class="tabs">
+    <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>
+  </div>
+  <div class="code">
+    <button class="copy">copy</button>
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div class="cube-window relative aspect-[4/3] overflow-hidden rounded-xl"&gt;
+  &lt;img src="photo.jpg" alt="A photo of the studio" class="block h-full w-full object-cover"&gt;
+&lt;/div&gt;
+&lt;!-- same mount script as the CSS tab; Tailwind only styles the box and the image --&gt;</code></pre>
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="cube-window"&gt;
+  &lt;img src="photo.jpg" alt="A photo of the studio"&gt;
+&lt;/div&gt;
+
+&lt;script type="module"&gt;
+import { track, prefersReducedMotion, onMotionChange } from 'scrollvars'
+
+// mask3d-core: the projection math. Kept commented in its own TypeScript
+// source (scripts/fx-lib/mask3d-core.ts in the scrollvars repo, unit-tested
+// there); this is the plain-JS build of it, so read the source for why the
+// union of faces works if you are going to edit this.
+function corners(box, pose, focal) {
+  const { w, h, d } = box;
+  const { ry, rx } = pose;
+  const cosY = Math.cos(ry), sinY = Math.sin(ry);
+  const cosX = Math.cos(rx), sinX = Math.sin(rx);
+  const pts = [];
+  for (let i = 0; i &lt; 8; i++) {
+    let x = (i &amp; 1 ? 0.5 : -0.5) * w, y = (i &amp; 2 ? 0.5 : -0.5) * h, z = (i &amp; 4 ? 0.5 : -0.5) * d;
+    [x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY];
+    [y, z] = [y * cosX - z * sinX, y * sinX + z * cosX];
+    const s = focal / (focal + z);
+    pts.push([x * s, y * s]);
+  }
+  return pts;
+}
+function hull(points) {
+  const sorted = [...points].sort((a, b) =&gt; a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) =&gt; (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list) =&gt; {
+    const out = [];
+    for (const q of list) {
+      while (out.length &gt;= 2 &amp;&amp; cross(out[out.length - 2], out[out.length - 1], q) &lt;= 0) out.pop();
+      out.push(q);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+const r1 = (n) =&gt; Math.round(n * 10) / 10;
+function toClipPath(points, ox, oy, scale) {
+  return `polygon(${points.map(([x, y]) =&gt; `${r1(ox + x * scale)}px ${r1(oy + y * scale)}px`).join(",")})`;
+}
+function bounds(box, poses, focal) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const pose of poses) {
+    for (const [x, y] of corners(box, pose, focal)) {
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return { x0, x1, y0, y1 };
+}
+
+function cubeWindowNumbers(value, count) {
+  const list = String(value ?? '').trim().split(/\s+/).map(Number)
+  return list.length === count &amp;&amp; list.every(Number.isFinite) ? list : null
+}
+
+function mountCubeWindow(el, boxSize, turn) {
+  const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
+  const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
+  const [ry0, ry1, rx0, rx1] = turn
+  const poseAt = (t, hx, hy) =&gt; ({
+    ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
+    rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
+  })
+
+  let t = .5, fit = null, last = '', raf = 0
+  const hover = { x: 0, y: 0 }, target = { x: 0, y: 0 }
+
+  // Every pose the scroll travel times the pointer tilt can reach, so the
+  // element fits the shape without cutting a corner off at either extreme.
+  const refit = () =&gt; {
+    const w = el.clientWidth, h = el.clientHeight
+    if (!w || !h || (fit &amp;&amp; fit.w === w &amp;&amp; fit.h === h)) return false
+    const poses = []
+    for (let s = 0; s &lt;= 20; s++)
+      for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
+    const b = bounds(box3, poses, FOCAL)
+    const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
+    fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
+    return true
+  }
+
+  const draw = () =&gt; {
+    if (!fit) return
+    const still = prefersReducedMotion()
+    const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
+    const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
+    if (clip !== last) { el.style.clipPath = clip; last = clip }
+  }
+
+  // Pointer inertia is the only loop of our own, and only while it settles.
+  const settle = () =&gt; {
+    raf = 0
+    hover.x += (target.x - hover.x) * EASE
+    hover.y += (target.y - hover.y) * EASE
+    draw()
+    if (Math.abs(target.x - hover.x) + Math.abs(target.y - hover.y) &gt; .002) raf = requestAnimationFrame(settle)
+  }
+  const onMove = (e) =&gt; {
+    if (prefersReducedMotion()) return
+    const r = el.getBoundingClientRect()
+    target.x = ((e.clientX - r.left) / r.width) * 2 - 1
+    target.y = ((e.clientY - r.top) / r.height) * 2 - 1
+    if (!raf) raf = requestAnimationFrame(settle)
+  }
+  const onLeave = () =&gt; { target.x = target.y = 0; if (!raf) raf = requestAnimationFrame(settle) }
+
+  const ro = new ResizeObserver(() =&gt; { if (refit()) { last = ''; draw() } })
+  ro.observe(el)
+  refit()
+  draw()
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerleave', onLeave)
+  const stopMotion = onMotionChange(() =&gt; { hover.x = hover.y = target.x = target.y = 0; draw() })
+  // scrollvars: travel t (0..1) through the viewport, from its shared frame loop
+  const stopTrack = track(el, { view: false, onTravel: (v) =&gt; { t = v; draw() } })
+
+  return () =&gt; {
+    stopTrack(); stopMotion(); ro.disconnect()
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerleave', onLeave)
+    if (raf) cancelAnimationFrame(raf)
+    el.style.clipPath = '' // no JS / stopped: the whole photo shows again
+  }
+}
+
+mountCubeWindow(
+  document.querySelector('.cube-window'),
+  [.9, .5, .5],      // width, height, depth: a share of the element
+  [-1.4, .35, .8, -.1]   // ry0 ry1 rx0 rx1 (radians), across the scroll travel
+)
+&lt;/script&gt;
+
+.cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; }
+.cube-window img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* no JS / old engines: no clip-path is ever set, so the whole photo stays visible */</code></pre>
+    <pre tabindex="0" data-pane="react"><code>import { CubeWindows } from './components/fx/CubeWindows'
+
+function Portrait() {
+  return (
+    &lt;CubeWindows box={[.9, .5, .5]} turn={[-1.4, .35, .8, -.1]}&gt;
+      &lt;img src="photo.jpg" alt="A photo of the studio" /&gt;
+    &lt;/CubeWindows&gt;
+  )
+}
+// npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)</code></pre>
+  </div>
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 11.4 KB gzip as ESM (this page's fx/sv.js IIFE: 11.6 KB).
+  All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
+</main>
+</div>
+<footer class="fx">
+  <div><b>ScrollVars</b> v1.18.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
+</footer>
+<script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>
+<script src="sv.js"></script>
+<script>
+  SV.setPageOutputs(false); // gallery effects only consume local clocks
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+    document.querySelectorAll('.code pre').forEach(p =>
+      p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+  }));
+  document.querySelector('.copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.querySelector('.code pre.on code').innerText);
+    this.textContent = 'copied!';
+    setTimeout(() => (this.textContent = 'copy'), 1200);
+  });
+</script>
+</body></html>

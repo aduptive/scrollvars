@@ -38,6 +38,7 @@ const FIXTURES = {
   'pointer-tilt': { children: [h('div', { key: 1, className: 'sv-tilt' }, 'a')] },
   'coverflow-slider': { children: [h('div', { key: 1 }, 'a'), h('div', { key: 2 }, 'b'), h('div', { key: 3 }, 'c')], label: 'demo' },
   marquee: { children: [h('span', { key: 1 }, 'Brand'), h('span', { key: 2 }, 'Motion')] },
+  'cube-windows': { children: h('img', { src: 'photo.jpg', alt: 'A photo of the studio' }) },
 }
 // The comparison is on preset CLASSES: the React API takes props where the
 // vanilla preview writes data-sv-* attributes (tracking is attached by refs,
