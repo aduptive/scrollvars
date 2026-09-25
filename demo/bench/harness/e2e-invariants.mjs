@@ -2834,6 +2834,111 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 9d. A failed scan settles unprocessed [data-sv] content VISIBLE: no
+// entrance preset reads the data-sv-off marker fail() left behind, only
+// --sv-live, so a scope caught mid-scan while html.sv-on stays up must
+// write the inline flag too, not just the marker. Three scenarios (round 15
+// P1): init fails then another tracker boots the driver later; a healthy
+// init whose initial sweep throws on the second element; a healthy scan
+// whose later mutation batch throws on the first added node. A fourth: once
+// a scan has failed, a node inserted AFTER the failure (a CMS block, a route
+// change) still settles, because the observer stays up in settle-only mode
+// (src/core/scan.ts) ──
+{
+  const body = `<div style="height:20vh"></div>
+<section id=a data-sv style="min-height:40vh"><p class="sv-rise">a</p></section>
+<section id=b data-sv style="min-height:40vh"><p class="sv-rise">b</p></section>
+<section id=c data-sv style="min-height:40vh"><p class="sv-rise">c</p></section>
+<div id=other style="height:10px"></div><div style="height:200vh"></div>`
+  const settled = async (page) => {
+    await page.waitForFunction(
+      () => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming?.().iterations === Infinity),
+      { timeout: 4000, polling: 100 }
+    ).catch(() => {})
+    return page.evaluate(() => {
+      const o = (id) => getComputedStyle(document.querySelector('#' + id + ' .sv-rise')).opacity
+      return { svOn: document.documentElement.classList.contains('sv-on'), a: o('a'), b: o('b'), c: o('c') }
+    })
+  }
+
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head><body>${body}</body></html>`)
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(() => {
+      const RO = window.ResizeObserver
+      window.ResizeObserver = class { constructor() { throw Error('no RO') } }
+      SV.scan()
+      window.ResizeObserver = RO
+      SV.track(document.getElementById('other'))
+    })
+    const r = await settled(page)
+    check('P1 (init fails, then track() boots the driver): every unprocessed section settles visible', r.svOn && r.a === '1' && r.b === '1' && r.c === '1', JSON.stringify(r))
+    await page.close()
+  }
+
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head><body>${body}</body></html>`)
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(() => {
+      const observe = ResizeObserver.prototype.observe
+      ResizeObserver.prototype.observe = function (el) { if (el.id === 'b') throw Error('boom'); return observe.call(this, el) }
+      window.reportError = () => {}
+      SV.scan()
+      ResizeObserver.prototype.observe = observe
+    })
+    const r = await settled(page)
+    check('P1 (initial sweep throws on the second element): the unprocessed rest settles visible', r.a === '1' && r.b === '1' && r.c === '1', JSON.stringify(r))
+    await page.close()
+  }
+
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head><body>${body.replace(/<section id=[bc][^]*?<\/section>/g, '')}</body></html>`)
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(() => { window.reportError = () => {}; SV.scan() })
+    await page.evaluate(async () => {
+      await new Promise((r) => setTimeout(r, 300))
+      const observe = ResizeObserver.prototype.observe
+      ResizeObserver.prototype.observe = function (el) { if (el.id === 'b') throw Error('boom'); return observe.call(this, el) }
+      const frag = document.createElement('div')
+      frag.innerHTML = '<section id=b data-sv style="min-height:40vh"><p class=sv-rise>b</p></section><section id=c data-sv style="min-height:40vh"><p class=sv-rise>c</p></section>'
+      document.getElementById('a').after(...frag.children)
+      await new Promise((r) => setTimeout(r, 50))
+      ResizeObserver.prototype.observe = observe
+    })
+    const r = await settled(page)
+    check('P1 (a mutation batch throws on its first added node): the second inserted section settles visible', r.b === '1' && r.c === '1', JSON.stringify(r))
+    await page.close()
+  }
+
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head><body>${body.replace(/<section id=[bc][^]*?<\/section>/g, '')}</body></html>`)
+    await page.addScriptTag({ content: SV_IIFE_JS })
+    await page.evaluate(() => {
+      const RO = window.ResizeObserver
+      window.ResizeObserver = class { constructor() { throw Error('no RO') } }
+      SV.scan()
+      window.ResizeObserver = RO
+    })
+    await page.evaluate(() => {
+      const frag = document.createElement('div')
+      frag.innerHTML = '<section id=late data-sv style="min-height:40vh"><p class=sv-rise>late</p></section>'
+      document.getElementById('a').after(...frag.children)
+    })
+    await page.waitForFunction(() => document.getElementById('late') !== null)
+    await page.evaluate(async () => { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))) })
+    const r = await page.evaluate(() => {
+      const el = document.getElementById('late')
+      return { off: el.hasAttribute('data-sv-off'), opacity: getComputedStyle(el.querySelector('.sv-rise')).opacity }
+    })
+    check('P1 (a node inserted after a failed scan): a failed scan keeps a settle-only observer, so late content still settles visible', r.off && r.opacity === '1', JSON.stringify(r))
+    await page.close()
+  }
+}
+
 // ── 10. The isolated installation gate: every Section the CLI installs,
 // rendered under React 18 and 19, on ONLY the stylesheets its registry entry
 // declares. A gallery page proves nothing about a consumer who imported

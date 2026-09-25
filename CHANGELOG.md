@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- A failed scan (a throwing ResizeObserver at init, an attachment that throws mid-sweep, or a later mutation batch whose attach throws) left its unprocessed `[data-sv]` content hidden at opacity 0 forever whenever `html.sv-on` was up: the marker-only settlement (`data-sv-off`) never lifted `--sv-live`, and only `--sv-live` gates the entrance presets. `settleUntracked()` and the failed-init branch of `attach()` now write the inline `--sv-live: 1` too, deferred the same way the `data-sv-off` marker already is (once nothing tracked is left inside the element); `releaseEntry()` keeps its own immediate, unconditional write, since a released element's own entrance never depended on a nested tracker's state. A scan that has failed also keeps its mutation observer connected, in settle-only mode, so a `[data-sv]` node inserted afterward (a CMS block, a route change) settles visible too instead of staying hidden with no observer left to release it.
+
 ### Added
 
 - fx gallery: `cube-windows`, a Section recipe where a box turns in 3D on scroll and pointer tilt, its outline clipping the content behind it. The projection math (`scripts/fx-lib/mask3d-core.ts`) is a small, dependency-free, unit-tested module meant to be copied whole into a project.

@@ -89,6 +89,7 @@ export function scan(root?: ParentNode): () => void {
   const pointers = new Map<HTMLElement, () => void>()
   let observer: MutationObserver | undefined
   let stopped = false
+  let failed = false
   const stop = () => {
     if (stopped) return
     stopped = true
@@ -99,8 +100,23 @@ export function scan(root?: ParentNode): () => void {
       map.clear()
     }
   }
+  // Every [data-sv] node under `node`, settled visible: content inserted
+  // AFTER a failure (a CMS block, a route change) has no tracker to release
+  // it, so the observer below keeps running in this settle-only mode
+  // instead of disconnecting for good.
+  const settleSubtree = (node: Node) => {
+    if (!(node instanceof HTMLElement)) return
+    if (node.hasAttribute('data-sv')) settleUntracked(node)
+    node.querySelectorAll<HTMLElement>('[data-sv]').forEach(settleUntracked)
+  }
   const fail = (error?: unknown) => {
-    stop()
+    if (failed) return
+    failed = true
+    const release = (fn: () => void) => { try { fn() } catch { /* continue releasing this scope */ } }
+    for (const map of [tracked, splits, pointers]) {
+      map.forEach(fn => release(fn))
+      map.clear()
+    }
     if ((scope as HTMLElement).hasAttribute?.('data-sv')) settleUntracked(scope as HTMLElement)
     scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(settleUntracked)
     if (error && error !== failedAttachment) {
@@ -108,7 +124,6 @@ export function scan(root?: ParentNode): () => void {
       else console.error(error)
     }
   }
-  if (!ready) { fail(); return stop }
   const addPointer = (el: HTMLElement) => {
     if (!pointers.has(el)) pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
       selector: el.getAttribute('data-sv-pointer') || undefined,
@@ -177,17 +192,30 @@ export function scan(root?: ParentNode): () => void {
   }
 
   // querySelectorAll excludes an element scope itself; sweep it once.
-  try {
-    if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
-    else {
-      scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
-      scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
-      scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
-      scope.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
-    }
+  if (!ready) fail()
+  else {
+    try {
+      if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
+      else {
+        scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+        scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+        scope.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+        scope.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
+      }
+    } catch (error) { fail(error) }
+  }
 
+  // The observer runs regardless of `failed`: once tracking is gone it stays
+  // up only to settle nodes inserted later (a CMS block, a route change), so
+  // a scan that failed once does not leave the rest of the page's life
+  // hidden. It never reconnects tracking; only stop() tears it down.
+  try {
     observer = new MutationObserver((mutations) => {
       if (stopped) return
+      if (failed) {
+        for (const mutation of mutations) mutation.addedNodes.forEach(settleSubtree)
+        return
+      }
       if (bootReleased()) { fail(); return }
       try {
         for (const mutation of mutations) {
@@ -201,9 +229,11 @@ export function scan(root?: ParentNode): () => void {
       childList: true,
       subtree: true,
     })
-    // Empty routes acknowledge a working driver too, but failed initialization
-    // must leave the prepaint watchdog armed.
-    ;(window as unknown as { __scrollvars?: boolean }).__scrollvars = ready
   } catch (error) { fail(error) }
+  // Empty routes acknowledge a working driver too, but failed initialization
+  // must leave the prepaint watchdog armed: writing `false` here would
+  // un-terminate an already-released watchdog (the string 'released'),
+  // turning a permanent settle back into an armed one.
+  if (ready) (window as unknown as { __scrollvars?: boolean }).__scrollvars = true
   return stop
 }

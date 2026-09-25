@@ -831,7 +831,7 @@ test('driver: init() is transactional, a throwing ResizeObserver leaves track() 
   const untrack = track(el, { travel: true })
   pump()
   assert.equal(el.classes.size, 0, 'no .sv class: the page stays static')
-  assert.deepEqual(el.vars, {}, 'no inline vars written')
+  assert.deepEqual(el.vars, { '--sv-live': '1' }, 'settled visible: failed init must not hide content')
   untrack() // the no-op must be safely callable
 
   // scrollvars/compat shims a real ResizeObserver in; a later track() retries init()
@@ -1216,6 +1216,7 @@ test('driver: a released ancestor never settles a still-tracked descendant', asy
   assert.equal(inner.vars['--sv-pin'], '0.5000', 'the inner clock runs while both are tracked')
 
   stopOuter()
+  assert.equal(outer.vars['--sv-live'], '1', 'the released ancestor lifts its OWN entrance immediately: its opacity does not wait on a nested tracker')
   assert.ok(!outer.attrs.has('data-sv-off'), 'a released ancestor stays unmarked while a descendant is still tracked')
   assert.ok(!inner.attrs.has('data-sv-off'), 'and the descendant is never marked by another entry release')
   place(inner, -500)

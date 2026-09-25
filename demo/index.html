@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.6 KB / 5.3 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.7 KB / 5.3 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.4 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.5 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3920,6 +3920,7 @@ var SV = (() => {
         return true;
     return false;
   }
+  var deferredLive = /* @__PURE__ */ new Set();
   function settleDeferred() {
     if (!deferredOff.size)
       return;
@@ -3927,16 +3928,20 @@ var SV = (() => {
       if (containsTracked(waiting))
         return;
       deferredOff.delete(waiting);
+      if (deferredLive.delete(waiting))
+        safely(() => waiting.style.setProperty?.("--sv-live", "1"));
       waiting.setAttribute?.("data-sv-off", "");
     });
   }
-  function markReleased(el) {
+  function markReleased(el, liftLive = false) {
+    if (liftLive)
+      deferredLive.add(el);
     deferredOff.add(el);
     settleDeferred();
   }
   function settleUntracked(el) {
     if (!entries.has(el))
-      markReleased(el);
+      markReleased(el, true);
   }
   function clearReleased(el) {
     for (let node = el; node; node = node.parentElement) {
@@ -4041,7 +4046,7 @@ var SV = (() => {
         return status;
       if (!init()) {
         entries.delete(el);
-        safely(() => markReleased(el));
+        safely(() => markReleased(el, true));
         try {
           transition(entry, "failed");
         } catch (error) {
@@ -4551,6 +4556,7 @@ var SV = (() => {
     const pointers = /* @__PURE__ */ new Map();
     let observer;
     let stopped = false;
+    let failed = false;
     const stop = () => {
       if (stopped)
         return;
@@ -4567,8 +4573,27 @@ var SV = (() => {
         map.clear();
       }
     };
+    const settleSubtree = (node) => {
+      if (!(node instanceof HTMLElement))
+        return;
+      if (node.hasAttribute("data-sv"))
+        settleUntracked(node);
+      node.querySelectorAll("[data-sv]").forEach(settleUntracked);
+    };
     const fail = (error) => {
-      stop();
+      if (failed)
+        return;
+      failed = true;
+      const release = (fn) => {
+        try {
+          fn();
+        } catch {
+        }
+      };
+      for (const map of [tracked, splits, pointers]) {
+        map.forEach((fn) => release(fn));
+        map.clear();
+      }
       if (scope.hasAttribute?.("data-sv"))
         settleUntracked(scope);
       scope.querySelectorAll("[data-sv]").forEach(settleUntracked);
@@ -4579,10 +4604,6 @@ var SV = (() => {
           console.error(error);
       }
     };
-    if (!ready) {
-      fail();
-      return stop;
-    }
     const addPointer = (el) => {
       if (!pointers.has(el))
         pointers.set(el, acquire(el, pointerRegistrations, () => trackPointer(el, {
@@ -4642,18 +4663,31 @@ var SV = (() => {
         node.querySelectorAll("[data-sv-pointer]").forEach(removePointer);
       }
     };
-    try {
-      if (scope.hasAttribute)
-        sweep(scope, add);
-      else {
-        scope.querySelectorAll("[data-sv]").forEach(add);
-        scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
-        scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
-        scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
+    if (!ready)
+      fail();
+    else {
+      try {
+        if (scope.hasAttribute)
+          sweep(scope, add);
+        else {
+          scope.querySelectorAll("[data-sv]").forEach(add);
+          scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+          scope.querySelectorAll("[data-sv-split]").forEach(addSplit);
+          scope.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
+        }
+      } catch (error) {
+        fail(error);
       }
+    }
+    try {
       observer = new MutationObserver((mutations) => {
         if (stopped)
           return;
+        if (failed) {
+          for (const mutation of mutations)
+            mutation.addedNodes.forEach(settleSubtree);
+          return;
+        }
         if (bootReleased()) {
           fail();
           return;
@@ -4671,10 +4705,11 @@ var SV = (() => {
         childList: true,
         subtree: true
       });
-      window.__scrollvars = ready;
     } catch (error) {
       fail(error);
     }
+    if (ready)
+      window.__scrollvars = true;
     return stop;
   }
 
