@@ -31,6 +31,13 @@ export function mapRange(
   to: number,
   ease?: (x: number) => number
 ): number {
-  const raw = clamp((t - from) / Math.max(to - from, 1e-6), 0, 1)
+  // The CSS twin (styles/pin.css's sv-range) divides by `to - from` outright,
+  // reversed range and all: `clamp(0, (t - from) / (to - from), 1)`. Flooring
+  // that span at an epsilon (round 15 item 7) turned every reversed range
+  // into 0, disagreeing with the CSS on every frame. `from === to` is the
+  // only case with no ratio to compute: a step at `to`, matching what the
+  // epsilon version approximated by accident.
+  const span = to - from
+  const raw = clamp(span !== 0 ? (t - from) / span : t > to ? 1 : 0, 0, 1)
   return ease ? ease(raw) : raw
 }

@@ -550,6 +550,20 @@ function update() {
         restorePinHelper(entry)
         entry.opts.onFlow?.(true)
         if (entries.get(entry.el) !== entry) continue
+        // `[data-sv-flow] .sv-stage` (styles/pin.css) releases EVERY descendant
+        // stage, not only entry.el's own: a tracked entry nested inside it
+        // (el.contains(other.el)) loses its clip the same way, so its own pin
+        // geometry and onFlow callback must follow here too, or its tall
+        // wrapper is left behind under a now-static stage (round 15 item 3).
+        entries.forEach((other) => {
+          if (other === entry || other.flow || !entry.el.contains(other.el)) return
+          try {
+            other.flow = true
+            other.el.setAttribute('data-sv-flow', '')
+            restorePinHelper(other)
+            other.opts.onFlow?.(true)
+          } catch (error) { failEntry(other, error) }
+        })
         schedule() // geometry changed; read the flow layout on the next frame
       }
       if (stageWidth !== undefined) setVar(entry, '--sv-stage-width', stageWidth, 'px')
@@ -943,6 +957,14 @@ export function settleUntracked(el: HTMLElement) {
  * released one (stopScan() then a single section re-mounting) would run its
  * clock with every preset already settled static. */
 function clearReleased(el: HTMLElement) {
+  // Only THIS element, never an ancestor: `el` is the one being tracked
+  // again, so it owns its own entrance from here on and settleDeferred()
+  // must not lift --sv-live on it later on some unrelated release. An
+  // ancestor still queued in deferredLive keeps waiting on its OWN nested
+  // descendant, untouched by `el` retracking. Leaving this out kept `el` in
+  // the set forever once it was untracked-then-retracked before whatever it
+  // was waiting on released, a harmless but permanent retention leak.
+  deferredLive.delete(el)
   for (let node: HTMLElement | null = el; node; node = node.parentElement) {
     // An ANCESTOR that carried the marker (or was still waiting for it) is
     // released all the same: it only lends its marker to the tracker starting

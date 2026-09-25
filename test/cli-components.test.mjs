@@ -883,6 +883,51 @@ test('cli component coverflow-slider: a conditional child renders no empty slide
   assert.match(markup, /loose text/, 'a child that is not an element still renders')
 })
 
+test('cli component coverflow-slider: a fragment is opened and an authored Slide keeps its own span', async () => {
+  // A Slide bundled separately from the installed content (as `renderInstalled`
+  // above does) is a DIFFERENT function object once esbuild inlines each
+  // side's own copy of scrollvars/react, so `child.type === Slide` inside the
+  // component would never match it: exactly the identity a real consumer
+  // never hits, since one app bundles scrollvars/react once. Bundle a small
+  // harness and the installed content TOGETHER, the shape a real app takes.
+  const compSrc = join(dir, 'CoverflowSliderSpanConditional.tsx')
+  writeFileSync(compSrc, COMPONENTS['coverflow-slider'].content)
+  const harnessSrc = join(dir, 'CoverflowSliderSpanHarness.tsx')
+  writeFileSync(
+    harnessSrc,
+    `import * as React from 'react'
+import { Slide } from 'scrollvars/react'
+import { CoverflowSlider } from './CoverflowSliderSpanConditional'
+export function Harness() {
+  return (
+    <CoverflowSlider>
+      <Slide span={2}>wide card</Slide>
+      <React.Fragment>
+        <div>a</div>
+        <div>b</div>
+      </React.Fragment>
+    </CoverflowSlider>
+  )
+}
+`
+  )
+  const out = join(outDir, 'coverflow-slider-span.mjs')
+  await build({
+    entryPoints: [harnessSrc], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const mod = await import(pathToFileURL(out).href)
+  const markup = renderToStaticMarkup(h(mod.Harness))
+  // three slides total: the authored Slide plus the two fragment children,
+  // never one wrapper around the whole fragment
+  assert.equal(markup.match(/aria-label="go to slide \d+"/g).length, 3)
+  assert.match(markup, /of 3/)
+  // the direct rail child carries both cf-slide and its own --sv-span, on
+  // the SAME element: a wrapper would put --sv-span on an inner div the
+  // column rule never sizes by
+  assert.match(markup, /<div style="--sv-span:2" class="cf-slide"[^>]*>wide card<\/div>/)
+})
+
 test('cli component deck-spread: the fan is centred on the cards that exist', async () => {
   const markup = await renderInstalled('deck-spread', 'DeckSpread', {
     children: CONDITIONAL_CHILDREN(),

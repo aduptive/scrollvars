@@ -29,3 +29,40 @@ test('CLI compares release and prerelease requirements by SemVer precedence', ()
     }
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test('an explicit SCROLLVARS_REGISTRY that fails exits instead of falling back to the public registry', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sv-registry-'))
+  const stub = join(dir, 'fetch-stub.mjs')
+  // Only the override URL is faked (a 500), so a fallback request would hit
+  // the real network and be visible in the recorded calls below; nothing
+  // else about fetch is touched.
+  writeFileSync(
+    stub,
+    `const calls = []
+globalThis.__fetchCalls = calls
+const realFetch = globalThis.fetch
+globalThis.fetch = async (url, ...rest) => {
+  calls.push(String(url))
+  if (String(url) === 'https://example.invalid/private-registry') return { ok: false, status: 500 }
+  return realFetch(url, ...rest)
+}
+process.on('exit', () => {
+  process.stderr.write('CALLS:' + JSON.stringify(calls) + '\\n')
+})
+`
+  )
+  let error
+  try {
+    execFileSync(
+      process.execPath,
+      ['--import', stub, fileURLToPath(new URL('../bin/scrollvars.mjs', import.meta.url)), 'add', 'probe', '--force'],
+      { cwd: dir, env: { ...process.env, SCROLLVARS_REGISTRY: 'https://example.invalid/private-registry' }, encoding: 'utf8' }
+    )
+  } catch (e) { error = e }
+  const calls = JSON.parse(/CALLS:(\[.*\])/.exec(error?.stderr ?? '')?.[1] ?? '[]')
+  rmSync(dir, { recursive: true, force: true })
+  assert.ok(error, 'a failed override exits non-zero')
+  assert.equal(error.status, 1)
+  assert.deepEqual(calls, ['https://example.invalid/private-registry'], 'the public fallback is never requested')
+  assert.match(error.stderr ?? '', /SCROLLVARS_REGISTRY/, 'the error names the override URL')
+})

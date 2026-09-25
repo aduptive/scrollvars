@@ -1235,6 +1235,44 @@ test('driver: a released ancestor never settles a still-tracked descendant', asy
   restart()
 })
 
+test('driver: retracking a container settled through settleUntracked() drops the deferred --sv-live lift, not just the marker', async () => {
+  // settleUntracked() (a failed scan's own container, still holding a
+  // nested tracker) queues the element in BOTH the marker set and the
+  // --sv-live lift set while containsTracked() is true. clearReleased()
+  // must clear it from both when the container is tracked again, or the
+  // OLD deferred lift outlives this retrack entirely and fires a second,
+  // spurious --sv-live write whenever the nested tracker eventually
+  // releases, long after this container moved on to its own lifecycle.
+  const { track, settleUntracked } = await import('../dist/core/driver.js?deferredliveretrack')
+  const outer = makeElement(3000)
+  const inner = makeElement(3000)
+  nest(outer, inner)
+  place(outer, -1000)
+  place(inner, -1000)
+  const liveCalls = []
+  const setProperty = outer.style.setProperty
+  outer.style.setProperty = (name, value, priority) => {
+    if (name === '--sv-live' && value === '1') liveCalls.push('live')
+    return setProperty(name, value, priority)
+  }
+
+  const stopInner = track(inner, { pin: true })
+  settleUntracked(outer) // deferred: inner is still tracked, outer.contains(inner)
+  assert.equal(liveCalls.length, 0, 'deferred: nothing tracked settleUntracked() while a descendant is still live')
+  assert.ok(!outer.attrs.has('data-sv-off'))
+
+  const stopOuter = track(outer, {}) // retrack before inner ever releases
+  assert.equal(liveCalls.length, 0, 'retracking clears the pending state, not settling it')
+
+  stopOuter() // an ordinary release now: releaseEntry() writes --sv-live immediately
+  assert.equal(liveCalls.length, 1, 'the immediate write from THIS release')
+  assert.ok(!outer.attrs.has('data-sv-off'), 'still deferred: inner is still tracked')
+
+  stopInner() // the nested tracker finally releases: settleDeferred() resolves outer
+  assert.equal(liveCalls.length, 1, 'no second write from the stale settleUntracked() lift the retrack should have cleared')
+  assert.ok(outer.attrs.has('data-sv-off'))
+})
+
 test('driver: a `once` descendant settling hands the waiting ancestor its marker', async () => {
   // a query string this file uses nowhere else: the same one twice hands the
   // second test the FIRST test's module instance, whose scroll listener was
@@ -1726,6 +1764,48 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   assert.equal(el.style.height, '300vh')
   stop()
   delete global.getComputedStyle
+})
+
+test('driver: an outer flow latches every nested tracked entry too, not only its own', async () => {
+  // [data-sv-flow] .sv-stage (styles/pin.css) releases EVERY descendant
+  // stage, not only the outer one's: a nested tracker's own pin geometry
+  // and onFlow callback must follow it there, or its tall wrapper sits
+  // under a now-static stage with nothing to release it (round 15 item 3).
+  const { track } = await import('../dist/core/driver.js?nestedflow')
+  const outer = makeElement(3000)
+  const fit = { offsetHeight: 900 }
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  outer.stage = { children: [fit] }
+  outer.style.height = 'auto'
+  outer.style.position = ''
+  outer.querySelector = sel => sel === '.sv-stage' ? outer.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  const inner = makeElement(400)
+  nest(outer, inner)
+  place(outer, 0)
+  place(inner, 100)
+  const outerFlows = []
+  const innerFlows = []
+  const stopOuter = track(outer, { pin: '300vh', onFlow: flow => outerFlows.push(flow) })
+  const stopInner = track(inner, { pin: '150vh', onFlow: flow => innerFlows.push(flow) })
+  pump()
+  assert.equal(inner.style.height, '150vh', 'the nested entry pinned normally before the outer overflowed')
+  assert.ok(!outer.hasAttribute('data-sv-flow'))
+  assert.ok(!inner.hasAttribute('data-sv-flow'))
+  // no getComputedStyle stub here (pinOffset resolves to 0), so the fit box
+  // must clear the FULL viewport height to overflow: comfortably past 1000.
+  fit.offsetHeight = 500
+  fit.scrollHeight = 1200
+  listeners.scroll()
+  pump()
+  assert.ok(outer.hasAttribute('data-sv-flow'), 'the outer entry flows on its own overflow')
+  assert.ok(inner.hasAttribute('data-sv-flow'), 'the nested entry flows too: its stage is released by the same CSS rule')
+  assert.equal(inner.style.height, '', 'the nested entry drops its own tall wrapper (no height ever authored on it)')
+  assert.deepEqual(outerFlows, [false, true])
+  // the nested entry has no fit box of its own, so it never resolves an
+  // initial false the way a fit-bearing entry does: its first onFlow call
+  // is the latch this fix adds, exactly once.
+  assert.deepEqual(innerFlows, [true], 'the nested entry gets its own onFlow(true), one call')
+  stopOuter(); stopInner()
 })
 
 test('refresh replaces stage and fit geometry and transfers resize subscriptions', async () => {

@@ -171,31 +171,26 @@ export function scan(root?: ParentNode): () => void {
     splits.get(el)?.()
     splits.delete(el)
   }
-  const sweep = (node: Node, fn: (el: HTMLElement) => void) => {
+  // Additions only: removal is handled by lease, not by sweeping attributes
+  // off the removed subtree (see the mutation callback's `removed` branch
+  // below, round 15 item 5).
+  const sweep = (node: Node) => {
     if (!(node instanceof HTMLElement)) return
-    if (node.hasAttribute('data-sv')) fn(node)
-    node.querySelectorAll<HTMLElement>('[data-sv]').forEach(fn)
-    if (fn === add) {
-      if (node.matches?.(VAR_SELECTOR)) applyVarAttrs(node)
-      node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
-      if (node.hasAttribute('data-sv-split')) addSplit(node)
-      node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
-      if (node.hasAttribute('data-sv-pointer')) addPointer(node)
-      node.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
-    } else {
-      // removed subtrees release their split closures too (SPA route changes)
-      if (node.hasAttribute('data-sv-split')) removeSplit(node)
-      node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(removeSplit)
-      if (node.hasAttribute('data-sv-pointer')) removePointer(node)
-      node.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(removePointer)
-    }
+    if (node.hasAttribute('data-sv')) add(node)
+    node.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
+    if (node.matches?.(VAR_SELECTOR)) applyVarAttrs(node)
+    node.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
+    if (node.hasAttribute('data-sv-split')) addSplit(node)
+    node.querySelectorAll<HTMLElement>('[data-sv-split]').forEach(addSplit)
+    if (node.hasAttribute('data-sv-pointer')) addPointer(node)
+    node.querySelectorAll<HTMLElement>('[data-sv-pointer]').forEach(addPointer)
   }
 
   // querySelectorAll excludes an element scope itself; sweep it once.
   if (!ready) fail()
   else {
     try {
-      if ((scope as HTMLElement).hasAttribute) sweep(scope as Node, add)
+      if ((scope as HTMLElement).hasAttribute) sweep(scope as Node)
       else {
         scope.querySelectorAll<HTMLElement>('[data-sv]').forEach(add)
         scope.querySelectorAll<HTMLElement>(VAR_SELECTOR).forEach(applyVarAttrs)
@@ -218,9 +213,24 @@ export function scan(root?: ParentNode): () => void {
       }
       if (bootReleased()) { fail(); return }
       try {
+        let removed = false
         for (const mutation of mutations) {
-          mutation.addedNodes.forEach((node) => sweep(node, add))
-          mutation.removedNodes.forEach((node) => sweep(node, remove))
+          mutation.addedNodes.forEach((node) => sweep(node))
+          if (mutation.removedNodes.length) removed = true
+        }
+        // Removal by LEASE, not by the node's CURRENT attributes: an app
+        // that strips data-sv (or -split/-pointer) before detaching the
+        // node leaves sweep()'s attribute-matched removal blind to it, so
+        // the scan's own registration (and the driver's entry behind it)
+        // never releases. Walk this scan's own three maps once per batch
+        // that removed anything and release whatever no longer sits
+        // inside scope, independent of what it carries now: O(leases) per
+        // such batch, and remove()/removeSplit()/removePointer() already
+        // guard on scope.contains(el) themselves.
+        if (removed) {
+          for (const el of [...tracked.keys()]) remove(el)
+          for (const el of [...splits.keys()]) removeSplit(el)
+          for (const el of [...pointers.keys()]) removePointer(el)
         }
       } catch (error) { fail(error) }
     })

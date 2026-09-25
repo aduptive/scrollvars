@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 5.3 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.4 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.3 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.4 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1879,7 +1879,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.3 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.4 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2942,8 +2942,8 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~7.9 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.7 KB / 5.3 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.0 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.9 KB / 5.4 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.3 KB gzip · full core 11.5 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.4 KB gzip · full core 11.5 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3187,7 +3187,8 @@ var SV = (() => {
     return 1 - Math.pow(1 - t, 3);
   }
   function mapRange(t, from, to, ease) {
-    const raw = clamp((t - from) / Math.max(to - from, 1e-6), 0, 1);
+    const span = to - from;
+    const raw = clamp(span !== 0 ? (t - from) / span : t > to ? 1 : 0, 0, 1);
     return ease ? ease(raw) : raw;
   }
 
@@ -3666,6 +3667,18 @@ var SV = (() => {
           entry.opts.onFlow?.(true);
           if (entries.get(entry.el) !== entry)
             continue;
+          entries.forEach((other) => {
+            if (other === entry || other.flow || !entry.el.contains(other.el))
+              return;
+            try {
+              other.flow = true;
+              other.el.setAttribute("data-sv-flow", "");
+              restorePinHelper(other);
+              other.opts.onFlow?.(true);
+            } catch (error) {
+              failEntry(other, error);
+            }
+          });
           schedule();
         }
         if (stageWidth !== void 0)
@@ -3944,6 +3957,7 @@ var SV = (() => {
       markReleased(el, true);
   }
   function clearReleased(el) {
+    deferredLive.delete(el);
     for (let node = el; node; node = node.parentElement) {
       const released = deferredOff.delete(node) || node.hasAttribute?.("data-sv-off") === true;
       node.removeAttribute?.("data-sv-off");
@@ -4638,37 +4652,28 @@ var SV = (() => {
       splits.get(el)?.();
       splits.delete(el);
     };
-    const sweep = (node, fn) => {
+    const sweep = (node) => {
       if (!(node instanceof HTMLElement))
         return;
       if (node.hasAttribute("data-sv"))
-        fn(node);
-      node.querySelectorAll("[data-sv]").forEach(fn);
-      if (fn === add) {
-        if (node.matches?.(VAR_SELECTOR))
-          applyVarAttrs(node);
-        node.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
-        if (node.hasAttribute("data-sv-split"))
-          addSplit(node);
-        node.querySelectorAll("[data-sv-split]").forEach(addSplit);
-        if (node.hasAttribute("data-sv-pointer"))
-          addPointer(node);
-        node.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
-      } else {
-        if (node.hasAttribute("data-sv-split"))
-          removeSplit(node);
-        node.querySelectorAll("[data-sv-split]").forEach(removeSplit);
-        if (node.hasAttribute("data-sv-pointer"))
-          removePointer(node);
-        node.querySelectorAll("[data-sv-pointer]").forEach(removePointer);
-      }
+        add(node);
+      node.querySelectorAll("[data-sv]").forEach(add);
+      if (node.matches?.(VAR_SELECTOR))
+        applyVarAttrs(node);
+      node.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
+      if (node.hasAttribute("data-sv-split"))
+        addSplit(node);
+      node.querySelectorAll("[data-sv-split]").forEach(addSplit);
+      if (node.hasAttribute("data-sv-pointer"))
+        addPointer(node);
+      node.querySelectorAll("[data-sv-pointer]").forEach(addPointer);
     };
     if (!ready)
       fail();
     else {
       try {
         if (scope.hasAttribute)
-          sweep(scope, add);
+          sweep(scope);
         else {
           scope.querySelectorAll("[data-sv]").forEach(add);
           scope.querySelectorAll(VAR_SELECTOR).forEach(applyVarAttrs);
@@ -4693,9 +4698,19 @@ var SV = (() => {
           return;
         }
         try {
+          let removed = false;
           for (const mutation of mutations) {
-            mutation.addedNodes.forEach((node) => sweep(node, add));
-            mutation.removedNodes.forEach((node) => sweep(node, remove));
+            mutation.addedNodes.forEach((node) => sweep(node));
+            if (mutation.removedNodes.length)
+              removed = true;
+          }
+          if (removed) {
+            for (const el of [...tracked.keys()])
+              remove(el);
+            for (const el of [...splits.keys()])
+              removeSplit(el);
+            for (const el of [...pointers.keys()])
+              removePointer(el);
           }
         } catch (error) {
           fail(error);
@@ -5023,7 +5038,7 @@ var SV = (() => {
     };
     const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
     const authoredSnap = container.style.scrollSnapType;
-    const snapIsNone = authoredSnap === "none" || typeof getComputedStyle === "function" && getComputedStyle(container).scrollSnapType === "none";
+    let snapIsNone = authoredSnap === "none";
     const suspendSnap = () => {
       if (typeof container.style.getPropertyValue === "function")
         owned.style(container, "scroll-snap-type", "none");
@@ -5379,6 +5394,9 @@ var SV = (() => {
       owned.class(container, "sv-slider", true);
       owned.class(container, "sv-slider-y", !horizontal);
       owned.class(container, "sv-draggable", !!drag);
+      if (!snapIsNone && typeof getComputedStyle === "function") {
+        snapIsNone = getComputedStyle(container).scrollSnapType === "none";
+      }
       owned.style(container, "--sv-snap", snap);
       if (container.tabIndex === -1)
         owned.attr(container, "tabindex", "0");
@@ -7157,10 +7175,12 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
     // Authored none is not always inline: a stylesheet rule or a utility class
     // (Tailwind's snap-none) reaches the same state, and an instance that
     // owns its own position must be left alone whichever way it got there.
-    // Read once at init, before suspend/resume start writing the inline value.
-    const snapIsNone = authoredSnap === 'none' ||
-        (typeof getComputedStyle === 'function' &&
-            getComputedStyle(container).scrollSnapType === 'none');
+    // The computed half is read inside life.setup(), AFTER `.sv-slider` lands
+    // (round 15 item 6): that class's own rule sets scroll-snap-type, so
+    // reading it here, before setup, sees a plain unclassed element's `none`
+    // and mistakes it for an authored none forever, on every element `slider()`
+    // is ever called on that did not already carry the class.
+    let snapIsNone = authoredSnap === 'none';
     const suspendSnap = () => {
         if (typeof container.style.getPropertyValue === 'function')
             owned.style(container, 'scroll-snap-type', 'none');
@@ -7609,6 +7629,11 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
         owned.class(container, 'sv-slider', true);
         owned.class(container, 'sv-slider-y', !horizontal);
         owned.class(container, 'sv-draggable', !!drag);
+        // Now that `.sv-slider` is in place: an inline/stylesheet/utility none
+        // already latched snapIsNone above and needs no second opinion.
+        if (!snapIsNone && typeof getComputedStyle === 'function') {
+            snapIsNone = getComputedStyle(container).scrollSnapType === 'none';
+        }
         owned.style(container, '--sv-snap', snap);
         if (container.tabIndex === -1)
             owned.attr(container, 'tabindex', '0');

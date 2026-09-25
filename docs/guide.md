@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.3 KB, full core incl. the slider 11.5 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~7.9 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.4 KB, full core incl. the slider 11.5 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.0 KB on the wire.
 
 ## Why
 
@@ -161,7 +161,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 5.3 KB |
+| `track` (the driver) | 5.4 KB |
 | `track` + `scan` (zero-wrapper mode) | 7.7 KB |
 | `slider` | 3.6 KB |
 | `trackPointer` | 1.4 KB |
@@ -171,7 +171,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~7.9 KB gzipped, total.**
+**~8.0 KB gzipped, total.**
 
 ## Mental model
 
@@ -186,7 +186,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS reads them (or `setPageOutputs(true)`): progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -732,9 +732,10 @@ React auxiliary hooks contain attachment and cleanup errors locally and can retr
 on target or option replacement. Failed autoplay stops its own timer; failed Modal
 promotion keeps the requested state as a static panel. No public API changed.
 
-Boot acknowledges a working driver and completed scanner setup, including an
-empty route. Its prepaint watchdog releases hiding after three seconds without
-that acknowledgement. Expiry is terminal for that page session: late tracking,
+Any successful tracker or scan acknowledges Boot, including an empty route; a
+failed scan settles its own content visible instead of waiting on Boot at all.
+Its prepaint watchdog releases hiding after three seconds without that
+acknowledgement. Expiry is terminal for that page session: late tracking,
 scanning and remounting remain static, even if mutation observation is unavailable.
 The inline script requires both observers to exist before hiding and accepts
 the request nonce through `<ScrollVarsBoot nonce={nonce} />` under a strict CSP.
