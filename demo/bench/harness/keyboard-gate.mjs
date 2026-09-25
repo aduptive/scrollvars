@@ -94,7 +94,7 @@ async function sweep(page, backward = false) {
 export async function keyboardGate({ browser, check, base, only, pages: subset, viewport, label = '' }) {
   const root = join(here, '..', '..')
   // the -preview pages are the static no-driver renders the gallery embeds: nothing reveals there
-  const pages = only ? [only] : subset ?? ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`)]
+  const pages = only ? [only] : subset ?? ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`), '/bench/lab/index.html', '/bench/lab/long.html', '/bench/lab/deep.html', '/bench/lab/cubes.html']
   for (const path of pages) {
     const page = await browser.newPage()
     if (viewport) await page.setViewport(viewport)

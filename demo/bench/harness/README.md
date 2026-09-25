@@ -1833,3 +1833,63 @@ stream and the route change from costing a stylesheet walk per frame; the
 watch stays alive here because nothing reads the document variables, which
 is the common case this page models. Both results are stamped onto the
 bench page and the README block by `scripts/bench-tables.mjs`.
+
+## Perf lab: one page, any browser, one table
+
+Every measurement above ran through headless Chrome over CDP on one Mac.
+`demo/bench/lab/` is the same measurement idea run by hand, on whatever
+browsers and devices are actually in front of Andrea: desktop Safari,
+Firefox, Chrome, Edge, and an iPhone. It serves three fixed reference pages
+(`long.html`, an about-30-section institutional page with entrance presets,
+three pinned scenes, a slider and a marquee; `deep.html`, the deep-DOM shape
+with a realistic subtree under every tracked box; `cubes.html`, the gallery's
+cube-windows recipe at 42 shapes), a runner (`index.html`) and a tiny
+zero-dependency Node server (`serve.mjs`). Each page carries a
+`<meta name="lab-version">`: bump it whenever a reference page's content or
+markup changes, since a number measured against yesterday's page is not
+comparable to one measured against today's.
+
+Run it:
+
+```bash
+npm run demo:sync                    # so demo/fx/sv.js is current
+node demo/bench/lab/serve.mjs         # serves demo/ on :8080 by default
+```
+
+Then, on the Mac: `open http://localhost:8080/bench/lab/`. On a phone or
+another machine on the same network or Tailscale tailnet: replace
+`localhost` with this Mac's LAN/Tailscale IP. Press "Run the lab". It scrolls
+each reference page top to bottom in `frames` steps (default 900, about 15
+seconds at 60Hz), repeats `reps` times (default 3, alternating page order so
+whichever page runs first does not systematically look faster or slower),
+and lands back on the runner with a table: p50/p95/p99 frame interval, the
+percentage of frames over 1.5x the measured vsync, Long Animation Frames
+(Chrome only: count, total blocking time, script-attributed time; other
+engines report `n/a`, not zero), and an untimed animated check per page (a
+frozen page must not post a good frame-interval number). `?frames=60&reps=1`
+on the runner URL gives a fast dry run. A dropped/backgrounded tab restarts
+whichever page it was on, since a hidden tab gets no frames and its timings
+are meaningless.
+
+Results are sent to the server as chunked `result?` GET requests (plain
+http is not a secure context, so no clipboard/fetch write) and logged to
+`demo/bench/lab/results/<browser>-<timestamp>.json` (gitignored). A copy
+button on the runner also puts the table on the clipboard via
+`execCommand`, for anywhere the server is not reachable.
+
+```bash
+node demo/bench/lab/report.mjs > demo/bench/lab/results/report.md
+```
+
+merges every result file into one Markdown table (engine x page x metric)
+and flags any run whose animated check failed.
+
+What a number here means, and does not mean: Safari and older Firefox round
+`performance.now()` and report no Long Animation Frames at all, so their
+table rows describe smoothness (did a frame run long against the measured
+vsync), not CPU cost or script attribution; only Chrome's LoAF columns speak
+to cost. A phone's thermal state, a laptop on battery saver, and background
+tabs all move these numbers meaningfully; record the device/OS and whatever
+else was running alongside a result before treating it as comparable to a
+past one. These are not stamped anywhere in README or the site: the lab is
+for hand-run spot checks, not a published claim.

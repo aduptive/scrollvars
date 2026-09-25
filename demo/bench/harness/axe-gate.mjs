@@ -123,7 +123,7 @@ async function audit(page) {
 
 export async function axeGate({ browser, check, base, only }) {
   const root = join(here, '..', '..')
-  const pages = only ? [only] : ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`)]
+  const pages = only ? [only] : ['/index.html', ...readdirSync(join(root, 'fx')).filter((f) => f.endsWith('.html') && f !== 'index.html' && !f.endsWith('-preview.html')).map((f) => `/fx/${f}`), '/bench/lab/index.html', '/bench/lab/long.html', '/bench/lab/deep.html', '/bench/lab/cubes.html']
   for (const path of pages) {
     const page = await browser.newPage()
     let violations, detail = ''
