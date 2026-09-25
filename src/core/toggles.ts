@@ -329,7 +329,17 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // pair living OUTSIDE the owning scope keeps the aria-expanded it was
     // synced to at boot, since only the owner's sync() runs.
     if (!trigger || !scope.contains(trigger)) return
-    const { className, target } = resolve(trigger)
+    let resolved: ReturnType<typeof resolve>
+    try {
+      resolved = resolve(trigger)
+    } catch (error) {
+      // same contract as boot(): a selector that does not parse skips this
+      // trigger, not the whole instance. Before claimed.add(event), so an
+      // outer scope still gets a chance at the same click.
+      if ((error as { name?: unknown } | null)?.name === 'SyntaxError') return
+      throw error
+    }
+    const { className, target } = resolved
     if (!target) return
     // this scope is the nearest one that can act on this click: it owns the
     // trigger, and every outer instance still to come bails above

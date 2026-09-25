@@ -342,6 +342,51 @@ test('every effect declares the stylesheets its presets live in and read variabl
   assert.deepEqual(missing, [], missing.join('\n'))
 })
 
+// ---- round 16 item 3: the CLI compares an installed package's version
+// against a registry entry's requires.min (bin/scrollvars.mjs) and tells the
+// consumer "ok" for anything from 1.9.0 up, so a min declared lower than the
+// newest export the entry's own content imports installs clean and fails at
+// runtime with a missing export. cube-windows imported onMotionChange
+// (1.17.0) under a min of 1.9.0.
+// ponytail: only the exports a registry entry actually imports need an
+// entry here; anything absent is treated as pre-1.0 (never fails the
+// check). Add to this table when a NEWER export lands in a gallery recipe.
+const EXPORT_VERSIONS = { onMotionChange: '1.17.0' }
+const versionAtLeast = (a, b) => {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d) return d >= 0
+  }
+  return true
+}
+test('every registry entry declares a requires.min at least as new as its newest import', () => {
+  const problems = []
+  for (const fx of EFFECTS) {
+    const min = fx.requires?.min ?? '0.0.0'
+    const content = COMPONENTS[fx.slug].content
+    for (const m of content.matchAll(/import\s*\{([^}]+)\}\s*from\s*'scrollvars(?:\/react)?'/g)) {
+      for (const raw of m[1].split(',')) {
+        const name = raw.trim().split(/\s+as\s+/)[0].trim()
+        const introduced = EXPORT_VERSIONS[name]
+        if (introduced && !versionAtLeast(min, introduced))
+          problems.push(`${fx.slug}: imports ${name} (introduced ${introduced}) but requires.min is ${min}`)
+      }
+    }
+  }
+  assert.deepEqual(problems, [])
+})
+
+// ---- round 16 item 15: SECTION_PREVIEW_SLUGS (fx-render.mjs) is the whole
+// contract for "category: Sections" (README/AGENTS/the guide describe them
+// as complete React components, rendered from the installed source itself,
+// not a hand-typed preview string). An entry filed under the category
+// without joining that set is undocumented behavior wearing the label.
+test('every category: Sections entry renders through the Section preview pipeline', () => {
+  const offenders = EFFECTS.filter((fx) => fx.category === 'Sections' && !SECTION_PREVIEW_SLUGS.has(fx.slug))
+  assert.deepEqual(offenders.map((fx) => fx.slug), [])
+})
+
 // ---- the gallery tabs of one Section are two spellings of the SAME block: a
 // reader copies the CSS tab and pastes the React tab under it. stats-countup
 // shipped `.stats .stat::after { content: counter(n) attr(data-suffix) }` next
@@ -835,6 +880,70 @@ test('cli component rotating-words: an empty list schedules no interval, a late 
   } finally {
     global.setInterval = realSetInterval
     global.clearInterval = realClearInterval
+    delete global.window
+    delete global.document
+    delete global.HTMLIFrameElement
+    delete global.HTMLElement
+    delete global.navigator
+    delete global.IS_REACT_ACT_ENVIRONMENT
+  }
+})
+
+// ---- round 16 item 6: below Safari 13.1 without compat(), an unguarded
+// ResizeObserver construction in CubeWindows' effect threw and unmounted the
+// React root, the opposite of "fail visible". Same live-mount recipe as
+// rotating-words above; no global.ResizeObserver models the below-floor case.
+test('cli component cube-windows: the React effect fails visible without ResizeObserver, no root crash', async () => {
+  const { content } = COMPONENTS['cube-windows']
+  const src = join(dir, 'CubeWindowsLive.tsx')
+  writeFileSync(src, content)
+  const out = join(outDir, 'cube-windows-live.mjs')
+  await build({
+    entryPoints: [src], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const { CubeWindows } = await import(pathToFileURL(out).href)
+
+  const doc = makeLiveNode('#document')
+  doc.nodeType = 9
+  doc.createElement = (tag) => { const el = makeLiveNode(tag); el.ownerDocument = doc; return el }
+  doc.createTextNode = (text) => ({ nodeType: 3, textContent: text, parentNode: null })
+  doc.createComment = (text) => ({ nodeType: 8, textContent: text, parentNode: null })
+  doc.body = makeLiveNode('body')
+  doc.body.ownerDocument = doc
+  doc.documentElement = makeLiveNode('html')
+  doc.addEventListener = () => {}
+  doc.removeEventListener = () => {}
+  doc.activeElement = null
+  doc.HTMLIFrameElement = class HTMLIFrameElement {}
+  global.window = {
+    document: doc,
+    addEventListener() {},
+    removeEventListener() {},
+    HTMLIFrameElement: doc.HTMLIFrameElement,
+  }
+  doc.defaultView = global.window
+  global.document = doc
+  global.HTMLIFrameElement = doc.HTMLIFrameElement
+  global.HTMLElement = Object
+  global.navigator = { userAgent: 'node' }
+  global.IS_REACT_ACT_ENVIRONMENT = true
+  // deliberately no global.ResizeObserver
+
+  try {
+    const React = (await import('react')).default
+    const { createRoot } = await import('react-dom/client')
+    const { act } = React
+
+    const container = doc.createElement('div')
+    const root = createRoot(container)
+
+    await act(async () => { root.render(React.createElement(CubeWindows, {})) })
+    const cube = container.childNodes[0]
+    assert.equal(cube.style.clipPath, undefined, 'no clip-path is ever set: the content stays whole')
+
+    await act(async () => { root.unmount() })
+  } finally {
     delete global.window
     delete global.document
     delete global.HTMLIFrameElement

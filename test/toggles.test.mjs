@@ -638,6 +638,43 @@ test('toggles: two Marquee-shaped scopes with the same local selector keep their
   stops.forEach((stop) => stop())
 })
 
+test('toggles: a click on a trigger with an unparsable data-sv-target skips that trigger, not the whole instance', async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?bad-target-click')
+
+  const menu = makeElement()
+  menu.classList.contains = (c) => menu.classes.has(c)
+  const good = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const bad = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '[' })
+  const listeners = {}
+  const root = {
+    contains: () => true,
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: (t) => delete listeners[t],
+    querySelector: (sel) => {
+      // a real browser throws a DOMException named SyntaxError, not an
+      // instanceof SyntaxError; boot() already tolerates it (:262-272)
+      if (sel === '[') throw new DOMException('invalid selector', 'SyntaxError')
+      return sel === '#menu' ? menu : null
+    },
+    querySelectorAll: (sel) => (sel === '[data-sv-toggle]' ? [good, bad] : []),
+  }
+  const stop = toggles(root)
+
+  // the bad trigger's click must not tear down the instance
+  assert.doesNotThrow(() => listeners.click({ target: bad }))
+  assert.ok(listeners.click, 'the click listener is still attached')
+
+  // a following click on the good trigger still opens the menu
+  listeners.click({ target: good })
+  assert.ok(menu.classes.has('open'))
+  assert.equal(good.attrs['aria-expanded'], 'true')
+  assert.ok(menu.classes.has('sv-ui'), 'the good target keeps its marker')
+
+  stop()
+})
+
 test('toggles: a click the outer scope handles syncs the inner trigger too (round 10 verify 3)', async () => {
   global.window = {}
   global.requestAnimationFrame = () => 1

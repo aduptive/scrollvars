@@ -1154,6 +1154,21 @@ export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
       opts.onFlow?.(true)
       if (entries.get(el) !== entry) return status
     }
+    // Attached AFTER an ancestor already switched to flow (a React <Track>
+    // retrack, a CMS block mounted later, a manual retrack): the round-15
+    // propagation above only reaches entries live at the moment the ancestor
+    // overflows, and `[data-sv-flow] .sv-stage` (pin.css) makes this entry's
+    // own stage static too, so it can never overflow on its own and would
+    // never latch itself (its tall pin wrapper left behind under a static
+    // stage forever, round 16 item 2). Latch immediately, before the pin
+    // helper below writes a height.
+    const flowAncestor = !entry.flow && el.parentElement?.closest?.('[data-sv-flow]') as HTMLElement | null
+    if (flowAncestor && entries.get(flowAncestor)?.flow) {
+      entry.flow = true
+      el.setAttribute('data-sv-flow', '')
+      opts.onFlow?.(true)
+      if (entries.get(el) !== entry) return status
+    }
     el.classList.add('sv')
     // constants CSS can read: how many scenes, so progress bars need no hard-coded count
     if (opts.scenes && opts.scenes > 1) el.style.setProperty('--sv-scenes', String(opts.scenes))

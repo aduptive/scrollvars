@@ -2941,9 +2941,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.2 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.0 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>14.9 KB / 5.4 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.0 KB / 5.4 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3098,7 +3098,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.4 KB gzip · full core 11.5 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.4 KB gzip · full core 11.6 KB · v1.18.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -4083,6 +4083,14 @@ var SV = (() => {
         if (entries.get(el) !== entry)
           return status;
       }
+      const flowAncestor = !entry.flow && el.parentElement?.closest?.("[data-sv-flow]");
+      if (flowAncestor && entries.get(flowAncestor)?.flow) {
+        entry.flow = true;
+        el.setAttribute("data-sv-flow", "");
+        opts.onFlow?.(true);
+        if (entries.get(el) !== entry)
+          return status;
+      }
       el.classList.add("sv");
       if (opts.scenes && opts.scenes > 1)
         el.style.setProperty("--sv-scenes", String(opts.scenes));
@@ -4918,7 +4926,15 @@ var SV = (() => {
       const trigger = event.target.closest?.("[data-sv-toggle]");
       if (!trigger || !scope.contains(trigger))
         return;
-      const { className, target } = resolve(trigger);
+      let resolved;
+      try {
+        resolved = resolve(trigger);
+      } catch (error) {
+        if (error?.name === "SyntaxError")
+          return;
+        throw error;
+      }
+      const { className, target } = resolved;
       if (!target)
         return;
       claimed.add(event);
@@ -8154,7 +8170,19 @@ function toggles(root) {
         // synced to at boot, since only the owner's sync() runs.
         if (!trigger || !scope.contains(trigger))
             return;
-        const { className, target } = resolve(trigger);
+        let resolved;
+        try {
+            resolved = resolve(trigger);
+        }
+        catch (error) {
+            // same contract as boot(): a selector that does not parse skips this
+            // trigger, not the whole instance. Before claimed.add(event), so an
+            // outer scope still gets a chance at the same click.
+            if (error?.name === 'SyntaxError')
+                return;
+            throw error;
+        }
+        const { className, target } = resolved;
         if (!target)
             return;
         // this scope is the nearest one that can act on this click: it owns the

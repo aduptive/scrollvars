@@ -29,6 +29,10 @@ const CUBE_WINDOW_MOUNT = `function cubeWindowNumbers(value, count) {
 }
 
 function mountCubeWindow(el, boxSize, turn) {
+  // Below Safari 13.1 without compat(): fail visible, not fail loud. No
+  // clip-path is ever set, so the whole photo stays visible, same contract
+  // as the no-JS/old-engine case below.
+  if (typeof ResizeObserver !== 'function') return () => {}
   const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
   const box3 = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
   const [ry0, ry1, rx0, rx1] = turn
@@ -1289,8 +1293,12 @@ function Stats() {
   },
   {
     slug: 'cube-windows',
-    requires: { styles: [], min: '1.9.0' },
-    category: 'Sections',
+    // installed source imports onMotionChange, shipped in 1.17.0
+    requires: { styles: [], min: '1.17.0' },
+    // a three-format recipe (Tailwind/CSS/React tabs), not a Section
+    // (SECTION_PREVIEW_SLUGS, fx-render.mjs): joins pointer-tilt, the other
+    // recipe whose motion is pointer-driven
+    category: 'Pointer',
     title: 'Cube windows',
     tagline: 'A box turns in 3D as the section scrolls by and tilts to the pointer; its outline becomes the clip-path of the photo inside. The photo itself never moves.',
     when: 'Portfolio thumbnails, about-page portraits, product shots. Anywhere a plain crop feels flat.',
@@ -1302,10 +1310,15 @@ function Stats() {
 </div>
 <style>.cube-window{position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:12px}.cube-photo{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#a78bfa,#312244 70%)}</style>
 <script>
-const { track, prefersReducedMotion, onMotionChange } = SV
+// destructured inside the load handler below, not here: this script runs
+// BEFORE sv.js (the engine bundle that defines SV) loads, so reading SV at
+// the top level threw ReferenceError and the load listener below it was
+// never even registered.
+let track, prefersReducedMotion, onMotionChange
 ${MASK3D_CORE_JS}
 ${CUBE_WINDOW_MOUNT}
 addEventListener('load', () => {
+  ;({ track, prefersReducedMotion, onMotionChange } = SV)
   const el = document.getElementById('fxcube')
   const boxSize = cubeWindowNumbers(el.dataset.box, 3)
   const turn = cubeWindowNumbers(el.dataset.turn, 4)
@@ -2507,6 +2520,11 @@ function useCubeWindow(ref: React.RefObject<HTMLDivElement | null>, boxSize: [nu
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
+    // Below Safari 13.1 without compat(): fail visible, not fail loud. An
+    // unguarded ResizeObserver here throws and unmounts the React root,
+    // the opposite of the content-stays-whole contract this recipe
+    // documents everywhere else.
+    if (typeof ResizeObserver !== 'function') return
     const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
     const box3: Box = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
     const [ry0, ry1, rx0, rx1] = turn
