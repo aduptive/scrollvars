@@ -247,7 +247,7 @@
   &lt;div className="sv-stage grid place-items-center"&gt;
     &lt;div className="sv-range sv-range-rise grid gap-3"&gt;
       {steps.map((s, i, all) =&gt; (
-        &lt;Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} /&gt;
+        &lt;Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length } as React.CSSProperties} {...s} /&gt;
       ))}
     &lt;/div&gt;
   &lt;/div&gt;
@@ -256,7 +256,7 @@
 // JS twin for canvas/WebGL consumers:
 // track(el, { pin: '250vh', onPin: (p) =&gt; uniform.set(mapRange(p, 0.3, 0.7)) })</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.0 KB gzip as ESM (this page's fx/sv.js IIFE: 12.2 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.0 KB gzip as ESM (this page's fx/sv.js IIFE: 12.3 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

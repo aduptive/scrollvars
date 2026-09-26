@@ -381,6 +381,12 @@ function watchForPageConsumers() {
     const observer = new MutationObserver(records => {
       if (queued || consumerWatch !== observer) return
       for (const record of records) {
+        // A disabled <link> is excluded from pendingSheets() (it publishes
+        // nothing while disabled and never fires load/error), so `disabled`
+        // flipping false is the only signal a later enable gets: without it
+        // the sheet's own consumer, once its rules become readable, is never
+        // asked again for the rest of the session (ADU-354 item 6).
+        if (record.type === 'attributes' && record.target.nodeName === 'LINK') { queued = true; break }
         for (const node of Array.from(record.addedNodes)) {
           // text landing in a <style> (textContent = ...) is a new rule too
           const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
@@ -409,7 +415,12 @@ function watchForPageConsumers() {
         })
     })
     consumerWatch = observer
-    consumerWatch.observe(root, { childList: true, subtree: true })
+    consumerWatch.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['disabled', 'rel', 'href', 'media'],
+    })
   } catch {
     safely(() => consumerWatch?.disconnect())
     consumerWatch = null
@@ -432,8 +443,9 @@ function pendingSheets(): HTMLLinkElement[] {
   try {
     return Array.from(document.querySelectorAll('link[rel~="stylesheet"]'))
       // a disabled link's sheet is null too, but it never fires load/error
-      // (nothing is loading), and it is not a consumer while disabled: a
-      // later enable is a style change the consumer watch already sees.
+      // (nothing is loading), and it is not a consumer while disabled: the
+      // consumer watch's attribute observation on `disabled` is what queues
+      // a rescan when it is enabled later (watchForPageConsumers above).
       .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled) as HTMLLinkElement[]
   } catch {
     return []
@@ -637,6 +649,11 @@ function computeView(geo: Geometry, enter: number, exit: number): number {
 
 /** 0 when the top touches the viewport bottom, 1 when the bottom leaves the top. */
 function computeTravel(geo: Geometry): number {
+  // A hidden custom scroll root (display: none) measures clientHeight 0, and
+  // its tracked element's rect is all zeros too: 0/0 is NaN, which clamp
+  // passes straight through to setVar and onTravel (ADU-354 item 7). Guarded
+  // the same way pinSpan and computeView already are.
+  if (geo.vp + geo.height <= 0) return 0
   return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1)
 }
 

@@ -828,6 +828,24 @@ try {
         assert(await page.locator(selector).evaluate(el => el.hasAttribute('data-sv-flow')))
         console.log(`ok ${name}: ${slug} scroll, CMS overflow, resize`)
       }
+      // F 1.4 (prerelease-1.19-fable, SUSPECTED): counter-reset fed a
+      // fractional calc() (TimelineScrub's --tl-from + --sv-pin * --tl-span,
+      // StatsCountup's --sv-act * --sv-max). CSS Values 4 rounds a calc()
+      // number used in an <integer> context, so this should hold in every
+      // engine; settled here rather than assumed.
+      await page.goto(base + 'timeline-scrub.html')
+      await pin(page, '.sv-timeline', 0.5)
+      const yearDigits = await page.locator('.tl-year .tl-count').evaluate(el => getComputedStyle(el, '::after').content)
+      assert.doesNotMatch(yearDigits, /\d+\.\d+/, `${name} timeline-scrub: fractional counter-reset did not round to an integer, content=${yearDigits}`)
+      await page.goto(base + 'stats-countup.html')
+      await page.locator('.sv-stats').evaluate(el => el.scrollIntoView({ block: 'center' }))
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.stat')).counterReset === 'n 248')
+      // --sv-act is cascaded from the tracker's own class, not inline; an
+      // inline override on the .stat itself outranks it at that one element
+      await page.locator('.stat').first().evaluate(el => el.style.setProperty('--sv-act', '0.5'))
+      const statDigits = await page.locator('.stat .count').first().evaluate(el => getComputedStyle(el, '::after').content)
+      assert.doesNotMatch(statDigits, /\d+\.\d+/, `${name} stats-countup: fractional counter-reset did not round to an integer, content=${statDigits}`)
+      console.log(`ok ${name}: fractional counter-reset rounds to an integer (F 1.4)`)
       for (const width of [1600, 900, 390]) {
         await page.setViewportSize({ width, height: 900 })
         for (const [slug, root, track] of [

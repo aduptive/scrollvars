@@ -67,6 +67,23 @@ process.on('exit', () => {
   assert.match(error.stderr ?? '', /SCROLLVARS_REGISTRY/, 'the error names the override URL')
 })
 
+test('add with no slug prints usage even with an unreachable registry, no network call (ADU-354 item 13)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sv-nosLug-'))
+  let error, output
+  try {
+    output = execFileSync(
+      process.execPath,
+      [fileURLToPath(new URL('../bin/scrollvars.mjs', import.meta.url)), 'add'],
+      { cwd: dir, env: { ...process.env, SCROLLVARS_REGISTRY: 'https://example.invalid/unreachable' }, encoding: 'utf8' }
+    )
+  } catch (e) { error = e; output = e.stdout }
+  rmSync(dir, { recursive: true, force: true })
+  assert.ok(error, 'add with no slug still exits non-zero (usage, not success)')
+  assert.equal(error.status, 1)
+  assert.match(output ?? '', /npx scrollvars add/, 'usage is printed')
+  assert.ok(!/could not load the effect registry/.test(output ?? ''), 'no registry fetch was attempted')
+})
+
 test('an absolute --dir is used as-is, not appended under cwd', () => {
   const cwd = mkdtempSync(join(tmpdir(), 'sv-dir-cwd-'))
   const target = mkdtempSync(join(tmpdir(), 'sv-dir-abs-'))

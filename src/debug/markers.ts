@@ -50,10 +50,16 @@ export interface PinLines {
 /** Pin stretch start/end in page coordinates. Starts when the wrapper's top
  * reaches the pin offset; ends when the wrapper's bottom meets the stage's
  * border box (CLAUDE.md's pin-span rule: span = wrapper height minus stage
- * height, the offset already folded into the stage's own height). */
-export function pinLines(geo: PinGeo, scrollY: number, offset = 0): PinLines {
+ * height, the offset already folded into the stage's own height). `origin`
+ * is the stage's normal-flow offset the driver reads with readStageOrigin
+ * (a heading or padding before the stage): the driver's own pin starts one
+ * origin later and its span shortens by the same amount (driver.ts
+ * pinSpan/computePin), so markers with no origin were off by exactly that
+ * much whenever the stage was not the pinned element's first child
+ * (ADU-354 item 10). */
+export function pinLines(geo: PinGeo, scrollY: number, offset = 0, origin = 0): PinLines {
   const pageTop = geo.wrapperTop + scrollY
-  const start = pageTop - offset
-  const span = Math.max(geo.wrapperHeight - geo.stageHeight, 1)
+  const start = pageTop - offset + origin
+  const span = Math.max(geo.wrapperHeight - geo.stageHeight - origin, 1)
   return { start, end: start + span }
 }

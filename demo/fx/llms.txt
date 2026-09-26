@@ -1,7 +1,7 @@
 # ScrollVars fx, llms.txt (copy-paste effects)
 
 > A growing library of scroll/pointer/state effects on the ScrollVars engine
-> (npm i scrollvars, 12.0 KB gzip as ESM; the fx/sv.js IIFE on these pages is 12.2 KB). Each effect below includes when to
+> (npm i scrollvars, 12.0 KB gzip as ESM; the fx/sv.js IIFE on these pages is 12.3 KB). Each effect below includes when to
 > use it and its knobs. Effects include Tailwind/CSS/React recipes; Sections
 > expose the complete CLI source (CSS included). Engine API: see
 > https://scrollvars.dev/llms.txt
@@ -305,7 +305,7 @@ Styles: scrollvars/styles/pin.css
   <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">
       {steps.map((s, i, all) => (
-        <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} />
+        <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length } as React.CSSProperties} {...s} />
       ))}
     </div>
   </div>
@@ -547,7 +547,7 @@ el.style.setProperty('--sv-word', nextIndex)
 ```tsx
 const [word, setWord] = useState(0)
 <h1>we build{' '}
-  <span className="sv-words" style={{ '--sv-word': word }} aria-hidden="true">
+  <span className="sv-words" style={{ '--sv-word': word } as React.CSSProperties} aria-hidden="true">
     {words.map(w => <span key={w}>{w}</span>)}
   </span>
   {/* the column reads as three words in a row to a screen reader: say the phrase once */}
@@ -608,7 +608,8 @@ Styles: scrollvars/styles/slider.css
 <Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
   {cards.map(c => (
-    <Slide key={c.id} className="[scale:calc(1-min(abs(var(--sd,0))*0.12,0.3))]">
+    <Slide key={c.id}
+      className="[scale:calc(1-min(max(var(--sd,0),-1*var(--sd,0))*0.12,0.3))] motion-reduce:[scale:none] sv-reduce:[scale:none]">
       <Card {...c} />
     </Slide>
   ))}
@@ -627,8 +628,8 @@ Styles: scrollvars/styles/slider.css
 </script>
 
 /* the coverflow is pure CSS on --sd: */
-.slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
-  opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
+.slide { scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
 @media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -674,16 +675,20 @@ Styles: scrollvars/styles/ui.css
 .sv-marquee-track { display: flex; gap: var(--sv-gap, 48px); width: max-content;
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
-.sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee:hover .sv-marquee-track,
+.sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
-   without it a pasted marquee never stops */
+   without width/flex-wrap the strip keeps overflowing past the viewport
+   with nothing left to scroll it into view */
 @media (prefers-reduced-motion: reduce) {
-  .sv-marquee-track { animation: none; }
+  .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+  .sv-marquee-track > .sv-marquee-dup { display: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; }
+:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+:where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup { display: none; }
 ```
 
 ### React

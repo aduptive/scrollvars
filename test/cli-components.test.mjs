@@ -1144,3 +1144,78 @@ export function Harness() {
   const markup = renderToStaticMarkup(h(mod.Harness))
   assert.equal(markup.match(/--sv-from:/g).length, 3, 'three cards, three windows')
 })
+
+// llms.txt fences every gallery `react` pane as tsx (fx-build.mjs), so an
+// uncast `--sv-*` style key there is the exact TS2353 case AGENTS.md's own
+// consumer sentence already fixed once (ADU-354 item 15). A pane is
+// illustrative (references helper components and local state the snippet
+// never defines), so a real standalone tsc compile is not practical here;
+// the uncast-key shape is the whole defect, and this catches it directly.
+test('gallery react panes: every `style={{ --sv-* }}` is cast, no bare object literal', () => {
+  const offenders = []
+  for (const fx of EFFECTS) {
+    if (!fx.react) continue
+    // one `style={{ ... }}` block per match: bail at the first `}}` after
+    // the opening, which is where every pane in this file closes it
+    const re = /style=\{\{\s*'--[^}]*?\}\}/g
+    let m
+    while ((m = re.exec(fx.react))) {
+      if (!m[0].includes('as React.CSSProperties')) offenders.push(`${fx.slug}: ${m[0]}`)
+    }
+  }
+  assert.deepEqual(offenders, [])
+})
+
+// A pasted marquee under reduce is a `max-content` strip in `overflow:
+// hidden` unless the pane copies BOTH of ui.css's reduce declarations
+// (width/flex-wrap release the strip, hiding the duplicate stops it
+// announcing twice), and the focus-visible pause needs :focus-within too
+// (ADU-354 item 16, same shape as the ADU-166 bug the real sheet already
+// fixed). Declared properties are compared, not exact text: the pane's
+// selector is bare, ui.css's is unscoped too for this preset.
+test('gallery marquee CSS pane: reduced-motion block matches ui.css (width/flex-wrap/dup hidden), pause includes :focus-within', () => {
+  const uiCss = readFileSync(join(root, 'styles', 'ui.css'), 'utf8')
+  const marquee = EFFECTS.find((e) => e.slug === 'marquee')
+  const declaredProps = (css, selector) => {
+    const re = new RegExp(selector.replace(/[.[\]]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g')
+    const props = new Set()
+    let m
+    while ((m = re.exec(css))) for (const decl of m[1].split(';')) {
+      const prop = decl.split(':')[0]?.trim()
+      if (prop) props.add(prop)
+    }
+    return props
+  }
+  const reduceBlock = (css) => (css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/) ?? [, ''])[1]
+  const uiReduce = reduceBlock(uiCss)
+  const paneReduce = reduceBlock(marquee.css)
+  const trackProps = declaredProps(paneReduce, '.sv-marquee-track')
+  const uiTrackProps = declaredProps(uiReduce, '.sv-marquee-track')
+  for (const prop of uiTrackProps) assert.ok(trackProps.has(prop), `pane's reduce block for .sv-marquee-track is missing ${prop}`)
+  assert.match(paneReduce, /\.sv-marquee-dup\s*\{[^}]*display:\s*none/, 'the duplicate copy is hidden under reduce, not just paused')
+  assert.match(marquee.css, /:hover[^{]*\.sv-marquee-track,\s*\n?\s*\.sv-marquee:focus-within/, 'the pause also covers :focus-within, like ui.css')
+})
+
+// `abs()` is Chrome 104 / Safari 17.4 / Firefox 118, above this project's
+// stated floor (AGENTS.md's BROWSER_FLOOR), so a declaration using it is
+// silently dropped there; `max(x, -1 * x)` is the equivalent the installed
+// coverflow component already uses (ADU-354 item 17). No gallery pane or
+// guide snippet may reintroduce it.
+test('no gallery pane or guide snippet uses abs(), only the installed max(x, -1 * x) equivalent', () => {
+  const guide = readFileSync(join(root, 'docs', 'guide.md'), 'utf8')
+  const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+  assert.ok(!/abs\(var\(--sd/.test(guide), 'docs/guide.md uses abs(var(--sd')
+  assert.ok(!/abs\(var\(--sd/.test(agents), 'AGENTS.md uses abs(var(--sd')
+  for (const fx of EFFECTS) {
+    for (const pane of [fx.css, fx.tailwind, fx.react, fx.preview]) {
+      // (?<!\.): a bare CSS abs(), never JS's Math.abs()
+      if (pane) assert.ok(!/(?<!\.)\babs\(/.test(pane), `${fx.slug} pane uses abs(): ${pane.match(/.{0,20}abs\(.{0,20}/)}`)
+    }
+  }
+})
+
+test('gallery coverflow-slider: the Tailwind pane guards scale under both motion controls', () => {
+  const coverflow = EFFECTS.find((e) => e.slug === 'coverflow-slider')
+  assert.match(coverflow.tailwind, /motion-reduce:\[scale:none\]/, 'the OS preference variant resets scale')
+  assert.match(coverflow.tailwind, /sv-reduce:\[scale:none\]/, "the site's own data-sv-motion switch resets scale too")
+})

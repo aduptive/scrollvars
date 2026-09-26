@@ -286,7 +286,7 @@ plug in what's missing.</p>
 <tr><td>Chrome / Edge</td><td><b>${BROWSER_FLOOR.chrome.version}</b> (${BROWSER_FLOOR.chrome.date})</td><td>native zero-JS <code>sv-view-*</code> tier: 115+ · <code>sv-range</code> needs 112+ · Accordion height animation 129+</td></tr>
 <tr><td>Firefox</td><td><b>${BROWSER_FLOOR.firefox.version}</b> (${BROWSER_FLOOR.firefox.date}, ${BROWSER_FLOOR.firefox.reason.map((s) => `<code>${s}</code>`).join('/')})</td><td><code>sv-counter</code> 128+ · <code>sv-range</code> 112+</td></tr>
 <tr><td>Safari / iOS</td><td><b>${BROWSER_FLOOR.safari.version}</b> (${BROWSER_FLOOR.safari.date})</td><td><code>sv-counter</code> and <code>sv-range</code> 16.4+</td></tr>
-<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains and deck in flow and readable (see below); with <code>compat()</code> installed the stage stays pinned instead, so its own fallback keeps animating the curtains and rail, and content taller than the stage clips there (see below); <code>sv-rail</code> is the one exception either way, its track stays unwrapped and can run past the viewport edge, reachable by a page-wide horizontal scroll; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
+<tr><td>anything older, or no JS</td><td>content 100% visible, static</td><td>the <code>html.sv-on</code> guard for no JS. With JS running below the transform floor and without <code>compat()</code>, <code>pin.css</code>'s own net keeps the stage, curtains, deck and rail in flow and readable (see below); with <code>compat()</code> installed, curtains and rail keep their fallback animation instead, but a stage holding a static deck still returns to flow, wrapper height included, so every card stays reachable either way; <code>compat()</code>'s rail fallback ignores <code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of offscreen, so it is stationary whenever the track's own width equals the viewport</td></tr>
 </table>
 <p><b>The design rule that makes this table safe to sign off:</b> below the floor nothing
 breaks. Skip <code>compat()</code> and the page renders complete and static, nothing
@@ -296,30 +296,21 @@ roughly Chrome 61+ / Firefox 60+ / Safari 11+. Animation is progressive enhancem
 dependency. Presets that lean on newer CSS (<code>sv-range</code>, <code>sv-counter</code>)
 degrade to their end state individually.</p>
 <p>Below the transform floor, with JS still running, <code>styles/pin.css</code> carries its
-own <code>@supports not (translate: 0)</code> net, but only for four of its rules: the stage,
-both curtains and the deck. The curtains sit parted and static rather than animated, the deck
-unstacks to a static, non-overlapping layout, and, without <code>compat()</code> installed,
-the stage resets to flow so nothing is clipped by the stage itself (<code>sv-reading</code>,
+own <code>@supports not (translate: 0)</code> net, for four of its rules: the stage, both
+curtains, the deck and the rail, all scoped to <code>html:not([data-sv-compat])</code> except
+the deck. The curtains sit parted and static rather than animated, the deck unstacks to a
+static, non-overlapping layout, the rail's track wraps instead of running off the right edge,
+and the stage resets to flow so nothing is clipped by the stage itself (<code>sv-reading</code>,
 <code>sv-range</code> and <code>sv-counter</code> need no net of their own, they settle for
-unrelated reasons). With <code>compat()</code> installed the net exempts
-<code>.sv-stage</code> instead (its own <code>data-sv-compat</code> marker on
-<code>&lt;html&gt;</code> is the switch): the module's fallback sheet still animates the
-curtains and rail from <code>--sv-pin</code>, measured off that stage, so releasing it there
-would snap them over one pixel instead. The trade is real: measured on a four-card
-<code>sv-deck</code> pinned below the floor with <code>compat()</code> installed, the stage
-stayed a fixed height while the deck unstacked to its full static column, so cards three and
-four sat past the clip, unreachable, for the roughly 1800px of scroll the pin still consumed
-doing nothing visible. A page whose below-floor deck matters more than its below-floor
-animation gets the flow layout back by not calling <code>compat()</code> there, the same
-escape the design rule above already promises.
-<code>sv-rail</code> stays the one exception either way: with JS running the no-JS guard's
-<code>width: auto; flex-wrap: wrap</code> does not apply, so a track built wider than the
-viewport runs past the right edge, reachable only by a page-wide horizontal scroll, and not
-at all under an <code>overflow-x: hidden</code> ancestor. <code>compat()</code>'s own
-<code>sv-rail</code> fallback does not really fix that: it ignores <code>--sv-rail-start</code>,
-starts at <code>translateX(0)</code> instead of entering from offscreen, and is stationary
-whenever the track's own width equals the viewport, so wrap the rail yourself below the floor
-regardless. One more caveat until ADU-150
+unrelated reasons). With <code>compat()</code> installed (its own <code>data-sv-compat</code>
+marker on <code>&lt;html&gt;</code> is the switch) the stage stays pinned instead, and the
+module's fallback sheet animates the curtains and rail from <code>--sv-pin</code>, measured
+off that stage; <code>compat()</code>'s own <code>sv-rail</code> fallback still ignores
+<code>--sv-rail-start</code> and starts at <code>translateX(0)</code> instead of entering from
+offscreen, so it is stationary whenever the track's own width equals the viewport. A stage
+holding a static <code>sv-deck</code> returns to flow either way, compat installed or not
+(the driver marks it <code>data-sv-flow</code> below the floor regardless), so every card
+stays reachable and nothing sits past a clip. One more caveat until ADU-150
 lands: a released stage can also leave a parked curtain panel sitting outside it, extending
 the document so a reader can scroll sideways to an empty panel.</p>
 <p><b>Older targets:</b> <code>scrollvars/compat</code>, opt-in. On modern browsers it runs

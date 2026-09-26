@@ -11,6 +11,60 @@
 
 ### Fixed
 
+- Emptying a populated slider (every slide removed) left `state().active`
+  pointing at a detached node with `count: 0`, so repopulating at the same
+  index fired no `onSlide`. An empty list now resets `active` to `-1` and
+  releases the owned `--sv-slide`.
+- A disabled `<link rel="stylesheet">` enabled later never turned page
+  outputs on: the consumer watch only observed `childList`, so an attribute
+  change (`disabled` flipping) queued no rescan. It now also observes
+  `disabled`/`rel`/`href`/`media` on every `<link>`.
+- A tracker under a hidden custom scroll root (`display: none`) wrote
+  `--sv-t: NaN` and passed `NaN` to `onTravel`; `computeTravel` now holds at
+  0 when the viewport and element height are both zero, the same guard
+  `computeView` and `pinSpan` already had.
+- Debug markers ignored the pinned stage's normal-flow origin (a heading or
+  padding before the stage), so both lines were off by exactly that much;
+  they also picked up a nested tracker's stage instead of their own.
+  `pinLines` takes the origin now, and the overlay resolves the owned stage
+  the same way the driver does.
+- The debug HUD calibrated its refresh rate from the frames it was judging,
+  so a sustained half-rate page (every other vsync) read as a 30Hz display
+  with 0 dropped frames. It now calibrates once, over a quiet opening
+  window, and judges every later frame against that frozen interval; a
+  frame spanning a backgrounded tab is neither a calibration sample nor a
+  dropped one.
+- The debug panel used `backdrop-filter`, which re-rasters every scroll
+  frame and would have the HUD in the same document measure that cost as
+  the page's own. Solid background now, no filter.
+- `npx scrollvars add` with no slug fetched the effect registry before
+  printing usage, so an offline run reported a registry error instead of
+  the command's own help text.
+- The fx gallery's React panes had six uncast `style={{ '--sv-*': ... }}`
+  object literals (`TS2353` in a strict consumer's `tsc`, the same shape a
+  previous release already fixed in the installed components); all cast to
+  `React.CSSProperties` now, and a new gate checks every pane.
+- The marquee CSS pane's reduced-motion block only stopped the animation;
+  the real stylesheet also releases the strip's width and hides the
+  duplicate copy, or a pasted marquee under reduce keeps clipping content
+  past the viewport edge. The pane now matches, and the pause covers
+  `:focus-within` like the real sheet.
+- The coverflow slider's CSS and Tailwind panes used `abs()` (Chrome 104,
+  above this project's stated floor); rewritten to the installed
+  component's `max(x, -1 * x)` equivalent, and the Tailwind pane gained a
+  reduced-motion guard it never had.
+- The docs page's browser-support text still described a rail that stayed
+  unwrapped below the transform floor and a deck that clipped past the
+  stage with `compat()` installed; both were fixed in earlier releases
+  (the rail wraps in `pin.css`'s own net, a deck-holding stage returns to
+  flow regardless of `compat()`). Rewritten from the current code.
+- Three doc inaccuracies: "even a comment counts" toward page-output
+  detection is true only for an inline `<style>`, never a linked sheet;
+  `--sv-t`'s claimed parity with native `view()` did not account for its
+  zero inset; the browser-floor line omitted `sv-range` and `sv-acts`
+  (both settle to their end state below the floor, nothing is lost).
+- "`npx scrollvars skill` installs this file" was imprecise: it installs a
+  skill built from the file, which points the agent back here.
 - Perf phase 1, stop work nobody sees. React `<Slider autoplay>` already skipped a tick while off screen or with the tab hidden; the `setInterval` itself now stops there too and restarts on return, instead of waking up every interval on a background tab full of never-visible carousels. A correctness fix ("do no work off screen"), not a headline win: measured on the perf lab's `long.html` (marquee and slider both present) the frame cadence is unchanged on this machine, as expected for background work that was already cheap to skip; the actual stopping is what a new test asserts directly, an exact `setInterval`/`clearInterval` count.
 - The site hero's "use it with your AI agent" pill wrapped `npx` onto its own line at narrow widths. The command now sits in its own `white-space: nowrap` span while the label around it wraps freely; verified at 320, 375 and 1280 with real mobile/desktop viewport emulation (no horizontal overflow, the command never breaks across lines).
 - AGENTS.md's performance rule 6 recommended `will-change: translate` on every scroll-moved element, which our own published benchmark contradicts: hinting `will-change: transform, opacity` on the driver's own moving elements raised main-profile task time about 9% and gave no measurable gain on the deep-50 profile (`demo/bench/harness/README.md`, main-style-css screen), and a separate screen rejected it outright (`demo/bench/harness/HYPOTHESES.md`). Rewritten from the measured facts: do not add `will-change` by default; add it only when a profile shows a specific moving element repainting every frame, and remove it once the motion stops. The skill and llms.txt follow, generated from the same text.

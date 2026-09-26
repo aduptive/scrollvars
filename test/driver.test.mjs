@@ -456,6 +456,54 @@ test('driver: --sv-page/--sv-v on <html>, --sv-scenes on scene containers', asyn
   untrack()
 })
 
+test('driver: a disabled stylesheet enabled later publishes once the consumer watch sees the attribute flip (ADU-354 item 6)', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: true, sheet: null,
+    getAttribute: () => null, addEventListener: () => {}, removeEventListener: () => {},
+  }
+  let watcher
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb; watcher = this }
+    observe() {}
+    disconnect() {}
+  }
+  global.document = {
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    // a disabled link is excluded here, exactly like the real DOM's own
+    // pendingSheets() filter
+    querySelectorAll: () => [],
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?disabledlink')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.equal(pageVars['--sv-page'], undefined, 'a disabled link with no other consumer publishes nothing')
+    assert.ok(watcher, 'the consumer watch installed while nobody reads the outputs')
+
+    // enabled later, its sheet now readable and reading --sv-page: a real
+    // MutationObserver delivers this as an attribute record on the <link>
+    link.disabled = false
+    link.sheet = {}
+    document.styleSheets = [{ ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }]
+    watcher.cb([{ type: 'attributes', target: link, addedNodes: [] }])
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the attribute flip queued a rescan that found the now-readable consumer')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
 test('driver: global outputs can be disabled, including the pending velocity reset', async () => {
   const vars = {}
   global.document = { documentElement: {
@@ -916,6 +964,24 @@ test('driver: a bordered root shares one origin between update() pin progress an
     '0.5000',
     'the offset scrollToScene computed lands where update() reports the same progress'
   )
+  untrack()
+})
+
+test('driver: a tracker under a hidden custom scroll root writes a finite --sv-t, never NaN (ADU-354 item 7)', async () => {
+  const { track } = await import('../dist/core/driver.js?hiddenroot')
+  const rootEl = {
+    clientTop: 0,
+    clientHeight: 0, // display: none
+    scrollTop: 0,
+    getBoundingClientRect: () => ({ top: 0, bottom: 0, height: 0 }),
+  }
+  const child = makeElement(400)
+  place(child, 0, 0) // its rect is all zeros too while the root is hidden
+  const travels = []
+  const untrack = track(child, { travel: true, root: rootEl, onTravel: (v) => travels.push(v) })
+  pump()
+  assert.equal(child.vars['--sv-t'], '0.0000', 'the written var is finite, not NaN')
+  assert.ok(travels.every((v) => Number.isFinite(v)), 'onTravel never receives NaN')
   untrack()
 })
 

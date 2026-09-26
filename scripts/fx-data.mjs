@@ -461,7 +461,7 @@ export const EFFECTS = [
   <div className="sv-stage grid place-items-center">
     <div className="sv-range sv-range-rise grid gap-3">
       {steps.map((s, i, all) => (
-        <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length }} {...s} />
+        <Step key={s.id} style={{ '--sv-from': i / all.length, '--sv-to': (i + 1.6) / all.length } as React.CSSProperties} {...s} />
       ))}
     </div>
   </div>
@@ -727,7 +727,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
 <!-- set --sv-word from your state; scenes drive it for free in pinned stories -->`,
     react: `const [word, setWord] = useState(0)
 <h1>we build{' '}
-  <span className="sv-words" style={{ '--sv-word': word }} aria-hidden="true">
+  <span className="sv-words" style={{ '--sv-word': word } as React.CSSProperties} aria-hidden="true">
     {words.map(w => <span key={w}>{w}</span>)}
   </span>
   {/* the column reads as three words in a row to a screen reader: say the phrase once */}
@@ -794,8 +794,8 @@ el.style.setProperty('--sv-word', nextIndex)`,
 </script>
 
 /* the coverflow is pure CSS on --sd: */
-.slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
-  opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
+.slide { scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
 @media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -803,7 +803,8 @@ el.style.setProperty('--sv-word', nextIndex)`,
     tailwind: `<Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]">
   {cards.map(c => (
-    <Slide key={c.id} className="[scale:calc(1-min(abs(var(--sd,0))*0.12,0.3))]">
+    <Slide key={c.id}
+      className="[scale:calc(1-min(max(var(--sd,0),-1*var(--sd,0))*0.12,0.3))] motion-reduce:[scale:none] sv-reduce:[scale:none]">
       <Card {...c} />
     </Slide>
   ))}
@@ -840,16 +841,20 @@ el.style.setProperty('--sv-word', nextIndex)`,
 .sv-marquee-track { display: flex; gap: var(--sv-gap, 48px); width: max-content;
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
-.sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee:hover .sv-marquee-track,
+.sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
-   without it a pasted marquee never stops */
+   without width/flex-wrap the strip keeps overflowing past the viewport
+   with nothing left to scroll it into view */
 @media (prefers-reduced-motion: reduce) {
-  .sv-marquee-track { animation: none; }
+  .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+  .sv-marquee-track > .sv-marquee-dup { display: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; }`,
+:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+:where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup { display: none; }`,
     tailwind: `<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
@@ -944,7 +949,7 @@ function Hero() {
         <div className="hero-inner">
           <p className="sv-rise">Eyebrow</p>
           <Split as="h1" className="sv-split-rise">Sites that move with intent</Split>
-          <p className="sv-rise" style={{ '--sv-order': 6 }}>Sub copy.</p>
+          <p className="sv-rise" style={{ '--sv-order': 6 } as React.CSSProperties}>Sub copy.</p>
         </div>
       </Track>
       <Marquee className="hero-strip"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></Marquee>
@@ -1025,7 +1030,7 @@ const steps = [
 ]
 function Timeline() {
   return (
-    <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 }}>
+    <Track pin="320vh" className="tl" style={{ '--tl-from': 2019, '--tl-span': 7 } as React.CSSProperties}>
       <div className="sv-stage tl-sticky">
         <span className="tl-year">
           {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
@@ -1035,7 +1040,7 @@ function Timeline() {
         <div className="tl-track"><i className="tl-line" />
           <ol className="sv-range sv-range-rise tl-items">
             {steps.map((s) => (
-              <li key={s.year} style={{ '--sv-from': s.range[0], '--sv-to': s.range[1] }}>
+              <li key={s.year} style={{ '--sv-from': s.range[0], '--sv-to': s.range[1] } as React.CSSProperties}>
                 <b>{s.year}</b><p>{s.text}</p>
               </li>
             ))}
@@ -1210,14 +1215,14 @@ const stats = [
 ]
 function Stats() {
   return (
-    <Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' }}>
+    <Track once className="sv-acts" style={{ '--sv-acts-count': 1, '--sv-acts-duration': '1.8s' } as React.CSSProperties}>
       <dl className="stats">
         {stats.map((s) => (
           <div key={s.label}>
             <dt>{s.label}</dt>
             {/* both halves live INSIDE the dd: a dl group takes dt/dd only, and a
                 term whose only dd is aria-hidden is a term with no definition */}
-            <dd className="stat" style={{ '--sv-max': s.max }}>
+            <dd className="stat" style={{ '--sv-max': s.max } as React.CSSProperties}>
               {/* real text for AT: no aria-label on a span (Axe aria-prohibited-attr) */}
               <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{s.max}{s.suffix ?? ''}</span>
               <span className="count" data-suffix={s.suffix ?? ''} aria-hidden="true" />

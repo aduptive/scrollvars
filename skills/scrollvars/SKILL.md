@@ -47,7 +47,8 @@ machine-readable index at fx/llms.txt. Ingest it before
 hand-building a common pattern. Install directly:
 `npx scrollvars add <slug> [--dir components/fx]` (registry is remote; new
 effects appear without package updates). `npx scrollvars skill [--global]
-[--force]` installs this file as a Claude Code (`.claude/skills/scrollvars`)
+[--force]` installs a skill built from this file (it points the agent back
+here) as a Claude Code (`.claude/skills/scrollvars`)
 and Codex (`.agents/skills/scrollvars`) skill, matching the installed
 package version; also readable directly with `npx skills add
 aduptive/scrollvars` (the open agent skills convention, both scan a repo's
