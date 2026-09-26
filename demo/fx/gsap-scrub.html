@@ -231,21 +231,18 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 &lt;/script&gt;</code></pre>
-    <pre tabindex="0" data-pane="react"><code>const stage = useRef&lt;HTMLDivElement&gt;(null)
-const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
+    <pre tabindex="0" data-pane="react"><code>const tl = useRef&lt;gsap.core.Timeline | null&gt;(null)
 useEffect(() =&gt; {
-  // scoped to this instance's own stage, never a bare class selector: two
-  // of these on one page must not animate each other's children
   tl.current = gsap.timeline({ paused: true })
-    .from(stage.current!.children, { y: 140, opacity: 0, stagger: 0.2 })
+    .from('.stage &gt; *', { y: 140, opacity: 0, stagger: 0.2 })
   return () =&gt; tl.current?.kill()
 }, [])
 
 &lt;Track pin="250vh" onPin={(p) =&gt; tl.current?.progress(p)}&gt;
-  &lt;div ref={stage} className="sv-stage"&gt;…&lt;/div&gt;
+  &lt;div className="sv-stage"&gt;…&lt;/div&gt;
 &lt;/Track&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.3 KB gzip as ESM (this page's fx/sv.js IIFE: 12.6 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.3 KB gzip as ESM (this page's fx/sv.js IIFE: 12.5 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

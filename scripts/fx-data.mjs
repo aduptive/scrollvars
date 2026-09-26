@@ -104,15 +104,20 @@ function mountCubeWindow(el, boxSize, turn) {
 
 // Shared by the rendered gallery and the standalone CSS pane. React consumers
 // install the Section below, which owns the same status/fit/layout contract.
+// Without native inert (Firefox 78-111, Safari 14.1-15.4, inside the README
+// floor), the attribute is inert in name only: an inactive shot's links stay
+// tabbable while the shot itself is visually hidden. Crossfading never turns
+// on there, and every shot stays static and reachable instead (T1, ADU-355).
 const STICKY_ATTACH = `function mountSteps(el, SV) {
   let status = 'attaching', flow = true, scene = 0, stopped = false
   let observer, stopMotion, stopTrack
   const shots = Array.from(el.querySelectorAll('.st-shot'))
+  const inertSupported = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype
   const update = () => {
     if (stopped) return
     const empty = !shots.length
     const measuring = !empty && status === 'attaching' && !el.hasAttribute('data-sv-flow') && !SV.prefersReducedMotion()
-    let ready = !empty && status === 'active' && !flow && !SV.prefersReducedMotion()
+    let ready = !empty && status === 'active' && !flow && !SV.prefersReducedMotion() && inertSupported
     if (ready || measuring) el.classList.remove('st-static')
     el.classList.toggle('st-measuring', measuring)
     el.classList.toggle('st-ready', ready)
@@ -1650,6 +1655,12 @@ export interface StickyStep {
 // does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
 const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
 
+// Without native inert (Firefox 78-111, Safari 14.1-15.4, inside the README floor)
+// the attribute is inert in name only: an inactive shot's links stay tabbable while
+// the shot itself is visually hidden. Crossfading never turns on there; every shot
+// stays static and reachable instead.
+const inertSupported = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype
+
 export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; className?: string; nonce?: string }) {
   // the active index (integer changes only) makes the inactive shots inert, so a
   // crossfaded shot cannot keep focusable links; applied after mount so the
@@ -1681,7 +1692,7 @@ export function StickySteps({ steps, className, nonce }: { steps: StickyStep[]; 
       // Stack before the driver's first fit read, without hiding shots from AT.
       const empty = !shot
       const measuring = !empty && status.current === 'attaching' && !el.hasAttribute('data-sv-flow') && !prefersReducedMotion()
-      let ready = !empty && status.current === 'active' && !flow.current && !prefersReducedMotion()
+      let ready = !empty && status.current === 'active' && !flow.current && !prefersReducedMotion() && inertSupported
       if (ready || measuring) el.classList.remove('st-static')
       el.classList.toggle('st-measuring', measuring)
       el.classList.toggle('st-ready', ready)

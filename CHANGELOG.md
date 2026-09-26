@@ -37,6 +37,27 @@
   read as ambiguous between "(tracked and CSS) or setPageOutputs" and
   "tracked and (CSS or setPageOutputs)" (the latter is what the driver
   does); reworded to read one way only.
+- Without native `inert` (Firefox 78-111, Safari 14.1-15.4, inside the
+  README floor), `StickySteps` still applied `inert`/`aria-hidden` to
+  inactive shots, and the pause-controlled `Marquee`'s duplicate strip
+  still turned on: without real support the attribute is inert in name
+  only, so links inside an invisible shot or an animated duplicate stayed
+  in the tab order (WCAG 2.4.7/2.4.11). Both surfaces gate on
+  `'inert' in HTMLElement.prototype` now: `StickySteps` (installed and
+  gallery copies) stays static with every shot reachable, and `toggles()`
+  never marks a controlled marquee track `sv-ui`, so `styles/ui.css` keeps
+  its strip static and the duplicate hidden.
+- `toggles()`'s marquee release closure captured its track directly; a
+  Boot-owned document scope that never stops kept that closure, and the
+  detached track it held, for the app's life. It now goes through the same
+  `weakRef()` helper the markers use, falling back the same way where
+  `WeakRef` is unavailable.
+- `useScenes` carried its `flowed` flag from one lease into the next: a
+  replacement target (any `useTrack` dependency change) with no
+  `[data-sv-fit]` child and no flowed ancestor never gets a re-announced
+  `onFlow`, so a lease that once overflowed stayed `active: false`
+  forever, even once it fit cleanly. `flowed` now resets on
+  `onStatus('attaching')`, before the new lease's own `onFlow` can land.
 - Below the individual-transform floor with no `compat()`, only a stage
   carrying a static deck was released to flow: a plain pinned stage (the
   common Scenes/Sections shape) kept reporting `active` while pin.css
