@@ -2200,6 +2200,73 @@ test('react: useScenes/Scenes render every scene again once the pinned stage fal
   }
 })
 
+test('react: useScenes resets flowed on a new lease, so active recovers even with no fit node (T4)', async () => {
+  // `flowed` was set only by onFlow. A replacement lease (any useTrack dep
+  // change, here `count`) starts with onStatus('attaching'), which reset
+  // `attached` but not `flowed`: a new target with no [data-sv-fit] child
+  // never gets a re-announced onFlow at all (driver.ts only fires it when
+  // entry.fit exists), so a lease that once overflowed stayed inactive
+  // forever, even fitting cleanly (Astra 1.4/2.4).
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  const create = document.createElement
+  document.createElement = (tag) => {
+    const n = create(tag)
+    n.querySelectorAll = (selector) => {
+      if (selector !== '.sv-stage') return []
+      const found = []
+      const walk = (node) => {
+        for (const c of node.childNodes || []) {
+          if (c.classes?.has('sv-stage')) found.push(c)
+          walk(c)
+        }
+      }
+      walk(n)
+      return found
+    }
+    return n
+  }
+
+  const activeSeen = []
+  const render = (count, withFit) =>
+    React.createElement(Scenes, { count, pin: '300vh' }, ({ scene, active }) => {
+      activeSeen.push(active)
+      return withFit
+        ? React.createElement('div', { 'data-sv-fit': '' }, `Slide ${scene + 1}`)
+        : React.createElement('div', null, `Slide ${scene + 1}`)
+    })
+
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => { root.render(render(4, true)) })
+    const shell = container.firstChild
+    const stage = shell.children.find((c) => c.classes.has('sv-stage'))
+
+    // overflow the first lease: flowed latches true, active goes false
+    const fit = stage.children.find((c) => c.hasAttribute('data-sv-fit'))
+    fit.offsetHeight = fit.scrollHeight = 900
+    fit.parentElement = { clientHeight: 100 }
+    await act(async () => { flushFrames() })
+    assert.equal(activeSeen.at(-1), false, 'overflowing: the tracker flows, active is false')
+
+    // a new lease: count changes (a useTrack dep), replacing the target with
+    // one carrying no [data-sv-fit] node at all, so the driver never
+    // re-announces onFlow for it
+    await act(async () => { root.render(render(2, false)) })
+    await act(async () => { flushFrames() })
+    assert.equal(activeSeen.at(-1), true, 'the new lease is not stuck inheriting the previous lease\'s flowed state')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    document.createElement = create
+  }
+})
+
 test('react: useScenes/Scenes render every scene below the transform floor with no compat() (R1)', async () => {
   // Below the floor with no compat(), pin.css releases the WHOLE stage
   // (`@supports not (translate: 0)`: static, height auto), and the pin

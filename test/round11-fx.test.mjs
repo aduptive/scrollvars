@@ -5,7 +5,7 @@ import { transformSync } from 'esbuild'
 import { readFileSync } from 'node:fs'
 import { EFFECTS, COMPONENTS } from '../scripts/fx-data.mjs'
 
-function installed(slug, { intrinsic = false, flowingStage = false, shotCount = 2 } = {}) {
+function installed(slug, { intrinsic = false, flowingStage = false, shotCount = 2, inertSupported = true } = {}) {
   let cursor = 0, pending = [], reduced = false
   let fault, throwDispose = false
   const reports = []
@@ -49,6 +49,14 @@ function installed(slug, { intrinsic = false, flowingStage = false, shotCount = 
       if (fault === 'read') { fault = undefined; throw Error('one-shot style read') }
       return { position: enhanced ? el === stage ? 'sticky' : 'absolute' : 'static' }
     },
+    // Real HTMLElement.prototype carries `inert` from Chrome 102 / Firefox
+    // 112 / Safari 15.5 on; below that (inside the README floor) it is
+    // absent, and StickySteps must never crossfade there (T1, ADU-355).
+    HTMLElement: (() => {
+      function StubHTMLElement() {}
+      if (inertSupported) StubHTMLElement.prototype.inert = false
+      return StubHTMLElement
+    })(),
     MutationObserver: class { constructor(fn) { this.fn = fn; observers.push(this) } observe() {} takeRecords() { return [] } disconnect() { this.stopped = true; if (throwDispose) throw Error('disconnect failed after release') } },
   })
   return {
@@ -158,6 +166,18 @@ for (const failure of ['missing CSS', 'oversized layout']) test(`StickySteps act
   app.destroy()
 })
 
+test('StickySteps never crossfades without native inert: every shot stays reachable (T1, ADU-355)', () => {
+  const app = installed('sticky-steps', { inertSupported: false })
+  const props = { steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] }
+  app.render(props); app.enhance(true); app.fit(false); app.status('active')
+  const figure = figures(app.render(props))[1]
+  assert.equal(figure.props.inert, undefined, 'no shot is made inert')
+  assert.equal(figure.props['aria-hidden'], undefined, 'no shot is hidden from AT')
+  assert.ok(app.classes.has('st-static'), 'the layout stays static, every shot in flow')
+  assert.ok(!app.classes.has('st-ready'), 'crossfade never turns on')
+  app.destroy()
+})
+
 test('StickySteps SSR keeps crossfade gated until the first successful fit outcome', () => {
   const app = installed('sticky-steps')
   const tree = app.render({ steps: [{ title: 'One', media: 'A' }, { title: 'Two', media: 'B' }] })
@@ -228,9 +248,12 @@ test('gallery StickySteps contains every callback entry and releases even a late
       classList: { remove: c => classes.delete(c), add: c => classes.add(c), toggle: (c, on) => on ? classes.add(c) : classes.delete(c) } }
     let observer, motion, options, armed = false, disconnects = 0, unsubscribes = 0, releases = 0
     const reports = []
+    function StubHTMLElement() {}
+    StubHTMLElement.prototype.inert = false
     vm.runInNewContext(source, {
       addEventListener: (_, fn) => fn(), document: { documentElement: {}, querySelector: () => el },
       console: { error: e => reports.push(e) },
+      HTMLElement: StubHTMLElement,
       getComputedStyle: node => { if (armed) { armed = false; throw Error('late read') }; return { position: node === stage ? 'sticky' : 'absolute' } },
       MutationObserver: class {
         constructor(fn) { observer = fn } observe() {} takeRecords() {}
@@ -250,6 +273,29 @@ test('gallery StickySteps contains every callback entry and releases even a late
     assert.ok(attrs.every(a => !a.has('inert') && !a.has('aria-hidden')), entry)
     assert.ok(classes.has('st-static') && !classes.has('st-measuring') && !classes.has('st-ready'), entry)
   }
+})
+
+test('gallery StickySteps never crossfades without native inert: every shot stays reachable (T1, ADU-355)', () => {
+  const source = EFFECTS.find(e => e.slug === 'sticky-steps').previewScript
+  const classes = new Set(), attrs = [new Map(), new Map()]
+  const shots = attrs.map(a => ({ setAttribute: (k, v) => a.set(k, v), removeAttribute: k => a.delete(k) }))
+  const stage = { clientHeight: 900 }, fit = { offsetHeight: 400, scrollHeight: 400 }
+  const el = { querySelectorAll: () => shots, hasAttribute: () => false,
+    querySelector: s => s === '.sv-stage' ? stage : fit,
+    classList: { remove: c => classes.delete(c), add: c => classes.add(c), toggle: (c, on) => on ? classes.add(c) : classes.delete(c) } }
+  function StubHTMLElement() {}
+  // no `inert` on the prototype: below Chrome 102 / Firefox 112 / Safari 15.5
+  vm.runInNewContext(source, {
+    addEventListener: (_, fn) => fn(), document: { documentElement: {}, querySelector: () => el },
+    console: { error() {} },
+    HTMLElement: StubHTMLElement,
+    getComputedStyle: node => ({ position: node === stage ? 'sticky' : 'absolute' }),
+    MutationObserver: class { constructor() {} observe() {} takeRecords() {} disconnect() {} },
+    SV: { prefersReducedMotion: () => false, refresh() {}, onMotionChange() { return () => {} },
+      track(_, opts) { opts.onFlow(false); opts.onStatus('active'); return () => {} } },
+  })
+  assert.ok(attrs.every(a => !a.has('inert') && !a.has('aria-hidden')), 'no shot is made inert or hidden')
+  assert.ok(classes.has('st-static') && !classes.has('st-ready'), 'the layout stays static')
 })
 
 test('GsapScrub rebuilds at the last scroll progress without waiting for another frame', () => {

@@ -204,6 +204,95 @@ test('toggles: a scope with no marquee track never creates an IntersectionObserv
   } finally { env.restore() }
 })
 
+test('toggles: a controlled marquee track never gets sv-ui without native inert (T1, ADU-355)', async () => {
+  // Below Chrome 102 / Firefox 112 / Safari 15.5 (inside the README floor,
+  // Firefox 78-111 and Safari 14.1-15.4), `inert` is inert in name only: the
+  // duplicate's own tabbable content would stay reachable behind an animated
+  // strip if sv-ui ever turned ui.css's static branch off. No HTMLElement
+  // global here models that gap.
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?inertgate-no')
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    const trigger = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': '.sv-marquee-track' })
+    root.append(trigger)
+    root.append(track)
+    const stop = toggles(root)
+    assert.ok(!track.classes.has('sv-ui'), 'no inert: ui.css keeps the strip static and the dup hidden')
+    stop()
+  } finally { env.restore() }
+})
+
+test('toggles: a controlled marquee track gets sv-ui once native inert is supported', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?inertgate-yes')
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    const trigger = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': '.sv-marquee-track' })
+    root.append(trigger)
+    root.append(track)
+    const stop = toggles(root)
+    assert.ok(track.classes.has('sv-ui'), 'inert supported: the pause button is wired, ui.css turns the strip on')
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+test('toggles: a marquee track holds no strong reference from the document scope\'s release list once nothing else does (T3, mirrors PR #94\'s retention test)', {
+  skip: typeof global.gc !== 'function' && 'run with node --expose-gc',
+}, async () => {
+  // watchMarquee()'s life.defer closure used to capture `track` directly.
+  // life.defer's cleanup only runs at the WHOLE scope's stop, which a
+  // Boot-owned document scope never reaches, so a direct capture there
+  // pinned every track present at setup for the app's life (same shape as
+  // R3's marker fix, ADU-354). Pruning already drops the track from
+  // marqueeLeases (the map's own key is not the leak); it is the deferred
+  // closure sitting unrun in the scope's release list that must not hold on.
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  let visibilitychange
+  global.document = {
+    addEventListener: (type, fn) => { if (type === 'visibilitychange') visibilitychange = fn },
+    removeEventListener() {},
+    hidden: false,
+  }
+  const { toggles } = await import('../dist/core/toggles.js?t3marqueeretain')
+  let track = { classList: { add() {}, remove() {}, toggle() {}, contains() { return false } }, isConnected: true }
+  const root = {
+    contains: () => true,
+    addEventListener() {},
+    removeEventListener() {},
+    querySelectorAll: (sel) => (sel === '.sv-marquee-track' ? [track] : []),
+  }
+  toggles(root) // never stopped: models <ScrollVarsBoot>'s document scope
+
+  // the track leaves the document some other way (an SPA router), pruned on
+  // the next delivery this fixture can drive without an IntersectionObserver
+  track.isConnected = false
+  visibilitychange()
+
+  let collected = false
+  const registry = new FinalizationRegistry(() => { collected = true })
+  registry.register(track, 'track')
+  track = null
+
+  for (let attempt = 0; attempt < 10 && !collected; attempt++) {
+    await new Promise((resolve) => setImmediate(resolve))
+    global.gc()
+  }
+  assert.ok(collected, 'a direct capture in the never-run release closure would keep the track alive forever')
+  delete global.document
+})
+
 test('toggles failure: setup rollback preserves semantic state and releases the live registry', async () => {
   const env = lifecycleEnv()
   try {

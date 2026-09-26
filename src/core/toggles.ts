@@ -101,6 +101,14 @@ const weakRef: (el: HTMLElement) => Ref =
   typeof WeakRef === 'function' ? (el) => new WeakRef(el) : (el) => ({ deref: () => el })
 const markers = new WeakMap<HTMLElement, { owners: number; ref: Ref; release: () => void; settle: () => void }>()
 
+// Without native inert (Firefox 78-111, Safari 14.1-15.4, inside the README
+// floor), marking a controlled marquee track `sv-ui` turns on ui.css's
+// animated state, which also reveals `.sv-marquee-dup`. That duplicate's own
+// `inert` attribute is inert in name only there, so its links would stay
+// tabbable behind an animated strip (T1, ADU-355). A track never marked
+// `sv-ui` stays in ui.css's static branch instead, dup permanently hidden.
+const inertSupported = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype
+
 // Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
 // is resolved by its NEAREST live scope, the one that would claim its click,
 // so a Marquee's `.sv-marquee-track` never resolves against another
@@ -235,17 +243,25 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
   // included. Registering it LAST left a track added with no cleanup ever
   // wired to remove it. Every scope that registers gets its own decrement:
   // only the one that takes the count to zero actually releases the track.
+  // Through a weakRef, never `track` directly: this closure sits in life's
+  // own release list until the WHOLE scope stops, which the document
+  // instance under <ScrollVarsBoot> never does, so a direct capture would
+  // pin every track present at setup for the app's life (same shape as the
+  // marker fix above).
+  const ref = weakRef(track)
   life.defer(() => {
-    const current = marqueeLeases.get(track)
+    const t = ref.deref()
+    if (!t) return
+    const current = marqueeLeases.get(t)
     // No entry (pruned as detached), or the entry belongs to a LATER
     // generation than the one this release was issued for (the track was
     // pruned and re-registered by someone else since): not ours to touch.
     if (!current || current.gen !== gen) return
-    if (current.count > 1) { marqueeLeases.set(track, { count: current.count - 1, gen }); return }
-    marqueeLeases.delete(track)
-    marqueeObserver?.unobserve(track)
-    marqueeOffscreen.delete(track)
-    track.classList.remove('sv-marquee-offscreen')
+    if (current.count > 1) { marqueeLeases.set(t, { count: current.count - 1, gen }); return }
+    marqueeLeases.delete(t)
+    marqueeObserver?.unobserve(t)
+    marqueeOffscreen.delete(t)
+    t.classList.remove('sv-marquee-offscreen')
     releaseMarqueeSharedIfUnneeded()
   })
   if (already) return
@@ -410,7 +426,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
         }
       }
     })
-    target.classList.add('sv-ui')
+    // A controlled marquee track without inert support never gets sv-ui:
+    // see the inertSupported comment above.
+    if (inertSupported || !target.classList.contains('sv-marquee-track')) {
+      target.classList.add('sv-ui')
+    }
     return !authored
   }
 
