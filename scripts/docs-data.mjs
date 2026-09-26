@@ -116,6 +116,24 @@ export function measureSizes(root) {
   const everythingBuf = entryRaw('index.js')
   const sliderBuf = entryRaw('core/slider.js')
   const driver = gzipSync(driverBuf).length / 1024
+  // react/index.js dynamically imports scrollvars/debug (the `?sv-debug`
+  // dev overlay, ScrollVarsBoot). A plain `bundle: true` build with no
+  // splitting inlines a dynamic import into the same file, so this stamp
+  // used to carry the whole debug module's weight (HUD, markers, lint):
+  // 18.2 KB before PR #88 grew debug, 20.5 after, neither honest since no
+  // consumer bundler behaves that way. `splitting: true` reproduces what a
+  // real bundler (webpack, Vite, Rollup) ships: the entry point in its own
+  // chunk, the dynamic import in a separate one that only loads for a
+  // visitor who actually requests ?sv-debug. Only the entry chunk (named
+  // after the input file; esbuild hashes every OTHER chunk's name) counts
+  // toward the number every page pays.
+  const reactSplit = buildSync({
+    entryPoints: [join(root, 'dist', 'react/index.js')],
+    bundle: true, minify: true, format: 'esm', splitting: true, outdir: join(root, 'dist', '.docs-data-split'),
+    write: false, logLevel: 'silent', external: ['react', 'react-dom'],
+  }).outputFiles
+  const reactEntry = reactSplit.find((f) => f.path.endsWith('/index.js'))
+  if (!reactEntry) throw new Error('docs-data: react split build produced no index.js entry chunk')
   return {
     driver: kb(driver),
     driverMin: kb(driverBuf.length / 1024),
@@ -126,7 +144,7 @@ export function measureSizes(root) {
     canvas: kb(entry('canvas/index.js')),
     everything: kb(gzipSync(everythingBuf).length / 1024),
     everythingMin: kb(everythingBuf.length / 1024),
-    react: kb(entry('react/index.js')),
+    react: kb(gzipSync(reactEntry.contents).length / 1024),
     typical: kb(driver + cssKb('core')),
     stylesAll: kb(gzipSync(readFileSync(join(root, 'styles.css'))).length / 1024),
     css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui', 'scoped'].map((n) => [n, kb(cssKb(n))])),

@@ -48,14 +48,20 @@ export interface LintViolation {
   reason: string
 }
 
-/** customProps: declared-name -> raw value, for one-level indirection
- * (`top: var(--x); --x: var(--sv-t)`). Resolution stops after a few hops to
- * stay cheap and never loop on a self-referencing custom property. */
+/** customProps: declared-name -> every distinct value seen for it, for
+ * one-level indirection (`top: var(--x); --x: var(--sv-t)`). A name can have
+ * more than one candidate value (the caller resolves same-rule declarations
+ * unambiguously; a name declared in more than one rule, without a real
+ * cascade, can only be "one of these"), so every candidate is checked: any
+ * of them reading a --sv-* value is enough to flag the declaration, rather
+ * than picking whichever a plain last-write-wins map happened to keep.
+ * Resolution stops after a few hops to stay cheap and never loop on a
+ * self-referencing custom property. */
 export function lintDeclaration(
   selector: string,
   property: string,
   value: string,
-  customProps: Map<string, string> = new Map()
+  customProps: Map<string, string[]> = new Map()
 ): LintViolation | null {
   if (!NON_COMPOSITABLE.has(property)) return null
   const seen = new Set<string>()
@@ -65,8 +71,8 @@ export function lintDeclaration(
     for (const ref of customRefs(val)) {
       if (seen.has(ref)) continue
       seen.add(ref)
-      const resolved = customProps.get(ref)
-      if (resolved !== undefined && usesSv(resolved, depth + 1)) return true
+      const candidates = customProps.get(ref)
+      if (candidates?.some((candidate) => usesSv(candidate, depth + 1))) return true
     }
     return false
   }
@@ -80,21 +86,40 @@ export function lintDeclaration(
 
 /** Naive selector { decls } extraction for unit tests: not a CSS parser,
  * good enough for fixture text (no nested @media). The runtime scanner in
- * index.ts uses the real CSSOM instead. */
+ * overlay.ts's scanStylesheets() uses the real CSSOM the same way: a name
+ * declared and consumed inside the SAME rule resolves to that rule's own
+ * value regardless of stylesheet order; a name declared elsewhere falls
+ * back to every distinct value seen for it anywhere (ADU review: a global
+ * last-write-wins map missed a same-rule violation depending on the order
+ * two unrelated rules happened to declare the same custom property name). */
 export function scanCssText(cssText: string): LintViolation[] {
   const clean = stripComments(cssText)
-  const customProps = new Map<string, string>()
-  for (const m of clean.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+);/g)) customProps.set(m[1], m[2])
+  const blocks = [...clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map((m) => ({ selector: m[1].trim(), body: m[2] }))
+    .filter((b) => b.selector && !b.selector.startsWith('@'))
+
+  const globalValues = new Map<string, string[]>()
+  const localProps = blocks.map((block) => {
+    const local = new Map<string, string>()
+    for (const m of block.body.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+);/g)) {
+      local.set(m[1], m[2])
+      if (!globalValues.has(m[1])) globalValues.set(m[1], [])
+      globalValues.get(m[1])!.push(m[2])
+    }
+    return local
+  })
+
   const violations: LintViolation[] = []
-  for (const rule of clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selector = rule[1].trim()
-    if (!selector || selector.startsWith('@')) continue
-    for (const decl of rule[2].matchAll(/([\w-]+)\s*:\s*([^;]+);?/g)) {
+  blocks.forEach((block, i) => {
+    const local = localProps[i]
+    const resolver = new Map<string, string[]>()
+    for (const name of globalValues.keys()) resolver.set(name, local.has(name) ? [local.get(name)!] : globalValues.get(name)!)
+    for (const decl of block.body.matchAll(/([\w-]+)\s*:\s*([^;]+);?/g)) {
       const property = decl[1].trim()
       if (property.startsWith('--')) continue
-      const violation = lintDeclaration(selector, property, decl[2].trim(), customProps)
+      const violation = lintDeclaration(block.selector, property, decl[2].trim(), resolver)
       if (violation) violations.push(violation)
     }
-  }
+  })
   return violations
 }

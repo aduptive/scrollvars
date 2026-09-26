@@ -11,9 +11,20 @@ test('lintDeclaration: direct read into a non-compositable property flags', () =
 })
 
 test('lintDeclaration: indirect read through a custom property flags', () => {
-  const props = new Map([['--x', 'calc(var(--sv-view) * 10px)']])
+  const props = new Map([['--x', ['calc(var(--sv-view) * 10px)']]])
   const violation = lintDeclaration('.hero', 'margin-top', 'var(--x)', props)
   assert.ok(violation)
+})
+
+test('lintDeclaration: an ambiguous name (more than one candidate value) flags if any candidate reads --sv-*', () => {
+  const props = new Map([['--x', ['10px', 'var(--sv-t)']]])
+  const violation = lintDeclaration('.hero', 'width', 'var(--x)', props)
+  assert.ok(violation)
+})
+
+test('lintDeclaration: an ambiguous name flags nothing when NO candidate reads --sv-*', () => {
+  const props = new Map([['--x', ['10px', '20px']]])
+  assert.equal(lintDeclaration('.hero', 'width', 'var(--x)', props), null)
 })
 
 test('lintDeclaration: transform is compositable, never flags even with a --sv-* read', () => {
@@ -54,4 +65,24 @@ test('scanCssText: transform stays clean even mixed with a real violation in the
   const violations = scanCssText(css)
   assert.equal(violations.length, 1)
   assert.equal(violations[0].property, 'height')
+})
+
+// Review finding: a custom-property indirection map that is global BY NAME
+// (not scoped to the rule that declares it) missed .a's violation, or
+// falsely resolved it to .b's value, depending on which rule the scanner
+// happened to visit last. Proved in both source orders.
+test('scanCssText: a same-rule custom property resolves to ITS OWN value, not another rule\'s later redeclaration', () => {
+  const css = '.a { --x: var(--sv-t); width: var(--x); } .b { --x: 10px; }'
+  const violations = scanCssText(css)
+  assert.equal(violations.length, 1, JSON.stringify(violations))
+  assert.equal(violations[0].selector, '.a')
+  assert.equal(violations[0].property, 'width')
+})
+
+test('scanCssText: the same case with the unrelated rule declared FIRST still resolves .a to its own value', () => {
+  const css = '.b { --x: 10px; } .a { --x: var(--sv-t); width: var(--x); }'
+  const violations = scanCssText(css)
+  assert.equal(violations.length, 1, JSON.stringify(violations))
+  assert.equal(violations[0].selector, '.a')
+  assert.equal(violations[0].property, 'width')
 })

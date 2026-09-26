@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { pinLines, travelLines } from '../dist/debug/markers.js'
+import { pinLines, readBand, travelLines } from '../dist/debug/markers.js'
+
+test('readBand: an explicit data-sv-enter="0" is a valid band, not "unset" (0 is falsy but finite)', () => {
+  assert.equal(readBand('0', 0.75), 0)
+  assert.equal(readBand('0.25', 0.75), 0.25)
+})
+
+test('readBand: an unset or unparsable attribute falls back', () => {
+  assert.equal(readBand(undefined, 0.75), 0.75)
+  assert.equal(readBand('', 0.75), 0.75)
+  assert.equal(readBand('nope', 0.75), 0.75)
+})
 
 test('travelLines: enter line sits above the element by vp * enter, exit line is the element bottom', () => {
   const geo = { top: 100, bottom: 300 }

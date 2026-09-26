@@ -4,7 +4,7 @@
  * geometry (markers.ts) and matcher (lint.ts) stay unit-testable without a
  * browser.
  */
-import { pinLines, travelLines } from './markers.js'
+import { pinLines, readBand, travelLines } from './markers.js'
 import { lintDeclaration, type LintViolation } from './lint.js'
 
 function elName(el: Element): string {
@@ -50,8 +50,8 @@ export function drawMarkers(): () => void {
     const scrollY = window.scrollY
     document.querySelectorAll<HTMLElement>('.sv').forEach((el) => {
       const rect = el.getBoundingClientRect()
-      const enter = parseFloat(el.dataset.svEnter || '') || 0.75
-      const exit = parseFloat(el.dataset.svExit || '') || 0.25
+      const enter = readBand(el.dataset.svEnter, 0.75)
+      const exit = readBand(el.dataset.svExit, 0.25)
       const { enter: enterY, exit: exitY } = travelLines(rect, scrollY, vp, enter, exit)
       const label = elName(el)
       layer.append(line(enterY, `${label} view 0`, '#6ee7a0'), line(exitY, `${label} view 1`, '#f0a35a'))
@@ -111,28 +111,42 @@ export function scanStylesheets(): { violations: LintViolation[]; skipped: numbe
   let skipped = 0
   for (const sheet of Array.from(document.styleSheets)) collectRules(sheet, styleRules, () => skipped++)
 
-  const customProps = new Map<string, string>()
-  for (const rule of styleRules) {
+  // A name declared and consumed inside the SAME rule resolves to that
+  // rule's own value, whatever order the stylesheet lists its rules in; a
+  // name declared elsewhere falls back to every distinct value seen for it
+  // anywhere (a global last-write-wins map missed a same-rule violation
+  // depending on rule order, review finding).
+  const globalValues = new Map<string, string[]>()
+  const localProps = styleRules.map((rule) => {
+    const local = new Map<string, string>()
     for (let i = 0; i < rule.style.length; i++) {
       const prop = rule.style[i]
-      if (prop.startsWith('--')) customProps.set(prop, rule.style.getPropertyValue(prop))
+      if (!prop.startsWith('--')) continue
+      const value = rule.style.getPropertyValue(prop)
+      local.set(prop, value)
+      if (!globalValues.has(prop)) globalValues.set(prop, [])
+      globalValues.get(prop)!.push(value)
     }
-  }
+    return local
+  })
 
   const seen = new Set<string>()
   const violations: LintViolation[] = []
-  for (const rule of styleRules) {
-    for (let i = 0; i < rule.style.length; i++) {
-      const prop = rule.style[i]
+  styleRules.forEach((rule, i) => {
+    const local = localProps[i]
+    const resolver = new Map<string, string[]>()
+    for (const name of globalValues.keys()) resolver.set(name, local.has(name) ? [local.get(name)!] : globalValues.get(name)!)
+    for (let j = 0; j < rule.style.length; j++) {
+      const prop = rule.style[j]
       if (prop.startsWith('--')) continue
-      const violation = lintDeclaration(rule.selectorText, prop, rule.style.getPropertyValue(prop), customProps)
+      const violation = lintDeclaration(rule.selectorText, prop, rule.style.getPropertyValue(prop), resolver)
       if (!violation) continue
       const key = `${violation.selector}|${violation.property}`
       if (seen.has(key)) continue
       seen.add(key)
       violations.push(violation)
     }
-  }
+  })
   return { violations, skipped }
 }
 

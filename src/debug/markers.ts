@@ -20,6 +20,15 @@ export interface TravelLines {
   exit: number
 }
 
+// `data-sv-enter="0"` and `data-sv-exit="0"` are valid bands (scan.ts's own
+// band() accepts 0..1), so `parseFloat(...) || fallback` is wrong: 0 is
+// falsy and would silently fall back to the default line. Number.isFinite
+// only rejects an unset/unparsable attribute, never a real 0.
+export function readBand(raw: string | undefined, fallback: number): number {
+  const value = parseFloat(raw ?? '')
+  return Number.isFinite(value) ? value : fallback
+}
+
 export function travelLines(geo: TravelGeo, scrollY: number, vp: number, enter = 0.75, exit = 0.25): TravelLines {
   void exit // kept for API symmetry with the driver's computeView signature
   const pageTop = geo.top + scrollY
