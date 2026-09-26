@@ -137,7 +137,7 @@ function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | nul
 let marqueeObserver: IntersectionObserver | undefined
 const marqueeOffscreen = new WeakMap<HTMLElement, boolean>()
 const marqueeInstances = new Set<HTMLElement>()
-let visibilityBound = false
+let onVisibility: (() => void) | undefined
 
 function applyMarqueeState(track: HTMLElement) {
   // classList.toggle's second argument defaults on `undefined`, not on a
@@ -149,9 +149,23 @@ function applyMarqueeState(track: HTMLElement) {
 }
 
 function bindMarqueeVisibility() {
-  if (visibilityBound || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
-  visibilityBound = true
-  document.addEventListener('visibilitychange', () => marqueeInstances.forEach(applyMarqueeState))
+  if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
+  onVisibility = () => marqueeInstances.forEach(applyMarqueeState)
+  document.addEventListener('visibilitychange', onVisibility)
+}
+
+// The last marquee stopping releases the shared observer and listener, the
+// same "nothing left to watch" release driver.ts's ResizeObserver singleton
+// does: a page that mounts and fully unmounts its last Marquee leaves no
+// resource behind (packed-acceptance's remount baseline check, ADU debug).
+function releaseMarqueeSharedIfUnneeded() {
+  if (marqueeInstances.size) return
+  marqueeObserver?.disconnect()
+  marqueeObserver = undefined
+  if (onVisibility && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+    document.removeEventListener('visibilitychange', onVisibility)
+  }
+  onVisibility = undefined
 }
 
 function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
@@ -178,6 +192,7 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
     marqueeInstances.delete(track)
     marqueeOffscreen.delete(track)
     track.classList.remove('sv-marquee-offscreen')
+    releaseMarqueeSharedIfUnneeded()
   })
 }
 

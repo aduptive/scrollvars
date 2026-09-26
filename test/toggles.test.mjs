@@ -38,6 +38,41 @@ test('toggles: a marquee track pauses off screen or with the tab hidden, indepen
   } finally { env.restore() }
 })
 
+test('toggles: stopping the last marquee releases the shared observer and visibilitychange listener (packed-acceptance remount baseline)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marquerelease')
+    const before = env.baseline()
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    root.append(track)
+    const stop = toggles(root)
+    const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+    assert.ok(io)
+    assert.ok(env.baseline()[0] > before[0], 'a document visibilitychange listener is registered')
+    assert.ok(env.baseline()[1] > before[1], 'the shared IntersectionObserver is tracked as live')
+    stop()
+    assert.deepEqual(env.baseline(), before, 'nothing left behind once the last marquee stops')
+  } finally { env.restore() }
+})
+
+test('toggles: a second marquee mounted after the first releases keeps its own fresh observer', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marquecycle')
+    const before = env.baseline()
+    for (let i = 0; i < 3; i++) {
+      const root = env.element(), track = env.element()
+      track.classList.add('sv-marquee-track')
+      root.append(track)
+      const stop = toggles(root)
+      assert.ok(track.classes.has('sv-marquee-track'))
+      stop()
+      assert.deepEqual(env.baseline(), before, `cycle ${i}: returns to baseline`)
+    }
+  } finally { env.restore() }
+})
+
 test('toggles: a scope with no marquee track never creates an IntersectionObserver', async () => {
   const env = lifecycleEnv()
   try {
