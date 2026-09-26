@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.6 KB, full core incl. the slider 12.0 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.5 KB, full core incl. the slider 12.1 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
 
 ## Why
 
@@ -166,8 +166,8 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.0 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 17.6 KB |
+| everything in `scrollvars` (the core entry) | 12.1 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 17.8 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -279,8 +279,9 @@ Use the notification to clear accessibility restrictions on failure or release.
 Keep Section-specific fit and computed CSS checks before hiding inactive media.
 
 Motion reversal does not change an active lease's status: reducing motion
-mid-flight restores static layouts and reachable media, while pin/travel/scene
-clocks still scrub. Returning to normal motion can resume the layout if it fits.
+mid-flight restores static layouts and reachable media; the travel clock keeps
+scrubbing while pin and scene finish at once as the helper-pinned wrapper
+returns to flow. Returning to normal motion can resume the layout if it fits.
 An overflow fallback marked `data-sv-flow` stays latched even if content shrinks
 or motion reverses. Call `track()` again (or remount the React tracker) to retry
 after fixing a failure or to re-evaluate latched flow. The three-second Boot
@@ -680,7 +681,7 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) · `sv-range`/`sv-acts` need 16.4+ |
 | Anything older, or no JS | content visible, static | Below the transform floor without `compat()`, stages return to flow, curtains hide and rails wrap. With `compat()`, curtains and rails keep their fallback animation; stages containing static decks return to flow. |
 
-The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrances show their final state and pinned stages return to flow.
+The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned stage returns to flow, so its pin and scene clocks finish at once and every scene renders. Entrances show their final state.
 
 Below the transform floor, with JS still running, `styles/pin.css` releases
 stages, hides decorative curtains and wraps rails when `compat()` is absent.

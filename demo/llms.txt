@@ -134,7 +134,10 @@ tied to `--sv-view` (flat inside the live band), no transition (transitions on c
 ```
 The container is N viewports tall by default (one per scene); a string
 `pin` (`pin="320vh"`) overrides that and wins over `height` too, matching
-`<Track pin>`. Content is `position: sticky`. For pure-CSS
+`<Track pin>`. Content is `position: sticky`. Under reduced motion the
+render function is called once per scene and stacked instead of once for
+the current scene, so every scene stays reachable; `useScenes`/`<Scenes>`
+also hand back a `reduced` flag. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
 `sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides only the starting position, while the endpoint uses stage overflow: enters from offscreen right and still moves
 when the track fits the viewport:
@@ -367,7 +370,7 @@ an explicit Section remount. Replacement content keeps the candidate constrained
 until the driver records overflow; shortening content does not clear a flow latch.
 Inactive shots become inert only while
 that layout is active; static shots stay accessible after failed boot, watchdog
-release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, the travel/pin/scene clocks keep scrubbing (scroll-linked, not motion), entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned section (`pin: 'Nvh'`) returns to flow, so its pin and scene clocks finish at once and every scene renders, reachable, instead of jumping past the ones in between. Entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. StatsCountup shows its final numbers before activation under
 both reduced-motion controls; click-driven `sv-acts` keeps its open/closed state.
 If a client contractually requires legacy browsers:
@@ -505,7 +508,7 @@ that the content fits. StickySteps combines status with its fit and computed
 layout checks, then clears `inert` and `aria-hidden` on failure or release.
 Reducing motion mid-flight leaves the lease active but restores static,
 reachable media; returning to normal motion can resume a working crossfade.
-The pin/travel/scene clocks keep scrubbing. An overflow `data-sv-flow` latch
+The travel clock keeps scrubbing; pin and scene finish at once as the helper-pinned wrapper returns to flow. An overflow `data-sv-flow` latch
 survives both shrinking content and motion reversal until an explicit retrack.
 Call `track()` again (or remount the React tracker) after fixing a recoverable
 failure. The three-second Boot watchdog is terminal for the page session:

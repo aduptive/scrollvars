@@ -11,6 +11,31 @@
 
 ### Fixed
 
+- Under reduced motion, a helper-pinned `<Scenes count={4}>` collapsed its
+  pin span to about one pixel, so `--sv-scene`/`onScene` jumped from 0 to
+  N-1 in one pixel and the guide's own example (`Slide {scene + 1}`) never
+  rendered the middle scenes. `useScenes`/`<Scenes>` now hand back a
+  `reduced` flag, and `<Scenes>` calls its render function once per scene
+  and stacks the result under reduced motion, so every scene stays
+  reachable. `ScenesState` gained `reduced` (minor, additive). Four doc
+  sentences that claimed the pin/scene clocks keep scrubbing under reduced
+  motion now say a helper-pinned section returns to flow and its pin/scene
+  clocks finish at once, matching what the driver already did.
+- Marquee's offscreen watch had first-registrant-owns semantics: a second
+  `toggles()` scope registering the same `.sv-marquee-track` (the common
+  `<ScrollVarsBoot>` + `<Marquee>` shape) never got its own release wired,
+  so stopping the scope that registered first stranded the track observed
+  forever (a leak on every client-side navigation away from its page), and
+  stopping the OTHER scope stripped the offscreen class and observer from
+  a track the first scope still needed. Fixed with a per-track lease
+  count: unobserve, delete and remove the class only when the last lease
+  goes, and a track that has left the document is pruned (unobserved, its
+  lease dropped) on its next IntersectionObserver delivery or visibility
+  pass, so a document-wide scope that never stops cannot keep a removed
+  track leased forever. A lease also carries a generation number, so a
+  track that is detached, pruned and later reattached under a new scope
+  cannot have its fresh lease released by a stale stop() from before
+  the prune.
 - Emptying a populated slider (every slide removed) left `state().active`
   pointing at a detached node with `count: 0`, so repopulating at the same
   index fired no `onSlide`. An empty list now resets `active` to `-1` and
