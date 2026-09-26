@@ -38,6 +38,11 @@ jobs:
         with: { node-version: 20, cache: npm }
       - run: npm ci
       - run: npm test          # pretest builds the dist first
+      # Sequential, its own step: packWorktree() calls `npm pack`, which npm
+      # 10.8 runs `prepare` for regardless of --ignore-scripts, rewriting
+      # dist. `npm test` above runs test files in parallel and imports dist,
+      # so packing there races the rebuild (ADU-351, run 36233354971).
+      - run: npm run test:packed-unit
 
   # Proves the React layer (and every `npx scrollvars add` fixture) on React
   # 18 too, not only the React 19 the root installs. `npm run test:react18`

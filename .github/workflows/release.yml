@@ -20,6 +20,7 @@ jobs:
         with: { node-version: 20, cache: npm, registry-url: 'https://registry.npmjs.org' }
       - run: npm ci
       - run: npm test                    # pretest builds, then the unit suite
+      - run: npm run test:packed-unit    # its own step: npm pack rebuilds dist, would race npm test's parallel files
       - run: npm run demo:sync
       - name: generated docs and pages are committed, not hand-patched
         run: git diff --exit-code -- README.md AGENTS.md demo/llms.txt demo/bench/index.html demo/bench/scrollvars.html demo/fx demo/docs styles.css src/compat/index.ts demo/index.html docs/integration.md docs/guide.md demo/bench/scoped.css skills/scrollvars/SKILL.md
