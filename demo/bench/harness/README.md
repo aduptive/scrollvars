@@ -1867,7 +1867,10 @@ percentage of frames over 1.5x the measured vsync, Long Animation Frames
 (Chrome only: count, total blocking time, script-attributed time; other
 engines report `n/a`, not zero), and an untimed animated check per page (a
 frozen page must not post a good frame-interval number). `?frames=60&reps=1`
-on the runner URL gives a fast dry run. A dropped/backgrounded tab restarts
+on the runner URL gives a fast dry run, and `?autorun=1` starts a run
+without a click (`open -a Safari 'http://localhost:8872/bench/lab/?autorun=1'`
+from the Mac, one browser at a time so they do not compete for the CPU).
+A dropped/backgrounded tab restarts
 whichever page it was on, since a hidden tab gets no frames and its timings
 are meaningless.
 
