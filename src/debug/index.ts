@@ -5,15 +5,28 @@
  *
  *   import('scrollvars/debug').then((m) => m.debug())
  */
+import { mountHud } from './hud.js'
+import { drawMarkers, runLint } from './overlay.js'
+
 const VARS = ['--sv-view', '--sv-t', '--sv-pin', '--sv-scene', '--sv-r'] as const
 
 export interface DebugOptions {
   /** Also outline every tracked element on the page. Default true. */
   outlines?: boolean
+  /** Performance HUD: FPS, dropped/late frames, worst frame, long-animation-frame blocking. Default true. */
+  hud?: boolean
+  /** ScrollTrigger-style markers for every tracked element's travel (and pin stretch). Default false. */
+  markers?: boolean
+  /** Scan same-origin stylesheets for --sv-* reads in non-compositable properties. Default true. */
+  lint?: boolean
 }
 
-export function debug({ outlines = true }: DebugOptions = {}): () => void {
+export function debug({ outlines = true, hud = true, markers = false, lint = true }: DebugOptions = {}): () => void {
   if (typeof window === 'undefined') return () => {}
+  const extras: Array<() => void> = []
+  if (hud) extras.push(mountHud())
+  if (markers) extras.push(drawMarkers())
+  if (lint) extras.push(runLint())
 
   const panel = document.createElement('div')
   panel.style.cssText =
@@ -88,5 +101,6 @@ export function debug({ outlines = true }: DebugOptions = {}): () => void {
     cancelAnimationFrame(raf)
     panel.remove()
     style.remove()
+    extras.forEach((stop) => stop())
   }
 }

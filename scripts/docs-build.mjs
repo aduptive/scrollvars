@@ -207,7 +207,10 @@ mapping becomes pure CSS.</p>
 <code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
 transform-fallback CSS.<br>
 <code>scrollvars/debug</code>. Dev overlay: <code>debug()</code> lists every tracked element with its live
-variables, outlines it, click scrolls to it. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
+variables, outlines it, click scrolls to it, plus a perf HUD (FPS, dropped/late frames, worst frame,
+long-animation-frame blocking where Chrome supports it), <code>{ markers: true }</code> for ScrollTrigger-style
+start/end lines, and a perf lint (default on) flagging a <code>--sv-*</code> read landing in a non-compositable
+property. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</code> mounts it.</p>
 
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
