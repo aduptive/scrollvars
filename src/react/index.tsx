@@ -575,14 +575,25 @@ export const Scenes: React.FC<ScenesProps> = ({
     >
       <div className="sv-stage">
         {active
-          ? children({ scene, goTo, reduced, active })
+          // The current scene always sits under the SAME key, "current", in
+          // both branches below: an active->stacked switch (attach, onFlow,
+          // reduced motion, a failed/released tracker) or the reverse would
+          // otherwise swap a keyed Fragment for a bare (or differently
+          // keyed) child at that DOM position, and React unmounts the whole
+          // subtree to remount it, destroying video/input/widget state on
+          // every page load (active starts false and flips true on attach).
+          // A single-item array here, not the bare child, keeps this an
+          // array-to-array reconciliation both ways.
+          ? [<React.Fragment key="current">{children({ scene, goTo, reduced, active })}</React.Fragment>]
           // Not active (server render, no JS yet, a failed attach, flow, or
           // reduced motion): the scene index alone is not trustworthy, so
           // every scene renders, stacked, instead of only the one the
           // scroll clock would have picked. Keeps content reachable in
           // every fallback state, not only under reduced motion.
           : Array.from({ length: count }, (_, i) => (
-              <React.Fragment key={i}>{children({ scene: i, goTo, reduced, active })}</React.Fragment>
+              <React.Fragment key={i === scene ? 'current' : i}>
+                {children({ scene: i, goTo, reduced, active })}
+              </React.Fragment>
             ))}
       </div>
     </Tag>

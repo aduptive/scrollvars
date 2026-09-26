@@ -545,13 +545,18 @@ export function Story() {
   const { ref, scene, active } = useScenes<HTMLDivElement>(4, { pin: '400vh' })
   // active is false on the server, without JS, after a failed attach, after
   // flow, or under reduced motion: the scene index alone is not reachable
-  // then, so render every scene (`<Scenes>` does the same internally).
+  // then, so render every scene (`<Scenes>` does the same internally). The
+  // current scene keeps the SAME key, "current", in both branches: an
+  // active/stacked switch would otherwise remount its subtree, dropping any
+  // state (a running video, a focused input) it holds.
   return (
     <div ref={ref}>
       <div className="sv-stage">
         {active
-          ? <p>Scene {scene + 1}</p>
-          : Array.from({ length: 4 }, (_, i) => <p key={i}>Scene {i + 1}</p>)}
+          ? [<p key="current">Scene {scene + 1}</p>]
+          : Array.from({ length: 4 }, (_, i) => (
+              <p key={i === scene ? 'current' : i}>Scene {i + 1}</p>
+            ))}
       </div>
     </div>
   )

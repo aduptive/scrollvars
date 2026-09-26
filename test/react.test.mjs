@@ -2200,3 +2200,122 @@ test('react: useScenes/Scenes render every scene again once the pinned stage fal
   }
 })
 
+test('react: Scenes keeps the current scene mounted across every active/stacked switch, no destructive remount (verifier round 2)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+  const { refresh } = await import('../dist/core/driver.js')
+
+  const create = document.createElement
+  // ownedStage()/entry.fit walk the real subtree with querySelectorAll('.sv-stage'),
+  // an API this fake DOM otherwise has no engine for: same narrow, real
+  // traversal the fit-to-flow test above installs.
+  document.createElement = (tag) => {
+    const n = create(tag)
+    n.querySelectorAll = (selector) => {
+      if (selector !== '.sv-stage') return []
+      const found = []
+      const walk = (node) => {
+        for (const c of node.childNodes || []) {
+          if (c.classes?.has('sv-stage')) found.push(c)
+          walk(c)
+        }
+      }
+      walk(n)
+      return found
+    }
+    return n
+  }
+
+  let mounts
+  function Probe({ index }) {
+    React.useEffect(() => {
+      mounts[index] = (mounts[index] || 0) + 1
+    }, [])
+    return React.createElement('p', null, 'Slide ' + (index + 1))
+  }
+
+  try {
+    // 1) a successful attach: not active (stacked, every scene mounts once),
+    // then active (the current scene, index 0 on this zero-geometry fake
+    // DOM, must NOT remount: same key, "current", in both branches)
+    mounts = {}
+    const container1 = global.document.createElement('div')
+    const root1 = createRoot(container1)
+    await act(async () => {
+      root1.render(React.createElement(Scenes, { count: 4 }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'not yet active: every scene mounts once, stacked')
+    await act(async () => { flushFrames() })
+    assert.equal(mounts[0], 1, 'the current scene does not remount when the tracker attaches and switches to active')
+    await act(async () => { root1.unmount() })
+
+    // 2) a failed attach never leaves the stacked state, so the current
+    // scene's single mount is the only one there ever is
+    mounts = {}
+    global.window.__scrollvars = 'released'
+    const container2 = global.document.createElement('div')
+    const root2 = createRoot(container2)
+    await act(async () => {
+      root2.render(React.createElement(Scenes, { count: 4 }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    delete global.window.__scrollvars
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'a failed attach stays stacked, no remount beyond the first render')
+    await act(async () => { root2.unmount() })
+
+    // 3) a reduced-motion round trip: active -> reduced (stacked) -> not
+    // reduced (active again). Each switch must reuse the "current" subtree.
+    mounts = {}
+    const realMatchMedia = global.window.matchMedia
+    let mediaChange
+    global.window.matchMedia = () => ({
+      matches: false,
+      addEventListener: (_, fn) => { mediaChange = fn },
+      removeEventListener: () => {},
+    })
+    const container3 = global.document.createElement('div')
+    const root3 = createRoot(container3)
+    await act(async () => {
+      root3.render(React.createElement(Scenes, { count: 4 }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    await act(async () => { flushFrames() })
+    assert.equal(mounts[0], 1, 'active after attach')
+    await act(async () => { mediaChange({ matches: true }) })
+    assert.equal(mounts[0], 1, 'switching to reduced motion (active -> stacked) does not remount the current scene')
+    await act(async () => { mediaChange({ matches: false }) })
+    assert.equal(mounts[0], 1, 'leaving reduced motion (stacked -> active) does not remount the current scene either')
+    global.window.matchMedia = realMatchMedia
+    await act(async () => { root3.unmount() })
+
+    // 4) an onFlow round trip: active -> flow (stacked). Real geometry, no
+    // stub shortcut: same fit-to-flow mechanism the test above proves.
+    mounts = {}
+    const container4 = global.document.createElement('div')
+    const root4 = createRoot(container4)
+    await act(async () => {
+      root4.render(
+        React.createElement(Scenes, { count: 4, pin: '300vh' }, ({ scene }) =>
+          React.createElement('div', { 'data-sv-fit': '' }, React.createElement(Probe, { index: scene }))
+        )
+      )
+    })
+    const shell = container4.firstChild
+    const stage = shell.children.find((c) => c.classes.has('sv-stage'))
+    let fit = stage.children.find((c) => c.hasAttribute('data-sv-fit'))
+    fit.offsetHeight = fit.scrollHeight = 100
+    fit.parentElement = { clientHeight: 500 }
+    await act(async () => { flushFrames() })
+    assert.equal(mounts[0], 1, 'active, fits inside its stage: mounted once')
+    fit = stage.children.find((c) => c.hasAttribute('data-sv-fit'))
+    fit.offsetHeight = fit.scrollHeight = 900
+    fit.parentElement = { clientHeight: 100 }
+    await act(async () => { refresh(); flushFrames() })
+    assert.equal(mounts[0], 1, 'a fit-to-flow release (active -> stacked) does not remount the current scene')
+    await act(async () => { root4.unmount() })
+  } finally {
+    document.createElement = create
+  }
+})
+
