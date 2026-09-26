@@ -139,8 +139,23 @@ const marqueeOffscreen = new WeakMap<HTMLElement, boolean>()
 // A per-track LEASE COUNT, not membership: two scopes can register the same
 // track (Boot's document-wide scan plus a Marquee's own toggles(node)), and
 // releasing one must not strip the class or the observer from a track the
-// other scope still owns (ADU-354 blocker 2). Only the last release does.
-const marqueeLeases = new Map<HTMLElement, number>()
+// other scope still owns (ADU-354 blocker 2). `gen` is the generation this
+// lease belongs to: a track that gets pruned (detached) and later
+// re-registered starts a NEW generation, so a stop() from a scope that
+// registered under the OLD generation, running after the reattach, finds
+// its own generation stale and does nothing to the fresh lease (a lease is
+// keyed by node identity alone, and a detached-then-reattached node keeps
+// the same identity, so without this a late release from before the prune
+// would decrement or delete a registration it never owned).
+const marqueeLeases = new Map<HTMLElement, { count: number; gen: number }>()
+// Never reset by a prune: only ever incremented, so a generation number is
+// never reused for the same track.
+const marqueeGeneration = new WeakMap<HTMLElement, number>()
+function nextMarqueeGeneration(track: HTMLElement): number {
+  const gen = (marqueeGeneration.get(track) ?? 0) + 1
+  marqueeGeneration.set(track, gen)
+  return gen
+}
 let onVisibility: (() => void) | undefined
 
 // A track that left the document (an SPA router replacing DOM outside
@@ -154,6 +169,10 @@ function pruneDetachedMarquee(track: HTMLElement): boolean {
   marqueeLeases.delete(track)
   marqueeObserver?.unobserve(track)
   marqueeOffscreen.delete(track)
+  // The same release the normal (last-lease-goes) path performs: a pruned
+  // track must not keep announcing itself paused-offscreen if it is later
+  // reattached and re-observed under a fresh lease.
+  track.classList.remove('sv-marquee-offscreen')
   releaseMarqueeSharedIfUnneeded()
   return true
 }
@@ -170,7 +189,7 @@ function applyMarqueeState(track: HTMLElement) {
 
 function bindMarqueeVisibility() {
   if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
-  onVisibility = () => marqueeLeases.forEach((_count, track) => applyMarqueeState(track))
+  onVisibility = () => marqueeLeases.forEach((_lease, track) => applyMarqueeState(track))
   document.addEventListener('visibilitychange', onVisibility)
 }
 
@@ -189,8 +208,13 @@ function releaseMarqueeSharedIfUnneeded() {
 }
 
 function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
-  const already = marqueeLeases.has(track)
-  marqueeLeases.set(track, (marqueeLeases.get(track) ?? 0) + 1)
+  const existing = marqueeLeases.get(track)
+  const already = !!existing
+  // A registration reuses the CURRENT generation if one is already live for
+  // this track; otherwise it starts one (a fresh track, or one that was
+  // pruned and is only now being seen again).
+  const gen = existing ? existing.gen : nextMarqueeGeneration(track)
+  marqueeLeases.set(track, { count: (existing?.count ?? 0) + 1, gen })
   // Registered before any of the steps below run: a throw partway through
   // (the IntersectionObserver constructor, bindMarqueeVisibility's
   // addEventListener, an overridden classList) is caught by toggles()'s
@@ -199,9 +223,12 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
   // wired to remove it. Every scope that registers gets its own decrement:
   // only the one that takes the count to zero actually releases the track.
   life.defer(() => {
-    const count = marqueeLeases.get(track)
-    if (count === undefined) return // already pruned as detached
-    if (count > 1) { marqueeLeases.set(track, count - 1); return }
+    const current = marqueeLeases.get(track)
+    // No entry (pruned as detached), or the entry belongs to a LATER
+    // generation than the one this release was issued for (the track was
+    // pruned and re-registered by someone else since): not ours to touch.
+    if (!current || current.gen !== gen) return
+    if (current.count > 1) { marqueeLeases.set(track, { count: current.count - 1, gen }); return }
     marqueeLeases.delete(track)
     marqueeObserver?.unobserve(track)
     marqueeOffscreen.delete(track)

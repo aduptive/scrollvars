@@ -150,6 +150,49 @@ test('toggles: a track removed from the document is pruned on its next Intersect
   } finally { env.restore() }
 })
 
+test('toggles: a track detached, pruned and reattached under a NEW scope is not disturbed by the OLD scope stopping later (verifier round 1)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marquegen')
+    const oldRoot = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    oldRoot.append(track)
+    const stopOld = toggles(oldRoot) // registers the track: lease generation 1
+    const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track))
+
+    // the track leaves the document (an SPA router wiping DOM), gets pruned
+    // on the next IO delivery, exactly like the test above
+    track.isConnected = false
+    io.cb([{ target: track, isIntersecting: false }])
+    assert.ok(!io.targets.has(track), 'pruned while detached')
+
+    // it comes back (a client-side navigation re-renders the same node, or
+    // a real DOM element is reused): a NEW scope registers it, generation 2
+    track.isConnected = true
+    const newRoot = env.element()
+    newRoot.append(track)
+    const stopNew = toggles(newRoot)
+    const io2 = [...env.deliveries].filter(d => d.kind === 'IntersectionObserver').pop()
+    assert.ok(io2.targets.has(track), 'the fresh registration observes the track again')
+
+    // the OLD scope's stop() finally runs, well after the reattach: its
+    // release belongs to generation 1 and must not touch generation 2's lease
+    stopOld()
+    assert.ok(io2.targets.has(track), 'the new registration keeps its lease: the stale release from before the prune is a no-op')
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'no offscreen class regression from the stale release')
+
+    // the new (and only remaining) scope's own state still works correctly
+    io2.cb([{ target: track, isIntersecting: false }])
+    assert.ok(track.classes.has('sv-marquee-offscreen'), 'the new lease still drives the offscreen class correctly')
+    io2.cb([{ target: track, isIntersecting: true }])
+    assert.ok(!track.classes.has('sv-marquee-offscreen'))
+
+    stopNew()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0], 'stopping the real owner releases everything')
+  } finally { env.restore() }
+})
+
 test('toggles: a scope with no marquee track never creates an IntersectionObserver', async () => {
   const env = lifecycleEnv()
   try {
