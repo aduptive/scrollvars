@@ -40,6 +40,51 @@ test('hud: calibrates once from a quiet opening window, then judges later deltas
   }
 })
 
+test('hud: a gap across a visibilitychange resets calibration instead of locking onto it (verifier round 1)', async () => {
+  const queue = []
+  const saved = { raf: global.requestAnimationFrame, caf: global.cancelAnimationFrame, document: global.document }
+  global.requestAnimationFrame = (fn) => { queue.push(fn); return queue.length }
+  global.cancelAnimationFrame = () => {}
+  let visibilityHandler
+  global.document = {
+    hidden: false,
+    addEventListener: (type, fn) => { if (type === 'visibilitychange') visibilityHandler = fn },
+    removeEventListener: () => {},
+  }
+  try {
+    const { trackFrames } = await import('../dist/debug/hud.js?gapreset')
+    const updates = []
+    const stop = trackFrames((stats) => updates.push(stats))
+    let t = 0
+    const tick = () => { const fn = queue.shift(); if (!fn) throw new Error('no queued frame at t=' + t); fn(t) }
+
+    // two ordinary 16.7ms frames
+    t += 16.7; tick()
+    t += 16.7; tick()
+
+    // the tab goes to the background, then a 10s gap: one tick delivers the
+    // gap-spanning delta itself (marked via the visibilitychange flag)
+    global.document.hidden = true
+    visibilityHandler()
+    global.document.hidden = false
+    t += 10000; tick()
+
+    // one ordinary frame after the gap: the 10s jump evicts the pre-gap
+    // sample from the 5s window, so a second post-gap frame is what
+    // actually crosses the "at least 2 samples" bar for an update to fire
+    t += 16.7; tick()
+    t += 16.7; tick()
+
+    assert.ok(updates.length > 0, 'an update fired')
+    assert.equal(updates.at(-1).calibrated, false, 'still uncalibrated: the gap must not let a single post-gap delta pass for the whole calibration window')
+    stop()
+  } finally {
+    global.requestAnimationFrame = saved.raf
+    global.cancelAnimationFrame = saved.caf
+    global.document = saved.document
+  }
+})
+
 test('hud: reports calibrated: false before the opening window completes', async () => {
   const queue = []
   const saved = { raf: global.requestAnimationFrame, caf: global.cancelAnimationFrame }

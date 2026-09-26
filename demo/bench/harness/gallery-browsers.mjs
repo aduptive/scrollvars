@@ -832,19 +832,28 @@ try {
       // fractional calc() (TimelineScrub's --tl-from + --sv-pin * --tl-span,
       // StatsCountup's --sv-act * --sv-max). CSS Values 4 rounds a calc()
       // number used in an <integer> context, so this should hold in every
-      // engine; settled here rather than assumed.
+      // engine; settled here rather than assumed. Read the resolved
+      // `counter-reset` value directly (like the passing stats-countup
+      // check just above already does), never the pseudo-element's
+      // `content`: `content: counter(x)` reads back as the literal function
+      // text, unresolved, in every engine tested, so a check against it
+      // would silently pass on "none" or on a totally broken page too
+      // (verifier round 1, item 4).
+      const integerCounterReset = (counterReset, name) => (new RegExp(`${name} (\\S+)`).exec(counterReset) ?? [])[1] ?? null
       await page.goto(base + 'timeline-scrub.html')
       await pin(page, '.sv-timeline', 0.5)
-      const yearDigits = await page.locator('.tl-year .tl-count').evaluate(el => getComputedStyle(el, '::after').content)
-      assert.doesNotMatch(yearDigits, /\d+\.\d+/, `${name} timeline-scrub: fractional counter-reset did not round to an integer, content=${yearDigits}`)
+      const yearReset = await page.locator('.tl-year').first().evaluate(el => getComputedStyle(el).counterReset)
+      const yearNumber = integerCounterReset(yearReset, 'tl-year')
+      assert.match(yearNumber ?? '', /^\d+$/, `${name} timeline-scrub: counter-reset did not resolve to a plain integer, counterReset=${yearReset}`)
       await page.goto(base + 'stats-countup.html')
       await page.locator('.sv-stats').evaluate(el => el.scrollIntoView({ block: 'center' }))
       await page.waitForFunction(() => getComputedStyle(document.querySelector('.stat')).counterReset === 'n 248')
       // --sv-act is cascaded from the tracker's own class, not inline; an
       // inline override on the .stat itself outranks it at that one element
       await page.locator('.stat').first().evaluate(el => el.style.setProperty('--sv-act', '0.5'))
-      const statDigits = await page.locator('.stat .count').first().evaluate(el => getComputedStyle(el, '::after').content)
-      assert.doesNotMatch(statDigits, /\d+\.\d+/, `${name} stats-countup: fractional counter-reset did not round to an integer, content=${statDigits}`)
+      const statReset = await page.locator('.stat').first().evaluate(el => getComputedStyle(el).counterReset)
+      const statNumber = integerCounterReset(statReset, 'n')
+      assert.match(statNumber ?? '', /^\d+$/, `${name} stats-countup: counter-reset did not resolve to a plain integer, counterReset=${statReset}`)
       console.log(`ok ${name}: fractional counter-reset rounds to an integer (F 1.4)`)
       for (const width of [1600, 900, 390]) {
         await page.setViewportSize({ width, height: 900 })

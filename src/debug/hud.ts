@@ -51,9 +51,18 @@ export function trackFrames(onUpdate: (stats: FrameStats) => void): () => void {
       const spansGap = skipNext
       skipNext = false
       if (interval === null) {
-        if (!calibrationStart) calibrationStart = t
-        if (!spansGap) calibrationMin = Math.min(calibrationMin, delta)
-        if (t - calibrationStart >= CALIBRATION_MS && calibrationMin < Infinity) interval = calibrationMin
+        if (spansGap) {
+          // A gap (background tab) makes `t - calibrationStart` jump by the
+          // gap's own length, which can already exceed the window on its
+          // own, and the single post-gap delta is not a stable sample
+          // either: restart the window from here instead of locking onto it.
+          calibrationStart = t
+          calibrationMin = Infinity
+        } else {
+          if (!calibrationStart) calibrationStart = t
+          calibrationMin = Math.min(calibrationMin, delta)
+          if (t - calibrationStart >= CALIBRATION_MS && calibrationMin < Infinity) interval = calibrationMin
+        }
       }
       if (!spansGap) {
         samples.push({ t, delta })

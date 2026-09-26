@@ -937,13 +937,17 @@ test('slider: emptying a populated slider clears the stale active slide (ADU-354
   assert.equal(handle.state().count, 0)
   assert.equal(container.vars['--sv-slide'], undefined, 'the owned css var is released, not left at the stale index')
 
-  // repopulate at the same index the stale value used to hold: a real onSlide(0)
-  slides.push(makeSlide(0), makeSlide(100))
+  // repopulate at the SAME index (2) the stale value used to hold: with
+  // `active` genuinely reset to -1, landing back on index 2 is a real
+  // change and fires its own onSlide(2); before the fix `active` stayed at
+  // the stale 2, so a repopulate that lands on 2 again looked like no
+  // change at all and onSlide never fired a second time.
+  slides.push(makeSlide(0), makeSlide(100), makeSlide(200))
   slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
-  container.scrollLeft = 0
+  container.scrollLeft = 200
   assert.equal(fireChildList(container), 1)
   runFrames(rafQueue)
-  assert.deepEqual(onSlideCalls, [2, 0], 'onSlide(0) fires once the list is populated again')
+  assert.deepEqual(onSlideCalls, [2, 2], 'onSlide(2) fires again once the list is populated back to the same index')
   handle.destroy()
 })
 
