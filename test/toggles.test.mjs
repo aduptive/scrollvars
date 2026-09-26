@@ -463,6 +463,47 @@ test('toggles: a clicked target holds no strong reference once nothing else does
   stop()
 })
 
+test('toggles: markers settle, release and delete correctly when WeakRef is unavailable (fallback path)', async () => {
+  // Below Chrome 84 / Firefox 79 / Safari 14.1, `weakRef()` falls back to
+  // `{ deref: () => el }`, a plain closure. This proves that fallback
+  // actually resolves to the real target through settle/release/delete,
+  // not the naive mistake of a deref that always returns undefined (which
+  // would silently skip every settle and release forever).
+  const realWeakRef = global.WeakRef
+  delete global.WeakRef
+  global.window = {}
+  const queue = []
+  global.requestAnimationFrame = (fn) => (queue.push(fn), queue.length)
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?r3weakreffallback')
+    const target = makeElement()
+    target.classList.add('sv-acts') // the only class with a settle to prove
+    target.classList.contains = (c) => target.classes.has(c)
+    const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#panel' })
+    const listeners = {}
+    const root = {
+      contains: () => true,
+      addEventListener: (t, fn) => (listeners[t] = fn),
+      removeEventListener: (t) => delete listeners[t],
+      querySelector: (sel) => (sel === '#panel' ? target : null),
+      querySelectorAll: () => [trigger],
+    }
+    const stop = toggles(root)
+    assert.ok(target.classes.has('sv-ui'), 'boot marks the resolved target through the fallback ref')
+    assert.equal(target.vars['--sv-acts-settle'], '0s', 'the boot settle hold is applied through the fallback ref')
+
+    // the settle is two nested rAFs (frame(() => frame(() => {...}))): each
+    // flush may enqueue the next, so drain until nothing is left
+    while (queue.length) queue.shift()()
+    assert.equal(target.vars['--sv-acts-settle'], undefined, 'settle() restores through the fallback ref, not a broken deref')
+
+    stop()
+    assert.ok(!target.classes.has('sv-ui'), 'release() removes sv-ui through the fallback ref on stop, and the owner-decrement deletes the marker')
+  } finally {
+    if (realWeakRef) global.WeakRef = realWeakRef
+  }
+})
+
 test('toggles: aria-expanded reflects the target on boot and across every trigger of it', async () => {
   global.window = {}
   global.requestAnimationFrame = () => 1
