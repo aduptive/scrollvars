@@ -408,6 +408,14 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     scenes: count,
     onScene: setScene,
     onStatus: (status) => {
+      // A new lease (any dep change in useTrack, a replaced node) starts
+      // here. `flowed` is otherwise carried from the PREVIOUS lease until
+      // the driver re-announces onFlow, which it only does when the stage
+      // has a fit node that does not overflow: a new lease with no fit node
+      // never sends it, so a lease that once overflowed stayed inactive
+      // forever. Reset it first; a later onFlow(true) in this same lease
+      // still lands, since it always comes after 'attaching'.
+      if (status === 'attaching') setFlowed(false)
       setAttached(status === 'active')
       onStatusRef.current?.(status)
     },
