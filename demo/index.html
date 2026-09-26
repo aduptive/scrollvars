@@ -4342,8 +4342,7 @@ var SV = (() => {
       else if (current !== entry.last)
         entry.before = current;
       entry.last = value;
-      if (current !== value)
-        write(value);
+      write(value);
     };
     const restore = (node, key) => {
       let first, failed = false;
@@ -4850,6 +4849,13 @@ var SV = (() => {
   function watchMarquee(track2, life) {
     if (marqueeInstances.has(track2))
       return;
+    life.defer(() => {
+      marqueeObserver?.unobserve(track2);
+      marqueeInstances.delete(track2);
+      marqueeOffscreen.delete(track2);
+      track2.classList.remove("sv-marquee-offscreen");
+      releaseMarqueeSharedIfUnneeded();
+    });
     marqueeInstances.add(track2);
     marqueeOffscreen.set(track2, false);
     bindMarqueeVisibility();
@@ -4868,13 +4874,6 @@ var SV = (() => {
       marqueeObserver.observe(track2);
     }
     applyMarqueeState(track2);
-    life.defer(() => {
-      marqueeObserver?.unobserve(track2);
-      marqueeInstances.delete(track2);
-      marqueeOffscreen.delete(track2);
-      track2.classList.remove("sv-marquee-offscreen");
-      releaseMarqueeSharedIfUnneeded();
-    });
   }
   function toggles(root) {
     if (typeof window === "undefined")
@@ -6216,13 +6215,7 @@ function ownership() {
         else if (current !== entry.last)
             entry.before = current;
         entry.last = value;
-        // The bookkeeping above (before/last) runs every call, restore()'s
-        // correctness depends on it; only the DOM write itself is skippable,
-        // and only when the value already reads back as what we're about to
-        // write (a per-frame `--sd`/`--sv-progress` write is very often the
-        // same number two frames running). Perf-1 #3a.
-        if (current !== value)
-            write(value);
+        write(value);
     };
     const restore = (node, key) => {
         let first, failed = false;
@@ -7167,13 +7160,7 @@ function ownership() {
         else if (current !== entry.last)
             entry.before = current;
         entry.last = value;
-        // The bookkeeping above (before/last) runs every call, restore()'s
-        // correctness depends on it; only the DOM write itself is skippable,
-        // and only when the value already reads back as what we're about to
-        // write (a per-frame `--sd`/`--sv-progress` write is very often the
-        // same number two frames running). Perf-1 #3a.
-        if (current !== value)
-            write(value);
+        write(value);
     };
     const restore = (node, key) => {
         let first, failed = false;
@@ -7976,13 +7963,7 @@ function ownership() {
         else if (current !== entry.last)
             entry.before = current;
         entry.last = value;
-        // The bookkeeping above (before/last) runs every call, restore()'s
-        // correctness depends on it; only the DOM write itself is skippable,
-        // and only when the value already reads back as what we're about to
-        // write (a per-frame `--sd`/`--sv-progress` write is very often the
-        // same number two frames running). Perf-1 #3a.
-        if (current !== value)
-            write(value);
+        write(value);
     };
     const restore = (node, key) => {
         let first, failed = false;
@@ -8141,6 +8122,20 @@ function releaseMarqueeSharedIfUnneeded() {
 function watchMarquee(track, life) {
     if (marqueeInstances.has(track))
         return;
+    // Registered before any of the steps below run: a throw partway through
+    // (the IntersectionObserver constructor, bindMarqueeVisibility's
+    // addEventListener, an overridden classList) is caught by toggles()'s
+    // own life.setup() and unwound through every deferred release, this one
+    // included. Registering it LAST left a track added to marqueeInstances
+    // with no cleanup ever wired to remove it, so watchMarquee()'s own has()
+    // guard above would skip that track forever on any later scan.
+    life.defer(() => {
+        marqueeObserver?.unobserve(track);
+        marqueeInstances.delete(track);
+        marqueeOffscreen.delete(track);
+        track.classList.remove('sv-marquee-offscreen');
+        releaseMarqueeSharedIfUnneeded();
+    });
     marqueeInstances.add(track);
     marqueeOffscreen.set(track, false);
     bindMarqueeVisibility();
@@ -8159,13 +8154,6 @@ function watchMarquee(track, life) {
         marqueeObserver.observe(track);
     }
     applyMarqueeState(track);
-    life.defer(() => {
-        marqueeObserver?.unobserve(track);
-        marqueeInstances.delete(track);
-        marqueeOffscreen.delete(track);
-        track.classList.remove('sv-marquee-offscreen');
-        releaseMarqueeSharedIfUnneeded();
-    });
 }
 function toggles(root) {
     if (typeof window === 'undefined')

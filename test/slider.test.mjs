@@ -30,11 +30,7 @@ for (const point of ['callback', 'measurement', 'observer', 'output']) test(`sli
     let fail = false, calls = 0
     const a = slider(bad, { onScroll() { if (fail && point === 'callback') throw error } })
     const b = slider(good, { onScroll() { calls++ } })
-    // an unchanged --sd write is skipped (perf-1 #3a), so this failure
-    // simulation needs the value to actually move between the initial
-    // measure at slider() and the one 'scroll' triggers below, or the
-    // throwing setProperty never runs at all
-    if (point === 'output') { bad.scrollLeft = 10; const set = bad.children[0].style.setProperty; bad.children[0].style.setProperty = (...args) => { set(...args); throw error } }
+    if (point === 'output') { const set = bad.children[0].style.setProperty; bad.children[0].style.setProperty = (...args) => { set(...args); throw error } }
     if (point === 'measurement') Object.defineProperty(bad, 'scrollWidth', { get() { throw error } })
     if (point === 'observer') {
       const ro = env.deliveries.find(o => o.kind === 'ResizeObserver')

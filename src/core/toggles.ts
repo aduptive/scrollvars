@@ -170,6 +170,20 @@ function releaseMarqueeSharedIfUnneeded() {
 
 function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
   if (marqueeInstances.has(track)) return
+  // Registered before any of the steps below run: a throw partway through
+  // (the IntersectionObserver constructor, bindMarqueeVisibility's
+  // addEventListener, an overridden classList) is caught by toggles()'s
+  // own life.setup() and unwound through every deferred release, this one
+  // included. Registering it LAST left a track added to marqueeInstances
+  // with no cleanup ever wired to remove it, so watchMarquee()'s own has()
+  // guard above would skip that track forever on any later scan.
+  life.defer(() => {
+    marqueeObserver?.unobserve(track)
+    marqueeInstances.delete(track)
+    marqueeOffscreen.delete(track)
+    track.classList.remove('sv-marquee-offscreen')
+    releaseMarqueeSharedIfUnneeded()
+  })
   marqueeInstances.add(track)
   marqueeOffscreen.set(track, false)
   bindMarqueeVisibility()
@@ -187,13 +201,6 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
     marqueeObserver.observe(track)
   }
   applyMarqueeState(track)
-  life.defer(() => {
-    marqueeObserver?.unobserve(track)
-    marqueeInstances.delete(track)
-    marqueeOffscreen.delete(track)
-    track.classList.remove('sv-marquee-offscreen')
-    releaseMarqueeSharedIfUnneeded()
-  })
 }
 
 export function toggles(root?: Document | HTMLElement): () => void {

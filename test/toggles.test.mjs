@@ -73,6 +73,30 @@ test('toggles: a second marquee mounted after the first releases keeps its own f
   } finally { env.restore() }
 })
 
+test('toggles: an IntersectionObserver constructor failure does not strand a marquee track behind the has() guard forever (auxiliary failure)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marqueaux')
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    root.append(track)
+
+    const error = Error('IntersectionObserver constructor')
+    const workingIO = global.IntersectionObserver
+    global.IntersectionObserver = class { constructor() { throw error } }
+    assert.throws(() => toggles(root), (e) => e === error)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0], 'the failed attempt leaves nothing running')
+
+    global.IntersectionObserver = workingIO
+    const stop = toggles(root)
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io, 'a later healthy toggles() call picks the track up, not stuck behind watchMarquee()\'s own has() guard')
+    assert.ok(io.targets.has(track))
+    stop()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
 test('toggles: a scope with no marquee track never creates an IntersectionObserver', async () => {
   const env = lifecycleEnv()
   try {
