@@ -281,7 +281,13 @@ function mentionsPageOutputs(css: string) {
 let pendingImportOwners: Element[] = []
 // Owners currently listened to, one pair each, so repeated resolutions do not
 // stack closures and an explicit override can take them all off.
-const listened = new Map<Element, () => void>()
+const listened = new Map<Element, (event: Event) => void>()
+// Links whose sheet fired `error`: pendingSheets() excludes them, so a 404 or
+// network failure stops counting as uncertainty for the rest of the session.
+// The consumer watch's attribute observation (below) deletes an entry the
+// moment its href/rel/media/disabled changes, so a corrected URL is judged
+// again rather than staying remembered as broken.
+const erroredLinks = new WeakSet<HTMLLinkElement>()
 // Sheets read in full that reach neither name, by their rule count at the
 // time. The watch below rescans on every frame that adds an element, and
 // serializing every rule of every sheet on each of those cost 3.2ms a frame
@@ -386,7 +392,11 @@ function watchForPageConsumers() {
         // flipping false is the only signal a later enable gets: without it
         // the sheet's own consumer, once its rules become readable, is never
         // asked again for the rest of the session (ADU-354 item 6).
-        if (record.type === 'attributes' && record.target.nodeName === 'LINK') { queued = true; break }
+        if (record.type === 'attributes' && record.target.nodeName === 'LINK') {
+          erroredLinks.delete(record.target as HTMLLinkElement)
+          queued = true
+          break
+        }
         for (const node of Array.from(record.addedNodes)) {
           // text landing in a <style> (textContent = ...) is a new rule too
           const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
@@ -446,7 +456,7 @@ function pendingSheets(): HTMLLinkElement[] {
       // (nothing is loading), and it is not a consumer while disabled: the
       // consumer watch's attribute observation on `disabled` is what queues
       // a rescan when it is enabled later (watchForPageConsumers above).
-      .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled) as HTMLLinkElement[]
+      .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled && !erroredLinks.has(link as HTMLLinkElement)) as HTMLLinkElement[]
   } catch {
     return []
   }
@@ -465,10 +475,11 @@ function resolvePageOutputs() {
   if (pending.length) {
     for (const owner of pending) {
       if (listened.has(owner)) continue
-      const settled = () => {
+      const settled = (event: Event) => {
         owner.removeEventListener('load', settled)
         owner.removeEventListener('error', settled)
         listened.delete(owner)
+        if (event.type === 'error' && owner.nodeName === 'LINK') erroredLinks.add(owner as HTMLLinkElement)
         resolvePageOutputs()
       }
       listened.set(owner, settled)

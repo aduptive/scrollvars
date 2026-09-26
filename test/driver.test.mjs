@@ -504,6 +504,60 @@ test('driver: a disabled stylesheet enabled later publishes once the consumer wa
   }
 })
 
+test('driver: a stylesheet that fires error stops counting as pending, and a corrected href counts it again', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false, sheet: null,
+    getAttribute: () => null,
+    listeners: {},
+    addEventListener(type, fn) { link.listeners[type] = fn },
+    removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
+  }
+  let watcher
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb; watcher = this }
+    observe() {}
+    disconnect() {}
+  }
+  global.document = {
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    // pendingSheets() asks for `link[rel~="stylesheet"]`; the outputs-reader
+    // scan asks for a different selector and must not see the link too.
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?errorlink')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.ok('--sv-page' in pageVars, 'a sheet with no answer yet is uncertainty, so it publishes')
+
+    link.listeners.error({ type: 'error' })
+    pump()
+    assert.equal(pageVars['--sv-page'], undefined, 'a link that failed to load is no longer pending, and has no consumer')
+    assert.ok(watcher, 'the consumer watch installed once nothing is pending or found')
+
+    // href corrected: the attribute record forgets the remembered error, and
+    // the link now resolves to a stylesheet that reads --sv-page.
+    link.sheet = {}
+    document.styleSheets = [{ ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }]
+    watcher.cb([{ type: 'attributes', target: link, addedNodes: [] }])
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the corrected href turned outputs back on')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
 test('driver: global outputs can be disabled, including the pending velocity reset', async () => {
   const vars = {}
   global.document = { documentElement: {

@@ -11,6 +11,24 @@
 
 ### Fixed
 
+- A stylesheet whose `<link>` fired `error` (a 404, a network failure) kept
+  counting as pending forever: every scroll wrote `--sv-page`/`--sv-v` on
+  `<html>` for the rest of the session, even with no consumer at all. An
+  errored link is now excluded from the pending count, and a later change
+  to its `href`/`rel`/`media`/`disabled` forgets the error so a corrected
+  URL is judged again.
+- The gallery's GSAP React recipe (`gsap-scrub`) timed a `.from('.stage > *', ...)`
+  selector against markup that renders `.sv-stage`: pasted as shown, the
+  timeline animated nothing. It now scopes to the stage's own ref.
+- AGENTS.md's `--sv-r` paragraph and the `styles/pin.css` comment said the
+  registered initial value (1) is a below-floor guarantee wherever calc()
+  division fails; it also needs `@property` support (Chrome 85/Safari
+  16.4/Firefox 128), a higher floor than division's own on Firefox. Below
+  either floor a consumer's own declaration falls back to its initial
+  value, not 1. Worded accordingly. The `--sv-page`/`--sv-v` VARS row also
+  read as ambiguous between "(tracked and CSS) or setPageOutputs" and
+  "tracked and (CSS or setPageOutputs)" (the latter is what the driver
+  does); reworded to read one way only.
 - Below the individual-transform floor with no `compat()`, only a stage
   carrying a static deck was released to flow: a plain pinned stage (the
   common Scenes/Sections shape) kept reporting `active` while pin.css

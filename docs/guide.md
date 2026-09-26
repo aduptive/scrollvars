@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.6 KB, full core incl. the slider 12.2 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.6 KB, full core incl. the slider 12.3 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.2 KB on the wire.
 
 ## Why
 
@@ -162,11 +162,11 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | you import | JS on the wire |
 | --- | --- |
 | `track` (the driver) | 5.6 KB |
-| `track` + `scan` (zero-wrapper mode) | 7.9 KB |
+| `track` + `scan` (zero-wrapper mode) | 8.0 KB |
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.2 KB |
+| everything in `scrollvars` (the core entry) | 12.3 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 18.0 KB |
 <!-- sizes:end -->
 
@@ -186,7 +186,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
