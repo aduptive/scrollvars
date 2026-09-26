@@ -87,6 +87,13 @@ const CANVAS_JS = execSync(
   `npx esbuild ${join(root, '..', 'dist', 'canvas', 'index.js')} --bundle --format=iife --global-name=SVCanvas`,
   { cwd: join(root, '..'), maxBuffer: 1e7 }
 ).toString() + '\nwindow.mountEffect = SVCanvas.mountEffect;\n'
+// The exact React `<Scenes>` render-prop shape the guide documents, bundled
+// with react/react-dom so the reduced-motion invariant below exercises the
+// compiled component (ADU-354 blocker 1), not a description of it.
+const SCENES_REACT_JS = execSync(
+  `npx esbuild ${join(root, 'bench', 'harness', 'fixtures', 'scenes-reduced-entry.mjs')} --bundle --format=iife --global-name=SVScenesFixture`,
+  { cwd: join(root, '..'), maxBuffer: 1e7 }
+).toString()
 // Drives a canvas's own resize() log to a fixed point (ADU-107, eleventh
 // pass): waits for the initial mount delivery first (a real
 // ResizeObserver's own first callback is itself asynchronous, never
@@ -297,6 +304,25 @@ const MIN_EXAMINED = 1
     'reduced motion: .sv-auto children are opacity 1 with no transition before any scroll, incl. below the fold',
     unsettled === 0,
     `${unsettled} unsettled`
+  )
+  await page.close()
+}
+
+// ── 0c-1. Reduced motion, React <Scenes>: every scene reachable, not just
+// scene 0 and N-1 jumping in one pixel (ADU-354 blocker 1) ──
+{
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await page.setContent(`<!doctype html><html class="sv-on"><head><style>${STYLES_CSS}</style></head>
+    <body><div id="root" style="margin-top:20vh"></div></body></html>`)
+  await page.addScriptTag({ content: SCENES_REACT_JS })
+  await page.evaluate(() => window.mountScenesFixture(document.getElementById('root'), 4))
+  await new Promise((r) => setTimeout(r, 50)) // the confirming effect render
+  const texts = await page.evaluate(() => [...document.querySelectorAll('.scene-text')].map((el) => el.textContent))
+  check(
+    'reduced motion: a 4-scene <Scenes> renders every scene, not only the first and last',
+    texts.length === 4 && ['Slide 1', 'Slide 2', 'Slide 3', 'Slide 4'].every((t, i) => texts[i] === t),
+    JSON.stringify(texts)
   )
   await page.close()
 }

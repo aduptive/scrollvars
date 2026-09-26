@@ -2028,3 +2028,47 @@ test('react: Boot releases its acquired scan when toggle setup fails', async () 
     await React.act(async () => root.unmount())
   }
 })
+
+test('react: useScenes reports reduced and Scenes renders every scene under reduced motion (ADU-354 blocker 1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  const realMatchMedia = global.window.matchMedia
+  // the OS asks for less motion before the section mounts
+  global.window.matchMedia = () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} })
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    const seen = []
+    await act(async () => {
+      root.render(React.createElement(Scenes, { count: 4 }, ({ scene, reduced }) => {
+        seen.push({ scene, reduced })
+        return React.createElement('p', null, `Slide ${scene + 1}`)
+      }))
+    })
+    // every scene's text is reachable at once, not only scene 0 and the last
+    const texts = []
+    const walk = (node) => {
+      for (const child of node.childNodes || []) {
+        // a lone string child is written straight to textContent (this fake
+        // DOM's model for react-dom's single-text-node fast path)
+        if (child.tagName === 'P') texts.push(child.textContent)
+        walk(child)
+      }
+    }
+    walk(container)
+    assert.deepEqual(texts, ['Slide 1', 'Slide 2', 'Slide 3', 'Slide 4'])
+    // the first render is reduced: false (SSR-safe: server and client agree
+    // before the effect confirms the OS setting), then the confirmed render
+    // reports true for every scene it stacks
+    const last = seen.slice(-4)
+    assert.equal(last.every(s => s.reduced === true), true, 'reduced is reported true once confirmed')
+    await act(async () => { root.unmount() })
+  } finally {
+    global.window.matchMedia = realMatchMedia
+  }
+})
+

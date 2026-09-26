@@ -360,6 +360,12 @@ export interface ScenesState {
   /** Current scene index (re-renders only on integer change). */
   scene: number
   goTo: (scene: number, smooth?: boolean) => void
+  /** True once reduced motion is confirmed (OS setting or the page's
+   * data-sv-motion switch). The helper-pinned wrapper returns to flow at
+   * that point (driver.ts applyPinHelper), so every scene renders at once
+   * instead of one at a time; consumers render all scenes then. Starts
+   * false so server and first client render match. */
+  reduced: boolean
 }
 
 export function useScenes<T extends HTMLElement = HTMLDivElement>(
@@ -376,6 +382,12 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
   if (scene > last) setScene(last)
   const current = Math.min(scene, last)
 
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    if (effectiveReduce()) setReduced(true)
+    return onMotionChange(setReduced)
+  }, [])
+
   const ref = useTrack<T>({
     ...options,
     scenes: count,
@@ -389,7 +401,7 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     [count, options.root]
   )
 
-  return { ref, scene: current, goTo }
+  return { ref, scene: current, goTo, reduced }
 }
 
 export interface ScenesProps extends Omit<TrackProps, 'scenes' | 'children'> {
@@ -505,7 +517,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   ease,
   ...rest
 }) => {
-  const { ref, scene, goTo } = useScenes(count, {
+  const { ref, scene, goTo, reduced } = useScenes(count, {
     pin: typeof pin === 'string' ? pin : pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
     enter,
@@ -537,7 +549,14 @@ export const Scenes: React.FC<ScenesProps> = ({
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
       <div className="sv-stage">
-        {children({ scene, goTo })}
+        {reduced
+          // The helper-pinned wrapper returns to flow under reduced motion
+          // (driver.ts applyPinHelper), so every scene must render, stacked,
+          // instead of only the one the scroll clock would have picked.
+          ? Array.from({ length: count }, (_, i) => (
+              <React.Fragment key={i}>{children({ scene: i, goTo, reduced })}</React.Fragment>
+            ))
+          : children({ scene, goTo, reduced })}
       </div>
     </Tag>
   )
