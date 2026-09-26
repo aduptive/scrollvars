@@ -125,6 +125,84 @@ function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | nul
   return resolved
 }
 
+// Marquee: stop work nobody sees. A `.sv-marquee-track` costs a CSS
+// animation running forever even off screen and with the tab in the
+// background; this pauses it there and resumes on return, independent of
+// the user's own pause button (`.sv-paused`, unaffected). One shared
+// IntersectionObserver and one shared visibilitychange listener for
+// however many marquees and toggles() scopes a page has, matching the
+// singleton pattern driver.ts uses for its ResizeObserver. Reduced motion
+// already stops the animation entirely (styles/ui.css); this class costs
+// nothing extra there beyond the toggle itself.
+let marqueeObserver: IntersectionObserver | undefined
+const marqueeOffscreen = new WeakMap<HTMLElement, boolean>()
+const marqueeInstances = new Set<HTMLElement>()
+let onVisibility: (() => void) | undefined
+
+function applyMarqueeState(track: HTMLElement) {
+  // classList.toggle's second argument defaults on `undefined`, not on a
+  // falsy value: the OR chain below can evaluate to `undefined` (document
+  // hidden check short-circuiting), which would silently fall back to the
+  // "flip from current state" behavior instead of forcing false.
+  const offscreen = Boolean((marqueeOffscreen.get(track) ?? false) || (typeof document !== 'undefined' && document.hidden))
+  track.classList.toggle('sv-marquee-offscreen', offscreen)
+}
+
+function bindMarqueeVisibility() {
+  if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
+  onVisibility = () => marqueeInstances.forEach(applyMarqueeState)
+  document.addEventListener('visibilitychange', onVisibility)
+}
+
+// The last marquee stopping releases the shared observer and listener, the
+// same "nothing left to watch" release driver.ts's ResizeObserver singleton
+// does: a page that mounts and fully unmounts its last Marquee leaves no
+// resource behind (packed-acceptance's remount baseline check, ADU debug).
+function releaseMarqueeSharedIfUnneeded() {
+  if (marqueeInstances.size) return
+  marqueeObserver?.disconnect()
+  marqueeObserver = undefined
+  if (onVisibility && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+    document.removeEventListener('visibilitychange', onVisibility)
+  }
+  onVisibility = undefined
+}
+
+function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
+  if (marqueeInstances.has(track)) return
+  // Registered before any of the steps below run: a throw partway through
+  // (the IntersectionObserver constructor, bindMarqueeVisibility's
+  // addEventListener, an overridden classList) is caught by toggles()'s
+  // own life.setup() and unwound through every deferred release, this one
+  // included. Registering it LAST left a track added to marqueeInstances
+  // with no cleanup ever wired to remove it, so watchMarquee()'s own has()
+  // guard above would skip that track forever on any later scan.
+  life.defer(() => {
+    marqueeObserver?.unobserve(track)
+    marqueeInstances.delete(track)
+    marqueeOffscreen.delete(track)
+    track.classList.remove('sv-marquee-offscreen')
+    releaseMarqueeSharedIfUnneeded()
+  })
+  marqueeInstances.add(track)
+  marqueeOffscreen.set(track, false)
+  bindMarqueeVisibility()
+  if (typeof IntersectionObserver === 'function') {
+    if (!marqueeObserver) {
+      marqueeObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const el = entry.target as HTMLElement
+          if (!marqueeInstances.has(el)) return
+          marqueeOffscreen.set(el, !entry.isIntersecting)
+          applyMarqueeState(el)
+        })
+      })
+    }
+    marqueeObserver.observe(track)
+  }
+  applyMarqueeState(track)
+}
+
 export function toggles(root?: Document | HTMLElement): () => void {
   if (typeof window === 'undefined') return () => {}
   const scope: Document | HTMLElement = root ?? document
@@ -380,6 +458,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
       live.add(instance)
       boot()
       scope.addEventListener('click', onClick)
+      scope.querySelectorAll<HTMLElement>('.sv-marquee-track').forEach((track) => watchMarquee(track, life))
     })
   } catch (error) {
     rollback()

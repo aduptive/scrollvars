@@ -2980,7 +2980,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.7 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.1 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.5 KB / 5.5 KB</b></td><td></td></tr>
       </tbody>
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.5 KB gzip · full core 11.7 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.5 KB gzip · full core 12.0 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -4822,6 +4822,59 @@ var SV = (() => {
     });
     return resolved;
   }
+  var marqueeObserver;
+  var marqueeOffscreen = /* @__PURE__ */ new WeakMap();
+  var marqueeInstances = /* @__PURE__ */ new Set();
+  var onVisibility;
+  function applyMarqueeState(track2) {
+    const offscreen = Boolean((marqueeOffscreen.get(track2) ?? false) || typeof document !== "undefined" && document.hidden);
+    track2.classList.toggle("sv-marquee-offscreen", offscreen);
+  }
+  function bindMarqueeVisibility() {
+    if (onVisibility || typeof document === "undefined" || typeof document.addEventListener !== "function")
+      return;
+    onVisibility = () => marqueeInstances.forEach(applyMarqueeState);
+    document.addEventListener("visibilitychange", onVisibility);
+  }
+  function releaseMarqueeSharedIfUnneeded() {
+    if (marqueeInstances.size)
+      return;
+    marqueeObserver?.disconnect();
+    marqueeObserver = void 0;
+    if (onVisibility && typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+      document.removeEventListener("visibilitychange", onVisibility);
+    }
+    onVisibility = void 0;
+  }
+  function watchMarquee(track2, life) {
+    if (marqueeInstances.has(track2))
+      return;
+    life.defer(() => {
+      marqueeObserver?.unobserve(track2);
+      marqueeInstances.delete(track2);
+      marqueeOffscreen.delete(track2);
+      track2.classList.remove("sv-marquee-offscreen");
+      releaseMarqueeSharedIfUnneeded();
+    });
+    marqueeInstances.add(track2);
+    marqueeOffscreen.set(track2, false);
+    bindMarqueeVisibility();
+    if (typeof IntersectionObserver === "function") {
+      if (!marqueeObserver) {
+        marqueeObserver = new IntersectionObserver((entries2) => {
+          entries2.forEach((entry) => {
+            const el = entry.target;
+            if (!marqueeInstances.has(el))
+              return;
+            marqueeOffscreen.set(el, !entry.isIntersecting);
+            applyMarqueeState(el);
+          });
+        });
+      }
+      marqueeObserver.observe(track2);
+    }
+    applyMarqueeState(track2);
+  }
   function toggles(root) {
     if (typeof window === "undefined")
       return () => {
@@ -5034,6 +5087,7 @@ var SV = (() => {
         live.add(instance);
         boot();
         scope.addEventListener("click", onClick);
+        scope.querySelectorAll(".sv-marquee-track").forEach((track2) => watchMarquee(track2, life));
       });
     } catch (error) {
       rollback();
@@ -8024,6 +8078,83 @@ function ownerOf(t) {
     });
     return resolved;
 }
+// Marquee: stop work nobody sees. A `.sv-marquee-track` costs a CSS
+// animation running forever even off screen and with the tab in the
+// background; this pauses it there and resumes on return, independent of
+// the user's own pause button (`.sv-paused`, unaffected). One shared
+// IntersectionObserver and one shared visibilitychange listener for
+// however many marquees and toggles() scopes a page has, matching the
+// singleton pattern driver.ts uses for its ResizeObserver. Reduced motion
+// already stops the animation entirely (styles/ui.css); this class costs
+// nothing extra there beyond the toggle itself.
+let marqueeObserver;
+const marqueeOffscreen = new WeakMap();
+const marqueeInstances = new Set();
+let onVisibility;
+function applyMarqueeState(track) {
+    // classList.toggle's second argument defaults on `undefined`, not on a
+    // falsy value: the OR chain below can evaluate to `undefined` (document
+    // hidden check short-circuiting), which would silently fall back to the
+    // "flip from current state" behavior instead of forcing false.
+    const offscreen = Boolean((marqueeOffscreen.get(track) ?? false) || (typeof document !== 'undefined' && document.hidden));
+    track.classList.toggle('sv-marquee-offscreen', offscreen);
+}
+function bindMarqueeVisibility() {
+    if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function')
+        return;
+    onVisibility = () => marqueeInstances.forEach(applyMarqueeState);
+    document.addEventListener('visibilitychange', onVisibility);
+}
+// The last marquee stopping releases the shared observer and listener, the
+// same "nothing left to watch" release driver.ts's ResizeObserver singleton
+// does: a page that mounts and fully unmounts its last Marquee leaves no
+// resource behind (packed-acceptance's remount baseline check, ADU debug).
+function releaseMarqueeSharedIfUnneeded() {
+    if (marqueeInstances.size)
+        return;
+    marqueeObserver?.disconnect();
+    marqueeObserver = undefined;
+    if (onVisibility && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+        document.removeEventListener('visibilitychange', onVisibility);
+    }
+    onVisibility = undefined;
+}
+function watchMarquee(track, life) {
+    if (marqueeInstances.has(track))
+        return;
+    // Registered before any of the steps below run: a throw partway through
+    // (the IntersectionObserver constructor, bindMarqueeVisibility's
+    // addEventListener, an overridden classList) is caught by toggles()'s
+    // own life.setup() and unwound through every deferred release, this one
+    // included. Registering it LAST left a track added to marqueeInstances
+    // with no cleanup ever wired to remove it, so watchMarquee()'s own has()
+    // guard above would skip that track forever on any later scan.
+    life.defer(() => {
+        marqueeObserver?.unobserve(track);
+        marqueeInstances.delete(track);
+        marqueeOffscreen.delete(track);
+        track.classList.remove('sv-marquee-offscreen');
+        releaseMarqueeSharedIfUnneeded();
+    });
+    marqueeInstances.add(track);
+    marqueeOffscreen.set(track, false);
+    bindMarqueeVisibility();
+    if (typeof IntersectionObserver === 'function') {
+        if (!marqueeObserver) {
+            marqueeObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    const el = entry.target;
+                    if (!marqueeInstances.has(el))
+                        return;
+                    marqueeOffscreen.set(el, !entry.isIntersecting);
+                    applyMarqueeState(el);
+                });
+            });
+        }
+        marqueeObserver.observe(track);
+    }
+    applyMarqueeState(track);
+}
 function toggles(root) {
     if (typeof window === 'undefined')
         return () => { };
@@ -8308,6 +8439,7 @@ function toggles(root) {
             live.add(instance);
             boot();
             scope.addEventListener('click', onClick);
+            scope.querySelectorAll('.sv-marquee-track').forEach((track) => watchMarquee(track, life));
         });
     }
     catch (error) {
