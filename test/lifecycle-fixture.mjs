@@ -59,6 +59,7 @@ export function lifecycleEnv() {
     put(kind, class {
       constructor(cb) { this.cb = cb; this.kind = kind; this.targets = new Set(); deliveries.push(this) }
       observe(node) { if (node === document.documentElement) { const index = deliveries.indexOf(this); if (index >= 0) deliveries.splice(index, 1); return }; this.targets.add(node); observers.add(this) }
+      unobserve(node) { this.targets.delete(node); if (!this.targets.size) observers.delete(this) }
       disconnect() { this.targets.clear(); observers.delete(this) }
     })
   }

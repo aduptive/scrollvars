@@ -932,6 +932,59 @@ test('react: a destroyed Slider handle stops the autoplay interval', async () =>
   }
 })
 
+test('react: Slider autoplay stops the interval itself off screen or with the tab hidden (perf/phase-1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+
+  const savedInterval = global.setInterval, savedClear = global.clearInterval
+  const savedDocAdd = document.addEventListener, savedDocRemove = document.removeEventListener
+  const savedIO = global.IntersectionObserver
+  const intervals = new Map(), docEvents = new Map(), ioCallbacks = []
+  let id = 0
+  global.setInterval = (fn) => { intervals.set(++id, fn); return id }
+  global.clearInterval = (key) => intervals.delete(key)
+  document.addEventListener = (type, fn) => { if (!docEvents.has(type)) docEvents.set(type, new Set()); docEvents.get(type).add(fn) }
+  document.removeEventListener = (type, fn) => docEvents.get(type)?.delete(fn)
+  global.IntersectionObserver = class { constructor(cb) { ioCallbacks.push(cb) }; observe() {}; disconnect() {} }
+
+  try {
+    const container = document.createElement('div')
+    const root = createRoot(container)
+    await React.act(async () => {
+      root.render(React.createElement(Slider, { autoplay: 3000 },
+        React.createElement('div', null, 'one'), React.createElement('div', null, 'two')))
+    })
+    assert.equal(intervals.size, 1, 'mounts with one running interval')
+
+    ioCallbacks[0]([{ isIntersecting: false }])
+    assert.equal(intervals.size, 0, 'off screen clears the interval itself, not just its ticks')
+
+    ioCallbacks[0]([{ isIntersecting: true }])
+    assert.equal(intervals.size, 1, 'back on screen restarts it')
+
+    const visibility = [...docEvents.get('visibilitychange')][0]
+    document.visibilityState = 'hidden'
+    visibility()
+    assert.equal(intervals.size, 0, 'a hidden tab clears the interval, even while on screen')
+
+    document.visibilityState = 'visible'
+    visibility()
+    assert.equal(intervals.size, 1, 'a visible tab again restarts it')
+
+    await React.act(async () => { root.unmount() })
+    assert.equal(intervals.size, 0, 'unmount leaves nothing running')
+  } finally {
+    global.setInterval = savedInterval
+    global.clearInterval = savedClear
+    document.addEventListener = savedDocAdd
+    document.removeEventListener = savedDocRemove
+    global.IntersectionObserver = savedIO
+    delete document.visibilityState
+  }
+})
+
 test('react: a className rewrite cannot strip the classes the slider owns', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

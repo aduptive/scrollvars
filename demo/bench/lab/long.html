@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="lab-version" content="1">
+<meta name="lab-version" content="2">
 <title>Long institutional page · ScrollVars perf lab</title>
 <link rel="stylesheet" href="../../fx/sv.css">
 <link rel="stylesheet" href="lab-page.css">
@@ -206,11 +206,13 @@
     <li>Every engagement starts with the same question: what happens the day t</li>
   </ul>
 </section>
-<div class="sv-marquee lab-marquee" style="padding:28px 0">
+<div class="sv-marquee sv-marquee-controlled lab-marquee" style="padding:28px 0">
   <div class="sv-marquee-track">
     <span>Reliability</span><span>&middot;</span><span>Accountability</span><span>&middot;</span><span>Twenty years</span><span>&middot;</span><span>No surprises</span><span>&middot;</span>
     <span class="sv-marquee-dup" aria-hidden="true"><span>Reliability</span><span>&middot;</span><span>Accountability</span><span>&middot;</span><span>Twenty years</span><span>&middot;</span><span>No surprises</span><span>&middot;</span></span>
   </div>
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
 <div data-sv data-sv-pin="240vh" class="lab-pin">
   <div class="sv-stage">
@@ -265,5 +267,6 @@ window.LAB_PAGE = {
 }
 </script>
 <script src="../../fx/sv.js"></script>
+<script>SV.toggles()</script>
 <script src="run-drive.js"></script>
 </body></html>

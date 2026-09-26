@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.5 KB, full core incl. the slider 11.7 KB, styles 9.6 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.5 KB, full core incl. the slider 12.0 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
 
 ## Why
 
@@ -149,7 +149,7 @@ import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
-import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.3 KB gz
+import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.4 KB gz
 import 'scrollvars/styles/scoped.css'  // OPT-IN: the clocks stop inheriting, see Scoped clocks below, 1.0 KB gz
 ```
 
@@ -166,8 +166,8 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.6 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 11.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.2 KB |
+| everything in `scrollvars` (the core entry) | 12.0 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 18.5 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:

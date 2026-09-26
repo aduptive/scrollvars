@@ -39,6 +39,10 @@
 }
 .sv-marquee-controlled > .sv-marquee-track:not(.sv-ui) > .sv-marquee-dup { display: none; }
 .sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
+/* Off screen or the tab in the background (toggles(), IntersectionObserver
+   + visibilitychange): paused independently of the user's own pause
+   button above, either one holds it. */
+.sv-marquee-track.sv-marquee-offscreen { animation-play-state: paused; }
 .sv-marquee-pause { display: none; }
 .sv-marquee-track.sv-ui + .sv-marquee-pause {
   display: block; position: absolute; right: 8px; bottom: 8px; z-index: 1;
