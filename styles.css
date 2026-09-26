@@ -224,8 +224,8 @@ html:not(.sv-on) .sv-spread > * {
 
 /* Curtain: two panels sliding apart. Markup: a sticky full-screen stage with
    .sv-curtain-l / .sv-curtain-r panels over the revealed content. */
-/* Registered so that on an engine without calc() division by a variable the
-   consumer sees the settled value (1) instead of an invalid declaration. */
+/* Registered so an engine with @property but no calc() division by a
+   variable (Chrome 85-111 only) settles here at this value (1) below. */
 @property --sv-r {
   syntax: '<number>';
   initial-value: 1;
@@ -308,9 +308,9 @@ html:not(.sv-on) .sv-spread > * {
    when pinned, else --sv-t (needs travel: true / data-sv-travel); override
    --sv-clock to choose explicitly.
    Needs calc() division (Chrome 112/Safari 16.4/FF 112) AND @property
-   support (Chrome 85/Safari 16.4/FF 128) for the registered initial
-   value (1) guarantee; below either floor a consumer's own declaration
-   falls back to its initial value instead. Use var(--sv-r, 1) anyway. */
+   (Chrome 85/Safari 16.4/FF 128) together for full support; the two
+   floors split at Chrome 85-111 (settles at the initial value, 1) and
+   Firefox 112-127 (just animates). Use var(--sv-r, 1) anyway. */
 /* the clock lives on the container at zero specificity: any author rule on it
    (`.mine { --sv-clock: var(--sv-t) }`) or an inline style wins */
 :where(.sv .sv-range) {

@@ -198,6 +198,17 @@ function pruneDetachedMarquee(track: HTMLElement): boolean {
   return true
 }
 
+// An observed target that is ALREADY non-intersecting gets no new
+// IntersectionObserver delivery when it is removed from the document (no
+// intersection transition to report): the per-target prune in the IO
+// callback and applyMarqueeState never runs for such a track. The map is
+// tiny (one entry per marquee on the page), so a full sweep on every IO
+// delivery batch and every new registration (N7) catches it without a
+// MutationObserver: the next tab switch is no longer the only trigger.
+function sweepDetachedMarquees() {
+  marqueeLeases.forEach((_lease, track) => pruneDetachedMarquee(track))
+}
+
 function applyMarqueeState(track: HTMLElement) {
   if (pruneDetachedMarquee(track)) return
   // classList.toggle's second argument defaults on `undefined`, not on a
@@ -229,6 +240,7 @@ function releaseMarqueeSharedIfUnneeded() {
 }
 
 function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
+  sweepDetachedMarquees()
   const existing = marqueeLeases.get(track)
   const already = !!existing
   // A registration reuses the CURRENT generation if one is already live for
@@ -270,6 +282,7 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
   if (typeof IntersectionObserver === 'function') {
     if (!marqueeObserver) {
       marqueeObserver = new IntersectionObserver((entries) => {
+        sweepDetachedMarquees()
         entries.forEach((entry) => {
           const el = entry.target as HTMLElement
           if (!marqueeLeases.has(el)) return
@@ -534,6 +547,10 @@ export function toggles(root?: Document | HTMLElement): () => void {
   }
 
   const onClick = life.guard((event: Event) => {
+    // The document scope's click handler never stops (Boot), so it is
+    // another cheap, frequent-enough place to sweep leases a marquee IO
+    // delivery never fires for (N7).
+    sweepDetachedMarquees()
     transaction = ownership()
     siblingWrites = []
     try { click(event) }

@@ -670,6 +670,66 @@ test('driver: a link whose sheet already throws when first asked, with no error 
   untrack()
 })
 
+// WebKit keeps `link.sheet === null` for a stylesheet that failed at the
+// NETWORK level (dead port, DNS, blocked): no `error` event ever fires for
+// such a link, so it never reaches erroredLinks and would count as pending
+// forever if the driver trusted a null sheet unconditionally. Once the
+// document has finished loading, a still-null sheet is treated as failed
+// for the pending count (T2r), while its own load listener stays attached
+// (a late reattempt, or a duplicate <link> inserted after, can still land a
+// real sheet).
+test('driver: a stylesheet still null once the document has finished loading counts as failed, not pending, but keeps its load listener (T2r)', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false, sheet: null,
+    getAttribute: () => null,
+    listeners: {},
+    // WebKit's network failure fires neither `load` nor `error`: no event
+    // ever reaches this link until, in this test, a later real request lands.
+    addEventListener(type, fn) { link.listeners[type] = fn },
+    removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
+  }
+  let watcher
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb; watcher = this }
+    observe() {}
+    disconnect() {}
+  }
+  global.document = {
+    readyState: 'complete',
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?readycomplete')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.equal(pageVars['--sv-page'], undefined, 'a null sheet after load finished is failed, not pending: outputs stay off')
+    assert.ok(link.listeners.load, 'the load listener stays attached for a late reattempt')
+
+    // a late reattempt (or a duplicate <link> corrected after the fact)
+    // lands a real, readable sheet
+    const goodSheet = { ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }
+    link.sheet = goodSheet
+    document.styleSheets = [goodSheet]
+    link.listeners.load({ type: 'load' })
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the late sheet is still read once it lands')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
 test('driver: two links erroring or correcting in the same mutation batch each forget their own error', async () => {
   rafQueue.length = 0
   const pageVars = {}
@@ -2076,6 +2136,38 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   assert.equal(el.style.height, '300vh')
   stop()
   delete global.getComputedStyle
+})
+
+test('driver: the fit check counts the fit node\'s own offset inside the stage (N2)', async () => {
+  // A padded stage or a heading before the fit box moves the box's own
+  // start away from the stage's top: the box can fit its own height and
+  // still clip against overflow: hidden if its offsetTop is never counted
+  // (CLAUDE.md pin geometry notes, offset chains not bounding rects).
+  const { track } = await import('../dist/core/driver.js?fitoffset')
+  const el = makeElement(3000)
+  const stage = { clientHeight: 400 }
+  const fit = { offsetHeight: 350, scrollHeight: 350, offsetTop: 100, parentElement: stage, offsetParent: stage }
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  stage.children = [fit]
+  el.stage = stage
+  el.style.height = 'auto'
+  el.style.position = ''
+  el.querySelector = sel => sel === '.sv-stage' ? el.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  place(el, 0)
+  const states = []
+  let stop = track(el, { pin: '300vh', onFlow: flow => states.push(flow) })
+  pump()
+  assert.deepEqual(states, [true], 'a fit box offset 100 into a 400px stage clips at 450: releases the pin')
+  assert.ok(el.hasAttribute('data-sv-flow'))
+  stop()
+
+  fit.offsetTop = 0
+  const states2 = []
+  stop = track(el, { pin: '300vh', onFlow: flow => states2.push(flow) })
+  pump()
+  assert.deepEqual(states2, [false], 'the same box starting at the stage top (350 < 401) stays pinned')
+  assert.ok(!el.hasAttribute('data-sv-flow'))
+  stop()
 })
 
 test('driver: an outer flow latches every nested tracked entry too, not only its own', async () => {
