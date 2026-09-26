@@ -11,6 +11,14 @@
 
 ### Fixed
 
+- Below the individual-transform floor with no `compat()`, only a stage
+  carrying a static deck was released to flow: a plain pinned stage (the
+  common Scenes/Sections shape) kept reporting `active` while pin.css
+  released the stage underneath it anyway, so the pin span collapsed to
+  about one pixel and `<Scenes>` rendered only its current scene, the
+  rest unreachable. Every stage below the floor with no `compat()` now
+  flows too (`data-sv-flow`, `onFlow(true)`), matching what a deck-bearing
+  stage already did.
 - `<Scenes>` rendered only the current scene outside the enhanced, pinned
   state: on the server, without JS, after a failed attach, and after a
   fit-to-flow release, the scene index sat at 0 (or jumped straight to it

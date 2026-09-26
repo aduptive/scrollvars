@@ -343,8 +343,9 @@ Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-range` needs Chrome 112 / Safari 16.4 / Firefox 112 (calc()
 division); `sv-acts` needs `@property` (Chrome 85 / Safari 16.4 / Firefox
-128, a higher floor than `sv-range` on Firefox); both settle to their end
-state below their own floor, nothing is lost; `sv-view-*` native
+128, a higher floor than `sv-range` on Firefox); below its own floor
+`sv-range` settles to its end state, `sv-acts` snaps between its states
+without animating, nothing is lost either way; `sv-view-*` native
 tier is Chromium 115+). Below the floor and
 without `compat()`, stages return to flow, decorative curtains hide and rails
 wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and

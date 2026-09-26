@@ -2981,7 +2981,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.9 KB</b></td><td>core + slider + all presets CSS</td></tr>
-        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.1 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
+        <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.6 KB / 5.6 KB</b></td><td></td></tr>
       </tbody>
     </table>
@@ -4147,7 +4147,7 @@ var SV = (() => {
       entry.compatRails = compatInstalled() ? /* @__PURE__ */ new Map() : void 0;
       entry.stage = opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : void 0;
       entry.fit = Array.from(entry.stage?.children ?? []).find((child) => child.hasAttribute("data-sv-fit"));
-      if (belowTransformFloor() && entry.stage?.querySelector(".sv-deck")) {
+      if (belowTransformFloor() && entry.stage && (!compatInstalled() || entry.stage.querySelector(".sv-deck"))) {
         entry.flow = true;
         el.setAttribute("data-sv-flow", "");
         opts.onFlow?.(true);
@@ -4809,6 +4809,7 @@ var SV = (() => {
 
   // dist/core/toggles.js
   var claimed = /* @__PURE__ */ new WeakSet();
+  var weakRef = typeof WeakRef === "function" ? (el) => new WeakRef(el) : (el) => ({ deref: () => el });
   var markers = /* @__PURE__ */ new WeakMap();
   var live = /* @__PURE__ */ new Set();
   var has = (scope, node) => typeof scope.contains === "function" ? scope.contains(node) : true;
@@ -5005,7 +5006,7 @@ var SV = (() => {
       longhandHold.delete(target);
       hold.restore(target, "style:transition-duration");
     };
-    const targets = /* @__PURE__ */ new Set();
+    const targets = /* @__PURE__ */ new WeakSet();
     const mark = (target) => {
       if (targets.has(target))
         return false;
@@ -5013,19 +5014,24 @@ var SV = (() => {
       let marker = markers.get(target);
       const authored = target.classList.contains("sv-ui");
       if (!marker) {
-        marker = { owners: 0, settle: () => {
-          if (settling.has(target)) {
-            settling.delete(target);
-            hold.restore(target);
-            restoreDuration(target);
+        const ref = weakRef(target);
+        marker = { owners: 0, ref, settle: () => {
+          const t = ref.deref();
+          if (t && settling.has(t)) {
+            settling.delete(t);
+            hold.restore(t);
+            restoreDuration(t);
           }
         }, release: () => {
+          const t = ref.deref();
+          if (!t)
+            return;
           if (!authored)
-            target.classList.remove("sv-ui");
-          if (settling.has(target)) {
-            settling.delete(target);
-            hold.restore(target);
-            restoreDuration(target);
+            t.classList.remove("sv-ui");
+          if (settling.has(t)) {
+            settling.delete(t);
+            hold.restore(t);
+            restoreDuration(t);
           }
         } };
         markers.set(target, marker);
@@ -5036,7 +5042,9 @@ var SV = (() => {
           marker.settle();
         } finally {
           if (--marker.owners === 0) {
-            markers.delete(target);
+            const t = marker.ref.deref();
+            if (t)
+              markers.delete(t);
             marker.release();
           }
         }
@@ -5118,10 +5126,7 @@ var SV = (() => {
       });
       frames.clear();
     });
-    life.defer(() => {
-      live.delete(instance);
-      targets.clear();
-    });
+    life.defer(() => live.delete(instance));
     life.defer(() => scope.removeEventListener("click", onClick));
     try {
       life.setup(() => {
@@ -8105,6 +8110,7 @@ function ownership() {
 // destruction leaves a stale entry that silently disowns a trigger, and
 // nothing to leak.
 const claimed = new WeakSet();
+const weakRef = typeof WeakRef === 'function' ? (el) => new WeakRef(el) : (el) => ({ deref: () => el });
 const markers = new WeakMap();
 const live = new Set();
 const has = (scope, node) => typeof scope.contains === 'function' ? scope.contains(node) : true;
@@ -8378,7 +8384,11 @@ function toggles(root) {
         longhandHold.delete(target);
         hold.restore(target, 'style:transition-duration');
     };
-    const targets = new Set();
+    // WeakSet: under <ScrollVarsBoot> this document scope never stops, so a
+    // strong Set would hold every clicked target for the app's whole life,
+    // detached subtrees included, growing with every navigation (R3). Its only
+    // reads are has/add; nothing ever needs to enumerate it.
+    const targets = new WeakSet();
     const mark = (target) => {
         if (targets.has(target))
             return false;
@@ -8386,19 +8396,24 @@ function toggles(root) {
         let marker = markers.get(target);
         const authored = target.classList.contains('sv-ui');
         if (!marker) {
-            marker = { owners: 0, settle: () => {
-                    if (settling.has(target)) {
-                        settling.delete(target);
-                        hold.restore(target);
-                        restoreDuration(target);
+            const ref = weakRef(target);
+            marker = { owners: 0, ref, settle: () => {
+                    const t = ref.deref();
+                    if (t && settling.has(t)) {
+                        settling.delete(t);
+                        hold.restore(t);
+                        restoreDuration(t);
                     }
                 }, release: () => {
+                    const t = ref.deref();
+                    if (!t)
+                        return;
                     if (!authored)
-                        target.classList.remove('sv-ui');
-                    if (settling.has(target)) {
-                        settling.delete(target);
-                        hold.restore(target);
-                        restoreDuration(target);
+                        t.classList.remove('sv-ui');
+                    if (settling.has(t)) {
+                        settling.delete(t);
+                        hold.restore(t);
+                        restoreDuration(t);
                     }
                 } };
             markers.set(target, marker);
@@ -8407,12 +8422,18 @@ function toggles(root) {
         life.defer(() => {
             // Finish a departing owner's hold even if another controller remains.
             // It must not retain 0s after this owner's queued frames are cancelled.
+            // Through marker.ref, never `target` directly: this callback sits in
+            // life's own release list until the WHOLE scope stops, which the
+            // document instance never does, so a direct capture would pin every
+            // distinct clicked target for the app's life (R3).
             try {
                 marker.settle();
             }
             finally {
                 if (--marker.owners === 0) {
-                    markers.delete(target);
+                    const t = marker.ref.deref();
+                    if (t)
+                        markers.delete(t);
                     marker.release();
                 }
             }
@@ -8543,10 +8564,9 @@ function toggles(root) {
             cancelAnimationFrame(id); });
         frames.clear();
     });
-    life.defer(() => {
-        live.delete(instance);
-        targets.clear();
-    });
+    // no targets.clear(): a WeakSet has none, and it needs none, its entries
+    // drop on their own once this closure (mark/click/onClick) is unreachable
+    life.defer(() => live.delete(instance));
     life.defer(() => scope.removeEventListener('click', onClick));
     try {
         life.setup(() => {
