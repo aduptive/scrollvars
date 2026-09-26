@@ -361,11 +361,19 @@ export interface ScenesState {
   scene: number
   goTo: (scene: number, smooth?: boolean) => void
   /** True once reduced motion is confirmed (OS setting or the page's
-   * data-sv-motion switch). The helper-pinned wrapper returns to flow at
-   * that point (driver.ts applyPinHelper), so every scene renders at once
-   * instead of one at a time; consumers render all scenes then. Starts
-   * false so server and first client render match. */
+   * data-sv-motion switch). Starts false so server and first client render
+   * match. See `active` for the single condition that governs rendering
+   * every scene at once. */
   reduced: boolean
+  /** False whenever the scene index is not trustworthy on its own: before
+   * the tracker's first successful frame (server render, no JS, not yet
+   * attached), after a failed attach, after the pinned stage falls back to
+   * document flow (driver.ts applyPinHelper, onFlow), or under reduced
+   * motion. `<Scenes>` renders every scene stacked while this is false, so
+   * content already in the pinned stretch stays reachable; a hand-rolled
+   * `useScenes` consumer should do the same. Starts false so server and
+   * first client render match. */
+  active: boolean
 }
 
 export function useScenes<T extends HTMLElement = HTMLDivElement>(
@@ -388,10 +396,25 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     return onMotionChange(setReduced)
   }, [])
 
+  const [attached, setAttached] = useState(false)
+  const [flowed, setFlowed] = useState(false)
+  const onStatusRef = useRef(options.onStatus)
+  onStatusRef.current = options.onStatus
+  const onFlowRef = useRef(options.onFlow)
+  onFlowRef.current = options.onFlow
+
   const ref = useTrack<T>({
     ...options,
     scenes: count,
     onScene: setScene,
+    onStatus: (status) => {
+      setAttached(status === 'active')
+      onStatusRef.current?.(status)
+    },
+    onFlow: (flow) => {
+      setFlowed(flow)
+      onFlowRef.current?.(flow)
+    },
   })
 
   const goTo = useCallback(
@@ -401,7 +424,9 @@ export function useScenes<T extends HTMLElement = HTMLDivElement>(
     [count, options.root]
   )
 
-  return { ref, scene: current, goTo, reduced }
+  const active = attached && !flowed && !reduced
+
+  return { ref, scene: current, goTo, reduced, active }
 }
 
 export interface ScenesProps extends Omit<TrackProps, 'scenes' | 'children'> {
@@ -517,7 +542,7 @@ export const Scenes: React.FC<ScenesProps> = ({
   ease,
   ...rest
 }) => {
-  const { ref, scene, goTo, reduced } = useScenes(count, {
+  const { ref, scene, goTo, reduced, active } = useScenes(count, {
     pin: typeof pin === 'string' ? pin : pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
     enter,
@@ -549,14 +574,16 @@ export const Scenes: React.FC<ScenesProps> = ({
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
       <div className="sv-stage">
-        {reduced
-          // The helper-pinned wrapper returns to flow under reduced motion
-          // (driver.ts applyPinHelper), so every scene must render, stacked,
-          // instead of only the one the scroll clock would have picked.
-          ? Array.from({ length: count }, (_, i) => (
-              <React.Fragment key={i}>{children({ scene: i, goTo, reduced })}</React.Fragment>
-            ))
-          : children({ scene, goTo, reduced })}
+        {active
+          ? children({ scene, goTo, reduced, active })
+          // Not active (server render, no JS yet, a failed attach, flow, or
+          // reduced motion): the scene index alone is not trustworthy, so
+          // every scene renders, stacked, instead of only the one the
+          // scroll clock would have picked. Keeps content reachable in
+          // every fallback state, not only under reduced motion.
+          : Array.from({ length: count }, (_, i) => (
+              <React.Fragment key={i}>{children({ scene: i, goTo, reduced, active })}</React.Fragment>
+            ))}
       </div>
     </Tag>
   )

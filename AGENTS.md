@@ -27,7 +27,7 @@ scroll values into React state, you are doing it wrong.
 | output | range | meaning |
 | --- | --- | --- |
 | `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
-| `--sv-t` | 0 → 1 | Travel through the viewport (same range as native `view()` with a zero inset, cover, block axis) |
+| `--sv-t` | 0 → 1 | Travel through the viewport (same range as native `view()` with a zero inset, cover, vertical axis) |
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
@@ -68,7 +68,7 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay: HUD, markers, perf lint; never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.6 KB gz)
-// also styles/pin.css (3.2), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.4), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
+// also styles/pin.css (3.3), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.4), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
 ## The fx gallery (prefer for common patterns)
@@ -121,10 +121,12 @@ tied to `--sv-view` (flat inside the live band), no transition (transitions on c
 ```
 The container is N viewports tall by default (one per scene); a string
 `pin` (`pin="320vh"`) overrides that and wins over `height` too, matching
-`<Track pin>`. Content is `position: sticky`. Under reduced motion the
-render function is called once per scene and stacked instead of once for
-the current scene, so every scene stays reachable; `useScenes`/`<Scenes>`
-also hand back a `reduced` flag. For pure-CSS
+`<Track pin>`. Content is `position: sticky`. Server render, no JS, a
+failed attach, fit-to-flow and reduced motion all count as not `active`:
+the render function is called once per scene and stacked instead of once
+for the current scene, so every scene stays reachable; `useScenes`/`<Scenes>`
+hand back `active` (and `reduced` on its own) for a hand-rolled consumer to
+check the same way. For pure-CSS
 pinned effects use the presets: `sv-curtain-l/r` (two halves open),
 `sv-curtain-l`/`sv-curtain-r` panels are decoration (they part on the pin, hide under reduced motion and without JS): content goes behind them, never inside. `sv-rail` (horizontal carousel, `--sv-stage-width` automatically measures the stage; `--sv-rail-start` overrides only the starting position, while the endpoint uses stage overflow: enters from offscreen right and still moves
 when the track fits the viewport:
@@ -160,7 +162,7 @@ flash.
 **Sequenced scrub (choreography: do NOT add GSAP for this):** `sv-range`.
 Each child gets `--sv-r` (0..1) over its own slice of the pin: set
 `--sv-from`/`--sv-to` per child, add `sv-range-rise` for the ready-made
-flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so an engine that can't compute the calc division (needs Chrome 112/Safari 16.4/FF 112) resolves the property to that initial value instead of turning invalid; `var(--sv-r, 1)` is habit, not the reason older engines settle at the end state, and never fires on your range children either way, since `--sv-r` is always set; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }`). JS twin: `mapRange(t, from, to, ease?)` inside
+flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so an engine that can't compute the calc division (needs Chrome 112/Safari 16.4/FF 112) resolves the property to that initial value instead of turning invalid; `var(--sv-r, 1)` is habit, not the reason older engines settle at the end state, and never fires on your range children either way, since `--sv-r` is always set; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }` (needs `travel: true` / `data-sv-travel`, or `--sv-t` sits at 0)). JS twin: `mapRange(t, from, to, ease?)` inside
 `onPin`/`onTravel` for canvas/WebGL.
 
 
@@ -340,8 +342,9 @@ animations where supported.
 Fully animated: Chrome/Edge 104+, Firefox 78+, Safari/iOS 14.1+ (gates: ES2020
 dist + individual transform properties; `sv-counter` needs FF 128 / Safari
 16.4; `sv-range` needs Chrome 112 / Safari 16.4 / Firefox 112 (calc()
-division); `sv-acts` needs `@property` (same floor as `sv-range`); both
-settle to their end state below it, nothing is lost; `sv-view-*` native
+division); `sv-acts` needs `@property` (Chrome 85 / Safari 16.4 / Firefox
+128, a higher floor than `sv-range` on Firefox); both settle to their end
+state below their own floor, nothing is lost; `sv-view-*` native
 tier is Chromium 115+). Below the floor and
 without `compat()`, stages return to flow, decorative curtains hide and rails
 wrap. With `compat()` installed (`data-sv-compat` on `<html>`), curtains and
@@ -357,7 +360,7 @@ an explicit Section remount. Replacement content keeps the candidate constrained
 until the driver records overflow; shortening content does not clear a flow latch.
 Inactive shots become inert only while
 that layout is active; static shots stay accessible after failed boot, watchdog
-release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned section (`pin: 'Nvh'`) returns to flow, so its pin and scene clocks finish at once and every scene renders, reachable, instead of jumping past the ones in between. Entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
+release, reduced motion or fit-to-flow. The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) also uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Reduced motion: the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned section (`pin: 'Nvh'`) returns to flow, so its pin and scene clocks finish at once instead of jumping past the ones in between. `<Scenes>` renders every scene, reachable, until its tracker reports `active` (attached, not reduced, not flowed) and again whenever it stops being active; a `useScenes`/`onScene` consumer should render every scene under the same condition. Entrance presets show final state, curtains hide, deck/rail/stage return to flow. Animation is enhancement,
 never a dependency. StatsCountup shows its final numbers before activation under
 both reduced-motion controls; click-driven `sv-acts` keeps its open/closed state.
 If a client contractually requires legacy browsers:

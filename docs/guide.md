@@ -145,7 +145,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.2 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.3 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -167,7 +167,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
 | everything in `scrollvars` (the core entry) | 12.2 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 17.8 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 17.9 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -181,7 +181,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | output | range | meaning |
 | --- | --- | --- |
 | `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
-| `--sv-t` | 0 → 1 | Travel through the viewport (same range as native `view()` with a zero inset, cover, block axis) |
+| `--sv-t` | 0 → 1 | Travel through the viewport (same range as native `view()` with a zero inset, cover, vertical axis) |
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
@@ -542,8 +542,19 @@ export function FrameSequence({ frameCount, drawFrame }: { frameCount: number; d
 }
 
 export function Story() {
-  const { ref, scene } = useScenes<HTMLDivElement>(4, { pin: '400vh' })
-  return <div ref={ref}><div className="sv-stage">Scene {scene + 1}</div></div>
+  const { ref, scene, active } = useScenes<HTMLDivElement>(4, { pin: '400vh' })
+  // active is false on the server, without JS, after a failed attach, after
+  // flow, or under reduced motion: the scene index alone is not reachable
+  // then, so render every scene (`<Scenes>` does the same internally).
+  return (
+    <div ref={ref}>
+      <div className="sv-stage">
+        {active
+          ? <p>Scene {scene + 1}</p>
+          : Array.from({ length: 4 }, (_, i) => <p key={i}>Scene {i + 1}</p>)}
+      </div>
+    </div>
+  )
 }
 ```
 
@@ -604,7 +615,8 @@ const untrack = track(el, { scenes: 4, onScene: (i) => console.log('scene', i) }
 The routine reason a timeline library gets pulled into a scroll page is not
 springs. It is "A animates over 0–40% of the pin, B over 30–70%, C over
 60–100%". `sv-range` derives a per-child `--sv-r` (0..1) from a slice of the
-parent clock (`--sv-pin` when pinned, else `--sv-t`):
+parent clock (`--sv-pin` when pinned, else `--sv-t`, which needs
+`travel: true` / `data-sv-travel`):
 
 ```html
 <div data-sv data-sv-pin="320vh">
@@ -676,12 +688,12 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 
 | Browser | Fully animated | Notes |
 | --- | --- | --- |
-| Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ · `sv-range`/`sv-acts` need 112+ |
-| Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) · `sv-range`/`sv-acts` need 112+ |
+| Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ · `sv-range` needs 112+ · `sv-acts` needs 85+ |
+| Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) · `sv-range` needs 112+ · `sv-acts` needs 128+ |
 | Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) · `sv-range`/`sv-acts` need 16.4+ |
 | Anything older, or no JS | content visible, static | Below the transform floor without `compat()`, stages return to flow, curtains hide and rails wrap. With `compat()`, curtains and rails keep their fallback animation; stages containing static decks return to flow. |
 
-The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned stage returns to flow, so its pin and scene clocks finish at once and every scene renders. Entrances show their final state.
+The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned stage returns to flow, so its pin and scene clocks finish at once. `<Scenes>` renders every scene, reachable, until its tracker reports `active` (attached, not reduced, not flowed) and again whenever it stops being active; a `useScenes`/`onScene` consumer should render every scene under the same condition. Entrances show their final state.
 
 Below the transform floor, with JS still running, `styles/pin.css` releases
 stages, hides decorative curtains and wraps rails when `compat()` is absent.
