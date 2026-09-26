@@ -281,7 +281,13 @@ function mentionsPageOutputs(css: string) {
 let pendingImportOwners: Element[] = []
 // Owners currently listened to, one pair each, so repeated resolutions do not
 // stack closures and an explicit override can take them all off.
-const listened = new Map<Element, () => void>()
+const listened = new Map<Element, (event: Event) => void>()
+// Links whose sheet fired `error`: pendingSheets() excludes them, so a 404 or
+// network failure stops counting as uncertainty for the rest of the session.
+// The consumer watch's attribute observation (below) deletes an entry the
+// moment its href/rel/media/disabled changes, so a corrected URL is judged
+// again rather than staying remembered as broken.
+const erroredLinks = new WeakSet<HTMLLinkElement>()
 // Sheets read in full that reach neither name, by their rule count at the
 // time. The watch below rescans on every frame that adds an element, and
 // serializing every rule of every sheet on each of those cost 3.2ms a frame
@@ -305,6 +311,20 @@ function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   try {
     rules = sheet.cssRules
   } catch {
+    // Same origin is not proof of a load failure: a same-origin <link> that
+    // 302-redirects to a cross-origin CSS file keeps a same-origin
+    // link.href/sheet.href, fires `load` (not `error`), and still throws
+    // here (CORS opacity on the redirected response), common on
+    // reverse-proxied or versioned CDN setups. Guessing "same-origin throw =
+    // failure" broke exactly that: outputs never published although a
+    // loaded sheet reads them. The only link this is allowed to treat as
+    // failed is one whose OWN `error` the driver itself observed
+    // (erroredLinks, set by the settled() listener below); every other
+    // throw, including a link that failed before the driver got a chance to
+    // attach that listener at all, keeps the conservative default. Wrongly
+    // ON only costs a document-wide write per frame; wrongly OFF breaks
+    // rendering, so the conservative side wins when in doubt.
+    if (depth === 0 && sheet.ownerNode && (sheet.ownerNode as Element).nodeName === 'LINK' && erroredLinks.has(sheet.ownerNode as HTMLLinkElement)) return false
     return true // cross-origin without CORS: unreadable, so assume it reads them
   }
   if (!rules) return true
@@ -386,7 +406,14 @@ function watchForPageConsumers() {
         // flipping false is the only signal a later enable gets: without it
         // the sheet's own consumer, once its rules become readable, is never
         // asked again for the rest of the session (ADU-354 item 6).
-        if (record.type === 'attributes' && record.target.nodeName === 'LINK') { queued = true; break }
+        // No early break here: a batch can carry attribute records for
+        // several links (two hrefs corrected in the same script), and each
+        // one must forget its own remembered error, not only the first.
+        if (record.type === 'attributes' && record.target.nodeName === 'LINK') {
+          erroredLinks.delete(record.target as HTMLLinkElement)
+          queued = true
+          continue
+        }
         for (const node of Array.from(record.addedNodes)) {
           // text landing in a <style> (textContent = ...) is a new rule too
           const relevant = node.nodeType === 1 || (node.nodeType === 3 && node.parentNode?.nodeName === 'STYLE')
@@ -394,7 +421,6 @@ function watchForPageConsumers() {
           queued = true
           break
         }
-        if (queued) break
       }
       // One rescan per frame at most: a runtime that injects a hundred rules
       // in a row would otherwise walk every stylesheet a hundred times. The
@@ -446,7 +472,7 @@ function pendingSheets(): HTMLLinkElement[] {
       // (nothing is loading), and it is not a consumer while disabled: the
       // consumer watch's attribute observation on `disabled` is what queues
       // a rescan when it is enabled later (watchForPageConsumers above).
-      .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled) as HTMLLinkElement[]
+      .filter(link => !(link as HTMLLinkElement).sheet && !(link as HTMLLinkElement).disabled && !erroredLinks.has(link as HTMLLinkElement)) as HTMLLinkElement[]
   } catch {
     return []
   }
@@ -465,10 +491,11 @@ function resolvePageOutputs() {
   if (pending.length) {
     for (const owner of pending) {
       if (listened.has(owner)) continue
-      const settled = () => {
+      const settled = (event: Event) => {
         owner.removeEventListener('load', settled)
         owner.removeEventListener('error', settled)
         listened.delete(owner)
+        if (event.type === 'error' && owner.nodeName === 'LINK') erroredLinks.add(owner as HTMLLinkElement)
         resolvePageOutputs()
       }
       listened.set(owner, settled)

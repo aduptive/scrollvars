@@ -2982,7 +2982,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
         <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.6 KB / 5.6 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.8 KB / 5.6 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3489,6 +3489,7 @@ var SV = (() => {
   }
   var pendingImportOwners = [];
   var listened = /* @__PURE__ */ new Map();
+  var erroredLinks = /* @__PURE__ */ new WeakSet();
   var silentSheets = /* @__PURE__ */ new WeakMap();
   function unlistenAll() {
     listened.forEach((off, owner) => {
@@ -3502,6 +3503,8 @@ var SV = (() => {
     try {
       rules = sheet.cssRules;
     } catch {
+      if (depth === 0 && sheet.ownerNode && sheet.ownerNode.nodeName === "LINK" && erroredLinks.has(sheet.ownerNode))
+        return false;
       return true;
     }
     if (!rules)
@@ -3569,8 +3572,9 @@ var SV = (() => {
           return;
         for (const record of records) {
           if (record.type === "attributes" && record.target.nodeName === "LINK") {
+            erroredLinks.delete(record.target);
             queued = true;
-            break;
+            continue;
           }
           for (const node of Array.from(record.addedNodes)) {
             const relevant = node.nodeType === 1 || node.nodeType === 3 && node.parentNode?.nodeName === "STYLE";
@@ -3579,8 +3583,6 @@ var SV = (() => {
             queued = true;
             break;
           }
-          if (queued)
-            break;
         }
         if (queued)
           requestAnimationFrame(() => {
@@ -3609,7 +3611,7 @@ var SV = (() => {
   }
   function pendingSheets() {
     try {
-      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet && !link.disabled);
+      return Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).filter((link) => !link.sheet && !link.disabled && !erroredLinks.has(link));
     } catch {
       return [];
     }
@@ -3628,10 +3630,12 @@ var SV = (() => {
       for (const owner of pending) {
         if (listened.has(owner))
           continue;
-        const settled = () => {
+        const settled = (event) => {
           owner.removeEventListener("load", settled);
           owner.removeEventListener("error", settled);
           listened.delete(owner);
+          if (event.type === "error" && owner.nodeName === "LINK")
+            erroredLinks.add(owner);
           resolvePageOutputs();
         };
         listened.set(owner, settled);

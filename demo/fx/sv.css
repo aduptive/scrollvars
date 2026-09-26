@@ -307,9 +307,10 @@ html:not(.sv-on) .sv-spread > * {
    parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
    when pinned, else --sv-t (needs travel: true / data-sv-travel); override
    --sv-clock to choose explicitly.
-   Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
-   an engine that cannot compute it settles --sv-r at the registered
-   initial value (1), the end state; consume it as var(--sv-r, 1) anyway. */
+   Needs calc() division (Chrome 112/Safari 16.4/FF 112) AND @property
+   support (Chrome 85/Safari 16.4/FF 128) for the registered initial
+   value (1) guarantee; below either floor a consumer's own declaration
+   falls back to its initial value instead. Use var(--sv-r, 1) anyway. */
 /* the clock lives on the container at zero specificity: any author rule on it
    (`.mine { --sv-clock: var(--sv-t) }`) or an inline style wins */
 :where(.sv .sv-range) {

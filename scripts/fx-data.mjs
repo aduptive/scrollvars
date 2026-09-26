@@ -526,15 +526,18 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
 <!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
      gsap.ticker.add(() => tl.progress(
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
-    react: `const tl = useRef<gsap.core.Timeline | null>(null)
+    react: `const stage = useRef<HTMLDivElement>(null)
+const tl = useRef<gsap.core.Timeline | null>(null)
 useEffect(() => {
+  // scoped to this instance's own stage, never a bare class selector: two
+  // of these on one page must not animate each other's children
   tl.current = gsap.timeline({ paused: true })
-    .from('.stage > *', { y: 140, opacity: 0, stagger: 0.2 })
+    .from(stage.current!.children, { y: 140, opacity: 0, stagger: 0.2 })
   return () => tl.current?.kill()
 }, [])
 
 <Track pin="250vh" onPin={(p) => tl.current?.progress(p)}>
-  <div className="sv-stage">…</div>
+  <div ref={stage} className="sv-stage">…</div>
 </Track>`,
   },
   {

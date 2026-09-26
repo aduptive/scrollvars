@@ -45,7 +45,7 @@ scroll values into React state, you are doing it wrong.
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -175,7 +175,7 @@ flash.
 **Sequenced scrub (choreography: do NOT add GSAP for this):** `sv-range`.
 Each child gets `--sv-r` (0..1) over its own slice of the pin: set
 `--sv-from`/`--sv-to` per child, add `sv-range-rise` for the ready-made
-flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, so an engine that can't compute the calc division (needs Chrome 112/Safari 16.4/FF 112) resolves the property to that initial value instead of turning invalid; `var(--sv-r, 1)` is habit, not the reason older engines settle at the end state, and never fires on your range children either way, since `--sv-r` is always set; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }` (needs `travel: true` / `data-sv-travel`, or `--sv-t` sits at 0)). JS twin: `mapRange(t, from, to, ease?)` inside
+flavor or consume `--sv-r` yourself (ALWAYS as `var(--sv-r, 1)`; `--sv-r` is a registered property with initial value 1, but only where the engine supports `@property` too (Chrome 85/Safari 16.4/FF 128); below that floor, or below the calc division floor alone (Chrome 112/Safari 16.4/FF 112), the property is unregistered and a consumer's own declaration falls back to its initial value instead of 1; `var(--sv-r, 1)` is habit, not the reason older engines settle at the end state, and never fires on your range children either way, since `--sv-r` is always set; override the clock on the container, `.mine { --sv-clock: var(--sv-t) }` (needs `travel: true` / `data-sv-travel`, or `--sv-t` sits at 0)). JS twin: `mapRange(t, from, to, ease?)` inside
 `onPin`/`onTravel` for canvas/WebGL.
 
 

@@ -11,6 +11,43 @@
 
 ### Fixed
 
+- A `<link rel="stylesheet">` whose own `error` event the driver observed
+  (a 404, a reset connection, an unreachable host, while the sheet was
+  still pending) kept publishing `--sv-page`/`--sv-v` on `<html>` forever
+  for every page with no consumer at all: `sheetReadsPageOutputs()`'s
+  catch (an unreadable sheet is uncertainty, so it defaults to "assume it
+  reads them") could not distinguish that observed failure from an opaque
+  cross-origin sheet, so `found` latched true and the watch that would
+  notice a later, corrected href never installed. An observed failure now
+  turns outputs off; correcting the link's `href`/`rel`/`media`/`disabled`
+  is judged again. A batch that corrects two links at once now forgets
+  both, not only the first (the attribute-mutation watcher broke out of
+  its records loop early).
+  Deliberately NOT fixed the same way: a link whose sheet throws without
+  the driver ever observing its `error` (measured in real Chrome, the
+  sheet can already be a throwing object by the first frame that asks,
+  before any listener attaches) keeps the conservative default, publishing
+  for the rest of the session. A same-origin `<link>` can throw on
+  `cssRules` for a reason that is not a load failure at all: a 302
+  redirect to a cross-origin CSS file keeps a same-origin `href`, fires
+  `load`, and still throws (CORS opacity on the redirected response),
+  common on reverse-proxied or versioned CDN setups; an earlier version of
+  this fix read any same-origin throw as a failure and broke exactly that
+  case. Wrongly publishing costs a per-frame write; wrongly silencing
+  breaks rendering, so the conservative default wins whenever the driver
+  itself never saw the failure.
+- The gallery's GSAP React recipe (`gsap-scrub`) timed a `.from('.stage > *', ...)`
+  selector against markup that renders `.sv-stage`: pasted as shown, the
+  timeline animated nothing. It now scopes to the stage's own ref.
+- AGENTS.md's `--sv-r` paragraph and the `styles/pin.css` comment said the
+  registered initial value (1) is a below-floor guarantee wherever calc()
+  division fails; it also needs `@property` support (Chrome 85/Safari
+  16.4/Firefox 128), a higher floor than division's own on Firefox. Below
+  either floor a consumer's own declaration falls back to its initial
+  value, not 1. Worded accordingly. The `--sv-page`/`--sv-v` VARS row also
+  read as ambiguous between "(tracked and CSS) or setPageOutputs" and
+  "tracked and (CSS or setPageOutputs)" (the latter is what the driver
+  does); reworded to read one way only.
 - Without native `inert` (Firefox 78-111, Safari 14.1-15.4, inside the
   README floor), `StickySteps` still applied `inert`/`aria-hidden` to
   inactive shots, and the pause-controlled `Marquee`'s duplicate strip

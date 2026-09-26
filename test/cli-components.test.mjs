@@ -467,6 +467,36 @@ for (const fx of EFFECTS.filter((e) => e.category === 'Sections' && e.css && e.r
   })
 }
 
+// ---- a GSAP `.from(...)`/`.to(...)`/`.fromTo(...)` class-selector target
+// must exist in that SAME pane's OWN rendered markup, or the pasted recipe
+// animates nothing (or another component's element that happens to share
+// the class). Runs on every effect, not just Sections: an Interop recipe
+// like gsap-scrub has no CSS/React pane pairing gate above it at all.
+// classesIn() reads only class/className attributes, never the script text
+// (the GSAP call's own quoted selector does not count as documenting
+// itself), which is what caught fx-data.mjs's React tab selecting
+// `.stage > *` while its own JSX rendered `.sv-stage`.
+const gsapSelectorClasses = (pane) =>
+  [...stripComments(pane).matchAll(/\.(?:from|to|fromTo)\(\s*['"]([^'"]+)['"]/g)]
+    .flatMap((m) => [...m[1].matchAll(/(?<![\w-])\.([a-z][\w-]*)/g)].map((c) => c[1]))
+
+for (const fx of EFFECTS) {
+  for (const [name, pane] of Object.entries({ css: fx.css, react: fx.react, tailwind: fx.tailwind, preview: fx.preview })) {
+    if (!pane) continue
+    const wanted = gsapSelectorClasses(pane)
+    if (!wanted.length) continue
+    test(`gallery ${fx.slug}: the ${name} tab's GSAP target selector matches its own markup`, () => {
+      const rendered = classesIn(pane)
+      const missing = wanted.filter((c) => !rendered.includes(c))
+      assert.deepEqual(
+        missing,
+        [],
+        `the ${name} tab's GSAP call selects .${missing.join(', .')}, absent from this pane's own markup`
+      )
+    })
+  }
+}
+
 // ---- ADU-155: the CSS tab's reduced-motion block is what a reader pastes;
 // ADU-144 fixed the installed component's own block and stopped there, so the
 // tab kept resetting `.st-shot` only and every non-active step stayed at 30%
