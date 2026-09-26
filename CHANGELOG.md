@@ -11,6 +11,28 @@
 
 ### Fixed
 
+- Under reduced motion, a helper-pinned `<Scenes count={4}>` collapsed its
+  pin span to about one pixel, so `--sv-scene`/`onScene` jumped from 0 to
+  N-1 in one pixel and the guide's own example (`Slide {scene + 1}`) never
+  rendered the middle scenes. `useScenes`/`<Scenes>` now hand back a
+  `reduced` flag, and `<Scenes>` calls its render function once per scene
+  and stacks the result under reduced motion, so every scene stays
+  reachable. `ScenesState` gained `reduced` (minor, additive). Four doc
+  sentences that claimed the pin/scene clocks keep scrubbing under reduced
+  motion now say a helper-pinned section returns to flow and its pin/scene
+  clocks finish at once, matching what the driver already did.
+- Marquee's offscreen watch had first-registrant-owns semantics: a second
+  `toggles()` scope registering the same `.sv-marquee-track` (the common
+  `<ScrollVarsBoot>` + `<Marquee>` shape) never got its own release wired,
+  so stopping the scope that registered first stranded the track observed
+  forever (a leak on every client-side navigation away from its page), and
+  stopping the OTHER scope stripped the offscreen class and observer from
+  a track the first scope still needed. Fixed with a per-track lease
+  count: unobserve, delete and remove the class only when the last lease
+  goes, and a track that has left the document is pruned (unobserved, its
+  lease dropped) on its next IntersectionObserver delivery or visibility
+  pass, so a document-wide scope that never stops cannot keep a removed
+  track leased forever.
 - Perf phase 1, stop work nobody sees. React `<Slider autoplay>` already skipped a tick while off screen or with the tab hidden; the `setInterval` itself now stops there too and restarts on return, instead of waking up every interval on a background tab full of never-visible carousels. A correctness fix ("do no work off screen"), not a headline win: measured on the perf lab's `long.html` (marquee and slider both present) the frame cadence is unchanged on this machine, as expected for background work that was already cheap to skip; the actual stopping is what a new test asserts directly, an exact `setInterval`/`clearInterval` count.
 - The site hero's "use it with your AI agent" pill wrapped `npx` onto its own line at narrow widths. The command now sits in its own `white-space: nowrap` span while the label around it wraps freely; verified at 320, 375 and 1280 with real mobile/desktop viewport emulation (no horizontal overflow, the command never breaks across lines).
 - AGENTS.md's performance rule 6 recommended `will-change: translate` on every scroll-moved element, which our own published benchmark contradicts: hinting `will-change: transform, opacity` on the driver's own moving elements raised main-profile task time about 9% and gave no measurable gain on the deep-50 profile (`demo/bench/harness/README.md`, main-style-css screen), and a separate screen rejected it outright (`demo/bench/harness/HYPOTHESES.md`). Rewritten from the measured facts: do not add `will-change` by default; add it only when a profile shows a specific moving element repainting every frame, and remove it once the motion stops. The skill and llms.txt follow, generated from the same text.

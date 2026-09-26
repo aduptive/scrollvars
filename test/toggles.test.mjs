@@ -97,6 +97,59 @@ test('toggles: an IntersectionObserver constructor failure does not strand a mar
   } finally { env.restore() }
 })
 
+test('toggles: two scopes registering the same track release only on the second stop, in either order (ADU-354 blocker 2)', async () => {
+  for (const order of ['outer-then-inner', 'inner-then-outer']) {
+    const env = lifecycleEnv()
+    try {
+      const { toggles } = await import('../dist/core/toggles.js?pr2marqueelease-' + order)
+      const track = env.element()
+      track.classList.add('sv-marquee-track')
+      // Boot's document-wide scan (outer) and a Marquee's own toggles(node)
+      // (inner) both find the same track: two independent roots that both
+      // resolve it, the shape a real page produces.
+      const outerRoot = env.element(), innerRoot = env.element()
+      outerRoot.append(track)
+      innerRoot.append(track)
+      const stopOuter = toggles(outerRoot)
+      const stopInner = toggles(innerRoot)
+      const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+      assert.ok(io.targets.has(track), 'one shared observer entry for both scopes')
+
+      const [first, second] = order === 'outer-then-inner' ? [stopOuter, stopInner] : [stopInner, stopOuter]
+      first()
+      assert.ok(io.targets.has(track), 'still observed: the other scope still owns a lease')
+      assert.ok(!track.classes.has('sv-marquee-offscreen'), 'the class the other scope relies on survives the first stop')
+      second()
+      assert.ok(!io.targets.has(track), 'unobserved exactly once, after the second (last) stop')
+    } finally { env.restore() }
+  }
+})
+
+test('toggles: a track removed from the document is pruned on its next IntersectionObserver delivery, not kept by a lease that never released it', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marqueprune')
+    const root = env.element(), track = env.element()
+    track.classList.add('sv-marquee-track')
+    root.append(track)
+    const stop = toggles(root) // this scope never calls stop(): models Boot, which lives forever
+    const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track))
+
+    // the track leaves the document some other way (an SPA router wiping
+    // DOM outside React's own unmount path), never through this scope's stop()
+    track.isConnected = false
+    io.cb([{ target: track, isIntersecting: false }])
+    assert.ok(!io.targets.has(track), 'the detached track is unobserved on its next IO delivery')
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'and its class is cleared')
+    // the shared marquee observer releases too (no track left to watch); the
+    // scope's own click listener is unrelated and still lives, this scope
+    // models Boot, which is never stopped
+    assert.equal(env.baseline()[1], 0, 'the shared IntersectionObserver is no longer tracked as live')
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles: a scope with no marquee track never creates an IntersectionObserver', async () => {
   const env = lifecycleEnv()
   try {

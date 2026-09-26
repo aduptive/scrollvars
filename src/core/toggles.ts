@@ -136,10 +136,30 @@ function ownerOf(t: HTMLElement): { className: string; target: HTMLElement | nul
 // nothing extra there beyond the toggle itself.
 let marqueeObserver: IntersectionObserver | undefined
 const marqueeOffscreen = new WeakMap<HTMLElement, boolean>()
-const marqueeInstances = new Set<HTMLElement>()
+// A per-track LEASE COUNT, not membership: two scopes can register the same
+// track (Boot's document-wide scan plus a Marquee's own toggles(node)), and
+// releasing one must not strip the class or the observer from a track the
+// other scope still owns (ADU-354 blocker 2). Only the last release does.
+const marqueeLeases = new Map<HTMLElement, number>()
 let onVisibility: (() => void) | undefined
 
+// A track that left the document (an SPA router replacing DOM outside
+// React's own unmount path, or any removal that never called the owning
+// scope's stop()) is pruned on its next IO delivery or visibility pass, so
+// no lease can keep a detached node observed forever.
+function pruneDetachedMarquee(track: HTMLElement): boolean {
+  // Explicit `false` only: a stub or an older engine with no isConnected at
+  // all reports `undefined`, which must NOT read as detached (fail visible).
+  if (track.isConnected !== false) return false
+  marqueeLeases.delete(track)
+  marqueeObserver?.unobserve(track)
+  marqueeOffscreen.delete(track)
+  releaseMarqueeSharedIfUnneeded()
+  return true
+}
+
 function applyMarqueeState(track: HTMLElement) {
+  if (pruneDetachedMarquee(track)) return
   // classList.toggle's second argument defaults on `undefined`, not on a
   // falsy value: the OR chain below can evaluate to `undefined` (document
   // hidden check short-circuiting), which would silently fall back to the
@@ -150,7 +170,7 @@ function applyMarqueeState(track: HTMLElement) {
 
 function bindMarqueeVisibility() {
   if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
-  onVisibility = () => marqueeInstances.forEach(applyMarqueeState)
+  onVisibility = () => marqueeLeases.forEach((_count, track) => applyMarqueeState(track))
   document.addEventListener('visibilitychange', onVisibility)
 }
 
@@ -159,7 +179,7 @@ function bindMarqueeVisibility() {
 // does: a page that mounts and fully unmounts its last Marquee leaves no
 // resource behind (packed-acceptance's remount baseline check, ADU debug).
 function releaseMarqueeSharedIfUnneeded() {
-  if (marqueeInstances.size) return
+  if (marqueeLeases.size) return
   marqueeObserver?.disconnect()
   marqueeObserver = undefined
   if (onVisibility && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
@@ -169,22 +189,26 @@ function releaseMarqueeSharedIfUnneeded() {
 }
 
 function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
-  if (marqueeInstances.has(track)) return
+  const already = marqueeLeases.has(track)
+  marqueeLeases.set(track, (marqueeLeases.get(track) ?? 0) + 1)
   // Registered before any of the steps below run: a throw partway through
   // (the IntersectionObserver constructor, bindMarqueeVisibility's
   // addEventListener, an overridden classList) is caught by toggles()'s
   // own life.setup() and unwound through every deferred release, this one
-  // included. Registering it LAST left a track added to marqueeInstances
-  // with no cleanup ever wired to remove it, so watchMarquee()'s own has()
-  // guard above would skip that track forever on any later scan.
+  // included. Registering it LAST left a track added with no cleanup ever
+  // wired to remove it. Every scope that registers gets its own decrement:
+  // only the one that takes the count to zero actually releases the track.
   life.defer(() => {
+    const count = marqueeLeases.get(track)
+    if (count === undefined) return // already pruned as detached
+    if (count > 1) { marqueeLeases.set(track, count - 1); return }
+    marqueeLeases.delete(track)
     marqueeObserver?.unobserve(track)
-    marqueeInstances.delete(track)
     marqueeOffscreen.delete(track)
     track.classList.remove('sv-marquee-offscreen')
     releaseMarqueeSharedIfUnneeded()
   })
-  marqueeInstances.add(track)
+  if (already) return
   marqueeOffscreen.set(track, false)
   bindMarqueeVisibility()
   if (typeof IntersectionObserver === 'function') {
@@ -192,7 +216,8 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
       marqueeObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           const el = entry.target as HTMLElement
-          if (!marqueeInstances.has(el)) return
+          if (!marqueeLeases.has(el)) return
+          if (pruneDetachedMarquee(el)) return
           marqueeOffscreen.set(el, !entry.isIntersecting)
           applyMarqueeState(el)
         })
