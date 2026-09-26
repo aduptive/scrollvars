@@ -66,6 +66,11 @@ if (state && state.queue.length) {
   })
 }
 
+// ?autorun=1 starts a fresh run without a click, so the lead can launch it
+// in any installed browser (`open -a Safari '.../bench/lab/?autorun=1'`).
+// The finished run returns to this page without the flag, so it runs once.
+if (query.has('autorun') && !(state && state.queue.length)) $('run').click()
+
 if (state && !state.queue.length && state.runs.length) {
   const good = state.runs.filter((r) => r.deltas)
   const all = good.flatMap((r) => r.deltas)
