@@ -129,11 +129,15 @@ if (command === 'skill') {
   process.exit(0)
 }
 
-// only the commands that need the registry pay for the network round trip
-const registry = command !== 'list' && command !== 'add' ? null : await loadRegistry().catch((e) => {
-  console.error('could not load the effect registry:', e.message)
-  process.exit(1)
-})
+// only the commands that need the registry pay for the network round trip:
+// `add` with no slug prints usage below, and must do that even offline
+// (ADU-354 item 13), not fail on a registry it never needed.
+const registry = command === 'list' || (command === 'add' && slug)
+  ? await loadRegistry().catch((e) => {
+      console.error('could not load the effect registry:', e.message)
+      process.exit(1)
+    })
+  : null
 
 if (command === 'list') {
   const width = Math.max(...registry.effects.map((e) => e.slug.length))

@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.5 KB, full core incl. the slider 12.1 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.6 KB, full core incl. the slider 12.2 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.1 KB on the wire.
 
 ## Why
 
@@ -161,12 +161,12 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 5.5 KB |
+| `track` (the driver) | 5.6 KB |
 | `track` + `scan` (zero-wrapper mode) | 7.9 KB |
-| `slider` | 3.6 KB |
+| `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.1 KB |
+| everything in `scrollvars` (the core entry) | 12.2 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 17.8 KB |
 <!-- sizes:end -->
 
@@ -181,12 +181,12 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | output | range | meaning |
 | --- | --- | --- |
 | `--sv-view` | −1 → 0 → 1 | Below the live band → inside it (flat at 0) → gone above |
-| `--sv-t` | 0 → 1 | Travel through the viewport (same semantics as native `view()`) |
+| `--sv-t` | 0 → 1 | Travel through the viewport (same range as native `view()` with a zero inset, cover, block axis) |
 | `--sv-pin` | 0 → 1 | Progress across a pinned (sticky) stretch: curtains, rails, scrubbing |
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked AND some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)`: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -432,7 +432,7 @@ export function Carousel({ slides }: { slides: ReactNode[] }) {
 
 ```css
 /* coverflow in two lines */
-.slide { scale: calc(1 - min(max(var(--sd), -1 * var(--sd)) * 0.12, 0.3)); opacity: calc(1 - abs(var(--sd)) * 0.35); }
+.slide { scale: calc(1 - min(max(var(--sd), -1 * var(--sd)) * 0.12, 0.3)); opacity: calc(1 - max(var(--sd), -1 * var(--sd)) * 0.35); }
 ```
 
 Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
@@ -458,7 +458,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 3.6 KB gzip; Swiper 11 bundle
+Size, measured: this module 3.7 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
@@ -676,9 +676,9 @@ the presets use individual transform properties (`translate:`/`rotate:`/`scale:`
 
 | Browser | Fully animated | Notes |
 | --- | --- | --- |
-| Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ |
-| Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) |
-| Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) |
+| Chrome / Edge | **104+** (Aug 2022) | `sv-view-*` native zero-JS tier: 115+ · `sv-range`/`sv-acts` need 112+ |
+| Firefox | **78+** (Jun 2020, `:is()`/`:where()`) | `sv-counter` preset needs 128+ (Jul 2024) · `sv-range`/`sv-acts` need 112+ |
+| Safari / iOS | **14.1+** (Apr 2021) | `sv-counter` preset needs 16.4+ (Mar 2023) · `sv-range`/`sv-acts` need 16.4+ |
 | Anything older, or no JS | content visible, static | Below the transform floor without `compat()`, stages return to flow, curtains hide and rails wrap. With `compat()`, curtains and rails keep their fallback animation; stages containing static decks return to flow. |
 
 The component kit (Modal, Accordion, `sv-pop`, `sv-acts`) additionally uses `<dialog>`, `inert`, `@starting-style` and `@property`; older engines render those pieces static: closed panels stay closed, open ones open, no animation, and a Modal without `<dialog>` support is an open static panel: `state.css` deliberately hides nothing there, and the `open` attribute tracks state in both directions so your own CSS can hide it. Under reduced motion the driver zeroes `--sv-view`, and the travel clock keeps scrubbing (scroll-linked, not motion); a helper-pinned stage returns to flow, so its pin and scene clocks finish at once and every scene renders. Entrances show their final state.

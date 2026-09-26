@@ -901,6 +901,56 @@ test('slider: a replaced active slide node (same index, new element) carries sv-
   assert.equal(fireChildList(container), 0, 'destroy() disconnects the observer')
 })
 
+test('slider: emptying a populated slider clears the stale active slide (ADU-354 item 5)', async () => {
+  const rafQueue = []
+  global.window = { addEventListener: () => {}, removeEventListener: () => {} }
+  global.requestAnimationFrame = (fn) => rafQueue.push(fn) && rafQueue.length
+  global.cancelAnimationFrame = () => (rafQueue.length = 0)
+  global.ResizeObserver = ResizeObserverStub
+  global.getComputedStyle = () => ({ direction: 'ltr' })
+
+  const slides = [makeSlide(0), makeSlide(100), makeSlide(200), makeSlide(300)]
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+  const container = {
+    get children() { slides.forEach((sl) => { sl._c = this; sl.offsetParent = this }); return slides },
+    clientLeft: 0, clientTop: 0, scrollTop: 0, offsetLeft: 0, offsetTop: 0, offsetParent: null,
+    getBoundingClientRect() { return { left: 0, right: this.clientWidth, top: 0, bottom: 100, width: this.clientWidth, height: 100 } },
+    scrollLeft: 200, clientWidth: 100, vars: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: { setProperty(k, v) { container.vars[k] = v }, removeProperty(k) { delete container.vars[k] } },
+    addEventListener: () => {}, removeEventListener: () => {}, scrollTo: () => {},
+  }
+
+  const { slider } = await import('../dist/core/slider.js?empty')
+  const onSlideCalls = []
+  const handle = slider(container, { duration: 0, onSlide: (i) => onSlideCalls.push(i) })
+  assert.equal(handle.active(), 2, 'starts centered on slide 2')
+  assert.deepEqual(onSlideCalls, [2])
+
+  // every slide removed (a CMS editor cleared the list, or a filter matched
+  // nothing): the container is empty, and a stale `active` must not survive it
+  slides.length = 0
+  assert.equal(fireChildList(container), 1)
+  runFrames(rafQueue)
+
+  assert.equal(handle.state().active, 0, 'no phantom active index against an empty list')
+  assert.equal(handle.state().count, 0)
+  assert.equal(container.vars['--sv-slide'], undefined, 'the owned css var is released, not left at the stale index')
+
+  // repopulate at the SAME index (2) the stale value used to hold: with
+  // `active` genuinely reset to -1, landing back on index 2 is a real
+  // change and fires its own onSlide(2); before the fix `active` stayed at
+  // the stale 2, so a repopulate that lands on 2 again looked like no
+  // change at all and onSlide never fired a second time.
+  slides.push(makeSlide(0), makeSlide(100), makeSlide(200))
+  slides.forEach((s) => { s.style._owner = s; s.classList._owner = s })
+  container.scrollLeft = 200
+  assert.equal(fireChildList(container), 1)
+  runFrames(rafQueue)
+  assert.deepEqual(onSlideCalls, [2, 2], 'onSlide(2) fires again once the list is populated back to the same index')
+  handle.destroy()
+})
+
 test('slider: proximity leaves wheel and drag settling to native snap', async () => {
   const rafQueue = [], listeners = {}, outer = {}
   global.window = { addEventListener: (t, fn) => outer[t] = fn, removeEventListener: t => delete outer[t] }

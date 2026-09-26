@@ -7,53 +7,97 @@
  */
 const WINDOW_MS = 5000
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
-}
-
 export interface FrameStats {
   fps: number
   refreshHz: number
   dropped: number
   late: number
   worstMs: number
+  /** False until the calibration window completes; the HUD shows "unknown"
+   * refresh and skips dropped/late instead of reading them off an interval
+   * it has not measured yet. */
+  calibrated: boolean
 }
 
-function trackFrames(onUpdate: (stats: FrameStats) => void): () => void {
+const CALIBRATION_MS = 1000
+
+// A refresh interval measured FROM the frames it is judging reads a
+// sustained half-rate page (every other vsync) as a 30Hz display with 0
+// dropped frames: the median of {33,33,33...} is 33, so nothing in that
+// stream is ever more than 1.5x its own median (ADU-354 item 11). Calibrate
+// ONCE, over a quiet opening window, then judge every later delta against
+// that frozen interval; a delta that spans a `visibilitychange` (a
+// backgrounded tab) is neither a calibration sample nor a dropped frame,
+// it is a gap the page was not asked to render through.
+/** Exported for unit tests only: `mountHud()` is the public surface. */
+export function trackFrames(onUpdate: (stats: FrameStats) => void): () => void {
   let raf = 0
   let last = 0
+  let interval: number | null = null
+  let calibrationStart = 0
+  let calibrationMin = Infinity
   const samples: Array<{ t: number; delta: number }> = []
   let lastUpdate = 0
+  let skipNext = false
+  const onVisibility = () => {
+    if (typeof document !== 'undefined' && document.hidden) skipNext = true
+  }
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', onVisibility)
+  }
   const tick = (t: number) => {
     if (last) {
       const delta = t - last
-      samples.push({ t, delta })
-      const cutoff = t - WINDOW_MS
-      while (samples.length && samples[0].t < cutoff) samples.shift()
+      const spansGap = skipNext
+      skipNext = false
+      if (interval === null) {
+        if (spansGap) {
+          // A gap (background tab) makes `t - calibrationStart` jump by the
+          // gap's own length, which can already exceed the window on its
+          // own, and the single post-gap delta is not a stable sample
+          // either: restart the window from here instead of locking onto it.
+          calibrationStart = t
+          calibrationMin = Infinity
+        } else {
+          if (!calibrationStart) calibrationStart = t
+          calibrationMin = Math.min(calibrationMin, delta)
+          if (t - calibrationStart >= CALIBRATION_MS && calibrationMin < Infinity) interval = calibrationMin
+        }
+      }
+      if (!spansGap) {
+        samples.push({ t, delta })
+        const cutoff = t - WINDOW_MS
+        while (samples.length && samples[0].t < cutoff) samples.shift()
+      }
     }
     last = t
     if (t - lastUpdate > 500 && samples.length > 1) {
       lastUpdate = t
-      const deltas = samples.map((s) => s.delta)
-      const interval = median(deltas) || 16.67
-      const dropped = deltas.filter((d) => d > interval * 1.5).length
-      const late = deltas.filter((d) => d > interval * 1.2 && d <= interval * 1.5).length
-      const worstMs = Math.max(...deltas)
-      const avg = deltas.reduce((a, b) => a + b, 0) / deltas.length
-      onUpdate({
-        fps: 1000 / avg,
-        refreshHz: 1000 / interval,
-        dropped,
-        late,
-        worstMs,
-      })
+      if (interval === null) {
+        onUpdate({ fps: 0, refreshHz: 0, dropped: 0, late: 0, worstMs: 0, calibrated: false })
+      } else {
+        const deltas = samples.map((s) => s.delta)
+        let dropped = 0
+        let late = 0
+        for (const d of deltas) {
+          const ratio = d / interval
+          if (ratio > 1.5) dropped += Math.round(ratio) - 1
+          else if (ratio > 1.2) late++
+        }
+        const worstMs = Math.max(...deltas)
+        const avg = deltas.reduce((a, b) => a + b, 0) / deltas.length
+        onUpdate({ fps: 1000 / avg, refreshHz: 1000 / interval, dropped, late, worstMs, calibrated: true })
+      }
     }
     raf = requestAnimationFrame(tick)
   }
   raf = requestAnimationFrame(tick)
-  return () => cancelAnimationFrame(raf)
+  return () => {
+    cancelAnimationFrame(raf)
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }
 }
 
 export interface LafStats {
@@ -110,10 +154,11 @@ export function mountHud(): () => void {
     const lafLine = lafStats.supported
       ? `blocking ${lafStats.blockingMs}ms${lafStats.topScript ? ` (top: ${lafStats.topScript})` : ''}`
       : 'long-animation-frame: unsupported here (Chrome only)'
-    readout.textContent =
-      `${stats.fps.toFixed(1)} fps · ~${Math.round(stats.refreshHz)}Hz refresh\n` +
-      `dropped ${stats.dropped} · late ${stats.late} · worst ${stats.worstMs.toFixed(1)}ms (last 5s)\n` +
-      lafLine
+    readout.textContent = stats.calibrated
+      ? `${stats.fps.toFixed(1)} fps · ~${Math.round(stats.refreshHz)}Hz refresh\n` +
+        `dropped ${stats.dropped} · late ${stats.late} · worst ${stats.worstMs.toFixed(1)}ms (last 5s)\n` +
+        lafLine
+      : `calibrating… refresh unknown\n${lafLine}`
   })
 
   return () => {

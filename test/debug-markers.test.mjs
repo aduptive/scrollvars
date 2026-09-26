@@ -50,3 +50,11 @@ test('pinLines: span never goes below 1px even for a stage taller than the wrapp
   const lines = pinLines(geo, 0, 0)
   assert.equal(lines.end - lines.start, 1)
 })
+
+test('pinLines: an origin (a heading above the stage) moves start by it and shortens the span by it (ADU-354 item 10)', () => {
+  const geo = { wrapperTop: 200, wrapperHeight: 2000, stageHeight: 600 }
+  const without = pinLines(geo, 500, 80, 0)
+  const withOrigin = pinLines(geo, 500, 80, 120)
+  assert.equal(withOrigin.start, without.start + 120)
+  assert.equal(withOrigin.end - withOrigin.start, (without.end - without.start) - 120)
+})

@@ -212,21 +212,25 @@
 .sv-marquee-track { display: flex; gap: var(--sv-gap, 48px); width: max-content;
   padding-right: var(--sv-gap, 48px);
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
-.sv-marquee:hover .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee:hover .sv-marquee-track,
+.sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
-   without it a pasted marquee never stops */
+   without width/flex-wrap the strip keeps overflowing past the viewport
+   with nothing left to scroll it into view */
 @media (prefers-reduced-motion: reduce) {
-  .sv-marquee-track { animation: none; }
+  .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+  .sv-marquee-track &gt; .sv-marquee-dup { display: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; }</code></pre>
+:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
+:where([data-sv-motion="reduce"]) .sv-marquee-track &gt; .sv-marquee-dup { display: none; }</code></pre>
     <pre tabindex="0" data-pane="react"><code>&lt;Marquee speed={24}&gt;
   {logos.map(l =&gt; &lt;img key={l.id} src={l.src} alt={l.name} className="h-8" /&gt;)}
 &lt;/Marquee&gt;</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.1 KB gzip as ESM (this page's fx/sv.js IIFE: 12.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.2 KB gzip as ESM (this page's fx/sv.js IIFE: 12.4 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

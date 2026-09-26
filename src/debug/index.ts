@@ -29,11 +29,14 @@ export function debug({ outlines = true, hud = true, markers = false, lint = tru
   if (lint) extras.push(runLint())
 
   const panel = document.createElement('div')
+  // solid, no filter behind it (AGENTS.md rule 4): it re-rasters every scroll
+  // frame, and the HUD in the same document would measure that cost as the
+  // page's own (ADU-354 item 12)
   panel.style.cssText =
     'position:fixed;bottom:12px;right:12px;z-index:2147483647;max-height:45vh;' +
-    'overflow:auto;background:rgba(10,9,14,.92);color:#e6e4f0;border:1px solid ' +
+    'overflow:auto;background:rgba(10,9,14,.96);color:#e6e4f0;border:1px solid ' +
     'rgba(167,139,250,.4);border-radius:10px;padding:10px 12px;font:11px/1.5 ' +
-    'ui-monospace,Menlo,monospace;min-width:260px;backdrop-filter:blur(6px)'
+    'ui-monospace,Menlo,monospace;min-width:260px'
   panel.innerHTML = '<b style="color:#a78bfa">ScrollVars debug</b><div></div>'
   const list = panel.lastElementChild as HTMLElement
   document.body.appendChild(panel)

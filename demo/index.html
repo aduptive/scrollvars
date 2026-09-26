@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 5.5 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.6 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.5 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.6 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1918,7 +1918,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.5 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.6 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2609,7 +2609,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 3.6&nbsp;KB carousel, 12× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 3.7&nbsp;KB carousel, 11× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2621,8 +2621,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.0&nbsp;KB minified,
-<strong>3.6&nbsp;KB gzipped, ~12× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.1&nbsp;KB minified,
+<strong>3.7&nbsp;KB gzipped, ~11× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2980,9 +2980,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.8 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 21.9 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.1 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.5 KB / 5.5 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.6 KB / 5.6 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.5 KB gzip · full core 12.1 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.6 KB gzip · full core 12.2 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3568,6 +3568,10 @@ var SV = (() => {
         if (queued || consumerWatch !== observer)
           return;
         for (const record of records) {
+          if (record.type === "attributes" && record.target.nodeName === "LINK") {
+            queued = true;
+            break;
+          }
           for (const node of Array.from(record.addedNodes)) {
             const relevant = node.nodeType === 1 || node.nodeType === 3 && node.parentNode?.nodeName === "STYLE";
             if (!relevant)
@@ -3591,7 +3595,12 @@ var SV = (() => {
           });
       });
       consumerWatch = observer;
-      consumerWatch.observe(root, { childList: true, subtree: true });
+      consumerWatch.observe(root, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["disabled", "rel", "href", "media"]
+      });
     } catch {
       safely(() => consumerWatch?.disconnect());
       consumerWatch = null;
@@ -3773,6 +3782,8 @@ var SV = (() => {
     return 0;
   }
   function computeTravel(geo) {
+    if (geo.vp + geo.height <= 0)
+      return 0;
     return clamp((geo.vp - geo.top) / (geo.vp + geo.height), 0, 1);
   }
   function pinSpan(height, vp, offset, stageHeight, origin = 0) {
@@ -5287,6 +5298,11 @@ var SV = (() => {
           owned.style(container, "--sv-slide", String(best));
         if (indexChanged)
           onSlide?.(best);
+      } else if (list.length === 0 && (active !== -1 || activeEl !== null)) {
+        active = -1;
+        activeEl = null;
+        if (cssVars)
+          owned.style(container, "--sv-slide", "");
       }
       if (!life.stopped) {
         lastState = readState(p);
@@ -7478,6 +7494,16 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
                 owned.style(container, '--sv-slide', String(best));
             if (indexChanged)
                 onSlide?.(best);
+        }
+        else if (list.length === 0 && (active !== -1 || activeEl !== null)) {
+            // populated to empty (every slide removed): a stale `active` from
+            // before the removal must not survive it, or repopulating at the same
+            // index fires no onSlide, and `state()` reports a phantom active
+            // index against a detached node with count 0 (ADU-354 item 5).
+            active = -1;
+            activeEl = null;
+            if (cssVars)
+                owned.style(container, '--sv-slide', '');
         }
         if (!life.stopped) {
             lastState = readState(p);

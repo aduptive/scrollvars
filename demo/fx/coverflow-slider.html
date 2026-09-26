@@ -200,7 +200,8 @@
     <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;Slider perView={{ base: 1.2, md: 2.5, xl: 4 }} gap={16} arrows dots
   className="[--sv-arrow-bg:theme(colors.zinc.900/60)]"&gt;
   {cards.map(c =&gt; (
-    &lt;Slide key={c.id} className="[scale:calc(1-min(abs(var(--sd,0))*0.12,0.3))]"&gt;
+    &lt;Slide key={c.id}
+      className="[scale:calc(1-min(max(var(--sd,0),-1*var(--sd,0))*0.12,0.3))] motion-reduce:[scale:none] sv-reduce:[scale:none]"&gt;
       &lt;Card {...c} /&gt;
     &lt;/Slide&gt;
   ))}
@@ -215,8 +216,8 @@
 &lt;/script&gt;
 
 /* the coverflow is pure CSS on --sd: */
-.slide { scale: calc(1 - min(abs(var(--sd, 0)) * 0.12, 0.3));
-  opacity: calc(1 - abs(var(--sd, 0)) * 0.35);
+.slide { scale: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.12, 0.3));
+  opacity: calc(1 - min(max(var(--sd, 0), -1 * var(--sd, 0)) * 0.35, 0.7));
   transform: perspective(900px) rotateY(calc(var(--sd, 0) * -16deg)); }
 @media (prefers-reduced-motion: reduce) { .slide { scale: none; opacity: 1; transform: none; } }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
@@ -226,7 +227,7 @@
 &lt;/Slider&gt;
 // chrome: --sv-arrow-* / --sv-dot-* vars, prevIcon/nextIcon, renderDot, or your own UI via ref</code></pre>
   </div>
-  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.1 KB gzip as ESM (this page's fx/sv.js IIFE: 12.3 KB).
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.2 KB gzip as ESM (this page's fx/sv.js IIFE: 12.4 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
 </div>

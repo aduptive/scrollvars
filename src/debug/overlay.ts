@@ -29,6 +29,43 @@ function readPinOffsetLite(stage: HTMLElement): number {
   return parseFloat(computed.getPropertyValue('--sv-pin-offset').trim()) || 0
 }
 
+// The stage the DRIVER would own for this tracker: its own `.sv-stage`, not
+// a nested tracker's (a `.sv` or `data-sv` ancestor between it and `el`
+// disqualifies it), the same rule driver.ts's ownedStage applies. Debug
+// never imports core, so this is a lite reimplementation (ADU-354 item 10).
+function ownedStageLite(el: HTMLElement): HTMLElement | undefined {
+  return Array.from(el.querySelectorAll<HTMLElement>('.sv-stage')).find((stage) => {
+    if (stage.hasAttribute('data-sv') || stage.classList.contains('sv')) return false
+    for (let parent = stage.parentElement; parent && parent !== el; parent = parent.parentElement) {
+      if (parent.classList.contains('sv') || parent.hasAttribute('data-sv')) return false
+    }
+    return true
+  })
+}
+
+// The stage's normal-flow offset (a heading or padding before it): briefly
+// releases sticky positioning and reads the offsetTop chain difference, the
+// same trick driver.ts's readStageOrigin uses.
+function readStageOriginLite(el: HTMLElement, stage: HTMLElement): number {
+  if (typeof stage.offsetTop !== 'number') return 0
+  const position = stage.style.getPropertyValue('position')
+  const priority = stage.style.getPropertyPriority('position')
+  stage.style.setProperty('position', 'static', 'important')
+  try {
+    const chain = (from: HTMLElement) => {
+      let value = 0
+      for (let current: HTMLElement | null = from; current; current = current.offsetParent as HTMLElement | null) {
+        value += current.offsetTop || 0
+        value += (current.offsetParent as HTMLElement | null)?.clientTop || 0
+      }
+      return value
+    }
+    return chain(stage) - chain(el)
+  } finally {
+    stage.style.setProperty('position', position, priority)
+  }
+}
+
 export function drawMarkers(): () => void {
   const layer = document.createElement('div')
   layer.setAttribute('aria-hidden', 'true')
@@ -56,13 +93,15 @@ export function drawMarkers(): () => void {
       const label = elName(el)
       layer.append(line(enterY, `${label} view 0`, '#6ee7a0'), line(exitY, `${label} view 1`, '#f0a35a'))
 
-      const stage = el.querySelector<HTMLElement>('.sv-stage')
+      const stage = ownedStageLite(el)
       if (stage) {
         const offset = readPinOffsetLite(stage)
+        const origin = readStageOriginLite(el, stage)
         const { start, end } = pinLines(
           { wrapperTop: rect.top, wrapperHeight: el.offsetHeight, stageHeight: stage.offsetHeight },
           scrollY,
-          offset
+          offset,
+          origin
         )
         layer.append(line(start, `${label} pin start`, '#a78bfa'), line(end, `${label} pin end`, '#a78bfa'))
       }

@@ -309,6 +309,14 @@ export function slider(
       activeEl = bestEl
       if (cssVars) owned.style(container, '--sv-slide', String(best))
       if (indexChanged) onSlide?.(best)
+    } else if (list.length === 0 && (active !== -1 || activeEl !== null)) {
+      // populated to empty (every slide removed): a stale `active` from
+      // before the removal must not survive it, or repopulating at the same
+      // index fires no onSlide, and `state()` reports a phantom active
+      // index against a detached node with count 0 (ADU-354 item 5).
+      active = -1
+      activeEl = null
+      if (cssVars) owned.style(container, '--sv-slide', '')
     }
     if (!life.stopped) { lastState = readState(p); onScroll?.(lastState) }
   })
