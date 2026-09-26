@@ -61,7 +61,7 @@
 import { createServer } from 'node:http'
 import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import { installedGate } from './installed-gate.mjs'
 import { autoplayInteraction } from './autoplay-interaction.mjs'
@@ -75,6 +75,8 @@ import { reflowGate } from './reflow-gate.mjs'
 import { galleryPageerrorGate } from './gallery-pageerror-gate.mjs'
 import { debugGate } from './debug-gate.mjs'
 import { execSync } from 'node:child_process'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STYLES_CSS = readFileSync(join(root, '..', 'styles.css'), 'utf8')
@@ -94,6 +96,15 @@ const SCENES_REACT_JS = execSync(
   `npx esbuild ${join(root, 'bench', 'harness', 'fixtures', 'scenes-reduced-entry.mjs')} --bundle --format=iife --global-name=SVScenesFixture`,
   { cwd: join(root, '..'), maxBuffer: 1e7 }
 ).toString()
+// The compiled component's own server markup (ADU-354 N1): the same
+// react-dom/server call Next.js runs, against the shipped dist build, so the
+// no-JS invariant below proves what actually ships, not a description of it.
+const { Scenes: SSRScenes } = await import(pathToFileURL(join(root, '..', 'dist', 'react', 'index.js')).href)
+const SCENES_SSR_HTML = renderToStaticMarkup(
+  React.createElement(SSRScenes, { count: 4 }, ({ scene }) =>
+    React.createElement('p', { className: 'scene-text' }, 'Slide ' + (scene + 1))
+  )
+)
 // Drives a canvas's own resize() log to a fixed point (ADU-107, eleventh
 // pass): waits for the initial mount delivery first (a real
 // ResizeObserver's own first callback is itself asynchronous, never
@@ -323,6 +334,29 @@ const MIN_EXAMINED = 1
     'reduced motion: a 4-scene <Scenes> renders every scene, not only the first and last',
     texts.length === 4 && ['Slide 1', 'Slide 2', 'Slide 3', 'Slide 4'].every((t, i) => texts[i] === t),
     JSON.stringify(texts)
+  )
+  await page.close()
+}
+
+// ── 0c-1b. No JS, React <Scenes>: the server's own markup carries every
+// scene, not only the first (ADU-354 N1). No bundle, no attach: the script
+// is blocked outright, so this is the SSR HTML alone, visible and complete.
+{
+  const page = await browser.newPage()
+  await page.setJavaScriptEnabled(false)
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body>${SCENES_SSR_HTML}</body></html>`)
+  const texts = await page.evaluate(() => [...document.querySelectorAll('.scene-text')].map((el) => el.textContent))
+  const hidden = await page.evaluate(() =>
+    [...document.querySelectorAll('.scene-text')].filter((el) => {
+      const cs = getComputedStyle(el)
+      return cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none'
+    }).length
+  )
+  check(
+    'no-JS: a 4-scene <Scenes> server markup renders every scene, not only the first',
+    texts.length === 4 && ['Slide 1', 'Slide 2', 'Slide 3', 'Slide 4'].every((t, i) => texts[i] === t) && hidden === 0,
+    JSON.stringify(texts) + ` hidden=${hidden}`
   )
   await page.close()
 }

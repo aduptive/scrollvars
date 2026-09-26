@@ -6,11 +6,23 @@
 
 - `scrollvars/debug`'s `debug()` gained three new options, all off by default except `hud` and `lint`, which is exactly what shipped before minus nothing (the tracked-element panel stays as it was): `hud` (default true) mounts a performance HUD (FPS, dropped and late frames against the measured refresh interval, the worst frame of the last 5 seconds, and, where `PerformanceObserver` supports `long-animation-frame` (Chrome), blocking time with the top script attribution; elsewhere it says so instead of showing zeros); `markers` (default false) draws, for every tracked element, ScrollTrigger-style start/end lines for its travel and, for pinned elements, its pin stretch, labelled and positioned in page coordinates so they scroll with the page and recompute on resize; `lint` (default true) scans same-origin stylesheets once for a `--sv-*` read landing in a property that cannot be composited (width, height, the inset family, margin, padding, font-size, filter, backdrop-filter, box-shadow, background-position, clip-path, mask), directly or through one level of custom-property indirection, and reports selector, property and why, once, in the overlay and the console; a cross-origin sheet is reported as skipped, never silently ignored. `DebugOptions` gained `hud`, `markers` and `lint` (minor, additive).
 - A `.sv-marquee-track` now pauses itself off screen and with the tab in the background (one shared IntersectionObserver and one shared visibilitychange listener across a page's toggles() scopes and marquees), and resumes on return, independent of the user's own pause button. New class: `.sv-marquee-offscreen` (public, additive).
-- The stamped `scrollvars/react` gzip size is now measured with esbuild's real code splitting, entry chunk only: the dev-only `?sv-debug` overlay (loaded on demand, never on a page that does not ask for it) is no longer counted toward it. The published number moves from 18.2 KB to 17.6 KB for this reason, a measurement fix, not because the React layer shrank; see `scripts/docs-data.mjs`'s `measureSizes()` for the split build.
+- The stamped `scrollvars/react` gzip size is now measured with esbuild's real code splitting, entry chunk only: the dev-only `?sv-debug` overlay (loaded on demand, never on a page that does not ask for it) is no longer counted toward it. The published number drops from its pre-split figure for this reason, a measurement fix, not because the React layer shrank; see the stamped number in `docs/guide.md` for the current one and `scripts/docs-data.mjs`'s `measureSizes()` for the split build.
 - A public, installable skill for AI coding agents: `skills/scrollvars/SKILL.md`, generated in `npm run demo:sync` from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (`files`). `npx scrollvars skill [--global] [--force]` installs it for Claude Code (`.claude/skills/scrollvars`) and Codex (`.agents/skills/scrollvars`), matching the installed package version; refuses to overwrite a locally modified copy without `--force`, idempotent otherwise. Also installable with the open `npx skills add aduptive/scrollvars` convention (reads a repo's `skills/<name>/SKILL.md`). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match `package.json`.
 
 ### Fixed
 
+- `<Scenes>` rendered only the current scene outside the enhanced, pinned
+  state: on the server, without JS, after a failed attach, and after a
+  fit-to-flow release, the scene index sat at 0 (or jumped straight to it
+  after a helper-pinned stage collapsed its span), so scenes 1..N-1 were
+  never in the DOM, the same content-unreachable shape the reduced-motion
+  fix above closed for one cause and left open for the others. `useScenes`
+  now hands back `active` (attached, not flowed, not reduced), and
+  `<Scenes>` renders every scene, stacked, whenever it is not active,
+  matching what it already did for reduced motion; server and first
+  client render agree, since `active` starts false. `ScenesState` gained
+  `active` (minor, additive). The guide's `Story` example and four doc
+  sentences now use it instead of `reduced` alone.
 - Under reduced motion, a helper-pinned `<Scenes count={4}>` collapsed its
   pin span to about one pixel, so `--sv-scene`/`onScene` jumped from 0 to
   N-1 in one pixel and the guide's own example (`Slide {scene + 1}`) never

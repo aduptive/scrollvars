@@ -14,9 +14,10 @@ with an optional React layer.
 npx scrollvars skill
 ```
 
-Installs the API, recipes and performance rules as a skill for Claude Code
-and Codex, matching your installed version. `--global` for the user-level
-folders instead of the current project.
+Installs a skill built from AGENTS.md (the mental model, imports and
+performance rules, pointing back to it) for Claude Code and Codex, matching
+your installed version. `--global` for the user-level folders instead of
+the current project.
 
 ## Install
 

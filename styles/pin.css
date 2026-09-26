@@ -86,7 +86,8 @@
    "element A animates over 0–40% of the pin, B over 30–70%, C over 60–100%".
    sv-range derives a per-child 0..1 progress (--sv-r) from a slice of the
    parent clock: set --sv-from/--sv-to on each child. The clock is --sv-pin
-   when pinned, else --sv-t; override --sv-clock to choose explicitly.
+   when pinned, else --sv-t (needs travel: true / data-sv-travel); override
+   --sv-clock to choose explicitly.
    Needs calc() division by a variable (Chrome 112 / Safari 16.4 / FF 112);
    an engine that cannot compute it settles --sv-r at the registered
    initial value (1), the end state; consume it as var(--sv-r, 1) anyway. */
