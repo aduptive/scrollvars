@@ -2200,6 +2200,69 @@ test('react: useScenes/Scenes render every scene again once the pinned stage fal
   }
 })
 
+test('react: useScenes/Scenes render every scene below the transform floor with no compat() (R1)', async () => {
+  // Below the floor with no compat(), pin.css releases the WHOLE stage
+  // (`@supports not (translate: 0)`: static, height auto), and the pin
+  // span collapses to about one pixel. Pre-fix, only a stage carrying
+  // `.sv-deck` was widened to flow at attach, so a plain Scenes stage kept
+  // reporting `active`, and `<Scenes>` rendered only its current scene:
+  // scenes 1..N-2 were never in the DOM, unreachable exactly like N1.
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  const create = document.createElement
+  document.createElement = (tag) => {
+    const n = create(tag)
+    n.querySelectorAll = (selector) => {
+      if (selector !== '.sv-stage') return []
+      const found = []
+      const walk = (node) => {
+        for (const c of node.childNodes || []) {
+          if (c.classes?.has('sv-stage')) found.push(c)
+          walk(c)
+        }
+      }
+      walk(n)
+      return found
+    }
+    return n
+  }
+  global.window.CSS = { supports: () => false }
+
+  const flows = [], activeSeen = []
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(
+        React.createElement(Scenes, { count: 4, pin: '300vh', onFlow: (v) => flows.push(v) }, ({ scene, active }) => {
+          activeSeen.push(active)
+          return React.createElement('p', null, `Slide ${scene + 1}`)
+        })
+      )
+    })
+    await act(async () => { flushFrames() })
+    assert.deepEqual(flows, [true], 'a plain stage below the floor with no compat() flows too, not only a deck')
+    assert.equal(activeSeen.at(-1), false, 'flow makes the scene index untrustworthy')
+    const texts = []
+    const walk = (node) => {
+      for (const child of node.childNodes || []) {
+        if (child.tagName === 'P') texts.push(child.textContent)
+        walk(child)
+      }
+    }
+    walk(container)
+    assert.deepEqual(texts, ['Slide 1', 'Slide 2', 'Slide 3', 'Slide 4'], 'every scene stays reachable, not only the current one')
+    await act(async () => { root.unmount() })
+  } finally {
+    document.createElement = create
+    delete global.window.CSS
+  }
+})
+
 test('react: Scenes keeps the current scene mounted across every active/stacked switch, no destructive remount (verifier round 2)', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

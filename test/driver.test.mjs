@@ -2132,6 +2132,50 @@ test('legacy compat releases a deck stage and its empty pin stretch', async () =
   delete window.CSS
   delete document.documentElement.hasAttribute
 })
+
+test('driver: below the transform floor with no compat(), ANY stage flows, not only a deck (R1)', async () => {
+  // Pre-fix, only a stage carrying `.sv-deck` was widened to flow. Every
+  // other stage stayed pinned while pin.css's `@supports not (translate: 0)`
+  // net released it anyway (static, height auto), so the wrapper collapsed
+  // to `max(..., 1)` and a Scenes/Sections consumer, reading `active` off
+  // `onFlow`, rendered only its current scene: scenes 1..N-2 unreachable.
+  window.CSS = { supports: () => false }
+  const { track } = await import('../dist/core/driver.js?round17belowfloor')
+  const el = makeElement(3000), stage = makeElement(600)
+  stage.querySelector = () => null // no .sv-deck: a plain pinned stage
+  nest(el, stage)
+  el.stage = stage
+  const flows = []
+  const stop = track(el, { pin: '400vh', onFlow: value => flows.push(value) })
+  pump()
+  assert.ok(el.hasAttribute('data-sv-flow'), 'a deckless stage below the floor flows too')
+  assert.equal(el.style.height, '', 'the pin stretch stays empty once the entry flows')
+  assert.deepEqual(flows, [true])
+  stop()
+  delete window.CSS
+})
+
+test('driver: below the transform floor, compat() with no deck keeps the stage pinned', async () => {
+  // Compat's fallback sheet animates a deckless stage from --sv-pin, so it
+  // must stay the whole skeleton: only ITS deck (static under compat) needs
+  // the flow release, unchanged from before R1.
+  window.CSS = { supports: () => false }
+  document.documentElement.hasAttribute = name => name === 'data-sv-compat'
+  const { track } = await import('../dist/core/driver.js?round17compatnodeck')
+  const el = makeElement(3000), stage = makeElement(600)
+  stage.querySelector = () => null
+  nest(el, stage)
+  el.stage = stage
+  const flows = []
+  const stop = track(el, { pin: '400vh', onFlow: value => flows.push(value) })
+  pump()
+  assert.ok(!el.hasAttribute('data-sv-flow'), 'compat() animates this stage from --sv-pin: it stays pinned')
+  assert.deepEqual(flows, [])
+  stop()
+  delete window.CSS
+  delete document.documentElement.hasAttribute
+})
+
 function failureEnvironment() {
   const frames = [], errors = [], watched = new Set()
   global.window = { innerHeight: 1000, scrollY: 0, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }

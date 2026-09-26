@@ -86,7 +86,20 @@ import { lifetime, ownership } from './lifetime.js'
 // nothing to leak.
 
 const claimed = new WeakSet<Event>()
-const markers = new WeakMap<HTMLElement, { owners: number; release: () => void; settle: () => void }>()
+// `ref`: WeakRef where available (README floor engines below Chrome 84 /
+// Firefox 79 / Safari 14.1 have none, and there a marker keeps its target
+// alive the old way, same tradeoff as no WeakSet at all). `settle`/`release`
+// close over it instead of the target directly: `life.defer` below (R3)
+// only runs at the WHOLE scope's stop, which a long-lived document instance
+// (<ScrollVarsBoot>) never reaches, so any closure the deferred callback
+// keeps that references a target DIRECTLY pins it for the app's life, one
+// per distinct clicked target, growing with every navigation. Going through
+// `ref.deref()` lets that target collect once nothing else holds it, with
+// the deferred settle/release becoming a no-op.
+type Ref = { deref(): HTMLElement | undefined }
+const weakRef: (el: HTMLElement) => Ref =
+  typeof WeakRef === 'function' ? (el) => new WeakRef(el) : (el) => ({ deref: () => el })
+const markers = new WeakMap<HTMLElement, { owners: number; ref: Ref; release: () => void; settle: () => void }>()
 
 // Live instances, for ARIA sync only (round 10): a trigger's aria-expanded
 // is resolved by its NEAREST live scope, the one that would claim its click,
@@ -349,25 +362,33 @@ export function toggles(root?: Document | HTMLElement): () => void {
     longhandHold.delete(target)
     hold.restore(target, 'style:transition-duration')
   }
-  const targets = new Set<HTMLElement>()
+  // WeakSet: under <ScrollVarsBoot> this document scope never stops, so a
+  // strong Set would hold every clicked target for the app's whole life,
+  // detached subtrees included, growing with every navigation (R3). Its only
+  // reads are has/add; nothing ever needs to enumerate it.
+  const targets = new WeakSet<HTMLElement>()
   const mark = (target: HTMLElement) => {
     if (targets.has(target)) return false
     targets.add(target)
     let marker = markers.get(target)
     const authored = target.classList.contains('sv-ui')
     if (!marker) {
-      marker = { owners: 0, settle: () => {
-        if (settling.has(target)) {
-          settling.delete(target)
-          hold.restore(target)
-          restoreDuration(target)
+      const ref = weakRef(target)
+      marker = { owners: 0, ref, settle: () => {
+        const t = ref.deref()
+        if (t && settling.has(t)) {
+          settling.delete(t)
+          hold.restore(t)
+          restoreDuration(t)
         }
       }, release: () => {
-        if (!authored) target.classList.remove('sv-ui')
-        if (settling.has(target)) {
-          settling.delete(target)
-          hold.restore(target)
-          restoreDuration(target)
+        const t = ref.deref()
+        if (!t) return
+        if (!authored) t.classList.remove('sv-ui')
+        if (settling.has(t)) {
+          settling.delete(t)
+          hold.restore(t)
+          restoreDuration(t)
         }
       } }
       markers.set(target, marker)
@@ -376,10 +397,15 @@ export function toggles(root?: Document | HTMLElement): () => void {
     life.defer(() => {
       // Finish a departing owner's hold even if another controller remains.
       // It must not retain 0s after this owner's queued frames are cancelled.
+      // Through marker.ref, never `target` directly: this callback sits in
+      // life's own release list until the WHOLE scope stops, which the
+      // document instance never does, so a direct capture would pin every
+      // distinct clicked target for the app's life (R3).
       try { marker!.settle() }
       finally {
         if (--marker!.owners === 0) {
-          markers.delete(target)
+          const t = marker!.ref.deref()
+          if (t) markers.delete(t)
           marker!.release()
         }
       }
@@ -500,10 +526,9 @@ export function toggles(root?: Document | HTMLElement): () => void {
     frames.forEach(id => { if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(id) })
     frames.clear()
   })
-  life.defer(() => {
-    live.delete(instance)
-    targets.clear()
-  })
+  // no targets.clear(): a WeakSet has none, and it needs none, its entries
+  // drop on their own once this closure (mark/click/onClick) is unreachable
+  life.defer(() => live.delete(instance))
   life.defer(() => scope.removeEventListener('click', onClick))
   try {
     life.setup(() => {

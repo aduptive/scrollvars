@@ -1201,9 +1201,15 @@ export function attach(el: HTMLElement, opts: TrackOptions = {}): Attachment {
     entry.compatRails = compatInstalled() ? new Map() : undefined
     entry.stage = opts.pin || opts.scenes || opts.onPin ? ownedStage(el) : undefined
     entry.fit = Array.from(entry.stage?.children ?? []).find(child => child.hasAttribute('data-sv-fit')) as HTMLElement | undefined
-    // Compat animates curtains and rails, but its deck is static. Release the
-    // whole stage so an unstacked deck cannot disappear below its clip.
-    if (belowTransformFloor() && entry.stage?.querySelector('.sv-deck')) {
+    // Compat animates curtains and rails, but its deck is static: release the
+    // whole stage so an unstacked deck cannot disappear below its clip. With
+    // no compat() at all, pin.css's `@supports not (translate: 0)` net
+    // releases every stage the same way (R1): the stage goes static and the
+    // clock collapses to about one pixel, so ANY stage below the floor with
+    // no compat must flow too, or a Scenes/Sections consumer still reads
+    // `active` and renders only the current scene while the rest sit
+    // unreachable off the collapsed pin span.
+    if (belowTransformFloor() && entry.stage && (!compatInstalled() || entry.stage.querySelector('.sv-deck'))) {
       entry.flow = true
       el.setAttribute('data-sv-flow', '')
       opts.onFlow?.(true)

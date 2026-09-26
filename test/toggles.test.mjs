@@ -426,6 +426,42 @@ test('toggles: class + --sv-state + aria-expanded, custom target, stop()', async
   assert.ok(!listeners.click, 'listener removed')
 })
 
+test('toggles: a clicked target holds no strong reference once nothing else does (R3)', { skip: typeof global.gc !== 'function' && 'run with node --expose-gc' }, async () => {
+  // Under <ScrollVarsBoot> the document scope never stops, so a strong Set
+  // of clicked targets (`mark()`'s `targets`) would hold every one, detached
+  // subtree included, for the app's whole life, growing with every
+  // navigation. `targets` is a WeakSet now: nothing outside this instance
+  // keeping a reference is the only thing that should keep the target alive.
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  const { toggles } = await import('../dist/core/toggles.js?r3weakset')
+  let menu = makeElement()
+  const trigger = makeElement({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+  const listeners = {}
+  const root = {
+    contains: () => true,
+    addEventListener: (t, fn) => (listeners[t] = fn),
+    removeEventListener: (t) => delete listeners[t],
+    querySelector: (sel) => (sel === '#menu' ? menu : null),
+    querySelectorAll: () => [trigger],
+  }
+  menu.classList.contains = (c) => menu.classes.has(c)
+  const stop = toggles(root)
+  listeners.click({ target: trigger }) // resolves and marks `menu` as a target
+
+  let collected = false
+  const registry = new FinalizationRegistry(() => { collected = true })
+  registry.register(menu, 'menu')
+  root.querySelector = () => null // drop the last other reference to it
+  menu = null
+
+  for (let attempt = 0; attempt < 10 && !collected; attempt++) {
+    await new Promise((resolve) => setImmediate(resolve))
+    global.gc()
+  }
+  assert.ok(collected, 'a strong Set would keep the clicked target alive forever; a WeakSet must not')
+  stop()
+})
 
 test('toggles: aria-expanded reflects the target on boot and across every trigger of it', async () => {
   global.window = {}
