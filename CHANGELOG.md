@@ -11,20 +11,31 @@
 
 ### Fixed
 
-- A same-origin `<link rel="stylesheet">` that failed to load (a 404, a
-  reset connection, an unreachable host) kept publishing `--sv-page`/`--sv-v`
-  on `<html>` forever, for every page with no consumer at all: measured in
-  real Chrome, the failed link keeps a non-null `CSSStyleSheet` whose
-  `cssRules` throws exactly like an opaque cross-origin sheet, often before
-  the driver's own pending-phase listener ever gets a chance to see the
-  failure at all, so the conservative "assume it reads them" default for an
-  unreadable sheet latched true forever and the watch that would notice a
-  later, corrected href never installed. A same-origin sheet's `cssRules`
-  never throws once it loads, so that throw is now read as a load failure
-  instead, live, every time it is asked, not memorized; a genuinely
-  cross-origin sheet keeps the conservative default. A batch of several
-  corrected `<link>` attributes (two hrefs fixed in one script) also now
-  clears every one of them, not only the first.
+- A `<link rel="stylesheet">` whose own `error` event the driver observed
+  (a 404, a reset connection, an unreachable host, while the sheet was
+  still pending) kept publishing `--sv-page`/`--sv-v` on `<html>` forever
+  for every page with no consumer at all: `sheetReadsPageOutputs()`'s
+  catch (an unreadable sheet is uncertainty, so it defaults to "assume it
+  reads them") could not distinguish that observed failure from an opaque
+  cross-origin sheet, so `found` latched true and the watch that would
+  notice a later, corrected href never installed. An observed failure now
+  turns outputs off; correcting the link's `href`/`rel`/`media`/`disabled`
+  is judged again. A batch that corrects two links at once now forgets
+  both, not only the first (the attribute-mutation watcher broke out of
+  its records loop early).
+  Deliberately NOT fixed the same way: a link whose sheet throws without
+  the driver ever observing its `error` (measured in real Chrome, the
+  sheet can already be a throwing object by the first frame that asks,
+  before any listener attaches) keeps the conservative default, publishing
+  for the rest of the session. A same-origin `<link>` can throw on
+  `cssRules` for a reason that is not a load failure at all: a 302
+  redirect to a cross-origin CSS file keeps a same-origin `href`, fires
+  `load`, and still throws (CORS opacity on the redirected response),
+  common on reverse-proxied or versioned CDN setups; an earlier version of
+  this fix read any same-origin throw as a failure and broke exactly that
+  case. Wrongly publishing costs a per-frame write; wrongly silencing
+  breaks rendering, so the conservative default wins whenever the driver
+  itself never saw the failure.
 - The gallery's GSAP React recipe (`gsap-scrub`) timed a `.from('.stage > *', ...)`
   selector against markup that renders `.sv-stage`: pasted as shown, the
   timeline animated nothing. It now scopes to the stage's own ref.

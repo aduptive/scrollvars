@@ -577,7 +577,67 @@ test('driver: a stylesheet that fires error stops counting as a consumer forever
   }
 })
 
-test('driver: a same-origin link whose sheet already throws when first asked is not read as a consumer (measured in real Chrome: no pending phase ever exists to catch it)', async () => {
+// A same-origin <link> can throw on cssRules for a reason that is NOT a load
+// failure: a 302 redirect to a cross-origin CSS file keeps a same-origin
+// link.href/sheet.href, fires `load`, and still throws (CORS opacity on the
+// redirected response), common on reverse-proxied or versioned CDN setups.
+// "same-origin throw = failure" read that as broken and stopped publishing
+// although a loaded sheet reads the outputs. The only link allowed to count
+// as failed is one whose own `error` the driver itself observed
+// (erroredLinks); a link that fails before the driver ever gets a chance to
+// attach that listener (measured in real Chrome: the sheet can already be a
+// throwing object by the first ask) is NOT in erroredLinks either, and keeps
+// the conservative default too. Wrongly ON only costs a per-frame write;
+// wrongly OFF breaks rendering, so uncertainty always wins.
+test('driver: a link that fires load and whose sheet still throws (redirect CORS opacity) keeps outputs on, never mistaken for a failure', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false,
+    href: 'http://localhost/bad.css', // same-origin URL, redirected to a cross-origin file
+    getAttribute: () => null,
+    listeners: {},
+    addEventListener(type, fn) { link.listeners[type] = fn },
+    removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
+  }
+  let watcher
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb; watcher = this }
+    observe() {}
+    disconnect() {}
+  }
+  global.document = {
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?loadthrows')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.ok('--sv-page' in pageVars, 'a sheet with no answer yet is uncertainty, so it publishes')
+
+    // the redirected sheet lands: `load` fires, not `error`, but cssRules
+    // still throws (CORS opacity on the cross-origin response it redirected to)
+    link.sheet = { ownerNode: link, get cssRules() { throw new Error('SecurityError') } }
+    document.styleSheets = [link.sheet]
+    link.listeners.load({ type: 'load' })
+    pump()
+    assert.ok('--sv-page' in pageVars, 'load, not error: never added to erroredLinks, so the conservative default holds and outputs stay on')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
+test('driver: a link whose sheet already throws when first asked, with no error the driver ever observed, keeps outputs on (a cost, never a rendering loss)', async () => {
   rafQueue.length = 0
   const pageVars = {}
   const link = {
@@ -588,15 +648,11 @@ test('driver: a same-origin link whose sheet already throws when first asked is 
     // already a non-null, throwing object by the time ANYTHING can ask, so
     // pendingSheets() never sees it as pending and the driver's own
     // load/error listener (attached only during that pending window) never
-    // gets attached at all. erroredLinks stays empty for this link;
-    // sheetReadsPageOutputs() has to recognize the failure on its own.
+    // gets attached at all. erroredLinks stays empty for this link.
     addEventListener: () => {}, removeEventListener: () => {},
   }
   link.sheet = { ownerNode: link, get cssRules() { throw new Error('NetworkError') } }
-  const realLocation = global.location
-  global.location = { origin: 'http://localhost' }
   global.document = {
-    baseURI: 'http://localhost/',
     documentElement: {
       classList: { add: () => {} }, scrollHeight: 3000,
       style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
@@ -606,51 +662,12 @@ test('driver: a same-origin link whose sheet already throws when first asked is 
     styleSheets: [link.sheet],
   }
   window.scrollY = 1500
-  try {
-    const { track } = await import('../dist/core/driver.js?sameoriginthrow')
-    const el = makeElement(400)
-    const untrack = track(el)
-    pump()
-    assert.equal(pageVars['--sv-page'], undefined, 'a same-origin sheet that already throws is not assumed to read the outputs')
-    untrack()
-  } finally {
-    global.location = realLocation
-  }
-})
-
-test('driver: a genuinely cross-origin sheet whose sheet throws keeps the conservative default (assume it reads them)', async () => {
-  rafQueue.length = 0
-  const pageVars = {}
-  const link = {
-    nodeName: 'LINK', rel: 'stylesheet', disabled: false,
-    href: 'https://cdn.example/style.css',
-    getAttribute: () => null,
-    addEventListener: () => {}, removeEventListener: () => {},
-  }
-  link.sheet = { ownerNode: link, get cssRules() { throw new Error('SecurityError') } }
-  const realLocation = global.location
-  global.location = { origin: 'http://localhost' }
-  global.document = {
-    baseURI: 'http://localhost/',
-    documentElement: {
-      classList: { add: () => {} }, scrollHeight: 3000,
-      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
-      getAttribute: () => null,
-    },
-    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
-    styleSheets: [link.sheet],
-  }
-  window.scrollY = 1500
-  try {
-    const { track } = await import('../dist/core/driver.js?crossoriginthrow')
-    const el = makeElement(400)
-    const untrack = track(el)
-    pump()
-    assert.ok('--sv-page' in pageVars, 'an actual cross-origin opacity keeps publishing, unlike a same-origin failure')
-    untrack()
-  } finally {
-    global.location = realLocation
-  }
+  const { track } = await import('../dist/core/driver.js?neverobserved')
+  const el = makeElement(400)
+  const untrack = track(el)
+  pump()
+  assert.ok('--sv-page' in pageVars, 'no observed error means no erroredLinks entry, so the conservative default holds')
+  untrack()
 })
 
 test('driver: two links erroring or correcting in the same mutation batch each forget their own error', async () => {
