@@ -306,11 +306,32 @@ function unlistenAll() {
   listened.clear()
 }
 
+// A same-origin stylesheet's cssRules never throws once it exists (no CORS
+// opacity is possible same-origin): a same-origin <link> whose sheet throws
+// here failed to load (a 404, a reset connection, an unreachable host), and
+// measured in real Chrome (152) that sheet is already non-null by the time
+// anything can ask, immediately, before its own `error` even has a chance to
+// reach a listener attached during a "pending" (sheet still null) window
+// that in practice may not exist. Relying on catching that event is what
+// let `found` latch true forever the first time this was fixed: a link this
+// broken is asked fresh every time instead.
+function isSameOriginLink(node: Node | null): boolean {
+  if (!node || (node as Element).nodeName !== 'LINK') return false
+  try {
+    return new URL((node as HTMLLinkElement).href, document.baseURI).origin === location.origin
+  } catch {
+    return false
+  }
+}
+
 function sheetReadsPageOutputs(sheet: CSSStyleSheet, depth: number): boolean {
   let rules: CSSRuleList | null
   try {
     rules = sheet.cssRules
   } catch {
+    // depth > 0 is an @import target with no ownerNode to check, and a
+    // genuinely cross-origin link keeps the conservative default below.
+    if (depth === 0 && isSameOriginLink(sheet.ownerNode)) return false
     return true // cross-origin without CORS: unreadable, so assume it reads them
   }
   if (!rules) return true
@@ -360,6 +381,14 @@ function detectPageConsumers(): boolean {
     if (adopted) for (const sheet of Array.from(adopted)) if (sheetReadsPageOutputs(sheet, 0)) return true
     for (const sheet of Array.from(document.styleSheets)) {
       const node = sheet.ownerNode as Element | null
+      // A link whose own `error` fired keeps a CSSStyleSheet object in real
+      // engines, one whose cssRules throws exactly like an opaque
+      // cross-origin sheet: sheetReadsPageOutputs()'s catch cannot tell them
+      // apart, and its conservative "assume it reads them" then latches
+      // `found` true forever, so resolvePageOutputs() never installs the
+      // watch that would notice a later, corrected href. A link we know
+      // failed is skipped here instead of asked at all.
+      if (node && node.nodeName === 'LINK' && erroredLinks.has(node as HTMLLinkElement)) continue
       // A <style> element's text is the cheap path, but a CSS-in-JS runtime in
       // production inserts rules through the CSSOM and leaves that text empty,
       // so a miss there has to fall through to the rules rather than skip.
@@ -392,10 +421,13 @@ function watchForPageConsumers() {
         // flipping false is the only signal a later enable gets: without it
         // the sheet's own consumer, once its rules become readable, is never
         // asked again for the rest of the session (ADU-354 item 6).
+        // No early break here: a batch can carry attribute records for
+        // several links (two hrefs corrected in the same script), and each
+        // one must forget its own remembered error, not only the first.
         if (record.type === 'attributes' && record.target.nodeName === 'LINK') {
           erroredLinks.delete(record.target as HTMLLinkElement)
           queued = true
-          break
+          continue
         }
         for (const node of Array.from(record.addedNodes)) {
           // text landing in a <style> (textContent = ...) is a new rule too
@@ -404,7 +436,6 @@ function watchForPageConsumers() {
           queued = true
           break
         }
-        if (queued) break
       }
       // One rescan per frame at most: a runtime that injects a hundred rules
       // in a row would otherwise walk every stylesheet a hundred times. The

@@ -504,7 +504,7 @@ test('driver: a disabled stylesheet enabled later publishes once the consumer wa
   }
 })
 
-test('driver: a stylesheet that fires error stops counting as pending, and a corrected href counts it again', async () => {
+test('driver: a stylesheet that fires error stops counting as a consumer forever, and a corrected href is judged again', async () => {
   rafQueue.length = 0
   const pageVars = {}
   const link = {
@@ -514,6 +514,15 @@ test('driver: a stylesheet that fires error stops counting as pending, and a cor
     addEventListener(type, fn) { link.listeners[type] = fn },
     removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
   }
+  // Real engines (Chrome 152 measured) keep a CSSStyleSheet object even
+  // after a link's own `error` fires (a 404, a reset connection): reading
+  // its cssRules throws, exactly like an opaque cross-origin sheet.
+  // `sheet: null` after error is not what any browser does, and it is not
+  // the bug: sheetReadsPageOutputs()'s catch cannot tell the two throws
+  // apart, so its conservative "assume it reads them" latches `found` true
+  // forever for a link we already know failed, and the watch that would
+  // notice a later, corrected href is never installed.
+  const erroredSheet = { ownerNode: link, get cssRules() { throw new Error('NetworkError') } }
   let watcher
   const realMO = global.MutationObserver
   global.MutationObserver = class {
@@ -540,18 +549,177 @@ test('driver: a stylesheet that fires error stops counting as pending, and a cor
     pump()
     assert.ok('--sv-page' in pageVars, 'a sheet with no answer yet is uncertainty, so it publishes')
 
+    link.sheet = erroredSheet
+    document.styleSheets = [erroredSheet]
     link.listeners.error({ type: 'error' })
     pump()
-    assert.equal(pageVars['--sv-page'], undefined, 'a link that failed to load is no longer pending, and has no consumer')
-    assert.ok(watcher, 'the consumer watch installed once nothing is pending or found')
+    assert.equal(pageVars['--sv-page'], undefined, 'a link whose sheet throws after error is no longer read as a consumer')
+    assert.ok(watcher, 'the consumer watch installed once nothing is pending or found (never latched true forever)')
 
-    // href corrected: the attribute record forgets the remembered error, and
-    // the link now resolves to a stylesheet that reads --sv-page.
-    link.sheet = {}
-    document.styleSheets = [{ ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }]
+    // href corrected: the attribute record forgets the remembered error;
+    // real engines null the sheet again while the new request is in flight
+    link.sheet = null
+    document.styleSheets = []
     watcher.cb([{ type: 'attributes', target: link, addedNodes: [] }])
     pump()
-    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the corrected href turned outputs back on')
+    assert.ok('--sv-page' in pageVars, 'a corrected href is uncertainty again while the new sheet loads')
+
+    // the new request lands clean, and reads --sv-page
+    const goodSheet = { ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }
+    link.sheet = goodSheet
+    document.styleSheets = [goodSheet]
+    link.listeners.load({ type: 'load' })
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the corrected href now resolves to a real consumer')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
+test('driver: a same-origin link whose sheet already throws when first asked is not read as a consumer (measured in real Chrome: no pending phase ever exists to catch it)', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false,
+    href: 'http://localhost/bad.css',
+    getAttribute: () => null,
+    // never fires: this models the real-browser race where the sheet is
+    // already a non-null, throwing object by the time ANYTHING can ask, so
+    // pendingSheets() never sees it as pending and the driver's own
+    // load/error listener (attached only during that pending window) never
+    // gets attached at all. erroredLinks stays empty for this link;
+    // sheetReadsPageOutputs() has to recognize the failure on its own.
+    addEventListener: () => {}, removeEventListener: () => {},
+  }
+  link.sheet = { ownerNode: link, get cssRules() { throw new Error('NetworkError') } }
+  const realLocation = global.location
+  global.location = { origin: 'http://localhost' }
+  global.document = {
+    baseURI: 'http://localhost/',
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [link.sheet],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?sameoriginthrow')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.equal(pageVars['--sv-page'], undefined, 'a same-origin sheet that already throws is not assumed to read the outputs')
+    untrack()
+  } finally {
+    global.location = realLocation
+  }
+})
+
+test('driver: a genuinely cross-origin sheet whose sheet throws keeps the conservative default (assume it reads them)', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false,
+    href: 'https://cdn.example/style.css',
+    getAttribute: () => null,
+    addEventListener: () => {}, removeEventListener: () => {},
+  }
+  link.sheet = { ownerNode: link, get cssRules() { throw new Error('SecurityError') } }
+  const realLocation = global.location
+  global.location = { origin: 'http://localhost' }
+  global.document = {
+    baseURI: 'http://localhost/',
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [link.sheet],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?crossoriginthrow')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.ok('--sv-page' in pageVars, 'an actual cross-origin opacity keeps publishing, unlike a same-origin failure')
+    untrack()
+  } finally {
+    global.location = realLocation
+  }
+})
+
+test('driver: two links erroring or correcting in the same mutation batch each forget their own error', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const makeLink = () => {
+    const l = {
+      nodeName: 'LINK', rel: 'stylesheet', disabled: false, sheet: null,
+      getAttribute: () => null,
+      listeners: {},
+      addEventListener(type, fn) { l.listeners[type] = fn },
+      removeEventListener(type, fn) { if (l.listeners[type] === fn) delete l.listeners[type] },
+    }
+    return l
+  }
+  const linkA = makeLink()
+  const linkB = makeLink()
+  let watcher
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb; watcher = this }
+    observe() {}
+    disconnect() {}
+  }
+  global.document = {
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [linkA, linkB] : []),
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?twoerroredlinks')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+
+    const sheetA = { ownerNode: linkA, get cssRules() { throw new Error('NetworkError') } }
+    const sheetB = { ownerNode: linkB, get cssRules() { throw new Error('NetworkError') } }
+    linkA.sheet = sheetA
+    linkB.sheet = sheetB
+    document.styleSheets = [sheetA, sheetB]
+    linkA.listeners.error({ type: 'error' })
+    linkB.listeners.error({ type: 'error' })
+    pump()
+    assert.equal(pageVars['--sv-page'], undefined, 'both erroring links are excluded, and neither is found')
+    assert.ok(watcher, 'the consumer watch installed')
+
+    // both hrefs corrected in the same script, one MutationObserver batch:
+    // pendingSheets() ORs across every link, so a single forgotten link
+    // already turns outputs back on and hides a partial fix (the second
+    // link's own error surviving the batch). Assert per link instead: a
+    // link still excluded by erroredLinks never gets re-added to `pending`,
+    // so resolvePageOutputs() never calls addEventListener on it again, and
+    // its removed `error` listener (settled() removes itself on firing)
+    // stays gone.
+    linkA.sheet = null
+    linkB.sheet = null
+    document.styleSheets = []
+    watcher.cb([
+      { type: 'attributes', target: linkA, addedNodes: [] },
+      { type: 'attributes', target: linkB, addedNodes: [] },
+    ])
+    pump()
+    assert.equal(typeof linkA.listeners.error, 'function', 'linkA is pending again: it forgot its own error')
+    assert.equal(typeof linkB.listeners.error, 'function', 'linkB is pending again too: the batch break must not swallow the second link')
     untrack()
   } finally {
     global.MutationObserver = realMO

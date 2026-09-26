@@ -11,12 +11,20 @@
 
 ### Fixed
 
-- A stylesheet whose `<link>` fired `error` (a 404, a network failure) kept
-  counting as pending forever: every scroll wrote `--sv-page`/`--sv-v` on
-  `<html>` for the rest of the session, even with no consumer at all. An
-  errored link is now excluded from the pending count, and a later change
-  to its `href`/`rel`/`media`/`disabled` forgets the error so a corrected
-  URL is judged again.
+- A same-origin `<link rel="stylesheet">` that failed to load (a 404, a
+  reset connection, an unreachable host) kept publishing `--sv-page`/`--sv-v`
+  on `<html>` forever, for every page with no consumer at all: measured in
+  real Chrome, the failed link keeps a non-null `CSSStyleSheet` whose
+  `cssRules` throws exactly like an opaque cross-origin sheet, often before
+  the driver's own pending-phase listener ever gets a chance to see the
+  failure at all, so the conservative "assume it reads them" default for an
+  unreadable sheet latched true forever and the watch that would notice a
+  later, corrected href never installed. A same-origin sheet's `cssRules`
+  never throws once it loads, so that throw is now read as a load failure
+  instead, live, every time it is asked, not memorized; a genuinely
+  cross-origin sheet keeps the conservative default. A batch of several
+  corrected `<link>` attributes (two hrefs fixed in one script) also now
+  clears every one of them, not only the first.
 - The gallery's GSAP React recipe (`gsap-scrub`) timed a `.from('.stage > *', ...)`
   selector against markup that renders `.sv-stage`: pasted as shown, the
   timeline animated nothing. It now scopes to the stage's own ref.
