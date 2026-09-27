@@ -20,6 +20,14 @@ export interface FrameStats {
 }
 
 const CALIBRATION_MS = 1000
+// A page stuck below 50Hz-equivalent (MAX_CALIBRATED_INTERVAL_MS) from load
+// never sees a delta fast enough to lock `interval`, so it never calibrates
+// at all: `fps: 0` and "calibrating… refresh unknown" forever, on exactly
+// the page a developer opens the HUD for (T2, loop8-8, C4's successor).
+// After this long with no qualifying delta, stop waiting and report the
+// fps the samples already measure (fps needs no calibrated interval), with
+// the refresh reading marked unverified instead of hidden.
+const UNVERIFIED_AFTER_MS = 5000
 // Never lock the calibration onto a delta slower than 50Hz-equivalent: a
 // page that opens sustained at 30fps (every other vsync missed on a 60Hz
 // display) would otherwise calibrate ITS OWN drop rate as "healthy" and
@@ -82,7 +90,15 @@ export function trackFrames(onUpdate: (stats: FrameStats) => void): () => void {
     if (t - lastUpdate > 500 && samples.length > 1) {
       lastUpdate = t
       if (interval === null) {
-        onUpdate({ fps: 0, refreshHz: 0, dropped: 0, late: 0, worstMs: 0, calibrated: false })
+        const elapsed = calibrationStart ? t - calibrationStart : 0
+        if (elapsed >= UNVERIFIED_AFTER_MS) {
+          const deltas = samples.map((s) => s.delta)
+          const worstMs = Math.max(...deltas)
+          const avg = deltas.reduce((a, b) => a + b, 0) / deltas.length
+          onUpdate({ fps: 1000 / avg, refreshHz: 0, dropped: 0, late: 0, worstMs, calibrated: false })
+        } else {
+          onUpdate({ fps: 0, refreshHz: 0, dropped: 0, late: 0, worstMs: 0, calibrated: false })
+        }
       } else {
         const deltas = samples.map((s) => s.delta)
         let dropped = 0
@@ -166,7 +182,14 @@ export function mountHud(): () => void {
       ? `${stats.fps.toFixed(1)} fps · ~${Math.round(stats.refreshHz)}Hz refresh\n` +
         `dropped ${stats.dropped} · late ${stats.late} · worst ${stats.worstMs.toFixed(1)}ms (last 5s)\n` +
         lafLine
-      : `calibrating… refresh unknown\n${lafLine}`
+      // uncalibrated but measured (T2): the interval never locked (a
+      // sustained sub-50Hz page), so refresh/dropped/late stay unknown, but
+      // fps itself needs no calibration and should not stay hidden forever.
+      : stats.fps > 0
+        ? `${stats.fps.toFixed(1)} fps · refresh unverified\n` +
+          `worst ${stats.worstMs.toFixed(1)}ms (last 5s)\n` +
+          lafLine
+        : `calibrating… refresh unknown\n${lafLine}`
   })
 
   return () => {

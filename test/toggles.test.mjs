@@ -1869,6 +1869,59 @@ test('toggles: a plain trigger inserted after toggles(document) on a marquee-fre
   } finally { env.restore() }
 })
 
+// D3 (Astra, loop8-8): a click owned by a scoped instance syncs aria-expanded
+// on every OTHER live instance's matching triggers, inside that instance's
+// own `run` (its `life.guard`). A sibling write that throws used to
+// rethrow there too, so the sibling instance's guard called stop() and tore
+// down its own click listener and MutationObserver for the rest of the
+// page's life, over a write it never owned. Only the throwing sibling's
+// transaction should roll back and report; every instance keeps running.
+test('toggles: a sibling ARIA sync failure stays local, the document scope keeps its click listener and still boots a late trigger', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?d3sibling')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const outerTrigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '.menu' })
+    const scope = env.element()
+    const menu = env.element()
+    menu.classList.add('menu')
+    const innerTrigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '.menu' })
+    scope.append(menu)
+    scope.append(innerTrigger)
+    // outerTrigger first: docInstance.triggers() finds it before innerTrigger,
+    // so the throw below aborts before innerTrigger is ever touched by the
+    // document instance's own (failing) journal.
+    doc.append(outerTrigger)
+    doc.append(scope)
+
+    const stopDoc = toggles() // <ScrollVarsBoot>'s document scope
+    const stopScoped = toggles(scope)
+
+    const error = Error('sibling aria write')
+    const realSetAttribute = outerTrigger.setAttribute
+    outerTrigger.setAttribute = () => { outerTrigger.setAttribute = realSetAttribute; throw error }
+
+    scope.fire('click', { target: innerTrigger })
+
+    assert.ok(menu.classes.has('open'), 'the scoped click still applies')
+    assert.equal(innerTrigger.getAttribute('aria-expanded'), 'true', 'the scoped instance still syncs its own trigger')
+    assert.deepEqual(env.errors, [error], 'exactly one report, no rethrow')
+    assert.equal(doc.handlers.get('click')?.size, 1, 'the document scope keeps its click listener')
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver' && d.targets.has(doc))
+    assert.ok(mo, 'the document scope still owns its MutationObserver')
+    const late = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '.menu' })
+    late.nodeType = 1
+    doc.append(late)
+    mo.cb([{ addedNodes: [late] }])
+    assert.equal(late.getAttribute('aria-expanded'), 'true', 'a later-mounted trigger still boots, reflecting the menu already open')
+
+    stopDoc(); stopScoped()
+  } finally { env.restore() }
+})
+
 // B5 (Astra, loop8-6): a trigger mounted BEFORE its target never got
 // aria-expanded or --sv-state at all, even after the target later arrived,
 // because bootTrigger() just returns on an unresolved target and only NEW

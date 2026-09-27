@@ -112,7 +112,44 @@ test('a rep whose deltas are all zero or negative fails as unusable', () => {
   }
   const v = verdictForPage(payload, 'long')
   assert.equal(v.pass, false)
-  assert.match(v.reason, /no positive deltas/)
+  assert.match(v.reason, /non-finite or non-positive delta/)
+})
+
+// ---- D4 (Astra, loop8-8): a rep id OUTSIDE 0..reps-1 does not count as
+// coverage ({0, 1, 99} must fail exactly like {0, 1}, never pass as "3
+// distinct repetitions").
+test('rep ids [0, 1, 99] fail: 99 is not a repetition the page declared', () => {
+  const payload = {
+    reps: 3,
+    runs: [rep({ rep: 0 }), rep({ rep: 1 }), rep({ rep: 99 })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /2\/3/)
+})
+
+// ---- D4 (Astra, loop8-8): a rep with SOME non-positive or NaN deltas
+// mixed among otherwise-good ones used to pass (only an ALL-bad rep
+// failed), letting zeros dilute the late-% denominator and a NaN slip
+// through `NaN <= 0` being false.
+test('a rep with one zero delta among good ones fails', () => {
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, deltas: [0, 16.7, 16.7, 16.7] })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /non-finite or non-positive delta/)
+})
+
+test('a rep with one NaN delta among good ones fails', () => {
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, deltas: [NaN, 16.7, 16.7, 16.7] })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /non-finite or non-positive delta/)
 })
 
 test('a rep whose own vsyncMs is zero fails as unusable', () => {
@@ -137,14 +174,15 @@ test('a rep whose own vsyncMs is negative fails as unusable', () => {
 
 test('a self-calibrated rep whose derived median vsync is non-positive fails, not a trivial pass', () => {
   // no vsyncMs field: falls back to the median of its own sorted deltas.
-  // A majority of non-positive samples (which are individually real, so
-  // the "every delta <= 0" guard does not catch them) drags that median
-  // to <= 0, which must not manufacture a trivially-passed budget.
+  // D4 (loop8-8) now rejects ANY non-positive delta before this branch is
+  // ever reached, so a mix of negative and positive samples fails there
+  // first; this asserts the same non-pass outcome the degenerate-vsync
+  // guard existed for, now caught one check earlier.
   const payload = {
     reps: 1,
     runs: [rep({ rep: 0, vsyncMs: undefined, deltas: [-5, -3, -1, 16.7, 16.7] })],
   }
   const v = verdictForPage(payload, 'long')
   assert.equal(v.pass, false)
-  assert.match(v.reason, /non-positive derived vsync/)
+  assert.match(v.reason, /non-finite or non-positive delta/)
 })

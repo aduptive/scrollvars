@@ -40,9 +40,16 @@ export function verdictForPage(payload, page) {
   // that recorded rep 0 twice and never rep 2 has runs.length === expected
   // but only two distinct repetitions actually ran. A duplicate rep id is
   // not extra coverage, it is the SAME repetition twice.
-  const distinctReps = new Set(runs.map((r) => r.rep)).size
-  if (typeof expected === 'number' && distinctReps < expected)
-    return { pass: false, reason: `only ${distinctReps}/${expected} distinct repetition(s) present` }
+  // D4 (Astra, loop8-8): a distinct COUNT still accepts {0, 1, 99} for
+  // reps: 3, since it never checks which ids showed up, only how many. The
+  // expected set is exactly 0..reps-1; anything outside it does not count.
+  const repIds = new Set(runs.map((r) => r.rep))
+  if (typeof expected === 'number') {
+    const wantedIds = Array.from({ length: expected }, (_, i) => i)
+    const present = wantedIds.filter((id) => repIds.has(id)).length
+    if (present < expected)
+      return { pass: false, reason: `only ${present}/${expected} distinct repetition(s) present` }
+  }
   if (!runs.length) return { pass: false, reason: 'page missing' }
   for (const r of runs) {
     if (r.error) return { pass: false, reason: `rep ${r.rep + 1} errored: ${r.error}` }
@@ -51,7 +58,12 @@ export function verdictForPage(payload, page) {
     // negative (a broken sampler, not a fast device: a real frame delta is
     // never <= 0) is unusable, not a pass. Checked before vsync derives
     // from it, so a degenerate rep cannot manufacture its own trivial budget.
-    if (r.deltas.every((d) => d <= 0)) return { pass: false, reason: `rep ${r.rep + 1} has no positive deltas` }
+    // D4 (Astra, loop8-8): rejecting only when EVERY delta is <= 0 let a
+    // rep with SOME zero or NaN deltas through (`NaN <= 0` is false), and
+    // the zeros sort to the bottom and enlarge the late-% denominator.
+    // Every delta must be finite and strictly positive.
+    if (r.deltas.some((d) => !(Number.isFinite(d) && d > 0)))
+      return { pass: false, reason: `rep ${r.rep + 1} has a non-finite or non-positive delta` }
     if (typeof r.vsyncMs === 'number' && r.vsyncMs <= 0)
       return { pass: false, reason: `rep ${r.rep + 1} has a non-positive vsyncMs (${r.vsyncMs})` }
     if (!r.animated) return { pass: false, reason: `rep ${r.rep + 1} failed its animated check` }
