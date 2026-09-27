@@ -611,14 +611,25 @@ const ruleClasses = (css) =>
 // reduce blocks by design (higher specificity settles the SAME rest state,
 // not an entrance re-declared that would animate again).
 const TWIN_RULE = /[^{}]*\[data-sv-motion="reduce"\][^{}]*\{[^{}]*\}/g
-const FOCUS_RULE = /[^{}]*:focus-within[^{}]*\{[^{}]*\}/g
+// A :focus-within rule is only a legitimate "already at rest" override, safe
+// to strip from this check, when its body IS the reset shape: exactly
+// opacity:1, translate:none, transition:none, nothing else. A :focus-within
+// rule that instead re-declares the ANIMATING shape (opacity: var(--sv-live),
+// a transition-duration) is a real re-declaration bug the check must still
+// catch, not a deliberate override (loop8-5 verifier finding 1).
+const FOCUS_RULE = /([^{}]*:focus-within[^{}]*)\{([^{}]*)\}/g
+const isResetBody = (body) => {
+  const decls = new Set(body.split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter(Boolean))
+  return decls.size === 3 && decls.has('opacity: 1') && decls.has('translate: none') && decls.has('transition: none')
+}
+const stripResetFocusRules = (css) => css.replace(FOCUS_RULE, (whole, _sel, body) => (isResetBody(body) ? '' : whole))
 const reduceBlocks = (css) => stripComments(stripScripts(css)).match(REDUCE_BLOCK) ?? []
 const reducedClasses = (css) => new Set(reduceBlocks(css).flatMap((block) => [...ruleClasses(block)]))
 const sheetResets = Object.fromEntries(STYLESHEETS.map((name) => [name, reducedClasses(styleSource[name])]))
 
 for (const fx of EFFECTS.filter((e) => e.css)) {
   test(`gallery ${fx.slug}: the CSS tab carries the reduced-motion override of every preset rule it quotes`, () => {
-    const pane = stripComments(stripScripts(fx.css)).replace(TWIN_RULE, '').replace(FOCUS_RULE, '')
+    const pane = stripResetFocusRules(stripComments(stripScripts(fx.css)).replace(TWIN_RULE, ''))
     const blocks = pane.match(REDUCE_BLOCK) ?? []
     const reset = reducedClasses(fx.css)
     const missing = []

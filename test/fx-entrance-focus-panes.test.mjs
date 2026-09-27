@@ -21,7 +21,8 @@ test('staggered-reveal CSS pane carries the :focus-within override after its red
   assert.ok(lastReduceAt > hideAt, 'the pane no longer carries the reduce blocks; update this test')
   const focusAt = css.indexOf('.sv-rise:focus-within')
   assert.ok(focusAt > lastReduceAt, 'no :focus-within override for .sv-rise placed after the reduce blocks')
-  assert.match(css.slice(focusAt), /\.sv-rise:focus-within\s*\{[^}]*opacity:\s*1;[^}]*translate:\s*none;/)
+  const focusRule = css.slice(focusAt, css.indexOf('}', focusAt) + 1)
+  assert.match(focusRule, /(?=[^}]*opacity:\s*1;)(?=[^}]*translate:\s*none;)(?=[^}]*transition:\s*none;)/)
 })
 
 test('split-reveal CSS pane carries the :focus-within override after its reduce blocks', () => {
@@ -32,5 +33,6 @@ test('split-reveal CSS pane carries the :focus-within override after its reduce 
   assert.ok(lastReduceAt > hideAt, 'the pane no longer carries the reduce blocks; update this test')
   const focusAt = css.indexOf('.sv-split-rise:focus-within > span')
   assert.ok(focusAt > lastReduceAt, 'no :focus-within override for .sv-split-rise placed after the reduce blocks')
-  assert.match(css.slice(focusAt), /\.sv-split-rise:focus-within > span\s*\{[^}]*opacity:\s*1;[^}]*translate:\s*none;/)
+  const focusRule = css.slice(focusAt, css.indexOf('}', focusAt) + 1)
+  assert.match(focusRule, /(?=[^}]*opacity:\s*1;)(?=[^}]*translate:\s*none;)(?=[^}]*transition:\s*none;)/)
 })

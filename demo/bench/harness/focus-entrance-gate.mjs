@@ -62,6 +62,18 @@ export async function focusEntranceGate({ browser, check, base }) {
       if (!reduce) {
         await page.waitForFunction(() => getComputedStyle(document.getElementById('child11')).opacity === '0', { timeout: 2500 })
         await page.waitForFunction(() => getComputedStyle(document.getElementById('self-tracked')).opacity === '0', { timeout: 2500 })
+        // A4 (loop8-5 verifier finding 2): without this, a missing
+        // self-tracked sv-split-rise selector never hides the spans at all
+        // (fail-visible, opacity 1 from the start), so the post-focus check
+        // below stays green whether or not the entrance rule exists. Assert
+        // the pre-focus HIDDEN state first, polled with a deadline (ADU-219),
+        // exactly like the plain #self-tracked element above.
+        const hiddenSplit = await page.waitForFunction(() => {
+          const spans = [...document.getElementById('self-tracked-split').querySelectorAll('span[aria-hidden]')]
+          return spans.length > 0 && spans.every((s) => getComputedStyle(s).opacity === '0') ? spans.length : false
+        }, { timeout: 2500 }).then((h) => h.jsonValue()).catch(() => false)
+        check('focus-entrance: a self-tracked sv-split-rise heading is hidden below the fold before it goes live (A4)',
+          hiddenSplit > 0, JSON.stringify({ hiddenSplit }))
       } else {
         // A1/A4 (loop8-5): under reduce a self-tracked entrance (rise or
         // split-rise) must be at rest from the first frame, unfocused: it
