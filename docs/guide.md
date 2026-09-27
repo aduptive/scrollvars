@@ -169,7 +169,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 // app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.0 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.1 KB gz
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.3 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
