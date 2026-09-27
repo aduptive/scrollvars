@@ -1,0 +1,22 @@
+{
+  "runs": [
+    {
+      "file": "chrome-1790468705641.json",
+      "label": "Desktop Chrome (macOS)",
+      "commit": "66c7498"
+    },
+    {
+      "file": "firefox-1790468857085.json",
+      "label": "Desktop Firefox (macOS)",
+      "commit": "66c7498"
+    }
+  ],
+  "pending": [
+    {
+      "label": "Desktop Safari (macOS)"
+    },
+    {
+      "label": "iPhone Safari (iOS)"
+    }
+  ]
+}
