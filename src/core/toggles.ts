@@ -534,9 +534,30 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // scope mounts once for a track it already owns and stops with it, so it
   // has no route-mounted gap to cover, and giving every custom-root scope
   // its own persistent observer would be a cost with no matching benefit.
+  // A page with no marquee at all must pay nothing per mutation: without a
+  // pre-check the callback below scanned every inserted subtree on every
+  // batch, measured at about 0.07ms for a 30-node insert and 0.4ms for a
+  // 500-node one, on a Boot page that never has a `.sv-marquee-track` to
+  // find (perf review, loop8-3 follow-up). `getElementsByClassName` returns
+  // a LIVE collection the engine keeps indexed, so reading its `.length` is
+  // the O(1) pre-check: unless the count of tracks in the whole document
+  // just grew, nothing this batch inserted needs acquiring, and the
+  // subtree scan below never runs. A net decrease (an unrelated removal)
+  // takes the same fast path: nothing grew, so there is nothing to acquire,
+  // and pruning already has its own paths (N7). The one case this trades
+  // away on purpose: a track removed and a different one added in the SAME
+  // batch, net count unchanged, is not acquired instantly here, only from
+  // whatever next touches it (a click, or the shared marquee IO's own
+  // sweep); real markup never does this, and the alternative is paying the
+  // scan on every mutation of every marquee-free page to cover it.
   let mutationObserver: MutationObserver | undefined
   if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
+    const liveTracks = document.getElementsByClassName('sv-marquee-track')
+    let trackCount = liveTracks.length
     mutationObserver = new MutationObserver(life.guard((records) => {
+      const count = liveTracks.length
+      if (count <= trackCount) { trackCount = count; return }
+      trackCount = count
       records.forEach((record) => {
         record.addedNodes.forEach((node) => {
           if (node.nodeType !== 1) return

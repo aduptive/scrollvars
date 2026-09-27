@@ -34,25 +34,56 @@ const cdp = await page.createCDPSession()
 await cdp.send('Performance.enable')
 const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]))
 
-for (const round of [0, 1]) {
-  await page.goto(base, { waitUntil: 'load' })
-  await page.evaluate(() => new Promise((r) => setTimeout(r, 100)))
-  const before = await metrics()
-  const frames = await page.evaluate(() => new Promise((resolve) => {
+async function run(label, mutate, arg) {
+  for (const round of [0, 1]) {
+    await page.goto(base, { waitUntil: 'load' })
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 100)))
+    const before = await metrics()
+    const frames = arg === undefined ? await page.evaluate(mutate) : await page.evaluate(mutate, arg)
+    const after = await metrics()
+    const d = (k) => ((after[k] - before[k]) * 1000).toFixed(1)
+    const perFrame = (Number(d('ScriptDuration')) / 120).toFixed(3)
+    console.log(`${label} round ${round}: 120 mutated frames  task ${d('TaskDuration')}ms  script ${d('ScriptDuration')}ms (${perFrame}ms/frame)  style ${d('RecalcStyleDuration')}ms  worst frame gap ${frames.worst}ms`)
+  }
+}
+
+// A: a controlled marquee wrapper appended per frame (what B5 acquires)
+await run('marquee wrapper', () => new Promise((resolve) => {
+  let i = 0, worst = 0, last = performance.now()
+  const tick = () => {
+    const now = performance.now(); worst = Math.max(worst, now - last); last = now
+    const wrap = document.createElement('div')
+    wrap.className = 'sv-marquee-controlled'
+    wrap.innerHTML = '<div class="sv-marquee-track"><span>x</span></div><button type="button" data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"></button>'
+    document.body.append(wrap)
+    if (++i < 120) requestAnimationFrame(tick); else resolve({ worst: worst.toFixed(1) })
+  }
+  requestAnimationFrame(tick)
+}))
+
+// B: N unrelated nodes appended per frame, no marquee anywhere on the page:
+// the common case the pre-check exists for. --unrelated=30,500 (default)
+const sizes = (process.env.UNRELATED || '30,500').split(',').map(Number)
+for (const n of sizes) {
+  await run(`${n} unrelated nodes/frame`, (n) => new Promise((resolve) => {
     let i = 0, worst = 0, last = performance.now()
     const tick = () => {
       const now = performance.now(); worst = Math.max(worst, now - last); last = now
-      const wrap = document.createElement('div')
-      wrap.className = 'sv-marquee-controlled'
-      wrap.innerHTML = '<div class="sv-marquee-track"><span>x</span></div><button type="button" data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"></button>'
-      document.body.append(wrap)
+      // realistic page content, not a bare leaf: a few nested children each,
+      // so the OLD code's forced el.querySelectorAll(...) on every added
+      // node actually has a subtree to walk
+      const frag = document.createDocumentFragment()
+      for (let k = 0; k < n; k++) {
+        const card = document.createElement('div')
+        card.className = 'card'
+        card.innerHTML = '<h3>title</h3><p>copy</p><a href="#">link</a>'
+        frag.append(card)
+      }
+      document.body.append(frag)
       if (++i < 120) requestAnimationFrame(tick); else resolve({ worst: worst.toFixed(1) })
     }
     requestAnimationFrame(tick)
-  }))
-  const after = await metrics()
-  const d = (k) => ((after[k] - before[k]) * 1000).toFixed(1)
-  const perFrame = (Number(d('ScriptDuration')) / 120).toFixed(3)
-  console.log(`round ${round}: 120 mutated frames  task ${d('TaskDuration')}ms  script ${d('ScriptDuration')}ms (${perFrame}ms/frame)  style ${d('RecalcStyleDuration')}ms  worst frame gap ${frames.worst}ms`)
+  }, n))
 }
+
 await browser.close(); server.close()

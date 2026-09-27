@@ -1202,6 +1202,10 @@ test('toggles: a controlled marquee mounted after the document scope starts is w
   try {
     const { toggles } = await import('../dist/core/toggles.js?b5marquee')
     const doc = env.element()
+    // a real document.getElementsByClassName returns a LIVE collection: this
+    // stub mimics the one thing the pre-check reads from it, a `.length`
+    // that recomputes against the CURRENT tree on every access
+    doc.getElementsByClassName = (cls) => ({ get length() { return doc.querySelectorAll(`.${cls}`).length } })
     global.document = doc
     const stop = toggles()
 
@@ -1247,6 +1251,44 @@ test('toggles: a controlled marquee mounted after the document scope starts is w
     if (realHTMLElement) global.HTMLElement = realHTMLElement
     else delete global.HTMLElement
   }
+})
+
+// Perf follow-up to B5: a page with no marquee at all pays nothing per
+// mutation. The pre-check reads a live `.sv-marquee-track` count instead of
+// scanning every inserted subtree; a burst of unrelated insertions (a Boot
+// page's own content, most of the time) must never touch each added node's
+// own querySelectorAll, which is what the (removed) subtree scan used to do
+// unconditionally.
+test('toggles: a burst of unrelated insertions never runs the marquee/trigger subtree scan (perf follow-up to B5)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5perfgate')
+    const doc = env.element()
+    // no track is ever added in this test, so a genuinely O(1) live count
+    // (never recursing the tree, unlike the other B5 test's stub, which
+    // has to grow) stays at 0 throughout: this is what a real
+    // getElementsByClassName's `.length` costs, an indexed read
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    let scans = 0
+    const unrelated = () => {
+      const node = env.element()
+      node.nodeType = 1
+      const realQSA = node.querySelectorAll
+      node.querySelectorAll = (sel) => { scans++; return realQSA(sel) }
+      return node
+    }
+    const burst = Array.from({ length: 500 }, unrelated)
+    burst.forEach((n) => doc.append(n))
+    mo.cb([{ addedNodes: burst }])
+    assert.equal(scans, 0, 'the pre-check (live track count unchanged) skipped the subtree scan entirely')
+
+    stop()
+  } finally { env.restore() }
 })
 
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {

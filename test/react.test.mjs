@@ -518,6 +518,10 @@ function ensureDom() {
   doc.removeEventListener = () => {}
   doc.activeElement = null
   doc.querySelectorAll = () => []
+  // toggles()'s document-scope MutationObserver pre-check reads this; the
+  // stub MutationObserver below never delivers anyway, so a constant empty
+  // collection is enough here.
+  doc.getElementsByClassName = () => []
   doc.HTMLIFrameElement = class HTMLIFrameElement {}
 
   global.MutationObserver = class {
