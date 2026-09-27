@@ -132,7 +132,8 @@ workload. The [benchmark](https://scrollvars.dev/bench/) reports total task time
 style recalculation and frame delivery, with versioned measurements and raw runs.
 
 The shipped entrance presets stay visible without JavaScript and respect reduced
-motion. Custom effects need their own motion guards. The kit provides native
+motion, except `sv-view-*`: those animate in without JS too, where the browser
+supports `animation-timeline: view()`. Custom effects need their own motion guards. The kit provides native
 dialog/details behavior and carousel controls, but your content and integration
 still need accessibility testing.
 
