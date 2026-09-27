@@ -5128,8 +5128,23 @@ var SV = (() => {
         }
         return false;
       };
+      const hasNewTrigger = (records) => {
+        for (const record of records) {
+          for (let i = 0; i < record.addedNodes.length; i++) {
+            const node = record.addedNodes[i];
+            if (node.nodeType !== 1)
+              continue;
+            const el = node;
+            if (el.matches?.("[data-sv-toggle]"))
+              return true;
+            if (typeof el.querySelector === "function" && el.querySelector("[data-sv-toggle]"))
+              return true;
+          }
+        }
+        return false;
+      };
       mutationObserver = new MutationObserver(life.guard((records) => {
-        if (!hasUnleasedTrack())
+        if (!hasUnleasedTrack() && !hasNewTrigger(records))
           return;
         transaction = ownership();
         siblingWrites = [];
@@ -8644,11 +8659,15 @@ function toggles(root) {
     // scope mounts once for a track it already owns and stops with it, so it
     // has no route-mounted gap to cover, and giving every custom-root scope
     // its own persistent observer would be a cost with no matching benefit.
-    // A page with no marquee at all must pay nothing per mutation: without a
-    // pre-check the callback below scanned every inserted subtree on every
-    // batch, measured at about 0.07ms for a 30-node insert and 0.4ms for a
-    // 500-node one, on a Boot page that never has a `.sv-marquee-track` to
-    // find (perf review, loop8-3 follow-up). `getElementsByClassName` returns
+    // A page with no marquee AND no new trigger in the batch pays nothing per
+    // mutation (a text-node or attribute-only mutation record, most of the
+    // time): without a pre-check the callback below scanned every inserted
+    // subtree on every batch, measured at about 0.07ms for a 30-node insert
+    // and 0.4ms for a 500-node one, on a Boot page that never has a
+    // `.sv-marquee-track` to find (perf review, loop8-3 follow-up). A batch
+    // that DOES add elements now always pays `hasNewTrigger()`'s cheap
+    // matches()/querySelector() pass (correctness beats that saving, see the
+    // comment on `hasNewTrigger` below). `getElementsByClassName` returns
     // a LIVE collection the engine keeps indexed, so walking it is cheap and
     // stays empty (zero iterations) on a marquee-free page: the pre-check
     // scans below only when that collection holds a track NOT ALREADY in
@@ -8692,6 +8711,33 @@ function toggles(root) {
             }
             return false;
         };
+        // A plain `[data-sv-toggle]` trigger (an SPA menu button, no marquee
+        // anywhere on the page) mounted after setup never ran bootTrigger at
+        // all while `hasUnleasedTrack()` gated the WHOLE callback body: it kept
+        // no `aria-expanded` and no initial `--sv-state` until its own first
+        // click, a WCAG 4.1.2 miss the marquee-only pre-check never considered
+        // (regression from the #105 perf pass, found by the
+        // verifier in real Chrome). Correctness wins over the sub-millisecond
+        // saving: this batch's own addedNodes are checked directly for a new
+        // trigger, so a batch that adds no ELEMENT node (text or attribute-only
+        // mutations) still costs nothing, and a batch that adds elements pays
+        // one matches()/querySelector() pair per added node, short-circuiting
+        // on the first hit.
+        const hasNewTrigger = (records) => {
+            for (const record of records) {
+                for (let i = 0; i < record.addedNodes.length; i++) {
+                    const node = record.addedNodes[i];
+                    if (node.nodeType !== 1)
+                        continue;
+                    const el = node;
+                    if (el.matches?.('[data-sv-toggle]'))
+                        return true;
+                    if (typeof el.querySelector === 'function' && el.querySelector('[data-sv-toggle]'))
+                        return true;
+                }
+            }
+            return false;
+        };
         // A late boot writes into `transaction`/`siblingWrites` exactly like a
         // click does, so this delivery needs the same fresh-journal, rollback-
         // on-throw, reset-in-finally shape as onClick: the document scope never
@@ -8700,7 +8746,7 @@ function toggles(root) {
         // in siblingWrites until the next click anywhere in the document (A2,
         // Astra loop8-5).
         mutationObserver = new MutationObserver(life.guard((records) => {
-            if (!hasUnleasedTrack())
+            if (!hasUnleasedTrack() && !hasNewTrigger(records))
                 return;
             transaction = ownership();
             siblingWrites = [];

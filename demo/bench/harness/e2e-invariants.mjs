@@ -1586,6 +1586,57 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── 6b. toggles(): a plain [data-sv-toggle] trigger mounted AFTER boot on a
+// page with NO marquee anywhere still gets its initial aria-expanded and
+// --sv-state, not only its own first click (regression from the #105 perf
+// pass: hasUnleasedTrack() alone gated the whole document-scope
+// MutationObserver callback, so a marquee-free page's late trigger never
+// ran bootTrigger at all, WCAG 4.1.2) ──
+{
+  const page = await browser.newPage()
+  await page.goto(`${base}/bench/harness/fixtures/toggles-late-trigger.html`, { waitUntil: 'load' })
+  const before = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const menu = document.createElement('div')
+        menu.id = 'late-menu'
+        const trigger = document.createElement('button')
+        trigger.id = 'late-trigger'
+        trigger.type = 'button'
+        trigger.setAttribute('data-sv-toggle', 'open')
+        trigger.setAttribute('data-sv-target', '#late-menu')
+        trigger.textContent = 'menu'
+        document.body.append(menu, trigger)
+        // the MutationObserver delivers on the next microtask/macrotask
+        // after the synchronous append above, never synchronously with it
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+          ariaExpanded: trigger.getAttribute('aria-expanded'),
+          state: getComputedStyle(menu).getPropertyValue('--sv-state').trim(),
+        })))
+      })
+  )
+  check(
+    'toggles(): a plain trigger mounted after boot on a marquee-free page gets aria-expanded before any click (SPA late trigger)',
+    before.ariaExpanded === 'false',
+    `aria-expanded=${before.ariaExpanded}`
+  )
+  check(
+    'toggles(): the same late trigger\'s target gets its initial --sv-state before any click',
+    before.state === '0',
+    `--sv-state=${before.state}`
+  )
+  const afterClick = await page.evaluate(() => {
+    document.getElementById('late-trigger').click()
+    return document.getElementById('late-trigger').getAttribute('aria-expanded')
+  })
+  check(
+    'toggles(): the late-booted trigger actually works after being clicked',
+    afterClick === 'true',
+    `aria-expanded=${afterClick}`
+  )
+  await page.close()
+}
+
 // ── 7. StickySteps (React fx component): inert/aria-hidden on the
 // non-active shots follow prefers-reduced-motion LIVE, not just at mount
 // (ADU-108, round 3 finding 19: the effect read the media query once) ──

@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>fixture: a plain trigger mounted after boot on a marquee-free page (SPA late trigger)</title>
+</head>
+<body>
+<!-- Regression fixture (#105 perf pass, found by the verifier in real
+     Chrome): the document scope's MutationObserver pre-check,
+     `hasUnleasedTrack()`, gated the WHOLE callback body, so on a page with
+     NO marquee anywhere a plain [data-sv-toggle] trigger mounted after
+     `toggles()` already ran (an SPA menu button, the common route-mount
+     shape) never ran bootTrigger at all: no `aria-expanded`, no initial
+     `--sv-state`, until the trigger's own first click (WCAG 4.1.2).
+
+     No .sv-marquee-track anywhere on this page on purpose: that is the
+     exact shape that made `hasUnleasedTrack()` alone read false forever.
+     `#late-trigger` and `#late-menu` are appended by e2e-invariants.mjs
+     itself, after `toggles()` has already run, the same way a client
+     router mounts new content into a persistent <ScrollVarsBoot> document
+     scope.
+
+     Not shipped, not generated: loaded directly by
+     demo/bench/harness/e2e-invariants.mjs, which serves demo/ as the
+     origin (so /fx/sv.js resolves to the built engine). -->
+<script src="/fx/sv.js"></script>
+<script>window.SV.toggles()</script>
+</body>
+</html>
