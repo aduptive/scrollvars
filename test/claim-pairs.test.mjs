@@ -322,3 +322,25 @@ test('the guide and docs-build no longer call the slider track the live region (
   assert.doesNotMatch(readme, /track's live region/)
   assert.doesNotMatch(docsBuildSrc, /track is <code>aria-live/)
 })
+
+// loop8-6 item 8 (Astra): README's "entrance presets stay visible without
+// JavaScript" sentence used to omit the one exception that does not, in
+// fact, stay visible and inert without JS: `sv-view-*` animates in with
+// no JS at all (native animation-timeline: view()). AGENTS.md's fail-visible
+// bullet already names this exception; README must say the same thing.
+test('README\'s entrance-presets-without-JS sentence names the sv-view-* exception AGENTS.md already states', () => {
+  const readmeMd = readFileSync(join(root, 'README.md'), 'utf8')
+  const readmeSentence = extract(
+    readmeMd,
+    /The shipped entrance presets stay visible without JavaScript[^.]*\./,
+    "README.md's entrance-presets sentence"
+  )[0]
+  assert.match(readmeSentence, /sv-view-\*/)
+  assert.match(readmeSentence, /animation-timeline: view\(\)/)
+  const agentsException = extract(
+    agents,
+    /`sv-view-\*` native animations still run without\s+JS where the browser supports `animation-timeline: view\(\)`/,
+    "AGENTS.md's sv-view-* exception"
+  )
+  assert.ok(agentsException[0], 'AGENTS.md no longer states the sv-view-* exception')
+})
