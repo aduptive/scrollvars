@@ -1095,11 +1095,23 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
         )}
         <div
           ref={ref}
-          aria-live={rotating ? 'off' : 'polite'}
+          tabIndex={0}
           className={perView !== undefined ? 'sv-slider sv-cols' : 'sv-slider'}
         >
           {slides}
         </div>
+        {
+          // Outside the rail: a scroll position, a class or a custom property
+          // changing inside the rail is not "text added or changed" and a live
+          // region announces none of it. This status is the only thing that
+          // actually changes text, so it is the only thing that announces.
+          // Silent while autoplay rotates (APG carousel rule): a sighted user
+          // sees the motion, a screen reader user would get a slide read out
+          // every few seconds with no way to stop it.
+        }
+        <span role="status" aria-live={rotating ? 'off' : 'polite'} aria-atomic="true" style={SR_ONLY}>
+          {count > 0 ? `Slide ${active + 1} of ${count}` : ''}
+        </span>
         {arrows && (
           <>
             <button

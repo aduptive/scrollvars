@@ -43,6 +43,7 @@
 }
 
 .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
+.sv-on :is(.sv, [data-sv]):is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r),
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
   opacity: var(--sv-live);
   transition:
@@ -51,13 +52,16 @@
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
 .sv-on :is(.sv, [data-sv]) .sv-rise,
+.sv-on :is(.sv, [data-sv]).sv-rise,
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance));
 }
-.sv-on :is(.sv, [data-sv]) .sv-slide-l {
+.sv-on :is(.sv, [data-sv]) .sv-slide-l,
+.sv-on :is(.sv, [data-sv]).sv-slide-l {
   translate: calc((1 - var(--sv-live)) * var(--sv-distance) * -2) 0;
 }
-.sv-on :is(.sv, [data-sv]) .sv-slide-r {
+.sv-on :is(.sv, [data-sv]) .sv-slide-r,
+.sv-on :is(.sv, [data-sv]).sv-slide-r {
   translate: calc((1 - var(--sv-live)) * var(--sv-distance) * 2) 0;
 }
 
@@ -218,10 +222,15 @@ html:not(.sv-on) .sv-spread > * {
    above (same source-order trap as the reduced-motion resets): at equal or
    higher specificity the later rule wins. :focus-within matches the element
    itself too, so one selector covers both a focused entrance item and one
-   that contains the focused control. */
+   that contains the focused control. The self-tracked case (the tracked
+   element IS the preset, e.g. `<pre class="sv sv-rise" tabindex="0">`)
+   needs its own selector: :is(.sv, [data-sv]) as a DESCENDANT combinator
+   above never matches when there is no separate ancestor. */
 .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r):focus-within,
+.sv-on :is(.sv, [data-sv]):is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r):focus-within,
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip):focus-within,
-.sv-on :is(.sv, [data-sv]) .sv-split-rise > span:focus-within {
+.sv-on :is(.sv, [data-sv]) .sv-split-rise:focus-within > span,
+.sv-on :is(.sv, [data-sv]).sv-split-rise:focus-within > span {
   transition: none;
   opacity: 1;
   translate: none;

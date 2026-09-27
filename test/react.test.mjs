@@ -34,10 +34,13 @@ test('react: Slider renders the APG carousel contract', async () => {
   assert.match(html, /aria-roledescription="slide"/)
   assert.match(html, /aria-label="1 of 2"/)
   assert.match(html, /aria-label="2 of 2"/)
-  // rotating → the track is aria-live off; arrows/dots labeled
+  // rotating → the status region is aria-live off, not the rail; arrows/dots labeled
   assert.match(html, /aria-live="off"/)
   assert.match(html, /aria-label="previous slide"/)
   assert.match(html, /aria-label="go to slide 2"/)
+  // N2: the rail is reachable by keyboard before hydration runs, without JS
+  // or after a failed enhancement (Safari does not focus a scroller itself)
+  assert.match(html, /<div tabindex="0" class="sv-slider">/)
 })
 
 test('react: default and custom dots expose the current slide after navigation', async () => {
@@ -66,6 +69,51 @@ test('react: default and custom dots expose the current slide after navigation',
       assert.notEqual(dots[0].getAttribute('aria-current'), 'true')
     } finally { await React.act(async () => root.unmount()) }
   }
+})
+
+test('react: Slider announces the active slide in a status region outside the rail (N1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  await React.act(async () => root.render(React.createElement(Slider, null,
+    React.createElement('div', null, 'one'),
+    React.createElement('div', null, 'two'),
+    React.createElement('div', null, 'three'))))
+  try {
+    const shell = container.firstChild
+    const rail = shell.children.find(c => c.classes.has('sv-slider'))
+    const status = shell.children.find(c => c.getAttribute('role') === 'status')
+    assert.ok(status, 'a status region exists outside the rail')
+    assert.equal(rail.hasAttribute('aria-live'), false, 'the rail carries no live region of its own')
+    assert.equal(status.textContent, 'Slide 1 of 3')
+    rail.clientWidth = 100
+    rail.scrollWidth = 300
+    rail.offsetLeft = 0
+    rail.children.forEach((slide, i) => { slide.offsetLeft = i * 100; slide.offsetWidth = 100; slide.offsetParent = rail })
+    rail.scrollLeft = 100
+    await React.act(async () => { rail._listeners.scroll[0](); flushFrames() })
+    assert.equal(status.textContent, 'Slide 2 of 3', "the status text changes after a navigation")
+  } finally { await React.act(async () => root.unmount()) }
+})
+
+test('react: Slider status stays silent (aria-live off) while autoplay rotates (N1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  await React.act(async () => root.render(React.createElement(Slider, { autoplay: 4000 },
+    React.createElement('div', null, 'one'),
+    React.createElement('div', null, 'two'))))
+  try {
+    const shell = container.firstChild
+    const status = shell.children.find(c => c.getAttribute('role') === 'status')
+    assert.equal(status.getAttribute('aria-live'), 'off', 'no interruption while it rotates on its own')
+  } finally { await React.act(async () => root.unmount()) }
 })
 
 test('react: Slider without autoplay has no pause control and is polite', async () => {
@@ -807,15 +855,18 @@ test('react: Slider composes consumer pointer handlers with the autoplay hover p
     })
     assert.equal(both.advanced(), true, 'autoplay rotates while nothing hovers')
 
+    const status = () => both.shell.childNodes.find(node => hostProps(node).role === 'status')
+
     await act(async () => { both.props.onPointerEnter({ type: 'pointerenter' }) })
     assert.equal(seen.length, 1, "the consumer's onPointerEnter still runs")
     assert.equal(both.advanced(), false, 'hovering pauses the rotation')
-    assert.equal(both.shell.childNodes.find(node => hostProps(node).className === 'sv-slider').getAttribute('aria-live'), 'polite')
+    assert.equal(status().getAttribute('aria-live'), 'polite')
+    assert.equal(both.shell.childNodes.find(node => hostProps(node).className === 'sv-slider').hasAttribute('aria-live'), false, 'the rail carries no live region of its own')
 
     await act(async () => { both.props.onPointerLeave({ type: 'pointerleave' }) })
     assert.equal(seen.length, 2, "the consumer's onPointerLeave still runs")
     assert.equal(both.advanced(), true, 'leaving resumes it')
-    assert.equal(both.shell.childNodes.find(node => hostProps(node).className === 'sv-slider').getAttribute('aria-live'), 'off')
+    assert.equal(status().getAttribute('aria-live'), 'off')
     await act(async () => { both.root.unmount() })
 
     // a lone consumer onPointerLeave used to replace the internal one and

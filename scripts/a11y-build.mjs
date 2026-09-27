@@ -77,15 +77,23 @@ function App() {
         <Accordion title="FAQ question">FAQ answer</Accordion>
       </section>
 
-      <section aria-labelledby="h-split">
+      <section id="split-section" aria-labelledby="h-split">
         <h2 id="h-split">Split text</h2>
         <Split as="h3">Words arrive one by one</Split>
       </section>
 
       <section id="scenes-section" aria-labelledby="h-scenes">
         <h2 id="h-scenes">Scenes</h2>
-        <Scenes count={3} height="10vh">
-          {({ scene }) => <p>Scene {scene + 1} of 3</p>}
+        <Scenes count={3}>
+          {({ scene }) => (
+            <>
+              {/* same node across every scene: proves a scene change does
+                  not tear down and remount the "current" slot under it,
+                  which would drop whatever the person had focused */}
+              <input id="scene-input" aria-label="scene input" />
+              <p>Scene {scene + 1} of 3</p>
+            </>
+          )}
         </Scenes>
       </section>
 

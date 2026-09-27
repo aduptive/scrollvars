@@ -33,6 +33,19 @@ const FOCUS_AND_READ = `(selector) => new Promise((resolve) => {
   })
 })`
 
+// N3: the split() word spans are the ones the entrance actually hides
+// (aria-hidden, --sv-order). :focus-within never matches a span (it never
+// holds focus, only its aria-hidden text does not either): the selector has
+// to key off the CONTAINER's :focus-within to reveal its children.
+const FOCUS_AND_READ_SPANS = `(selector) => new Promise((resolve) => {
+  const el = document.querySelector(selector)
+  el.focus()
+  requestAnimationFrame(() => {
+    const spans = [...el.querySelectorAll('span[aria-hidden]')]
+    resolve(spans.map((s) => getComputedStyle(s).opacity))
+  })
+})`
+
 export async function focusEntranceGate({ browser, check, base }) {
   for (const reduce of [false, true]) {
     const label = reduce ? ' (reduced motion)' : ''
@@ -48,6 +61,7 @@ export async function focusEntranceGate({ browser, check, base }) {
       // rather than proof the focus override fired.
       if (!reduce) {
         await page.waitForFunction(() => getComputedStyle(document.getElementById('child11')).opacity === '0', { timeout: 2500 })
+        await page.waitForFunction(() => getComputedStyle(document.getElementById('self-tracked')).opacity === '0', { timeout: 2500 })
       }
 
       const persistent = await page.evaluate(`(${FOCUS_AND_READ})('.links a:first-child')`)
@@ -57,6 +71,18 @@ export async function focusEntranceGate({ browser, check, base }) {
       const stagger = await page.evaluate(`(${FOCUS_AND_READ})('#child11')`)
       check(`focus-entrance${label}: the stagger case (11th child, --sv-order: 10) is opacity 1 within one frame of focus`,
         stagger.opacity === '1', JSON.stringify(stagger))
+
+      const splitSpans = await page.evaluate(`(${FOCUS_AND_READ_SPANS})('#split-heading')`)
+      check(`focus-entrance${label}: a focused split heading reveals every word span at once (N3)`,
+        splitSpans.length > 0 && splitSpans.every((o) => o === '1'), JSON.stringify(splitSpans))
+
+      // PR #107 review: the entrance rules require the preset to be a
+      // DESCENDANT of .sv/[data-sv]. A self-tracked element (the tracked
+      // element IS the preset, e.g. `<pre class="sv sv-rise" tabindex="0">`)
+      // never matched and could be focused mid-fade.
+      const selfTracked = await page.evaluate(`(${FOCUS_AND_READ})('#self-tracked')`)
+      check(`focus-entrance${label}: a self-tracked entrance element (tracked element IS the preset) is opacity 1 within one frame of focus`,
+        selfTracked.opacity === '1', JSON.stringify(selfTracked))
     } finally {
       await page.close()
     }

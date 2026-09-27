@@ -10,6 +10,7 @@
   /* below the 75% enter line at load, like Astra's B1 measurement */
   .links { margin-top: 20vh; min-height: 40vh; padding: 24px; background: #eee }
   .links a { display: block }
+  .self-tracked { display: block; margin-top: 20vh; min-height: 40vh; padding: 24px; background: #ddd }
 </style>
 </head>
 <body>
@@ -21,6 +22,14 @@
   <a href="#7">link 7</a><a href="#8">link 8</a><a href="#9">link 9</a>
   <a href="#10">link 10</a><a href="#11" id="child11">link 11</a><a href="#12">link 12</a>
 </section>
+<!-- a focusable split heading, never went live: N3's B1-half check -->
+<section data-sv class="links">
+  <h2 id="split-heading" data-sv-split tabindex="0" class="sv-split-rise">A focused split heading</h2>
+</section>
+<!-- the tracked element IS the preset (self-tracked case): PR #107 review
+     finding, the descendant-only selector `:is(.sv, [data-sv]) .sv-rise`
+     never matches this shape -->
+<pre id="self-tracked" data-sv tabindex="0" class="sv-rise">self-tracked entrance content</pre>
 <div class="tall"></div>
 <script src="/fx/sv.js"></script>
 </body>

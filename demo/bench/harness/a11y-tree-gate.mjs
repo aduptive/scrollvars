@@ -147,6 +147,16 @@ export async function a11yTreeGate({ browser, check, base }) {
       await page.waitForFunction(() => document.querySelectorAll('#slider-section .sv-dots button')[1]?.getAttribute('aria-current') === 'true')
       const dotsAfter = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
       check('a11y-tree: activating next moves aria-current from dot 1 to dot 2', dotsAfter[1] === 'true' && dotsAfter[0] !== 'true', JSON.stringify(dotsAfter))
+
+      // N1: a scroll position and an aria-current move are not text a live
+      // region announces. The status role outside the rail is the one node
+      // whose text actually changes on activation: that is what a screen
+      // reader reads out. Chrome reports the status node's own `name` as
+      // empty and puts the actual text on a StaticText child, so the check
+      // reads every name in that subtree instead of the container's own.
+      const statusNode = find(await page.accessibility.snapshot({ interestingOnly: false }), (n) => n.role === 'status')
+      const statusText = collectNames(statusNode).join(' ')
+      check('a11y-tree: the status region announces the new slide after next()', statusText.includes('Slide 2 of 3'), JSON.stringify(statusNode))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
@@ -209,11 +219,14 @@ export async function a11yTreeGate({ browser, check, base }) {
   }
 
   // ---- split text: the full text readable once, not fragmented -----------
+  // The checklist row 5 names the /a11y/ page's own <Split>, not the
+  // gallery's split-reveal.html preview: the two can drift independently
+  // (a fix landed in one and never ported to the other).
   {
     const page2 = await browser.newPage()
     try {
-      await page2.goto(`${base}/fx/split-reveal.html`, { waitUntil: 'load' })
-      await page2.waitForFunction(() => typeof window.SV !== 'undefined')
+      await page2.goto(`${base}/a11y/index.html`, { waitUntil: 'load' })
+      await page2.waitForFunction(() => window.__mounted === true)
       await page2.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
       const tree = await page2.accessibility.snapshot({ interestingOnly: false })
       const heading = find(tree, (n) => n.role === 'heading' && (n.name || '').includes('Words arrive one by one'))
@@ -323,6 +336,57 @@ export async function a11yTreeGate({ browser, check, base }) {
     }
   }
 
+  // ---- a focused input survives a scene change (D3/P1 residue) ----------
+  // The render prop's output is the SAME element across every scene (an
+  // <input> that never changes, only the sibling text does), so this
+  // proves Scenes does not tear down and remount its "current" slot on
+  // every scene switch under normal motion: a destructive remount would
+  // drop the person's focus back onto <body> the moment the scene moves.
+  {
+    const page3e = await browser.newPage()
+    try {
+      await page3e.goto(`${base}/a11y/index.html`, { waitUntil: 'load' })
+      await page3e.waitForFunction(() => window.__mounted === true)
+      await page3e.evaluate(() => document.getElementById('scenes-section').scrollIntoView({ block: 'start' }))
+      await page3e.waitForFunction(() => document.querySelector('#scenes-section p')?.textContent.trim() === 'Scene 1 of 3')
+      await page3e.focus('#scene-input')
+      // Scroll in small steps until the scene actually changes, instead of
+      // computing a pixel target from the pin geometry (a sticky stage can
+      // be taller or shorter than its own wrapper depending on `height`,
+      // so no single formula covers it): each step is a real scroll, which
+      // is what the driver itself listens for.
+      let changed = false
+      for (let i = 0; i < 100 && !changed; i++) {
+        await page3e.evaluate(() => window.scrollBy(0, 30))
+        changed = await page3e.evaluate(() => document.querySelector('#scenes-section p')?.textContent.trim() !== 'Scene 1 of 3')
+      }
+      if (!changed) throw new Error('scrolling 3000px never moved the Scenes fixture off "Scene 1 of 3"')
+      const stillFocused = await page3e.evaluate(() => document.activeElement?.id === 'scene-input')
+      const sceneText = await page3e.evaluate(() => document.querySelector('#scenes-section p')?.textContent.trim())
+      check('a11y-tree: a focused input survives a scene change, no destructive remount', stillFocused, `now on ${sceneText}`)
+    } finally {
+      await page3e.close()
+    }
+
+    // prove it can fail: a destructive remount (a fresh node with the same
+    // id, exactly what a scene keyed by its own index would do) drops focus
+    const page3f = await browser.newPage()
+    try {
+      await page3f.setContent('<input id="scene-input">')
+      await page3f.focus('#scene-input')
+      await page3f.evaluate(() => {
+        const old = document.getElementById('scene-input')
+        const fresh = document.createElement('input')
+        fresh.id = 'scene-input'
+        old.replaceWith(fresh)
+      })
+      const stillFocused = await page3f.evaluate(() => document.activeElement?.id === 'scene-input')
+      check('a11y-tree gate can fail: a destructive remount drops focus off the replaced input', !stillFocused)
+    } finally {
+      await page3f.close()
+    }
+  }
+
   // ---- gate can fail: the same detectors against a deliberately broken app ----
   {
     const brokenBundle = await bundleApp(BROKEN_SOURCE)
@@ -400,6 +464,29 @@ export async function a11yTreeGate({ browser, check, base }) {
       )
     } finally {
       await page9b.close()
+    }
+
+    // Slider: a status region that is never written (N1's own negative
+    // counterpart: the check above must fail when navigation never changes
+    // the announced text, not only when there is no status node at all).
+    const page9c = await browser.newPage()
+    try {
+      await page9c.setContent(
+        '<div role="status" aria-live="polite">Slide 1 of 3</div>' +
+        '<button class="sv-arrow-next" onclick="">next</button>'
+      )
+      const before = await page9c.accessibility.snapshot({ interestingOnly: false })
+      const beforeName = find(before, (n) => n.role === 'status')?.name
+      await page9c.click('.sv-arrow-next')
+      const after = await page9c.accessibility.snapshot({ interestingOnly: false })
+      const afterName = find(after, (n) => n.role === 'status')?.name
+      check(
+        'a11y-tree gate can fail: a status that is never written stays "Slide 1 of 3" after next()',
+        !(afterName === 'Slide 2 of 3'),
+        JSON.stringify({ beforeName, afterName })
+      )
+    } finally {
+      await page9c.close()
     }
 
     // Marquee: an unlabeled, non-functional pause control
