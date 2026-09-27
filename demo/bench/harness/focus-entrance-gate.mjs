@@ -33,6 +33,19 @@ const FOCUS_AND_READ = `(selector) => new Promise((resolve) => {
   })
 })`
 
+// N3: the split() word spans are the ones the entrance actually hides
+// (aria-hidden, --sv-order). :focus-within never matches a span (it never
+// holds focus, only its aria-hidden text does not either): the selector has
+// to key off the CONTAINER's :focus-within to reveal its children.
+const FOCUS_AND_READ_SPANS = `(selector) => new Promise((resolve) => {
+  const el = document.querySelector(selector)
+  el.focus()
+  requestAnimationFrame(() => {
+    const spans = [...el.querySelectorAll('span[aria-hidden]')]
+    resolve(spans.map((s) => getComputedStyle(s).opacity))
+  })
+})`
+
 export async function focusEntranceGate({ browser, check, base }) {
   for (const reduce of [false, true]) {
     const label = reduce ? ' (reduced motion)' : ''
@@ -57,6 +70,10 @@ export async function focusEntranceGate({ browser, check, base }) {
       const stagger = await page.evaluate(`(${FOCUS_AND_READ})('#child11')`)
       check(`focus-entrance${label}: the stagger case (11th child, --sv-order: 10) is opacity 1 within one frame of focus`,
         stagger.opacity === '1', JSON.stringify(stagger))
+
+      const splitSpans = await page.evaluate(`(${FOCUS_AND_READ_SPANS})('#split-heading')`)
+      check(`focus-entrance${label}: a focused split heading reveals every word span at once (N3)`,
+        splitSpans.length > 0 && splitSpans.every((o) => o === '1'), JSON.stringify(splitSpans))
     } finally {
       await page.close()
     }

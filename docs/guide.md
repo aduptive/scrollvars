@@ -962,8 +962,8 @@ success criterion it serves. It is not a conformance claim for your site.
 - **Carousel semantics** (4.1.2 Name, Role, Value; 2.1.1 Keyboard).
   `<Slider>` follows the APG carousel pattern: `role="region"`,
   `aria-roledescription="carousel"`, a `label`, slides announced "i of n",
-  labeled arrows and dots (the current dot has `aria-current` and `aria-disabled`), keyboard on the track, `aria-live="polite"` on
-  the track while rotation is paused by the person (hover, focus, the
+  labeled arrows and dots (the current dot has `aria-current` and `aria-disabled`), keyboard on the track, a `role="status"`
+  region outside the track that announces "Slide N of M" while rotation is paused by the person (hover, focus, the
   control), `off` while it rotates or is merely suspended off screen. Sliders
   retain native scrolling and snap, with custom mandatory-snap wheel settling
   and keyboard navigation. Pins use native page scrolling and sticky positioning.
@@ -1027,7 +1027,7 @@ not on a page that could never pass in the first place (D3/P1).
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
+| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | | |
 | 2 | Modal (`/a11y/` "Modal" section) | Activate "Open modal"; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to "Open modal" on close | | |
 | 3 | Accordion (`/a11y/` "Accordion" section) | VO-Space on the `summary` | "collapsed"/"expanded" toggles with the state, "FAQ question" read each time | | |
 | 4 | Disclosure (`/a11y/` "Disclosure" section, `sv-pop`) | VO-Space "Toggle panel" | "expanded"/"collapsed" matches the panel's visible state | | |
@@ -1040,7 +1040,7 @@ not on a page that could never pass in the first place (D3/P1).
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
+| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | | |
 | 2 | Modal (`/a11y/` "Modal" section) | Double-tap "Open modal"; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to "Open modal" on close | | |
 | 3 | Accordion (`/a11y/` "Accordion" section) | Double-tap the `summary` | "collapsed"/"expanded" toggles with the state | | |
 | 4 | Split text (`/a11y/` "Split text" section) | Swipe onto the heading | "Words arrive one by one" read once | | |

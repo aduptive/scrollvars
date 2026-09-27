@@ -221,7 +221,7 @@ html:not(.sv-on) .sv-spread > * {
    that contains the focused control. */
 .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r):focus-within,
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip):focus-within,
-.sv-on :is(.sv, [data-sv]) .sv-split-rise > span:focus-within {
+.sv-on :is(.sv, [data-sv]) .sv-split-rise:focus-within > span {
   transition: none;
   opacity: 1;
   translate: none;
