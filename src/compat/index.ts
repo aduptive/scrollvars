@@ -87,6 +87,7 @@ const FALLBACK_CSS = `
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-rise, .sv-on .sv.sv-fade,
   .sv-on .sv.sv-slide-l, .sv-on .sv.sv-slide-r,
   .sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]),
+  .sv-on .sv.sv-auto > .sv:not(.sv-skip), .sv-on .sv.sv-auto > [data-sv]:not(.sv-skip),
   .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail,
   .sv .sv-deck > * {
     opacity: 1;
@@ -105,6 +106,8 @@ const FALLBACK_CSS = `
 .sv-on[data-sv-motion="reduce"] .sv.sv-slide-l,
 .sv-on[data-sv-motion="reduce"] .sv.sv-slide-r,
 .sv-on[data-sv-motion="reduce"] .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]),
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > .sv:not(.sv-skip),
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > [data-sv]:not(.sv-skip),
 [data-sv-motion="reduce"] .sv .sv-drift,
 [data-sv-motion="reduce"] .sv .sv-curtain-l,
 [data-sv-motion="reduce"] .sv .sv-curtain-r,
@@ -145,7 +148,9 @@ const FALLBACK_CSS = `
 .sv-on .sv .sv-slide-l:focus-within, .sv-on .sv .sv-slide-r:focus-within,
 .sv-on .sv.sv-rise:focus-within, .sv-on .sv.sv-fade:focus-within,
 .sv-on .sv.sv-slide-l:focus-within, .sv-on .sv.sv-slide-r:focus-within,
-.sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]):focus-within {
+.sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]):focus-within,
+.sv-on .sv.sv-auto > .sv:not(.sv-skip):focus-within,
+.sv-on .sv.sv-auto > [data-sv]:not(.sv-skip):focus-within {
   opacity: 1;
   transform: none;
   transition: none;

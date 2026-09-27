@@ -138,6 +138,15 @@ window.driveToFixedPoint = function driveToFixedPoint(log, maxPasses) {
 // The fx pages' IIFE bundle minus the auto-scan fx-build appends to it, so a
 // fixture can call SV.scan() itself and keep the stop handle it returns.
 const SV_IIFE_JS = readFileSync(join(root, 'fx', 'sv.js'), 'utf8').replace(/\nSV\.scan\(\);\n$/, '')
+// compat()'s fallback stylesheet, extracted from source the same way
+// test/self-tracked-auto-nested.test.mjs does, so a render check exercises
+// the exact sheet compat() injects into an old browser's <head>.
+const COMPAT_SOURCE = readFileSync(join(root, '..', 'src', 'compat', 'index.ts'), 'utf8')
+const COMPAT_FALLBACK_AT = COMPAT_SOURCE.indexOf('const FALLBACK_CSS')
+const COMPAT_FALLBACK_CSS = COMPAT_SOURCE.slice(
+  COMPAT_SOURCE.indexOf('`', COMPAT_FALLBACK_AT) + 1,
+  COMPAT_SOURCE.lastIndexOf('`')
+)
 const CHROME =
   process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }
@@ -3243,6 +3252,75 @@ const MIN_EXAMINED = 1
     JSON.stringify(r)
   )
   await page.close()
+}
+
+// ── D1 verifier fix (loop8-8, measured in Chrome): the exclusion added to
+// keep a tracked sv-auto child out of the translate rule was also (wrongly)
+// carried onto the RESET rules (reduce media block, the data-sv-motion twin,
+// the :focus-within override), so those resets stopped matching the tracked
+// child too, and it kept the entrance opacity/transition rule instead: under
+// reduced motion or focus, a tracked, not-live sv-auto child read opacity 0
+// with an 800ms transition rather than settling at rest. Checked against
+// BOTH the compat fallback sheet (the asymmetry) and core.css (the parity
+// check the verifier asked for, rendered, not inferred).
+for (const [label, css] of [['compat', COMPAT_FALLBACK_CSS], ['core.css', STYLES_CSS]]) {
+  const fixture = `
+    <section data-sv class="sv sv-auto" style="margin:0">
+      <p id="child" data-sv class="sv" style="height:40px;margin:0">tracked auto child</p>
+    </section>`
+  const readChild = `() => {
+    const el = document.getElementById('child')
+    const cs = getComputedStyle(el)
+    return { opacity: cs.opacity, transitionDuration: cs.transitionDuration }
+  }`
+
+  // reduced motion (OS-level media query)
+  {
+    const page = await browser.newPage()
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+    await page.setContent(`<!doctype html><html class="sv-on"><head><style>${css}</style></head><body>${fixture}</body></html>`)
+    const r = await page.evaluate(`(${readChild})()`)
+    check(
+      `${label}: a tracked sv-auto child is opacity 1 with no transition under prefers-reduced-motion (D1 verifier fix)`,
+      r.opacity === '1' && r.transitionDuration === '0s',
+      JSON.stringify(r)
+    )
+    await page.close()
+  }
+
+  // the page's own switch, html[data-sv-motion="reduce"]
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html class="sv-on" data-sv-motion="reduce"><head><style>${css}</style></head><body>${fixture}</body></html>`)
+    const r = await page.evaluate(`(${readChild})()`)
+    check(
+      `${label}: a tracked sv-auto child is opacity 1 with no transition under data-sv-motion="reduce" (D1 verifier fix)`,
+      r.opacity === '1' && r.transitionDuration === '0s',
+      JSON.stringify(r)
+    )
+    await page.close()
+  }
+
+  // focused, no reduced motion anywhere: the entrance's own opacity/
+  // transition rule must not outrank the focus override for a tracked child
+  {
+    const page = await browser.newPage()
+    await page.setContent(`<!doctype html><html class="sv-on"><head><style>${css}</style></head><body>${fixture}</body></html>`)
+    const readFocused = `() => {
+      const el = document.getElementById('child')
+      el.setAttribute('tabindex', '0')
+      el.focus()
+      const cs = getComputedStyle(el)
+      return { opacity: cs.opacity, transitionDuration: cs.transitionDuration }
+    }`
+    const r = await page.evaluate(`(${readFocused})()`)
+    check(
+      `${label}: a focused tracked sv-auto child is opacity 1 with no transition (D1 verifier fix)`,
+      r.opacity === '1' && r.transitionDuration === '0s',
+      JSON.stringify(r)
+    )
+    await page.close()
+  }
 }
 
 // ── D2 (loop8-8): a focused control inside sv-view-fade/sv-view-rise near
