@@ -57,7 +57,7 @@ a { color: #8fe3a6; }
 /* cubes.html: 42 cube-window shapes, gallery grid */
 .lab-cube-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; padding: 24px 0 60px; }
 .cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; }
-.cube-photo { position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, hsl(calc(var(--i, 0) * 55deg) 60% 55%), hsl(calc(var(--i, 0) * 55deg + 40) 45% 20%) 70%); }
+.cube-photo { position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, hsl(calc(var(--i, 0) * 55deg) 60% 55%), hsl(calc(var(--i, 0) * 55deg + 40deg) 45% 20%) 70%); }
 
 /* lab runner UI (index.html) */
 .lab-run { max-width: 640px; margin: 0 auto; padding: 40px 20px 80px; }
