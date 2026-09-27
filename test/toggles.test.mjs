@@ -1574,12 +1574,8 @@ test('toggles: three new triggers in one delivery, the middle one throws: the fi
     const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
     assert.ok(mo, 'the document scope owns a MutationObserver')
 
-    // an unleased track, added AFTER setup, only to satisfy the pre-check's
-    // hasUnleasedTrack() gate: unrelated to the three toggle pairs below.
-    const track = env.element(); track.nodeType = 1
-    track.classList.add('sv-marquee-track')
-    doc.append(track)
-
+    // hasNewTrigger(records) alone opens the pre-check for these three
+    // triggers: no marquee track is needed in this batch.
     const pair = (id) => {
       const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': `#${id}` })
       trigger.nodeType = 1
@@ -1673,6 +1669,102 @@ test('toggles: removing the last offscreen marquee releases its lease and shared
     if (realHTMLElement) global.HTMLElement = realHTMLElement
     else delete global.HTMLElement
   }
+})
+
+// Verifier fix on PR #116: sweepDetachedMarquees() called pruneDetachedMarquee
+// for every leased track with no guard of its own. From the MutationObserver
+// callback's C2 pre-sweep a throwing classList.remove reached life.guard's
+// fail() and stopped the WHOLE document scope (click listener removed,
+// MutationObserver disconnected) over one bad detached track, even though a
+// NEW trigger sat in the SAME batch. Each track is now guarded inside the
+// sweep itself: the throw is reported once and the rest of the batch, and
+// every later delivery, still works.
+test('toggles: a throwing classList on a detached track does not stop the document scope from booting a sibling trigger in the same batch, or a later batch (guard)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?guardsweepmo')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+    const stop = toggles()
+
+    const wrap = env.element(); wrap.nodeType = 1
+    const track = env.element(); track.nodeType = 1
+    track.classList.add('sv-marquee-track')
+    wrap.append(track)
+    doc.append(wrap)
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    mo.cb([{ addedNodes: [wrap] }])
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track), 'the track is leased')
+
+    doc.children.splice(doc.children.indexOf(wrap), 1)
+    track.isConnected = false
+    const error = Error('classList.remove')
+    track.classList.remove = () => { throw error }
+
+    const menu = env.element(); menu.nodeType = 1
+    const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+    trigger.nodeType = 1
+    menu.id = 'menu'
+    doc.append(menu); doc.append(trigger)
+    doc.querySelector = (sel) => (sel === '#menu' ? menu : null)
+
+    // one batch: the detached, throwing track's own removal, AND a brand
+    // new trigger that must still boot despite the sweep's throw.
+    mo.cb([{ addedNodes: [trigger], removedNodes: [wrap] }])
+
+    assert.deepEqual(env.errors, [error], 'the throw is reported once, not swallowed')
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false', 'the sibling new trigger in the SAME batch still booted')
+
+    // a later batch, unrelated: the scope is still alive (not stopped by
+    // life.guard's fail() over the earlier throw).
+    const later = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+    later.nodeType = 1
+    doc.append(later)
+    mo.cb([{ addedNodes: [later] }])
+    assert.equal(later.getAttribute('aria-expanded'), 'false', 'a later delivery still works: the scope was not stopped')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+test('toggles: a throwing classList on a detached track does not stop the other entries of the same IntersectionObserver batch from settling (guard)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?guardsweepio')
+    const root = env.element()
+    const bad = env.element(), good = env.element()
+    bad.classList.add('sv-marquee-track')
+    good.classList.add('sv-marquee-track')
+    root.append(bad); root.append(good)
+    const stop = toggles(root)
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(bad) && io.targets.has(good))
+
+    bad.isConnected = false
+    const error = Error('classList.remove')
+    bad.classList.remove = () => { throw error }
+
+    // sweepDetachedMarquees() runs FIRST in the IO callback, before the
+    // per-entry loop below it: this exercises the sweep's own guard, not
+    // the per-entry one added for the earlier finding.
+    io.cb([{ target: good, isIntersecting: false }])
+    assert.deepEqual(env.errors, [error], 'the throw is reported once, not swallowed')
+    assert.ok(good.classes.has('sv-marquee-offscreen'), 'the other entry in the same batch still settled')
+
+    stop()
+  } finally { env.restore() }
 })
 
 // The retention half: a late-booted trigger under the document scope

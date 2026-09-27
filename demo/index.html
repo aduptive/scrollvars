@@ -4862,7 +4862,13 @@ var SV = (() => {
     return true;
   }
   function sweepDetachedMarquees() {
-    marqueeLeases.forEach((_lease, track2) => pruneDetachedMarquee(track2));
+    marqueeLeases.forEach((_lease, track2) => {
+      try {
+        pruneDetachedMarquee(track2);
+      } catch (error) {
+        reportFailure2(error);
+      }
+    });
   }
   function applyMarqueeState(track2) {
     if (pruneDetachedMarquee(track2))
@@ -8347,8 +8353,24 @@ function pruneDetachedMarquee(track) {
 // tiny (one entry per marquee on the page), so a full sweep on every IO
 // delivery batch and every new registration (N7) catches it without a
 // MutationObserver: the next tab switch is no longer the only trigger.
+// Guarded per track (verifier, loop8-7 PR #116): pruneDetachedMarquee's own
+// classList.remove can throw on a patched or exotic element, and both
+// callers of this sweep sit above the guard their OWN batch already has.
+// From the MutationObserver callback's removal-only pre-sweep (C2) the
+// throw reached life.guard's fail() and stopped the WHOLE document scope
+// over one bad track; from the IntersectionObserver callback it ran BEFORE
+// the per-entry try below, so it skipped every entry in that delivery, not
+// only the one that threw. The lease entry is already deleted before the
+// throwing classList call, so there is nothing left to retry, only report.
 function sweepDetachedMarquees() {
-    marqueeLeases.forEach((_lease, track) => pruneDetachedMarquee(track));
+    marqueeLeases.forEach((_lease, track) => {
+        try {
+            pruneDetachedMarquee(track);
+        }
+        catch (error) {
+            reportFailure(error);
+        }
+    });
 }
 function applyMarqueeState(track) {
     if (pruneDetachedMarquee(track))
