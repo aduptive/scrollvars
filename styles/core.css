@@ -144,7 +144,8 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
   rotate: none;
 }
-.sv-on .sv .sv-spread.sv-spread-in > * {
+.sv-on .sv .sv-spread.sv-spread-in > *,
+.sv-on .sv.sv-spread.sv-spread-in > * {
   transition:
     translate var(--sv-duration, 800ms) var(--sv-ease, ease),
     rotate var(--sv-duration, 800ms) var(--sv-ease, ease);
@@ -152,8 +153,11 @@ html:not(.sv-on) .sv-spread > * {
 }
 /* Driven from the inherited --sv-live flag, like the entrance presets: the
    nearest tracker (not just any live ancestor) decides whether this spread
-   is live, so a nested non-live tracker keeps its own spread stacked. */
-.sv-on :is(.sv, [data-sv]) .sv-spread.sv-spread-in > * {
+   is live, so a nested non-live tracker keeps its own spread stacked. The
+   self-tracked case (the tracked element IS the spread) needs its own
+   compound selector, same gap the entrance presets already close above. */
+.sv-on :is(.sv, [data-sv]) .sv-spread.sv-spread-in > *,
+.sv-on :is(.sv, [data-sv]).sv-spread.sv-spread-in > * {
   --sv-spread: var(--sv-live);
 }
 
@@ -188,7 +192,8 @@ html:not(.sv-on) .sv-spread > * {
      ties on specificity and wins on source order, not just on the ambient
      .sv-spread > * rule it also covers. */
   .sv-spread > *,
-  .sv-on .sv .sv-spread.sv-spread-in > * {
+  .sv-on .sv .sv-spread.sv-spread-in > *,
+  .sv-on .sv.sv-spread.sv-spread-in > * {
     translate: none;
     rotate: none;
     transition: none;
@@ -210,7 +215,8 @@ html:not(.sv-on) .sv-spread > * {
 /* The same under the page's own switch, html[data-sv-motion="reduce"]
    (core/motion.ts): a test keeps every rule in step with the block above. */
 :where([data-sv-motion="reduce"]) .sv-spread > *,
-.sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > * {
+.sv-on:where([data-sv-motion="reduce"]) .sv .sv-spread.sv-spread-in > *,
+.sv-on:where([data-sv-motion="reduce"]) .sv.sv-spread.sv-spread-in > * {
   translate: none;
   rotate: none;
   transition: none;
