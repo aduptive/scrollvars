@@ -57,7 +57,7 @@
  * 0s for two frames, snapping instead of animating any change to it that
  * landed inside the hold window.
  */
-import { lifetime, ownership } from './lifetime.js'
+import { lifetime, ownership, reportFailure } from './lifetime.js'
 
 // One click, one state change, across every live instance. `toggles(root?)`
 // is public optional-root API and the documented setup runs two instances at
@@ -637,6 +637,17 @@ export function toggles(root?: Document | HTMLElement): () => void {
       if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0) return
       transaction = ownership()
       siblingWrites = []
+      // bootTrigger() deletes a trigger from pendingTriggers the moment its
+      // target resolves, before this batch's transaction is known to
+      // survive: a snapshot from before the batch lets the catch below tell
+      // which pending triggers this delivery resolved, so a throw partway
+      // through (a second retry's own write failing, most of the time) can
+      // put them back, symmetric with transaction/siblingWrites' own undo.
+      // Without this a trigger that resolved earlier in the SAME batch was
+      // dropped from pendingTriggers for good even though rollback() undid
+      // its write, and nothing would ever retry it again (verifier fix,
+      // loop8-6).
+      const pendingBefore = new Set(pendingTriggers)
       try {
         records.forEach((record) => {
           record.addedNodes.forEach((node) => {
@@ -657,7 +668,18 @@ export function toggles(root?: Document | HTMLElement): () => void {
         }
       } catch (error) {
         rollback()
-        throw error
+        for (const trigger of pendingBefore) {
+          if (!pendingTriggers.has(trigger) && scope.contains(trigger)) pendingTriggers.add(trigger)
+        }
+        // Reported directly, not rethrown: this guarded callback runs after
+        // acquisition (`life.guard`'s `acquiring` is already false), so a
+        // rethrow here would have `fail()` call `stop()` and disconnect this
+        // MutationObserver for the rest of the page's life, contradicting
+        // the module comment above ("the document scope never stops") and
+        // silently discarding every trigger just restored into
+        // pendingTriggers, since no later delivery would ever run again to
+        // retry them (verifier fix, loop8-6).
+        reportFailure(error)
       } finally { transaction = ownership(); siblingWrites = [] }
     }))
   }

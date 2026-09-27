@@ -1691,6 +1691,75 @@ test('toggles: a trigger mounted before its target gets aria-expanded once the t
   } finally { env.restore() }
 })
 
+// B5 rollback (Astra loop8-6 verifier fix): bootTrigger() deletes a trigger
+// from pendingTriggers the moment its target resolves, before the batch's
+// transaction is known to survive. Two pending triggers retrying in the
+// SAME delivery, the second one's write throwing, used to drop the FIRST
+// one out of pendingTriggers for good even though rollback() undid its
+// write: nothing would ever retry it again. The retry loop now restores
+// every trigger this batch resolved back into pendingTriggers on the
+// rollback path, symmetric with transaction/siblingWrites' own undo.
+test('toggles: a failing second retry in one delivery does not strand the first trigger out of pendingTriggers (B5 rollback)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5rollback')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    const t1 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m1' }); t1.nodeType = 1
+    const t2 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m2' }); t2.nodeType = 1
+    doc.querySelector = () => null // neither target exists yet
+    doc.append(t1); doc.append(t2)
+    mo.cb([{ addedNodes: [t1, t2] }])
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 unresolved at setup')
+    assert.equal(t2.getAttribute('aria-expanded'), null, 't2 unresolved at setup')
+
+    const m1 = env.element(); m1.nodeType = 1
+    const m2 = env.element(); m2.nodeType = 1
+    doc.append(m1); doc.append(m2)
+    doc.querySelector = (sel) => (sel === '#m1' ? m1 : sel === '#m2' ? m2 : null)
+    const error = Error('m2 write')
+    const realSetProperty = m2.style.setProperty
+    m2.style.setProperty = (key, value, priority) => {
+      if (key === '--sv-state') throw error
+      return realSetProperty(key, value, priority)
+    }
+
+    // t1 retries first (insertion order), resolves and writes fine; t2
+    // retries second, resolves, then its write throws: the whole batch
+    // rolls back, undoing t1's write too.
+    mo.cb([{ addedNodes: [m1, m2] }])
+    assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1\'s write was rolled back along with t2\'s')
+
+    // a later, unrelated mutation (no new trigger, no marquee track) must
+    // still retry t1: it has to still be in pendingTriggers, not stranded
+    // by its own earlier, later-undone resolution.
+    m2.style.setProperty = realSetProperty
+    const unrelated = env.element(); unrelated.nodeType = 1
+    doc.append(unrelated)
+    mo.cb([{ addedNodes: [unrelated] }])
+
+    assert.equal(t1.getAttribute('aria-expanded'), 'false', 't1 recovered on the next mutation, its rolled-back resolution was not lost')
+    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2 recovered too, now that its write no longer throws')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
   const env = lifecycleEnv()
   try {
