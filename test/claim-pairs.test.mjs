@@ -26,6 +26,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const readme = readFileSync(join(root, 'docs/guide.md'), 'utf8')
 const compatSrc = readFileSync(join(root, 'src/compat/index.ts'), 'utf8')
 const driverSrc = readFileSync(join(root, 'src/core/driver.ts'), 'utf8')
+const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+const docsBuildSrc = readFileSync(join(root, 'scripts/docs-build.mjs'), 'utf8')
 
 test('README accessibility CI claim matches the workflow triggers', () => {
   const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8')
@@ -296,4 +298,25 @@ test('the guide\'s useScenes example keys the stacked (inactive) branch by index
   const stacked = useScenesExample.match(/Array\.from\([\s\S]*?\)\)}/)
   assert.ok(stacked, 'no stacked (Array.from) branch found in the useScenes example')
   assert.doesNotMatch(stacked[0], /key=\{[^}]*scene[^}]*\}/, 'the stacked branch\'s key must not reference `scene`')
+})
+
+// A6 (Astra loop8-5): AGENTS.md used to say plain `sv-range` settles to its
+// end state below its own floor, contradicting its own Sequenced scrub
+// paragraph a few paragraphs above (a custom --sv-r consumer falls back to
+// its OWN initial or inherited value, not to 1). Only the ready-made
+// `sv-range-rise` preset settles to its end state there.
+test('AGENTS.md\'s sv-range floor sentence names sv-range-rise, not the whole sv-range family (A6)', () => {
+  assert.doesNotMatch(agents.replace(/\s+/g, ' '), /`sv-range` settles to its end state/)
+  assert.match(
+    agents.replace(/\s+/g, ' '),
+    /`sv-range-rise` settles to its end state \(a custom `--sv-r` consumer falls back to its own initial value, see Sequenced scrub\)/
+  )
+})
+
+// A7 (auditor, N1's twin): after N1 shipped a visually hidden `role="status"`
+// OUTSIDE the slider rail, the rail itself carries no `aria-live` at all.
+// Two prose copies still called the TRACK the live region.
+test('the guide and docs-build no longer call the slider track the live region (A7)', () => {
+  assert.doesNotMatch(readme, /track's live region/)
+  assert.doesNotMatch(docsBuildSrc, /track is <code>aria-live/)
 })

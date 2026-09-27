@@ -584,16 +584,30 @@ export function toggles(root?: Document | HTMLElement): () => void {
       }
       return false
     }
+    // A late boot writes into `transaction`/`siblingWrites` exactly like a
+    // click does, so this delivery needs the same fresh-journal, rollback-
+    // on-throw, reset-in-finally shape as onClick: the document scope never
+    // stops, and only a click elsewhere used to clear these, so every
+    // MutationObserver delivery kept accumulating strong ownership() entries
+    // in siblingWrites until the next click anywhere in the document (A2,
+    // Astra loop8-5).
     mutationObserver = new MutationObserver(life.guard((records) => {
       if (!hasUnleasedTrack()) return
-      records.forEach((record) => {
-        record.addedNodes.forEach((node) => {
-          if (node.nodeType !== 1) return
-          const el = node as HTMLElement
-          selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life))
-          selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
+      transaction = ownership()
+      siblingWrites = []
+      try {
+        records.forEach((record) => {
+          record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) return
+            const el = node as HTMLElement
+            selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life))
+            selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
+          })
         })
-      })
+      } catch (error) {
+        rollback()
+        throw error
+      } finally { transaction = ownership(); siblingWrites = [] }
     }))
   }
 

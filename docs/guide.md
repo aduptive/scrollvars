@@ -1077,7 +1077,7 @@ Your side of it, as a checklist:
 Where this follows published guidance: the visually hidden copy in
 `split()` uses the technique Sara Soueidan describes in
 [Inclusively Hiding and Styling Checkboxes and Radio Buttons](https://www.sarasoueidan.com/blog/inclusively-hiding-and-styling-checkboxes-and-radio-buttons/),
-the slider track's live region follows her
+the slider's status region follows her
 [Accessible notifications with ARIA Live Regions](https://www.sarasoueidan.com/blog/accessible-notifications-with-aria-live-regions-part-1/),
 and its arrows and dots her [Accessible Icon Buttons](https://www.sarasoueidan.com/blog/accessible-icon-buttons/).
 The motion rules follow Val Head's
