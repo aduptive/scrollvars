@@ -19,6 +19,19 @@ import { join } from 'node:path'
 // GSAP 3.15.0 + ScrollTrigger, CDN minified scripts, gzip level 6 / 1024.
 export const GSAP_KB = 45.2
 
+/**
+ * Perf-lab frame budget (T7 evidence, "path to 8/10"), declared BEFORE any
+ * device result is read, per Astra's acceptance: p95 frame time must stay
+ * within `p95Factor`x the device's OWN measured vsync interval (a 60Hz and
+ * a 120Hz display have different budgets, so this is never a fixed
+ * millisecond figure), and no more than `lateMaxPct` percent of frames may
+ * run past that same line ("late"). A run that fails either line fails
+ * regardless of its own animated check. scripts/lab-tables.mjs is the only
+ * reader; docs/guide.md's device matrix states this rule in prose from
+ * these two numbers, never typed twice.
+ */
+export const LAB_FRAME_BUDGET = { p95Factor: 1.5, lateMaxPct: 1 }
+
 export const VARS = [
   ['`--sv-view`', '−1 → 0 → 1', 'Below the live band → inside it (flat at 0) → gone above'],
   ['`--sv-t`', '0 → 1', 'Travel through the viewport (same range as native `view()` with a zero inset, cover, vertical axis)'],

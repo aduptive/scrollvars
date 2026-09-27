@@ -74,24 +74,31 @@ if (query.has('autorun') && !(state && state.queue.length)) $('run').click()
 if (state && !state.queue.length && state.runs.length) {
   const good = state.runs.filter((r) => r.deltas)
   const all = good.flatMap((r) => r.deltas)
-  const vsync = median(all)
+  // Independent calibration (an idle rAF window per run, run-drive.js) when
+  // every run has it; otherwise fall back to the OLD method (median of the
+  // scroll frames themselves), which lets a uniformly slow device drag its
+  // own budget line down with it. Self-calibrated is a weaker number, said
+  // so here rather than silently presented the same way.
+  const calibrated = good.length > 0 && good.every((r) => typeof r.vsyncMs === 'number')
+  const vsync = calibrated ? median(good.map((r) => r.vsyncMs)) : median(all)
   const hasLoaf = good.some((r) => r.loaf)
   const lines = [
     `device: ${state.env.userAgent}`,
     `screen: ${state.env.screen} @${state.env.dpr}x, viewport ${state.env.viewport}, reduced motion: ${state.env.reducedMotion}`,
-    `frame interval (median of everything): ${vsync.toFixed(2)} ms, about ${Math.round(1000 / vsync)} Hz`,
-    `${state.frames} frames per run, median of ${state.reps} reps (order alternated); late = frame longer than 1.5x the interval`,
+    `frame interval (${calibrated ? 'independent calibration, idle rAF window' : 'self-calibrated: median of the scroll frames themselves'}): ${vsync.toFixed(2)} ms, about ${Math.round(1000 / vsync)} Hz`,
+    `${state.frames} frames per run, ${state.reps} reps (order alternated); late = frame longer than 1.5x the interval; p95 shown as median rep / worst rep`,
     '',
-    'page    p50    p95    p99   late%  animated(of ' + state.reps + ')' + (hasLoaf ? '  LoAF  blocking-ms  script-ms' : ''),
+    'page    p50    p95 (worst)    p99   late%  animated(of ' + state.reps + ')' + (hasLoaf ? '  LoAF  blocking-ms  script-ms' : ''),
   ]
   for (const page of PAGES) {
     const rs = good.filter((r) => r.page === page)
     if (!rs.length) continue
     const stat = (fn) => median(rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
-    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
+    const worst = (fn) => Math.max(...rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
+    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p95Worst = worst((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
     const late = stat((d) => (d.filter((x) => x > vsync * 1.5).length / d.length) * 100)
     const animated = rs.filter((r) => r.animated).length
-    let line = `${page.padEnd(7)} ${p50.toFixed(1).padStart(5)}  ${p95.toFixed(1).padStart(5)}  ${p99.toFixed(1).padStart(5)}  ${late.toFixed(1).padStart(5)}  ${String(animated).padStart(3)}`
+    let line = `${page.padEnd(7)} ${p50.toFixed(1).padStart(5)}  ${p95.toFixed(1).padStart(5)} (${p95Worst.toFixed(1)})  ${p99.toFixed(1).padStart(5)}  ${late.toFixed(1).padStart(5)}  ${String(animated).padStart(3)}`
     if (hasLoaf) {
       const withLoaf = rs.filter((r) => r.loaf)
       if (withLoaf.length) {

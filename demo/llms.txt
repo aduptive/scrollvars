@@ -695,3 +695,5 @@ on a large ancestor still incur style work even if the final animated property
 is a transform. Do not change public clocks to `inherits: false`: presets
 consume them on descendants. Test representative CMS content and media on the
 client's devices; functional browser tests alone do not establish frame budgets.
+Physical-device frame budget results: [docs/guide.md, Physical-device frame
+budget matrix](https://github.com/aduptive/scrollvars/blob/main/docs/guide.md#physical-device-frame-budget-matrix).

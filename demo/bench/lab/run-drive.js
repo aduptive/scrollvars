@@ -60,8 +60,24 @@
   }
 
   const raf = () => new Promise((r) => requestAnimationFrame(r))
+  const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
   ping('start')
   await new Promise((r) => setTimeout(r, 1000))
+
+  // Calibrate the refresh interval independently of the scroll it then
+  // judges: an idle window, nothing moving, right before the scroll starts.
+  // Deriving the budget's own reference interval from the SAME frames the
+  // budget then measures lets a uniformly slow device drag its budget line
+  // down with it (a device stuck at half its native rate would still pass
+  // "p95 within 1.5x its own median", since its own median moved too).
+  const idle = []
+  let idleLast = await raf()
+  for (let i = 0; i < 30; i++) {
+    const now = await raf()
+    idle.push(+(now - idleLast).toFixed(2))
+    idleLast = now
+  }
+  const vsyncMs = median(idle)
 
   const max = document.documentElement.scrollHeight - innerHeight
   scrollTo(0, 0)
@@ -88,6 +104,7 @@
     rep: +rep,
     deltas,
     animated,
+    vsyncMs,
     loaf: loaf ? { count: loaf.count, totalBlocking: +loaf.totalBlocking.toFixed(2), scriptTotal: +loaf.scriptTotal.toFixed(2) } : null,
   })
   next()

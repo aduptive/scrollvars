@@ -74,6 +74,7 @@ import { axeGate } from './axe-gate.mjs'
 import { reflowGate } from './reflow-gate.mjs'
 import { galleryPageerrorGate } from './gallery-pageerror-gate.mjs'
 import { debugGate } from './debug-gate.mjs'
+import { a11yTreeGate } from './a11y-tree-gate.mjs'
 import { execSync } from 'node:child_process'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -3058,6 +3059,7 @@ await motionGate({ browser, check, base })
 await keyboardGate({ browser, check, base })
 await axeGate({ browser, check, base })
 await reflowGate({ browser, check, base })
+await a11yTreeGate({ browser, check, base })
 await galleryPageerrorGate({ browser, check, base })
 await debugGate({ browser, check, base })
 await installedGate({ browser, check, HIDDEN_TEXT })

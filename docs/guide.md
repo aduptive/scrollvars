@@ -132,6 +132,30 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   lib's job; time-driven orchestration (timelines, springs, exit
   transitions) legitimately belongs to GSAP/Framer. Pick per page.
 
+## Physical-device frame budget matrix
+
+Functional browser tests prove the code paths run; they say nothing about
+whether a page actually keeps up on a real device. This table is that
+evidence: `demo/bench/lab` (a tiny page you open on any device on your
+network) driving the same three workloads (`long`, `deep`, `cubes`) the
+harness uses elsewhere, reporting frame-time percentiles and the share of
+late frames per page, against a budget declared before any number was read.
+
+<!-- devicematrix:start -->
+Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/docs-data.mjs`): p95 frame time at most 1.5x the device's own measured vsync interval, and at most 1% of frames late (past that same line). A run that misses either line fails, whatever its own animated check reports. The vsync interval is independently calibrated per run (an idle rAF window before the scroll starts, `demo/bench/lab/run-drive.js`) where the raw result has it; a row marked self-calibrated predates that field and instead derives its interval from the median of its own scroll frames, a weaker number since a uniformly slow device can drag its own line down with it. Raw runs: [`demo/bench/lab/results/published/`](https://github.com/aduptive/scrollvars/tree/main/demo/bench/lab/results/published).
+
+| device | browser | commit | calibration | page | p50 ms | p95 ms | p95 worst rep | p99 ms | late % | animated | budget |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | deep | 16.7 | 17.5 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | cubes | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | deep | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | cubes | 16.7 | 17.7 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Safari (macOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
+| iPhone Safari (iOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
+<!-- devicematrix:end -->
+
 ## Install
 
 ```bash
@@ -981,6 +1005,40 @@ success criterion it serves. It is not a conformance claim for your site.
   names, roles, contrast and structure, never whether the page makes sense
   to a screen reader user; that pass is a person's.
 
+### VoiceOver pass (manual, author-run)
+
+An accessibility-tree proxy (`demo/bench/harness/a11y-tree-gate.mjs`, in CI
+on every push and pull request) checks structure: names, roles, expanded
+and pressed state, focus targets. It is not a person listening. This
+checklist is that person's pass, run by the author (Andrea) on the current
+`main`, macOS Safari and iOS Safari, both with VoiceOver. Empty result
+cells mean not yet run: they are filled in as the pass happens, never
+guessed at ahead of it.
+
+**macOS Safari + VoiceOver**
+
+| # | Component (page) | Steps | Expected announcement | Result | Date, commit |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Slider (`/fx/coverflow-slider.html`) | VO-Right/Left through the carousel | "Coverflow cards, carousel", each stop "N of 4, slide" | | |
+| 2 | Modal | Activate the opener; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to the opener on close | | |
+| 3 | Accordion | VO-Space on a `summary` | "collapsed"/"expanded" toggles with the state, title read each time | | |
+| 4 | Toggles (`sv-pop` disclosure, e.g. a docs nav) | VO-Space the trigger | "expanded"/"collapsed" matches the panel's visible state | | |
+| 5 | Split text (`/fx/split-reveal.html`) | VO-Right onto the heading | The full sentence read once, not one word per stop | | |
+| 6 | Scenes fallback (`/fx/sticky-steps.html`) with reduced motion on | VO-Right down the steps | Every step's heading and copy read, in order, none skipped | | |
+| 7 | Marquee pause (`/fx/marquee.html` installed component) | VO-Space the pause button | "Pause animation, button" before, "pressed" after | | |
+| 8 | RotatingWords (`/fx/rotating-words.html`) | VO-Right onto the component | The full phrase list read once as plain text (known gap: no pause control yet, N4) | | |
+
+**iOS Safari + VoiceOver**
+
+| # | Component (page) | Steps | Expected announcement | Result | Date, commit |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Slider (`/fx/coverflow-slider.html`) | Swipe right/left through the carousel | "Coverflow cards, carousel", each stop "N of 4, slide" | | |
+| 2 | Modal | Double-tap the opener; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to the opener on close | | |
+| 3 | Accordion | Double-tap a `summary` | "collapsed"/"expanded" toggles with the state | | |
+| 4 | Split text (`/fx/split-reveal.html`) | Swipe onto the heading | The full sentence read once | | |
+| 5 | Scenes fallback (`/fx/sticky-steps.html`) with Reduce Motion on | Swipe down the steps | Every step read, in order | | |
+| 6 | Marquee pause (`/fx/marquee.html` installed component) | Double-tap the pause button | Announced as a button with a pressed state that flips | | |
+
 Your side of it, as a checklist:
 
 - [ ] CSS of your own that reads `--sv-view`, `--sv-t`, `--sv-pin`, `--mx` or
@@ -1054,3 +1112,4 @@ on a large ancestor still incur style work even if the final animated property
 is a transform. Do not change public clocks to `inherits: false`: presets
 consume them on descendants. Test representative CMS content and media on the
 client's devices; functional browser tests alone do not establish frame budgets.
+Physical-device frame budget results: [Physical-device frame budget matrix](#physical-device-frame-budget-matrix), above.
