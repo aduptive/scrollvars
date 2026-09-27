@@ -61,6 +61,7 @@ export async function focusEntranceGate({ browser, check, base }) {
       // rather than proof the focus override fired.
       if (!reduce) {
         await page.waitForFunction(() => getComputedStyle(document.getElementById('child11')).opacity === '0', { timeout: 2500 })
+        await page.waitForFunction(() => getComputedStyle(document.getElementById('self-tracked')).opacity === '0', { timeout: 2500 })
       }
 
       const persistent = await page.evaluate(`(${FOCUS_AND_READ})('.links a:first-child')`)
@@ -74,6 +75,14 @@ export async function focusEntranceGate({ browser, check, base }) {
       const splitSpans = await page.evaluate(`(${FOCUS_AND_READ_SPANS})('#split-heading')`)
       check(`focus-entrance${label}: a focused split heading reveals every word span at once (N3)`,
         splitSpans.length > 0 && splitSpans.every((o) => o === '1'), JSON.stringify(splitSpans))
+
+      // PR #107 review: the entrance rules require the preset to be a
+      // DESCENDANT of .sv/[data-sv]. A self-tracked element (the tracked
+      // element IS the preset, e.g. `<pre class="sv sv-rise" tabindex="0">`)
+      // never matched and could be focused mid-fade.
+      const selfTracked = await page.evaluate(`(${FOCUS_AND_READ})('#self-tracked')`)
+      check(`focus-entrance${label}: a self-tracked entrance element (tracked element IS the preset) is opacity 1 within one frame of focus`,
+        selfTracked.opacity === '1', JSON.stringify(selfTracked))
     } finally {
       await page.close()
     }

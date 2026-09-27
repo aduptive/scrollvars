@@ -49,18 +49,20 @@ const FALLBACK_CSS = `
 .sv, [data-sv] { --sv-live: 0; }
 .sv.sv-live { --sv-live: 1; }
 .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
-.sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip) {
+.sv-on .sv .sv-slide-r, .sv-on .sv.sv-rise, .sv-on .sv.sv-fade,
+.sv-on .sv.sv-slide-l, .sv-on .sv.sv-slide-r,
+.sv-on .sv.sv-auto > :not(.sv-skip) {
   opacity: var(--sv-live, 0);
   transition:
     opacity var(--sv-duration, 800ms) var(--sv-ease, ease-out),
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv .sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
+.sv-on .sv .sv-rise, .sv-on .sv.sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
   transform: translateY(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem)));
 }
-.sv-on .sv .sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
-.sv-on .sv .sv-slide-r { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * 2)); }
+.sv-on .sv .sv-slide-l, .sv-on .sv.sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
+.sv-on .sv .sv-slide-r, .sv-on .sv.sv-slide-r { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * 2)); }
 .sv .sv-drift {
   opacity: 1; /* fallback: max() postdates the floor: old engines keep this */
   opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));
@@ -107,9 +109,13 @@ const FALLBACK_CSS = `
 }
 
 /* Same focus-visibility override as styles/core.css: a focused entrance
-   child must be visible now, not after its stagger delay. */
+   child must be visible now, not after its stagger delay. The self-tracked
+   case (the tracked element IS the preset) needs its own selector, same
+   gap as core.css. */
 .sv-on .sv .sv-rise:focus-within, .sv-on .sv .sv-fade:focus-within,
 .sv-on .sv .sv-slide-l:focus-within, .sv-on .sv .sv-slide-r:focus-within,
+.sv-on .sv.sv-rise:focus-within, .sv-on .sv.sv-fade:focus-within,
+.sv-on .sv.sv-slide-l:focus-within, .sv-on .sv.sv-slide-r:focus-within,
 .sv-on .sv.sv-auto > :not(.sv-skip):focus-within {
   opacity: 1;
   transform: none;

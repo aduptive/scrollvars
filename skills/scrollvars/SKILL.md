@@ -36,7 +36,7 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
 import { debug } from 'scrollvars/debug'           // dev overlay: HUD, markers, perf lint; never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
-import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.8 KB gz)
+import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.9 KB gz)
 // also styles/pin.css (3.3), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.4), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
