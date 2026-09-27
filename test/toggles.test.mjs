@@ -1425,13 +1425,13 @@ test('toggles: a track and its pause button arriving in SEPARATE mutation batche
   }
 })
 
-// Perf follow-up to B5: a page with no marquee at all pays nothing per
-// mutation. The pre-check walks the live `.sv-marquee-track` collection
-// instead of scanning every inserted subtree; a burst of unrelated
-// insertions (a Boot page's own content, most of the time) must never touch
-// each added node's own querySelectorAll, which is what the (removed)
-// subtree scan used to do unconditionally.
-test('toggles: a burst of unrelated insertions never runs the marquee/trigger subtree scan (perf follow-up to B5)', async () => {
+// Perf follow-up to B5, narrowed by the late-trigger fix below: a page with
+// no marquee AND no new element in the batch pays nothing per mutation. A
+// text-node or attribute-only mutation record (most of a Boot page's own
+// churn) never reaches either scan, since both `hasUnleasedTrack()`'s
+// pause-button loop and `hasNewTrigger()` skip anything whose `nodeType`
+// is not 1 before touching it at all.
+test('toggles: a batch that adds no element (text-only mutation) never runs the marquee/trigger scan', async () => {
   const env = lifecycleEnv()
   try {
     const { toggles } = await import('../dist/core/toggles.js?b5perfgate')
@@ -1440,6 +1440,37 @@ test('toggles: a burst of unrelated insertions never runs the marquee/trigger su
     // (never recursing the tree, unlike the other B5 test's stub, which
     // has to grow) stays at 0 throughout: this is what a real
     // getElementsByClassName's `.length` costs, an indexed read
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    let scans = 0
+    // a text node (nodeType 3): a `characterData` sibling insert, or any
+    // other non-element addedNodes entry, never calls matches/querySelector
+    const textNodes = Array.from({ length: 500 }, () => ({ nodeType: 3 }))
+    textNodes.forEach((n) => {
+      n.querySelectorAll = () => { scans++; return [] }
+    })
+    mo.cb([{ addedNodes: textNodes }])
+    assert.equal(scans, 0, 'a batch with no element addedNodes never reaches either scan')
+
+    stop()
+  } finally { env.restore() }
+})
+
+// Companion to the above: a batch that DOES add plain elements (no marquee,
+// no trigger) now pays `hasNewTrigger()`'s one matches()/querySelector() pass
+// per added node instead of skipping entirely, correctness's price for the
+// SPA late-trigger fix below. Bounded, not recursive multiplication: each of
+// the 500 unrelated nodes is visited exactly once, one querySelector call
+// each (its own querySelectorAll, spied here), never more.
+test('toggles: a burst of unrelated ELEMENT insertions runs one bounded matches()/querySelector() pass per node, not a recursive rescan', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5perfgate2')
+    const doc = env.element()
     doc.getElementsByClassName = () => ({ length: 0 })
     global.document = doc
     const stop = toggles()
@@ -1457,7 +1488,7 @@ test('toggles: a burst of unrelated insertions never runs the marquee/trigger su
     const burst = Array.from({ length: 500 }, unrelated)
     burst.forEach((n) => doc.append(n))
     mo.cb([{ addedNodes: burst }])
-    assert.equal(scans, 0, 'the pre-check (live track count unchanged) skipped the subtree scan entirely')
+    assert.equal(scans, 500, 'exactly one querySelector pass per added node, bounded, no recursion multiplier')
 
     stop()
   } finally { env.restore() }
@@ -1577,6 +1608,44 @@ test('toggles: a late-booted trigger from a MutationObserver delivery holds no s
   stop()
   delete global.document
   delete global.MutationObserver
+})
+
+// Regression from the #105 perf pass (found by the verifier in real
+// Chrome): `hasUnleasedTrack()` gated the WHOLE MO callback body, so on a
+// page with NO marquee at all a plain `[data-sv-toggle]` trigger mounted
+// after boot (an SPA menu button) never ran bootTrigger and carried no
+// `aria-expanded` or initial `--sv-state` until its own first click
+// (WCAG 4.1.2). The callback now also runs when the batch's own addedNodes
+// contain a new trigger, marquee or not.
+test('toggles: a plain trigger inserted after toggles(document) on a marquee-free page gets aria-expanded before any click (SPA late trigger)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?latetrigger')
+    const doc = env.element()
+    // a marquee-free page: both live collections stay empty, exactly the
+    // shape hasUnleasedTrack() alone used to treat as "nothing to do"
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    const menu = env.element()
+    const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+    trigger.nodeType = 1
+    doc.querySelector = (sel) => (sel === '#menu' ? menu : null)
+    doc.append(trigger)
+    mo.cb([{ addedNodes: [trigger] }])
+
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false', 'the late trigger got its initial aria-expanded before any click')
+    assert.equal(menu.style.getPropertyValue('--sv-state'), '0', 'and its target got its initial --sv-state')
+
+    doc.fire('click', { target: trigger })
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true', 'and it actually works')
+
+    stop()
+  } finally { env.restore() }
 })
 
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
