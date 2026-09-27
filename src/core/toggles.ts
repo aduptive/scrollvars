@@ -539,25 +539,28 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // batch, measured at about 0.07ms for a 30-node insert and 0.4ms for a
   // 500-node one, on a Boot page that never has a `.sv-marquee-track` to
   // find (perf review, loop8-3 follow-up). `getElementsByClassName` returns
-  // a LIVE collection the engine keeps indexed, so reading its `.length` is
-  // the O(1) pre-check: unless the count of tracks in the whole document
-  // just grew, nothing this batch inserted needs acquiring, and the
-  // subtree scan below never runs. A net decrease (an unrelated removal)
-  // takes the same fast path: nothing grew, so there is nothing to acquire,
-  // and pruning already has its own paths (N7). The one case this trades
-  // away on purpose: a track removed and a different one added in the SAME
-  // batch, net count unchanged, is not acquired instantly here, only from
-  // whatever next touches it (a click, or the shared marquee IO's own
-  // sweep); real markup never does this, and the alternative is paying the
-  // scan on every mutation of every marquee-free page to cover it.
+  // a LIVE collection the engine keeps indexed, so walking it is cheap and
+  // stays empty (zero iterations) on a marquee-free page: the pre-check
+  // scans below only when that collection holds a track NOT ALREADY in
+  // `marqueeLeases`, never on a bare count comparison. A route swap that
+  // removes one marquee and inserts another lands both mutations in the
+  // SAME batch (React commits a page swap as one task), so the track COUNT
+  // can be unchanged while the identity is entirely new: a count-based
+  // pre-check missed exactly the SPA case B5 exists for (lead review of the
+  // first version of this fix). Identity-checking the live collection
+  // costs nothing extra on a marquee-free page (still zero iterations) and
+  // catches the swap, since the new track is present in the collection and
+  // absent from the lease map the moment it lands, regardless of whether
+  // the old one already left.
   let mutationObserver: MutationObserver | undefined
   if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
     const liveTracks = document.getElementsByClassName('sv-marquee-track')
-    let trackCount = liveTracks.length
+    const hasUnleasedTrack = () => {
+      for (let i = 0; i < liveTracks.length; i++) if (!marqueeLeases.has(liveTracks[i] as HTMLElement)) return true
+      return false
+    }
     mutationObserver = new MutationObserver(life.guard((records) => {
-      const count = liveTracks.length
-      if (count <= trackCount) { trackCount = count; return }
-      trackCount = count
+      if (!hasUnleasedTrack()) return
       records.forEach((record) => {
         record.addedNodes.forEach((node) => {
           if (node.nodeType !== 1) return
