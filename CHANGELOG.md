@@ -9,9 +9,32 @@
 - A `.sv-marquee-track` now pauses itself off screen and with the tab in the background (one shared IntersectionObserver and one shared visibilitychange listener across a page's toggles() scopes and marquees), and resumes on return, independent of the user's own pause button. New class: `.sv-marquee-offscreen` (public, additive).
 - The stamped `scrollvars/react` gzip size is now measured with esbuild's real code splitting, entry chunk only: the dev-only `?sv-debug` overlay (loaded on demand, never on a page that does not ask for it) is no longer counted toward it. The published number drops from its pre-split figure for this reason, a measurement fix, not because the React layer shrank; see the stamped number in `docs/guide.md` for the current one and `scripts/docs-data.mjs`'s `measureSizes()` for the split build.
 - A public, installable skill for AI coding agents: `skills/scrollvars/SKILL.md`, generated in `npm run demo:sync` from AGENTS.md's own text (mental model, the fail-visible guard, imports, the fx gallery, the performance rules), so it can never hand-drift from the guide it wraps. Shipped in the npm package (`files`). `npx scrollvars skill [--global] [--force]` installs it for Claude Code (`.claude/skills/scrollvars`) and Codex (`.agents/skills/scrollvars`), matching the installed package version; refuses to overwrite a locally modified copy without `--force`, idempotent otherwise. Also installable with the open `npx skills add aduptive/scrollvars` convention (reads a repo's `skills/<name>/SKILL.md`). The site hero and the top of the README now carry the one install command. The release gate fails if the packed tarball lacks the skill or its version does not match `package.json`.
+- `toggles()`'s document scope now acquires a `.sv-marquee-controlled` mounted after it starts (a route-mounted marquee under a live `<ScrollVarsBoot>`, most of the time): a `MutationObserver`, owned by that one long-lived instance only, wires the late track and its pause button through the same lease-counted paths setup uses, released on `stop()`. Measured at about 0.16ms of script per mutated frame on a page appending one such wrapper every frame for 120 frames (`demo/bench/harness/toggles-mutation-cost.mjs`); a custom-root scope (a `<Marquee>` component's own `toggles(node)`) gets no such observer, since it already owns its one track for its whole lifetime.
 
 ### Fixed
 
+- A keyboard focus landing inside an entrance preset (`sv-rise`, `sv-fade`,
+  `sv-slide-l`, `sv-slide-r`, `sv-auto`, `sv-split-rise`) stayed invisible
+  until its stagger delay and transition ran, up to 1.7s for the eleventh
+  staggered child: a WCAG 2.4.7 failure, since a focus indicator on an
+  opacity-0 element is not visible. `styles/core.css` (and the compat
+  fallback sheet) now carry a `:focus-within` override, placed after the
+  entrance rules, that settles a focused entrance item or one that contains
+  the focused control to fully visible at once, no delay, no transition.
+- `docs/guide.md`'s `useScenes` hook example keyed its stacked branch's
+  current scene by `i === scene`, the exact identity bug `<Scenes>` itself
+  was fixed to avoid: the example now uses a plain index key throughout.
+- `AGENTS.md` claimed React "never re-renders per frame, only on discrete
+  index changes"; completion, attachment, flow and motion changes also
+  re-render, none of them an index change. It also claimed the scoped
+  clocks sheet "can only make [a page] faster where it is understood",
+  contradicted by its own measurements two paragraphs above (a flat
+  profile 4 percent slower, several gallery pages slower): both sentences
+  now state only what is actually guaranteed. The guide carried the same
+  scoped clocks sentence and is fixed the same way.
+- The VoiceOver checklist (`docs/guide.md`) said RotatingWords had "no
+  pause control yet"; the pause button shipped in both the preview and the
+  installed component. The checklist now steps through it instead.
 - `<Scenes>`'s stacked branch (reduced motion, a failed attach, a flowed
   stage) keyed its "current" fragment by `i === scene`: the driver keeps
   reporting scene changes while stacked, so React moved that key between

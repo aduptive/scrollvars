@@ -18,8 +18,9 @@ elements. All motion is then plain CSS reading those variables; the engine
 never animates styles itself (the slider's glide scrolls the rail, nothing
 more), except a few gallery recipes (cube-windows, the canvas effects) that
 run their own frame loop for something CSS cannot express. React never
-re-renders per frame, only on discrete index changes. If you find yourself putting
-scroll values into React state, you are doing it wrong.
+re-renders per frame: only on discrete events (scene index, attachment
+status, flow, motion preference). If you find yourself putting scroll
+values into React state, you are doing it wrong.
 
 ## The variables (the API surface)
 
@@ -71,7 +72,7 @@ import { Track, Reveal, Parallax, Scenes, Item, ScrollVarsBoot, useTrack,
 import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context: null } = WebGL/Three)
 import { debug } from 'scrollvars/debug'           // dev overlay: HUD, markers, perf lint; never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
-import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.6 KB gz)
+import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (2.8 KB gz)
 // also styles/pin.css (3.3), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.4), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
@@ -611,8 +612,7 @@ page, the benchmark harness is in the repository, and the published
 benchmark below carries the sheet as its own row on every profile.
 
 Browsers without `@property` ignore the registration and keep inheriting, so
-the sheet never breaks a page below the floor; it can only make one faster
-where it is understood. Measured rather than read from a table: in
+the sheet never breaks a page below the floor. Measured rather than read from a table: in
 Chromium, Firefox and WebKit the registration takes and a page renders the
 same with the sheet as without, and the three-engine CI job checks both on
 every run. It is deliberately not part of `styles.css`.

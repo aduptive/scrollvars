@@ -1186,6 +1186,80 @@ test('toggles: each scope alone owns the trigger, and stopping one hands it over
   stopFresh()
 })
 
+// B5 (Astra, loop8-3): a controlled marquee mounted after Boot's
+// document-wide toggles() started used to stay static forever: watchMarquee
+// and boot() only ever ran once, at setup. A MutationObserver owned by the
+// document scope now acquires a later `.sv-marquee-controlled` wrapper
+// (both its track and its pause button, whichever mutation record their
+// insertion arrives in), wired through the exact same watchMarquee()/mark()
+// paths setup uses.
+test('toggles: a controlled marquee mounted after the document scope starts is wired by its MutationObserver (B5)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5marquee')
+    const doc = env.element()
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    const fixture = (cls) => {
+      const wrap = env.element(); wrap.nodeType = 1
+      const track = env.element(); track.nodeType = 1
+      track.classList.add('sv-marquee-track', cls)
+      const button = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': `.${cls}` })
+      button.nodeType = 1
+      wrap.append(track)
+      wrap.append(button)
+      doc.append(wrap)
+      return { wrap, track, button }
+    }
+    const a = fixture('track-a')
+    const b = fixture('track-b')
+    // both wrappers inserted, delivered as two addedNodes of one record
+    // (a synchronous double append batches into one MutationObserver
+    // callback in a real browser)
+    mo.cb([{ addedNodes: [a.wrap, b.wrap] }])
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(a.track) && io.targets.has(b.track), 'both late tracks got a lease')
+    assert.ok(a.track.classes.has('sv-ui') && b.track.classes.has('sv-ui'), 'both late tracks are marked sv-ui: the pause button is no longer stuck hidden behind ui.css')
+
+    doc.fire('click', { target: a.button })
+    assert.ok(a.track.classes.has('sv-paused'), 'clicking the first pause button pauses its own track')
+    assert.ok(!b.track.classes.has('sv-paused'), 'and leaves the second, independent track alone')
+
+    // removing one: the existing N7 sweep (not a "removedNodes" half of this
+    // observer) prunes it on the next IO delivery
+    a.track.isConnected = false
+    io.cb([{ target: a.track, isIntersecting: false }])
+    assert.ok(!io.targets.has(a.track), 'the removed track releases its lease')
+    assert.ok(io.targets.has(b.track), 'the surviving track keeps its own')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5noscopeobserver')
+    const root = env.element()
+    const stop = toggles(root)
+    assert.equal([...env.deliveries].filter((d) => d.kind === 'MutationObserver').length, 0, 'only the document scope owns one (cost, not a Marquee component\'s own short-lived scope)')
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles: a scope-root trigger synchronizes itself, including a pressed-state button', async () => {
   const { toggles } = await import('../dist/core/toggles.js')
   const root = makeElement({ 'data-sv-toggle': 'sv-paused', 'aria-pressed': 'false' })
