@@ -766,7 +766,15 @@ if (!paused) el.style.setProperty('--sv-word', nextIndex)`,
   <span class="sr-only">brands, websites and products</span>
 </h1>
 <button type="button" id="words-pause" aria-pressed="false">Pause rotation</button>
-<!-- set --sv-word from your state; scenes drive it for free in pinned stories -->`,
+<!-- set --sv-word from your state; scenes drive it for free in pinned stories -->
+<script>
+  let paused = false
+  document.getElementById('words-pause').addEventListener('click', () => {
+    paused = !paused
+    document.getElementById('words-pause').setAttribute('aria-pressed', String(paused))
+  })
+  // guard your own --sv-word write the same way: if (!paused) el.style.setProperty(...)
+</script>`,
     react: `const [word, setWord] = useState(0)
 <h1>we build{' '}
   <span className="sv-words" style={{ '--sv-word': word } as React.CSSProperties} aria-hidden="true">
@@ -905,13 +913,15 @@ if (!paused) el.style.setProperty('--sv-word', nextIndex)`,
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
 :where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup { display: none; }`,
-    tailwind: `<div class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
+    tailwind: `<div id="logo-strip" class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
   </div>
   <button type="button" class="sv-marquee-pause" aria-pressed="false"
     data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
-</div>`,
+</div>
+<!-- <ScrollVarsBoot /> already wires this; a plain HTML page calls
+     toggles() itself: SV.toggles(document.getElementById('logo-strip')) -->`,
     react: `<Marquee speed={24}>
   {logos.map(l => <img key={l.id} src={l.src} alt={l.name} className="h-8" />)}
 </Marquee>`,

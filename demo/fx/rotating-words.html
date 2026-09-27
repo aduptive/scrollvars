@@ -202,7 +202,15 @@
   &lt;span class="sr-only"&gt;brands, websites and products&lt;/span&gt;
 &lt;/h1&gt;
 &lt;button type="button" id="words-pause" aria-pressed="false"&gt;Pause rotation&lt;/button&gt;
-&lt;!-- set --sv-word from your state; scenes drive it for free in pinned stories --&gt;</code></pre>
+&lt;!-- set --sv-word from your state; scenes drive it for free in pinned stories --&gt;
+&lt;script&gt;
+  let paused = false
+  document.getElementById('words-pause').addEventListener('click', () =&gt; {
+    paused = !paused
+    document.getElementById('words-pause').setAttribute('aria-pressed', String(paused))
+  })
+  // guard your own --sv-word write the same way: if (!paused) el.style.setProperty(...)
+&lt;/script&gt;</code></pre>
     <pre tabindex="0" data-pane="css"><code>&lt;h1&gt;we build
   &lt;span class="sv-words" aria-hidden="true"&gt;
     &lt;span&gt;brands&lt;/span&gt;&lt;span&gt;websites&lt;/span&gt;&lt;span&gt;products&lt;/span&gt;

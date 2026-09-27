@@ -372,3 +372,23 @@ test('every marquee gallery pane/preview that renders .sv-marquee carries sv-mar
     }
   }
 })
+
+// ---- A pause BUTTON with no wiring is decoration, not a control: the
+// tailwind panes for rotating-words and marquee shipped one with nothing
+// that ever calls toggles() or attaches a click handler (verifier round, N4
+// follow-up). Any pane carrying an `aria-pressed` button must also carry
+// its own wiring call, `toggles(`/`SV.toggles(` (the data-sv-toggle shape)
+// or `addEventListener(` (the hand-rolled shape).
+test('every gallery pane with a pause button also wires it, toggles() or addEventListener (N4)', () => {
+  for (const fx of EFFECTS) {
+    for (const pane of ['preview', 'css', 'tailwind', 'react']) {
+      const text = fx[pane]
+      if (typeof text !== 'string' || !/<button[^>]*aria-pressed=/.test(text)) continue
+      assert.match(
+        text,
+        /toggles\(|addEventListener\(/,
+        `${fx.slug}'s ${pane} pane renders a pause button with no wiring call`
+      )
+    }
+  }
+})

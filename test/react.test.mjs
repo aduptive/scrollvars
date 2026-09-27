@@ -2534,3 +2534,85 @@ test('react: Track keeps sv-live after a completed once reveal even when classNa
   }
 })
 
+test('react: Scenes remounts deliberately when returning to active on a scene that drifted while stacked, no state leak (verifier N1 follow-up)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  const realMatchMedia = global.window.matchMedia
+  let mediaChange
+  // starts NOT reduced, so the first attach lands active on scene 0
+  global.window.matchMedia = () => ({
+    matches: false,
+    addEventListener: (_, fn) => { mediaChange = fn },
+    removeEventListener: () => {},
+  })
+
+  const mounts = {}
+  const nodes = {}
+  function Probe({ index }) {
+    const ref = React.useRef(null)
+    React.useEffect(() => {
+      mounts[index] = (mounts[index] || 0) + 1
+      nodes[index] = ref.current
+    }, [])
+    return React.createElement('input', { ref, defaultValue: '' })
+  }
+
+  const sceneLog = []
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(Scenes, { count: 4, onScene: (s) => sceneLog.push(s) }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'stacked: every scene mounts once')
+
+    // attach: not reduced, default geometry lands on scene 0, matching the
+    // frozen index (0): active, no remount (PR #92)
+    await act(async () => { flushFrames() })
+    assert.equal(sceneLog.at(-1), 0, 'lands active on scene 0')
+    assert.equal(mounts[0], 1, 'active on the matching scene 0: no remount')
+    nodes[0].value = 'typed on scene 0 while active'
+
+    // active -> stacked (reduced motion): frozen index stays 0, matching
+    // guarantee holds (PR #92)
+    await act(async () => { mediaChange({ matches: true }) })
+    assert.equal(mounts[0], 1, 'switching to stacked does not remount scene 0')
+
+    // drift to the LAST scene while stacked: the frozen index (0) now
+    // disagrees with the live scene the reader actually scrolled to
+    container.firstChild.getBoundingClientRect = () => ({ top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+    assert.equal(sceneLog.at(-1), 3, 'drifted to the last scene while stacked')
+    const beforeReturn = nodes[3]
+    // entering stacked mode itself always remounts the non-current scenes
+    // (active mode renders only one), so the mount count carries that
+    // baseline in; the transition below is judged by its OWN delta, not an
+    // absolute count.
+    const mountsBeforeReturn = mounts[3]
+
+    // stacked -> active on the DRIFTED scene: frozen (0) != live scene (3),
+    // so reusing "current" would carry scene 0's state into scene 3. The
+    // fix remounts deliberately here instead.
+    await act(async () => { mediaChange({ matches: false }) })
+    assert.equal(mounts[3], mountsBeforeReturn + 1, 'returning to active on a drifted scene remounts it fresh')
+    assert.notEqual(nodes[3], beforeReturn, 'the active node is a new one, not the stale stacked fiber')
+    assert.equal(nodes[3].value, '', 'no leaked value from scene 0 on the newly active scene 3')
+
+    // a later matching-index switch (no drift while stacked) still keeps
+    // the PR #92 guarantee: scene 3 is now the frozen index, so leaving and
+    // returning to active on the SAME scene remounts nothing further for it
+    const mountsAfterReturn = mounts[3]
+    await act(async () => { mediaChange({ matches: true }) })
+    await act(async () => { mediaChange({ matches: false }) })
+    assert.equal(mounts[3], mountsAfterReturn, 'a matching-index active/stacked round trip remounts nothing further')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.window.matchMedia = realMatchMedia
+  }
+})
+
