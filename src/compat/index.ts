@@ -68,6 +68,7 @@ const FALLBACK_CSS = `
   opacity: calc(1 - max(var(--sv-view, 0), -1 * var(--sv-view, 0)));
   transform: translateY(calc(var(--sv-view, 0) * var(--sv-distance, 6rem) * -1));
 }
+.sv .sv-drift:focus-within { opacity: 1; }
 .sv .sv-curtain-l { transform: translateX(calc(var(--sv-pin, 0) * -101%)); }
 .sv .sv-curtain-r { transform: translateX(calc(var(--sv-pin, 0) * 101%)); }
 .sv .sv-rail { transform: translateX(calc(var(--sv-pin, 0) * var(--_sv-rail-end, 0px))); }
