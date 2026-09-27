@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.4 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.5 KB, styles 9.9 KB for every preset or 2.8 KB for the core part. A typical page ships ~8.4 KB on the wire.
 
 ## Why
 
@@ -168,7 +168,7 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 // app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.6 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 2.8 KB gz
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.3 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
@@ -190,12 +190,12 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.4 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.3 KB |
+| everything in `scrollvars` (the core entry) | 12.5 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 18.4 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~8.2 KB gzipped, total.**
+**~8.4 KB gzipped, total.**
 
 ## Mental model
 
@@ -569,17 +569,18 @@ export function Story() {
   const { ref, scene, active } = useScenes<HTMLDivElement>(4, { pin: '400vh' })
   // active is false on the server, without JS, after a failed attach, after
   // flow, or under reduced motion: the scene index alone is not reachable
-  // then, so render every scene (`<Scenes>` does the same internally). The
-  // current scene keeps the SAME key, "current", in both branches: an
-  // active/stacked switch would otherwise remount its subtree, dropping any
-  // state (a running video, a focused input) it holds.
+  // then, so render every scene (`<Scenes>` does the same internally). This
+  // sample remounts on the active/stacked switch (a plain index key in both
+  // branches); `<Scenes>` itself freezes a stable "current" key across the
+  // switch so a running video or a focused input survives it, see its
+  // source if your own hook usage needs that too.
   return (
     <div ref={ref}>
       <div className="sv-stage">
         {active
-          ? [<p key="current">Scene {scene + 1}</p>]
+          ? [<p key={scene}>Scene {scene + 1}</p>]
           : Array.from({ length: 4 }, (_, i) => (
-              <p key={i === scene ? 'current' : i}>Scene {i + 1}</p>
+              <p key={i}>Scene {i + 1}</p>
             ))}
       </div>
     </div>
@@ -916,8 +917,7 @@ page, the benchmark harness is in the repository, and the published
 benchmark below carries the sheet as its own row on every profile.
 
 Browsers without `@property` ignore the registration and keep inheriting, so
-the sheet never breaks a page below the floor; it can only make one faster
-where it is understood. Measured rather than read from a table: in
+the sheet never breaks a page below the floor. Measured rather than read from a table: in
 Chromium, Firefox and WebKit the registration takes and a page renders the
 same with the sheet as without, and the three-engine CI job checks both on
 every run. It is deliberately not part of `styles.css`.

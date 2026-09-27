@@ -105,6 +105,16 @@ const FALLBACK_CSS = `
   transform: none;
   transition: none;
 }
+
+/* Same focus-visibility override as styles/core.css: a focused entrance
+   child must be visible now, not after its stagger delay. */
+.sv-on .sv .sv-rise:focus-within, .sv-on .sv .sv-fade:focus-within,
+.sv-on .sv .sv-slide-l:focus-within, .sv-on .sv .sv-slide-r:focus-within,
+.sv-on .sv.sv-auto > :not(.sv-skip):focus-within {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
 `
 
 interface RoEntryStub {

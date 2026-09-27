@@ -447,7 +447,16 @@ export function toggles(root?: Document | HTMLElement): () => void {
     return !authored
   }
 
-  const boot = () => triggers().forEach((trigger) => {
+  // The per-trigger half of boot(): resolves it, marks its target sv-ui (and
+  // holds the acts settle if it needs one), writes the initial state. Reused
+  // by boot() itself AND by the late-acquisition MutationObserver below, so
+  // a trigger that arrives after setup (a route-mounted controlled marquee's
+  // pause button, most of the time) gets the exact same treatment a
+  // pre-existing one got at boot: without it the button stays hidden behind
+  // ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever,
+  // since mark() only ever ran lazily from a click the hidden button can
+  // never receive (B5, Astra round loop8-3).
+  const bootTrigger = (trigger: HTMLElement) => {
     let resolved: ReturnType<typeof resolve>
     try {
       resolved = resolve(trigger)
@@ -493,7 +502,51 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // var(--sv-state, 0) otherwise renders the closed value against an open
     // class until the first click.
     write(target, className, target.classList.contains(className))
-  })
+  }
+
+  const boot = () => triggers().forEach(bootTrigger)
+
+  // Elements matching `selector` under `el` itself, `el` included: a
+  // MutationObserver's addedNodes are the top of each inserted subtree, and
+  // both a late marquee's track and its pause button can be that top node
+  // (inserted as siblings) or a descendant of it (inserted as one wrapper).
+  const selfAndDescendants = (el: HTMLElement, selector: string): HTMLElement[] => {
+    const found = el.matches?.(selector) ? [el] : []
+    if (typeof el.querySelectorAll === 'function') found.push(...Array.from(el.querySelectorAll<HTMLElement>(selector)))
+    return found
+  }
+
+  // A track or trigger inserted after setup (a route-mounted controlled
+  // marquee under a live <ScrollVarsBoot>, most of the time): boot() and the
+  // initial `.sv-marquee-track` scan below only ever ran once, at setup, so
+  // anything added later needs the same acquisition run on just its new
+  // subtree. Release is already covered: pruneDetachedMarquee runs from the
+  // IO callback, every click and the observer's own delivery (N7), so no
+  // matching "removedNodes" half is needed here. Registering through the
+  // same watchMarquee()/mark() lease-counted paths as boot() means a track
+  // this scope acquires late and a Marquee component's OWN toggles(node)
+  // scope on the same track combine into one lease, exactly like two scopes
+  // discovering the same track at setup already do (module comment above).
+  //
+  // Scoped to the DOCUMENT instance only: that is the long-lived one under
+  // `<ScrollVarsBoot>` a route can add content behind, and it is the one
+  // Astra's acceptance names. A Marquee component's own `toggles(node)`
+  // scope mounts once for a track it already owns and stops with it, so it
+  // has no route-mounted gap to cover, and giving every custom-root scope
+  // its own persistent observer would be a cost with no matching benefit.
+  let mutationObserver: MutationObserver | undefined
+  if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
+    mutationObserver = new MutationObserver(life.guard((records) => {
+      records.forEach((record) => {
+        record.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1) return
+          const el = node as HTMLElement
+          selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life))
+          selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
+        })
+      })
+    }))
+  }
 
   const click = (event: Event) => {
     // a nearer scope already owned this click: not our trigger, and nothing
@@ -567,12 +620,14 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // drop on their own once this closure (mark/click/onClick) is unreachable
   life.defer(() => live.delete(instance))
   life.defer(() => scope.removeEventListener('click', onClick))
+  life.defer(() => mutationObserver?.disconnect())
   try {
     life.setup(() => {
       live.add(instance)
       boot()
       scope.addEventListener('click', onClick)
       scope.querySelectorAll<HTMLElement>('.sv-marquee-track').forEach((track) => watchMarquee(track, life))
+      mutationObserver?.observe(scope, { childList: true, subtree: true })
     })
   } catch (error) {
     rollback()

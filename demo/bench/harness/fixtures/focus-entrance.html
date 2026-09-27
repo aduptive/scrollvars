@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>focus entrance fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  .tall { height: 150vh }
+  /* below the 75% enter line at load, like Astra's B1 measurement */
+  .links { margin-top: 20vh; min-height: 40vh; padding: 24px; background: #eee }
+  .links a { display: block }
+</style>
+</head>
+<body>
+<div class="tall"></div>
+<!-- 12 links: the 11th (index 10) carries --sv-order: 10, the 900ms-stagger ceiling -->
+<section data-sv class="links sv-auto">
+  <a href="#1">link 1</a><a href="#2">link 2</a><a href="#3">link 3</a>
+  <a href="#4">link 4</a><a href="#5">link 5</a><a href="#6">link 6</a>
+  <a href="#7">link 7</a><a href="#8">link 8</a><a href="#9">link 9</a>
+  <a href="#10">link 10</a><a href="#11" id="child11">link 11</a><a href="#12">link 12</a>
+</section>
+<div class="tall"></div>
+<script src="/fx/sv.js"></script>
+</body>
+</html>
