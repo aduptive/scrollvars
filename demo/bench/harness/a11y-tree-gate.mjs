@@ -350,12 +350,17 @@ export async function a11yTreeGate({ browser, check, base }) {
       await page3e.evaluate(() => document.getElementById('scenes-section').scrollIntoView({ block: 'start' }))
       await page3e.waitForFunction(() => document.querySelector('#scenes-section p')?.textContent.trim() === 'Scene 1 of 3')
       await page3e.focus('#scene-input')
-      // Half a viewport is comfortably more than the fixture's whole pin
-      // span (Scenes height="40vh"), so this crosses at least one scene
-      // boundary regardless of viewport size, without hand-tuning a pixel
-      // count against a fraction of the viewport it does not know.
-      await page3e.evaluate(() => window.scrollBy(0, window.innerHeight * 0.5))
-      await page3e.waitForFunction(() => document.querySelector('#scenes-section p')?.textContent.trim() !== 'Scene 1 of 3', { timeout: 5000 })
+      // Scroll in small steps until the scene actually changes, instead of
+      // computing a pixel target from the pin geometry (a sticky stage can
+      // be taller or shorter than its own wrapper depending on `height`,
+      // so no single formula covers it): each step is a real scroll, which
+      // is what the driver itself listens for.
+      let changed = false
+      for (let i = 0; i < 100 && !changed; i++) {
+        await page3e.evaluate(() => window.scrollBy(0, 30))
+        changed = await page3e.evaluate(() => document.querySelector('#scenes-section p')?.textContent.trim() !== 'Scene 1 of 3')
+      }
+      if (!changed) throw new Error('scrolling 3000px never moved the Scenes fixture off "Scene 1 of 3"')
       const stillFocused = await page3e.evaluate(() => document.activeElement?.id === 'scene-input')
       const sceneText = await page3e.evaluate(() => document.querySelector('#scenes-section p')?.textContent.trim())
       check('a11y-tree: a focused input survives a scene change, no destructive remount', stillFocused, `now on ${sceneText}`)

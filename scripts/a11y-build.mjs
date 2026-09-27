@@ -84,7 +84,7 @@ function App() {
 
       <section id="scenes-section" aria-labelledby="h-scenes">
         <h2 id="h-scenes">Scenes</h2>
-        <Scenes count={3} height="40vh">
+        <Scenes count={3}>
           {({ scene }) => (
             <>
               {/* same node across every scene: proves a scene change does
