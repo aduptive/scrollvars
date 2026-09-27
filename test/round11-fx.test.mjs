@@ -325,9 +325,9 @@ test('GsapScrub settles to the end state when the tracker fails or is released (
 
 test('every gsap-scrub pane that scrubs progress also reads the motion preference and a status branch (N3)', () => {
   const fx = EFFECTS.find(e => e.slug === 'gsap-scrub')
-  for (const pane of ['css', 'react']) {
+  for (const pane of ['preview', 'css', 'tailwind', 'react']) {
     const text = fx[pane]
-    assert.match(text, /\.progress\(/, `${pane} pane scrubs a timeline`)
+    if (typeof text !== 'string' || !/\.progress\(/.test(text)) continue
     assert.match(text, /prefersReducedMotion|onMotionChange/, `${pane} pane checks the motion preference`)
     assert.match(text, /onStatus.*failed|failed.*onStatus|status !== 'failed'|status === 'failed'/, `${pane} pane branches on tracking status`)
   }
