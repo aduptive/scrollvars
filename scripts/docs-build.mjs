@@ -251,13 +251,10 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
-exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
-gsap.ticker.add(() =&gt; {
-  const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
-  heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
-})</code></pre>
-<p>The page pays GSAP's bundle then. Do it for the page that needs it, not globally.
+exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case, through a
+guarded <code>onTravel</code> callback, motion aware and cleaned up on <code>stop()</code>, never
+a bare per-frame style read with no stop and no reduced-motion branch. The page pays GSAP's
+bundle then. Do it for the page that needs it, not globally.
 Both patterns exist as official fx recipes with live previews:
 <a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
 a scrub. Still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>

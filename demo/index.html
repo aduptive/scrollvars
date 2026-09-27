@@ -2980,7 +2980,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.6 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.4 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.9 KB / 5.7 KB</b></td><td></td></tr>
       </tbody>
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.6 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.7 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -4952,7 +4952,8 @@ var SV = (() => {
     const resolve = (trigger) => {
       const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
       const selector = trigger.getAttribute("data-sv-target");
-      const target = selector ? scope.querySelector(selector) : trigger;
+      const nearestMarquee = selector ? trigger.closest?.(".sv-marquee") : null;
+      const target = selector ? nearestMarquee?.querySelector(selector) ?? scope.querySelector(selector) : trigger;
       return { className, selector, target };
     };
     const triggers = () => {
@@ -5110,10 +5111,21 @@ var SV = (() => {
     let mutationObserver;
     if (typeof document !== "undefined" && scope === document && typeof MutationObserver === "function") {
       const liveTracks = document.getElementsByClassName("sv-marquee-track");
+      const livePauseButtons = document.getElementsByClassName("sv-marquee-pause");
       const hasUnleasedTrack = () => {
         for (let i = 0; i < liveTracks.length; i++)
           if (!marqueeLeases.has(liveTracks[i]))
             return true;
+        for (let i = 0; i < livePauseButtons.length; i++) {
+          let resolved;
+          try {
+            resolved = resolve(livePauseButtons[i]);
+          } catch {
+            continue;
+          }
+          if (resolved.target && !resolved.target.classList.contains("sv-ui"))
+            return true;
+        }
         return false;
       };
       mutationObserver = new MutationObserver(life.guard((records) => {
@@ -8372,7 +8384,17 @@ function toggles(root) {
     const resolve = (trigger) => {
         const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
         const selector = trigger.getAttribute('data-sv-target');
-        const target = selector ? scope.querySelector(selector) : trigger;
+        // A trigger inside a `.sv-marquee` wrapper resolves its OWN target
+        // first: the marquee markup's target is the class `.sv-marquee-track`,
+        // so under the document scope (Boot, the css pane's own toggles())
+        // every pause button used to resolve to the FIRST track on the page,
+        // and a second controlled marquee stayed static with its button
+        // hidden (N4a, loop8-4 review). Any trigger outside a `.sv-marquee`
+        // ancestor keeps the old scope-wide lookup.
+        const nearestMarquee = selector ? trigger.closest?.('.sv-marquee') : null;
+        const target = selector
+            ? (nearestMarquee?.querySelector(selector) ?? scope.querySelector(selector))
+            : trigger;
         return { className, selector, target };
     };
     // every trigger of the same state reflects it: on boot, and after any
@@ -8633,10 +8655,31 @@ function toggles(root) {
     let mutationObserver;
     if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
         const liveTracks = document.getElementsByClassName('sv-marquee-track');
+        // A track and its pause button can land in SEPARATE mutation batches
+        // (a route that appends the strip, then the control): the batch
+        // carrying only the button finds every track already leased and the
+        // count-based check above returns false, so the track never gets
+        // `sv-ui` (only mark() sets it) and the button stays hidden behind
+        // ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever
+        // (N4b, loop8-4 review). Also live, also zero iterations on a
+        // marquee-free page: a pause button whose resolved track lacks
+        // `sv-ui` means that track's own batch has not run bootTrigger yet.
+        const livePauseButtons = document.getElementsByClassName('sv-marquee-pause');
         const hasUnleasedTrack = () => {
             for (let i = 0; i < liveTracks.length; i++)
                 if (!marqueeLeases.has(liveTracks[i]))
                     return true;
+            for (let i = 0; i < livePauseButtons.length; i++) {
+                let resolved;
+                try {
+                    resolved = resolve(livePauseButtons[i]);
+                }
+                catch {
+                    continue;
+                }
+                if (resolved.target && !resolved.target.classList.contains('sv-ui'))
+                    return true;
+            }
             return false;
         };
         mutationObserver = new MutationObserver(life.guard((records) => {

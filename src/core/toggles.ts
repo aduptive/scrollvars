@@ -312,7 +312,17 @@ export function toggles(root?: Document | HTMLElement): () => void {
   const resolve = (trigger: HTMLElement) => {
     const className = trigger.getAttribute('data-sv-toggle') || 'sv-open'
     const selector = trigger.getAttribute('data-sv-target')
-    const target = selector ? (scope.querySelector(selector) as HTMLElement | null) : trigger
+    // A trigger inside a `.sv-marquee` wrapper resolves its OWN target
+    // first: the marquee markup's target is the class `.sv-marquee-track`,
+    // so under the document scope (Boot, the css pane's own toggles())
+    // every pause button used to resolve to the FIRST track on the page,
+    // and a second controlled marquee stayed static with its button
+    // hidden (N4a, loop8-4 review). Any trigger outside a `.sv-marquee`
+    // ancestor keeps the old scope-wide lookup.
+    const nearestMarquee = selector ? (trigger.closest?.('.sv-marquee') as HTMLElement | null) : null
+    const target = selector
+      ? ((nearestMarquee?.querySelector(selector) as HTMLElement | null) ?? (scope.querySelector(selector) as HTMLElement | null))
+      : trigger
     return { className, selector, target }
   }
   // every trigger of the same state reflects it: on boot, and after any
@@ -555,8 +565,23 @@ export function toggles(root?: Document | HTMLElement): () => void {
   let mutationObserver: MutationObserver | undefined
   if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
     const liveTracks = document.getElementsByClassName('sv-marquee-track')
+    // A track and its pause button can land in SEPARATE mutation batches
+    // (a route that appends the strip, then the control): the batch
+    // carrying only the button finds every track already leased and the
+    // count-based check above returns false, so the track never gets
+    // `sv-ui` (only mark() sets it) and the button stays hidden behind
+    // ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever
+    // (N4b, loop8-4 review). Also live, also zero iterations on a
+    // marquee-free page: a pause button whose resolved track lacks
+    // `sv-ui` means that track's own batch has not run bootTrigger yet.
+    const livePauseButtons = document.getElementsByClassName('sv-marquee-pause')
     const hasUnleasedTrack = () => {
       for (let i = 0; i < liveTracks.length; i++) if (!marqueeLeases.has(liveTracks[i] as HTMLElement)) return true
+      for (let i = 0; i < livePauseButtons.length; i++) {
+        let resolved: ReturnType<typeof resolve>
+        try { resolved = resolve(livePauseButtons[i] as HTMLElement) } catch { continue }
+        if (resolved.target && !resolved.target.classList.contains('sv-ui')) return true
+      }
       return false
     }
     mutationObserver = new MutationObserver(life.guard((records) => {
