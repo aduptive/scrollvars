@@ -1,14 +1,14 @@
 {
   "runs": [
     {
-      "file": "chrome-1790468705641.json",
+      "file": "chrome-1790478038711.json",
       "label": "Desktop Chrome (macOS)",
-      "commit": "66c7498"
+      "commit": "5e3bb30"
     },
     {
-      "file": "firefox-1790468857085.json",
-      "label": "Desktop Firefox (macOS)",
-      "commit": "66c7498"
+      "file": "firefox-1790478191567.json",
+      "label": "Desktop Firefox (macOS, Playwright's Gecko build)",
+      "commit": "5e3bb30"
     }
   ],
   "pending": [
