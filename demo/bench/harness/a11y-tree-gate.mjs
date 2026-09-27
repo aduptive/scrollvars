@@ -15,25 +15,25 @@
  * reduced motion) and the Marquee pause control (named, pressed state).
  *
  * What this does NOT prove, because a role/name/value tree is not a screen
- * reader: the reading ORDER a person actually hears, the verbosity or
+ * reader: the reading ORDER a person actually hears, or the verbosity or
  * quirks of a real assistive technology (VoiceOver's rotor, landmark
- * announcements, how it groups a live region), or anything about
- * RotatingWords: it has no persistent pause control at all yet (N4, an
- * open defect tracked separately, out of scope here). The written
- * VoiceOver checklist in docs/guide.md covers the human half; this script
- * covers only what a browser's own accessibility tree can answer.
+ * announcements, how it groups a live region). The written VoiceOver
+ * checklist in docs/guide.md covers the human half; this script covers
+ * only what a browser's own accessibility tree can answer.
  *
  * Slider, Modal, Accordion and Marquee are mounted from the real
  * `scrollvars/react` components (esbuild + the resolveScrollvars plugin,
  * same technique as autoplay-interaction.mjs), not the gallery's
- * copy-paste panes: the gallery's marquee preview is known to lag behind
- * the installed component (N4, no pause button there either), so testing
- * the shipped component is what actually matters to a consumer. Split
- * text and the Scenes fallback use the live gallery pages (split-reveal,
- * sticky-steps), which already exercise split() and --sv-scene for real.
+ * copy-paste panes, so testing the shipped component is what actually
+ * matters to a consumer regardless of whether a gallery pane has caught
+ * up. Split text and the Scenes fallback use the live gallery pages
+ * (split-reveal, sticky-steps), which already exercise split() and
+ * --sv-scene for real.
  *
- * Each check that could plausibly pass on broken code is proved able to
- * fail: see the "gate can fail" block near the end.
+ * Every check here has a negative counterpart: see the "gate can fail"
+ * blocks near the end, each against a deliberately broken analog (a bare
+ * fixture with no ARIA, a fake dialog that does not restore focus or
+ * never actually closes, an unwired trigger, readable per-word spans).
  *
  * Exported as a gate for e2e-invariants.mjs and runnable on its own:
  *   node a11y-tree-gate.mjs
@@ -114,7 +114,7 @@ function App() {
   const [open, setOpen] = React.useState(false)
   return (
     <>
-      <button id="fake-open" onClick={() => { setOpen(true); document.getElementById('fake-open').blur() }}>Open</button>
+      <button id="fake-open" onClick={() => setOpen(true)}>Open</button>
       {open && <div role="dialog" aria-modal="true" id="fake-dialog">
         <button id="fake-close" onClick={() => { setOpen(false); document.body.focus() }}>Close</button>
       </div>}
@@ -295,10 +295,16 @@ export async function a11yTreeGate({ browser, check, base }) {
       await page4.addScriptTag({ content: brokenBundle })
       await page4.waitForFunction(() => window.__mounted === true)
 
+      // Same flow as the real Modal check: open, try Escape, then click the
+      // visible close control (a plain div ignores Escape, same as a real
+      // user falling back to the close button when a key does nothing).
+      // Its close handler moves focus to the body instead of the opener.
       await page4.focus('#fake-open')
       await page4.click('#fake-open')
+      await page4.keyboard.press('Escape')
+      await page4.click('#fake-close')
       const focusReturnedBroken = await page4.evaluate(() => document.activeElement?.id === 'fake-open')
-      check('a11y-tree gate can fail: a fake dialog that blurs on open and focuses body on close is reported as NOT returning focus', focusReturnedBroken === false)
+      check('a11y-tree gate can fail: a fake dialog that focuses the body on close is reported as NOT returning focus to the opener', focusReturnedBroken === false)
 
       const expandedBroken = await page4.evaluate(() => document.getElementById('dead-trigger').getAttribute('aria-expanded'))
       await page4.click('#dead-trigger')
@@ -311,6 +317,61 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFound.length === 3, `found: ${brokenFound.join(', ') || 'none'}`)
     } finally {
       await page4.close()
+    }
+  }
+
+  // ---- gate can fail: the remaining checks, each against its own bare fixture ----
+  // Plain static HTML, no React/esbuild needed: these only test the ABSENCE
+  // of ARIA that a hand-rolled, unlabeled analog of each component would
+  // have, and the AX tree's own bookkeeping (a role that never actually
+  // clears) when a "close" does nothing.
+  {
+    // Slider: a bare carousel-shaped div, no ARIA at all
+    const page9 = await browser.newPage()
+    try {
+      await page9.setContent('<div class="bare-slider"><div>One</div><div>Two</div><div>Three</div></div><button id="p">&lsaquo;</button><button id="n">&rsaquo;</button><button id="d1">1</button>')
+      const tree = await page9.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree gate can fail: an unlabeled carousel has no named region', !find(tree, (n) => n.role === 'region' && n.name === 'Photos'))
+      check('a11y-tree gate can fail: unlabeled arrows are not named "previous/next slide"', !find(tree, (n) => n.name === 'previous slide' || n.name === 'next slide'))
+      check('a11y-tree gate can fail: unlabeled slides announce no "N of 3"', findAll(tree, (n) => /^\d+ of 3$/.test(n.name || '')).length === 0)
+      check('a11y-tree gate can fail: unlabeled dots are not named "go to slide N"', findAll(tree, (n) => /^go to slide \d+$/.test(n.name || '')).length === 0)
+    } finally {
+      await page9.close()
+    }
+
+    // Marquee: an unlabeled, non-functional pause control
+    const page10 = await browser.newPage()
+    try {
+      await page10.setContent('<div class="bare-marquee"><span>Alpha</span></div><button id="dp" onclick="">Fake pause</button>')
+      const before = await page10.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree gate can fail: an unlabeled pause control is not named "Pause animation"', !find(before, (n) => n.name === 'Pause animation'))
+      await page10.click('#dp')
+      const after = await page10.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree gate can fail: clicking an unwired pause control reports no pressed state', !find(after, (n) => n.pressed === true))
+    } finally {
+      await page10.close()
+    }
+
+    // Modal: an open panel with no dialog role at all
+    const page11 = await browser.newPage()
+    try {
+      await page11.setContent('<button id="o">open</button><div id="d" style="display:none">not a dialog</div><script>document.getElementById("o").onclick=()=>{document.getElementById("d").style.display="block"}</script>')
+      await page11.click('#o')
+      const tree = await page11.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree gate can fail: a plain div shown on "open" has no dialog role', !find(tree, (n) => n.role === 'dialog'), JSON.stringify(find(tree, (n) => n.role === 'dialog')))
+    } finally {
+      await page11.close()
+    }
+
+    // Modal: a dialog role that never actually clears on "close"
+    const page12 = await browser.newPage()
+    try {
+      await page12.setContent('<div role="dialog" aria-modal="true" id="d">stays in the tree no matter what</div><button id="c" onclick="">close</button>')
+      await page12.click('#c')
+      const tree = await page12.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree gate can fail: a dialog role that never actually closes is reported as still present', !!find(tree, (n) => n.role === 'dialog'))
+    } finally {
+      await page12.close()
     }
   }
 }

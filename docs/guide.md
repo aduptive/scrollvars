@@ -142,18 +142,18 @@ harness uses elsewhere, reporting frame-time percentiles and the share of
 late frames per page, against a budget declared before any number was read.
 
 <!-- devicematrix:start -->
-Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/docs-data.mjs`): p95 frame time at most 1.5x the device's own measured vsync interval, and fewer than 1% of frames late (past that same line). A run that misses either line fails, whatever its own animated check reports. Raw runs: [`demo/bench/lab/results/published/`](https://github.com/aduptive/scrollvars/tree/main/demo/bench/lab/results/published).
+Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/docs-data.mjs`): p95 frame time at most 1.5x the device's own measured vsync interval, and at most 1% of frames late (past that same line). A run that misses either line fails, whatever its own animated check reports. The vsync interval is independently calibrated per run (an idle rAF window before the scroll starts, `demo/bench/lab/run-drive.js`) where the raw result has it; a row marked self-calibrated predates that field and instead derives its interval from the median of its own scroll frames, a weaker number since a uniformly slow device can drag its own line down with it. Raw runs: [`demo/bench/lab/results/published/`](https://github.com/aduptive/scrollvars/tree/main/demo/bench/lab/results/published).
 
-| device | browser | commit | page | p50 ms | p95 ms | p99 ms | late % | animated | budget |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | long | 16.7 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | deep | 16.7 | 17.5 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | cubes | 16.7 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | long | 16.7 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | deep | 16.7 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | cubes | 16.7 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Safari (macOS) | — | — | — | — | — | — | — | — | pending, Andrea's device |
-| iPhone Safari (iOS) | — | — | — | — | — | — | — | — | pending, Andrea's device |
+| device | browser | commit | calibration | page | p50 ms | p95 ms | p95 worst rep | p99 ms | late % | animated | budget |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | deep | 16.7 | 17.5 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | cubes | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | deep | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | cubes | 16.7 | 17.7 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Safari (macOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
+| iPhone Safari (iOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
 <!-- devicematrix:end -->
 
 ## Install

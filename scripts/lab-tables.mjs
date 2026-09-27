@@ -47,20 +47,29 @@ for (const run of manifest.runs) {
   const good = (payload.runs || []).filter((r) => r.deltas)
   const all = good.flatMap((r) => r.deltas)
   if (!all.length) throw new Error(`lab-tables: ${run.file} has no usable runs (every animated check failed?)`)
-  const vsync = median(all)
+  // Independent calibration (run-drive.js's idle rAF window, one per run,
+  // stored as vsyncMs) when every run in the file has it; otherwise this
+  // file predates that field and falls back to the OLD method (median of
+  // the scroll frames themselves), which lets a uniformly slow device drag
+  // its own budget line down with it. Said explicitly per row below, never
+  // presented the same way as an independent calibration.
+  const calibrated = good.every((r) => typeof r.vsyncMs === 'number')
+  const vsync = calibrated ? median(good.map((r) => r.vsyncMs)) : median(all)
   const budgetMs = vsync * LAB_FRAME_BUDGET.p95Factor
 
   for (const page of PAGES) {
     const rs = good.filter((r) => r.page === page)
     if (!rs.length) continue
     const stat = (fn) => median(rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
-    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
+    const worst = (fn) => Math.max(...rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
+    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p95Worst = worst((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
     const late = stat((d) => (d.filter((x) => x > budgetMs).length / d.length) * 100)
     const animatedCount = rs.filter((r) => r.animated).length
     const pass = p95 <= budgetMs && late <= LAB_FRAME_BUDGET.lateMaxPct && animatedCount === rs.length
     rows.push({
-      device: run.label, browser: browserLabel(payload.env?.userAgent), commit: run.commit, page,
-      p50: p50.toFixed(1), p95: p95.toFixed(1), p99: p99.toFixed(1), late: late.toFixed(1),
+      device: run.label, browser: browserLabel(payload.env?.userAgent), commit: run.commit,
+      calibration: calibrated ? 'independent' : 'self-calibrated', page,
+      p50: p50.toFixed(1), p95: p95.toFixed(1), p95Worst: p95Worst.toFixed(1), p99: p99.toFixed(1), late: late.toFixed(1),
       animated: `${animatedCount}/${rs.length}`, pass,
     })
     if (!pass) flagged.push(`${run.label} / ${page}: p95 ${p95.toFixed(1)}ms vs budget ${budgetMs.toFixed(1)}ms, late ${late.toFixed(1)}%, animated ${animatedCount}/${rs.length}`)
@@ -69,16 +78,16 @@ for (const run of manifest.runs) {
 }
 
 const lines = [
-  `Frame budget declared before reading any number (\`LAB_FRAME_BUDGET\`, \`scripts/docs-data.mjs\`): p95 frame time at most ${LAB_FRAME_BUDGET.p95Factor}x the device's own measured vsync interval, and fewer than ${LAB_FRAME_BUDGET.lateMaxPct}% of frames late (past that same line). A run that misses either line fails, whatever its own animated check reports. Raw runs: [\`demo/bench/lab/results/published/\`](https://github.com/aduptive/scrollvars/tree/main/demo/bench/lab/results/published).`,
+  `Frame budget declared before reading any number (\`LAB_FRAME_BUDGET\`, \`scripts/docs-data.mjs\`): p95 frame time at most ${LAB_FRAME_BUDGET.p95Factor}x the device's own measured vsync interval, and at most ${LAB_FRAME_BUDGET.lateMaxPct}% of frames late (past that same line). A run that misses either line fails, whatever its own animated check reports. The vsync interval is independently calibrated per run (an idle rAF window before the scroll starts, \`demo/bench/lab/run-drive.js\`) where the raw result has it; a row marked self-calibrated predates that field and instead derives its interval from the median of its own scroll frames, a weaker number since a uniformly slow device can drag its own line down with it. Raw runs: [\`demo/bench/lab/results/published/\`](https://github.com/aduptive/scrollvars/tree/main/demo/bench/lab/results/published).`,
   '',
-  '| device | browser | commit | page | p50 ms | p95 ms | p99 ms | late % | animated | budget |',
-  '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |',
+  '| device | browser | commit | calibration | page | p50 ms | p95 ms | p95 worst rep | p99 ms | late % | animated | budget |',
+  '| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
 ]
 for (const r of rows) {
-  lines.push(`| ${r.device} | ${r.browser} | \`${r.commit}\` | ${r.page} | ${r.p50} | ${r.p95} | ${r.p99} | ${r.late} | ${r.animated} | ${r.pass ? 'pass' : '**fail**'} |`)
+  lines.push(`| ${r.device} | ${r.browser} | \`${r.commit}\` | ${r.calibration} | ${r.page} | ${r.p50} | ${r.p95} | ${r.p95Worst} | ${r.p99} | ${r.late} | ${r.animated} | ${r.pass ? 'pass' : '**fail**'} |`)
 }
 for (const p of manifest.pending || []) {
-  lines.push(`| ${p.label} | — | — | — | — | — | — | — | — | pending, Andrea's device |`)
+  lines.push(`| ${p.label} | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |`)
 }
 if (flagged.length) {
   lines.push('', '**Flagged** (missed the budget, or an animated check failed):', '')
