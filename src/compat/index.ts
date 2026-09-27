@@ -83,7 +83,9 @@ const FALLBACK_CSS = `
 [data-sv-flow] .sv-rail { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
-  .sv-on .sv .sv-slide-r, .sv-on .sv.sv-auto > :not(.sv-skip),
+  .sv-on .sv .sv-slide-r, .sv-on .sv.sv-rise, .sv-on .sv.sv-fade,
+  .sv-on .sv.sv-slide-l, .sv-on .sv.sv-slide-r,
+  .sv-on .sv.sv-auto > :not(.sv-skip),
   .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail,
   .sv .sv-deck > * {
     opacity: 1;
@@ -97,6 +99,10 @@ const FALLBACK_CSS = `
 .sv-on[data-sv-motion="reduce"] .sv .sv-fade,
 .sv-on[data-sv-motion="reduce"] .sv .sv-slide-l,
 .sv-on[data-sv-motion="reduce"] .sv .sv-slide-r,
+.sv-on[data-sv-motion="reduce"] .sv.sv-rise,
+.sv-on[data-sv-motion="reduce"] .sv.sv-fade,
+.sv-on[data-sv-motion="reduce"] .sv.sv-slide-l,
+.sv-on[data-sv-motion="reduce"] .sv.sv-slide-r,
 .sv-on[data-sv-motion="reduce"] .sv.sv-auto > :not(.sv-skip),
 [data-sv-motion="reduce"] .sv .sv-drift,
 [data-sv-motion="reduce"] .sv .sv-curtain-l,

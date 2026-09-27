@@ -217,7 +217,12 @@ export const EFFECTS = [
     transition: none; animation: none; opacity: 1; translate: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }`,
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }
+
+/* a focused entrance child must be visible now, not after its stagger
+   delay (WCAG 2.4.7): must sit AFTER the reduce blocks above, same
+   source-order rule */
+.sv-on .sv .sv-rise:focus-within { transition: none; opacity: 1; translate: none; }`,
     tailwind: `<section data-sv data-sv-once class="py-24">
   <h2 class="sv-rise text-4xl font-bold">Title</h2>
   <p class="sv-rise" data-sv-order="1">Copy</p>
@@ -693,6 +698,11 @@ const canvasRef = useCanvasEffect({
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 .sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span { transition: none; animation: none; opacity: 1; translate: none; }
+
+/* a focused split heading must reveal every word at once, not after its
+   stagger delay (WCAG 2.4.7): must sit AFTER the reduce blocks above, same
+   source-order rule */
+.sv-on .sv .sv-split-rise:focus-within > span { transition: none; opacity: 1; translate: none; }
 
 /* scrub instead of play: the same spans feed sv-reading directly */
 <h2 class="sv-reading" data-sv-split>…</h2>   <!-- inside a data-sv-pin -->`,

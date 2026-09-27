@@ -68,6 +68,16 @@ function collectNames(node, out = []) {
   return out
 }
 
+// A5 (loop8-5 review): the one predicate for "does the status region say
+// X", used by the real check AND both of its negative/positive
+// counterparts below. Chrome puts the status node's own `name` empty and
+// the actual text on a StaticText child (the comment above collectNames),
+// so reading `find(...).name` alone (the old negative counterpart) is
+// always empty and passes whether or not the text changed: it proved
+// nothing about the detector. statusSays() walks the whole status subtree,
+// exactly like the real check.
+const statusSays = (tree, text) => collectNames(find(tree, (n) => n.role === 'status')).join(' ').includes(text)
+
 // A deliberately broken analog of three of the checks above, used only to
 // prove the detectors are not blind (the "gate can fail" block): a fake
 // dialog that does not restore focus on close, a toggle wired to nothing
@@ -154,9 +164,8 @@ export async function a11yTreeGate({ browser, check, base }) {
       // reader reads out. Chrome reports the status node's own `name` as
       // empty and puts the actual text on a StaticText child, so the check
       // reads every name in that subtree instead of the container's own.
-      const statusNode = find(await page.accessibility.snapshot({ interestingOnly: false }), (n) => n.role === 'status')
-      const statusText = collectNames(statusNode).join(' ')
-      check('a11y-tree: the status region announces the new slide after next()', statusText.includes('Slide 2 of 3'), JSON.stringify(statusNode))
+      const statusTree = await page.accessibility.snapshot({ interestingOnly: false })
+      check('a11y-tree: the status region announces the new slide after next()', statusSays(statusTree, 'Slide 2 of 3'), JSON.stringify(find(statusTree, (n) => n.role === 'status')))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
@@ -469,6 +478,10 @@ export async function a11yTreeGate({ browser, check, base }) {
     // Slider: a status region that is never written (N1's own negative
     // counterpart: the check above must fail when navigation never changes
     // the announced text, not only when there is no status node at all).
+    // A5 fix: the old version read `find(...).name`, which Chrome always
+    // reports empty for a status node (the real text sits on a StaticText
+    // child), so it passed whether or not the text changed and proved
+    // nothing. statusSays() walks the subtree like the real check does.
     const page9c = await browser.newPage()
     try {
       await page9c.setContent(
@@ -476,17 +489,41 @@ export async function a11yTreeGate({ browser, check, base }) {
         '<button class="sv-arrow-next" onclick="">next</button>'
       )
       const before = await page9c.accessibility.snapshot({ interestingOnly: false })
-      const beforeName = find(before, (n) => n.role === 'status')?.name
+      const beforeSaysTwo = statusSays(before, 'Slide 2 of 3')
       await page9c.click('.sv-arrow-next')
       const after = await page9c.accessibility.snapshot({ interestingOnly: false })
-      const afterName = find(after, (n) => n.role === 'status')?.name
+      const afterSaysTwo = statusSays(after, 'Slide 2 of 3')
       check(
         'a11y-tree gate can fail: a status that is never written stays "Slide 1 of 3" after next()',
-        !(afterName === 'Slide 2 of 3'),
-        JSON.stringify({ beforeName, afterName })
+        !afterSaysTwo,
+        JSON.stringify({ beforeSaysTwo, afterSaysTwo })
       )
     } finally {
       await page9c.close()
+    }
+
+    // Slider: a status region a working control DOES update (A5's own
+    // positive counterpart: statusSays() must be able to return true at
+    // all, on a bare page with none of the app's own markup, or the
+    // negative check above passing would say nothing about the predicate).
+    const page9d = await browser.newPage()
+    try {
+      await page9d.setContent(
+        '<div role="status" aria-live="polite">Slide 1 of 3</div>' +
+        '<button class="sv-arrow-next" onclick="document.querySelector(\'[role=status]\').textContent = \'Slide 2 of 3\'">next</button>'
+      )
+      const before = await page9d.accessibility.snapshot({ interestingOnly: false })
+      const beforeSaysTwo = statusSays(before, 'Slide 2 of 3')
+      await page9d.click('.sv-arrow-next')
+      const after = await page9d.accessibility.snapshot({ interestingOnly: false })
+      const afterSaysTwo = statusSays(after, 'Slide 2 of 3')
+      check(
+        'a11y-tree gate can pass: a status a control actually updates reads "Slide 2 of 3" after next()',
+        !beforeSaysTwo && afterSaysTwo,
+        JSON.stringify({ beforeSaysTwo, afterSaysTwo })
+      )
+    } finally {
+      await page9d.close()
     }
 
     // Marquee: an unlabeled, non-functional pause control
