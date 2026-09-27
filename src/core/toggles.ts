@@ -534,9 +534,33 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // scope mounts once for a track it already owns and stops with it, so it
   // has no route-mounted gap to cover, and giving every custom-root scope
   // its own persistent observer would be a cost with no matching benefit.
+  // A page with no marquee at all must pay nothing per mutation: without a
+  // pre-check the callback below scanned every inserted subtree on every
+  // batch, measured at about 0.07ms for a 30-node insert and 0.4ms for a
+  // 500-node one, on a Boot page that never has a `.sv-marquee-track` to
+  // find (perf review, loop8-3 follow-up). `getElementsByClassName` returns
+  // a LIVE collection the engine keeps indexed, so walking it is cheap and
+  // stays empty (zero iterations) on a marquee-free page: the pre-check
+  // scans below only when that collection holds a track NOT ALREADY in
+  // `marqueeLeases`, never on a bare count comparison. A route swap that
+  // removes one marquee and inserts another lands both mutations in the
+  // SAME batch (React commits a page swap as one task), so the track COUNT
+  // can be unchanged while the identity is entirely new: a count-based
+  // pre-check missed exactly the SPA case B5 exists for (lead review of the
+  // first version of this fix). Identity-checking the live collection
+  // costs nothing extra on a marquee-free page (still zero iterations) and
+  // catches the swap, since the new track is present in the collection and
+  // absent from the lease map the moment it lands, regardless of whether
+  // the old one already left.
   let mutationObserver: MutationObserver | undefined
   if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
+    const liveTracks = document.getElementsByClassName('sv-marquee-track')
+    const hasUnleasedTrack = () => {
+      for (let i = 0; i < liveTracks.length; i++) if (!marqueeLeases.has(liveTracks[i] as HTMLElement)) return true
+      return false
+    }
     mutationObserver = new MutationObserver(life.guard((records) => {
+      if (!hasUnleasedTrack()) return
       records.forEach((record) => {
         record.addedNodes.forEach((node) => {
           if (node.nodeType !== 1) return

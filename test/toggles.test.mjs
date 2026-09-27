@@ -2,6 +2,19 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { lifecycleEnv } from './lifecycle-fixture.mjs'
 
+// A stub for `document.getElementsByClassName`, live like the real thing:
+// `.length` and index access both recompute against the CURRENT tree on
+// every read, through a Proxy, since toggles()'s pre-check stores the
+// collection once at setup and reads it again on every later mutation.
+const liveByClass = (doc, cls) => new Proxy({}, {
+  get(_t, prop) {
+    const list = doc.querySelectorAll(`.${cls}`)
+    if (prop === 'length') return list.length
+    const i = Number(prop)
+    return Number.isNaN(i) ? undefined : list[i]
+  },
+})
+
 test('toggles: a marquee track pauses off screen or with the tab hidden, independent of the user pause button', async () => {
   const env = lifecycleEnv()
   try {
@@ -1202,6 +1215,7 @@ test('toggles: a controlled marquee mounted after the document scope starts is w
   try {
     const { toggles } = await import('../dist/core/toggles.js?b5marquee')
     const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
     global.document = doc
     const stop = toggles()
 
@@ -1247,6 +1261,107 @@ test('toggles: a controlled marquee mounted after the document scope starts is w
     if (realHTMLElement) global.HTMLElement = realHTMLElement
     else delete global.HTMLElement
   }
+})
+
+// A route swap that removes one marquee and inserts another lands both
+// mutations in ONE MutationObserver batch (React commits a page swap as a
+// single task): the track COUNT stays the same, so a pre-check keyed on
+// count alone misses the new track entirely, exactly the SPA case B5
+// exists for (lead review of the first version of this fix, d9bc6d4). The
+// pre-check now walks the live `.sv-marquee-track` collection for an
+// element not already in the lease map, identity rather than count.
+test('toggles: a route swap (remove track A, insert track B, ONE batch) wires B even though the count did not change', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5swap')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+
+    const fixture = (cls) => {
+      const wrap = env.element(); wrap.nodeType = 1
+      const track = env.element(); track.nodeType = 1
+      track.classList.add('sv-marquee-track', cls)
+      const button = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': `.${cls}` })
+      button.nodeType = 1
+      wrap.append(track)
+      wrap.append(button)
+      return { wrap, track, button }
+    }
+
+    const a = fixture('track-a')
+    doc.append(a.wrap)
+    const stop = toggles()
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(a.track), 'track A wired at setup')
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    const b = fixture('track-b')
+    // the swap: A detaches from doc.children (the route's old page), B
+    // attaches (the new one), delivered as ONE batch with both halves,
+    // count of live tracks unchanged (A left, B arrived)
+    doc.children.splice(doc.children.indexOf(a.wrap), 1)
+    doc.append(b.wrap)
+    mo.cb([{ addedNodes: [b.wrap], removedNodes: [a.wrap] }])
+
+    assert.ok(io.targets.has(b.track), 'B is wired from the SAME batch, even though the live track count never changed')
+    assert.ok(b.track.classes.has('sv-ui'), 'and its pause button is unhidden the same way boot() would')
+
+    // A's own release is unrelated to this pre-check: the existing N7 sweep
+    // still does it, on the next thing that touches the marquee observer
+    a.track.isConnected = false
+    io.cb([{ target: a.track, isIntersecting: false }])
+    assert.ok(!io.targets.has(a.track), 'A is released once something touches it (N7)')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// Perf follow-up to B5: a page with no marquee at all pays nothing per
+// mutation. The pre-check walks the live `.sv-marquee-track` collection
+// instead of scanning every inserted subtree; a burst of unrelated
+// insertions (a Boot page's own content, most of the time) must never touch
+// each added node's own querySelectorAll, which is what the (removed)
+// subtree scan used to do unconditionally.
+test('toggles: a burst of unrelated insertions never runs the marquee/trigger subtree scan (perf follow-up to B5)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5perfgate')
+    const doc = env.element()
+    // no track is ever added in this test, so a genuinely O(1) live count
+    // (never recursing the tree, unlike the other B5 test's stub, which
+    // has to grow) stays at 0 throughout: this is what a real
+    // getElementsByClassName's `.length` costs, an indexed read
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    let scans = 0
+    const unrelated = () => {
+      const node = env.element()
+      node.nodeType = 1
+      const realQSA = node.querySelectorAll
+      node.querySelectorAll = (sel) => { scans++; return realQSA(sel) }
+      return node
+    }
+    const burst = Array.from({ length: 500 }, unrelated)
+    burst.forEach((n) => doc.append(n))
+    mo.cb([{ addedNodes: burst }])
+    assert.equal(scans, 0, 'the pre-check (live track count unchanged) skipped the subtree scan entirely')
+
+    stop()
+  } finally { env.restore() }
 })
 
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {

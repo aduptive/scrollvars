@@ -2980,7 +2980,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.4 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.5 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.4 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.9 KB / 5.7 KB</b></td><td></td></tr>
       </tbody>
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.5 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.6 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -5109,7 +5109,16 @@ var SV = (() => {
     };
     let mutationObserver;
     if (typeof document !== "undefined" && scope === document && typeof MutationObserver === "function") {
+      const liveTracks = document.getElementsByClassName("sv-marquee-track");
+      const hasUnleasedTrack = () => {
+        for (let i = 0; i < liveTracks.length; i++)
+          if (!marqueeLeases.has(liveTracks[i]))
+            return true;
+        return false;
+      };
       mutationObserver = new MutationObserver(life.guard((records) => {
+        if (!hasUnleasedTrack())
+          return;
         records.forEach((record) => {
           record.addedNodes.forEach((node) => {
             if (node.nodeType !== 1)
@@ -8603,9 +8612,36 @@ function toggles(root) {
     // scope mounts once for a track it already owns and stops with it, so it
     // has no route-mounted gap to cover, and giving every custom-root scope
     // its own persistent observer would be a cost with no matching benefit.
+    // A page with no marquee at all must pay nothing per mutation: without a
+    // pre-check the callback below scanned every inserted subtree on every
+    // batch, measured at about 0.07ms for a 30-node insert and 0.4ms for a
+    // 500-node one, on a Boot page that never has a `.sv-marquee-track` to
+    // find (perf review, loop8-3 follow-up). `getElementsByClassName` returns
+    // a LIVE collection the engine keeps indexed, so walking it is cheap and
+    // stays empty (zero iterations) on a marquee-free page: the pre-check
+    // scans below only when that collection holds a track NOT ALREADY in
+    // `marqueeLeases`, never on a bare count comparison. A route swap that
+    // removes one marquee and inserts another lands both mutations in the
+    // SAME batch (React commits a page swap as one task), so the track COUNT
+    // can be unchanged while the identity is entirely new: a count-based
+    // pre-check missed exactly the SPA case B5 exists for (lead review of the
+    // first version of this fix). Identity-checking the live collection
+    // costs nothing extra on a marquee-free page (still zero iterations) and
+    // catches the swap, since the new track is present in the collection and
+    // absent from the lease map the moment it lands, regardless of whether
+    // the old one already left.
     let mutationObserver;
     if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
+        const liveTracks = document.getElementsByClassName('sv-marquee-track');
+        const hasUnleasedTrack = () => {
+            for (let i = 0; i < liveTracks.length; i++)
+                if (!marqueeLeases.has(liveTracks[i]))
+                    return true;
+            return false;
+        };
         mutationObserver = new MutationObserver(life.guard((records) => {
+            if (!hasUnleasedTrack())
+                return;
             records.forEach((record) => {
                 record.addedNodes.forEach((node) => {
                     if (node.nodeType !== 1)
