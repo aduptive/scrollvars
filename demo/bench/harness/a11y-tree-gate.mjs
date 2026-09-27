@@ -150,10 +150,13 @@ export async function a11yTreeGate({ browser, check, base }) {
 
       // N1: a scroll position and an aria-current move are not text a live
       // region announces. The status role outside the rail is the one node
-      // whose NAME actually changes on activation: that is what a screen
-      // reader reads out.
-      const status = find(await page.accessibility.snapshot({ interestingOnly: false }), (n) => n.role === 'status')
-      check('a11y-tree: the status region announces the new slide after next()', status?.name === 'Slide 2 of 3', JSON.stringify(status))
+      // whose text actually changes on activation: that is what a screen
+      // reader reads out. Chrome reports the status node's own `name` as
+      // empty and puts the actual text on a StaticText child, so the check
+      // reads every name in that subtree instead of the container's own.
+      const statusNode = find(await page.accessibility.snapshot({ interestingOnly: false }), (n) => n.role === 'status')
+      const statusText = collectNames(statusNode).join(' ')
+      check('a11y-tree: the status region announces the new slide after next()', statusText === 'Slide 2 of 3', JSON.stringify(statusNode))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
