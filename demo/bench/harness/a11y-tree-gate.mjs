@@ -167,8 +167,14 @@ export async function a11yTreeGate({ browser, check, base }) {
       const tree = await page.accessibility.snapshot({ interestingOnly: false })
       const pauseBefore = find(tree, (n) => n.role === 'button' && n.name === 'Pause animation')
       check('a11y-tree: Marquee pause control is named "Pause animation"', !!pauseBefore && pauseBefore.pressed === false, JSON.stringify(pauseBefore))
-      await page.click('.sv-marquee-pause')
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      // A mouse-coordinate click on a long page (this fixture stacks eight
+      // sections above the marquee) is the kind of thing that can miss its
+      // target; focus + keyboard activation, then poll for the attribute
+      // instead of a fixed frame count, is the pattern review-gate.mjs
+      // already uses for this exact button.
+      await page.focus('.sv-marquee-pause')
+      await page.keyboard.press('Space')
+      await page.waitForFunction(() => document.querySelector('.sv-marquee-pause')?.getAttribute('aria-pressed') === 'true')
       const treeAfter = await page.accessibility.snapshot({ interestingOnly: false })
       const pauseAfter = find(treeAfter, (n) => n.role === 'button' && /Pause animation|Resume animation/.test(n.name || ''))
       check('a11y-tree: Marquee pause control reports a pressed state after activation', !!pauseAfter && pauseAfter.pressed === true, JSON.stringify(pauseAfter))
