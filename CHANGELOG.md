@@ -39,15 +39,36 @@
 - The gallery's GSAP React recipe (`gsap-scrub`) timed a `.from('.stage > *', ...)`
   selector against markup that renders `.sv-stage`: pasted as shown, the
   timeline animated nothing. It now scopes to the stage's own ref.
-- AGENTS.md's `--sv-r` paragraph and the `styles/pin.css` comment said the
-  registered initial value (1) is a below-floor guarantee wherever calc()
-  division fails; it also needs `@property` support (Chrome 85/Safari
-  16.4/Firefox 128), a higher floor than division's own on Firefox. Below
-  either floor a consumer's own declaration falls back to its initial
-  value, not 1. Worded accordingly. The `--sv-page`/`--sv-v` VARS row also
-  read as ambiguous between "(tracked and CSS) or setPageOutputs" and
-  "tracked and (CSS or setPageOutputs)" (the latter is what the driver
-  does); reworded to read one way only.
+- AGENTS.md's `--sv-r` paragraph, `styles/pin.css`'s two comments and
+  `docs/guide.md`'s explanation were wrong in two of the four engine
+  cells (a round-1 fix that reworded the claim without checking each
+  cell against the two floors, calc() division and `@property`): Chrome
+  85-111 has `@property` but not the division, so `--sv-r` is registered
+  and settles at its initial value, 1; Firefox 112-127 has the division
+  but not `@property`, so `--sv-r` is unregistered and simply keeps
+  animating, the same as full support; only below BOTH floors (Firefox
+  under 112, Safari under 16.4) is the consumer's own declaration invalid
+  at computed-value time, falling back to its own initial or inherited
+  value, not to 1. Worded to carry the matrix in all four copies. The
+  `--sv-page`/`--sv-v` VARS row also read as ambiguous between
+  "(tracked and CSS) or setPageOutputs" and "tracked and (CSS or
+  setPageOutputs)" (the latter is what the driver does); reworded to
+  read one way only.
+- The `data-sv-fit` overflow check compared the fit node's own height
+  against the whole stage `clientHeight`, never counting where the fit
+  node itself starts inside the stage (padding-top, a heading above it,
+  its own margin): a box that fit its own height could still clip against
+  `overflow: hidden` (WCAG 1.4.4/1.4.10). The check now adds the fit
+  node's `offsetTop` (an offset-chain read, not a bounding rect) when the
+  stage is its `offsetParent`, falling back to the old comparison for a
+  consumer stage without the preset.
+- A marquee track detached from the document while already off screen got
+  no further IntersectionObserver delivery (no intersection transition to
+  report), so the per-target prune in the IO callback never ran for it: it
+  stayed in the lease bookkeeping, observed, until the next tab switch.
+  The lease map is now swept for detached tracks on every IO delivery
+  batch, every new marquee registration and the document scope's own
+  click handler, no `MutationObserver` needed.
 - Without native `inert` (Firefox 78-111, Safari 14.1-15.4, inside the
   README floor), `StickySteps` still applied `inert`/`aria-hidden` to
   inactive shots, and the pause-controlled `Marquee`'s duplicate strip

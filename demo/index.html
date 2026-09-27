@@ -9,14 +9,14 @@
 <meta name="description" content="Tiny scroll-driven animation engine: one rAF in, CSS variables out. 28 live patterns.">
 <meta property="og:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
-<meta property="og:description" content="28 live scroll-animation patterns on a 5.6 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
+<meta property="og:description" content="28 live scroll-animation patterns on a 5.7 KB driver. CSS-driven motion with explicit performance tradeoffs. Compare current CPU and frame measurements in the benchmark. View-source is the documentation.">
 <meta property="og:url" content="https://scrollvars.dev">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.6 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.7 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -1918,7 +1918,7 @@ col.style.setProperty(<span class="s">'--tl'</span>, current)</code></pre>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One listener</h3><p>The whole page shares a single passive scroll listener.</p></div></div>
         <div class="hcar-card"><span class="n0">1</span><div><h3>One rAF</h3><p>Every section updates in the same frame. Reads first, writes after.</p></div></div>
         <div class="hcar-card"><span class="n0">4</span><div><h3>Four vars</h3><p>--sv-view, --sv-t, --sv-pin, --sv-scene. Any CSS that reads them is a preset.</p></div></div>
-        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.6 KB gzip.</p></div></div>
+        <div class="hcar-card"><span class="n0">0</span><div><h3>Zero deps</h3><p>No GSAP, no framework in the hot path. Driver: 5.7 KB gzip.</p></div></div>
         <div class="hcar-card"><span class="n0">∞</span><div><h3>Infinite presets</h3><p>Curtain, carousel, 3D, scrubbed video. It is all the same handful of numbers.</p></div></div>
       </div>
     </div>
@@ -2980,9 +2980,9 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.0 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 22.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.2 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
-        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.8 KB / 5.6 KB</b></td><td></td></tr>
+        <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.9 KB / 5.7 KB</b></td><td></td></tr>
       </tbody>
     </table>
 
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.6 KB gzip · full core 12.3 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.4 KB · v1.18.1 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3689,7 +3689,9 @@ var SV = (() => {
         } else {
           geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh };
         }
-        const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
+        const stageForFit = entry.fit?.parentElement;
+        const fitTop = entry.fit && entry.fit.offsetParent === stageForFit ? entry.fit.offsetTop || 0 : 0;
+        const overflow = !!entry.fit && !entry.flow && fitTop + Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) > (stageForFit?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1;
         const rails = entry.compatRails ? /* @__PURE__ */ new Map() : void 0;
         if (rails)
           (entry.stage ?? entry.el).querySelectorAll?.(".sv-rail").forEach((rail) => {
@@ -4859,6 +4861,9 @@ var SV = (() => {
     releaseMarqueeSharedIfUnneeded();
     return true;
   }
+  function sweepDetachedMarquees() {
+    marqueeLeases.forEach((_lease, track2) => pruneDetachedMarquee(track2));
+  }
   function applyMarqueeState(track2) {
     if (pruneDetachedMarquee(track2))
       return;
@@ -4882,6 +4887,7 @@ var SV = (() => {
     onVisibility = void 0;
   }
   function watchMarquee(track2, life) {
+    sweepDetachedMarquees();
     const existing = marqueeLeases.get(track2);
     const already = !!existing;
     const gen = existing ? existing.gen : nextMarqueeGeneration(track2);
@@ -4911,6 +4917,7 @@ var SV = (() => {
     if (typeof IntersectionObserver === "function") {
       if (!marqueeObserver) {
         marqueeObserver = new IntersectionObserver((entries2) => {
+          sweepDetachedMarquees();
           entries2.forEach((entry) => {
             const el = entry.target;
             if (!marqueeLeases.has(el))
@@ -5118,6 +5125,7 @@ var SV = (() => {
       write(target, className, on);
     };
     const onClick = life.guard((event) => {
+      sweepDetachedMarquees();
       transaction = ownership();
       siblingWrites = [];
       try {
@@ -8209,6 +8217,16 @@ function pruneDetachedMarquee(track) {
     releaseMarqueeSharedIfUnneeded();
     return true;
 }
+// An observed target that is ALREADY non-intersecting gets no new
+// IntersectionObserver delivery when it is removed from the document (no
+// intersection transition to report): the per-target prune in the IO
+// callback and applyMarqueeState never runs for such a track. The map is
+// tiny (one entry per marquee on the page), so a full sweep on every IO
+// delivery batch and every new registration (N7) catches it without a
+// MutationObserver: the next tab switch is no longer the only trigger.
+function sweepDetachedMarquees() {
+    marqueeLeases.forEach((_lease, track) => pruneDetachedMarquee(track));
+}
 function applyMarqueeState(track) {
     if (pruneDetachedMarquee(track))
         return;
@@ -8240,6 +8258,7 @@ function releaseMarqueeSharedIfUnneeded() {
     onVisibility = undefined;
 }
 function watchMarquee(track, life) {
+    sweepDetachedMarquees();
     const existing = marqueeLeases.get(track);
     const already = !!existing;
     // A registration reuses the CURRENT generation if one is already live for
@@ -8287,6 +8306,7 @@ function watchMarquee(track, life) {
     if (typeof IntersectionObserver === 'function') {
         if (!marqueeObserver) {
             marqueeObserver = new IntersectionObserver((entries) => {
+                sweepDetachedMarquees();
                 entries.forEach((entry) => {
                     const el = entry.target;
                     if (!marqueeLeases.has(el))
@@ -8576,6 +8596,10 @@ function toggles(root) {
         write(target, className, on);
     };
     const onClick = life.guard((event) => {
+        // The document scope's click handler never stops (Boot), so it is
+        // another cheap, frequent-enough place to sweep leases a marquee IO
+        // delivery never fires for (N7).
+        sweepDetachedMarquees();
         transaction = ownership();
         siblingWrites = [];
         try {

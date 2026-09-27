@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.6 KB, full core incl. the slider 12.3 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.2 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.4 KB, styles 9.7 KB for every preset or 2.6 KB for the core part. A typical page ships ~8.2 KB on the wire.
 
 ## Why
 
@@ -161,13 +161,13 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 
 | you import | JS on the wire |
 | --- | --- |
-| `track` (the driver) | 5.6 KB |
+| `track` (the driver) | 5.7 KB |
 | `track` + `scan` (zero-wrapper mode) | 8.0 KB |
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.3 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.1 KB |
+| everything in `scrollvars` (the core entry) | 12.4 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 18.2 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -641,12 +641,17 @@ on the tested pair (#e8efe6 on #14211a) while a child waits for its slice; a mut
 or accent color needs a higher floor, and 0 gives the dramatic look at the
 cost of that audit); or consume
 `--sv-r` yourself: always as `var(--sv-r, 1)`: the derivation needs calc()
-division by a variable (Chrome 112 / Safari 16.4 / FF 112). `--sv-r` is a
-registered property (`@property`, `initial-value: 1`), so an engine that
-can't compute the division resolves it to that initial value instead of
-turning invalid; the `var(--sv-r, 1)` you write is habit, not the reason
-older engines settle at the end state, and never fires on your range
-children either way, since `--sv-r` is always set. The JS twin is
+division by a variable (Chrome 112 / Safari 16.4 / FF 112) AND `@property`
+(Chrome 85 / Safari 16.4 / FF 128) together for full support. The two
+floors split: Chrome 85-111 has `@property` but not the division, so
+`--sv-r` is registered and settles at its initial value (1); Firefox
+112-127 has the division but not `@property`, so `--sv-r` is unregistered
+and simply keeps animating, same as full support. Below both floors
+(Firefox under 112, Safari under 16.4) the CONSUMER's own declaration is
+invalid at computed-value time instead, and falls back to ITS initial or
+inherited value, not to 1; the `var(--sv-r, 1)` you write is habit, not
+the reason older engines settle, and never fires on your range children
+either way, since `--sv-r` is always set. The JS twin is
 `mapRange(t, from, to, ease?)` for `onTravel`/`onPin` consumers (canvas,
 WebGL uniforms). Overlapping ranges are fine: that is the point.
 

@@ -670,6 +670,72 @@ test('driver: a link whose sheet already throws when first asked, with no error 
   untrack()
 })
 
+// WebKit keeps `link.sheet === null` for a stylesheet that failed at the
+// NETWORK level (dead port, DNS, blocked, a CSP violation): no `error`
+// event ever fires for such a link, and it never resolves either. A fix
+// that special-cased "still null once the document finished loading" as
+// failed (T2r, reverted) broke this: it made such a link stop counting
+// towards `pending`, so with no other consumer found, `--sv-page`/`--sv-v`
+// went off and never came back on, since the same never-resolving link
+// still sits in the unfiltered list `resolvePageOutputs()` uses to decide
+// whether to install `watchForPageConsumers()`, so a consumer added later
+// (code-split CSS, a CSS-in-JS runtime, an HMR update) was never
+// discovered either. The correct, conservative behavior: while such a
+// link's answer is unknown, keep publishing, for the whole session if it
+// never resolves. Wrongly-on costs a per-frame write; wrongly-off breaks
+// rendering (PR #96's rule).
+test('driver: a stylesheet that never resolves (WebKit network failure, no load or error, ever) keeps outputs on for the whole session', async () => {
+  rafQueue.length = 0
+  const pageVars = {}
+  const link = {
+    nodeName: 'LINK', rel: 'stylesheet', disabled: false, sheet: null,
+    getAttribute: () => null,
+    listeners: {},
+    // WebKit's network failure fires neither `load` nor `error`: no event
+    // ever reaches this link, for the life of the page.
+    addEventListener(type, fn) { link.listeners[type] = fn },
+    removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
+  }
+  const realMO = global.MutationObserver
+  global.MutationObserver = class {
+    constructor(cb) { this.cb = cb }
+    observe() {}
+    disconnect() {}
+  }
+  const newStyle = { nodeName: 'STYLE', textContent: '' }
+  global.document = {
+    readyState: 'complete',
+    documentElement: {
+      classList: { add: () => {} }, scrollHeight: 3000,
+      style: { setProperty: (k, v) => (pageVars[k] = v), removeProperty: (k) => delete pageVars[k] },
+      getAttribute: () => null,
+    },
+    querySelectorAll: (sel) => (sel.includes('link') ? [link] : []),
+    styleSheets: [],
+  }
+  window.scrollY = 1500
+  try {
+    const { track } = await import('../dist/core/driver.js?neverresolves')
+    const el = makeElement(400)
+    const untrack = track(el)
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'a link that never resolves is uncertainty, so it publishes, exactly like a fresh unparsed sheet')
+
+    // a real consumer arrives later (code-split CSS, a CSS-in-JS runtime, an
+    // HMR update inserting a <style>): the never-resolving link is still
+    // sitting there, unerrored, unloaded, and outputs must not have dropped
+    // in between.
+    const consumerSheet = { ownerNode: newStyle, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }
+    newStyle.sheet = consumerSheet
+    document.styleSheets = [consumerSheet]
+    pump()
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'outputs are still on once the real consumer exists too')
+    untrack()
+  } finally {
+    global.MutationObserver = realMO
+  }
+})
+
 test('driver: two links erroring or correcting in the same mutation batch each forget their own error', async () => {
   rafQueue.length = 0
   const pageVars = {}
@@ -2076,6 +2142,38 @@ test('driver: oversized fitted content releases pin geometry once, observes inne
   assert.equal(el.style.height, '300vh')
   stop()
   delete global.getComputedStyle
+})
+
+test('driver: the fit check counts the fit node\'s own offset inside the stage (N2)', async () => {
+  // A padded stage or a heading before the fit box moves the box's own
+  // start away from the stage's top: the box can fit its own height and
+  // still clip against overflow: hidden if its offsetTop is never counted
+  // (CLAUDE.md pin geometry notes, offset chains not bounding rects).
+  const { track } = await import('../dist/core/driver.js?fitoffset')
+  const el = makeElement(3000)
+  const stage = { clientHeight: 400 }
+  const fit = { offsetHeight: 350, scrollHeight: 350, offsetTop: 100, parentElement: stage, offsetParent: stage }
+  fit.hasAttribute = name => name === 'data-sv-fit'
+  stage.children = [fit]
+  el.stage = stage
+  el.style.height = 'auto'
+  el.style.position = ''
+  el.querySelector = sel => sel === '.sv-stage' ? el.stage : sel === '.sv-stage > [data-sv-fit]' ? fit : null
+  place(el, 0)
+  const states = []
+  let stop = track(el, { pin: '300vh', onFlow: flow => states.push(flow) })
+  pump()
+  assert.deepEqual(states, [true], 'a fit box offset 100 into a 400px stage clips at 450: releases the pin')
+  assert.ok(el.hasAttribute('data-sv-flow'))
+  stop()
+
+  fit.offsetTop = 0
+  const states2 = []
+  stop = track(el, { pin: '300vh', onFlow: flow => states2.push(flow) })
+  pump()
+  assert.deepEqual(states2, [false], 'the same box starting at the stage top (350 < 401) stays pinned')
+  assert.ok(!el.hasAttribute('data-sv-flow'))
+  stop()
 })
 
 test('driver: an outer flow latches every nested tracked entry too, not only its own', async () => {
