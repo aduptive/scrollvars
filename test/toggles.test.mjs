@@ -1494,13 +1494,16 @@ test('toggles: a burst of unrelated ELEMENT insertions runs one bounded matches(
   } finally { env.restore() }
 })
 
-// A2 (Astra loop8-5): the MO callback used to reuse the document scope's
-// STANDING `transaction`/`siblingWrites`, only ever cleared by the next
-// click anywhere in the document. A throw partway through one delivery's
-// batch left the earlier writes of that SAME batch in place, unlike setup
-// and click, which both roll back. The fix gives the MO callback its own
-// fresh journals per delivery, exactly like onClick.
-test('toggles: a failing second trigger in one MutationObserver delivery restores the first trigger\'s writes (A2)', async () => {
+// A2 (Astra loop8-5) established the fresh-journal-per-delivery shape;
+// T1 (auditor, loop8-7) narrowed WHOSE journal that is. Before T1 every new
+// trigger of one delivery shared ONE transaction, so a throw on a later
+// trigger's write rolled back an EARLIER sibling's already-written state
+// too (this test used to assert exactly that rollback). Each new trigger
+// now boots in its own transaction, so t1's write survives t2's failure:
+// only the failing trigger loses its write, the rest of the batch is
+// unaffected, matching AGENTS:528's "stop only that instance" for a batch
+// that boots several triggers at once.
+test('toggles: a failing second trigger in one MutationObserver delivery does not roll back a sibling trigger\'s write (T1)', async () => {
   const realHTMLElement = global.HTMLElement
   function StubHTMLElement() {}
   StubHTMLElement.prototype.inert = false
@@ -1536,7 +1539,133 @@ test('toggles: a failing second trigger in one MutationObserver delivery restore
 
     mo.cb([{ addedNodes: [t1, t2] }])
     assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
-    assert.equal(t1.style.getPropertyValue('--sv-state'), '', 'the first trigger\'s --sv-state write was rolled back, not left in place')
+    assert.equal(t1.style.getPropertyValue('--sv-state'), '0', 't1\'s own transaction is untouched by t2\'s throw')
+    assert.equal(t1.getAttribute('aria-expanded'), 'false', 't1 still booted normally')
+    assert.equal(t2.getAttribute('aria-expanded'), null, 't2 itself never got a write that could stick')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// T1's own acceptance shape (auditor, loop8-7): three trigger/target pairs
+// land in ONE delivery, the MIDDLE pair's write throws. Before this fix all
+// three read `null` (the shared transaction rolled back the first pair's
+// already-written state and the throw stopped the forEach before the third
+// pair ever ran). Each trigger now boots in its own transaction: the first
+// and third pairs boot normally, only the middle one fails, and exactly
+// one error is reported.
+test('toggles: three new triggers in one delivery, the middle one throws: the first and third still boot (T1)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?t1threepairs')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    // an unleased track, added AFTER setup, only to satisfy the pre-check's
+    // hasUnleasedTrack() gate: unrelated to the three toggle pairs below.
+    const track = env.element(); track.nodeType = 1
+    track.classList.add('sv-marquee-track')
+    doc.append(track)
+
+    const pair = (id) => {
+      const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': `#${id}` })
+      trigger.nodeType = 1
+      const target = env.element(); target.id = id; target.nodeType = 1
+      doc.append(target)
+      doc.append(trigger)
+      return { trigger, target }
+    }
+    doc.querySelector = (sel) => {
+      const id = sel.slice(1)
+      return doc.children.find((c) => c.id === id) ?? null
+    }
+    const first = pair('m1')
+    const second = pair('m2')
+    const third = pair('m3')
+    const error = Error('m2 write')
+    second.target.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    mo.cb([{ addedNodes: [first.trigger, second.trigger, third.trigger] }])
+
+    assert.deepEqual(env.errors, [error], 'exactly one error reported for the whole batch')
+    assert.equal(first.trigger.getAttribute('aria-expanded'), 'false', 'the first pair booted, unrolled by the second\'s throw')
+    assert.equal(second.trigger.getAttribute('aria-expanded'), null, 'the middle pair itself never got a write that could stick')
+    assert.equal(third.trigger.getAttribute('aria-expanded'), 'false', 'the third pair still booted, never skipped by the throw before it')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// C2 (Astra loop8-7): removing the last offscreen marquee from the document
+// (a route swap) got no IntersectionObserver delivery (an already
+// non-intersecting target reports no further transition) and never opened
+// the MutationObserver callback's own pre-check (no unleased track, no new
+// trigger, no pending trigger): the lease, the shared observer and the
+// detached subtree sat until the next click, visibility change or marquee
+// registration. A removal-only batch now sweeps detached leases itself.
+test('toggles: removing the last offscreen marquee releases its lease and shared resources on the removal-only batch alone (C2)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?c2removalonly')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+    const stop = toggles()
+    // baseline AFTER the document scope's own MutationObserver is already
+    // registered (it never disconnects for the scope's life): what this
+    // test checks is that the MARQUEE's own resources, added below, come
+    // back down to this line, not the whole document scope's footprint.
+    const before = env.baseline()
+
+    const wrap = env.element(); wrap.nodeType = 1
+    const track = env.element(); track.nodeType = 1
+    track.classList.add('sv-marquee-track')
+    wrap.append(track)
+    doc.append(wrap)
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+    // the initial setup scan already leases every track present in the
+    // document, so this late one goes through the MO callback's own
+    // acquisition path instead, the shape a route-mounted marquee has.
+    mo.cb([{ addedNodes: [wrap] }])
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track), 'the track is leased')
+    io.cb([{ target: track, isIntersecting: false }])
+    assert.ok(track.classes.has('sv-marquee-offscreen'), 'offscreen, so a later removal reports no further IO transition')
+
+    // the removal: an already non-intersecting track leaves the document
+    // with no IO delivery to catch it, and this batch itself carries
+    // neither a new trigger nor a new marquee, only a removal.
+    doc.children.splice(doc.children.indexOf(wrap), 1)
+    track.isConnected = false
+    mo.cb([{ addedNodes: [], removedNodes: [wrap] }])
+
+    assert.ok(!io.targets.has(track), 'the removal-only batch alone released the lease, no click needed')
+    assert.ok(!track.classes.has('sv-marquee-offscreen'), 'and cleared the offscreen class')
+    assert.deepEqual(env.baseline(), before, 'the shared observer and visibilitychange listener are released too')
 
     stop()
   } finally {
@@ -1881,4 +2010,56 @@ test('toggles: a scope-root trigger synchronizes itself, including a pressed-sta
   assert.equal(root.attrs['aria-expanded'], undefined, 'pause is not a disclosure')
   stop()
   assert.equal(listeners.click, undefined)
+})
+
+// Guard (auditor, loop8-7): the shared marquee IntersectionObserver and
+// visibilitychange callbacks run outside any instance's lifetime and touch
+// no consumer state directly, but a patched or exotic element's classList
+// can still throw. Each entry (or each track) is now wrapped in its own
+// try/reportFailure, so one throwing track reports once and does not stop
+// the same batch from settling every OTHER marquee.
+test('toggles: a throwing classList in the shared IntersectionObserver callback reports once and does not stop a sibling marquee (guard)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?guardio')
+    const root = env.element()
+    const bad = env.element(), good = env.element()
+    bad.classList.add('sv-marquee-track')
+    good.classList.add('sv-marquee-track')
+    root.append(bad); root.append(good)
+    const stop = toggles(root)
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    const error = Error('classList.toggle')
+    bad.classList.toggle = () => { throw error }
+
+    io.cb([{ target: bad, isIntersecting: false }, { target: good, isIntersecting: false }])
+    assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
+    assert.ok(good.classes.has('sv-marquee-offscreen'), 'the sibling delivered in the SAME batch still settles')
+
+    stop()
+  } finally { env.restore() }
+})
+
+test('toggles: a throwing classList in the shared visibilitychange callback reports once and does not stop a sibling marquee (guard)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?guardvisibility')
+    const root = env.element()
+    const bad = env.element(), good = env.element()
+    bad.classList.add('sv-marquee-track')
+    good.classList.add('sv-marquee-track')
+    root.append(bad); root.append(good)
+    const stop = toggles(root)
+
+    const error = Error('classList.toggle')
+    bad.classList.toggle = () => { throw error }
+
+    document.hidden = true
+    document.fire('visibilitychange')
+    assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
+    assert.ok(good.classes.has('sv-marquee-offscreen'), 'the sibling in the SAME pass still settles')
+
+    stop()
+  } finally { env.restore() }
 })

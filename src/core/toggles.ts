@@ -221,7 +221,12 @@ function applyMarqueeState(track: HTMLElement) {
 
 function bindMarqueeVisibility() {
   if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return
-  onVisibility = () => marqueeLeases.forEach((_lease, track) => applyMarqueeState(track))
+  // Guarded per track (AGENTS:528, loop8-7 auditor guard): a throw on one
+  // track's classList (a patched or exotic element) must not stop the
+  // callback before it reaches the OTHER live marquees in the same pass.
+  onVisibility = () => marqueeLeases.forEach((_lease, track) => {
+    try { applyMarqueeState(track) } catch (error) { reportFailure(error) }
+  })
   document.addEventListener('visibilitychange', onVisibility)
 }
 
@@ -283,12 +288,20 @@ function watchMarquee(track: HTMLElement, life: ReturnType<typeof lifetime>) {
     if (!marqueeObserver) {
       marqueeObserver = new IntersectionObserver((entries) => {
         sweepDetachedMarquees()
+        // Guarded per entry (AGENTS:528, loop8-7 auditor guard): one
+        // track's classList throwing must not stop the batch before the
+        // other marquees delivered in the same IntersectionObserver
+        // callback are settled.
         entries.forEach((entry) => {
-          const el = entry.target as HTMLElement
-          if (!marqueeLeases.has(el)) return
-          if (pruneDetachedMarquee(el)) return
-          marqueeOffscreen.set(el, !entry.isIntersecting)
-          applyMarqueeState(el)
+          try {
+            const el = entry.target as HTMLElement
+            if (!marqueeLeases.has(el)) return
+            if (pruneDetachedMarquee(el)) return
+            marqueeOffscreen.set(el, !entry.isIntersecting)
+            applyMarqueeState(el)
+          } catch (error) {
+            reportFailure(error)
+          }
         })
       })
     }
@@ -630,6 +643,20 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // in siblingWrites until the next click anywhere in the document (A2,
     // Astra loop8-5).
     mutationObserver = new MutationObserver(life.guard((records) => {
+      // C2 (Astra loop8-7): a removal-only batch (an SPA route swap that
+      // takes an already-offscreen marquee's page away) got no IO delivery
+      // for the removed track (an already-non-intersecting target reports
+      // no further transition) and never reached this observer's own
+      // pre-check (`hasUnleasedTrack()`/`hasNewTrigger()` both false, no
+      // pending trigger), so its lease, its shared IntersectionObserver
+      // lease and its detached subtree sat until the next click, visibility
+      // change or marquee registration. Swept here, before the pre-check
+      // can bail: cheap on a page with no leased marquee at all
+      // (`marqueeLeases.size` is checked first) and only walks the lease
+      // map (one entry per marquee) when a batch actually removed something.
+      if (marqueeLeases.size > 0 && records.some((record) => (record.removedNodes?.length ?? 0) > 0)) {
+        sweepDetachedMarquees()
+      }
       // A trigger left over from an earlier delivery with no target yet
       // (B5) also earns this batch a pass: its target can be anywhere in
       // it, including a node that is neither a trigger nor a marquee track
@@ -643,7 +670,6 @@ export function toggles(root?: Document | HTMLElement): () => void {
             if (node.nodeType !== 1) return
             const el = node as HTMLElement
             selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life))
-            selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
           })
         })
       } catch (error) {
@@ -655,6 +681,30 @@ export function toggles(root?: Document | HTMLElement): () => void {
         // the module comment above ("the document scope never stops").
         reportFailure(error)
       } finally { transaction = ownership(); siblingWrites = [] }
+      // T1 (auditor, loop8-7): each new trigger of this delivery now boots
+      // in its OWN transaction, the same shape as the pending retry below.
+      // Sharing one transaction across every new trigger of a batch meant
+      // one trigger's write throwing rolled back a SIBLING trigger's
+      // already-written state too and skipped every trigger later in
+      // iteration order, all reading null even though only one of them
+      // ever failed.
+      records.forEach((record) => {
+        record.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1) return
+          selfAndDescendants(node as HTMLElement, '[data-sv-toggle]').forEach((trigger) => {
+            transaction = ownership()
+            siblingWrites = []
+            try {
+              bootTrigger(trigger)
+            } catch (error) {
+              rollback()
+              reportFailure(error)
+            }
+          })
+        })
+      })
+      transaction = ownership()
+      siblingWrites = []
       // Retry every trigger still pending, each in its OWN transaction
       // (verifier round 2): a shared transaction across the whole retry
       // pass meant one trigger's write throwing rolled back a SIBLING
