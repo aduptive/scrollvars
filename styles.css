@@ -77,7 +77,8 @@
 .sv-split > span[aria-hidden] {
   display: inline-block;
 }
-.sv-on :is(.sv, [data-sv]) .sv-split-rise > span {
+.sv-on :is(.sv, [data-sv]) .sv-split-rise > span,
+.sv-on :is(.sv, [data-sv]).sv-split-rise > span {
   opacity: var(--sv-live);
   translate: 0 calc((1 - var(--sv-live)) * 0.6em);
   transition:
@@ -191,7 +192,9 @@ html:not(.sv-on) .sv-spread > * {
     transition: none;
   }
   .sv-on :is(.sv, [data-sv]) .sv-split-rise > span,
+  .sv-on :is(.sv, [data-sv]).sv-split-rise > span,
   .sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+  .sv-on :is(.sv, [data-sv]):is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
   .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
   .sv-view-fade,
   .sv-view-rise {
@@ -211,7 +214,9 @@ html:not(.sv-on) .sv-spread > * {
   transition: none;
 }
 .sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) .sv-split-rise > span,
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]).sv-split-rise > span,
 .sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]):is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift),
 .sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]).sv-auto > :not(.sv-skip),
 :where([data-sv-motion="reduce"]) .sv-view-fade,
 :where([data-sv-motion="reduce"]) .sv-view-rise {
