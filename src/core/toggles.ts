@@ -406,6 +406,12 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // detached subtrees included, growing with every navigation (R3). Its only
   // reads are has/add; nothing ever needs to enumerate it.
   const targets = new WeakSet<HTMLElement>()
+  // Triggers mounted before their target resolves (B5, Astra loop8-6):
+  // retried whenever a later batch might supply the target, dropped as
+  // soon as they resolve. Per instance; cleared on stop() below so a
+  // trigger whose target never arrives (or that got disconnected) does
+  // not sit here for the document scope's whole life.
+  const pendingTriggers = new Set<HTMLElement>()
   const mark = (target: HTMLElement) => {
     if (targets.has(target)) return false
     targets.add(target)
@@ -478,7 +484,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
       throw error
     }
     const { className, target } = resolved
-    if (!target) return
+    if (!target) {
+      pendingTriggers.add(trigger)
+      return
+    }
+    pendingTriggers.delete(trigger)
     if (mark(target)) {
       // only a .sv-acts target has a no-JS finished value to un-animate
       // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
@@ -620,7 +630,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // in siblingWrites until the next click anywhere in the document (A2,
     // Astra loop8-5).
     mutationObserver = new MutationObserver(life.guard((records) => {
-      if (!hasUnleasedTrack() && !hasNewTrigger(records)) return
+      // A trigger left over from an earlier delivery with no target yet
+      // (B5) also earns this batch a pass: its target can be anywhere in
+      // it, including a node that is neither a trigger nor a marquee track
+      // and so would otherwise never open the callback body at all.
+      if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0) return
       transaction = ownership()
       siblingWrites = []
       try {
@@ -632,6 +646,15 @@ export function toggles(root?: Document | HTMLElement): () => void {
             selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
           })
         })
+        // Retry every trigger still pending: bootTrigger drops it from the
+        // set the moment it resolves, and drops a disconnected one outright
+        // so a removed trigger does not retry forever.
+        if (pendingTriggers.size > 0) {
+          Array.from(pendingTriggers).forEach((trigger) => {
+            if (!scope.contains(trigger)) { pendingTriggers.delete(trigger); return }
+            bootTrigger(trigger)
+          })
+        }
       } catch (error) {
         rollback()
         throw error
@@ -712,6 +735,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
   life.defer(() => live.delete(instance))
   life.defer(() => scope.removeEventListener('click', onClick))
   life.defer(() => mutationObserver?.disconnect())
+  life.defer(() => pendingTriggers.clear())
   try {
     life.setup(() => {
       live.add(instance)

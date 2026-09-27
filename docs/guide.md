@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.7 KB, styles 10.1 KB for every preset or 2.9 KB for the core part. A typical page ships ~8.6 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.8 KB, styles 10.1 KB for every preset or 2.9 KB for the core part. A typical page ships ~8.6 KB on the wire.
 
 ## Why
 
@@ -191,7 +191,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.7 KB |
+| everything in `scrollvars` (the core entry) | 12.8 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 18.7 KB |
 <!-- sizes:end -->
 

@@ -78,6 +78,14 @@ function collectNames(node, out = []) {
 // exactly like the real check.
 const statusSays = (tree, text) => collectNames(find(tree, (n) => n.role === 'status')).join(' ').includes(text)
 
+// B6 (loop8-6 review): one predicate for "the tree still exposes these
+// words as their own fragments", shared by the real split() check and both
+// of its "gate can fail" counterparts. The old negative counterpart joined
+// EVERY name in the tree and did a substring search, so a correctly hidden
+// full sentence also satisfied it (the heading's own name alone contains
+// each word) and never exercised the real, exact-name detector at all.
+const splitFragments = (tree, words) => findAll(tree, (n) => words.includes((n.name || '').trim()))
+
 // A deliberately broken analog of three of the checks above, used only to
 // prove the detectors are not blind (the "gate can fail" block): a fake
 // dialog that does not restore focus on close, a toggle wired to nothing
@@ -100,6 +108,29 @@ function App() {
         <span>Words</span> <span>fragmented</span> <span>badly</span>
       </h3>
     </>
+  )
+}
+createRoot(document.getElementById('app')).render(<App />)
+window.__mounted = true
+`
+
+// The positive counterpart to BROKEN_SOURCE's split heading (B6): the same
+// three words, but hidden the way split() actually hides them (src/core/
+// split.ts): a visually-hidden span carrying the full sentence as real
+// text, plus per-word spans marked aria-hidden.
+const FIXED_SPLIT_SOURCE = `
+import * as React from 'react'
+import { createRoot } from 'react-dom/client'
+
+function App() {
+  const srOnly = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }
+  return (
+    <h3 id="fixed-split">
+      <span style={srOnly}>Words fragmented badly</span>{' '}
+      <span aria-hidden="true">Words</span>{' '}
+      <span aria-hidden="true">fragmented</span>{' '}
+      <span aria-hidden="true">badly</span>
+    </h3>
   )
 }
 createRoot(document.getElementById('app')).render(<App />)
@@ -149,8 +180,9 @@ export async function a11yTreeGate({ browser, check, base }) {
       // of them is present after a click is a false positive: it passes
       // whether or not "next" does anything at all. The real per-activation
       // signal is the dots' aria-current, which the Slider component moves
-      // to the newly active dot (src/react/index.tsx), and the container's
-      // aria-live region, which announces the change to a screen reader.
+      // to the newly active dot (src/react/index.tsx), and the visually
+      // hidden status region outside the track (A7), which announces the
+      // change to a screen reader.
       const dotsBefore = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
       check('a11y-tree: Slider dot 1 starts as the current slide', dotsBefore[0] === 'true' && dotsBefore.slice(1).every((v) => v !== 'true'), JSON.stringify(dotsBefore))
       await page.click('#slider-section .sv-arrow-next')
@@ -242,7 +274,7 @@ export async function a11yTreeGate({ browser, check, base }) {
       // aria-hidden excludes a node from the tree entirely: a lone word span
       // ("Words", not the full sentence) surviving as its own node means
       // split()'s per-word aria-hidden never applied.
-      const fragments = findAll(tree, (n) => ['Words', 'arrive', 'one', 'by'].includes((n.name || '').trim()))
+      const fragments = splitFragments(tree, ['Words', 'arrive', 'one', 'by'])
       check('a11y-tree: split() keeps the full sentence as the heading\'s accessible name', !!heading, JSON.stringify(heading))
       check('a11y-tree: split() marks its per-word spans out of the tree (no per-word fragments)', fragments.length === 0, `found ${fragments.length} fragments`)
     } finally {
@@ -422,11 +454,29 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree gate can fail: an unwired trigger is reported as NOT syncing aria-expanded', expandedBroken === expandedBrokenAfter)
 
       const tree = await page4.accessibility.snapshot({ interestingOnly: false })
-      const brokenCombined = collectNames(tree).join(' | ')
-      const brokenFound = ['Words', 'fragmented', 'badly'].filter((w) => brokenCombined.includes(w))
-      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFound.length === 3, `found: ${brokenFound.join(', ') || 'none'}`)
+      const brokenFragments = splitFragments(tree, ['Words', 'fragmented', 'badly'])
+      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFragments.length === 3, `found: ${brokenFragments.map((f) => f.name).join(', ') || 'none'}`)
     } finally {
       await page4.close()
+    }
+
+    // the positive counterpart, same shared predicate: a CORRECTLY hidden
+    // split (per-word aria-hidden spans plus a visually-hidden sr copy,
+    // split()'s real output shape) must yield zero fragments while the
+    // heading keeps the full sentence as its accessible name (B6).
+    const fixedBundle = await bundleApp(FIXED_SPLIT_SOURCE)
+    const page4b = await browser.newPage()
+    try {
+      await page4b.setContent('<div id="app"></div>')
+      await page4b.addScriptTag({ content: fixedBundle })
+      await page4b.waitForFunction(() => window.__mounted === true)
+      const tree = await page4b.accessibility.snapshot({ interestingOnly: false })
+      const heading = find(tree, (n) => n.role === 'heading' && (n.name || '').includes('Words fragmented badly'))
+      const fragments = splitFragments(tree, ['Words', 'fragmented', 'badly'])
+      check('a11y-tree gate can pass: a correctly hidden split reports zero fragments', fragments.length === 0, `found: ${fragments.map((f) => f.name).join(', ') || 'none'}`)
+      check('a11y-tree gate can pass: a correctly hidden split keeps the full sentence as the heading\'s name', !!heading, JSON.stringify(heading))
+    } finally {
+      await page4b.close()
     }
   }
 

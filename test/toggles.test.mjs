@@ -1648,6 +1648,49 @@ test('toggles: a plain trigger inserted after toggles(document) on a marquee-fre
   } finally { env.restore() }
 })
 
+// B5 (Astra, loop8-6): a trigger mounted BEFORE its target never got
+// aria-expanded or --sv-state at all, even after the target later arrived,
+// because bootTrigger() just returns on an unresolved target and only NEW
+// triggers get booted from a later delivery. The trigger and its target now
+// land in two SEPARATE MutationObserver deliveries, the shape #105 already
+// covers for trigger+target together.
+test('toggles: a trigger mounted before its target gets aria-expanded once the target arrives in a later delivery (B5)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5unresolvedtrigger')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+    trigger.nodeType = 1
+    doc.querySelector = () => null // the target does not exist yet
+    doc.append(trigger)
+    mo.cb([{ addedNodes: [trigger] }])
+    assert.equal(trigger.getAttribute('aria-expanded'), null, 'unresolved at setup: no target to write onto yet')
+
+    const menu = env.element()
+    menu.nodeType = 1
+    doc.querySelector = (sel) => (sel === '#menu' ? menu : null)
+    doc.append(menu)
+    // the target itself is neither a trigger nor a marquee track, so the
+    // batch that inserts it alone must still retry the pending trigger
+    mo.cb([{ addedNodes: [menu] }])
+
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false', 'the pending trigger got its initial aria-expanded once its target arrived')
+    assert.equal(menu.style.getPropertyValue('--sv-state'), '0', 'and its target got its initial --sv-state, before any click')
+
+    doc.fire('click', { target: trigger })
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true', 'and it still works')
+
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
   const env = lifecycleEnv()
   try {
