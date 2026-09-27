@@ -325,7 +325,7 @@ compat()   // once, before anything else</code></pre>
 <ul>
 <li>AGENTS.md said any custom <code>--sv-r</code> consumer, not only the ready-made <code>sv-range-rise</code> preset, settles to its end state below the <code>sv-range</code> floor, contradicting the more precise Sequenced scrub paragraph a few lines above (a custom consumer falls back to its own initial or inherited value instead). The floor sentence now names <code>sv-range-rise</code> and points to that paragraph.</li>
 <li><code>docs/guide.md</code> and the generated docs page still called the slider's TRACK the live region after the rail lost <code>aria-live</code> in favor of a separate <code>role="status"</code> region outside it. Both now describe the status region instead.</li>
-<li>AGENTS.md and <code>docs/guide.md</code> said runtime failures "stop only that instance" across every stateful module, which used to be true of <code>toggles()</code>'s document scope too (a throwing click or late-boot write killed its listener and <code>MutationObserver</code> for good). Both now carve out the exception described above.</li>
+<li>AGENTS.md and <code>docs/guide.md</code> said runtime failures "stop only that instance" across every stateful module, which used to be true of <code>toggles()</code> too (a throwing click killed its listener for good, on any instance, and the document scope's <code>MutationObserver</code> for late-boot as well). Both now carve out the exception described above, corrected in a follow-up pass to name every <code>toggles()</code> instance, not only the document scope: a probe against a scoped root's own click handler found the same report-and-continue behavior there.</li>
 </ul>
 
 <h3>1.19.0 (2026-09-27)</h3>

@@ -1811,6 +1811,46 @@ test('toggles: a failing click does not stop the document scope from handling a 
   }
 })
 
+// onClick round 3 (verifier, loop8-6): the report-and-continue fix above
+// applies to onClick itself, shared by EVERY toggles() instance, not only
+// the document scope: a scoped root (a Marquee's own toggles(node), an
+// Accordion's own instance) must survive a failing click on one of its
+// triggers the same way, so one bad toggle does not disable every other
+// toggle in that same scope.
+test('toggles: a failing click does not stop a SCOPED (non-document) instance from handling a later click', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?onclickscoped')
+    const root = env.element()
+    const stop = toggles(root)
+
+    const bad = env.element({ 'data-sv-toggle': '' }); bad.nodeType = 1
+    root.append(bad)
+    const error = Error('bad click write')
+    bad.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    root.fire('click', { target: bad })
+    assert.deepEqual(env.errors, [error], 'the failing click is reported, not swallowed')
+
+    // a second click, on a DIFFERENT, working trigger in the SAME scoped
+    // instance: it must still be handling clicks at all.
+    const ok = env.element({ 'data-sv-toggle': '' }); ok.nodeType = 1
+    root.append(ok)
+    root.fire('click', { target: ok })
+    assert.equal(ok.getAttribute('aria-expanded'), 'true', 'a later click on a working trigger in the same scoped instance still toggles it')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
   const env = lifecycleEnv()
   try {

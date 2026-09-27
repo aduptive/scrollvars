@@ -31,7 +31,7 @@
 
 - AGENTS.md said any custom `--sv-r` consumer, not only the ready-made `sv-range-rise` preset, settles to its end state below the `sv-range` floor, contradicting the more precise Sequenced scrub paragraph a few lines above (a custom consumer falls back to its own initial or inherited value instead). The floor sentence now names `sv-range-rise` and points to that paragraph.
 - `docs/guide.md` and the generated docs page still called the slider's TRACK the live region after the rail lost `aria-live` in favor of a separate `role="status"` region outside it. Both now describe the status region instead.
-- AGENTS.md and `docs/guide.md` said runtime failures "stop only that instance" across every stateful module, which used to be true of `toggles()`'s document scope too (a throwing click or late-boot write killed its listener and `MutationObserver` for good). Both now carve out the exception described above.
+- AGENTS.md and `docs/guide.md` said runtime failures "stop only that instance" across every stateful module, which used to be true of `toggles()` too (a throwing click killed its listener for good, on any instance, and the document scope's `MutationObserver` for late-boot as well). Both now carve out the exception described above, corrected in a follow-up pass to name every `toggles()` instance, not only the document scope: a probe against a scoped root's own click handler found the same report-and-continue behavior there.
 
 ## 1.19.0 (2026-09-27)
 
