@@ -282,12 +282,25 @@ export const Track: React.FC<TrackProps> = ({
   children,
   ...rest
 }) => {
-  const ref = useTrack({ view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin, onFlow, onStatus })
+  // A completed `once` reveal is released by the driver and keeps its
+  // inline `--sv-live: 1` untracked (driver.ts): the per-frame class
+  // re-assert that repairs a React className rewrite only runs for
+  // tracked entries. Track owns className, so it has to carry `sv-live`
+  // itself once completed, or a later className change drops it (N5).
+  const [completed, setCompleted] = useState(false)
+  const ref = useTrack({
+    view, travel, scenes, snap, once, pin, root, enter, exit, onLive, onScene, onTravel, onPin, onFlow,
+    onStatus: (status) => {
+      if (status === 'attaching') setCompleted(false)
+      else if (status === 'completed') setCompleted(true)
+      onStatus?.(status)
+    },
+  })
 
   return (
     <Tag
       ref={ref}
-      className={className ? `sv ${className}` : 'sv'}
+      className={[className ? `sv ${className}` : 'sv', completed && 'sv-live'].filter(Boolean).join(' ')}
       style={varStyle({ order, distance, stagger, duration, ease }, style)}
       {...rest}
     >
@@ -550,6 +563,11 @@ export const Scenes: React.FC<ScenesProps> = ({
   ease,
   ...rest
 }) => {
+  // Same reasoning as Track (N5): a completed `once` reveal keeps its
+  // inline `--sv-live: 1` untracked, so Scenes has to carry `sv-live` in
+  // its own rendered className once completed, or a later className
+  // change drops it.
+  const [completed, setCompleted] = useState(false)
   const { ref, scene, goTo, reduced, active } = useScenes(count, {
     pin: typeof pin === 'string' ? pin : pin === false ? undefined : (height ?? `${count * 100}vh`),
     root,
@@ -563,7 +581,11 @@ export const Scenes: React.FC<ScenesProps> = ({
     onTravel,
     onPin,
     onFlow,
-    onStatus,
+    onStatus: (status) => {
+      if (status === 'attaching') setCompleted(false)
+      else if (status === 'completed') setCompleted(true)
+      onStatus?.(status)
+    },
   })
   const onSceneRef = useRef(onScene)
   onSceneRef.current = onScene
@@ -574,10 +596,37 @@ export const Scenes: React.FC<ScenesProps> = ({
     catch (error) { sceneCallbackFailed.current = true; reportFailure(error) }
   }, [scene])
 
+  // Which stacked index carries the "current" key. Tracks `scene` only
+  // while active; once stacked (attach fails, flow, reduced motion) it
+  // stops updating and holds whatever scene was live at the switch, so a
+  // scene change during the stacked period moves no key at all. This is
+  // what keeps a focused input or a playing video in a stacked scene alive
+  // while the reader scrolls past other scenes: `key={scene}` there would
+  // move the "current" fragment (and unmount/remount its neighbors) on
+  // every scene change.
+  const frozenIndexRef = useRef(scene)
+  const wasActiveRef = useRef(active)
+  // The scroll clock keeps reporting scene changes while stacked, so the
+  // frozen index can drift away from the live scene during that period. A
+  // stacked -> active switch that lands on a DIFFERENT scene than the one
+  // frozen would otherwise hand that scene's state (a focused input, a
+  // playing video) the fiber that belongs to the frozen one: the fix is a
+  // DELIBERATE remount for that one transition, minted by bumping the
+  // "current" key's own suffix. A matching stacked -> active switch (the
+  // common case) keeps the key unchanged, so PR #92's no-remount guarantee
+  // still holds there (verifier round, N1 follow-up).
+  const remountKeyRef = useRef(0)
+  if (!wasActiveRef.current && active && frozenIndexRef.current !== scene) {
+    remountKeyRef.current++
+  }
+  wasActiveRef.current = active
+  if (active) frozenIndexRef.current = scene
+  const currentKey = `current-${remountKeyRef.current}`
+
   return (
     <Tag
       ref={ref}
-      className={className ? `sv ${className}` : 'sv'}
+      className={[className ? `sv ${className}` : 'sv', completed && 'sv-live'].filter(Boolean).join(' ')}
       style={varStyle({ order, distance, stagger, duration, ease }, style)}
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
@@ -592,14 +641,14 @@ export const Scenes: React.FC<ScenesProps> = ({
           // every page load (active starts false and flips true on attach).
           // A single-item array here, not the bare child, keeps this an
           // array-to-array reconciliation both ways.
-          ? [<React.Fragment key="current">{children({ scene, goTo, reduced, active })}</React.Fragment>]
+          ? [<React.Fragment key={currentKey}>{children({ scene, goTo, reduced, active })}</React.Fragment>]
           // Not active (server render, no JS yet, a failed attach, flow, or
           // reduced motion): the scene index alone is not trustworthy, so
           // every scene renders, stacked, instead of only the one the
           // scroll clock would have picked. Keeps content reachable in
           // every fallback state, not only under reduced motion.
           : Array.from({ length: count }, (_, i) => (
-              <React.Fragment key={i === scene ? 'current' : i}>
+              <React.Fragment key={i === frozenIndexRef.current ? currentKey : i}>
                 {children({ scene: i, goTo, reduced, active })}
               </React.Fragment>
             ))}

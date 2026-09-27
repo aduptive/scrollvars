@@ -181,13 +181,16 @@
   <h1>Marquee</h1>
   <p class="tag">An infinite strip (logos, taglines) that pauses on hover.</p>
   <p class="meta"><b>Use it for:</b> Logo walls, ticker bands. The honest replacement for Swiper loop.<br><b>Knobs:</b> --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause</p>
-  <div class="sv-marquee fxstage" style="padding:28px 0">
+  <div class="sv-marquee sv-marquee-controlled fxstage" id="fxmarq-outer" style="padding:28px 0">
   <div class="sv-marquee-track fxmarq">
     <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
     <span>CSS variables out</span><span>·</span>
     <span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
   </div>
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
+<script>addEventListener('load', () => SV.toggles(document.getElementById('fxmarq-outer')))</script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add marquee</code><br><b>Styles:</b> <code>import 'scrollvars/styles/ui.css'</code></p>
   <div class="tabs">
     <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
@@ -196,16 +199,24 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8"&gt;
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div id="logo-strip" class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8"&gt;
   &lt;div class="sv-marquee-track"&gt;
     {logos}{/* duplicate once, aria-hidden */}
   &lt;/div&gt;
-&lt;/div&gt;</code></pre>
-    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-marquee"&gt;
+  &lt;button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"&gt;Pause animation&lt;/button&gt;
+&lt;/div&gt;
+&lt;!-- &lt;ScrollVarsBoot /&gt; already wires this; a plain HTML page calls
+     toggles() itself: SV.toggles(document.getElementById('logo-strip')) --&gt;</code></pre>
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-marquee sv-marquee-controlled"&gt;
   &lt;div class="sv-marquee-track"&gt;
     …content… …content again (aria-hidden)…
   &lt;/div&gt;
+  &lt;!-- WCAG 2.2.2: auto-moving content past 5s needs a pause/stop control --&gt;
+  &lt;button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"&gt;Pause animation&lt;/button&gt;
 &lt;/div&gt;
+&lt;script&gt;toggles()&lt;/script&gt; &lt;!-- wires the button: aria-pressed, sv-paused on the track --&gt;
 
 /* the preset (styles/ui.css): */
 .sv-marquee { overflow: hidden; display: flex; }
@@ -214,6 +225,7 @@
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee-controlled &gt; .sv-marquee-track.sv-paused { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:

@@ -932,6 +932,93 @@ test('cli component rotating-words: an empty list schedules no interval, a late 
   }
 })
 
+// ---- WCAG 2.2.2: content that auto-rotates past 5s needs a keyboard pause,
+// persistent across hover/focus. Same live-mount recipe as the test above;
+// react-dom stores its event handlers on the node as `__reactProps$<key>`
+// regardless of whether addEventListener actually delegates anything in
+// this stub, so the click is invoked directly (test/react.test.mjs, ADU-354 N4).
+test('cli component rotating-words: a pressed-state pause button stops the interval and resumes it (N4)', async () => {
+  const { content } = COMPONENTS['rotating-words']
+  const src = join(dir, 'RotatingWordsPause.tsx')
+  writeFileSync(src, content)
+  const out = join(outDir, 'rotating-words-pause.mjs')
+  await build({
+    entryPoints: [src], outfile: out, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
+    external: ['react', 'react-dom', 'react/jsx-runtime'], plugins: [resolveScrollvars], logLevel: 'silent',
+  })
+  const { RotatingWords } = await import(pathToFileURL(out).href)
+
+  const doc = makeLiveNode('#document')
+  doc.nodeType = 9
+  doc.createElement = (tag) => { const el = makeLiveNode(tag); el.ownerDocument = doc; return el }
+  doc.createTextNode = (text) => ({ nodeType: 3, textContent: text, parentNode: null })
+  doc.createComment = (text) => ({ nodeType: 8, textContent: text, parentNode: null })
+  doc.body = makeLiveNode('body')
+  doc.body.ownerDocument = doc
+  doc.documentElement = makeLiveNode('html')
+  doc.addEventListener = () => {}
+  doc.removeEventListener = () => {}
+  doc.activeElement = null
+  doc.HTMLIFrameElement = class HTMLIFrameElement {}
+  global.window = {
+    document: doc,
+    addEventListener() {},
+    removeEventListener() {},
+    HTMLIFrameElement: doc.HTMLIFrameElement,
+  }
+  doc.defaultView = global.window
+  global.document = doc
+  global.HTMLIFrameElement = doc.HTMLIFrameElement
+  global.HTMLElement = Object
+  global.navigator = { userAgent: 'node' }
+  global.IS_REACT_ACT_ENVIRONMENT = true
+
+  const timers = []
+  const realSetInterval = global.setInterval
+  const realClearInterval = global.clearInterval
+  global.setInterval = (fn) => { timers.push({ fn, live: true }); return timers.length }
+  global.clearInterval = (id) => { const t = timers[id - 1]; if (t) t.live = false }
+
+  try {
+    const React = (await import('react')).default
+    const { createRoot } = await import('react-dom/client')
+    const { act } = React
+
+    const container = doc.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(RotatingWords, { words: ['fast', 'light', 'honest'] }))
+    })
+    const live = () => timers.find((t) => t.live)
+    assert.ok(live(), 'rotation starts')
+
+    const button = container.childNodes.find((c) => c.tagName === 'BUTTON')
+    assert.ok(button, 'a pause button renders')
+    assert.equal(button.getAttribute('aria-pressed'), 'false')
+    const propsKey = Object.keys(button).find((k) => k.startsWith('__reactProps$'))
+    assert.ok(propsKey, 'react commits its click handler onto the node')
+
+    await act(async () => { button[propsKey].onClick() })
+    assert.equal(button.getAttribute('aria-pressed'), 'true', 'pressed after the click')
+    assert.ok(!live(), 'no interval survives a pause click')
+
+    await act(async () => { button[propsKey].onClick() })
+    assert.equal(button.getAttribute('aria-pressed'), 'false')
+    assert.ok(live(), 'resumes when pressed again')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.setInterval = realSetInterval
+    global.clearInterval = realClearInterval
+    delete global.window
+    delete global.document
+    delete global.HTMLIFrameElement
+    delete global.HTMLElement
+    delete global.navigator
+    delete global.IS_REACT_ACT_ENVIRONMENT
+  }
+})
+
 // ---- round 16 item 6: below Safari 13.1 without compat(), an unguarded
 // ResizeObserver construction in CubeWindows' effect threw and unmounted the
 // React root, the opposite of "fail visible". Same live-mount recipe as

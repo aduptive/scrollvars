@@ -478,7 +478,7 @@ export const EFFECTS = [
   {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.14.0' },
+    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.17.0' },
     category: 'Interop',
     title: 'GSAP timeline under scrub',
     tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
@@ -499,11 +499,17 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     .from('#fxgsap > *', { y: 140, opacity: 0, rotate: 10, stagger: 0.2, ease: 'power2.out' })
     .to('#fxgsap > *', { scale: 1.12, stagger: 0.12, ease: 'none' })
   // reduced motion: GSAP owns these styles, so settle the timeline instead of scrubbing it
-  let progress = 0
-  const settle = () => tl.progress(SV.prefersReducedMotion() ? 1 : progress)
+  let progress = 0, tracking = true
+  const settle = () => tl.progress(SV.prefersReducedMotion() || !tracking ? 1 : progress)
   settle()
   SV.onMotionChange(settle)
-  SV.track(document.getElementById('fxgsap-outer'), { pin: '240vh', onPin: (p) => { progress = p; settle() } })
+  SV.track(document.getElementById('fxgsap-outer'), {
+    pin: '240vh',
+    onPin: (p) => { progress = p; settle() },
+    // a failed or released tracker never fires onPin again: settle to the
+    // end state instead of leaving the .from() content at opacity 0
+    onStatus: (status) => { tracking = status !== 'failed' && status !== 'released'; settle() },
+  })
 })</script>`,
     css: `<div class="scene">                     <!-- no data-sv: tracked in JS below -->
   <div class="sv-stage">…stage…</div>   <!-- the sticky viewport, from pin.css -->
@@ -514,9 +520,18 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
   const tl = gsap.timeline({ paused: true })
     .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
+  // reduced motion settles the timeline instead of scrubbing it; a failed
+  // or released tracker never fires onPin again, so it settles too, or the
+  // .from() content stays at opacity 0 forever
+  let progress = 0, tracking = true
+  const settle = () => tl.progress(prefersReducedMotion() || !tracking ? 1 : progress)
+  settle()
+  onMotionChange(settle)
+
   track(document.querySelector('.scene'), {
-    pin: '250vh',                 // the helper owns the wrapper height
-    onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
+    pin: '250vh',                                        // the helper owns the wrapper height
+    onPin: (p) => { progress = p; settle() },             // ScrollVars steers, GSAP renders
+    onStatus: (status) => { tracking = status !== 'failed' && status !== 'released'; settle() },
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 </script>`,
@@ -528,15 +543,25 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
        parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
     react: `const stage = useRef<HTMLDivElement>(null)
 const tl = useRef<gsap.core.Timeline | null>(null)
+const progress = useRef(0)
+const tracking = useRef(true)
+// reads only refs, so identity does not matter to the effect below
+const settle = () => tl.current?.progress(prefersReducedMotion() || !tracking.current ? 1 : progress.current)
 useEffect(() => {
   // scoped to this instance's own stage, never a bare class selector: two
   // of these on one page must not animate each other's children
   tl.current = gsap.timeline({ paused: true })
     .from(stage.current!.children, { y: 140, opacity: 0, stagger: 0.2 })
-  return () => tl.current?.kill()
+  settle()
+  const off = onMotionChange(settle)
+  return () => { off(); tl.current?.kill() }
 }, [])
 
-<Track pin="250vh" onPin={(p) => tl.current?.progress(p)}>
+<Track
+  pin="250vh"
+  onPin={(p) => { progress.current = p; settle() }}
+  onStatus={(status) => { tracking.current = status !== 'failed' && status !== 'released'; settle() }}
+>
   <div ref={stage} className="sv-stage">…</div>
 </Track>`,
   },
@@ -700,8 +725,9 @@ const canvasRef = useCanvasEffect({
     knobs: '--sv-word (index), --sv-duration; drive it from state, scenes or an interval',
     preview: `<section data-sv class="fxstage">
   <h3 class="fxh">we build <b class="sv-words fxaccent" id="fxwords" aria-hidden="true"><span>brands</span><span>websites</span><span>products</span></b><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span></h3>
+  <button type="button" class="sv-words-pause" id="fxwordspause" aria-pressed="false">Pause rotation</button>
 </section>
-<script>let fxi=0,fxt=0;const fxmq=matchMedia('(prefers-reduced-motion: reduce)');const fxrun=()=>{clearInterval(fxt);fxt=fxmq.matches||document.documentElement.getAttribute('data-sv-motion')==='reduce'?0:setInterval(()=>document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3)),1800)};fxrun();fxmq.addEventListener('change',fxrun);new MutationObserver(fxrun).observe(document.documentElement,{attributes:true,attributeFilter:['data-sv-motion']})</script>`,
+<script>let fxi=0,fxt=0,fxpaused=false;const fxmq=matchMedia('(prefers-reduced-motion: reduce)');const fxrun=()=>{clearInterval(fxt);fxt=fxpaused||fxmq.matches||document.documentElement.getAttribute('data-sv-motion')==='reduce'?0:setInterval(()=>document.getElementById('fxwords').style.setProperty('--sv-word',(fxi=(fxi+1)%3)),1800)};fxrun();fxmq.addEventListener('change',fxrun);new MutationObserver(fxrun).observe(document.documentElement,{attributes:true,attributeFilter:['data-sv-motion']});document.getElementById('fxwordspause').addEventListener('click',()=>{fxpaused=!fxpaused;document.getElementById('fxwordspause').setAttribute('aria-pressed',String(fxpaused));fxrun()})</script>`,
     css: `<h1>we build
   <span class="sv-words" aria-hidden="true">
     <span>brands</span><span>websites</span><span>products</span>
@@ -709,6 +735,8 @@ const canvasRef = useCanvasEffect({
   <!-- the column reads as three words in a row to a screen reader: hide it and say the phrase once -->
   <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span>
 </h1>
+<!-- WCAG 2.2.2: text that auto-rotates past 5s needs a pause control -->
+<button type="button" id="words-pause" aria-pressed="false">Pause rotation</button>
 
 /* the preset (styles/state.css): */
 .sv-words { display: inline-flex; flex-direction: column;
@@ -723,8 +751,13 @@ const canvasRef = useCanvasEffect({
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-words > * { transition-duration: .01ms; }
 
-// drive it (state, scenes, or a timer):
-el.style.setProperty('--sv-word', nextIndex)`,
+// drive it (state, scenes, or a timer), and stop on request:
+let paused = false
+document.getElementById('words-pause').addEventListener('click', () => {
+  paused = !paused
+  document.getElementById('words-pause').setAttribute('aria-pressed', String(paused))
+})
+if (!paused) el.style.setProperty('--sv-word', nextIndex)`,
     tailwind: `<h1 class="text-5xl font-extrabold">
   we build
   <span class="sv-words text-violet-400" aria-hidden="true">
@@ -732,7 +765,16 @@ el.style.setProperty('--sv-word', nextIndex)`,
   </span>
   <span class="sr-only">brands, websites and products</span>
 </h1>
-<!-- set --sv-word from your state; scenes drive it for free in pinned stories -->`,
+<button type="button" id="words-pause" aria-pressed="false">Pause rotation</button>
+<!-- set --sv-word from your state; scenes drive it for free in pinned stories -->
+<script>
+  let paused = false
+  document.getElementById('words-pause').addEventListener('click', () => {
+    paused = !paused
+    document.getElementById('words-pause').setAttribute('aria-pressed', String(paused))
+  })
+  // guard your own --sv-word write the same way: if (!paused) el.style.setProperty(...)
+</script>`,
     react: `const [word, setWord] = useState(0)
 <h1>we build{' '}
   <span className="sv-words" style={{ '--sv-word': word } as React.CSSProperties} aria-hidden="true">
@@ -831,18 +873,25 @@ el.style.setProperty('--sv-word', nextIndex)`,
     tagline: 'An infinite strip (logos, taglines) that pauses on hover.',
     when: 'Logo walls, ticker bands. The honest replacement for Swiper loop.',
     knobs: '--sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause',
-    preview: `<div class="sv-marquee fxstage" style="padding:28px 0">
+    preview: `<div class="sv-marquee sv-marquee-controlled fxstage" id="fxmarq-outer" style="padding:28px 0">
   <div class="sv-marquee-track fxmarq">
     <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
     <span>CSS variables out</span><span>·</span>
     <span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
   </div>
-</div>`,
-    css: `<div class="sv-marquee">
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
+</div>
+<script>addEventListener('load', () => SV.toggles(document.getElementById('fxmarq-outer')))</script>`,
+    css: `<div class="sv-marquee sv-marquee-controlled">
   <div class="sv-marquee-track">
     …content… …content again (aria-hidden)…
   </div>
+  <!-- WCAG 2.2.2: auto-moving content past 5s needs a pause/stop control -->
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
+<script>toggles()</script> <!-- wires the button: aria-pressed, sv-paused on the track -->
 
 /* the preset (styles/ui.css): */
 .sv-marquee { overflow: hidden; display: flex; }
@@ -851,6 +900,7 @@ el.style.setProperty('--sv-word', nextIndex)`,
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
@@ -863,11 +913,15 @@ el.style.setProperty('--sv-word', nextIndex)`,
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
 :where([data-sv-motion="reduce"]) .sv-marquee-track > .sv-marquee-dup { display: none; }`,
-    tailwind: `<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
+    tailwind: `<div id="logo-strip" class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
   </div>
-</div>`,
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
+</div>
+<!-- <ScrollVarsBoot /> already wires this; a plain HTML page calls
+     toggles() itself: SV.toggles(document.getElementById('logo-strip')) -->`,
     react: `<Marquee speed={24}>
   {logos.map(l => <img key={l.id} src={l.src} alt={l.name} className="h-8" />)}
 </Marquee>`,
@@ -909,12 +963,15 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <p class="sv-rise" data-sv-order="6">Sub copy.</p>
     <p class="sv-rise" data-sv-order="7"><a class="cta" href="#">See the work</a></p>
   </div>
-  <div class="sv-marquee hero-strip"><div class="sv-marquee-track">
+  <div class="sv-marquee sv-marquee-controlled hero-strip"><div class="sv-marquee-track">
     <span>Brand</span><span>·</span><span>Motion</span><span>·</span>
     <span class="sv-marquee-dup" aria-hidden="true"><span>Brand</span><span>·</span><span>Motion</span><span>·</span></span>
-  </div></div>
+  </div>
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
+  </div>
 </section>
-<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>   <!-- --mx/--my (-1..1) on the section itself -->
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' }); SV.toggles(document.getElementById('hero'))</script>   <!-- --mx/--my (-1..1) on the section itself; toggles() wires the pause button -->
 
 /* presets do the entrance (core.css) and the strip (ui.css); this is the whole section: */
 .sv-hero { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
@@ -943,9 +1000,13 @@ el.style.setProperty('--sv-word', nextIndex)`,
     <h1 class="sv-split-rise text-6xl font-extrabold tracking-tight" data-sv-split>Sites that move with intent</h1>
     <p class="sv-rise text-neutral-400" data-sv-order="6">Sub copy.</p>
   </div>
-  <div class="sv-marquee absolute inset-x-0 bottom-0 border-t py-3 bg-[#14211a]/90"><div class="sv-marquee-track">…</div></div>
+  <div class="sv-marquee sv-marquee-controlled absolute inset-x-0 bottom-0 border-t py-3 bg-[#14211a]/90">
+    <div class="sv-marquee-track">…</div>
+    <button type="button" class="sv-marquee-pause" aria-pressed="false"
+      data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
+  </div>
 </section>
-<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' })</script>`,
+<script>SV.trackPointer(document.getElementById('hero'), { selector: '.sv-hero' }); SV.toggles(document.getElementById('hero'))</script>`,
     react: `import { Track, Split, Marquee, usePointer } from 'scrollvars/react'
 
 function Hero() {
@@ -1967,7 +2028,7 @@ export function SequencedScrub({
 'use client'
 import * as React from 'react'
 import gsap from 'gsap'
-import { prefersReducedMotion } from 'scrollvars'
+import { prefersReducedMotion, onMotionChange } from 'scrollvars'
 import { Track } from 'scrollvars/react'
 
 export function GsapScrub({
@@ -1985,17 +2046,28 @@ export function GsapScrub({
   const stage = React.useRef<HTMLDivElement>(null)
   const tl = React.useRef<gsap.core.Timeline | null>(null)
   const progress = React.useRef(0)
+  // A failed or released tracker never fires onPin again: without this the
+  // timeline stays wherever it last was, opacity 0 forever on a from()
+  // recipe. Fail visible, never fail hidden.
+  const tracking = React.useRef(true)
+  // Reads only refs, so identity does not matter to the effect below: the
+  // same behavior every render, no reason to memoize it.
+  const settle = () => {
+    tl.current?.progress(prefersReducedMotion() || !tracking.current ? 1 : progress.current)
+  }
   React.useEffect(() => {
     if (stage.current) {
       tl.current = buildTimeline(stage.current)
-      tl.current.progress(prefersReducedMotion() ? 1 : progress.current)
+      settle()
     }
-    return () => { tl.current?.kill() }
+    const off = onMotionChange(settle)
+    return () => { off(); tl.current?.kill() }
   }, [buildTimeline])
   return (
     <Track
       pin={height}
-      onPin={(p) => { progress.current = p; tl.current?.progress(prefersReducedMotion() ? 1 : p) }}
+      onPin={(p) => { progress.current = p; settle() }}
+      onStatus={(status) => { tracking.current = status !== 'failed' && status !== 'released'; settle() }}
       className={className}
     >
       <div ref={stage} className="sv-stage" style={{ display: 'grid', placeItems: 'center' }}>
@@ -2266,6 +2338,9 @@ export function RotatingWords({
     setReduced(prefersReducedMotion())
     return onMotionChange(setReduced)
   }, [])
+  // WCAG 2.2.2: content that auto-rotates past 5s needs a keyboard pause,
+  // persistent across hover/focus (not just the OS reduced-motion setting).
+  const [paused, setPaused] = React.useState(false)
   // A shrinking list strands the last index, same shape as useScenes: clamp
   // here, on the render that sees the new length, instead of waiting for the
   // next tick. An empty list schedules no interval at all: (i + 1) % 0 is
@@ -2276,10 +2351,10 @@ export function RotatingWords({
   if (index > last) setIndex(last)
   const current = Math.min(index, last)
   React.useEffect(() => {
-    if (words.length === 0 || reduced) return
+    if (words.length === 0 || reduced || paused) return
     const t = setInterval(() => setIndex((i) => (i + 1) % words.length), interval)
     return () => clearInterval(t)
-  }, [words.length, interval, reduced])
+  }, [words.length, interval, reduced, paused])
   return (
     <>
       <span className={className ? \`sv-words \${className}\` : 'sv-words'}
@@ -2289,6 +2364,10 @@ export function RotatingWords({
         ))}
       </span>
       <span style={SR}>{words.join(', ')}</span>
+      <button type="button" className="sv-words-pause" aria-pressed={paused}
+        onClick={() => setPaused((p) => !p)}>
+        {paused ? 'Resume rotation' : 'Pause rotation'}
+      </button>
     </>
   )
 }

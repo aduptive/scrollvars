@@ -12,6 +12,39 @@
 
 ### Fixed
 
+- `<Scenes>`'s stacked branch (reduced motion, a failed attach, a flowed
+  stage) keyed its "current" fragment by `i === scene`: the driver keeps
+  reporting scene changes while stacked, so React moved that key between
+  scenes on every one, destroying a focused input or a playing video in a
+  scene the reader had not left. The stacked branch now freezes which
+  index carries "current" the moment the component goes stacked; no key
+  in that branch depends on the live scene, and the active/stacked switch
+  keeps the guarantee it already had (PR #92).
+- `<Track>` and `<Scenes>` dropped `sv-live` on a completed `once` reveal
+  the next time their own `className` prop changed: the driver settles a
+  completed entry outside its tracked set and stops re-asserting the
+  class, so a React className rewrite (which replaces the whole `class`
+  attribute) wiped it. Both components now carry `sv-live` in their own
+  rendered className once `onStatus('completed')` fires, resetting on the
+  next `'attaching'`. A bare `useTrack` consumer has to do the same on its
+  own element (documented in AGENTS.md).
+- Every GSAP scrub recipe (the installed `GsapScrub` component, the
+  rendered gallery preview, and the copy-paste CSS/React panes) only ever
+  moved its timeline through `onPin`: under reduced motion, or once the
+  tracker failed or was released, `onPin` never fires again, so a
+  `.from({ opacity: 0 })` timeline stayed stuck at progress 0 forever, a
+  fail-hidden. Every surface now settles to progress 1 on the effective
+  motion preference and on a failed/released tracker, scrubbing only
+  while attached (`requires.min` bumped to 1.17.0 for the `onMotionChange`
+  import).
+- `RotatingWords` rotated forever with no way to stop it (WCAG 2.2.2), and
+  the marquee gallery's preview and CSS/Tailwind panes taught the bare,
+  uncontrolled `.sv-marquee` shape with no pause button. `RotatingWords`
+  now renders a keyboard-operable, persistent `aria-pressed` pause button;
+  the marquee preview and panes render the controlled markup
+  (`sv-marquee-controlled` plus `sv-marquee-pause`), matching the `<Marquee>`
+  component. `hero-cinematic`'s own CSS/Tailwind panes (which also embed a
+  bare marquee strip) got the same button.
 - A `<link rel="stylesheet">` whose own `error` event the driver observed
   (a 404, a reset connection, an unreachable host, while the sheet was
   still pending) kept publishing `--sv-page`/`--sv-v` on `<html>` forever
