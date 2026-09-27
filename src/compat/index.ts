@@ -115,6 +115,26 @@ const FALLBACK_CSS = `
   transition: none;
 }
 
+/* pin.css's page-switch layout release (stage, curtains, rail) is written
+   with a zero-specificity wrapper (styles/pin.css, page-switch block), so
+   it drops whole below the same selector-list floor compat's own fallback
+   sheet targets. Plain twins here keep the switch working down there: a
+   curtain reset to transform: none would otherwise sit at its CLOSED
+   position and cover the content for good. */
+[data-sv-motion="reduce"] .sv-stage {
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+[data-sv-motion="reduce"] .sv .sv-curtain-l,
+[data-sv-motion="reduce"] .sv .sv-curtain-r {
+  display: none;
+}
+[data-sv-motion="reduce"] .sv .sv-rail {
+  width: auto;
+  flex-wrap: wrap;
+}
+
 /* Same focus-visibility override as styles/core.css: a focused entrance
    child must be visible now, not after its stagger delay. The self-tracked
    case (the tracked element IS the preset) needs its own selector, same

@@ -161,7 +161,7 @@ property. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 3.0&nbsp;KB · pin 3.3 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.5).</p>
+(gzipped: <code>styles/core.css</code> 3.1&nbsp;KB · pin 3.3 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.5).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -296,6 +296,8 @@ compat()   // once, before anything else</code></pre>
 <h4>Fixed</h4>
 
 <ul>
+<li><code>styles/pin.css</code>'s page-switch layout release (stage release, curtains hidden, rail wrapped) is written behind <code>:where()</code>, so the whole rule dropped on an engine without <code>:where()</code>/<code>:is()</code> support, the same floor <code>scrollvars/compat</code>'s own fallback sheet targets. On that floor, switching to <code>data-sv-motion="reduce"</code> only reset the compat curtains' <code>transform</code> to <code>none</code>, their CLOSED position, so a curtain past its opening scroll position stayed covering the content for good and the stage never released. The compat fallback sheet now carries a <code>:where()</code>/<code>:is()</code>-free twin of the same three resets.</li>
+<li>A self-tracked <code>sv-spread-in</code> (the tracked element IS the spread, no separate ancestor) never matched the scrub and transition rules, which required a separate <code>.sv</code>/<code>[data-sv]</code> ancestor: the cards stayed stacked at the container's center indefinitely, overlapping each other. The scrub, transition and both reduced-motion rules now also match the compound (self) case, the same gap already closed for the other entrance presets.</li>
 <li>A focused marquee item could be translated well outside the visible strip, with no way to scroll it back into view: <code>:focus-within</code> only paused the track's slide, and a focused link mid-loop sat wherever the animation left it (WCAG 2.4.7/2.4.11). While the TRACK itself now holds focus, <code>.sv-marquee-track:focus-within</code> presents it statically and wrapped with the duplicate hidden, mirrored in the gallery's CSS pane. Keyed on the track, not <code>.sv-marquee</code>, so focusing a controlled marquee's pause button does not reflow the strip.</li>
 <li>A focused control inside <code>.sv-drift</code> kept the scroll fade: a fully visible link at the viewport edge read opacity 0.51, never hidden but still dim under WCAG 2.4.7. <code>.sv-drift:focus-within</code> now restores full opacity, in <code>styles/core.css</code> and the compat fallback sheet.</li>
 <li><code>CaseStudyRail</code>'s fallback below the <code>cqw</code> container-query floor turned the stage into a horizontal scroller with no <code>tabindex</code> and non-interactive cards, leaving every card past the first unreachable by keyboard in engines that do not auto-focus scrollers (WCAG 2.1.1). It now wraps the rail in flow instead, like the no-JS layout.</li>
