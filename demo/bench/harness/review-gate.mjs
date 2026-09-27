@@ -55,7 +55,9 @@ export async function reviewGate({ browser, check }) {
     check('review: responsive Slider CSS works under nonce-only CSP', Math.abs(dimensions.first - (dimensions.rail - 16) / 2) < 2, JSON.stringify(dimensions))
     check('review: outer perView does not size an inner slider', dimensions.nested === 123, JSON.stringify(dimensions))
     await page.hover('.outer')
-    await page.waitForFunction(() => document.querySelector('.outer > .sv-slider').getAttribute('aria-live') === 'polite')
+    // N1: the rail no longer carries aria-live itself, the status region
+    // outside it does.
+    await page.waitForFunction(() => document.querySelector('.outer [role="status"]').getAttribute('aria-live') === 'polite')
     check('review: hovering exposes the paused live region', true)
     await page.focus('.outer .sv-arrow')
     await page.mouse.move(1099, 799)
@@ -66,7 +68,7 @@ export async function reviewGate({ browser, check }) {
     await page.focus('.outer .sv-pause')
     check('review: marquee keyboard pause persists after focus leaves', await page.$eval('.sv-marquee-track', el => getComputedStyle(el).animationPlayState === 'paused' && el.classList.contains('sv-paused')))
     await page.keyboard.press('Space')
-    await page.waitForFunction(() => document.querySelector('.outer > .sv-slider').getAttribute('aria-live') === 'off')
+    await page.waitForFunction(() => document.querySelector('.outer [role="status"]').getAttribute('aria-live') === 'off')
     check('review: explicit keyboard resume restores carousel rotation', true)
     const noClickDriver = await page.evaluate(() => {
       const marquee = document.querySelector('.sv-marquee')
