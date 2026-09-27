@@ -238,6 +238,22 @@ export async function a11yTreeGate({ browser, check, base }) {
   }
 
   // ---- Scenes fallback: every step present, no JS and under reduced motion ----
+  // A step with own text and no display:none/visibility:hidden/aria-hidden/
+  // inert ancestor is, per spec, IN the accessibility tree: Chrome folds
+  // plain body text (a bare <b>) into whichever ancestor node's name
+  // computation happens to pick it up rather than always giving it a node
+  // of its own, so probing exclusion mechanisms directly is the reliable
+  // proxy here, the same shape e2e-invariants.mjs's own HIDDEN_TEXT probe
+  // already uses elsewhere in this harness.
+  const STEP_EXCLUSION = () => [...document.querySelectorAll('.st-steps > li > b')].map((b) => {
+    let excluded = false
+    for (let n = b; n; n = n.parentElement) {
+      if (n.getAttribute?.('aria-hidden') === 'true' || n.inert) excluded = true
+      const cs = getComputedStyle(n)
+      if (cs.display === 'none' || cs.visibility === 'hidden') excluded = true
+    }
+    return { text: b.textContent.trim(), excluded }
+  })
   {
     for (const [label, setup] of [
       ['no JS', async (p) => { await p.setJavaScriptEnabled(false) }],
@@ -251,14 +267,22 @@ export async function a11yTreeGate({ browser, check, base }) {
           await page3.waitForFunction(() => typeof window.SV !== 'undefined')
           await page3.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
         }
-        const tree = await page3.accessibility.snapshot({ interestingOnly: false })
-        const combined = collectNames(tree).join(' | ')
-        const wanted = ['Step 1', 'Step 2', 'Step 3']
-        const missing = wanted.filter((w) => !combined.includes(w))
-        check(`a11y-tree: sticky-steps keeps every step in the tree (${label})`, missing.length === 0, `missing: ${missing.join(', ') || 'none'}`)
+        const steps = await page3.evaluate(`(${STEP_EXCLUSION})()`)
+        const ok = steps.length === 3 && steps.every((s) => !s.excluded)
+        check(`a11y-tree: sticky-steps keeps every step in the tree (${label})`, ok, JSON.stringify(steps))
       } finally {
         await page3.close()
       }
+    }
+    // prove it can fail: an aria-hidden step is reported as excluded
+    const page3b = await browser.newPage()
+    try {
+      await page3b.goto(`${base}/fx/sticky-steps.html`, { waitUntil: 'load' })
+      await page3b.evaluate(() => document.querySelector('.st-steps > li > b').setAttribute('aria-hidden', 'true'))
+      const steps = await page3b.evaluate(`(${STEP_EXCLUSION})()`)
+      check('a11y-tree gate can fail: an aria-hidden step is reported as excluded from the tree', steps[0]?.excluded === true, JSON.stringify(steps))
+    } finally {
+      await page3b.close()
     }
   }
 
