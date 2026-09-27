@@ -26,6 +26,20 @@
 .sv-marquee:focus-within .sv-marquee-track {
   animation-play-state: var(--sv-marquee-hover, paused);
 }
+/* While the track itself holds focus, present it statically and wrapped
+   with the duplicate hidden (WCAG 2.4.7): pausing only stops the slide, and
+   a focused item can sit translated off the strip for most of the loop.
+   Keyed on the TRACK, not .sv-marquee: the controlled marquee's pause
+   button is inside .sv-marquee but outside the track, so focusing it must
+   not reflow the strip. */
+.sv-marquee-track:focus-within {
+  animation: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+.sv-marquee-track:focus-within > .sv-marquee-dup {
+  display: none;
+}
 @keyframes sv-marquee {
   to {
     translate: -50% 0;

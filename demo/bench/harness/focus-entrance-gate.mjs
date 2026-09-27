@@ -116,6 +116,24 @@ export async function focusEntranceGate({ browser, check, base }) {
       const selfTrackedSplit = await page.evaluate(`(${FOCUS_AND_READ_SPANS})('#self-tracked-split')`)
       check(`focus-entrance${label}: a self-tracked sv-split-rise heading reveals every word span at once (A4)`,
         selfTrackedSplit.length > 0 && selfTrackedSplit.every((o) => o === '1'), JSON.stringify(selfTrackedSplit))
+
+      // B1b: a drift link scrolled fully into view at the viewport's bottom
+      // edge (Chrome does not scroll further to focus it, CLAUDE.md trap 3)
+      // must read opacity 1 once focused, not the mid-fade value.
+      const driftDrift = await page.evaluate(() => new Promise((resolve) => {
+        const el = document.getElementById('drift-link')
+        el.scrollIntoView({ block: 'end' })
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const before = getComputedStyle(el).opacity
+          const scrollYBefore = window.scrollY
+          el.focus()
+          requestAnimationFrame(() => {
+            resolve({ before, opacity: getComputedStyle(el).opacity, scrolled: window.scrollY !== scrollYBefore })
+          })
+        }))
+      }))
+      check(`focus-entrance${label}: a drift link fully visible at the viewport edge is opacity 1 once focused (B1b)`,
+        driftDrift.opacity === '1', JSON.stringify(driftDrift))
     } finally {
       await page.close()
     }

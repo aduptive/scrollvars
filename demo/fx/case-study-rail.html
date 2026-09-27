@@ -210,7 +210,14 @@ html:not(.sv-on) .sv-casework .work-rail,
 html:not(.sv-on) .sv-casework .work-card,
 .sv-casework [data-sv-flow] .work-card,
 .sv-casework [data-sv-off] .work-card { width: 100%; }
-@supports not (width: 1cqw) { .sv-casework > .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+/* below the cqw floor: wrap like no-JS instead of a keyboard-unreachable
+   horizontal scroller (WCAG 2.1.1, no tabindex on the scroller). */
+@supports not (width: 1cqw) {
+  .sv-casework > .sv { height: auto !important; }
+  .sv-casework .work-stage { height: auto; position: static; }
+  .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
   .sv-casework .work-card { width: 100%; }
@@ -262,7 +269,14 @@ html:not(.sv-on) .sv-casework .work-rail,
 html:not(.sv-on) .sv-casework .work-card,
 .sv-casework [data-sv-flow] .work-card,
 .sv-casework [data-sv-off] .work-card { width: 100%; }
-@supports not (width: 1cqw) { .sv-casework &gt; .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+/* below the cqw floor: wrap like no-JS instead of a keyboard-unreachable
+   horizontal scroller (WCAG 2.1.1, no tabindex on the scroller). */
+@supports not (width: 1cqw) {
+  .sv-casework &gt; .sv { height: auto !important; }
+  .sv-casework .work-stage { height: auto; position: static; }
+  .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
   .sv-casework .work-card { width: 100%; }

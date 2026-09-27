@@ -911,6 +911,10 @@ if (!paused) el.style.setProperty('--sv-word', nextIndex)`,
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
 .sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
+/* while the track holds focus, present it statically and wrapped (WCAG
+   2.4.7): pausing alone can leave a focused item translated off the strip */
+.sv-marquee-track:focus-within { animation: none; width: auto; flex-wrap: wrap; }
+.sv-marquee-track:focus-within > .sv-marquee-dup { display: none; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
@@ -2543,7 +2547,14 @@ html:not(.sv-on) .sv-casework .work-rail,
 html:not(.sv-on) .sv-casework .work-card,
 .sv-casework [data-sv-flow] .work-card,
 .sv-casework [data-sv-off] .work-card { width: 100%; }
-@supports not (width: 1cqw) { .sv-casework > .sv { height: auto !important; } .sv-casework .work-stage { height: auto; position: static; overflow-x: auto; } }
+/* below the cqw floor: wrap like no-JS instead of a keyboard-unreachable
+   horizontal scroller (WCAG 2.1.1, no tabindex on the scroller). */
+@supports not (width: 1cqw) {
+  .sv-casework > .sv { height: auto !important; }
+  .sv-casework .work-stage { height: auto; position: static; }
+  .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
+  .sv-casework .work-card { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .sv-on .sv-casework .work-rail { width: auto; flex-wrap: wrap; transform: none; will-change: auto; }
   .sv-casework .work-card { width: 100%; }
