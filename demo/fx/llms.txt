@@ -329,9 +329,9 @@ Styles: scrollvars/styles/pin.css
 <div data-x>   <!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) -->
   <div class="sv-stage grid place-items-center">…</div>
 </div>
-<!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
-     gsap.ticker.add(() => tl.progress(
-       parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->
+<!-- zero-wrapper pages: use the css pane's guarded track()/onPin callback,
+     never gsap.ticker: it has no reduced-motion guard and reads an empty
+     var as 0 the instant the tracker releases -->
 ```
 
 ### CSS

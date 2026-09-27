@@ -1015,30 +1015,38 @@ checklist is that person's pass, run by the author (Andrea) on the current
 cells mean not yet run: they are filled in as the pass happens, never
 guessed at ahead of it.
 
+Every row below runs against `/a11y/` (`demo/a11y/index.html`): one page,
+the real kit, the shipped `styles.css`, the same fixture
+`a11y-tree-gate.mjs` exercises. It replaces the earlier rows that pointed
+at gallery previews (a vanilla `slider()` with no `aria-roledescription`,
+a `<dialog>` no page actually shipped, an Accordion no row named): a
+correct library has to pass what a person actually hears on this page,
+not on a page that could never pass in the first place (D3/P1).
+
 **macOS Safari + VoiceOver**
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/fx/coverflow-slider.html`) | VO-Right/Left through the carousel | "Coverflow cards, carousel", each stop "N of 4, slide" | | |
-| 2 | Modal | Activate the opener; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to the opener on close | | |
-| 3 | Accordion | VO-Space on a `summary` | "collapsed"/"expanded" toggles with the state, title read each time | | |
-| 4 | Toggles (`sv-pop` disclosure, e.g. a docs nav) | VO-Space the trigger | "expanded"/"collapsed" matches the panel's visible state | | |
-| 5 | Split text (`/fx/split-reveal.html`) | VO-Right onto the heading | The full sentence read once, not one word per stop | | |
-| 6 | Scenes fallback (`/fx/sticky-steps.html`) with reduced motion on | VO-Right down the steps | Every step's heading and copy read, in order, none skipped | | |
-| 7 | Marquee pause (`/fx/marquee.html` installed component) | VO-Space the pause button | "Pause animation, button" before, "pressed" after | | |
-| 8 | RotatingWords (`/fx/rotating-words.html`) | VO-Right onto the component, then VO-Space the pause button | The full phrase list read once as plain text; the pause button announces as a button with its current state | | |
+| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
+| 2 | Modal (`/a11y/` "Modal" section) | Activate "Open modal"; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to "Open modal" on close | | |
+| 3 | Accordion (`/a11y/` "Accordion" section) | VO-Space on the `summary` | "collapsed"/"expanded" toggles with the state, "FAQ question" read each time | | |
+| 4 | Disclosure (`/a11y/` "Disclosure" section, `sv-pop`) | VO-Space "Toggle panel" | "expanded"/"collapsed" matches the panel's visible state | | |
+| 5 | Split text (`/a11y/` "Split text" section) | VO-Right onto the heading | "Words arrive one by one" read once, not one word per stop | | |
+| 6 | Scenes fallback (`/a11y/` "Scenes" section) with reduced motion on | VO-Right down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order, none skipped | | |
+| 7 | Marquee pause (`/a11y/` "Marquee" section) | VO-Space the pause button | "Pause animation, button" before, "pressed" after, label unchanged | | |
+| 8 | RotatingWords pause (`/a11y/` "Rotating words" section) | VO-Right onto the component, then VO-Space the pause button | The full phrase list read once as plain text; "Pause rotation, button" before, "pressed" after, label unchanged | | |
 
 **iOS Safari + VoiceOver**
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/fx/coverflow-slider.html`) | Swipe right/left through the carousel | "Coverflow cards, carousel", each stop "N of 4, slide" | | |
-| 2 | Modal | Double-tap the opener; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to the opener on close | | |
-| 3 | Accordion | Double-tap a `summary` | "collapsed"/"expanded" toggles with the state | | |
-| 4 | Split text (`/fx/split-reveal.html`) | Swipe onto the heading | The full sentence read once | | |
-| 5 | Scenes fallback (`/fx/sticky-steps.html`) with Reduce Motion on | Swipe down the steps | Every step read, in order | | |
-| 6 | Marquee pause (`/fx/marquee.html` installed component) | Double-tap the pause button | Announced as a button with a pressed state that flips | | |
-| 7 | RotatingWords (`/fx/rotating-words.html`) | Swipe onto the component, then double-tap the pause button | The full phrase list read once as plain text; the pause button announces as a button with its current state | | |
+| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
+| 2 | Modal (`/a11y/` "Modal" section) | Double-tap "Open modal"; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to "Open modal" on close | | |
+| 3 | Accordion (`/a11y/` "Accordion" section) | Double-tap the `summary` | "collapsed"/"expanded" toggles with the state | | |
+| 4 | Split text (`/a11y/` "Split text" section) | Swipe onto the heading | "Words arrive one by one" read once | | |
+| 5 | Scenes fallback (`/a11y/` "Scenes" section) with Reduce Motion on | Swipe down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order | | |
+| 6 | Marquee pause (`/a11y/` "Marquee" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | | |
+| 7 | RotatingWords pause (`/a11y/` "Rotating words" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | | |
 
 Your side of it, as a checklist:
 

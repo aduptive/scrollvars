@@ -68,39 +68,6 @@ function collectNames(node, out = []) {
   return out
 }
 
-const APP_SOURCE = `
-import * as React from 'react'
-import { createRoot } from 'react-dom/client'
-import { ScrollVarsBoot, Slider, Modal, Accordion, Marquee } from 'scrollvars/react'
-
-function App() {
-  const [open, setOpen] = React.useState(false)
-  window.__setModalOpen = setOpen
-  return (
-    <>
-      <ScrollVarsBoot />
-      <button id="modal-open" onClick={() => setOpen(true)}>Open modal</button>
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <p>Modal content</p>
-        <button id="modal-close" onClick={() => setOpen(false)}>Close</button>
-      </Modal>
-      <button id="disc-trigger" data-sv-toggle="sv-open" data-sv-target="#panel" aria-controls="panel">Toggle panel</button>
-      <nav id="panel" className="sv-pop">panel body</nav>
-      <Accordion title="FAQ question">FAQ answer</Accordion>
-      <Slider perView={1} arrows dots aria-label="Photos">
-        <div>One</div><div>Two</div><div>Three</div>
-      </Slider>
-      <Marquee>
-        <span>Alpha</span><span>Beta</span><span>Gamma</span>
-      </Marquee>
-    </>
-  )
-}
-const root = createRoot(document.getElementById('app'))
-root.render(<App />)
-window.__mounted = true
-`
-
 // A deliberately broken analog of three of the checks above, used only to
 // prove the detectors are not blind (the "gate can fail" block): a fake
 // dialog that does not restore focus on close, a toggle wired to nothing
@@ -139,13 +106,16 @@ async function bundleApp(source) {
 }
 
 export async function a11yTreeGate({ browser, check, base }) {
-  const appBundle = await bundleApp(APP_SOURCE)
   const page = await browser.newPage()
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   try {
-    await page.setContent('<div id="app"></div>')
-    await page.addScriptTag({ content: appBundle })
+    // The served checklist fixture (D3 + P1, loop8-3): the real kit against
+    // the SHIPPED styles.css, same origin, so a CSS-driven exclusion (the
+    // marquee pause hidden until sv-ui, dialog:not([open]) rules) is live
+    // for these checks, not invisible the way an unstyled setContent() mount
+    // was before.
+    await page.goto(`${base}/a11y/index.html`, { waitUntil: 'load' })
     await page.waitForFunction(() => window.__mounted === true)
     // toggles() and the driver boot inside ScrollVarsBoot; give the scan a frame
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
@@ -162,6 +132,21 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree: Slider previous/next arrows are named', !!prev && !!next)
       check('a11y-tree: Slider announces "N of 3" on every slide', slides.length === 3, `found ${slides.length}: ${JSON.stringify(slides.map((s) => s.name))}`)
       check('a11y-tree: Slider dots are named "go to slide N"', dots.length === 3, `found ${dots.length}`)
+
+      // ADU (loop8-3 verifier FIX 1): a role/name tree taken once at mount
+      // says nothing about a STATE CHANGE. Every slide's static "N of 3"
+      // label is in the tree from the first render, so checking that ONE
+      // of them is present after a click is a false positive: it passes
+      // whether or not "next" does anything at all. The real per-activation
+      // signal is the dots' aria-current, which the Slider component moves
+      // to the newly active dot (src/react/index.tsx), and the container's
+      // aria-live region, which announces the change to a screen reader.
+      const dotsBefore = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check('a11y-tree: Slider dot 1 starts as the current slide', dotsBefore[0] === 'true' && dotsBefore.slice(1).every((v) => v !== 'true'), JSON.stringify(dotsBefore))
+      await page.click('#slider-section .sv-arrow-next')
+      await page.waitForFunction(() => document.querySelectorAll('#slider-section .sv-dots button')[1]?.getAttribute('aria-current') === 'true')
+      const dotsAfter = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check('a11y-tree: activating next moves aria-current from dot 1 to dot 2', dotsAfter[1] === 'true' && dotsAfter[0] !== 'true', JSON.stringify(dotsAfter))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
@@ -188,8 +173,14 @@ export async function a11yTreeGate({ browser, check, base }) {
       const tree = await page.accessibility.snapshot({ interestingOnly: false })
       const pauseBefore = find(tree, (n) => n.role === 'button' && n.name === 'Pause animation')
       check('a11y-tree: Marquee pause control is named "Pause animation"', !!pauseBefore && pauseBefore.pressed === false, JSON.stringify(pauseBefore))
-      await page.click('.sv-marquee-pause')
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      // A mouse-coordinate click on a long page (this fixture stacks eight
+      // sections above the marquee) is the kind of thing that can miss its
+      // target; focus + keyboard activation, then poll for the attribute
+      // instead of a fixed frame count, is the pattern review-gate.mjs
+      // already uses for this exact button.
+      await page.focus('.sv-marquee-pause')
+      await page.keyboard.press('Space')
+      await page.waitForFunction(() => document.querySelector('.sv-marquee-pause')?.getAttribute('aria-pressed') === 'true')
       const treeAfter = await page.accessibility.snapshot({ interestingOnly: false })
       const pauseAfter = find(treeAfter, (n) => n.role === 'button' && /Pause animation|Resume animation/.test(n.name || ''))
       check('a11y-tree: Marquee pause control reports a pressed state after activation', !!pauseAfter && pauseAfter.pressed === true, JSON.stringify(pauseAfter))
@@ -286,6 +277,52 @@ export async function a11yTreeGate({ browser, check, base }) {
     }
   }
 
+  // ---- a real <Scenes> fallback: every scene present, no JS and under
+  // reduced motion (D3/P1: the proxy used to probe StickySteps' own list,
+  // never the <Scenes> component itself). Same exclusion-probe shape as
+  // STEP_EXCLUSION above, over the checklist fixture's #scenes-section.
+  const SCENE_EXCLUSION = () => [...document.querySelectorAll('#scenes-section .sv-stage p')].map((p) => {
+    let excluded = false
+    for (let n = p; n; n = n.parentElement) {
+      if (n.getAttribute?.('aria-hidden') === 'true' || n.inert) excluded = true
+      const cs = getComputedStyle(n)
+      if (cs.display === 'none' || cs.visibility === 'hidden') excluded = true
+    }
+    return { text: p.textContent.trim(), excluded }
+  })
+  {
+    // The checklist fixture is client-rendered React (createRoot, no SSR):
+    // "no JS" is not a state this particular page can be probed in, unlike
+    // sticky-steps' static gallery markup above. Reduced motion is the
+    // fallback state that applies to a mounted app: `active` never turns
+    // true, so <Scenes> stacks every scene instead of the scroll-picked one.
+    const page3c = await browser.newPage()
+    try {
+      await page3c.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+      await page3c.goto(`${base}/a11y/index.html`, { waitUntil: 'load' })
+      await page3c.waitForFunction(() => window.__mounted === true)
+      await page3c.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      const scenes = await page3c.evaluate(`(${SCENE_EXCLUSION})()`)
+      const ok = scenes.length === 3 && scenes.every((s) => !s.excluded)
+      check('a11y-tree: a real <Scenes> keeps every scene in the tree, stacked fallback (reduced motion)', ok, JSON.stringify(scenes))
+    } finally {
+      await page3c.close()
+    }
+    // prove it can fail: a scene hidden with display:none is reported as excluded
+    const page3d = await browser.newPage()
+    try {
+      await page3d.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+      await page3d.goto(`${base}/a11y/index.html`, { waitUntil: 'load' })
+      await page3d.waitForFunction(() => window.__mounted === true)
+      await page3d.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      await page3d.evaluate(() => { document.querySelector('#scenes-section .sv-stage p').style.display = 'none' })
+      const scenes = await page3d.evaluate(`(${SCENE_EXCLUSION})()`)
+      check('a11y-tree gate can fail: a scene hidden with display:none is reported as excluded from the tree', scenes[0]?.excluded === true, JSON.stringify(scenes))
+    } finally {
+      await page3d.close()
+    }
+  }
+
   // ---- gate can fail: the same detectors against a deliberately broken app ----
   {
     const brokenBundle = await bundleApp(BROKEN_SOURCE)
@@ -337,6 +374,32 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree gate can fail: unlabeled dots are not named "go to slide N"', findAll(tree, (n) => /^go to slide \d+$/.test(n.name || '')).length === 0)
     } finally {
       await page9.close()
+    }
+
+    // Slider: a real dot-current pair, but "next" is a no-op (ADU, loop8-3
+    // verifier FIX 1's own negative counterpart: the check above must fail
+    // when activating next does not move aria-current, not only when the
+    // markup has no ARIA at all).
+    const page9b = await browser.newPage()
+    try {
+      await page9b.setContent(
+        '<div class="sv-dots">' +
+          '<button class="sv-dot on" aria-current="true">1</button>' +
+          '<button class="sv-dot">2</button>' +
+        '</div>' +
+        '<button class="sv-arrow-next" onclick="">next</button>'
+      )
+      const dotsBefore = await page9b.$$eval('.sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      await page9b.click('.sv-arrow-next')
+      await page9b.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      const dotsAfter = await page9b.$$eval('.sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check(
+        'a11y-tree gate can fail: a no-op next never moves aria-current off dot 1',
+        !(dotsAfter[1] === 'true' && dotsAfter[0] !== 'true'),
+        JSON.stringify({ dotsBefore, dotsAfter })
+      )
+    } finally {
+      await page9b.close()
     }
 
     // Marquee: an unlabeled, non-functional pause control

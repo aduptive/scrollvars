@@ -24,6 +24,73 @@ const PAGES = ['long', 'deep', 'cubes']
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
 const pct = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]
 
+// ---- ADU (loop8-3, B2): the old pass/fail judged the MEDIAN repetition
+// against a calibration averaged across the whole file, so one bad rep, an
+// errored rep or a missing page could hide behind the others. This judges
+// EVERY repetition against its OWN vsyncMs (falling back per-rep to the
+// median of that rep's own sorted deltas when the field predates
+// calibration), and requires full coverage: `payload.reps` repetitions
+// present for the page, each with usable deltas and its own animated check
+// passing. A row passes only if every repetition does. Exported so
+// test/lab-tables.test.mjs can prove it without a captured lab file.
+export function verdictForPage(payload, page) {
+  const expected = payload.reps
+  const runs = (payload.runs || []).filter((r) => r.page === page)
+  // ADU (loop8-3 verifier FIX 2): rep IDENTITY, not run COUNT: a capture
+  // that recorded rep 0 twice and never rep 2 has runs.length === expected
+  // but only two distinct repetitions actually ran. A duplicate rep id is
+  // not extra coverage, it is the SAME repetition twice.
+  const distinctReps = new Set(runs.map((r) => r.rep)).size
+  if (typeof expected === 'number' && distinctReps < expected)
+    return { pass: false, reason: `only ${distinctReps}/${expected} distinct repetition(s) present` }
+  if (!runs.length) return { pass: false, reason: 'page missing' }
+  for (const r of runs) {
+    if (r.error) return { pass: false, reason: `rep ${r.rep + 1} errored: ${r.error}` }
+    if (!r.deltas || !r.deltas.length) return { pass: false, reason: `rep ${r.rep + 1} has no deltas` }
+    // ADU (loop8-3 verifier FIX 3): a rep whose deltas are all zero or
+    // negative (a broken sampler, not a fast device: a real frame delta is
+    // never <= 0) is unusable, not a pass. Checked before vsync derives
+    // from it, so a degenerate rep cannot manufacture its own trivial budget.
+    if (r.deltas.every((d) => d <= 0)) return { pass: false, reason: `rep ${r.rep + 1} has no positive deltas` }
+    if (typeof r.vsyncMs === 'number' && r.vsyncMs <= 0)
+      return { pass: false, reason: `rep ${r.rep + 1} has a non-positive vsyncMs (${r.vsyncMs})` }
+    if (!r.animated) return { pass: false, reason: `rep ${r.rep + 1} failed its animated check` }
+  }
+  const perRep = runs.map((r) => {
+    const sorted = [...r.deltas].sort((a, b) => a - b)
+    const vsync = typeof r.vsyncMs === 'number' ? r.vsyncMs : median(sorted)
+    const budgetMs = vsync * LAB_FRAME_BUDGET.p95Factor
+    const p95 = pct(sorted, .95)
+    const late = (sorted.filter((x) => x > budgetMs).length / sorted.length) * 100
+    return {
+      sorted, budgetMs, vsync,
+      p50: pct(sorted, .5), p95, p99: pct(sorted, .99), late,
+      pass: p95 <= budgetMs && late <= LAB_FRAME_BUDGET.lateMaxPct,
+    }
+  })
+  // A non-positive DERIVED vsync (self-calibrated median dragged below zero
+  // by a minority of bad samples the all-non-positive guard above does not
+  // catch) makes a degenerate, trivially-passed budget: reject the whole
+  // page rather than let a broken calibration excuse it.
+  const degenerateVsync = perRep.find((r) => !(r.vsync > 0))
+  if (degenerateVsync)
+    return { pass: false, reason: `rep has a non-positive derived vsync (${degenerateVsync.vsync.toFixed(2)}ms)` }
+  const failed = perRep.find((r) => !r.pass)
+  const calibrated = runs.every((r) => typeof r.vsyncMs === 'number')
+  return {
+    pass: !failed,
+    reason: failed ? `rep exceeded its own budget: p95 ${failed.p95.toFixed(1)}ms vs ${failed.budgetMs.toFixed(1)}ms, late ${failed.late.toFixed(1)}%` : null,
+    calibration: calibrated ? 'independent' : 'self-calibrated',
+    p50: median(perRep.map((r) => r.p50)),
+    p95: median(perRep.map((r) => r.p95)),
+    p95Worst: Math.max(...perRep.map((r) => r.p95)),
+    p99: median(perRep.map((r) => r.p99)),
+    late: median(perRep.map((r) => r.late)),
+    animatedCount: runs.filter((r) => r.animated).length,
+    repCount: runs.length,
+  }
+}
+
 const browserLabel = (ua = '') => {
   if (/Firefox\//.test(ua)) return `Firefox ${ua.match(/Firefox\/([\d.]+)/)[1].split('.')[0]}`
   if (/Chrome\//.test(ua)) return `Chrome ${ua.match(/Chrome\/([\d.]+)/)[1].split('.')[0]}`
@@ -44,37 +111,22 @@ const flagged = []
 for (const run of manifest.runs) {
   if (!files.has(run.file)) throw new Error(`lab-tables: manifest names ${run.file}, not found in ${resultsDir}`)
   const payload = JSON.parse(readFileSync(join(resultsDir, run.file), 'utf8'))
-  const good = (payload.runs || []).filter((r) => r.deltas)
-  const all = good.flatMap((r) => r.deltas)
-  if (!all.length) throw new Error(`lab-tables: ${run.file} has no usable runs (every animated check failed?)`)
-  // Independent calibration (run-drive.js's idle rAF window, one per run,
-  // stored as vsyncMs) when every run in the file has it; otherwise this
-  // file predates that field and falls back to the OLD method (median of
-  // the scroll frames themselves), which lets a uniformly slow device drag
-  // its own budget line down with it. Said explicitly per row below, never
-  // presented the same way as an independent calibration.
-  const calibrated = good.every((r) => typeof r.vsyncMs === 'number')
-  const vsync = calibrated ? median(good.map((r) => r.vsyncMs)) : median(all)
-  const budgetMs = vsync * LAB_FRAME_BUDGET.p95Factor
+  if (!(payload.runs || []).some((r) => r.deltas))
+    throw new Error(`lab-tables: ${run.file} has no usable runs (every animated check failed?)`)
 
   for (const page of PAGES) {
-    const rs = good.filter((r) => r.page === page)
-    if (!rs.length) continue
-    const stat = (fn) => median(rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
-    const worst = (fn) => Math.max(...rs.map((r) => fn([...r.deltas].sort((a, b) => a - b))))
-    const p50 = stat((d) => pct(d, .5)), p95 = stat((d) => pct(d, .95)), p95Worst = worst((d) => pct(d, .95)), p99 = stat((d) => pct(d, .99))
-    const late = stat((d) => (d.filter((x) => x > budgetMs).length / d.length) * 100)
-    const animatedCount = rs.filter((r) => r.animated).length
-    const pass = p95 <= budgetMs && late <= LAB_FRAME_BUDGET.lateMaxPct && animatedCount === rs.length
+    // missing page or a failed repetition emits a failing ROW, never an
+    // absent one: dropping it silently is exactly what let a bad rep hide.
+    const v = verdictForPage(payload, page)
     rows.push({
       device: run.label, browser: browserLabel(payload.env?.userAgent), commit: run.commit,
-      calibration: calibrated ? 'independent' : 'self-calibrated', page,
-      p50: p50.toFixed(1), p95: p95.toFixed(1), p95Worst: p95Worst.toFixed(1), p99: p99.toFixed(1), late: late.toFixed(1),
-      animated: `${animatedCount}/${rs.length}`, pass,
+      calibration: v.calibration ?? '-', page,
+      p50: v.p50?.toFixed(1) ?? '-', p95: v.p95?.toFixed(1) ?? '-', p95Worst: v.p95Worst?.toFixed(1) ?? '-',
+      p99: v.p99?.toFixed(1) ?? '-', late: v.late?.toFixed(1) ?? '-',
+      animated: v.repCount != null ? `${v.animatedCount}/${v.repCount}` : '-', pass: v.pass,
     })
-    if (!pass) flagged.push(`${run.label} / ${page}: p95 ${p95.toFixed(1)}ms vs budget ${budgetMs.toFixed(1)}ms, late ${late.toFixed(1)}%, animated ${animatedCount}/${rs.length}`)
+    if (!v.pass) flagged.push(`${run.label} / ${page}: ${v.reason}`)
   }
-  for (const r of (payload.runs || []).filter((r) => r.error)) flagged.push(`${run.label} / ${r.page}: run ${r.rep + 1} errored: ${r.error}`)
 }
 
 const lines = [

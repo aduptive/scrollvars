@@ -478,7 +478,7 @@ export const EFFECTS = [
   {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.17.0' },
+    requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.18.0' },
     category: 'Interop',
     title: 'GSAP timeline under scrub',
     tagline: 'Author the choreography in GSAP, let ScrollVars drive it. One listener, one writer.',
@@ -538,9 +538,9 @@ that needs timeline authoring, never globally, or the bundle argument dies for t
     tailwind: `<div data-x>   <!-- no data-sv: tracked in JS with pin: '250vh' (the helper sets the height) -->
   <div class="sv-stage grid place-items-center">…</div>
 </div>
-<!-- zero-wrapper pages can keep data-sv-pin and read the var instead:
-     gsap.ticker.add(() => tl.progress(
-       parseFloat(getComputedStyle(el).getPropertyValue('--sv-pin')) || 0)) -->`,
+<!-- zero-wrapper pages: use the css pane's guarded track()/onPin callback,
+     never gsap.ticker: it has no reduced-motion guard and reads an empty
+     var as 0 the instant the tracker releases -->`,
     react: `const stage = useRef<HTMLDivElement>(null)
 const tl = useRef<gsap.core.Timeline | null>(null)
 const progress = useRef(0)
@@ -867,7 +867,7 @@ if (!paused) el.style.setProperty('--sv-word', nextIndex)`,
   {
     slug: 'marquee',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
-    requires: { styles: ['ui'], min: '1.9.0' },
+    requires: { styles: ['ui'], min: '1.14.0' },
     category: 'Sliders',
     title: 'Marquee',
     tagline: 'An infinite strip (logos, taglines) that pauses on hover.',
@@ -2366,7 +2366,7 @@ export function RotatingWords({
       <span style={SR}>{words.join(', ')}</span>
       <button type="button" className="sv-words-pause" aria-pressed={paused}
         onClick={() => setPaused((p) => !p)}>
-        {paused ? 'Resume rotation' : 'Pause rotation'}
+        Pause rotation
       </button>
     </>
   )

@@ -351,7 +351,14 @@ test('every effect declares the stylesheets its presets live in and read variabl
 // ponytail: only the exports a registry entry actually imports need an
 // entry here; anything absent is treated as pre-1.0 (never fails the
 // check). Add to this table when a NEWER export lands in a gallery recipe.
-const EXPORT_VERSIONS = { onMotionChange: '1.17.0' }
+// Marquee shipped its pause button (sv-marquee-pause) in 1.14.0: a page
+// importing it under an older min installs the WCAG 2.2.2 failure N4 fixed.
+const EXPORT_VERSIONS = { onMotionChange: '1.17.0', Marquee: '1.14.0' }
+// ---- ADU (loop8-3, B3/A1): a version-gated feature is not always an
+// import: <Track onStatus={...}> is a PROP, invisible to the import scan
+// above, and onStatus shipped in 1.18.0. Any content passing it to Track
+// needs the same floor.
+const PROP_VERSIONS = { onStatus: '1.18.0' }
 const versionAtLeast = (a, b) => {
   const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) {
@@ -360,7 +367,7 @@ const versionAtLeast = (a, b) => {
   }
   return true
 }
-test('every registry entry declares a requires.min at least as new as its newest import', () => {
+test('every registry entry declares a requires.min at least as new as its newest import or prop', () => {
   const problems = []
   for (const fx of EFFECTS) {
     const min = fx.requires?.min ?? '0.0.0'
@@ -372,6 +379,10 @@ test('every registry entry declares a requires.min at least as new as its newest
         if (introduced && !versionAtLeast(min, introduced))
           problems.push(`${fx.slug}: imports ${name} (introduced ${introduced}) but requires.min is ${min}`)
       }
+    }
+    for (const [prop, introduced] of Object.entries(PROP_VERSIONS)) {
+      if (new RegExp(`\\b${prop}\\s*=`).test(content) && !versionAtLeast(min, introduced))
+        problems.push(`${fx.slug}: passes ${prop} (introduced ${introduced}) but requires.min is ${min}`)
     }
   }
   assert.deepEqual(problems, [])
@@ -995,16 +1006,22 @@ test('cli component rotating-words: a pressed-state pause button stops the inter
     const button = container.childNodes.find((c) => c.tagName === 'BUTTON')
     assert.ok(button, 'a pause button renders')
     assert.equal(button.getAttribute('aria-pressed'), 'false')
+    const initialLabel = button.textContent
     const propsKey = Object.keys(button).find((k) => k.startsWith('__reactProps$'))
     assert.ok(propsKey, 'react commits its click handler onto the node')
 
     await act(async () => { button[propsKey].onClick() })
     assert.equal(button.getAttribute('aria-pressed'), 'true', 'pressed after the click')
     assert.ok(!live(), 'no interval survives a pause click')
+    // ADU (loop8-3, A2): a pressed-state toggle keeps a stable accessible
+    // name; flipping the label while also carrying aria-pressed makes
+    // VoiceOver announce a self-contradiction ("Resume rotation ... selected")
+    assert.equal(button.textContent, initialLabel, 'the label does not flip alongside aria-pressed')
 
     await act(async () => { button[propsKey].onClick() })
     assert.equal(button.getAttribute('aria-pressed'), 'false')
     assert.ok(live(), 'resumes when pressed again')
+    assert.equal(button.textContent, initialLabel, 'the label stays stable across both states')
 
     await act(async () => { root.unmount() })
   } finally {
