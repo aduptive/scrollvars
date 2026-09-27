@@ -133,14 +133,20 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree: Slider announces "N of 3" on every slide', slides.length === 3, `found ${slides.length}: ${JSON.stringify(slides.map((s) => s.name))}`)
       check('a11y-tree: Slider dots are named "go to slide N"', dots.length === 3, `found ${dots.length}`)
 
-      // ADU (loop8-3, D3/P1): a role/name tree taken once at mount says
-      // nothing about a STATE CHANGE (activating "next"); the checklist row
-      // asks VoiceOver to hear the announcement change too.
+      // ADU (loop8-3 verifier FIX 1): a role/name tree taken once at mount
+      // says nothing about a STATE CHANGE. Every slide's static "N of 3"
+      // label is in the tree from the first render, so checking that ONE
+      // of them is present after a click is a false positive: it passes
+      // whether or not "next" does anything at all. The real per-activation
+      // signal is the dots' aria-current, which the Slider component moves
+      // to the newly active dot (src/react/index.tsx), and the container's
+      // aria-live region, which announces the change to a screen reader.
+      const dotsBefore = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check('a11y-tree: Slider dot 1 starts as the current slide', dotsBefore[0] === 'true' && dotsBefore.slice(1).every((v) => v !== 'true'), JSON.stringify(dotsBefore))
       await page.click('#slider-section .sv-arrow-next')
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
-      const treeAfterNext = await page.accessibility.snapshot({ interestingOnly: false })
-      const currentAfterNext = find(treeAfterNext, (n) => n.name === '2 of 3')
-      check('a11y-tree: Slider announces the new current slide after activating next', !!currentAfterNext, JSON.stringify(currentAfterNext))
+      await page.waitForFunction(() => document.querySelectorAll('#slider-section .sv-dots button')[1]?.getAttribute('aria-current') === 'true')
+      const dotsAfter = await page.$$eval('#slider-section .sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check('a11y-tree: activating next moves aria-current from dot 1 to dot 2', dotsAfter[1] === 'true' && dotsAfter[0] !== 'true', JSON.stringify(dotsAfter))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
@@ -368,6 +374,32 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree gate can fail: unlabeled dots are not named "go to slide N"', findAll(tree, (n) => /^go to slide \d+$/.test(n.name || '')).length === 0)
     } finally {
       await page9.close()
+    }
+
+    // Slider: a real dot-current pair, but "next" is a no-op (ADU, loop8-3
+    // verifier FIX 1's own negative counterpart: the check above must fail
+    // when activating next does not move aria-current, not only when the
+    // markup has no ARIA at all).
+    const page9b = await browser.newPage()
+    try {
+      await page9b.setContent(
+        '<div class="sv-dots">' +
+          '<button class="sv-dot on" aria-current="true">1</button>' +
+          '<button class="sv-dot">2</button>' +
+        '</div>' +
+        '<button class="sv-arrow-next" onclick="">next</button>'
+      )
+      const dotsBefore = await page9b.$$eval('.sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      await page9b.click('.sv-arrow-next')
+      await page9b.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      const dotsAfter = await page9b.$$eval('.sv-dots button', (els) => els.map((el) => el.getAttribute('aria-current')))
+      check(
+        'a11y-tree gate can fail: a no-op next never moves aria-current off dot 1',
+        !(dotsAfter[1] === 'true' && dotsAfter[0] !== 'true'),
+        JSON.stringify({ dotsBefore, dotsAfter })
+      )
+    } finally {
+      await page9b.close()
     }
 
     // Marquee: an unlabeled, non-functional pause control

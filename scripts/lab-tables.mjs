@@ -36,12 +36,24 @@ const pct = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sor
 export function verdictForPage(payload, page) {
   const expected = payload.reps
   const runs = (payload.runs || []).filter((r) => r.page === page)
-  if (typeof expected === 'number' && runs.length < expected)
-    return { pass: false, reason: `only ${runs.length}/${expected} repetition(s) present` }
+  // ADU (loop8-3 verifier FIX 2): rep IDENTITY, not run COUNT: a capture
+  // that recorded rep 0 twice and never rep 2 has runs.length === expected
+  // but only two distinct repetitions actually ran. A duplicate rep id is
+  // not extra coverage, it is the SAME repetition twice.
+  const distinctReps = new Set(runs.map((r) => r.rep)).size
+  if (typeof expected === 'number' && distinctReps < expected)
+    return { pass: false, reason: `only ${distinctReps}/${expected} distinct repetition(s) present` }
   if (!runs.length) return { pass: false, reason: 'page missing' }
   for (const r of runs) {
     if (r.error) return { pass: false, reason: `rep ${r.rep + 1} errored: ${r.error}` }
     if (!r.deltas || !r.deltas.length) return { pass: false, reason: `rep ${r.rep + 1} has no deltas` }
+    // ADU (loop8-3 verifier FIX 3): a rep whose deltas are all zero or
+    // negative (a broken sampler, not a fast device: a real frame delta is
+    // never <= 0) is unusable, not a pass. Checked before vsync derives
+    // from it, so a degenerate rep cannot manufacture its own trivial budget.
+    if (r.deltas.every((d) => d <= 0)) return { pass: false, reason: `rep ${r.rep + 1} has no positive deltas` }
+    if (typeof r.vsyncMs === 'number' && r.vsyncMs <= 0)
+      return { pass: false, reason: `rep ${r.rep + 1} has a non-positive vsyncMs (${r.vsyncMs})` }
     if (!r.animated) return { pass: false, reason: `rep ${r.rep + 1} failed its animated check` }
   }
   const perRep = runs.map((r) => {
@@ -51,11 +63,18 @@ export function verdictForPage(payload, page) {
     const p95 = pct(sorted, .95)
     const late = (sorted.filter((x) => x > budgetMs).length / sorted.length) * 100
     return {
-      sorted, budgetMs,
+      sorted, budgetMs, vsync,
       p50: pct(sorted, .5), p95, p99: pct(sorted, .99), late,
       pass: p95 <= budgetMs && late <= LAB_FRAME_BUDGET.lateMaxPct,
     }
   })
+  // A non-positive DERIVED vsync (self-calibrated median dragged below zero
+  // by a minority of bad samples the all-non-positive guard above does not
+  // catch) makes a degenerate, trivially-passed budget: reject the whole
+  // page rather than let a broken calibration excuse it.
+  const degenerateVsync = perRep.find((r) => !(r.vsync > 0))
+  if (degenerateVsync)
+    return { pass: false, reason: `rep has a non-positive derived vsync (${degenerateVsync.vsync.toFixed(2)}ms)` }
   const failed = perRep.find((r) => !r.pass)
   const calibrated = runs.every((r) => typeof r.vsyncMs === 'number')
   return {

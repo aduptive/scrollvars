@@ -87,3 +87,64 @@ test('a rep missing vsyncMs falls back to self-calibrated, not the whole file', 
   assert.equal(v.calibration, 'self-calibrated')
   assert.equal(v.pass, true)
 })
+
+// ---- loop8-3 verifier FIX 2: rep IDENTITY, not run count. A capture that
+// records the same rep id twice (a re-run that forgot to bump the counter)
+// and never runs the missing one must fail, even though runs.length equals
+// the declared repetition count.
+test('rep ids [0, 0, 1] read as only 2 of 3 distinct repetitions, not full coverage', () => {
+  const payload = {
+    reps: 3,
+    runs: [rep({ rep: 0 }), rep({ rep: 0 }), rep({ rep: 1 })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /2\/3/)
+})
+
+// ---- loop8-3 verifier FIX 3: a rep with no positive deltas, or a
+// non-positive vsyncMs, is unusable and must fail, never pass with a
+// degenerate (zero or negative) budget.
+test('a rep whose deltas are all zero or negative fails as unusable', () => {
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, deltas: [0, -1, -2, 0] })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /no positive deltas/)
+})
+
+test('a rep whose own vsyncMs is zero fails as unusable', () => {
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, vsyncMs: 0 })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /non-positive vsyncMs/)
+})
+
+test('a rep whose own vsyncMs is negative fails as unusable', () => {
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, vsyncMs: -5 })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /non-positive vsyncMs/)
+})
+
+test('a self-calibrated rep whose derived median vsync is non-positive fails, not a trivial pass', () => {
+  // no vsyncMs field: falls back to the median of its own sorted deltas.
+  // A majority of non-positive samples (which are individually real, so
+  // the "every delta <= 0" guard does not catch them) drags that median
+  // to <= 0, which must not manufacture a trivially-passed budget.
+  const payload = {
+    reps: 1,
+    runs: [rep({ rep: 0, vsyncMs: undefined, deltas: [-5, -3, -1, 16.7, 16.7] })],
+  }
+  const v = verdictForPage(payload, 'long')
+  assert.equal(v.pass, false)
+  assert.match(v.reason, /non-positive derived vsync/)
+})

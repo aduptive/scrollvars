@@ -1027,7 +1027,7 @@ not on a page that could never pass in the first place (D3/P1).
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel | "Photos, carousel", each stop "N of 3, slide" | | |
+| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
 | 2 | Modal (`/a11y/` "Modal" section) | Activate "Open modal"; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to "Open modal" on close | | |
 | 3 | Accordion (`/a11y/` "Accordion" section) | VO-Space on the `summary` | "collapsed"/"expanded" toggles with the state, "FAQ question" read each time | | |
 | 4 | Disclosure (`/a11y/` "Disclosure" section, `sv-pop`) | VO-Space "Toggle panel" | "expanded"/"collapsed" matches the panel's visible state | | |
@@ -1040,7 +1040,7 @@ not on a page that could never pass in the first place (D3/P1).
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel | "Photos, carousel", each stop "N of 3, slide" | | |
+| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and the live region announces the new slide | | |
 | 2 | Modal (`/a11y/` "Modal" section) | Double-tap "Open modal"; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to "Open modal" on close | | |
 | 3 | Accordion (`/a11y/` "Accordion" section) | Double-tap the `summary` | "collapsed"/"expanded" toggles with the state | | |
 | 4 | Split text (`/a11y/` "Split text" section) | Swipe onto the heading | "Words arrive one by one" read once | | |
