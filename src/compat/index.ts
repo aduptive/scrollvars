@@ -58,7 +58,7 @@ const FALLBACK_CSS = `
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv .sv-rise:not(.sv):not([data-sv]), .sv-on .sv.sv-auto > :not(.sv-skip) {
+.sv-on .sv .sv-rise:not(.sv):not([data-sv]), .sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]) {
   transform: translateY(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem)));
 }
 .sv-on .sv .sv-slide-l, .sv-on .sv.sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
@@ -86,7 +86,8 @@ const FALLBACK_CSS = `
   .sv-on .sv .sv-rise:not(.sv):not([data-sv]), .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-rise, .sv-on .sv.sv-fade,
   .sv-on .sv.sv-slide-l, .sv-on .sv.sv-slide-r,
-  .sv-on .sv.sv-auto > :not(.sv-skip),
+  .sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]),
+  .sv-on .sv.sv-auto > .sv:not(.sv-skip), .sv-on .sv.sv-auto > [data-sv]:not(.sv-skip),
   .sv .sv-drift, .sv .sv-curtain-l, .sv .sv-curtain-r, .sv .sv-rail,
   .sv .sv-deck > * {
     opacity: 1;
@@ -104,7 +105,9 @@ const FALLBACK_CSS = `
 .sv-on[data-sv-motion="reduce"] .sv.sv-fade,
 .sv-on[data-sv-motion="reduce"] .sv.sv-slide-l,
 .sv-on[data-sv-motion="reduce"] .sv.sv-slide-r,
-.sv-on[data-sv-motion="reduce"] .sv.sv-auto > :not(.sv-skip),
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]),
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > .sv:not(.sv-skip),
+.sv-on[data-sv-motion="reduce"] .sv.sv-auto > [data-sv]:not(.sv-skip),
 [data-sv-motion="reduce"] .sv .sv-drift,
 [data-sv-motion="reduce"] .sv .sv-curtain-l,
 [data-sv-motion="reduce"] .sv .sv-curtain-r,
@@ -145,7 +148,9 @@ const FALLBACK_CSS = `
 .sv-on .sv .sv-slide-l:focus-within, .sv-on .sv .sv-slide-r:focus-within,
 .sv-on .sv.sv-rise:focus-within, .sv-on .sv.sv-fade:focus-within,
 .sv-on .sv.sv-slide-l:focus-within, .sv-on .sv.sv-slide-r:focus-within,
-.sv-on .sv.sv-auto > :not(.sv-skip):focus-within {
+.sv-on .sv.sv-auto > :not(.sv-skip):not(.sv):not([data-sv]):focus-within,
+.sv-on .sv.sv-auto > .sv:not(.sv-skip):focus-within,
+.sv-on .sv.sv-auto > [data-sv]:not(.sv-skip):focus-within {
   opacity: 1;
   transform: none;
   transition: none;
