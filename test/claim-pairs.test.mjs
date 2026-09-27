@@ -84,9 +84,11 @@ test('COMPAT_PRESETS groups match the fallback stylesheet: pin presets animate f
 // a rule for is either named by COMPAT_PRESETS or on this exception list.
 // sv-deck and sv-reading get fallback rules on purpose (static unstacking,
 // a no-op opacity reset) but are not entrance/pin presets and carry no
-// stamped claim.
+// stamped claim. sv-stage is the pin helper's layout container, not a
+// preset: its page-switch release (B3, loop8-6) is a layout fix, not a
+// new animated claim.
 const STATE_CLASSES = new Set(['sv', 'sv-on', 'sv-live', 'sv-skip'])
-const RULE_EXCEPTIONS = new Set(['sv-deck', 'sv-reading'])
+const RULE_EXCEPTIONS = new Set(['sv-deck', 'sv-reading', 'sv-stage'])
 
 test('every class the fallback stylesheet has a rule for is named by COMPAT_PRESETS or the documented exception', () => {
   // A /* comment */ can carry a stray ".word" (e.g. "pin.css's") that reads
