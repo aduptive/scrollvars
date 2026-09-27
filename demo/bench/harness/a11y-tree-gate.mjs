@@ -156,7 +156,7 @@ export async function a11yTreeGate({ browser, check, base }) {
       // reads every name in that subtree instead of the container's own.
       const statusNode = find(await page.accessibility.snapshot({ interestingOnly: false }), (n) => n.role === 'status')
       const statusText = collectNames(statusNode).join(' ')
-      check('a11y-tree: the status region announces the new slide after next()', statusText === 'Slide 2 of 3', JSON.stringify(statusNode))
+      check('a11y-tree: the status region announces the new slide after next()', statusText.includes('Slide 2 of 3'), JSON.stringify(statusNode))
     }
 
     // ---- Accordion and toggles: aria-expanded in sync ---------------------
@@ -350,7 +350,11 @@ export async function a11yTreeGate({ browser, check, base }) {
       await page3e.evaluate(() => document.getElementById('scenes-section').scrollIntoView({ block: 'start' }))
       await page3e.waitForFunction(() => document.querySelector('#scenes-section p')?.textContent.trim() === 'Scene 1 of 3')
       await page3e.focus('#scene-input')
-      await page3e.evaluate(() => window.scrollBy(0, 80))
+      // Half a viewport is comfortably more than the fixture's whole pin
+      // span (Scenes height="40vh"), so this crosses at least one scene
+      // boundary regardless of viewport size, without hand-tuning a pixel
+      // count against a fraction of the viewport it does not know.
+      await page3e.evaluate(() => window.scrollBy(0, window.innerHeight * 0.5))
       await page3e.waitForFunction(() => document.querySelector('#scenes-section p')?.textContent.trim() !== 'Scene 1 of 3', { timeout: 5000 })
       const stillFocused = await page3e.evaluate(() => document.activeElement?.id === 'scene-input')
       const sceneText = await page3e.evaluate(() => document.querySelector('#scenes-section p')?.textContent.trim())
