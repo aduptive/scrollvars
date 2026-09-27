@@ -105,3 +105,27 @@ test('hud: reports calibrated: false before the opening window completes', async
     global.cancelAnimationFrame = saved.caf
   }
 })
+
+test('hud: a sustained 33.4ms opening (every-other-vsync miss) never calibrates as a healthy 30Hz display (loop8-7 C4)', async () => {
+  const queue = []
+  const saved = { raf: global.requestAnimationFrame, caf: global.cancelAnimationFrame }
+  global.requestAnimationFrame = (fn) => { queue.push(fn); return queue.length }
+  global.cancelAnimationFrame = () => {}
+  try {
+    const { trackFrames } = await import('../dist/debug/hud.js?sustained30')
+    const updates = []
+    const stop = trackFrames((stats) => updates.push(stats))
+    let t = 0
+    const tick = () => { const fn = queue.shift(); t += 33.4; fn(t) }
+    // 4s of a steady 33.4ms delta: never a frame fast enough to prove 50Hz+
+    for (let i = 0; i < 120; i++) tick()
+
+    const falselyHealthy = updates.filter((s) => s.calibrated === true && s.dropped === 0)
+    assert.equal(falselyHealthy.length, 0, 'a sustained half-rate opening must never read as a calibrated, drop-free display')
+    assert.ok(updates.every((s) => s.calibrated === false), 'stays uncalibrated: it never saw a delta fast enough to trust as the reference')
+    stop()
+  } finally {
+    global.requestAnimationFrame = saved.raf
+    global.cancelAnimationFrame = saved.caf
+  }
+})

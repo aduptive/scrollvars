@@ -58,7 +58,7 @@ const FALLBACK_CSS = `
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv .sv-rise, .sv-on .sv.sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
+.sv-on .sv .sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
   transform: translateY(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem)));
 }
 .sv-on .sv .sv-slide-l, .sv-on .sv.sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }

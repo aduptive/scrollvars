@@ -3106,6 +3106,52 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── Self-tracked sv-rise: no geometry feedback at the exit line (loop8-7 C1)
+// The tracked element itself carrying sv-rise used to translate its own box
+// while hidden, and the driver measures that same (now-moved) box to decide
+// live/hidden: near the exit line, going hidden moved the box back INTO the
+// activation band, flipping it live again, dozens of times per scroll.
+// Scrolled through and back at 2px a frame it must flip exactly twice each
+// way (crossing the enter line, then the exit line), the same shape as a
+// nested tracker whose child (not the tracked box itself) carries the preset.
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600 })
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body style="margin:0">
+      <div style="height:900px"></div>
+      <p data-sv class="sv-rise" style="height:100px;margin:0">self-tracked rise</p>
+      <div style="height:2000px"></div>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    SV.scan()
+    const el = document.querySelector('.sv-rise')
+    const waitFrame = () => new Promise((res) => requestAnimationFrame(res))
+    let last = el.classList.contains('sv-live')
+    const flips = { down: 0, up: 0 }
+    for (let y = 0; y <= 1500; y += 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.down++; last = now }
+    }
+    for (let y = 1500; y >= 0; y -= 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.up++; last = now }
+    }
+    return flips
+  })
+  check(
+    'self-tracked sv-rise: scrolled through and back, sv-live flips exactly twice each way (no geometry feedback at the exit line)',
+    r.down === 2 && r.up === 2,
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+
 await pageOutputsGate({ browser, check, base })
 await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })

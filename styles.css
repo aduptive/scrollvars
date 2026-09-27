@@ -55,8 +55,12 @@
     translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
+/* A self-tracked sv-rise (the tracked element carries the class itself,
+   not a child) never gets the translate: the driver measures this same
+   box, so moving it feeds back into its own live/hidden decision near the
+   exit line (round-trip flip). It still fades via the opacity rule above;
+   put sv-rise on a child of the tracker for the actual rise. */
 .sv-on :is(.sv, [data-sv]) .sv-rise,
-.sv-on :is(.sv, [data-sv]).sv-rise,
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance));
 }
@@ -416,6 +420,46 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-range > * {
   --sv-r: 1; /* the clock is 0 without the driver; the finished state, not opacity 0 */
 }
 html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
+  --sv-int: var(--sv-max, 100);
+}
+
+/* Plain-selector twins of the eight rules above: an engine with individual
+   transforms but no :is() (Firefox 72-77, below the README floor) drops the
+   whole :is() list and keeps curtains closed, the deck stacked and the rail
+   offscreen with no JS. One rule each, never a shared list, matches the
+   RELEASED twins below. */
+html:not(.sv-on) .sv .sv-curtain-l,
+html:not(.sv-on) [data-sv] .sv-curtain-l,
+html:not(.sv-on) .sv .sv-curtain-r,
+html:not(.sv-on) [data-sv] .sv-curtain-r {
+  display: none;
+}
+html:not(.sv-on) .sv .sv-rail,
+html:not(.sv-on) [data-sv] .sv-rail {
+  translate: none;
+  width: auto;
+  flex-wrap: wrap;
+}
+html:not(.sv-on) .sv .sv-deck,
+html:not(.sv-on) [data-sv] .sv-deck {
+  display: block;
+}
+html:not(.sv-on) .sv .sv-deck > *,
+html:not(.sv-on) [data-sv] .sv-deck > * {
+  translate: none;
+  rotate: none;
+  scale: none;
+}
+html:not(.sv-on) .sv .sv-reading > *,
+html:not(.sv-on) [data-sv] .sv-reading > * {
+  opacity: 1;
+}
+html:not(.sv-on) .sv .sv-range > *,
+html:not(.sv-on) [data-sv] .sv-range > * {
+  --sv-r: 1;
+}
+html:not(.sv-on) .sv .sv-counter,
+html:not(.sv-on) [data-sv] .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 

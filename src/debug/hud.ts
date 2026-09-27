@@ -20,6 +20,14 @@ export interface FrameStats {
 }
 
 const CALIBRATION_MS = 1000
+// Never lock the calibration onto a delta slower than 50Hz-equivalent: a
+// page that opens sustained at 30fps (every other vsync missed on a 60Hz
+// display) would otherwise calibrate ITS OWN drop rate as "healthy" and
+// report 0 dropped forever (ADU-354 item 11, loop8-7 C4). calibrationMin
+// keeps shrinking as faster frames arrive, so the window below just widens
+// past its first second until one does, rather than accepting the first
+// window's slowest reading as the reference.
+const MAX_CALIBRATED_INTERVAL_MS = 20
 
 // A refresh interval measured FROM the frames it is judging reads a
 // sustained half-rate page (every other vsync) as a 30Hz display with 0
@@ -61,7 +69,7 @@ export function trackFrames(onUpdate: (stats: FrameStats) => void): () => void {
         } else {
           if (!calibrationStart) calibrationStart = t
           calibrationMin = Math.min(calibrationMin, delta)
-          if (t - calibrationStart >= CALIBRATION_MS && calibrationMin < Infinity) interval = calibrationMin
+          if (t - calibrationStart >= CALIBRATION_MS && calibrationMin <= MAX_CALIBRATED_INTERVAL_MS) interval = calibrationMin
         }
       }
       if (!spansGap) {
