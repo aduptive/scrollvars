@@ -53,6 +53,21 @@ function findAll(node, pred, out = []) {
 }
 const find = (node, pred) => findAll(node, pred)[0]
 
+/**
+ * All non-empty accessible names in the tree, one entry per node. Chrome
+ * folds plain inline text (a <b>, a bare <span>) into whichever ancestor's
+ * name computation picks it up rather than always giving it a leaf node of
+ * its own, so a check for "is this text anywhere in the tree" joins every
+ * name and does a substring search, instead of expecting one exact node
+ * per phrase.
+ */
+function collectNames(node, out = []) {
+  if (!node) return out
+  if (node.name) out.push(node.name)
+  for (const child of node.children || []) collectNames(child, out)
+  return out
+}
+
 const APP_SOURCE = `
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
@@ -237,8 +252,10 @@ export async function a11yTreeGate({ browser, check, base }) {
           await page3.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
         }
         const tree = await page3.accessibility.snapshot({ interestingOnly: false })
-        const steps = findAll(tree, (n) => /^Step \d$/.test(n.name || ''))
-        check(`a11y-tree: sticky-steps keeps every step in the tree (${label})`, steps.length >= 3, `found ${steps.length}`)
+        const combined = collectNames(tree).join(' | ')
+        const wanted = ['Step 1', 'Step 2', 'Step 3']
+        const missing = wanted.filter((w) => !combined.includes(w))
+        check(`a11y-tree: sticky-steps keeps every step in the tree (${label})`, missing.length === 0, `missing: ${missing.join(', ') || 'none'}`)
       } finally {
         await page3.close()
       }
@@ -265,8 +282,9 @@ export async function a11yTreeGate({ browser, check, base }) {
       check('a11y-tree gate can fail: an unwired trigger is reported as NOT syncing aria-expanded', expandedBroken === expandedBrokenAfter)
 
       const tree = await page4.accessibility.snapshot({ interestingOnly: false })
-      const brokenFragments = findAll(tree, (n) => n.role === 'text' && ['Words', 'fragmented', 'badly'].includes((n.name || '').trim()))
-      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFragments.length > 0, `found ${brokenFragments.length}`)
+      const brokenCombined = collectNames(tree).join(' | ')
+      const brokenFound = ['Words', 'fragmented', 'badly'].filter((w) => brokenCombined.includes(w))
+      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFound.length === 3, `found: ${brokenFound.join(', ') || 'none'}`)
     } finally {
       await page4.close()
     }
