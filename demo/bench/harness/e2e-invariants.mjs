@@ -3199,6 +3199,120 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── D1 (loop8-8): a tracked child of sv-auto, same geometry feedback as C1's
+// self-tracked sv-rise (PR #117), but sv-auto's own translate rule never got
+// the exclusion. `<section data-sv class="sv-auto"><p data-sv>` translated
+// the child on its OWN --sv-live, the driver measures the moved box, and
+// near the exit line hiding moved it back into the activation band: flips
+// exactly twice each way now (measured 65 flips on d0c1829).
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600 })
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body style="margin:0">
+      <div style="height:900px"></div>
+      <section data-sv class="sv-auto" style="margin:0">
+        <p data-sv style="height:100px;margin:0">tracked auto child</p>
+      </section>
+      <div style="height:2000px"></div>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    SV.scan()
+    const el = document.querySelector('p[data-sv]')
+    const waitFrame = () => new Promise((res) => requestAnimationFrame(res))
+    let last = el.classList.contains('sv-live')
+    const flips = { down: 0, up: 0 }
+    for (let y = 0; y <= 1500; y += 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.down++; last = now }
+    }
+    for (let y = 1500; y >= 0; y -= 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.up++; last = now }
+    }
+    return flips
+  })
+  check(
+    'tracked sv-auto child: scrolled through and back, sv-live flips exactly twice each way (no geometry feedback at the exit line, D1)',
+    r.down === 2 && r.up === 2,
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+
+// ── D2 (loop8-8): a focused control inside sv-view-fade/sv-view-rise near
+// the entry edge stays transparent. Chrome scrolls a partly-visible focus
+// target just into view and stops (never centers it), so the native
+// scroll-driven entrance can still be mid-range when the focused box lands
+// on screen. Measured opacity 0.00 (sv-view-fade) / 0.28 (sv-view-rise) at
+// peek 4px, with and without JS: the fix is a plain CSS focus override, so
+// the no-JS case is the one that matters here.
+for (const cls of ['sv-view-fade', 'sv-view-rise']) {
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600 })
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body style="margin:0;font:16px/1.4 sans-serif">
+      <a id="a" href="#a">before</a>
+      <div style="height:1500px"></div>
+      <section class="${cls}" id="s" style="height:300px;background:#eee">
+        <a id="b" href="#b" style="display:inline-block;padding:4px">focus me</a>
+      </section>
+      <div style="height:1500px"></div>
+    </body></html>`)
+  const r = await page.evaluate((peek) => new Promise((resolve) => {
+    const s = document.getElementById('s')
+    const top = s.getBoundingClientRect().top + scrollY
+    scrollTo(0, top - innerHeight + peek)
+    document.getElementById('a').focus({ preventScroll: true })
+    setTimeout(() => {
+      document.getElementById('b').focus()
+      requestAnimationFrame(() => {
+        const b = document.getElementById('b')
+        let opacity = 1
+        for (let n = b; n && n.nodeType === 1; n = n.parentElement) opacity *= +getComputedStyle(n).opacity
+        resolve({ opacity })
+      })
+    }, 50)
+  }), 4)
+  check(
+    `${cls}: a focused control near the entry edge is opacity 1 within one frame of focus (D2, no-JS)`,
+    r.opacity === 1,
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+// ── T3 (loop8-8): the home page's own hand-kept preset copy had no
+// :focus-within override, so its focusable code block (#amb-section's
+// pre.sv-rise) could be tabbed onto mid-fade while its section was not yet
+// live. Scroll #amb-section out of the live band, focus the pre, opacity
+// must read 1 within one frame (matches core.css's shipped override).
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600 })
+  await page.goto(`${base}/index.html`, { waitUntil: 'load' })
+  const r = await page.evaluate(() => new Promise((resolve) => {
+    const section = document.getElementById('amb-section')
+    const top = section.getBoundingClientRect().top + scrollY
+    scrollTo(0, Math.max(0, top - innerHeight * 3))
+    const pre = section.querySelector('pre.sv-rise')
+    pre.focus()
+    requestAnimationFrame(() => {
+      resolve({ opacity: getComputedStyle(pre).opacity })
+    })
+  }))
+  check(
+    "home #amb-section's focused code block is opacity 1 within one frame of focus, even while the section is not yet live (T3)",
+    r.opacity === '1',
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+
 await pageOutputsGate({ browser, check, base })
 await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })

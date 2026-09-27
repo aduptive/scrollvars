@@ -158,11 +158,7 @@ html:not(.sv-on) :is(.sv, [data-sv]) .sv-counter {
   --sv-int: var(--sv-max, 100);
 }
 
-/* Plain-selector twins of the eight rules above: an engine with individual
-   transforms but no :is() (Firefox 72-77, below the README floor) drops the
-   whole :is() list and keeps curtains closed, the deck stacked and the rail
-   offscreen with no JS. One rule each, never a shared list, matches the
-   RELEASED twins below. */
+/* Plain-selector twins of the eight rules above (Firefox 72-77 has no :is()). */
 html:not(.sv-on) .sv .sv-curtain-l,
 html:not(.sv-on) [data-sv] .sv-curtain-l,
 html:not(.sv-on) .sv .sv-curtain-r,
