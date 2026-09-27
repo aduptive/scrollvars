@@ -455,7 +455,12 @@ export async function a11yTreeGate({ browser, check, base }) {
 
       const tree = await page4.accessibility.snapshot({ interestingOnly: false })
       const brokenFragments = splitFragments(tree, ['Words', 'fragmented', 'badly'])
-      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenFragments.length === 3, `found: ${brokenFragments.map((f) => f.name).join(', ') || 'none'}`)
+      // Chrome can expose both a span and its lone StaticText child with the
+      // same accessible name, so a plain span span gets counted twice: the
+      // check is about which WORDS survived as their own fragment, not the
+      // exact node count.
+      const brokenWords = new Set(brokenFragments.map((f) => f.name.trim()))
+      check('a11y-tree gate can fail: readable per-word spans (no aria-hidden) are reported as fragments', brokenWords.size === 3, `found: ${[...brokenWords].join(', ') || 'none'}`)
     } finally {
       await page4.close()
     }
