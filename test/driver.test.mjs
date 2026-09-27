@@ -1536,7 +1536,10 @@ test('driver: releasing an element settles it to its no-JS rendering, and pin.cs
   // element IS the target (`<div class="sv sv-spread" data-sv data-sv-travel>`,
   // the documented scrub idiom). Deriving the twin from the selector STRING
   // gave those guards a descendant-only twin that can never fire for them.
-  const trackerAncestor = /^:is\(\.sv, \[data-sv\]\)\s+/
+  // The pin.css no-JS plain twins (loop8-7 C3) express the same "tracked
+  // ancestor" shape as one bare `.sv` or `[data-sv]` selector instead of the
+  // `:is()` group, so the same tracker ancestor requirement applies to them.
+  const trackerAncestor = /^(?::is\(\.sv, \[data-sv\]\)|\.sv|\[data-sv\])\s+/
   // The one guard that needs no twin, with its reason, so the exemption is a
   // decision and not an accident: this one only re-derives --sv-act from
   // --sv-live, and releaseEntry() writes an inline `--sv-live: 1` on the

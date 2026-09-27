@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.9 KB, styles 10.4 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.7 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.9 KB, styles 10.8 KB for every preset or 3.3 KB for the core part. A typical page ships ~9.0 KB on the wire.
 
 ## Why
 
@@ -169,8 +169,8 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 // app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.1 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.3 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.3 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.5 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -196,7 +196,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~8.7 KB gzipped, total.**
+**~9.0 KB gzipped, total.**
 
 ## Mental model
 
@@ -237,6 +237,12 @@ Anything that reads them is a preset. The shipped ones:
 | `sv-deck` | Pinned card pile: each child flies away across its slice of the pin (`--sv-count`) |
 | `sv-reading` | Guided reading: word spans lit progressively across the pin (`--sv-count` + `--sv-order`); unread words sit at `--sv-reading-floor` (.55 keeps 4.5:1 on the default dark palette, check your own colors; .13 for drama) |
 | `sv-counter` | Integer counted up by the scroll via `@property` + `counter()`. Set `--sv-max` |
+
+`sv-rise` on an element that is itself tracked (`.sv`/`[data-sv]`, whether
+it has no separate ancestor tracker, or is nested inside one) fades in
+place: the travel is dropped, since the driver measures that same box and
+translating it would feed back into its own live/hidden decision. Put
+`sv-rise` on a plain (untracked) child of the tracker for the actual rise.
 
 Knobs (set anywhere in CSS or inline; the defaults live at zero specificity, so a `:root` override always wins): `--sv-distance` (travel length), `--sv-order` (stagger position), `--sv-stagger`, `--sv-duration`, `--sv-ease`. Exception: for auto-ordered children `--sv-order` is declared on the child itself, by `.sv-auto > :nth-child(n)`, `.sv-stagger > :nth-child(n)` and `.sv .sv-deck > :nth-child(n)`, and a value inherited from `:root` never applies where the child declares its own. The auto/stagger rules are (0,2,0); deck indexing is (0,3,0), so overriding one takes an inline `style="--sv-order: 3"` or a rule at least as specific: a plain `.card { --sv-order: 3 }` loses (or omit automatic indexing and order by hand).
 

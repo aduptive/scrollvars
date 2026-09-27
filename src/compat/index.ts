@@ -58,7 +58,7 @@ const FALLBACK_CSS = `
     transform var(--sv-duration, 800ms) var(--sv-ease, ease-out);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger, 90ms));
 }
-.sv-on .sv .sv-rise, .sv-on .sv.sv-rise, .sv-on .sv.sv-auto > :not(.sv-skip) {
+.sv-on .sv .sv-rise:not(.sv):not([data-sv]), .sv-on .sv.sv-auto > :not(.sv-skip) {
   transform: translateY(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem)));
 }
 .sv-on .sv .sv-slide-l, .sv-on .sv.sv-slide-l { transform: translateX(calc((1 - var(--sv-live, 0)) * var(--sv-distance, 6rem) * -2)); }
@@ -83,7 +83,7 @@ const FALLBACK_CSS = `
 .sv .sv-deck > * { transform: none; }
 [data-sv-flow] .sv-rail { transform: none; }
 @media (prefers-reduced-motion: reduce) {
-  .sv-on .sv .sv-rise, .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
+  .sv-on .sv .sv-rise:not(.sv):not([data-sv]), .sv-on .sv .sv-fade, .sv-on .sv .sv-slide-l,
   .sv-on .sv .sv-slide-r, .sv-on .sv.sv-rise, .sv-on .sv.sv-fade,
   .sv-on .sv.sv-slide-l, .sv-on .sv.sv-slide-r,
   .sv-on .sv.sv-auto > :not(.sv-skip),
@@ -96,7 +96,7 @@ const FALLBACK_CSS = `
 }
 
 /* the same under html[data-sv-motion="reduce"] (core/motion.ts) */
-.sv-on[data-sv-motion="reduce"] .sv .sv-rise,
+.sv-on[data-sv-motion="reduce"] .sv .sv-rise:not(.sv):not([data-sv]),
 .sv-on[data-sv-motion="reduce"] .sv .sv-fade,
 .sv-on[data-sv-motion="reduce"] .sv .sv-slide-l,
 .sv-on[data-sv-motion="reduce"] .sv .sv-slide-r,
@@ -138,8 +138,10 @@ const FALLBACK_CSS = `
 /* Same focus-visibility override as styles/core.css: a focused entrance
    child must be visible now, not after its stagger delay. The self-tracked
    case (the tracked element IS the preset) needs its own selector, same
-   gap as core.css. */
-.sv-on .sv .sv-rise:focus-within, .sv-on .sv .sv-fade:focus-within,
+   gap as core.css. The :not(.sv):not([data-sv]) on the sv-rise descendant
+   arm matches the same bump on the translateY rule above, so this override
+   still out-specifies it for a plain (untracked) child. */
+.sv-on .sv .sv-rise:not(.sv):not([data-sv]):focus-within, .sv-on .sv .sv-fade:focus-within,
 .sv-on .sv .sv-slide-l:focus-within, .sv-on .sv .sv-slide-r:focus-within,
 .sv-on .sv.sv-rise:focus-within, .sv-on .sv.sv-fade:focus-within,
 .sv-on .sv.sv-slide-l:focus-within, .sv-on .sv.sv-slide-r:focus-within,
