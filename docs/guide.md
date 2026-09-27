@@ -146,12 +146,12 @@ Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/do
 
 | device | browser | commit | calibration | page | p50 ms | p95 ms | p95 worst rep | p99 ms | late % | animated | budget |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | deep | 16.7 | 17.5 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Chrome (macOS) | Chrome 152 | `66c7498` | self-calibrated | cubes | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | long | 16.7 | 17.6 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | deep | 16.7 | 17.6 | 17.6 | 17.7 | 0.0 | 3/3 | pass |
-| Desktop Firefox (macOS) | Firefox 155 | `66c7498` | self-calibrated | cubes | 16.7 | 17.7 | 17.7 | 17.7 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `5e3bb30` | independent | long | 16.7 | 18.3 | 18.4 | 18.6 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `5e3bb30` | independent | deep | 16.7 | 18.4 | 18.4 | 18.6 | 0.0 | 3/3 | pass |
+| Desktop Chrome (macOS) | Chrome 152 | `5e3bb30` | independent | cubes | 16.7 | 18.4 | 18.6 | 18.7 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | long | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | deep | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
+| Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | cubes | 16.7 | 17.2 | 17.3 | 17.5 | 0.1 | 3/3 | pass |
 | Desktop Safari (macOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
 | iPhone Safari (iOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
 <!-- devicematrix:end -->
