@@ -2449,3 +2449,170 @@ test('react: Scenes keeps the current scene mounted across every active/stacked 
   }
 })
 
+test('react: Scenes stacked branch remounts nothing on a scene change, no key that depends on the live scene (ADU-354 N1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  // stacked from the start and never lifts: onScene still fires as the
+  // driver measures the pin geometry (computeScene runs for every scene
+  // entry regardless of `active`), so a change here with the buggy
+  // `key={i === scene ? 'current' : i}` moves the "current" key around.
+  const realMatchMedia = global.window.matchMedia
+  global.window.matchMedia = () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} })
+
+  const mounts = {}
+  const nodes = {}
+  function Probe({ index }) {
+    const ref = React.useRef(null)
+    React.useEffect(() => {
+      mounts[index] = (mounts[index] || 0) + 1
+      nodes[index] = ref.current
+    }, [])
+    return React.createElement('input', { ref, defaultValue: '' })
+  }
+
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(Scenes, { count: 4 }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'stacked: every scene mounts once')
+    const before = { ...nodes }
+    // a value typed into scene 1's input, the way a reader interacts with a
+    // stacked scene while scrolling past its neighbors
+    nodes[1].value = 'typed while scrolling'
+
+    container.firstChild.getBoundingClientRect = () => ({ top: -400, bottom: 1200, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+    container.firstChild.getBoundingClientRect = () => ({ top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'a scene change while stacked remounts nothing')
+    for (const i of [0, 1, 2, 3]) assert.equal(nodes[i], before[i], `scene ${i} keeps its DOM node across the scene change`)
+    assert.equal(nodes[1].value, 'typed while scrolling', 'a value typed into a stacked scene survives later scene changes')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.window.matchMedia = realMatchMedia
+  }
+})
+
+test('react: Track keeps sv-live after a completed once reveal even when className changes later (ADU-354 N5)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Track } = await import('../dist/react/index.js')
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  try {
+    await act(async () => {
+      root.render(React.createElement(Track, { once: true, className: 'a' }, 'content'))
+    })
+    // inside the live band (vh 800: LIVE_ENTER 0.75, LIVE_EXIT 0.25): a once
+    // reveal with no travel/pin/scenes settles and releases on this frame
+    container.firstChild.getBoundingClientRect = () => ({ top: 100, bottom: 700, left: 0, right: 0, width: 0, height: 600 })
+    await act(async () => { flushFrames() })
+    assert.ok(container.firstChild.classes.has('sv-live'), 'once completes and goes live')
+    assert.ok(container.firstChild.classes.has('a'), 'the original className is present')
+
+    // a later React re-render with a different className, nothing to do
+    // with the driver, must not drop the class the completion promised
+    await act(async () => {
+      root.render(React.createElement(Track, { once: true, className: 'b' }, 'content'))
+    })
+    assert.ok(container.firstChild.classes.has('sv-live'), 'sv-live survives a className change after completion')
+    assert.ok(container.firstChild.classes.has('b'), 'the new className still applies')
+    assert.ok(!container.firstChild.classes.has('a'), 'the old className is gone, same as any other React className swap')
+  } finally {
+    await act(async () => { root.unmount() })
+  }
+})
+
+test('react: Scenes remounts deliberately when returning to active on a scene that drifted while stacked, no state leak (verifier N1 follow-up)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  const realMatchMedia = global.window.matchMedia
+  let mediaChange
+  // starts NOT reduced, so the first attach lands active on scene 0
+  global.window.matchMedia = () => ({
+    matches: false,
+    addEventListener: (_, fn) => { mediaChange = fn },
+    removeEventListener: () => {},
+  })
+
+  const mounts = {}
+  const nodes = {}
+  function Probe({ index }) {
+    const ref = React.useRef(null)
+    React.useEffect(() => {
+      mounts[index] = (mounts[index] || 0) + 1
+      nodes[index] = ref.current
+    }, [])
+    return React.createElement('input', { ref, defaultValue: '' })
+  }
+
+  const sceneLog = []
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(Scenes, { count: 4, onScene: (s) => sceneLog.push(s) }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'stacked: every scene mounts once')
+
+    // attach: not reduced, default geometry lands on scene 0, matching the
+    // frozen index (0): active, no remount (PR #92)
+    await act(async () => { flushFrames() })
+    assert.equal(sceneLog.at(-1), 0, 'lands active on scene 0')
+    assert.equal(mounts[0], 1, 'active on the matching scene 0: no remount')
+    nodes[0].value = 'typed on scene 0 while active'
+
+    // active -> stacked (reduced motion): frozen index stays 0, matching
+    // guarantee holds (PR #92)
+    await act(async () => { mediaChange({ matches: true }) })
+    assert.equal(mounts[0], 1, 'switching to stacked does not remount scene 0')
+
+    // drift to the LAST scene while stacked: the frozen index (0) now
+    // disagrees with the live scene the reader actually scrolled to
+    container.firstChild.getBoundingClientRect = () => ({ top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+    assert.equal(sceneLog.at(-1), 3, 'drifted to the last scene while stacked')
+    const beforeReturn = nodes[3]
+    // entering stacked mode itself always remounts the non-current scenes
+    // (active mode renders only one), so the mount count carries that
+    // baseline in; the transition below is judged by its OWN delta, not an
+    // absolute count.
+    const mountsBeforeReturn = mounts[3]
+
+    // stacked -> active on the DRIFTED scene: frozen (0) != live scene (3),
+    // so reusing "current" would carry scene 0's state into scene 3. The
+    // fix remounts deliberately here instead.
+    await act(async () => { mediaChange({ matches: false }) })
+    assert.equal(mounts[3], mountsBeforeReturn + 1, 'returning to active on a drifted scene remounts it fresh')
+    assert.notEqual(nodes[3], beforeReturn, 'the active node is a new one, not the stale stacked fiber')
+    assert.equal(nodes[3].value, '', 'no leaked value from scene 0 on the newly active scene 3')
+
+    // a later matching-index switch (no drift while stacked) still keeps
+    // the PR #92 guarantee: scene 3 is now the frozen index, so leaving and
+    // returning to active on the SAME scene remounts nothing further for it
+    const mountsAfterReturn = mounts[3]
+    await act(async () => { mediaChange({ matches: true }) })
+    await act(async () => { mediaChange({ matches: false }) })
+    assert.equal(mounts[3], mountsAfterReturn, 'a matching-index active/stacked round trip remounts nothing further')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.window.matchMedia = realMatchMedia
+  }
+})
+

@@ -70,6 +70,10 @@ under it to the no-JS rendering and comes off the moment that element is
 tracked again; a released ancestor still holding a tracked descendant keeps
 waiting for it. A settled `once` entry never takes this marker: it keeps
 `sv-live` and the inline `--sv-live: 1`, live and untracked instead.
+`<Track>` and `<Scenes>` carry `sv-live` in their own rendered className
+once completed, so a later className change never drops it; a bare
+`useTrack` on your own element has to do the same: keep `sv-live` in your
+className after `onStatus('completed')`.
 
 ## Imports
 
