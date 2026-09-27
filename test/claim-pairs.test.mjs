@@ -219,3 +219,44 @@ test('every "README\'s <Name> section" / \'README, "<Name>"\' phrase in AGENTS.m
   }
   assert.deepEqual(problems, [])
 })
+
+// AGENTS.md's "React never re-renders per frame" claim used to add "only
+// on discrete index changes" (D1): completion, attachment, flow and motion
+// changes also re-render, none of them an index change (src/react/index.tsx).
+test('AGENTS.md does not narrow React re-renders to "index changes" only', () => {
+  const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+  assert.doesNotMatch(agents, /only on discrete index changes/)
+})
+
+// The scoped clocks sheet's own measurements two paragraphs above (a flat
+// profile 4 percent slower, several gallery pages slower) contradict "it
+// can only make one faster where it is understood" (D2): the sheet's real
+// guarantee is only that it never breaks a page below the floor.
+test('the scoped clocks claim does not overstate "can only make one faster" against its own measurements', () => {
+  assert.doesNotMatch(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /can only make one faster/)
+  assert.doesNotMatch(readme, /can only make one faster/)
+})
+
+// The VoiceOver checklist used to say RotatingWords had "no pause control
+// yet" (D4): N4 shipped one, in both the preview and the installed content
+// (scripts/fx-data.mjs).
+test('the guide does not claim RotatingWords has no pause control', () => {
+  assert.doesNotMatch(readme, /no pause control yet/)
+})
+
+// The guide's useScenes hook example used to key the stacked branch's
+// current scene as "current" (the same identity the active branch used),
+// moving one child's component identity between scenes and remounting a
+// neighbor on every switch: exactly the bug ADU-188/N1 fixed in `<Scenes>`
+// itself (B6). A key expression that references `scene` in that fenced
+// example reintroduces it.
+test('the guide\'s useScenes example keys the stacked (inactive) branch by index, never by scene', () => {
+  const fences = [...readme.matchAll(/```tsx\n([\s\S]*?)```/g)].map((m) => m[1])
+  const useScenesExample = fences.find((f) => f.includes('useScenes'))
+  assert.ok(useScenesExample, 'no fenced tsx example uses useScenes')
+  // the stacked branch is the Array.from(...) map that renders every scene;
+  // its key must be the plain index, not an expression comparing to `scene`
+  const stacked = useScenesExample.match(/Array\.from\([\s\S]*?\)\)}/)
+  assert.ok(stacked, 'no stacked (Array.from) branch found in the useScenes example')
+  assert.doesNotMatch(stacked[0], /key=\{[^}]*scene[^}]*\}/, 'the stacked branch\'s key must not reference `scene`')
+})

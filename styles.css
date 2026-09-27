@@ -217,6 +217,22 @@ html:not(.sv-on) .sv-spread > * {
   translate: none;
 }
 
+/* A focused entrance child must be visible NOW, not after its stagger delay
+   and transition run (WCAG 2.4.7). This must sit AFTER the entrance rules
+   above (same source-order trap as the reduced-motion resets): at equal or
+   higher specificity the later rule wins. :focus-within matches the element
+   itself too, so one selector covers both a focused entrance item and one
+   that contains the focused control. */
+.sv-on :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r):focus-within,
+.sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip):focus-within,
+.sv-on :is(.sv, [data-sv]) .sv-split-rise > span:focus-within {
+  transition: none;
+  opacity: 1;
+  translate: none;
+}
+
+
+
 /* ScrollVars: pinned presets (curtain, rail, deck, reading, counter).
  * Requires styles/core.css (or the aggregate styles.css) for the tokens. */
 
