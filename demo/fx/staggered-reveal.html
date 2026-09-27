@@ -225,7 +225,12 @@
     transition: none; animation: none; opacity: 1; translate: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }</code></pre>
+.sv-on:where([data-sv-motion="reduce"]) :is(.sv, [data-sv]) :is(.sv-rise, .sv-fade, .sv-slide-l, .sv-slide-r, .sv-drift) { transition: none; animation: none; opacity: 1; translate: none; }
+
+/* a focused entrance child must be visible now, not after its stagger
+   delay (WCAG 2.4.7): must sit AFTER the reduce blocks above, same
+   source-order rule */
+.sv-on .sv .sv-rise:focus-within { transition: none; opacity: 1; translate: none; }</code></pre>
     <pre tabindex="0" data-pane="react"><code>&lt;Reveal auto&gt;            {/* every direct child, stagger for free */}
   &lt;h2&gt;Title&lt;/h2&gt;
   &lt;p&gt;Copy&lt;/p&gt;

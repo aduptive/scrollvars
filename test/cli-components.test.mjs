@@ -606,15 +606,19 @@ const ruleClasses = (css) =>
 // The twin of a reduce block under html[data-sv-motion="reduce"] (the site's
 // own switch, ADU-249) sits right below the block with the same declarations:
 // it is the override again, not a preset rule re-declared below it, so both
-// checks here read the pane with the twins removed.
+// checks here read the pane with the twins removed. Same for a :focus-within
+// override (A3, WCAG 2.4.7, styles/core.css:229-237): it too sits after the
+// reduce blocks by design (higher specificity settles the SAME rest state,
+// not an entrance re-declared that would animate again).
 const TWIN_RULE = /[^{}]*\[data-sv-motion="reduce"\][^{}]*\{[^{}]*\}/g
+const FOCUS_RULE = /[^{}]*:focus-within[^{}]*\{[^{}]*\}/g
 const reduceBlocks = (css) => stripComments(stripScripts(css)).match(REDUCE_BLOCK) ?? []
 const reducedClasses = (css) => new Set(reduceBlocks(css).flatMap((block) => [...ruleClasses(block)]))
 const sheetResets = Object.fromEntries(STYLESHEETS.map((name) => [name, reducedClasses(styleSource[name])]))
 
 for (const fx of EFFECTS.filter((e) => e.css)) {
   test(`gallery ${fx.slug}: the CSS tab carries the reduced-motion override of every preset rule it quotes`, () => {
-    const pane = stripComments(stripScripts(fx.css)).replace(TWIN_RULE, '')
+    const pane = stripComments(stripScripts(fx.css)).replace(TWIN_RULE, '').replace(FOCUS_RULE, '')
     const blocks = pane.match(REDUCE_BLOCK) ?? []
     const reset = reducedClasses(fx.css)
     const missing = []

@@ -62,6 +62,20 @@ export async function focusEntranceGate({ browser, check, base }) {
       if (!reduce) {
         await page.waitForFunction(() => getComputedStyle(document.getElementById('child11')).opacity === '0', { timeout: 2500 })
         await page.waitForFunction(() => getComputedStyle(document.getElementById('self-tracked')).opacity === '0', { timeout: 2500 })
+      } else {
+        // A1/A4 (loop8-5): under reduce a self-tracked entrance (rise or
+        // split-rise) must be at rest from the first frame, unfocused: it
+        // never went through the hidden fail-visible state at all.
+        const rest = await page.evaluate(() => {
+          const el = document.getElementById('self-tracked')
+          const cs = getComputedStyle(el)
+          const spans = [...document.getElementById('self-tracked-split').querySelectorAll('span[aria-hidden]')].map((s) => getComputedStyle(s).opacity)
+          return { opacity: cs.opacity, translate: cs.translate, transition: cs.transitionDuration, spans }
+        })
+        check(`focus-entrance${label}: a self-tracked sv-rise element is at rest (unfocused, below the fold)`,
+          rest.opacity === '1' && rest.translate === 'none' && rest.transition === '0s', JSON.stringify(rest))
+        check(`focus-entrance${label}: a self-tracked sv-split-rise heading's spans are at rest (unfocused, below the fold, A4)`,
+          rest.spans.length > 0 && rest.spans.every((o) => o === '1'), JSON.stringify(rest.spans))
       }
 
       const persistent = await page.evaluate(`(${FOCUS_AND_READ})('.links a:first-child')`)
@@ -83,9 +97,42 @@ export async function focusEntranceGate({ browser, check, base }) {
       const selfTracked = await page.evaluate(`(${FOCUS_AND_READ})('#self-tracked')`)
       check(`focus-entrance${label}: a self-tracked entrance element (tracked element IS the preset) is opacity 1 within one frame of focus`,
         selfTracked.opacity === '1', JSON.stringify(selfTracked))
+
+      // A4: a self-tracked sv-split-rise heading (the tracked element IS the
+      // split preset, no separate ancestor) must animate at all, and its
+      // spans must reveal at once when focused.
+      const selfTrackedSplit = await page.evaluate(`(${FOCUS_AND_READ_SPANS})('#self-tracked-split')`)
+      check(`focus-entrance${label}: a self-tracked sv-split-rise heading reveals every word span at once (A4)`,
+        selfTrackedSplit.length > 0 && selfTrackedSplit.every((o) => o === '1'), JSON.stringify(selfTrackedSplit))
     } finally {
       await page.close()
     }
+  }
+
+  // The page's own switch (html[data-sv-motion="reduce"]), not just the OS
+  // media query: A1's fix touches both twins, so both need proof.
+  const attrPage = await browser.newPage()
+  try {
+    await attrPage.goto(`${base}${FIXTURE}`, { waitUntil: 'load' })
+    await attrPage.waitForFunction(() => typeof window.SV !== 'undefined', { timeout: 5000 })
+    await attrPage.waitForFunction(() => getComputedStyle(document.getElementById('self-tracked')).opacity === '0', { timeout: 2500 })
+    const rest = await attrPage.evaluate(() => new Promise((resolve) => {
+      SV.setMotion('reduce')
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const el = document.getElementById('self-tracked')
+        const cs = getComputedStyle(el)
+        const spans = [...document.getElementById('self-tracked-split').querySelectorAll('span[aria-hidden]')].map((s) => getComputedStyle(s).opacity)
+        resolve({ opacity: cs.opacity, translate: cs.translate, transition: cs.transitionDuration, spans })
+      }))
+    }))
+    check('focus-entrance (data-sv-motion="reduce"): a self-tracked sv-rise element is at rest',
+      rest.opacity === '1' && rest.translate === 'none' && rest.transition === '0s', JSON.stringify(rest))
+    check('focus-entrance (data-sv-motion="reduce"): a self-tracked sv-split-rise heading\'s spans are at rest (A4)',
+      rest.spans.length > 0 && rest.spans.every((o) => o === '1'), JSON.stringify(rest.spans))
+  } catch (error) {
+    check('focus-entrance (data-sv-motion="reduce"): the checks ran to the end', false, error.message)
+  } finally {
+    await attrPage.close()
   }
 }
 
