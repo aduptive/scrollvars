@@ -101,6 +101,7 @@ test('core.css: self-tracked entrances are at rest under both reduce controls', 
 
   const selfSpread = '.sv-on :is(.sv, [data-sv]).sv-spread.sv-spread-in > *'
   assert.ok(hasEntrance(rules, selfSpread, '--sv-spread: var(--sv-live)'), 'a self-tracked sv-spread-in never scrubs from --sv-live')
+  assert.ok(hasEntrance(rules, '.sv-on .sv.sv-spread.sv-spread-in > *', 'transition:'), 'a self-tracked sv-spread-in never gets the transition twin')
   assert.ok(spreadAtRest('media', '.sv-on .sv.sv-spread.sv-spread-in > *'), 'media reduce block misses self-tracked sv-spread-in')
   assert.ok(spreadAtRest('attr', '.sv-on:where([data-sv-motion="reduce"]) .sv.sv-spread.sv-spread-in > *'), 'data-sv-motion twin misses self-tracked sv-spread-in')
 })

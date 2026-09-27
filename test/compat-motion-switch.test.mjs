@@ -49,7 +49,11 @@ const compatRules = parseRules(fallbackCss).filter((r) => r.selector.includes('d
 test('compat fallback sheet: page-switch stage/curtain/rail release has a :where()-free twin', () => {
   const targets = [
     { name: 'stage release', find: '.sv-stage', decls: ['position: static', 'height: auto', 'overflow: visible'] },
-    { name: 'curtain hide', find: '.sv-curtain-l', decls: ['display: none'] },
+    // Checked individually: a twin selector list that dropped only ONE of
+    // the two curtains (e.g. keeps -l, loses -r) must still fail, since
+    // the classes are named separately, not by one shared substring.
+    { name: 'curtain-l hide', find: '.sv-curtain-l', decls: ['display: none'] },
+    { name: 'curtain-r hide', find: '.sv-curtain-r', decls: ['display: none'] },
     { name: 'rail wrap', find: '.sv-rail', decls: ['width: auto', 'flex-wrap: wrap'] },
   ]
 
