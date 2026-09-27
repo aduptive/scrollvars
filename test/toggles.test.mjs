@@ -1691,22 +1691,28 @@ test('toggles: a trigger mounted before its target gets aria-expanded once the t
   } finally { env.restore() }
 })
 
-// B5 rollback (Astra loop8-6 verifier fix): bootTrigger() deletes a trigger
-// from pendingTriggers the moment its target resolves, before the batch's
-// transaction is known to survive. Two pending triggers retrying in the
-// SAME delivery, the second one's write throwing, used to drop the FIRST
-// one out of pendingTriggers for good even though rollback() undid its
-// write: nothing would ever retry it again. The retry loop now restores
-// every trigger this batch resolved back into pendingTriggers on the
-// rollback path, symmetric with transaction/siblingWrites' own undo.
-test('toggles: a failing second retry in one delivery does not strand the first trigger out of pendingTriggers (B5 rollback)', async () => {
+// B5 rollback round 2 (verifier, loop8-6): retrying every pending trigger
+// in the SAME shared transaction meant one trigger's write throwing rolled
+// back every sibling pending trigger's resolution in that batch too, AND
+// stopped the forEach outright, so triggers later in iteration order never
+// even got tried. A pending trigger whose resolved target's write throws
+// on every retry also used to get RESTORED into pendingTriggers (round 1's
+// own fix) and retried again on every future mutation forever: unbounded
+// reportFailure spam, since a write failure on an already-resolved target
+// will not heal itself (no backoff machinery). Each pending trigger now
+// retries in its OWN transaction (one throw cannot touch a sibling's
+// writes or stop the loop), and a trigger whose write throws after
+// resolving is dropped from pendingTriggers for good and reported once. A
+// trigger whose TARGET is still missing (no throw at all) stays pending as
+// before.
+test('toggles: a permanently failing trigger does not starve a sibling or spam reportFailure (B5 rollback round 2)', async () => {
   const realHTMLElement = global.HTMLElement
   function StubHTMLElement() {}
   StubHTMLElement.prototype.inert = false
   global.HTMLElement = StubHTMLElement
   const env = lifecycleEnv()
   try {
-    const { toggles } = await import('../dist/core/toggles.js?b5rollback')
+    const { toggles } = await import('../dist/core/toggles.js?b5rollback2')
     const doc = env.element()
     doc.getElementsByClassName = () => ({ length: 0 })
     global.document = doc
@@ -1715,6 +1721,8 @@ test('toggles: a failing second retry in one delivery does not strand the first 
     const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
     assert.ok(mo, 'the document scope owns a MutationObserver')
 
+    // t1 (broken) retries FIRST (insertion order): if it starved siblings
+    // or its rollback undid t2's write, t2 would never get its state.
     const t1 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m1' }); t1.nodeType = 1
     const t2 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m2' }); t2.nodeType = 1
     doc.querySelector = () => null // neither target exists yet
@@ -1727,30 +1735,73 @@ test('toggles: a failing second retry in one delivery does not strand the first 
     const m2 = env.element(); m2.nodeType = 1
     doc.append(m1); doc.append(m2)
     doc.querySelector = (sel) => (sel === '#m1' ? m1 : sel === '#m2' ? m2 : null)
-    const error = Error('m2 write')
-    const realSetProperty = m2.style.setProperty
-    m2.style.setProperty = (key, value, priority) => {
-      if (key === '--sv-state') throw error
-      return realSetProperty(key, value, priority)
-    }
+    const error = Error('m1 write')
+    m1.style.setProperty = (key) => { if (key === '--sv-state') throw error }
 
-    // t1 retries first (insertion order), resolves and writes fine; t2
-    // retries second, resolves, then its write throws: the whole batch
-    // rolls back, undoing t1's write too.
     mo.cb([{ addedNodes: [m1, m2] }])
-    assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
-    assert.equal(t1.getAttribute('aria-expanded'), null, 't1\'s write was rolled back along with t2\'s')
+    assert.deepEqual(env.errors, [error], 'the throw is reported once, not swallowed')
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 never got a write that could stick: its own retry always throws')
+    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2 got its state: t1\'s failing retry did not roll it back or block it')
+    assert.equal(m2.style.getPropertyValue('--sv-state'), '0', 't2\'s target got its initial --sv-state')
 
-    // a later, unrelated mutation (no new trigger, no marquee track) must
-    // still retry t1: it has to still be in pendingTriggers, not stranded
-    // by its own earlier, later-undone resolution.
-    m2.style.setProperty = realSetProperty
-    const unrelated = env.element(); unrelated.nodeType = 1
-    doc.append(unrelated)
-    mo.cb([{ addedNodes: [unrelated] }])
+    // ten later, unrelated mutations: t1 must not be retried again (its
+    // write will never stop throwing) and must not spam reportFailure.
+    for (let i = 0; i < 10; i++) {
+      const unrelated = env.element(); unrelated.nodeType = 1
+      doc.append(unrelated)
+      mo.cb([{ addedNodes: [unrelated] }])
+    }
+    assert.deepEqual(env.errors, [error], 'reportFailure fired exactly once across ten later mutations, not once per retry')
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 stays dropped: a write failure on a resolved target does not heal on its own')
+    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2\'s state is undisturbed by the later mutations')
 
-    assert.equal(t1.getAttribute('aria-expanded'), 'false', 't1 recovered on the next mutation, its rolled-back resolution was not lost')
-    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2 recovered too, now that its write no longer throws')
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// onClick round 2 (verifier, loop8-6): the click handler's catch rethrew
+// after rollback, which life.guard turns into a permanent stop() of the
+// WHOLE document scope (its click listener and MutationObserver disconnect
+// for the rest of the page's life) over one failing click. It now reports
+// the error directly instead, matching the MutationObserver callback.
+test('toggles: a failing click does not stop the document scope from handling a later click or booting a later trigger', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?onclickround2')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const bad = env.element({ 'data-sv-toggle': '' }); bad.nodeType = 1
+    doc.append(bad)
+    const error = Error('bad click write')
+    bad.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    doc.fire('click', { target: bad })
+    assert.deepEqual(env.errors, [error], 'the failing click is reported, not swallowed')
+
+    // a second click, on a DIFFERENT, working trigger: the scope must
+    // still be handling clicks at all.
+    const ok = env.element({ 'data-sv-toggle': '' }); ok.nodeType = 1
+    doc.append(ok)
+    doc.fire('click', { target: ok })
+    assert.equal(ok.getAttribute('aria-expanded'), 'true', 'a later click on a working trigger still toggles it')
+
+    // a later-mounted trigger must still boot through the MutationObserver.
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    const late = env.element({ 'data-sv-toggle': '' }); late.nodeType = 1
+    doc.append(late)
+    mo.cb([{ addedNodes: [late] }])
+    assert.equal(late.getAttribute('aria-expanded'), 'false', 'a later-mounted trigger still boots: the MutationObserver was not disconnected either')
 
     stop()
   } finally {

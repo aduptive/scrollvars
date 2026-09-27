@@ -637,17 +637,6 @@ export function toggles(root?: Document | HTMLElement): () => void {
       if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0) return
       transaction = ownership()
       siblingWrites = []
-      // bootTrigger() deletes a trigger from pendingTriggers the moment its
-      // target resolves, before this batch's transaction is known to
-      // survive: a snapshot from before the batch lets the catch below tell
-      // which pending triggers this delivery resolved, so a throw partway
-      // through (a second retry's own write failing, most of the time) can
-      // put them back, symmetric with transaction/siblingWrites' own undo.
-      // Without this a trigger that resolved earlier in the SAME batch was
-      // dropped from pendingTriggers for good even though rollback() undid
-      // its write, and nothing would ever retry it again (verifier fix,
-      // loop8-6).
-      const pendingBefore = new Set(pendingTriggers)
       try {
         records.forEach((record) => {
           record.addedNodes.forEach((node) => {
@@ -657,30 +646,43 @@ export function toggles(root?: Document | HTMLElement): () => void {
             selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger)
           })
         })
-        // Retry every trigger still pending: bootTrigger drops it from the
-        // set the moment it resolves, and drops a disconnected one outright
-        // so a removed trigger does not retry forever.
-        if (pendingTriggers.size > 0) {
-          Array.from(pendingTriggers).forEach((trigger) => {
-            if (!scope.contains(trigger)) { pendingTriggers.delete(trigger); return }
-            bootTrigger(trigger)
-          })
-        }
       } catch (error) {
         rollback()
-        for (const trigger of pendingBefore) {
-          if (!pendingTriggers.has(trigger) && scope.contains(trigger)) pendingTriggers.add(trigger)
-        }
         // Reported directly, not rethrown: this guarded callback runs after
         // acquisition (`life.guard`'s `acquiring` is already false), so a
         // rethrow here would have `fail()` call `stop()` and disconnect this
         // MutationObserver for the rest of the page's life, contradicting
-        // the module comment above ("the document scope never stops") and
-        // silently discarding every trigger just restored into
-        // pendingTriggers, since no later delivery would ever run again to
-        // retry them (verifier fix, loop8-6).
+        // the module comment above ("the document scope never stops").
         reportFailure(error)
       } finally { transaction = ownership(); siblingWrites = [] }
+      // Retry every trigger still pending, each in its OWN transaction
+      // (verifier round 2): a shared transaction across the whole retry
+      // pass meant one trigger's write throwing rolled back a SIBLING
+      // pending trigger's resolution in the same delivery too, and stopped
+      // the loop outright, so triggers later in iteration order never even
+      // got tried (starvation). bootTrigger only reaches a throwing write()
+      // once it has already resolved the target and deleted the trigger
+      // from pendingTriggers: a write failure there will not heal itself on
+      // a later mutation (no backoff machinery), so it is dropped for good
+      // and reported once, instead of being restored and retried forever
+      // (unbounded reportFailure spam, round 1's own fix). A trigger whose
+      // TARGET is still missing throws nothing and stays pending as before.
+      if (pendingTriggers.size > 0) {
+        Array.from(pendingTriggers).forEach((trigger) => {
+          if (!scope.contains(trigger)) { pendingTriggers.delete(trigger); return }
+          transaction = ownership()
+          siblingWrites = []
+          try {
+            bootTrigger(trigger)
+          } catch (error) {
+            rollback()
+            pendingTriggers.delete(trigger)
+            reportFailure(error)
+          }
+        })
+        transaction = ownership()
+        siblingWrites = []
+      }
     }))
   }
 
@@ -745,7 +747,12 @@ export function toggles(root?: Document | HTMLElement): () => void {
     try { click(event) }
     catch (error) {
       rollback()
-      throw error
+      // Reported directly, not rethrown: same reasoning as the document
+      // scope's MutationObserver callback (verifier round 2). Rethrowing
+      // here would have `life.guard`'s `fail()` call `stop()` and remove
+      // this click listener (and disconnect the MutationObserver) for the
+      // rest of the page's life over one bad click.
+      reportFailure(error)
     } finally { transaction = ownership(); siblingWrites = [] }
   })
   life.defer(() => {

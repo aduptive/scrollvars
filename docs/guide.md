@@ -771,6 +771,12 @@ Slider, toggles, pointer and canvas setup also roll back partial listeners,
 observers, subscriptions and queued work before rethrowing the original error.
 Runtime measurement, output and callback failures stop only that instance and
 report the original error once (`reportError`, or `console.error` as a fallback).
+The one exception is `toggles()`'s document scope (`<ScrollVarsBoot>`): a
+runtime click or late-boot write failure rolls back only that write and
+reports once, but the scope itself keeps running instead of stopping, since a
+route-mounted page depends on it for the rest of its life; a write that keeps
+failing on an already-resolved late-boot target is dropped after one report,
+never retried.
 Cleanup is idempotent, including inside callbacks and during slider gestures;
 late observer and frame deliveries cannot revive a released instance.
 Explicit cleanup attempts every release before rethrowing its first cleanup error;
