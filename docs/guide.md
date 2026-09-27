@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.7 KB, styles 10.4 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.7 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.8 KB, styles 10.4 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.7 KB on the wire.
 
 ## Why
 
@@ -191,8 +191,8 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.7 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.7 KB |
+| everything in `scrollvars` (the core entry) | 12.8 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 18.8 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -771,6 +771,15 @@ Slider, toggles, pointer and canvas setup also roll back partial listeners,
 observers, subscriptions and queued work before rethrowing the original error.
 Runtime measurement, output and callback failures stop only that instance and
 report the original error once (`reportError`, or `console.error` as a fallback).
+The one exception is `toggles()`: a failing click rolls back only that write
+and reports once, but the instance itself keeps running instead of stopping,
+on EVERY `toggles()` instance, scoped roots included, since one bad toggle
+should not disable every other toggle in the same scope. The document scope
+(`<ScrollVarsBoot>`) additionally owns a persistent `MutationObserver` for
+late-boot acquisition, which survives a late-boot write failure the same way,
+since a route-mounted page depends on it for the rest of its life; a write
+that keeps failing on an already-resolved late-boot target is dropped after
+one report, never retried.
 Cleanup is idempotent, including inside callbacks and during slider gestures;
 late observer and frame deliveries cannot revive a released instance.
 Explicit cleanup attempts every release before rethrowing its first cleanup error;

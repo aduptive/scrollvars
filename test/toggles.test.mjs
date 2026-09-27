@@ -1648,6 +1648,209 @@ test('toggles: a plain trigger inserted after toggles(document) on a marquee-fre
   } finally { env.restore() }
 })
 
+// B5 (Astra, loop8-6): a trigger mounted BEFORE its target never got
+// aria-expanded or --sv-state at all, even after the target later arrived,
+// because bootTrigger() just returns on an unresolved target and only NEW
+// triggers get booted from a later delivery. The trigger and its target now
+// land in two SEPARATE MutationObserver deliveries, the shape #105 already
+// covers for trigger+target together.
+test('toggles: a trigger mounted before its target gets aria-expanded once the target arrives in a later delivery (B5)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5unresolvedtrigger')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    const trigger = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#menu' })
+    trigger.nodeType = 1
+    doc.querySelector = () => null // the target does not exist yet
+    doc.append(trigger)
+    mo.cb([{ addedNodes: [trigger] }])
+    assert.equal(trigger.getAttribute('aria-expanded'), null, 'unresolved at setup: no target to write onto yet')
+
+    const menu = env.element()
+    menu.nodeType = 1
+    doc.querySelector = (sel) => (sel === '#menu' ? menu : null)
+    doc.append(menu)
+    // the target itself is neither a trigger nor a marquee track, so the
+    // batch that inserts it alone must still retry the pending trigger
+    mo.cb([{ addedNodes: [menu] }])
+
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false', 'the pending trigger got its initial aria-expanded once its target arrived')
+    assert.equal(menu.style.getPropertyValue('--sv-state'), '0', 'and its target got its initial --sv-state, before any click')
+
+    doc.fire('click', { target: trigger })
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true', 'and it still works')
+
+    stop()
+  } finally { env.restore() }
+})
+
+// B5 rollback round 2 (verifier, loop8-6): retrying every pending trigger
+// in the SAME shared transaction meant one trigger's write throwing rolled
+// back every sibling pending trigger's resolution in that batch too, AND
+// stopped the forEach outright, so triggers later in iteration order never
+// even got tried. A pending trigger whose resolved target's write throws
+// on every retry also used to get RESTORED into pendingTriggers (round 1's
+// own fix) and retried again on every future mutation forever: unbounded
+// reportFailure spam, since a write failure on an already-resolved target
+// will not heal itself (no backoff machinery). Each pending trigger now
+// retries in its OWN transaction (one throw cannot touch a sibling's
+// writes or stop the loop), and a trigger whose write throws after
+// resolving is dropped from pendingTriggers for good and reported once. A
+// trigger whose TARGET is still missing (no throw at all) stays pending as
+// before.
+test('toggles: a permanently failing trigger does not starve a sibling or spam reportFailure (B5 rollback round 2)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?b5rollback2')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    // t1 (broken) retries FIRST (insertion order): if it starved siblings
+    // or its rollback undid t2's write, t2 would never get its state.
+    const t1 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m1' }); t1.nodeType = 1
+    const t2 = env.element({ 'data-sv-toggle': 'open', 'data-sv-target': '#m2' }); t2.nodeType = 1
+    doc.querySelector = () => null // neither target exists yet
+    doc.append(t1); doc.append(t2)
+    mo.cb([{ addedNodes: [t1, t2] }])
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 unresolved at setup')
+    assert.equal(t2.getAttribute('aria-expanded'), null, 't2 unresolved at setup')
+
+    const m1 = env.element(); m1.nodeType = 1
+    const m2 = env.element(); m2.nodeType = 1
+    doc.append(m1); doc.append(m2)
+    doc.querySelector = (sel) => (sel === '#m1' ? m1 : sel === '#m2' ? m2 : null)
+    const error = Error('m1 write')
+    m1.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    mo.cb([{ addedNodes: [m1, m2] }])
+    assert.deepEqual(env.errors, [error], 'the throw is reported once, not swallowed')
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 never got a write that could stick: its own retry always throws')
+    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2 got its state: t1\'s failing retry did not roll it back or block it')
+    assert.equal(m2.style.getPropertyValue('--sv-state'), '0', 't2\'s target got its initial --sv-state')
+
+    // ten later, unrelated mutations: t1 must not be retried again (its
+    // write will never stop throwing) and must not spam reportFailure.
+    for (let i = 0; i < 10; i++) {
+      const unrelated = env.element(); unrelated.nodeType = 1
+      doc.append(unrelated)
+      mo.cb([{ addedNodes: [unrelated] }])
+    }
+    assert.deepEqual(env.errors, [error], 'reportFailure fired exactly once across ten later mutations, not once per retry')
+    assert.equal(t1.getAttribute('aria-expanded'), null, 't1 stays dropped: a write failure on a resolved target does not heal on its own')
+    assert.equal(t2.getAttribute('aria-expanded'), 'false', 't2\'s state is undisturbed by the later mutations')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// onClick round 2 (verifier, loop8-6): the click handler's catch rethrew
+// after rollback, which life.guard turns into a permanent stop() of the
+// WHOLE document scope (its click listener and MutationObserver disconnect
+// for the rest of the page's life) over one failing click. It now reports
+// the error directly instead, matching the MutationObserver callback.
+test('toggles: a failing click does not stop the document scope from handling a later click or booting a later trigger', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?onclickround2')
+    const doc = env.element()
+    doc.getElementsByClassName = () => ({ length: 0 })
+    global.document = doc
+    const stop = toggles()
+
+    const bad = env.element({ 'data-sv-toggle': '' }); bad.nodeType = 1
+    doc.append(bad)
+    const error = Error('bad click write')
+    bad.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    doc.fire('click', { target: bad })
+    assert.deepEqual(env.errors, [error], 'the failing click is reported, not swallowed')
+
+    // a second click, on a DIFFERENT, working trigger: the scope must
+    // still be handling clicks at all.
+    const ok = env.element({ 'data-sv-toggle': '' }); ok.nodeType = 1
+    doc.append(ok)
+    doc.fire('click', { target: ok })
+    assert.equal(ok.getAttribute('aria-expanded'), 'true', 'a later click on a working trigger still toggles it')
+
+    // a later-mounted trigger must still boot through the MutationObserver.
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    const late = env.element({ 'data-sv-toggle': '' }); late.nodeType = 1
+    doc.append(late)
+    mo.cb([{ addedNodes: [late] }])
+    assert.equal(late.getAttribute('aria-expanded'), 'false', 'a later-mounted trigger still boots: the MutationObserver was not disconnected either')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// onClick round 3 (verifier, loop8-6): the report-and-continue fix above
+// applies to onClick itself, shared by EVERY toggles() instance, not only
+// the document scope: a scoped root (a Marquee's own toggles(node), an
+// Accordion's own instance) must survive a failing click on one of its
+// triggers the same way, so one bad toggle does not disable every other
+// toggle in that same scope.
+test('toggles: a failing click does not stop a SCOPED (non-document) instance from handling a later click', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?onclickscoped')
+    const root = env.element()
+    const stop = toggles(root)
+
+    const bad = env.element({ 'data-sv-toggle': '' }); bad.nodeType = 1
+    root.append(bad)
+    const error = Error('bad click write')
+    bad.style.setProperty = (key) => { if (key === '--sv-state') throw error }
+
+    root.fire('click', { target: bad })
+    assert.deepEqual(env.errors, [error], 'the failing click is reported, not swallowed')
+
+    // a second click, on a DIFFERENT, working trigger in the SAME scoped
+    // instance: it must still be handling clicks at all.
+    const ok = env.element({ 'data-sv-toggle': '' }); ok.nodeType = 1
+    root.append(ok)
+    root.fire('click', { target: ok })
+    assert.equal(ok.getAttribute('aria-expanded'), 'true', 'a later click on a working trigger in the same scoped instance still toggles it')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
   const env = lifecycleEnv()
   try {

@@ -57,7 +57,7 @@
  * 0s for two frames, snapping instead of animating any change to it that
  * landed inside the hold window.
  */
-import { lifetime, ownership } from './lifetime.js'
+import { lifetime, ownership, reportFailure } from './lifetime.js'
 
 // One click, one state change, across every live instance. `toggles(root?)`
 // is public optional-root API and the documented setup runs two instances at
@@ -406,6 +406,12 @@ export function toggles(root?: Document | HTMLElement): () => void {
   // detached subtrees included, growing with every navigation (R3). Its only
   // reads are has/add; nothing ever needs to enumerate it.
   const targets = new WeakSet<HTMLElement>()
+  // Triggers mounted before their target resolves (B5, Astra loop8-6):
+  // retried whenever a later batch might supply the target, dropped as
+  // soon as they resolve. Per instance; cleared on stop() below so a
+  // trigger whose target never arrives (or that got disconnected) does
+  // not sit here for the document scope's whole life.
+  const pendingTriggers = new Set<HTMLElement>()
   const mark = (target: HTMLElement) => {
     if (targets.has(target)) return false
     targets.add(target)
@@ -478,7 +484,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
       throw error
     }
     const { className, target } = resolved
-    if (!target) return
+    if (!target) {
+      pendingTriggers.add(trigger)
+      return
+    }
+    pendingTriggers.delete(trigger)
     if (mark(target)) {
       // only a .sv-acts target has a no-JS finished value to un-animate
       // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
@@ -620,7 +630,11 @@ export function toggles(root?: Document | HTMLElement): () => void {
     // in siblingWrites until the next click anywhere in the document (A2,
     // Astra loop8-5).
     mutationObserver = new MutationObserver(life.guard((records) => {
-      if (!hasUnleasedTrack() && !hasNewTrigger(records)) return
+      // A trigger left over from an earlier delivery with no target yet
+      // (B5) also earns this batch a pass: its target can be anywhere in
+      // it, including a node that is neither a trigger nor a marquee track
+      // and so would otherwise never open the callback body at all.
+      if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0) return
       transaction = ownership()
       siblingWrites = []
       try {
@@ -634,8 +648,41 @@ export function toggles(root?: Document | HTMLElement): () => void {
         })
       } catch (error) {
         rollback()
-        throw error
+        // Reported directly, not rethrown: this guarded callback runs after
+        // acquisition (`life.guard`'s `acquiring` is already false), so a
+        // rethrow here would have `fail()` call `stop()` and disconnect this
+        // MutationObserver for the rest of the page's life, contradicting
+        // the module comment above ("the document scope never stops").
+        reportFailure(error)
       } finally { transaction = ownership(); siblingWrites = [] }
+      // Retry every trigger still pending, each in its OWN transaction
+      // (verifier round 2): a shared transaction across the whole retry
+      // pass meant one trigger's write throwing rolled back a SIBLING
+      // pending trigger's resolution in the same delivery too, and stopped
+      // the loop outright, so triggers later in iteration order never even
+      // got tried (starvation). bootTrigger only reaches a throwing write()
+      // once it has already resolved the target and deleted the trigger
+      // from pendingTriggers: a write failure there will not heal itself on
+      // a later mutation (no backoff machinery), so it is dropped for good
+      // and reported once, instead of being restored and retried forever
+      // (unbounded reportFailure spam, round 1's own fix). A trigger whose
+      // TARGET is still missing throws nothing and stays pending as before.
+      if (pendingTriggers.size > 0) {
+        Array.from(pendingTriggers).forEach((trigger) => {
+          if (!scope.contains(trigger)) { pendingTriggers.delete(trigger); return }
+          transaction = ownership()
+          siblingWrites = []
+          try {
+            bootTrigger(trigger)
+          } catch (error) {
+            rollback()
+            pendingTriggers.delete(trigger)
+            reportFailure(error)
+          }
+        })
+        transaction = ownership()
+        siblingWrites = []
+      }
     }))
   }
 
@@ -700,7 +747,12 @@ export function toggles(root?: Document | HTMLElement): () => void {
     try { click(event) }
     catch (error) {
       rollback()
-      throw error
+      // Reported directly, not rethrown: same reasoning as the document
+      // scope's MutationObserver callback (verifier round 2). Rethrowing
+      // here would have `life.guard`'s `fail()` call `stop()` and remove
+      // this click listener (and disconnect the MutationObserver) for the
+      // rest of the page's life over one bad click.
+      reportFailure(error)
     } finally { transaction = ownership(); siblingWrites = [] }
   })
   life.defer(() => {
@@ -712,6 +764,7 @@ export function toggles(root?: Document | HTMLElement): () => void {
   life.defer(() => live.delete(instance))
   life.defer(() => scope.removeEventListener('click', onClick))
   life.defer(() => mutationObserver?.disconnect())
+  life.defer(() => pendingTriggers.clear())
   try {
     life.setup(() => {
       live.add(instance)

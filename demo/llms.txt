@@ -541,6 +541,15 @@ and disabled until remount, while scene state and healthy siblings keep working.
 Slider, toggles, pointer and canvas acquisition roll back partial resources and
 owned DOM writes before rethrowing the original setup error. Runtime failures
 stop only that instance and report once through `reportError` or `console.error`.
+The one exception is `toggles()`: a failing click rolls back only that write
+and reports once, but the instance itself keeps running (its click listener
+stays attached) instead of stopping, on EVERY `toggles()` instance, scoped
+roots included, since one bad toggle should not disable every other toggle
+in the same scope. The document scope (`<ScrollVarsBoot>`) additionally owns
+a persistent `MutationObserver` for late-boot acquisition, which survives a
+late-boot write failure the same way, since a route-mounted page depends on
+it for the rest of its life; a write that keeps failing on an already-resolved
+late-boot target is dropped after one report, never retried.
 Release is idempotent, including inside callbacks and during a drag or glide;
 stale observers, events and frames cannot revive released instances. Retry with
 an explicit attachment. React auxiliary hooks contain attachment and cleanup
