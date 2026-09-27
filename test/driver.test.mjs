@@ -671,14 +671,20 @@ test('driver: a link whose sheet already throws when first asked, with no error 
 })
 
 // WebKit keeps `link.sheet === null` for a stylesheet that failed at the
-// NETWORK level (dead port, DNS, blocked): no `error` event ever fires for
-// such a link, so it never reaches erroredLinks and would count as pending
-// forever if the driver trusted a null sheet unconditionally. Once the
-// document has finished loading, a still-null sheet is treated as failed
-// for the pending count (T2r), while its own load listener stays attached
-// (a late reattempt, or a duplicate <link> inserted after, can still land a
-// real sheet).
-test('driver: a stylesheet still null once the document has finished loading counts as failed, not pending, but keeps its load listener (T2r)', async () => {
+// NETWORK level (dead port, DNS, blocked, a CSP violation): no `error`
+// event ever fires for such a link, and it never resolves either. A fix
+// that special-cased "still null once the document finished loading" as
+// failed (T2r, reverted) broke this: it made such a link stop counting
+// towards `pending`, so with no other consumer found, `--sv-page`/`--sv-v`
+// went off and never came back on, since the same never-resolving link
+// still sits in the unfiltered list `resolvePageOutputs()` uses to decide
+// whether to install `watchForPageConsumers()`, so a consumer added later
+// (code-split CSS, a CSS-in-JS runtime, an HMR update) was never
+// discovered either. The correct, conservative behavior: while such a
+// link's answer is unknown, keep publishing, for the whole session if it
+// never resolves. Wrongly-on costs a per-frame write; wrongly-off breaks
+// rendering (PR #96's rule).
+test('driver: a stylesheet that never resolves (WebKit network failure, no load or error, ever) keeps outputs on for the whole session', async () => {
   rafQueue.length = 0
   const pageVars = {}
   const link = {
@@ -686,17 +692,17 @@ test('driver: a stylesheet still null once the document has finished loading cou
     getAttribute: () => null,
     listeners: {},
     // WebKit's network failure fires neither `load` nor `error`: no event
-    // ever reaches this link until, in this test, a later real request lands.
+    // ever reaches this link, for the life of the page.
     addEventListener(type, fn) { link.listeners[type] = fn },
     removeEventListener(type, fn) { if (link.listeners[type] === fn) delete link.listeners[type] },
   }
-  let watcher
   const realMO = global.MutationObserver
   global.MutationObserver = class {
-    constructor(cb) { this.cb = cb; watcher = this }
+    constructor(cb) { this.cb = cb }
     observe() {}
     disconnect() {}
   }
+  const newStyle = { nodeName: 'STYLE', textContent: '' }
   global.document = {
     readyState: 'complete',
     documentElement: {
@@ -709,21 +715,21 @@ test('driver: a stylesheet still null once the document has finished loading cou
   }
   window.scrollY = 1500
   try {
-    const { track } = await import('../dist/core/driver.js?readycomplete')
+    const { track } = await import('../dist/core/driver.js?neverresolves')
     const el = makeElement(400)
     const untrack = track(el)
     pump()
-    assert.equal(pageVars['--sv-page'], undefined, 'a null sheet after load finished is failed, not pending: outputs stay off')
-    assert.ok(link.listeners.load, 'the load listener stays attached for a late reattempt')
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'a link that never resolves is uncertainty, so it publishes, exactly like a fresh unparsed sheet')
 
-    // a late reattempt (or a duplicate <link> corrected after the fact)
-    // lands a real, readable sheet
-    const goodSheet = { ownerNode: link, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }
-    link.sheet = goodSheet
-    document.styleSheets = [goodSheet]
-    link.listeners.load({ type: 'load' })
+    // a real consumer arrives later (code-split CSS, a CSS-in-JS runtime, an
+    // HMR update inserting a <style>): the never-resolving link is still
+    // sitting there, unerrored, unloaded, and outputs must not have dropped
+    // in between.
+    const consumerSheet = { ownerNode: newStyle, cssRules: [{ type: 1, cssText: 'body{color:var(--sv-page)}' }] }
+    newStyle.sheet = consumerSheet
+    document.styleSheets = [consumerSheet]
     pump()
-    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'the late sheet is still read once it lands')
+    assert.equal(pageVars['--sv-page'], (1500 / 2000).toFixed(4), 'outputs are still on once the real consumer exists too')
     untrack()
   } finally {
     global.MutationObserver = realMO

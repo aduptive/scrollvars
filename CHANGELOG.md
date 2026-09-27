@@ -69,18 +69,6 @@
   The lease map is now swept for detached tracks on every IO delivery
   batch, every new marquee registration and the document scope's own
   click handler, no `MutationObserver` needed.
-- A `<link rel="stylesheet">` whose sheet was still `null` once the
-  document had finished loading (a WebKit network-level failure: a dead
-  port, DNS, a blocked host; no `error` event ever fires for it) counted
-  as pending forever, keeping `--sv-page`/`--sv-v` published for the rest
-  of the session with no actual consumer. Such a link now counts as
-  failed for the pending count once `document.readyState` is
-  `'complete'`, while keeping its own `load` listener, so a late
-  reattempt or a corrected duplicate `<link>` that does land a real sheet
-  is still read. Chromium and Firefox are unaffected (a failed sheet
-  there already throws, the documented conservative branch); a link
-  whose sheet throws after a `load` (redirect CORS opacity) still keeps
-  outputs on, unchanged.
 - Without native `inert` (Firefox 78-111, Safari 14.1-15.4, inside the
   README floor), `StickySteps` still applied `inert`/`aria-hidden` to
   inactive shots, and the pause-controlled `Marquee`'s duplicate strip

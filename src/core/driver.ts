@@ -484,19 +484,7 @@ function resolvePageOutputs() {
   // a <link> with no parsed sheet yet, or a <style>/<link> whose @import has
   // not landed: both answer nothing now and fire `load` when they can
   const pending: Element[] = [...pendingSheets(), ...pendingImportOwners]
-  // WebKit keeps a null sheet for a stylesheet that failed at the NETWORK
-  // level (dead port, DNS, blocked): no `error` event ever fires for it, so
-  // it never reaches erroredLinks and would count as pending for the whole
-  // session (T2r). Once the document has finished loading, a still-null
-  // link's sheet is treated as failed for the pending COUNT only: it keeps
-  // its load listener below (a late reattempt or a corrected duplicate
-  // <link> can still land a real sheet, and resolvePageOutputs() is asked
-  // again then), it just does not keep outputs on by itself.
-  const readyComplete = typeof document !== 'undefined' && document.readyState === 'complete'
-  const stillPending = readyComplete
-    ? pending.filter(el => !(el.nodeName === 'LINK' && !(el as HTMLLinkElement).sheet))
-    : pending
-  const enabled = found || stillPending.length > 0
+  const enabled = found || pending.length > 0
   const was = pageOutputsEnabled
   if (was && !enabled) stopPageOutputs()
   pageOutputsEnabled = enabled
