@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `toggles()`'s `resolve()` looked up a `data-sv-target` class selector against the WHOLE scope: under a document scope (`<ScrollVarsBoot>`, the css pane's own `toggles()`), two controlled marquees sharing the class selector `.sv-marquee-track` both resolved to the FIRST track on the page, so a second marquee's own pause button stayed hidden and, if clicked programmatically, paused the first marquee instead. A trigger inside a `.sv-marquee` wrapper now resolves its target inside that wrapper first, falling back to the scope for every other trigger.
+- The document scope's late-marquee `MutationObserver` pre-check asked only "is any live track unleased", so a track inserted in one task and its pause button in a LATER one (two separate mutation batches) found every track already leased on the button's own batch and returned early: the track never got `sv-ui`, and the button stayed hidden behind ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever. The pre-check now also passes when a live pause button's resolved track lacks `sv-ui`, still zero iterations on a marquee-free page.
+- The docs page's GSAP interop example used `gsap.ticker.add` to read `--sv-t` directly with `|| 0`, the same fail-hidden pattern already removed from the gallery's tailwind pane: on release the driver clears the property, sending a `.from({ opacity: 0 })` timeline back to its hidden start, with no reduced-motion guard, and reduced motion keeps `--sv-t` updating so GSAP keeps moving too. The snippet is dropped from the paragraph, which already links the guarded `gsap-scrub` recipe two lines below.
+- `useScenes`/`useSlider` "re-render only on a discrete index change" was repeated at AGENTS.md's own "why the numbers come out this way" section and twice in `docs/guide.md`, missed by the gate that only checked AGENTS.md's earlier sentence (already corrected). All three now say what is actually true: re-render only on discrete events (index, status, flow, motion).
+- AGENTS.md and the guide said any CSS mention of `--sv-page`/`--sv-v`, "a `var()` read, a declaration, even a comment", turns publishing on; the driver excludes its own inline writes on `<html>` from that check (only a `var()` read there counts, never a bare declaration), or a rescan would read its own output as a consumer and never unpublish. Both surfaces now name the exception.
+
 ## 1.19.0 (2026-09-27)
 
 ### Added

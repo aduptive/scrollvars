@@ -33,7 +33,7 @@ values into React state, you are doing it wrong.
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration outside `<html>`'s own inline style, even a comment in an inline `<style>` counts; detection errs toward publishing; a declaration inline on `<html>` itself does not count, only a `var()` read there does) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -439,8 +439,9 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   forces one computed-style read between writes to settle its reset; user
   callbacks can also force layout.
 - **Scroll state never enters the framework.** React renders zero times
-  per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
-  index change), so the per-frame framework bill is never paid.
+  per frame during scroll (`useScenes`/`useSlider` re-render only on discrete
+  events: index, status, flow, motion), so the per-frame framework bill is
+  never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so on the no-JS path the page is a complete static page: SSR,
   SEO and a no-JS Lighthouse load profile stay untouched (a JS-enabled
@@ -651,7 +652,11 @@ section lists the guarantees with their WCAG criteria and the checklist.
 asks the browser to recalculate style for the whole document. A page that
 never reads them should never pay that, so the driver looks before it
 publishes: on the first frame it scans the document's own stylesheets and
-inline styles for the two names, and stays silent when neither appears. A
+inline styles for the two names, and stays silent when neither appears.
+`<html>`'s own inline style is the one exception: the driver writes both
+outputs there itself, so only a `var()` read on it counts, never a bare
+declaration or comment (reading its own writes as a consumer would mean
+publishing never turns back off). A
 stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
 turns publishing back on. The watch behind that rescans once per frame that
 adds an element and skips every stylesheet it already read in full, so a page

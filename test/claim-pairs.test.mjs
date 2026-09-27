@@ -220,12 +220,49 @@ test('every "README\'s <Name> section" / \'README, "<Name>"\' phrase in AGENTS.m
   assert.deepEqual(problems, [])
 })
 
+// N5, loop8-4 review: `scripts/docs-build.mjs` used to teach a fail-hidden
+// GSAP interop snippet (`gsap.ticker.add` reading `--sv-t` with `|| 0`): on
+// release the driver clears the property, `parseFloat('') || 0` sends a
+// `.from({ opacity: 0 })` timeline back to its hidden start, with no
+// reduced-motion guard, and under reduced motion `--sv-t` keeps updating so
+// GSAP keeps moving too (same defect B4 already removed from the gsap-scrub
+// gallery pane, which now warns against it in a comment instead). Any
+// shipped text pairing the two together teaches the same trap.
+test('no shipped text pairs gsap.ticker with a raw --sv-* getPropertyValue read', () => {
+  const candidates = [
+    'README.md', 'AGENTS.md', 'docs/guide.md',
+    'scripts/docs-build.mjs', 'scripts/fx-data.mjs',
+    'skills/scrollvars/SKILL.md',
+  ]
+  for (const rel of candidates) {
+    const text = readFileSync(join(root, rel), 'utf8')
+    assert.ok(
+      !(/gsap\.ticker/.test(text) && /getPropertyValue\(\s*['"`]--sv-/.test(text)),
+      `${rel}: pairs gsap.ticker with a raw --sv-* getPropertyValue read`
+    )
+  }
+})
+
 // AGENTS.md's "React never re-renders per frame" claim used to add "only
 // on discrete index changes" (D1): completion, attachment, flow and motion
 // changes also re-render, none of them an index change (src/react/index.tsx).
-test('AGENTS.md does not narrow React re-renders to "index changes" only', () => {
-  const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
-  assert.doesNotMatch(agents, /only on discrete index changes/)
+// D1 only fixed AGENTS.md:21's own sentence; three other copies of the same
+// stale wording survived (AGENTS.md's "why the numbers come out this way"
+// section, and two in docs/guide.md, propagated into demo/llms.txt), missed
+// because the old gate here read only AGENTS.md (N6, loop8-4 review).
+test('no surface narrows React re-renders to "a discrete index change" only', () => {
+  const files = {
+    'AGENTS.md': readFileSync(join(root, 'AGENTS.md'), 'utf8'),
+    'docs/guide.md': readFileSync(join(root, 'docs/guide.md'), 'utf8'),
+    'demo/llms.txt': readFileSync(join(root, 'demo/llms.txt'), 'utf8'),
+  }
+  for (const [name, text] of Object.entries(files)) {
+    assert.doesNotMatch(
+      text.replace(/\s+/g, ' '),
+      /only on discrete index changes|re-render only on a discrete index/,
+      name
+    )
+  }
 })
 
 // The scoped clocks sheet's own measurements two paragraphs above (a flat

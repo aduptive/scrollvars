@@ -295,6 +295,46 @@ test('toggles: a controlled marquee track gets sv-ui once native inert is suppor
   }
 })
 
+test('toggles: two controlled marquees under one scope pause independent tracks (N4a, loop8-4 review)', async () => {
+  // Before N4a, resolve() looked up `data-sv-target` against the WHOLE
+  // scope (`scope.querySelector(selector)`): two marquees sharing the
+  // class selector `.sv-marquee-track` both resolved to the FIRST track
+  // on the page, so a click on the second marquee's own pause button
+  // silently paused the first, and the second's button stayed hidden
+  // (no sv-ui ever landed on its own track through the FIRST one's
+  // bootTrigger call). A trigger nested in its own `.sv-marquee` wrapper
+  // must resolve INSIDE that wrapper first.
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?n4aresolve')
+    const root = env.element()
+    const marquee = () => {
+      const wrap = env.element()
+      wrap.classList.add('sv-marquee')
+      const track = env.element()
+      track.classList.add('sv-marquee-track')
+      const button = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': '.sv-marquee-track' })
+      wrap.append(track)
+      wrap.append(button)
+      root.append(wrap)
+      return { wrap, track, button }
+    }
+    const m1 = marquee()
+    const m2 = marquee()
+    const stop = toggles(root)
+
+    root.fire('click', { target: m2.button })
+    assert.ok(m2.track.classes.has('sv-paused'), 'clicking the second marquee\'s own button pauses ITS OWN track')
+    assert.ok(!m1.track.classes.has('sv-paused'), 'and leaves the first, independent track untouched')
+
+    root.fire('click', { target: m1.button })
+    assert.ok(m1.track.classes.has('sv-paused'), 'the first marquee\'s own button still works')
+    assert.ok(m2.track.classes.has('sv-paused'), 'the second stays as it was, unaffected by the first click')
+
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles: a marquee track holds no strong reference from the document scope\'s release list once nothing else does (T3, mirrors PR #94\'s retention test)', {
   skip: typeof global.gc !== 'function' && 'run with node --expose-gc',
 }, async () => {
@@ -1317,6 +1357,65 @@ test('toggles: a route swap (remove track A, insert track B, ONE batch) wires B 
     a.track.isConnected = false
     io.cb([{ target: a.track, isIntersecting: false }])
     assert.ok(!io.targets.has(a.track), 'A is released once something touches it (N7)')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// N4b, loop8-4 review: the pre-check above (identity, not count) still
+// returned false when a track's OWN batch had already leased it but no
+// trigger had run bootTrigger on it yet, because it only asked "is any
+// live track unleased", never "is any live pause button's track still
+// unmarked". A track inserted in one task and its pause button in a LATER
+// one (two separate MutationObserver deliveries) hit exactly that gap: the
+// second batch found every track leased, returned early, and the track
+// never got sv-ui, so the button stayed hidden behind ui.css's
+// `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever.
+test('toggles: a track and its pause button arriving in SEPARATE mutation batches still wire (N4b)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?n4blatebutton')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo)
+
+    const wrap = env.element(); wrap.nodeType = 1
+    const track = env.element(); track.nodeType = 1
+    track.classList.add('sv-marquee-track')
+    doc.append(wrap)
+    wrap.append(track)
+    // batch 1: only the track lands
+    mo.cb([{ addedNodes: [track] }])
+
+    const io = [...env.deliveries].find((d) => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track), 'the track got its lease from batch 1')
+    assert.ok(!track.classes.has('sv-ui'), 'no trigger has run bootTrigger on it yet')
+
+    const button = env.element({ 'data-sv-toggle': 'sv-paused', 'data-sv-target': '.sv-marquee-track' })
+    button.nodeType = 1
+    button.classList.add('sv-marquee-pause')
+    wrap.append(button)
+    // batch 2, a LATER task: only the button lands. The track is already
+    // leased, so the old count-based pre-check returned false and skipped
+    // this whole batch.
+    mo.cb([{ addedNodes: [button] }])
+
+    assert.ok(track.classes.has('sv-ui'), 'the late button still gets its track marked sv-ui: not stuck hidden behind ui.css forever')
+
+    doc.fire('click', { target: button })
+    assert.ok(track.classes.has('sv-paused'), 'and the button actually works')
 
     stop()
   } finally {
