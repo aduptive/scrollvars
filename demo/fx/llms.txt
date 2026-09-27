@@ -345,9 +345,18 @@ Styles: scrollvars/styles/pin.css
   const tl = gsap.timeline({ paused: true })
     .from('.sv-stage > *', { y: 140, opacity: 0, stagger: 0.2 })
 
+  // reduced motion settles the timeline instead of scrubbing it; a failed
+  // or released tracker never fires onPin again, so it settles too, or the
+  // .from() content stays at opacity 0 forever
+  let progress = 0, tracking = true
+  const settle = () => tl.progress(prefersReducedMotion() || !tracking ? 1 : progress)
+  settle()
+  onMotionChange(settle)
+
   track(document.querySelector('.scene'), {
-    pin: '250vh',                 // the helper owns the wrapper height
-    onPin: (p) => tl.progress(p), // ScrollVars steers, GSAP renders
+    pin: '250vh',                                        // the helper owns the wrapper height
+    onPin: (p) => { progress = p; settle() },             // ScrollVars steers, GSAP renders
+    onStatus: (status) => { tracking = status !== 'failed' && status !== 'released'; settle() },
   })
   // Do NOT also create a ScrollTrigger. One scroll listener, one writer.
 </script>
@@ -357,15 +366,25 @@ Styles: scrollvars/styles/pin.css
 ```tsx
 const stage = useRef<HTMLDivElement>(null)
 const tl = useRef<gsap.core.Timeline | null>(null)
+const progress = useRef(0)
+const tracking = useRef(true)
+// reads only refs, so identity does not matter to the effect below
+const settle = () => tl.current?.progress(prefersReducedMotion() || !tracking.current ? 1 : progress.current)
 useEffect(() => {
   // scoped to this instance's own stage, never a bare class selector: two
   // of these on one page must not animate each other's children
   tl.current = gsap.timeline({ paused: true })
     .from(stage.current!.children, { y: 140, opacity: 0, stagger: 0.2 })
-  return () => tl.current?.kill()
+  settle()
+  const off = onMotionChange(settle)
+  return () => { off(); tl.current?.kill() }
 }, [])
 
-<Track pin="250vh" onPin={(p) => tl.current?.progress(p)}>
+<Track
+  pin="250vh"
+  onPin={(p) => { progress.current = p; settle() }}
+  onStatus={(status) => { tracking.current = status !== 'failed' && status !== 'released'; settle() }}
+>
   <div ref={stage} className="sv-stage">…</div>
 </Track>
 ```
@@ -516,6 +535,7 @@ Styles: scrollvars/styles/state.css
   </span>
   <span class="sr-only">brands, websites and products</span>
 </h1>
+<button type="button" id="words-pause" aria-pressed="false">Pause rotation</button>
 <!-- set --sv-word from your state; scenes drive it for free in pinned stories -->
 ```
 
@@ -528,6 +548,8 @@ Styles: scrollvars/styles/state.css
   <!-- the column reads as three words in a row to a screen reader: hide it and say the phrase once -->
   <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">brands, websites and products</span>
 </h1>
+<!-- WCAG 2.2.2: text that auto-rotates past 5s needs a pause control -->
+<button type="button" id="words-pause" aria-pressed="false">Pause rotation</button>
 
 /* the preset (styles/state.css): */
 .sv-words { display: inline-flex; flex-direction: column;
@@ -542,8 +564,13 @@ Styles: scrollvars/styles/state.css
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
 :where([data-sv-motion="reduce"]) .sv-words > * { transition-duration: .01ms; }
 
-// drive it (state, scenes, or a timer):
-el.style.setProperty('--sv-word', nextIndex)
+// drive it (state, scenes, or a timer), and stop on request:
+let paused = false
+document.getElementById('words-pause').addEventListener('click', () => {
+  paused = !paused
+  document.getElementById('words-pause').setAttribute('aria-pressed', String(paused))
+})
+if (!paused) el.style.setProperty('--sv-word', nextIndex)
 ```
 
 ### React
@@ -658,20 +685,26 @@ Styles: scrollvars/styles/ui.css
 
 ### Tailwind
 ```html
-<div class="sv-marquee [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
+<div class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8">
   <div class="sv-marquee-track">
     {logos}{/* duplicate once, aria-hidden */}
   </div>
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
 ```
 
 ### CSS
 ```html
-<div class="sv-marquee">
+<div class="sv-marquee sv-marquee-controlled">
   <div class="sv-marquee-track">
     …content… …content again (aria-hidden)…
   </div>
+  <!-- WCAG 2.2.2: auto-moving content past 5s needs a pause/stop control -->
+  <button type="button" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
+<script>toggles()</script> <!-- wires the button: aria-pressed, sv-paused on the track -->
 
 /* the preset (styles/ui.css): */
 .sv-marquee { overflow: hidden; display: flex; }
@@ -680,6 +713,7 @@ Styles: scrollvars/styles/ui.css
   animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
+.sv-marquee-controlled > .sv-marquee-track.sv-paused { animation-play-state: paused; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:

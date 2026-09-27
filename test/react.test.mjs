@@ -2449,3 +2449,88 @@ test('react: Scenes keeps the current scene mounted across every active/stacked 
   }
 })
 
+test('react: Scenes stacked branch remounts nothing on a scene change, no key that depends on the live scene (ADU-354 N1)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Scenes } = await import('../dist/react/index.js')
+
+  // stacked from the start and never lifts: onScene still fires as the
+  // driver measures the pin geometry (computeScene runs for every scene
+  // entry regardless of `active`), so a change here with the buggy
+  // `key={i === scene ? 'current' : i}` moves the "current" key around.
+  const realMatchMedia = global.window.matchMedia
+  global.window.matchMedia = () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} })
+
+  const mounts = {}
+  const nodes = {}
+  function Probe({ index }) {
+    const ref = React.useRef(null)
+    React.useEffect(() => {
+      mounts[index] = (mounts[index] || 0) + 1
+      nodes[index] = ref.current
+    }, [])
+    return React.createElement('input', { ref, defaultValue: '' })
+  }
+
+  try {
+    const container = global.document.createElement('div')
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(React.createElement(Scenes, { count: 4 }, ({ scene }) => React.createElement(Probe, { index: scene })))
+    })
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'stacked: every scene mounts once')
+    const before = { ...nodes }
+    // a value typed into scene 1's input, the way a reader interacts with a
+    // stacked scene while scrolling past its neighbors
+    nodes[1].value = 'typed while scrolling'
+
+    container.firstChild.getBoundingClientRect = () => ({ top: -400, bottom: 1200, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+    container.firstChild.getBoundingClientRect = () => ({ top: -800, bottom: 800, left: 0, right: 0, width: 0, height: 1600 })
+    await act(async () => { flushFrames() })
+
+    assert.deepEqual(mounts, { 0: 1, 1: 1, 2: 1, 3: 1 }, 'a scene change while stacked remounts nothing')
+    for (const i of [0, 1, 2, 3]) assert.equal(nodes[i], before[i], `scene ${i} keeps its DOM node across the scene change`)
+    assert.equal(nodes[1].value, 'typed while scrolling', 'a value typed into a stacked scene survives later scene changes')
+
+    await act(async () => { root.unmount() })
+  } finally {
+    global.window.matchMedia = realMatchMedia
+  }
+})
+
+test('react: Track keeps sv-live after a completed once reveal even when className changes later (ADU-354 N5)', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { act } = React
+  const { Track } = await import('../dist/react/index.js')
+
+  const container = global.document.createElement('div')
+  const root = createRoot(container)
+  try {
+    await act(async () => {
+      root.render(React.createElement(Track, { once: true, className: 'a' }, 'content'))
+    })
+    // inside the live band (vh 800: LIVE_ENTER 0.75, LIVE_EXIT 0.25): a once
+    // reveal with no travel/pin/scenes settles and releases on this frame
+    container.firstChild.getBoundingClientRect = () => ({ top: 100, bottom: 700, left: 0, right: 0, width: 0, height: 600 })
+    await act(async () => { flushFrames() })
+    assert.ok(container.firstChild.classes.has('sv-live'), 'once completes and goes live')
+    assert.ok(container.firstChild.classes.has('a'), 'the original className is present')
+
+    // a later React re-render with a different className, nothing to do
+    // with the driver, must not drop the class the completion promised
+    await act(async () => {
+      root.render(React.createElement(Track, { once: true, className: 'b' }, 'content'))
+    })
+    assert.ok(container.firstChild.classes.has('sv-live'), 'sv-live survives a className change after completion')
+    assert.ok(container.firstChild.classes.has('b'), 'the new className still applies')
+    assert.ok(!container.firstChild.classes.has('a'), 'the old className is gone, same as any other React className swap')
+  } finally {
+    await act(async () => { root.unmount() })
+  }
+})
+

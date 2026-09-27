@@ -311,6 +311,28 @@ test('GsapScrub rebuilds at the last scroll progress without waiting for another
   app.destroy()
 })
 
+test('GsapScrub settles to the end state when the tracker fails or is released (N3)', () => {
+  const app = installed('gsap-scrub')
+  const calls = []
+  const buildTimeline = () => ({ progress: p => calls.push(p), kill() {} })
+  const tree = app.render({ buildTimeline })
+  tree.props.onPin(.3)
+  assert.equal(calls.at(-1), .3, 'scrubs normally while attaching/active')
+  tree.props.onStatus('failed')
+  assert.equal(calls.at(-1), 1, 'a failed tracker settles to the end state, never stuck at .from() opacity 0')
+  app.destroy()
+})
+
+test('every gsap-scrub pane that scrubs progress also reads the motion preference and a status branch (N3)', () => {
+  const fx = EFFECTS.find(e => e.slug === 'gsap-scrub')
+  for (const pane of ['css', 'react']) {
+    const text = fx[pane]
+    assert.match(text, /\.progress\(/, `${pane} pane scrubs a timeline`)
+    assert.match(text, /prefersReducedMotion|onMotionChange/, `${pane} pane checks the motion preference`)
+    assert.match(text, /onStatus.*failed|failed.*onStatus|status !== 'failed'|status === 'failed'/, `${pane} pane branches on tracking status`)
+  }
+})
+
 test('GSAP preview follows the effective motion preference live', () => {
   const preview = EFFECTS.find(e => e.slug === 'gsap-scrub').preview
   let reduced = true, onMotion, onPin, value
@@ -335,4 +357,18 @@ test('legacy pin CSS hides parked curtains and wraps rails without compat', () =
   const css = readFileSync(new URL('../styles/pin.css', import.meta.url), 'utf8').split('@supports not (translate: 0)')[1].split('/* ---- Accessibility')[0]
   assert.match(css, /html:not\(\[data-sv-compat\]\) \.sv \.sv-rail\s*\{[^}]*width: auto;[^}]*flex-wrap: wrap;/)
   assert.match(css, /html:not\(\[data-sv-compat\]\) \.sv \.sv-curtain-r\s*\{\s*display: none;/)
+})
+
+// ---- WCAG 2.2.2: every gallery pane and preview that renders a bare
+// `.sv-marquee` (auto-moving content past 5s) must carry the pause control
+// too, or the copy-paste page teaches the uncontrolled strip (N4). The React
+// pane is exempt: <Marquee> already renders the button internally.
+test('every marquee gallery pane/preview that renders .sv-marquee carries sv-marquee-pause (N4)', () => {
+  for (const fx of EFFECTS) {
+    for (const pane of ['preview', 'css', 'tailwind']) {
+      const text = fx[pane]
+      if (typeof text !== 'string' || !/\bsv-marquee\b/.test(text)) continue
+      assert.match(text, /sv-marquee-pause/, `${fx.slug}'s ${pane} pane renders .sv-marquee with no pause control`)
+    }
+  }
 })
