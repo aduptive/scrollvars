@@ -85,7 +85,7 @@ same way; <code>sv-stagger</code> on a parent needs no per-child anything.)</p>
 <tr><td><code>--sv-stage-width</code></td><td>px</td><td>Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width</td></tr>
 <tr><td><code>--sv-scene</code></td><td>0 → n−1</td><td>Scene index of a pinned section, eased and snapped</td></tr>
 <tr><td><code>--sv-scenes</code></td><td>n</td><td>Scene count, next to <code>--sv-scene</code>: progress is <code>var(--sv-scene) / (var(--sv-scenes) - 1)</code></td></tr>
-<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked, and either some CSS mentions them (a <code>var()</code> read, a declaration, even a comment in an inline <code>&lt;style></code> counts; detection errs toward publishing) or <code>setPageOutputs(true)</code> was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
+<tr><td><code>--sv-page</code> / <code>--sv-v</code></td><td>0 → 1 / ±20 viewport-heights/s</td><td>On <code>&lt;html></code> once anything is tracked, and either some CSS mentions them (a <code>var()</code> read, a declaration outside <code>&lt;html></code>'s own inline style, even a comment in an inline <code>&lt;style></code> counts; detection errs toward publishing; a declaration inline on <code>&lt;html></code> itself does not count, only a <code>var()</code> read there does) or <code>setPageOutputs(true)</code> was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event</td></tr>
 <tr><td><code>--mx</code> / <code>--my</code></td><td>−1 → 1</td><td>Pointer offset from the element's center, clamped (pointer module)</td></tr>
 <tr><td><code>.sv-live</code></td><td>class</td><td>On while inside the activation band (enter 75%, exit 25% of the viewport); <code>once</code> latches it</td></tr>
 </table>
@@ -197,13 +197,10 @@ animations, no JS; ScrollVars' <code>sv-view-*</code> tier is exactly that where
 
 <h2 id="interop">Interop: ScrollVars alongside GSAP on one page</h2>
 <p>They don't conflict. Different writers on different properties. Keep each element owned by
-exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case:</p>
-<pre tabindex="0"><code>// GSAP reading ScrollVars' clock (no second scroll listener):
-gsap.ticker.add(() =&gt; {
-  const t = parseFloat(getComputedStyle(section).getPropertyValue('--sv-t')) || 0
-  heavyTimeline.progress(t)   // ScrollVars steers, GSAP renders
-})</code></pre>
-<p>The page pays GSAP's bundle then. Do it for the page that needs it, not globally.
+exactly one engine. GSAP can also <i>consume</i> the vars for the rare mixed case, through a
+guarded <code>onTravel</code> callback, motion aware and cleaned up on <code>stop()</code>, never
+a bare per-frame style read with no stop and no reduced-motion branch. The page pays GSAP's
+bundle then. Do it for the page that needs it, not globally.
 Both patterns exist as official fx recipes with live previews:
 <a href="../fx/gsap-scrub.html">GSAP timeline under scrub</a> (author in time-space, consume as
 a scrub. Still input-driven) and <a href="../fx/three-scene.html">Three.js scene on the pin</a>
@@ -293,6 +290,18 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>Unreleased</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li><code>toggles()</code>'s <code>resolve()</code> looked up a <code>data-sv-target</code> class selector against the WHOLE scope: under a document scope (<code>&lt;ScrollVarsBoot></code>, the css pane's own <code>toggles()</code>), two controlled marquees sharing the class selector <code>.sv-marquee-track</code> both resolved to the FIRST track on the page, so a second marquee's own pause button stayed hidden and, if clicked programmatically, paused the first marquee instead. A trigger inside a <code>.sv-marquee</code> wrapper now resolves its target inside that wrapper first, falling back to the scope for every other trigger.</li>
+<li>The document scope's late-marquee <code>MutationObserver</code> pre-check asked only "is any live track unleased", so a track inserted in one task and its pause button in a LATER one (two separate mutation batches) found every track already leased on the button's own batch and returned early: the track never got <code>sv-ui</code>, and the button stayed hidden behind ui.css's <code>.sv-marquee-track.sv-ui + .sv-marquee-pause</code> guard forever. The pre-check now also passes when a live pause button's resolved track lacks <code>sv-ui</code>, still zero iterations on a marquee-free page.</li>
+<li>The docs page's GSAP interop example used <code>gsap.ticker.add</code> to read <code>--sv-t</code> directly with <code>|| 0</code>, the same fail-hidden pattern already removed from the gallery's tailwind pane: on release the driver clears the property, sending a <code>.from({ opacity: 0 })</code> timeline back to its hidden start, with no reduced-motion guard, and reduced motion keeps <code>--sv-t</code> updating so GSAP keeps moving too. The snippet is dropped from the paragraph, which already links the guarded <code>gsap-scrub</code> recipe two lines below.</li>
+<li><code>useScenes</code>/<code>useSlider</code> "re-render only on a discrete index change" was repeated at AGENTS.md's own "why the numbers come out this way" section and twice in <code>docs/guide.md</code>, missed by the gate that only checked AGENTS.md's earlier sentence (already corrected). All three now say what is actually true: re-render only on discrete events (index, status, flow, motion).</li>
+<li>AGENTS.md and the guide said any CSS mention of <code>--sv-page</code>/<code>--sv-v</code>, "a <code>var()</code> read, a declaration, even a comment", turns publishing on; the driver excludes its own inline writes on <code>&lt;html></code> from that check (only a <code>var()</code> read there counts, never a bare declaration), or a rescan would read its own output as a consumer and never unpublish. Both surfaces now name the exception.</li>
+</ul>
 
 <h3>1.19.0 (2026-09-27)</h3>
 

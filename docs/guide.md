@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.6 KB, styles 9.9 KB for every preset or 2.8 KB for the core part. A typical page ships ~8.4 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.7 KB, styles 9.9 KB for every preset or 2.8 KB for the core part. A typical page ships ~8.4 KB on the wire.
 
 ## Why
 
@@ -29,8 +29,8 @@ ScrollVars keeps continuous scroll values outside React and exposes them directl
 - **One global driver**: a single passive scroll listener, one rAF for all scroll tracking; slider, pointer and canvas schedule their own.
 - **Batched read → write phases**. All rects first, all CSS variables after.
 - **No framework in the hot path**, React renders zero times per frame
-  during scroll (`useScenes`/`useSlider` re-render only on a discrete index
-  change).
+  during scroll (`useScenes`/`useSlider` re-render only on discrete events:
+  index, status, flow, motion).
 - **Fails visible**: hiding styles are gated on `html.sv-on` (set by the driver), so if JS never loads the page is a normal static page.
 - **Reduced motion built into every preset. Accessibility checked in
   CI.** Every preset honors `prefers-reduced-motion` with no code of
@@ -106,8 +106,9 @@ Why the numbers come out this way. Each is a design decision, not tuning:
   forces one computed-style read between writes to settle its reset; user
   callbacks can also force layout.
 - **Scroll state never enters the framework.** React renders zero times
-  per frame during scroll (`useScenes`/`useSlider` re-render only on a discrete
-  index change), so the per-frame framework bill is never paid.
+  per frame during scroll (`useScenes`/`useSlider` re-render only on discrete
+  events: index, status, flow, motion), so the per-frame framework bill is
+  never paid.
 - **Fails visible.** Hiding styles are gated on `html.sv-on` (set by the
   driver), so on the no-JS path the page is a complete static page: SSR,
   SEO and a no-JS Lighthouse load profile stay untouched (a JS-enabled
@@ -190,7 +191,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.7 KB |
-| everything in `scrollvars` (the core entry) | 12.6 KB |
+| everything in `scrollvars` (the core entry) | 12.7 KB |
 | `scrollvars/react` (wrappers + kit, React external) | 18.5 KB |
 <!-- sizes:end -->
 
@@ -210,7 +211,7 @@ The driver **tracks** elements and writes these outputs (anything that reads the
 | `--sv-stage-width` | px | Measured inner width of a pinned .sv-stage; the rail uses it instead of the window width |
 | `--sv-scene` | 0 → n−1 | Scene index of a pinned section, eased and snapped |
 | `--sv-scenes` | n | Scene count, next to `--sv-scene`: progress is `var(--sv-scene) / (var(--sv-scenes) - 1)` |
-| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration, even a comment in an inline `<style>` counts; detection errs toward publishing) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
+| `--sv-page` / `--sv-v` | 0 → 1 / ±20 viewport-heights/s | On `<html>` once anything is tracked, and either some CSS mentions them (a `var()` read, a declaration outside `<html>`'s own inline style, even a comment in an inline `<style>` counts; detection errs toward publishing; a declaration inline on `<html>` itself does not count, only a `var()` read there does) or `setPageOutputs(true)` was called: progress through the document, and signed velocity in viewport-heights per second, clamped to ±20, back to 0 within ~80 ms of the last scroll event |
 | `--mx` / `--my` | −1 → 1 | Pointer offset from the element's center, clamped (pointer module) |
 | `.sv-live` | class | On while inside the activation band (enter 75%, exit 25% of the viewport); `once` latches it |
 
@@ -1089,8 +1090,11 @@ and WCAG 2.3.3.
 asks the browser to recalculate style for the whole document. A page that
 never reads them should never pay that, so the driver looks before it
 publishes: on the first frame it scans the document's own stylesheets and
-inline styles for the two names, and stays silent when neither appears. A
-stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
+inline styles for the two names, and stays silent when neither appears.
+`<html>`'s own inline style is the one exception: the driver writes both
+outputs there itself, so only a `var()` read on it counts, never a bare
+declaration or comment (reading its own writes as a consumer would mean
+publishing never turns back off). A stylesheet added later, by a lazily mounted component or a CSS-in-JS runtime,
 turns publishing back on. The watch behind that rescans once per frame that
 adds an element and skips every stylesheet it already read in full, so a page
 that mounts elements while it scrolls pays no per-rule work for it. What it
