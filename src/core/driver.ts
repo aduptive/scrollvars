@@ -559,9 +559,17 @@ function update() {
         geo = { top: rect.top, bottom: rect.bottom, height: rect.height, vp: vh }
       }
       // the box's own height, or its content's when that is taller: a fixed
-      // height on the fit box hid overflowing copy from this test (round 9)
-      const overflow = !!entry.fit && !entry.flow && Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
-        (entry.fit.parentElement?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
+      // height on the fit box hid overflowing copy from this test (round 9).
+      // Also its own offset inside the stage (padding-top, a heading above
+      // it, its margin): the stage is position: sticky and the fit node's
+      // offsetParent, so offsetTop is measured from the stage's padding
+      // edge, an offset chain read like the slider's, never a bounding rect
+      // (N2). A consumer stage without the preset (offsetParent mismatch)
+      // falls back to the old height-only comparison.
+      const stageForFit = entry.fit?.parentElement
+      const fitTop = entry.fit && entry.fit.offsetParent === stageForFit ? (entry.fit.offsetTop || 0) : 0
+      const overflow = !!entry.fit && !entry.flow && fitTop + Math.max(entry.fit.offsetHeight, entry.fit.scrollHeight) >
+        (stageForFit?.clientHeight ?? Math.max(geo.vp - entry.pinOffset, 0)) + 1
       // both stage boxes belong to the read phase: read from apply() they sat
       // after the first write of the frame and could force layout (round 10)
       const rails = entry.compatRails ? new Map<HTMLElement, string>() : undefined

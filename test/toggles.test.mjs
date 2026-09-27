@@ -150,6 +150,41 @@ test('toggles: a track removed from the document is pruned on its next Intersect
   } finally { env.restore() }
 })
 
+test('toggles: a track detached while already offscreen is swept on the next marquee registration, with no IO delivery of its own (N7)', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?pr2marquesweep')
+    const root = env.element(), track1 = env.element()
+    track1.classList.add('sv-marquee-track')
+    root.append(track1)
+    const stop = toggles(root) // Boot-like scope, never stopped
+    const io = [...env.deliveries].find(d => d.kind === 'IntersectionObserver')
+    assert.ok(io.targets.has(track1))
+
+    // track1 goes offscreen normally
+    io.cb([{ target: track1, isIntersecting: false }])
+    assert.ok(track1.classes.has('sv-marquee-offscreen'))
+
+    // then it is removed from the document while already offscreen: a real
+    // IntersectionObserver never delivers another record for it (no
+    // intersection transition), so the only per-target prune path (the IO
+    // callback) never runs for track1 itself.
+    track1.isConnected = false
+
+    // a second marquee registers under an unrelated root: this must sweep
+    // the whole lease map, not only the track it is registering, and prune
+    // track1 with no IO delivery naming it.
+    const root2 = env.element(), track2 = env.element()
+    track2.classList.add('sv-marquee-track')
+    root2.append(track2)
+    const stop2 = toggles(root2)
+    assert.ok(!io.targets.has(track1), 'track1 is unobserved by the sweep, with no IO delivery of its own')
+
+    stop2()
+    stop()
+  } finally { env.restore() }
+})
+
 test('toggles: a track detached, pruned and reattached under a NEW scope is not disturbed by the OLD scope stopping later (verifier round 1)', async () => {
   const env = lifecycleEnv()
   try {
