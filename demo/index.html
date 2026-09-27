@@ -2980,7 +2980,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 23.2 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 23.3 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.7 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.9 KB / 5.7 KB</b></td><td></td></tr>
       </tbody>
@@ -3137,7 +3137,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.8 KB · v1.19.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.9 KB · v1.19.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -4862,7 +4862,13 @@ var SV = (() => {
     return true;
   }
   function sweepDetachedMarquees() {
-    marqueeLeases.forEach((_lease, track2) => pruneDetachedMarquee(track2));
+    marqueeLeases.forEach((_lease, track2) => {
+      try {
+        pruneDetachedMarquee(track2);
+      } catch (error) {
+        reportFailure2(error);
+      }
+    });
   }
   function applyMarqueeState(track2) {
     if (pruneDetachedMarquee(track2))
@@ -4873,7 +4879,13 @@ var SV = (() => {
   function bindMarqueeVisibility() {
     if (onVisibility || typeof document === "undefined" || typeof document.addEventListener !== "function")
       return;
-    onVisibility = () => marqueeLeases.forEach((_lease, track2) => applyMarqueeState(track2));
+    onVisibility = () => marqueeLeases.forEach((_lease, track2) => {
+      try {
+        applyMarqueeState(track2);
+      } catch (error) {
+        reportFailure2(error);
+      }
+    });
     document.addEventListener("visibilitychange", onVisibility);
   }
   function releaseMarqueeSharedIfUnneeded() {
@@ -4919,13 +4931,17 @@ var SV = (() => {
         marqueeObserver = new IntersectionObserver((entries2) => {
           sweepDetachedMarquees();
           entries2.forEach((entry) => {
-            const el = entry.target;
-            if (!marqueeLeases.has(el))
-              return;
-            if (pruneDetachedMarquee(el))
-              return;
-            marqueeOffscreen.set(el, !entry.isIntersecting);
-            applyMarqueeState(el);
+            try {
+              const el = entry.target;
+              if (!marqueeLeases.has(el))
+                return;
+              if (pruneDetachedMarquee(el))
+                return;
+              marqueeOffscreen.set(el, !entry.isIntersecting);
+              applyMarqueeState(el);
+            } catch (error) {
+              reportFailure2(error);
+            }
           });
         });
       }
@@ -5148,6 +5164,9 @@ var SV = (() => {
         return false;
       };
       mutationObserver = new MutationObserver(life.guard((records) => {
+        if (marqueeLeases.size > 0 && records.some((record) => (record.removedNodes?.length ?? 0) > 0)) {
+          sweepDetachedMarquees();
+        }
         if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0)
           return;
         transaction = ownership();
@@ -5159,7 +5178,6 @@ var SV = (() => {
                 return;
               const el = node;
               selfAndDescendants(el, ".sv-marquee-track").forEach((track2) => watchMarquee(track2, life));
-              selfAndDescendants(el, "[data-sv-toggle]").forEach(bootTrigger);
             });
           });
         } catch (error) {
@@ -5169,6 +5187,24 @@ var SV = (() => {
           transaction = ownership();
           siblingWrites = [];
         }
+        records.forEach((record) => {
+          record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1)
+              return;
+            selfAndDescendants(node, "[data-sv-toggle]").forEach((trigger) => {
+              transaction = ownership();
+              siblingWrites = [];
+              try {
+                bootTrigger(trigger);
+              } catch (error) {
+                rollback();
+                reportFailure2(error);
+              }
+            });
+          });
+        });
+        transaction = ownership();
+        siblingWrites = [];
         if (pendingTriggers.size > 0) {
           Array.from(pendingTriggers).forEach((trigger) => {
             if (!scope.contains(trigger)) {
@@ -8317,8 +8353,24 @@ function pruneDetachedMarquee(track) {
 // tiny (one entry per marquee on the page), so a full sweep on every IO
 // delivery batch and every new registration (N7) catches it without a
 // MutationObserver: the next tab switch is no longer the only trigger.
+// Guarded per track (verifier, loop8-7 PR #116): pruneDetachedMarquee's own
+// classList.remove can throw on a patched or exotic element, and both
+// callers of this sweep sit above the guard their OWN batch already has.
+// From the MutationObserver callback's removal-only pre-sweep (C2) the
+// throw reached life.guard's fail() and stopped the WHOLE document scope
+// over one bad track; from the IntersectionObserver callback it ran BEFORE
+// the per-entry try below, so it skipped every entry in that delivery, not
+// only the one that threw. The lease entry is already deleted before the
+// throwing classList call, so there is nothing left to retry, only report.
 function sweepDetachedMarquees() {
-    marqueeLeases.forEach((_lease, track) => pruneDetachedMarquee(track));
+    marqueeLeases.forEach((_lease, track) => {
+        try {
+            pruneDetachedMarquee(track);
+        }
+        catch (error) {
+            reportFailure(error);
+        }
+    });
 }
 function applyMarqueeState(track) {
     if (pruneDetachedMarquee(track))
@@ -8333,7 +8385,17 @@ function applyMarqueeState(track) {
 function bindMarqueeVisibility() {
     if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function')
         return;
-    onVisibility = () => marqueeLeases.forEach((_lease, track) => applyMarqueeState(track));
+    // Guarded per track (AGENTS:528, loop8-7 auditor guard): a throw on one
+    // track's classList (a patched or exotic element) must not stop the
+    // callback before it reaches the OTHER live marquees in the same pass.
+    onVisibility = () => marqueeLeases.forEach((_lease, track) => {
+        try {
+            applyMarqueeState(track);
+        }
+        catch (error) {
+            reportFailure(error);
+        }
+    });
     document.addEventListener('visibilitychange', onVisibility);
 }
 // The last marquee stopping releases the shared observer and listener, the
@@ -8400,14 +8462,23 @@ function watchMarquee(track, life) {
         if (!marqueeObserver) {
             marqueeObserver = new IntersectionObserver((entries) => {
                 sweepDetachedMarquees();
+                // Guarded per entry (AGENTS:528, loop8-7 auditor guard): one
+                // track's classList throwing must not stop the batch before the
+                // other marquees delivered in the same IntersectionObserver
+                // callback are settled.
                 entries.forEach((entry) => {
-                    const el = entry.target;
-                    if (!marqueeLeases.has(el))
-                        return;
-                    if (pruneDetachedMarquee(el))
-                        return;
-                    marqueeOffscreen.set(el, !entry.isIntersecting);
-                    applyMarqueeState(el);
+                    try {
+                        const el = entry.target;
+                        if (!marqueeLeases.has(el))
+                            return;
+                        if (pruneDetachedMarquee(el))
+                            return;
+                        marqueeOffscreen.set(el, !entry.isIntersecting);
+                        applyMarqueeState(el);
+                    }
+                    catch (error) {
+                        reportFailure(error);
+                    }
                 });
             });
         }
@@ -8779,6 +8850,20 @@ function toggles(root) {
         // in siblingWrites until the next click anywhere in the document (A2,
         // Astra loop8-5).
         mutationObserver = new MutationObserver(life.guard((records) => {
+            // C2 (Astra loop8-7): a removal-only batch (an SPA route swap that
+            // takes an already-offscreen marquee's page away) got no IO delivery
+            // for the removed track (an already-non-intersecting target reports
+            // no further transition) and never reached this observer's own
+            // pre-check (`hasUnleasedTrack()`/`hasNewTrigger()` both false, no
+            // pending trigger), so its lease, its shared IntersectionObserver
+            // lease and its detached subtree sat until the next click, visibility
+            // change or marquee registration. Swept here, before the pre-check
+            // can bail: cheap on a page with no leased marquee at all
+            // (`marqueeLeases.size` is checked first) and only walks the lease
+            // map (one entry per marquee) when a batch actually removed something.
+            if (marqueeLeases.size > 0 && records.some((record) => (record.removedNodes?.length ?? 0) > 0)) {
+                sweepDetachedMarquees();
+            }
             // A trigger left over from an earlier delivery with no target yet
             // (B5) also earns this batch a pass: its target can be anywhere in
             // it, including a node that is neither a trigger nor a marquee track
@@ -8794,7 +8879,6 @@ function toggles(root) {
                             return;
                         const el = node;
                         selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life));
-                        selfAndDescendants(el, '[data-sv-toggle]').forEach(bootTrigger);
                     });
                 });
             }
@@ -8811,6 +8895,32 @@ function toggles(root) {
                 transaction = ownership();
                 siblingWrites = [];
             }
+            // T1 (auditor, loop8-7): each new trigger of this delivery now boots
+            // in its OWN transaction, the same shape as the pending retry below.
+            // Sharing one transaction across every new trigger of a batch meant
+            // one trigger's write throwing rolled back a SIBLING trigger's
+            // already-written state too and skipped every trigger later in
+            // iteration order, all reading null even though only one of them
+            // ever failed.
+            records.forEach((record) => {
+                record.addedNodes.forEach((node) => {
+                    if (node.nodeType !== 1)
+                        return;
+                    selfAndDescendants(node, '[data-sv-toggle]').forEach((trigger) => {
+                        transaction = ownership();
+                        siblingWrites = [];
+                        try {
+                            bootTrigger(trigger);
+                        }
+                        catch (error) {
+                            rollback();
+                            reportFailure(error);
+                        }
+                    });
+                });
+            });
+            transaction = ownership();
+            siblingWrites = [];
             // Retry every trigger still pending, each in its OWN transaction
             // (verifier round 2): a shared transaction across the whole retry
             // pass meant one trigger's write throwing rolled back a SIBLING
