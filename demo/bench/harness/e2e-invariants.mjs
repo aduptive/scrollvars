@@ -3152,6 +3152,53 @@ const MIN_EXAMINED = 1
   await page.close()
 }
 
+// ── Self-tracked sv-rise NESTED in another tracker: same geometry feedback
+// (verifier fix on PR #117). `.sv-on :is(.sv, [data-sv]) .sv-rise` cares only
+// that SOME ancestor is tracked, not that the .sv-rise element itself is
+// untracked, so `<div data-sv><p data-sv class="sv-rise">` (the guide's own
+// zero-wrapper example shape) still translated the inner <p>, which the
+// driver measures on its own. Must flip exactly twice each way, same as the
+// plain self-tracked and nested-plain-child cases.
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 800, height: 600 })
+  await page.setContent(`<!doctype html><html><head><style>${STYLES_CSS}</style></head>
+    <body style="margin:0">
+      <div style="height:900px"></div>
+      <div data-sv style="margin:0">
+        <p data-sv class="sv-rise" style="height:100px;margin:0">nested self-tracked rise</p>
+      </div>
+      <div style="height:2000px"></div>
+    </body></html>`)
+  await page.addScriptTag({ content: SV_IIFE_JS })
+  const r = await page.evaluate(async () => {
+    SV.scan()
+    const el = document.querySelector('.sv-rise')
+    const waitFrame = () => new Promise((res) => requestAnimationFrame(res))
+    let last = el.classList.contains('sv-live')
+    const flips = { down: 0, up: 0 }
+    for (let y = 0; y <= 1500; y += 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.down++; last = now }
+    }
+    for (let y = 1500; y >= 0; y -= 2) {
+      scrollTo(0, y)
+      await waitFrame()
+      const now = el.classList.contains('sv-live')
+      if (now !== last) { flips.up++; last = now }
+    }
+    return flips
+  })
+  check(
+    'nested self-tracked sv-rise: scrolled through and back, sv-live flips exactly twice each way (no geometry feedback at the exit line)',
+    r.down === 2 && r.up === 2,
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+
 await pageOutputsGate({ browser, check, base })
 await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })

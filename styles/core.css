@@ -51,12 +51,15 @@
     translate var(--sv-duration) var(--sv-ease);
   transition-delay: calc(var(--sv-order, 0) * var(--sv-stagger));
 }
-/* A self-tracked sv-rise (the tracked element carries the class itself,
-   not a child) never gets the translate: the driver measures this same
+/* A sv-rise element that is ITSELF tracked (.sv or [data-sv], whether it
+   is the tracker with no separate ancestor, or a nested tracker inside
+   another one) never gets the translate: the driver measures this same
    box, so moving it feeds back into its own live/hidden decision near the
    exit line (round-trip flip). It still fades via the opacity rule above;
-   put sv-rise on a child of the tracker for the actual rise. */
-.sv-on :is(.sv, [data-sv]) .sv-rise,
+   put sv-rise on a plain (untracked) child for the actual rise. The
+   :where() wrapper keeps this exclusion at zero specificity, so it never
+   has to out-rank the reduce/data-sv-motion overrides below. */
+.sv-on :is(.sv, [data-sv]) .sv-rise:where(:not(.sv):not([data-sv])),
 .sv-on :is(.sv, [data-sv]).sv-auto > :not(.sv-skip) {
   translate: 0 calc((1 - var(--sv-live)) * var(--sv-distance));
 }
