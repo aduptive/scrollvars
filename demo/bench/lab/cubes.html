@@ -205,6 +205,10 @@ window.LAB_PAGE = {
   animated: function () {
     var cubes = document.querySelectorAll('.cube-window')
     if (!cubes.length) return false
+    // a clip over nothing is not a rendered page: the photo layer must paint
+    // (an invalid background once left all 42 cubes empty and still "animated")
+    var photo = cubes[0].querySelector('.cube-photo')
+    if (!photo || getComputedStyle(photo).backgroundImage === 'none') return false
     var seen = new Set()
     for (var i = 0; i < cubes.length; i++) seen.add(cubes[i].style.clipPath)
     return seen.size > 1
