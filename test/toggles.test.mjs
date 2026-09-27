@@ -1463,6 +1463,122 @@ test('toggles: a burst of unrelated insertions never runs the marquee/trigger su
   } finally { env.restore() }
 })
 
+// A2 (Astra loop8-5): the MO callback used to reuse the document scope's
+// STANDING `transaction`/`siblingWrites`, only ever cleared by the next
+// click anywhere in the document. A throw partway through one delivery's
+// batch left the earlier writes of that SAME batch in place, unlike setup
+// and click, which both roll back. The fix gives the MO callback its own
+// fresh journals per delivery, exactly like onClick.
+test('toggles: a failing second trigger in one MutationObserver delivery restores the first trigger\'s writes (A2)', async () => {
+  const realHTMLElement = global.HTMLElement
+  function StubHTMLElement() {}
+  StubHTMLElement.prototype.inert = false
+  global.HTMLElement = StubHTMLElement
+  const env = lifecycleEnv()
+  try {
+    const { toggles } = await import('../dist/core/toggles.js?a2rollback')
+    const doc = env.element()
+    doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+    global.document = doc
+    const stop = toggles()
+
+    const mo = [...env.deliveries].find((d) => d.kind === 'MutationObserver')
+    assert.ok(mo, 'the document scope owns a MutationObserver')
+
+    // an unleased track, added AFTER setup so the initial boot's own
+    // `.sv-marquee-track` scan never leases it: only here to satisfy the
+    // pre-check's `hasUnleasedTrack()` gate, unrelated to the two toggle
+    // triggers this test is about.
+    const track = env.element(); track.nodeType = 1
+    track.classList.add('sv-marquee-track')
+    doc.append(track)
+
+    const t1 = env.element({ 'data-sv-toggle': '' }); t1.nodeType = 1
+    const t2 = env.element({ 'data-sv-toggle': '' }); t2.nodeType = 1
+    doc.append(t1); doc.append(t2)
+    const error = Error('t2 write')
+    const realSetProperty = t2.style.setProperty
+    t2.style.setProperty = (key, value, priority) => {
+      if (key === '--sv-state') throw error
+      return realSetProperty(key, value, priority)
+    }
+
+    mo.cb([{ addedNodes: [t1, t2] }])
+    assert.deepEqual(env.errors, [error], 'the throw is reported, not swallowed')
+    assert.equal(t1.style.getPropertyValue('--sv-state'), '', 'the first trigger\'s --sv-state write was rolled back, not left in place')
+
+    stop()
+  } finally {
+    env.restore()
+    if (realHTMLElement) global.HTMLElement = realHTMLElement
+    else delete global.HTMLElement
+  }
+})
+
+// The retention half: a late-booted trigger under the document scope
+// (<ScrollVarsBoot> never stops) must not be kept strongly reachable by the
+// MO callback's own journal once nothing else references it and no click
+// has run since (mirrors PR #94's own retention test).
+test('toggles: a late-booted trigger from a MutationObserver delivery holds no strong reference once nothing else does (A2)', {
+  skip: typeof global.gc !== 'function' && 'run with node --expose-gc',
+}, async () => {
+  global.window = {}
+  global.requestAnimationFrame = () => 1
+  let moCallback
+  global.MutationObserver = class {
+    constructor(cb) { moCallback = cb }
+    observe() {}
+    disconnect() {}
+  }
+  const children = []
+  const doc = {
+    querySelectorAll: (sel) => children.filter((c) => c.matches(sel)),
+    addEventListener() {},
+    removeEventListener() {},
+    contains: () => true,
+  }
+  doc.getElementsByClassName = (cls) => liveByClass(doc, cls)
+  global.document = doc
+  const { toggles } = await import('../dist/core/toggles.js?a2retain')
+  const stop = toggles()
+  assert.equal(typeof moCallback, 'function', 'the document scope owns a MutationObserver')
+
+  // an unleased track, added AFTER setup, only to keep `hasUnleasedTrack()`
+  // open for the MO callback body to run at all: unrelated to the trigger
+  // this test is about. `liveByClass` above recomputes on every access, like
+  // a real live HTMLCollection, so this is visible without a fresh delivery.
+  children.push({ matches: (sel) => sel === '.sv-marquee-track' })
+
+  let trigger = {
+    nodeType: 1,
+    attrs: { 'data-sv-toggle': '' },
+    getAttribute(k) { return this.attrs[k] ?? null },
+    setAttribute(k, v) { this.attrs[k] = v },
+    classList: { contains: () => false, toggle() {}, add() {}, remove() {} },
+    style: { setProperty() {}, getPropertyValue: () => '', getPropertyPriority: () => '', removeProperty() {} },
+    matches(sel) { return sel === '[data-sv-toggle]' },
+    querySelectorAll: () => [],
+    closest: () => null,
+  }
+  // no click ever runs in this test: the old code only cleared the document
+  // scope's standing transaction on the NEXT click anywhere in the document
+  moCallback([{ addedNodes: [trigger] }])
+
+  let collected = false
+  const registry = new FinalizationRegistry(() => { collected = true })
+  registry.register(trigger, 'trigger')
+  trigger = null
+
+  for (let attempt = 0; attempt < 10 && !collected; attempt++) {
+    await new Promise((resolve) => setImmediate(resolve))
+    global.gc()
+  }
+  assert.ok(collected, 'a standing transaction never reset per delivery would keep the trigger alive until the next click')
+  stop()
+  delete global.document
+  delete global.MutationObserver
+})
+
 test('toggles: a custom-root scope (a Marquee component\'s own toggles(node)) gets no persistent MutationObserver', async () => {
   const env = lifecycleEnv()
   try {
