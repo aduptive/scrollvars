@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.9 KB, styles 10.8 KB for every preset or 3.3 KB for the core part. A typical page ships ~9.0 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.9 KB, styles 10.5 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.8 KB on the wire.
 
 ## Why
 
@@ -169,8 +169,8 @@ npm i github:aduptive/scrollvars#v1.15.0   # pin the ref
 // app/layout.tsx (or any entry file). Everything:
 import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
-import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.3 KB gz
-import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.5 KB gz
+import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.1 KB gz
+import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.4 KB gz
 import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
@@ -196,7 +196,7 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
-**~9.0 KB gzipped, total.**
+**~8.8 KB gzipped, total.**
 
 ## Mental model
 
