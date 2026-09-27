@@ -104,6 +104,12 @@
   opacity: calc(1 - var(--sv-abs-view));
   translate: 0 clamp(-100vh, calc(var(--sv-view) * var(--sv-distance) * -1), 100vh);
 }
+/* A focused control keeps the scroll fade otherwise (WCAG 2.4.7): a fully
+   visible edge case reads opacity 0.51, never hidden but still dim. Must
+   sit after the rule above (source-order wins at equal specificity). */
+.sv .sv-drift:focus-within {
+  opacity: 1;
+}
 
 /* ---- Spread preset: a centered deck that fans out into its row ---- */
 /* Children start stacked at the container's center (slight fan) and spread

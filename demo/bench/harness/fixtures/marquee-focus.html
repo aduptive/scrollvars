@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>marquee focus fixture</title>
+<link rel="stylesheet" href="/fx/sv.css">
+<style>
+  body { margin: 0; font: 16px system-ui }
+  .strip { width: 600px; margin: 40px auto; }
+</style>
+</head>
+<body>
+<!-- B1a: a plain marquee, focused item mid-loop must stay inside the strip -->
+<div class="sv-marquee strip" id="marq1">
+  <div class="sv-marquee-track" id="track1" style="--sv-marquee-duration: 10s">
+    <a href="#1" id="m0">Logo 1</a><a href="#2" id="m1">Logo 2</a><a href="#3" id="m2">Logo 3</a>
+    <span class="sv-marquee-dup" aria-hidden="true"><a href="#1" tabindex="-1">Logo 1</a><a href="#2" tabindex="-1">Logo 2</a><a href="#3" tabindex="-1">Logo 3</a></span>
+  </div>
+</div>
+<!-- controlled marquee: the pause button sits outside the track, focusing it
+     must not reflow the strip -->
+<div class="sv-marquee sv-marquee-controlled strip" id="marq2">
+  <div class="sv-marquee-track" id="track2" style="--sv-marquee-duration: 10s">
+    <a href="#1">Logo 1</a><a href="#2">Logo 2</a><a href="#3">Logo 3</a>
+    <span class="sv-marquee-dup" aria-hidden="true"><a href="#1" tabindex="-1">Logo 1</a><a href="#2" tabindex="-1">Logo 2</a><a href="#3" tabindex="-1">Logo 3</a></span>
+  </div>
+  <button type="button" id="pause2" class="sv-marquee-pause" aria-pressed="false"
+    data-sv-toggle="sv-paused" data-sv-target="#track2">Pause</button>
+</div>
+<script src="/fx/sv.js"></script>
+<script>addEventListener('load', () => SV.toggles(document.getElementById('marq2')))</script>
+</body>
+</html>

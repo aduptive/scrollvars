@@ -1368,3 +1368,15 @@ test('gallery coverflow-slider: the Tailwind pane guards scale under both motion
   assert.match(coverflow.tailwind, /motion-reduce:\[scale:none\]/, 'the OS preference variant resets scale')
   assert.match(coverflow.tailwind, /sv-reduce:\[scale:none\]/, "the site's own data-sv-motion switch resets scale too")
 })
+
+// B2 (loop8-6 triage): below the cqw floor, the rail must wrap in flow, not
+// become a horizontal scroller with no tabindex and non-interactive cards
+// (WCAG 2.1.1, no way for the keyboard to reach later cards).
+test('cli component case-study-rail: the below-cqw-floor fallback wraps the rail, no keyboard-unreachable scroller', () => {
+  const { content } = COMPONENTS['case-study-rail']
+  const block = (content.match(/@supports not \(width: 1cqw\) \{([\s\S]*?)\n\}/) ?? [, ''])[1]
+  assert.ok(block, 'no @supports not (width: 1cqw) block found')
+  assert.ok(!/overflow-x/.test(block), 'the fallback still scrolls horizontally instead of wrapping in flow')
+  assert.match(block, /\.work-rail\s*\{[^}]*flex-wrap:\s*wrap/, 'the fallback does not wrap .work-rail')
+  assert.match(block, /\.work-card\s*\{[^}]*width:\s*100%/, 'the fallback does not put .work-card into flow at full width')
+})

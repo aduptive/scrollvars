@@ -226,6 +226,10 @@
 .sv-marquee:hover .sv-marquee-track,
 .sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
 .sv-marquee-controlled &gt; .sv-marquee-track.sv-paused { animation-play-state: paused; }
+/* while the track holds focus, present it statically and wrapped (WCAG
+   2.4.7): pausing alone can leave a focused item translated off the strip */
+.sv-marquee-track:focus-within { animation: none; width: auto; flex-wrap: wrap; }
+.sv-marquee-track:focus-within &gt; .sv-marquee-dup { display: none; }
 @keyframes sv-marquee { to { translate: -50% 0; } }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:

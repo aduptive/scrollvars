@@ -71,6 +71,7 @@ import { scopedClocksGate } from './scoped-clocks-gate.mjs'
 import { motionGate } from './motion-gate.mjs'
 import { keyboardGate } from './keyboard-gate.mjs'
 import { focusEntranceGate } from './focus-entrance-gate.mjs'
+import { marqueeFocusGate } from './marquee-focus-gate.mjs'
 import { axeGate } from './axe-gate.mjs'
 import { reflowGate } from './reflow-gate.mjs'
 import { galleryPageerrorGate } from './gallery-pageerror-gate.mjs'
@@ -3110,6 +3111,7 @@ await scopedClocksGate({ browser, check, base })
 await motionGate({ browser, check, base })
 await keyboardGate({ browser, check, base })
 await focusEntranceGate({ browser, check, base })
+await marqueeFocusGate({ browser, check, base })
 await axeGate({ browser, check, base })
 await reflowGate({ browser, check, base })
 await a11yTreeGate({ browser, check, base })
