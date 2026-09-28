@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- fx gallery recipe: "Wall to floor fold" (`wall-floor-fold`), a copy-paste-only Pinned scenes effect, zero bytes in the core. Content scrolls down a wall and, at the fold line, continues onto a floor in perspective toward the viewer, driven entirely by the pin helper's `--sv-pin` (no scroll math of its own). The floor is a second, non-interactive copy of the same content, `aria-hidden` and `inert` together so it never reaches assistive tech or the tab order; the wall stays the only readable copy under no JS and under reduced motion, where the effect goes flat and the floor never renders. Geometry (depth, eye, floor angle, fold line, travel) is exposed as `--sv-fold-*` custom properties for tuning. Ships CSS, Tailwind and React panes plus an installed `WallFloorFold` component (`npx scrollvars add wall-floor-fold`).
+
 ### Fixed
 
 - A tracked child of `sv-auto` (`<section data-sv class="sv-auto"><p data-sv>`, itself `.sv` or `[data-sv]`) translated its own box while hidden, the same geometry feedback loop `sv-rise`'s self-tracked case already had fixed: the driver measures that same (now-moved) box to decide live/hidden, so near the exit line hiding moved it back INTO the activation band and flipped it live again, measured 65 spurious flips scrolling through and back. The child translate rule in `styles/core.css` and the compat fallback sheet now excludes a child that is itself tracked, the same `:where(:not(.sv):not([data-sv]))` shape `sv-rise` already used; it still fades via the opacity rule. Verifier fix: the exclusion added to the compat fallback sheet's RESET rules (the reduced-motion block, the `data-sv-motion="reduce"` twin, the `:focus-within` override) also stopped them matching the tracked child, which then kept its entrance opacity/transition instead of settling, measured opacity 0 with an 800ms transition under reduced motion. Each reset rule now also carries a plain (`:is()`/`:where()`-free, matching compat's own parse floor) unexcluded arm for the tracked case.

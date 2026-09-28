@@ -250,6 +250,7 @@ const PIN_PAGES = [
   'sequenced-scrub.html',
   'sticky-steps.html',
   'timeline-scrub.html',
+  'wall-floor-fold.html',
 ]
 const MIN_EXAMINED = 1
 
@@ -3386,6 +3387,55 @@ for (const cls of ['sv-view-fade', 'sv-view-rise']) {
   check(
     "home #amb-section's focused code block is opacity 1 within one frame of focus, even while the section is not yet live (T3)",
     r.opacity === '1',
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+
+// ── wall-floor-fold: the floor clone stays out of the accessibility tree
+// and the tab order, and is not rendered under reduced motion (ADU-398) ──
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 1200, height: 800 })
+  await page.goto(`${base}/fx/wall-floor-fold.html`, { waitUntil: 'load' })
+  const r = await page.evaluate(() => {
+    const floor = document.querySelector('.fold-floor')
+    // the default content has no focusable descendant of its own: force one
+    // onto the floor to prove inert, not merely the absence of a target
+    const probe = document.createElement('a')
+    probe.href = '#'
+    probe.textContent = 'probe'
+    floor.appendChild(probe)
+    probe.focus()
+    const focused = document.activeElement === probe
+    probe.remove()
+    return {
+      ariaHidden: floor.getAttribute('aria-hidden'),
+      inertAttr: floor.hasAttribute('inert'),
+      inertIdl: floor.inert === true,
+      focusable: focused,
+    }
+  })
+  check(
+    'gallery wall-floor-fold: the floor clone is aria-hidden and inert',
+    r.ariaHidden === 'true' && r.inertAttr && r.inertIdl,
+    JSON.stringify(r)
+  )
+  check(
+    'gallery wall-floor-fold: inert keeps even a forced-tabbable descendant of the floor out of the tab order',
+    r.focusable === false,
+    JSON.stringify(r)
+  )
+  await page.close()
+}
+{
+  const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await page.goto(`${base}/fx/wall-floor-fold.html`, { waitUntil: 'load' })
+  const r = await page.evaluate(() => ({ display: getComputedStyle(document.querySelector('.fold-floor')).display }))
+  check(
+    'gallery wall-floor-fold: under reduced motion the floor clone is not rendered (display: none)',
+    r.display === 'none',
     JSON.stringify(r)
   )
   await page.close()

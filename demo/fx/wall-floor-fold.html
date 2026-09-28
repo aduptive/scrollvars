@@ -2,8 +2,8 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Marquee · ScrollVars fx</title>
-<meta name="description" content="An infinite strip (logos, taglines) that pauses on hover. Copy-paste in Tailwind, CSS or React.">
+<title>Wall to floor fold · ScrollVars fx</title>
+<meta name="description" content="Copy runs down a wall and, at the fold, keeps going onto the floor toward you. A clone in perspective, --sv-pin driving both. Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
 <style>
@@ -149,7 +149,7 @@
         <a href="curtain.html">Curtain</a>
         <a href="horizontal-rail.html">Horizontal rail</a>
         <a href="sequenced-scrub.html">Sequenced scrub</a>
-        <a href="wall-floor-fold.html">Wall to floor fold</a>
+        <a href="wall-floor-fold.html" aria-current="page">Wall to floor fold</a>
       </details>
       <details open><summary>Interop</summary>
         <a href="gsap-scrub.html">GSAP timeline under scrub</a>
@@ -165,7 +165,7 @@
       </details>
       <details open><summary>Sliders</summary>
         <a href="coverflow-slider.html">Coverflow slider</a>
-        <a href="marquee.html" aria-current="page">Marquee</a>
+        <a href="marquee.html">Marquee</a>
       </details>
       <details open><summary>Sections</summary>
         <a href="hero-cinematic.html">Cinematic hero</a>
@@ -179,20 +179,50 @@
   </details>
 </div></aside>
 <main>
-  <h1>Marquee</h1>
-  <p class="tag">An infinite strip (logos, taglines) that pauses on hover.</p>
-  <p class="meta"><b>Use it for:</b> Logo walls, ticker bands. The honest replacement for Swiper loop.<br><b>Knobs:</b> --sv-marquee-duration (one loop), --sv-gap; --sv-marquee-hover: running disables the pause</p>
-  <div class="sv-marquee sv-marquee-controlled fxstage" id="fxmarq-outer" style="padding:28px 0">
-  <div class="sv-marquee-track fxmarq">
-    <span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span>
-    <span>CSS variables out</span><span>·</span>
-    <span class="sv-marquee-dup" aria-hidden="true"><span>ScrollVars</span><span>·</span><span>one rAF in</span><span>·</span><span>CSS variables out</span><span>·</span></span>
+  <h1>Wall to floor fold</h1>
+  <p class="tag">Copy runs down a wall and, at the fold, keeps going onto the floor toward you. A clone in perspective, --sv-pin driving both.</p>
+  <p class="meta"><b>Use it for:</b> Manifestos, case-study openers, one long passage that deserves the corner.<br><b>Knobs:</b> data-sv-pin (total scroll length) and --sv-fold-travel (pin length minus 100vh, keep them matched); --sv-fold-depth, --sv-fold-eye, --sv-fold-angle, --sv-fold-line (perspective)</p>
+  <div class="fxrunway"><div data-sv data-sv-pin="300vh" class="fxouter fold">
+  <div class="sv-stage fold-scene">
+    <div class="fold-wall">
+      <article class="fold-copy">
+        <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+      </article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy">
+        <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+      </article>
+    </div>
   </div>
-  <button type="button" class="sv-marquee-pause" aria-pressed="false"
-    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track">Pause animation</button>
 </div>
-<script>addEventListener('load', () => SV.toggles(document.getElementById('fxmarq-outer')))</script>
-  <p class="meta"><b>Install:</b> <code>npx scrollvars add marquee</code><br><b>Styles:</b> <code>import 'scrollvars/styles/ui.css'</code></p>
+<style>
+  .fold { position: relative; --sv-fold-travel: 200vh; }
+  .fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
+  .fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
+  .fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
+  .fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
+    transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
+  .fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh)); }
+  .fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh) - var(--sv-fold-line, 50vh)); }
+  html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+  html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
+  html:not(.sv-on) .fold-copy { translate: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .fold-scene { perspective: none; }
+    .fold-wall { position: static; height: auto; overflow: visible; }
+    .fold-floor, .fold-line { display: none; }
+    .fold-copy { translate: none; }
+  }
+  :where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+  :where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+  :where([data-sv-motion="reduce"]) .fold-floor, :where([data-sv-motion="reduce"]) .fold-line { display: none; }
+  :where([data-sv-motion="reduce"]) .fold-copy { translate: none; }
+</style></div>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add wall-floor-fold</code><br><b>Styles:</b> <code>import 'scrollvars/styles/pin.css'</code></p>
   <div class="tabs">
     <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
     <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
@@ -200,52 +230,100 @@
   </div>
   <div class="code">
     <button class="copy">copy</button>
-    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div id="logo-strip" class="sv-marquee sv-marquee-controlled [--sv-marquee-duration:24s] [--sv-gap:64px] py-8"&gt;
-  &lt;div class="sv-marquee-track"&gt;
-    {logos}{/* duplicate once, aria-hidden */}
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>&lt;div data-sv data-sv-pin="380vh"&gt;
+  &lt;div class="sv-stage fold-scene relative"&gt;
+    &lt;div class="fold-wall"&gt;
+      &lt;article class="fold-copy mx-auto w-[min(720px,100%-40px)]"&gt;…your copy…&lt;/article&gt;
+    &lt;/div&gt;
+    &lt;div class="fold-line" aria-hidden="true"&gt;&lt;/div&gt;
+    &lt;div class="fold-floor" aria-hidden="true" inert&gt;
+      &lt;article class="fold-copy mx-auto w-[min(720px,100%-40px)]"&gt;…your copy again…&lt;/article&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
-  &lt;button type="button" class="sv-marquee-pause" aria-pressed="false"
-    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"&gt;Pause animation&lt;/button&gt;
 &lt;/div&gt;
-&lt;!-- &lt;ScrollVarsBoot /&gt; already wires this; a plain HTML page calls
-     toggles() itself: SV.toggles(document.getElementById('logo-strip')) --&gt;</code></pre>
-    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-marquee sv-marquee-controlled"&gt;
-  &lt;div class="sv-marquee-track"&gt;
-    …content… …content again (aria-hidden)…
+&lt;!-- Use the CSS tab's fold-scene/fold-wall/fold-floor/fold-line/fold-copy
+     rules: the geometry (perspective, rotate, the floor's 200% width and
+     zoom) is not expressible as utility classes. Tailwind only styles the
+     copy itself. --&gt;</code></pre>
+    <pre tabindex="0" data-pane="css"><code>&lt;div data-sv data-sv-pin="380vh"&gt;     &lt;!-- the pin helper owns the height: match your copy's length --&gt;
+  &lt;div class="sv-stage fold-scene"&gt;                    &lt;!-- the sticky viewport (pin.css) plus the perspective --&gt;
+    &lt;div class="fold-wall"&gt;
+      &lt;article class="fold-copy"&gt;…your copy…&lt;/article&gt;
+    &lt;/div&gt;
+    &lt;div class="fold-line" aria-hidden="true"&gt;&lt;/div&gt;
+    &lt;!-- the same copy again, laid flat toward the viewer: aria-hidden AND
+         inert together keep it out of the accessibility tree and the tab
+         order, never focusable, never announced --&gt;
+    &lt;div class="fold-floor" aria-hidden="true" inert&gt;
+      &lt;article class="fold-copy"&gt;…your copy again…&lt;/article&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
-  &lt;!-- WCAG 2.2.2: auto-moving content past 5s needs a pause/stop control --&gt;
-  &lt;button type="button" class="sv-marquee-pause" aria-pressed="false"
-    data-sv-toggle="sv-paused" data-sv-target=".sv-marquee-track"&gt;Pause animation&lt;/button&gt;
 &lt;/div&gt;
-&lt;script&gt;toggles()&lt;/script&gt; &lt;!-- wires the button: aria-pressed, sv-paused on the track --&gt;
 
-/* the preset (styles/ui.css): */
-.sv-marquee { overflow: hidden; display: flex; }
-.sv-marquee-track { display: flex; gap: var(--sv-gap, 48px); width: max-content;
-  padding-right: var(--sv-gap, 48px);
-  animation: sv-marquee var(--sv-marquee-duration, 30s) linear infinite; }
-.sv-marquee:hover .sv-marquee-track,
-.sv-marquee:focus-within .sv-marquee-track { animation-play-state: paused; }
-.sv-marquee-controlled &gt; .sv-marquee-track.sv-paused { animation-play-state: paused; }
-/* while the track holds focus, present it statically and wrapped (WCAG
-   2.4.7): pausing alone can leave a focused item translated off the strip */
-.sv-marquee-track:focus-within { animation: none; width: auto; flex-wrap: wrap; }
-.sv-marquee-track:focus-within &gt; .sv-marquee-dup { display: none; }
-@keyframes sv-marquee { to { translate: -50% 0; } }
+&lt;script type="module"&gt;
+import { track } from 'scrollvars'
+track(document.querySelector('[data-sv-pin]'))
+&lt;/script&gt;
+
+/* geometry as custom properties, so a page can tune them without touching
+   the rules: depth (perspective), eye (perspective-origin y), fold (where
+   the wall ends and the floor starts), travel (total scroll distance the
+   copy moves, matched to data-sv-pin minus 100vh). */
+.fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
+.fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
+/* drawn at twice the size and scaled back down: the text nearest the camera stays sharp */
+.fold-floor {
+  position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5;
+  mask-image: linear-gradient(#000 55%, transparent);   /* fades out before it reaches the camera */
+}
+.fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 50vh)); }
+
+/* no JS: the wall reads as a normal column; the floor clone never renders */
+html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+html:not(.sv-on) .fold-floor,
+html:not(.sv-on) .fold-line { display: none; }
+html:not(.sv-on) .fold-copy { translate: none; }
+
+/* released later (data-sv-off): the same reset, for a tracker that stops */
+[data-sv-off] .fold-wall { position: static; height: auto; overflow: visible; }
+[data-sv-off] .fold-floor,
+[data-sv-off] .fold-line { display: none; }
+[data-sv-off] .fold-copy { translate: none; }
 
 /* the same sheet's reduced-motion override, last so it wins on source order:
-   without width/flex-wrap the strip keeps overflowing past the viewport
-   with nothing left to scroll it into view */
+   .sv-stage already returns to flow (pin.css); this drops the perspective,
+   unclips the wall and hides the floor clone. Flat, no clone, no 3D. */
 @media (prefers-reduced-motion: reduce) {
-  .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
-  .sv-marquee-track &gt; .sv-marquee-dup { display: none; }
+  .fold-scene { perspective: none; }
+  .fold-wall { position: static; height: auto; overflow: visible; }
+  .fold-floor, .fold-line { display: none; }
+  .fold-copy { translate: none; }
 }
 /* the same under html[data-sv-motion="reduce"], the site's own switch */
-:where([data-sv-motion="reduce"]) .sv-marquee-track { animation: none; width: auto; flex-wrap: wrap; }
-:where([data-sv-motion="reduce"]) .sv-marquee-track &gt; .sv-marquee-dup { display: none; }</code></pre>
-    <pre tabindex="0" data-pane="react"><code>&lt;Marquee speed={24}&gt;
-  {logos.map(l =&gt; &lt;img key={l.id} src={l.src} alt={l.name} className="h-8" /&gt;)}
-&lt;/Marquee&gt;</code></pre>
+:where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+:where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+:where([data-sv-motion="reduce"]) .fold-floor,
+:where([data-sv-motion="reduce"]) .fold-line { display: none; }
+:where([data-sv-motion="reduce"]) .fold-copy { translate: none; }</code></pre>
+    <pre tabindex="0" data-pane="react"><code>// npx scrollvars add wall-floor-fold
+import { WallFloorFold } from './components/fx/WallFloorFold'
+
+function Manifesto() {
+  return (
+    &lt;WallFloorFold&gt;
+      &lt;h2&gt;Every page is a place.&lt;/h2&gt;
+      &lt;p&gt;We build brands the way architects build rooms…&lt;/p&gt;
+    &lt;/WallFloorFold&gt;
+  )
+}
+// pin defaults to '380vh': pass a longer one to match more copy, and keep
+// travel (default '280vh') at pin minus 100vh. depth/eye/angle/fold are
+// props too, written as --sv-fold-* vars.
+// The floor is the same children, rendered a second time and marked
+// aria-hidden + inert: it never reaches assistive tech or the tab order.</code></pre>
   </div>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.9 KB gzip as ESM (this page's fx/sv.js IIFE: 13.1 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>

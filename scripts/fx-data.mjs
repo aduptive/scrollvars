@@ -481,6 +481,151 @@ export const EFFECTS = [
 // track(el, { pin: '250vh', onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
   },
   {
+    slug: 'wall-floor-fold',
+    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
+    requires: { styles: ['pin'], min: '1.19.0', tailwind: true },
+    category: 'Pinned scenes',
+    title: 'Wall to floor fold',
+    tagline: 'Copy runs down a wall and, at the fold, keeps going onto the floor toward you. A clone in perspective, --sv-pin driving both.',
+    when: 'Manifestos, case-study openers, one long passage that deserves the corner.',
+    knobs: 'data-sv-pin (total scroll length) and --sv-fold-travel (pin length minus 100vh, keep them matched); --sv-fold-depth, --sv-fold-eye, --sv-fold-angle, --sv-fold-line (perspective)',
+    runway: true,
+    preview: `<div data-sv data-sv-pin="300vh" class="fxouter fold">
+  <div class="sv-stage fold-scene">
+    <div class="fold-wall">
+      <article class="fold-copy">
+        <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+      </article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy">
+        <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+      </article>
+    </div>
+  </div>
+</div>
+<style>
+  .fold { position: relative; --sv-fold-travel: 200vh; }
+  .fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
+  .fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
+  .fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
+  .fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
+    transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
+  .fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh)); }
+  .fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh) - var(--sv-fold-line, 50vh)); }
+  html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+  html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
+  html:not(.sv-on) .fold-copy { translate: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .fold-scene { perspective: none; }
+    .fold-wall { position: static; height: auto; overflow: visible; }
+    .fold-floor, .fold-line { display: none; }
+    .fold-copy { translate: none; }
+  }
+  :where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+  :where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+  :where([data-sv-motion="reduce"]) .fold-floor, :where([data-sv-motion="reduce"]) .fold-line { display: none; }
+  :where([data-sv-motion="reduce"]) .fold-copy { translate: none; }
+</style>`,
+    css: `<div data-sv data-sv-pin="380vh">     <!-- the pin helper owns the height: match your copy's length -->
+  <div class="sv-stage fold-scene">                    <!-- the sticky viewport (pin.css) plus the perspective -->
+    <div class="fold-wall">
+      <article class="fold-copy">…your copy…</article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <!-- the same copy again, laid flat toward the viewer: aria-hidden AND
+         inert together keep it out of the accessibility tree and the tab
+         order, never focusable, never announced -->
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy">…your copy again…</article>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { track } from 'scrollvars'
+track(document.querySelector('[data-sv-pin]'))
+</script>
+
+/* geometry as custom properties, so a page can tune them without touching
+   the rules: depth (perspective), eye (perspective-origin y), fold (where
+   the wall ends and the floor starts), travel (total scroll distance the
+   copy moves, matched to data-sv-pin minus 100vh). */
+.fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
+.fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
+/* drawn at twice the size and scaled back down: the text nearest the camera stays sharp */
+.fold-floor {
+  position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5;
+  mask-image: linear-gradient(#000 55%, transparent);   /* fades out before it reaches the camera */
+}
+.fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 50vh)); }
+
+/* no JS: the wall reads as a normal column; the floor clone never renders */
+html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+html:not(.sv-on) .fold-floor,
+html:not(.sv-on) .fold-line { display: none; }
+html:not(.sv-on) .fold-copy { translate: none; }
+
+/* released later (data-sv-off): the same reset, for a tracker that stops */
+[data-sv-off] .fold-wall { position: static; height: auto; overflow: visible; }
+[data-sv-off] .fold-floor,
+[data-sv-off] .fold-line { display: none; }
+[data-sv-off] .fold-copy { translate: none; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   .sv-stage already returns to flow (pin.css); this drops the perspective,
+   unclips the wall and hides the floor clone. Flat, no clone, no 3D. */
+@media (prefers-reduced-motion: reduce) {
+  .fold-scene { perspective: none; }
+  .fold-wall { position: static; height: auto; overflow: visible; }
+  .fold-floor, .fold-line { display: none; }
+  .fold-copy { translate: none; }
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+:where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+:where([data-sv-motion="reduce"]) .fold-floor,
+:where([data-sv-motion="reduce"]) .fold-line { display: none; }
+:where([data-sv-motion="reduce"]) .fold-copy { translate: none; }`,
+    tailwind: `<div data-sv data-sv-pin="380vh">
+  <div class="sv-stage fold-scene relative">
+    <div class="fold-wall">
+      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy…</article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article>
+    </div>
+  </div>
+</div>
+<!-- Use the CSS tab's fold-scene/fold-wall/fold-floor/fold-line/fold-copy
+     rules: the geometry (perspective, rotate, the floor's 200% width and
+     zoom) is not expressible as utility classes. Tailwind only styles the
+     copy itself. -->`,
+    react: `// npx scrollvars add wall-floor-fold
+import { WallFloorFold } from './components/fx/WallFloorFold'
+
+function Manifesto() {
+  return (
+    <WallFloorFold>
+      <h2>Every page is a place.</h2>
+      <p>We build brands the way architects build rooms…</p>
+    </WallFloorFold>
+  )
+}
+// pin defaults to '380vh': pass a longer one to match more copy, and keep
+// travel (default '280vh') at pin minus 100vh. depth/eye/angle/fold are
+// props too, written as --sv-fold-* vars.
+// The floor is the same children, rendered a second time and marked
+// aria-hidden + inert: it never reaches assistive tech or the tab order.`,
+  },
+  {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
     requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.18.0' },
@@ -2762,6 +2907,96 @@ export function CubeWindows({
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       {children}
     </div>
+  )
+}
+`,
+  },
+  'wall-floor-fold': {
+    file: 'WallFloorFold.tsx',
+    content: `// ScrollVars fx · wall-floor-fold
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (for .sv-stage)
+// The CSS below is one constant string, injected as raw HTML: a <style>
+// child is raw text, so React 18's server renderer escaping \`>\` to \`&gt;\`
+// never decodes and a child-combinator rule would be dropped either way
+// (there is none here). CSP is unchanged from any inline <style>: a
+// style-src nonce or hash, or lift the string into your own CSS.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+// React 19 knows inert as a boolean attribute (a string would be dropped as falsy); React 18
+// does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
+const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
+
+const css = \`
+.fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
+.fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
+.fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
+.fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 50vh)); }
+html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
+html:not(.sv-on) .fold-copy { translate: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fold-scene { perspective: none; }
+  .fold-wall { position: static; height: auto; overflow: visible; }
+  .fold-floor, .fold-line { display: none; }
+  .fold-copy { translate: none; }
+}
+:where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+:where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+:where([data-sv-motion="reduce"]) .fold-floor, :where([data-sv-motion="reduce"]) .fold-line { display: none; }
+:where([data-sv-motion="reduce"]) .fold-copy { translate: none; }
+\`
+
+export function WallFloorFold({
+  children,
+  pin = '380vh',
+  depth = 650,
+  eye = '-15%',
+  angle = '90deg',
+  fold = '50vh',
+  travel = '280vh',
+  className,
+  nonce,
+}: {
+  children: React.ReactNode
+  /** Total scroll length: match the copy's height plus one viewport. */
+  pin?: string
+  depth?: number | string
+  eye?: string
+  angle?: string
+  fold?: string
+  /** How far the copy travels, in vh: keep this at pin minus 100vh. */
+  travel?: string
+  className?: string
+  nonce?: string
+}) {
+  const vars = {
+    '--sv-fold-depth': typeof depth === 'number' ? \`\${depth}px\` : depth,
+    '--sv-fold-eye': eye,
+    '--sv-fold-angle': angle,
+    '--sv-fold-line': fold,
+    '--sv-fold-travel': travel,
+  } as React.CSSProperties
+  return (
+    <Track pin={pin} className={className} style={vars}>
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+      <div className="sv-stage fold-scene">
+        <div className="fold-wall">
+          <article className="fold-copy">{children}</article>
+        </div>
+        <div className="fold-line" aria-hidden="true" />
+        {/* the same words again, laid flat toward the viewer: aria-hidden +
+            inert together keep this copy out of the accessibility tree and
+            the tab order, so the wall stays the only readable copy */}
+        <div className="fold-floor" aria-hidden="true" {...INERT}>
+          <article className="fold-copy">{children}</article>
+        </div>
+      </div>
+    </Track>
   )
 }
 `,
