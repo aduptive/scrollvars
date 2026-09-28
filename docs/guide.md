@@ -153,8 +153,12 @@ Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/do
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | long | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | deep | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | cubes | 16.7 | 17.2 | 17.3 | 17.5 | 0.1 | 3/3 | pass |
-| Desktop Safari (macOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
-| iPhone Safari (iOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | long | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | deep | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | cubes | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | long | 17.0 | 17.0 | 17.0 | 17.0 | 0.0 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | deep | 17.0 | 17.0 | 17.0 | 17.0 | 0.0 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | cubes | 17.0 | 18.0 | 19.0 | 21.0 | 0.0 | 3/3 | pass |
 <!-- devicematrix:end -->
 
 ## Install
@@ -1043,26 +1047,26 @@ not on a page that could never pass in the first place (D3/P1).
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | | |
-| 2 | Modal (`/a11y/` "Modal" section) | Activate "Open modal"; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to "Open modal" on close | | |
-| 3 | Accordion (`/a11y/` "Accordion" section) | VO-Space on the `summary` | "collapsed"/"expanded" toggles with the state, "FAQ question" read each time | | |
-| 4 | Disclosure (`/a11y/` "Disclosure" section, `sv-pop`) | VO-Space "Toggle panel" | "expanded"/"collapsed" matches the panel's visible state | | |
-| 5 | Split text (`/a11y/` "Split text" section) | VO-Right onto the heading | "Words arrive one by one" read once, not one word per stop | | |
-| 6 | Scenes fallback (`/a11y/` "Scenes" section) with reduced motion on | VO-Right down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order, none skipped | | |
-| 7 | Marquee pause (`/a11y/` "Marquee" section) | VO-Space the pause button | "Pause animation, button" before, "pressed" after, label unchanged | | |
-| 8 | RotatingWords pause (`/a11y/` "Rotating words" section) | VO-Right onto the component, then VO-Space the pause button | The full phrase list read once as plain text; "Pause rotation, button" before, "pressed" after, label unchanged | | |
+| 1 | Slider (`/a11y/` "Slider" section) | VO-Right/Left through the carousel; then VO-Space the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | pass | 2026-09-28, `969380a` |
+| 2 | Modal (`/a11y/` "Modal" section) | Activate "Open modal"; VO reads the dialog; press Escape | "dialog" on open; focus and VO cursor return to "Open modal" on close | pass | 2026-09-28, `969380a` |
+| 3 | Accordion (`/a11y/` "Accordion" section) | VO-Space on the `summary` | "collapsed"/"expanded" toggles with the state, "FAQ question" read each time | pass | 2026-09-28, `969380a` |
+| 4 | Disclosure (`/a11y/` "Disclosure" section, `sv-pop`) | VO-Space "Toggle panel" | "expanded"/"collapsed" matches the panel's visible state | pass | 2026-09-28, `969380a` |
+| 5 | Split text (`/a11y/` "Split text" section) | VO-Right onto the heading | "Words arrive one by one" read once, not one word per stop | pass | 2026-09-28, `969380a` |
+| 6 | Scenes fallback (`/a11y/` "Scenes" section) with reduced motion on | VO-Right down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order, none skipped | pass | 2026-09-28, `969380a` |
+| 7 | Marquee pause (`/a11y/` "Marquee" section) | VO-Space the pause button | "Pause animation, button" before, "pressed" after, label unchanged | pass | 2026-09-28, `969380a` |
+| 8 | RotatingWords pause (`/a11y/` "Rotating words" section) | VO-Right onto the component, then VO-Space the pause button | The full phrase list read once as plain text; "Pause rotation, button" before, "pressed" after, label unchanged | pass | 2026-09-28, `969380a` |
 
 **iOS Safari + VoiceOver**
 
 | # | Component (page) | Steps | Expected announcement | Result | Date, commit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | | |
-| 2 | Modal (`/a11y/` "Modal" section) | Double-tap "Open modal"; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to "Open modal" on close | | |
-| 3 | Accordion (`/a11y/` "Accordion" section) | Double-tap the `summary` | "collapsed"/"expanded" toggles with the state | | |
-| 4 | Split text (`/a11y/` "Split text" section) | Swipe onto the heading | "Words arrive one by one" read once | | |
-| 5 | Scenes fallback (`/a11y/` "Scenes" section) with Reduce Motion on | Swipe down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order | | |
-| 6 | Marquee pause (`/a11y/` "Marquee" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | | |
-| 7 | RotatingWords pause (`/a11y/` "Rotating words" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | | |
+| 1 | Slider (`/a11y/` "Slider" section) | Swipe right/left through the carousel; then double-tap the next arrow | "Photos, carousel", each stop "N of 3, slide"; activating next moves the current-dot mark to slide 2 and a status region announces "Slide 2 of 3" | pass | 2026-09-28, `969380a` |
+| 2 | Modal (`/a11y/` "Modal" section) | Double-tap "Open modal"; swipe inside the dialog; use the close control (iOS VoiceOver has no Escape key) | Dialog announced on open; focus returns to "Open modal" on close | pass | 2026-09-28, `969380a` |
+| 3 | Accordion (`/a11y/` "Accordion" section) | Double-tap the `summary` | "collapsed"/"expanded" toggles with the state | pass | 2026-09-28, `969380a` |
+| 4 | Split text (`/a11y/` "Split text" section) | Swipe onto the heading | "Words arrive one by one" read once | pass | 2026-09-28, `969380a` |
+| 5 | Scenes fallback (`/a11y/` "Scenes" section) with Reduce Motion on | Swipe down the section | "Scene 1 of 3", "Scene 2 of 3", "Scene 3 of 3", in order | pass | 2026-09-28, `969380a` |
+| 6 | Marquee pause (`/a11y/` "Marquee" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | pass | 2026-09-28, `969380a` |
+| 7 | RotatingWords pause (`/a11y/` "Rotating words" section) | Double-tap the pause button | Announced as a button with a pressed state that flips, label unchanged | pass | 2026-09-28, `969380a` |
 
 Your side of it, as a checklist:
 
