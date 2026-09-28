@@ -490,7 +490,7 @@ export const EFFECTS = [
     when: 'Manifestos, case-study openers, one long passage that deserves the corner.',
     knobs: 'data-sv-pin (total scroll length) and --sv-fold-travel (pin length minus 100vh, keep them matched); --sv-fold-depth, --sv-fold-eye, --sv-fold-angle, --sv-fold-line (perspective)',
     runway: true,
-    preview: `<div data-sv data-sv-pin="calc(100vh + 850px)" class="fxouter fold">
+    preview: `<div data-sv data-sv-pin="calc(100vh + var(--sv-fold-travel, 850px))" class="fxouter fold">
   <div class="sv-stage fold-scene">
     <div class="fold-wall">
       <article class="fold-copy">
@@ -502,6 +502,11 @@ export const EFFECTS = [
         <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
         <p class="fxp">Launch is not the end of the work. It is the first day of measuring it, and of the second version that measurement asks for.</p>
         <p class="fxp">Growth is the long part: the campaigns, the new markets, the product lines nobody had imagined when the first logo was approved.</p>
+        <p class="fxp">A studio earns trust one project at a time. The work has to survive contact with a real audience, a real budget, a real deadline, not just a deck.</p>
+        <p class="fxp">Every review is a chance to sharpen the idea, not soften it. The best feedback names the problem, not the fix, and leaves room to find a better one.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fxp">Craft shows in what you cannot see as much as what you can: the grid nobody notices, the fallback that quietly holds when the network drops.</p>
+        <p class="fxp">A system outlives any single campaign. Build the parts so the next person, on the next brief, does not have to start from nothing.</p>
         <h3 class="fxh">Follow <span class="fxaccent">the floor.</span></h3>
         <p class="fxp">And when you reach the corner, the story does not stop. It comes toward you.</p>
       </article>
@@ -517,6 +522,11 @@ export const EFFECTS = [
         <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
         <p class="fxp">Launch is not the end of the work. It is the first day of measuring it, and of the second version that measurement asks for.</p>
         <p class="fxp">Growth is the long part: the campaigns, the new markets, the product lines nobody had imagined when the first logo was approved.</p>
+        <p class="fxp">A studio earns trust one project at a time. The work has to survive contact with a real audience, a real budget, a real deadline, not just a deck.</p>
+        <p class="fxp">Every review is a chance to sharpen the idea, not soften it. The best feedback names the problem, not the fix, and leaves room to find a better one.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fxp">Craft shows in what you cannot see as much as what you can: the grid nobody notices, the fallback that quietly holds when the network drops.</p>
+        <p class="fxp">A system outlives any single campaign. Build the parts so the next person, on the next brief, does not have to start from nothing.</p>
         <h3 class="fxh">Follow <span class="fxaccent">the floor.</span></h3>
         <p class="fxp">And when you reach the corner, the story does not stop. It comes toward you.</p>
       </article>
@@ -528,7 +538,13 @@ export const EFFECTS = [
      the closest line past the viewport) eats blank space on both sides
      instead of always eating the first word (a left-aligned paragraph has
      no slack on its left, every line starts flush) */
-  .fold { position: relative; --sv-fold-travel: 850px; }
+  /* the same passage wraps into far fewer, wider lines on a wide column, so
+     its rendered height (what --sv-fold-travel should roughly match) is
+     much shorter there than on a narrow one: data-sv-pin above reads the
+     same variable, so the pin span and the travel distance stay matched
+     automatically across this breakpoint, never by hand. */
+  .fold { position: relative; --sv-fold-travel: 1700px; }
+  @media (min-width: 700px) { .fold { --sv-fold-travel: 1000px; } }
   .fold-floor .fxp, .fold-floor .fxh { text-align: center; }
   .fold-figure { margin: 20px 0; height: 200px; border-radius: 16px;
     background: linear-gradient(120deg, #1b4332, #2d6a4f 45%, #f2c14e); }
