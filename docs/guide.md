@@ -153,8 +153,12 @@ Frame budget declared before reading any number (`LAB_FRAME_BUDGET`, `scripts/do
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | long | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | deep | 16.7 | 17.2 | 17.2 | 17.5 | 0.0 | 3/3 | pass |
 | Desktop Firefox (macOS, Playwright's Gecko build) | Firefox 155 | `5e3bb30` | independent | cubes | 16.7 | 17.2 | 17.3 | 17.5 | 0.1 | 3/3 | pass |
-| Desktop Safari (macOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
-| iPhone Safari (iOS) | — | — | — | — | — | — | — | — | — | — | pending, Andrea's device |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | long | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | deep | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| Desktop Safari (macOS) | Safari 26.6.2 | `969380a` | independent | cubes | 17.0 | 18.0 | 18.0 | 18.0 | 0.3 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | long | 17.0 | 17.0 | 17.0 | 17.0 | 0.0 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | deep | 17.0 | 17.0 | 17.0 | 17.0 | 0.0 | 3/3 | pass |
+| iPhone 16e Safari (iOS 18.7) | Safari 26.6.1 | `969380a` | independent | cubes | 17.0 | 18.0 | 19.0 | 21.0 | 0.0 | 3/3 | pass |
 <!-- devicematrix:end -->
 
 ## Install

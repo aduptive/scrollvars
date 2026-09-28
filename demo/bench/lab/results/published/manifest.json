@@ -9,14 +9,17 @@
       "file": "firefox-1790478191567.json",
       "label": "Desktop Firefox (macOS, Playwright's Gecko build)",
       "commit": "5e3bb30"
-    }
-  ],
-  "pending": [
-    {
-      "label": "Desktop Safari (macOS)"
     },
     {
-      "label": "iPhone Safari (iOS)"
+      "file": "safari-1790564094080.json",
+      "label": "Desktop Safari (macOS)",
+      "commit": "969380a"
+    },
+    {
+      "file": "safari-1790563774703.json",
+      "label": "iPhone 16e Safari (iOS 18.7)",
+      "commit": "969380a"
     }
-  ]
+  ],
+  "pending": []
 }
