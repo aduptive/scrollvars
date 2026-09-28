@@ -258,10 +258,6 @@
   </div>
 </div>
 <style>
-  /* demo-only: centered lines mean a symmetric edge-crop (perspective growing
-     the closest line past the viewport) eats blank space on both sides
-     instead of always eating the first word (a left-aligned paragraph has
-     no slack on its left, every line starts flush) */
   /* the same passage wraps into far fewer, wider lines on a wide column, so
      its rendered height (what --sv-fold-travel should roughly match) is
      much shorter there than on a narrow one: data-sv-pin above reads the
@@ -269,8 +265,6 @@
      automatically across this breakpoint, never by hand. */
   .fold { position: relative; --sv-fold-travel: 3000px; }
   @media (min-width: 700px) { .fold { --sv-fold-travel: 2250px; } }
-  .fold-floor .fold-copy > * { text-align: center; }
-  .fold-floor .fold-quote { border-left: 0; padding: 0; }
   /* demo-only editorial type */
   .fold-copy { font: 17px/1.65 ui-serif, Georgia, "Times New Roman", serif; }
   .fold-copy .fxp { margin: 0 0 1em; color: #cfd8d3; }
