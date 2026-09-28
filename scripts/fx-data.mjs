@@ -604,7 +604,8 @@ export const EFFECTS = [
     padding: 10px 14px; border: 1px solid #3a5a48; border-radius: 12px; background: #0f1a15e6; font: 13px/1.3 ui-monospace, monospace; }
   .fold-tune label { display: grid; grid-template-columns: 6.5em minmax(90px, 160px) 4.5em; align-items: center; gap: 10px; }
   .fold-tune output { color: #f2c14e; text-align: right; }
-  .fold-tune input { accent-color: #f2c14e; }
+  .fold-tune input { accent-color: #f2c14e; min-height: 24px; margin: 0; }
+  .fold-tune[hidden], html:not(.sv-on) .fold-tune { display: none; }
   html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
   html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
   html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
