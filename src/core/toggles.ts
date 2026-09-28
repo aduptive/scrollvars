@@ -385,13 +385,17 @@ export function toggles(root?: Document | HTMLElement): () => void {
           journal.attr(t, t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on))
       })
       // The click's own sync belongs to its semantic transaction. A broken
-      // sibling's query or ARIA write belongs to that sibling's lifetime.
+      // sibling's query or ARIA write belongs to that sibling's lifetime,
+      // and must not stop it: rethrowing here reaches `otherInstance.run`'s
+      // `life.guard`, whose `fail()` calls `stop()` and tears down that
+      // sibling's click listener and MutationObserver for the rest of the
+      // page's life over one write this scope does not own (D3, loop8-8).
       if (otherInstance === instance) update()
       else otherInstance.run(() => {
         try { update() }
         catch (error) {
           try { journal.restore() } catch { /* retain the sibling failure */ }
-          throw error
+          reportFailure(error)
         }
       })
     })
