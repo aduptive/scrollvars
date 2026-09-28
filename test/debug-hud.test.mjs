@@ -129,3 +129,54 @@ test('hud: a sustained 33.4ms opening (every-other-vsync miss) never calibrates 
     global.cancelAnimationFrame = saved.caf
   }
 })
+
+test('hud: a sustained 33.4ms opening (30fps) never calibrates, but reports the measured fps unverified after 5s (T2, loop8-8)', async () => {
+  const queue = []
+  const saved = { raf: global.requestAnimationFrame, caf: global.cancelAnimationFrame }
+  global.requestAnimationFrame = (fn) => { queue.push(fn); return queue.length }
+  global.cancelAnimationFrame = () => {}
+  try {
+    const { trackFrames } = await import('../dist/debug/hud.js?sustained30unverified')
+    const updates = []
+    const stop = trackFrames((stats) => updates.push(stats))
+    let t = 0
+    const tick = () => { const fn = queue.shift(); t += 33.4; fn(t) }
+    // 10s of a steady 33.4ms delta: still below MAX_CALIBRATED_INTERVAL_MS,
+    // never calibrates, but 5s in it must stop hiding the fps it can measure.
+    for (let i = 0; i < 300; i++) tick()
+
+    assert.ok(updates.every((s) => s.calibrated === false), 'stays uncalibrated')
+    const before5s = updates.filter((s) => s.fps === 0)
+    assert.ok(before5s.length > 0, 'still reports fps 0 before the 5s mark')
+    const last = updates.at(-1)
+    assert.ok(last.fps > 0, 'the measured fps is reported once 5s pass with no qualifying delta')
+    assert.ok(Math.round(last.fps / 5) * 5 === 30, `fps reads ~30, got ${last.fps}`)
+    stop()
+  } finally {
+    global.requestAnimationFrame = saved.raf
+    global.cancelAnimationFrame = saved.caf
+  }
+})
+
+test('hud: a steady 60Hz stream is unchanged by the unverified fallback (calibrates well before 5s)', async () => {
+  const queue = []
+  const saved = { raf: global.requestAnimationFrame, caf: global.cancelAnimationFrame }
+  global.requestAnimationFrame = (fn) => { queue.push(fn); return queue.length }
+  global.cancelAnimationFrame = () => {}
+  try {
+    const { trackFrames } = await import('../dist/debug/hud.js?sixtyunchanged')
+    const updates = []
+    const stop = trackFrames((stats) => updates.push(stats))
+    let t = 0
+    const tick = () => { const fn = queue.shift(); t += 16.7; fn(t) }
+    for (let i = 0; i < 95; i++) tick()
+
+    const last = updates.at(-1)
+    assert.equal(last.calibrated, true, 'a healthy 60Hz stream still calibrates normally')
+    assert.ok(Math.round(last.refreshHz / 10) * 10 === 60)
+    stop()
+  } finally {
+    global.requestAnimationFrame = saved.raf
+    global.cancelAnimationFrame = saved.caf
+  }
+})
