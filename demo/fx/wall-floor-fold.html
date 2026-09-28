@@ -182,32 +182,42 @@
   <h1>Wall to floor fold</h1>
   <p class="tag">Copy runs down a wall and, at the fold, keeps going onto the floor toward you. A clone in perspective, --sv-pin driving both.</p>
   <p class="meta"><b>Use it for:</b> Manifestos, case-study openers, one long passage that deserves the corner.<br><b>Knobs:</b> data-sv-pin (total scroll length) and --sv-fold-travel (pin length minus 100vh, keep them matched); --sv-fold-depth, --sv-fold-eye, --sv-fold-angle, --sv-fold-line (perspective)</p>
-  <div class="fxrunway"><div data-sv data-sv-pin="300vh" class="fxouter fold">
+  <div class="fxrunway"><div data-sv data-sv-pin="116vh" class="fxouter fold">
   <div class="sv-stage fold-scene">
     <div class="fold-wall">
       <article class="fold-copy">
         <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
-        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+        <p class="fxp">We build brands the way architects build rooms: a wall to read, a floor to walk on, a corner where one becomes the other.</p>
+        <p class="fxp">Strategy starts with listening, weeks with the people who make the product and the people who choose it.</p>
+        <p class="fxp">Identity is the grammar that follows: type, colour, motion and voice as one system.</p>
+        <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
+        <p class="fxp">One long passage, one clock. The floor is the same words, seen from the corner.</p>
+        <p class="fxp">And when you reach it, the story does not stop. It comes toward you.</p>
       </article>
     </div>
     <div class="fold-line" aria-hidden="true"></div>
     <div class="fold-floor" aria-hidden="true" inert>
       <article class="fold-copy">
         <h3 class="fxh">Every page <span class="fxaccent">is a place.</span></h3>
-        <p class="fxp">Scroll: the wall keeps going and folds onto the floor, coming toward you.</p>
+        <p class="fxp">We build brands the way architects build rooms: a wall to read, a floor to walk on, a corner where one becomes the other.</p>
+        <p class="fxp">Strategy starts with listening, weeks with the people who make the product and the people who choose it.</p>
+        <p class="fxp">Identity is the grammar that follows: type, colour, motion and voice as one system.</p>
+        <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
+        <p class="fxp">One long passage, one clock. The floor is the same words, seen from the corner.</p>
+        <p class="fxp">And when you reach it, the story does not stop. It comes toward you.</p>
       </article>
     </div>
   </div>
 </div>
 <style>
-  .fold { position: relative; --sv-fold-travel: 200vh; }
+  .fold { position: relative; --sv-fold-travel: 16vh; --sv-fold-line: 15vh; }
   .fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, -15%); }
   .fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 50vh); overflow: hidden; }
   .fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 50vh); height: 1px; background: currentColor; opacity: .2; }
   .fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 50vh); height: 100%; overflow: hidden;
     transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
-  .fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh)); }
-  .fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 200vh) - var(--sv-fold-line, 50vh)); }
+  .fold-copy { width: min(720px, 100% - 40px); margin: 0 auto; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+  .fold-floor .fold-copy { zoom: 2; translate: 0 calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 50vh)); }
   html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
   html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
   html:not(.sv-on) .fold-copy { translate: none; }
