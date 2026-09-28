@@ -293,6 +293,12 @@ compat()   // once, before anything else</code></pre>
 
 <h3>Unreleased</h3>
 
+<h4>Added</h4>
+
+<ul>
+<li>fx gallery recipe: "Wall to floor fold" (<code>wall-floor-fold</code>), a copy-paste-only Pinned scenes effect, zero bytes in the core. Content scrolls down a wall and, at the fold line, continues onto a floor in perspective toward the viewer, driven entirely by the pin helper's <code>--sv-pin</code> (no scroll math of its own). The floor is a second, non-interactive copy of the same content, <code>aria-hidden</code> and <code>inert</code> together so it never reaches assistive tech or the tab order; the wall stays the only readable copy under no JS and under reduced motion, where the effect goes flat and the floor never renders. Geometry (depth, eye, floor angle, fold line, travel) is exposed as <code>--sv-fold-*</code> custom properties for tuning. Ships CSS, Tailwind and React panes plus an installed <code>WallFloorFold</code> component (<code>npx scrollvars add wall-floor-fold</code>).</li>
+</ul>
+
 <h4>Fixed</h4>
 
 <ul>

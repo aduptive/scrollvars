@@ -481,6 +481,262 @@ export const EFFECTS = [
 // track(el, { pin: '250vh', onPin: (p) => uniform.set(mapRange(p, 0.3, 0.7)) })`,
   },
   {
+    slug: 'wall-floor-fold',
+    // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
+    requires: { styles: ['pin'], min: '1.19.0', tailwind: true },
+    category: 'Pinned scenes',
+    title: 'Wall to floor fold',
+    tagline: 'Copy runs down a wall and, at the fold, keeps going onto the floor toward you. A clone in perspective, --sv-pin driving both.',
+    when: 'Manifestos, case-study openers, one long passage that deserves the corner.',
+    knobs: 'data-sv-pin (total scroll length) and --sv-fold-travel (pin length minus 100vh, keep them matched); --sv-fold-depth, --sv-fold-eye, --sv-fold-angle, --sv-fold-line (perspective)',
+    runway: true,
+    preview: `<div data-sv data-sv-pin="calc(100vh + var(--sv-fold-travel, 850px))" class="fxouter fold">
+  <div class="sv-stage fold-scene">
+    <div class="fold-wall">
+      <article class="fold-copy">
+        <p class="fold-kicker">Field notes on brand building</p>
+        <h3 class="fold-title">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fold-lead">We build brands the way architects build rooms: with a wall to read, a floor to walk on, and a corner where one becomes the other.</p>
+        <p class="fold-kicker">01 / Listening</p>
+        <p class="fxp">Strategy starts with listening. Before a single mark is drawn we spend weeks with the people who make the product, the people who sell it and the people who choose it over something else.</p>
+        <p class="fxp">Research is not a phase at the start. It is a habit that keeps the work honest: every assumption gets a date, a source and a way to be proven wrong.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fold-kicker">02 / Identity</p>
+        <p class="fxp">Identity is the grammar that follows. Type, colour, motion and voice are designed as one system, so a banner and a building speak the same language.</p>
+        <p class="fxp">Names are harder than logos. A good one survives being shouted across a room, typed on a phone with one thumb and translated into a language nobody on the team speaks.</p>
+        <p class="fxp">Colour is a promise about behaviour. If the accent means action on the website, it cannot mean decoration on the packaging and warning in the app.</p>
+        <blockquote class="fold-quote">The best systems are boring to use and exciting to look at.</blockquote>
+        <p class="fold-kicker">03 / Experience</p>
+        <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
+        <p class="fxp">Motion is the part people feel before they read. It should explain where things came from and where they are going, then get out of the way.</p>
+        <p class="fxp">Accessibility is not a checklist at the end. It is the difference between a brand that speaks to everyone and one that only speaks to the people who built it.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fold-kicker">04 / Growth</p>
+        <p class="fxp">Launch is not the end of the work. It is the first day of measuring it, and of the second version that measurement asks for.</p>
+        <p class="fxp">Growth is the long part: the campaigns, the new markets, the product lines nobody had imagined when the first logo was approved.</p>
+        <p class="fxp">A studio earns trust one project at a time. The work has to survive contact with a real audience, a real budget, a real deadline, not just a deck.</p>
+        <p class="fxp">Every review is a chance to sharpen the idea, not soften it. The best feedback names the problem, not the fix, and leaves room to find a better one.</p>
+        <p class="fold-kicker">05 / Craft</p>
+        <p class="fxp">Craft shows in what you cannot see as much as what you can: the grid nobody notices, the fallback that quietly holds when the network drops.</p>
+        <p class="fxp">A system outlives any single campaign. Build the parts so the next person, on the next brief, does not have to start from nothing.</p>
+        <h3 class="fold-title">Follow <span class="fxaccent">the floor.</span></h3>
+        <p class="fold-lead">And when you reach the corner, the story does not stop. It comes toward you.</p>
+      </article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy">
+        <p class="fold-kicker">Field notes on brand building</p>
+        <h3 class="fold-title">Every page <span class="fxaccent">is a place.</span></h3>
+        <p class="fold-lead">We build brands the way architects build rooms: with a wall to read, a floor to walk on, and a corner where one becomes the other.</p>
+        <p class="fold-kicker">01 / Listening</p>
+        <p class="fxp">Strategy starts with listening. Before a single mark is drawn we spend weeks with the people who make the product, the people who sell it and the people who choose it over something else.</p>
+        <p class="fxp">Research is not a phase at the start. It is a habit that keeps the work honest: every assumption gets a date, a source and a way to be proven wrong.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fold-kicker">02 / Identity</p>
+        <p class="fxp">Identity is the grammar that follows. Type, colour, motion and voice are designed as one system, so a banner and a building speak the same language.</p>
+        <p class="fxp">Names are harder than logos. A good one survives being shouted across a room, typed on a phone with one thumb and translated into a language nobody on the team speaks.</p>
+        <p class="fxp">Colour is a promise about behaviour. If the accent means action on the website, it cannot mean decoration on the packaging and warning in the app.</p>
+        <blockquote class="fold-quote">The best systems are boring to use and exciting to look at.</blockquote>
+        <p class="fold-kicker">03 / Experience</p>
+        <p class="fxp">Experience is where it has to work: on a phone at night, on a billboard at noon, in a store with bad light.</p>
+        <p class="fxp">Motion is the part people feel before they read. It should explain where things came from and where they are going, then get out of the way.</p>
+        <p class="fxp">Accessibility is not a checklist at the end. It is the difference between a brand that speaks to everyone and one that only speaks to the people who built it.</p>
+        <figure class="fold-figure" aria-hidden="true"></figure>
+        <p class="fold-kicker">04 / Growth</p>
+        <p class="fxp">Launch is not the end of the work. It is the first day of measuring it, and of the second version that measurement asks for.</p>
+        <p class="fxp">Growth is the long part: the campaigns, the new markets, the product lines nobody had imagined when the first logo was approved.</p>
+        <p class="fxp">A studio earns trust one project at a time. The work has to survive contact with a real audience, a real budget, a real deadline, not just a deck.</p>
+        <p class="fxp">Every review is a chance to sharpen the idea, not soften it. The best feedback names the problem, not the fix, and leaves room to find a better one.</p>
+        <p class="fold-kicker">05 / Craft</p>
+        <p class="fxp">Craft shows in what you cannot see as much as what you can: the grid nobody notices, the fallback that quietly holds when the network drops.</p>
+        <p class="fxp">A system outlives any single campaign. Build the parts so the next person, on the next brief, does not have to start from nothing.</p>
+        <h3 class="fold-title">Follow <span class="fxaccent">the floor.</span></h3>
+        <p class="fold-lead">And when you reach the corner, the story does not stop. It comes toward you.</p>
+      </article>
+    </div>
+    <form class="fold-tune" hidden aria-label="Tune the fold">
+      <label>depth <input type="range" name="depth" min="200" max="2000" step="10" value="650"> <output>650px</output></label>
+      <label>eye <input type="range" name="eye" min="-60" max="60" step="1" value="11"> <output>11%</output></label>
+      <label>floor angle <input type="range" name="angle" min="45" max="110" step="1" value="90"> <output>90deg</output></label>
+      <label>fold <input type="range" name="fold" min="30" max="90" step="1" value="70"> <output>70vh</output></label>
+    </form>
+  </div>
+</div>
+<style>
+  /* demo-only: centered lines mean a symmetric edge-crop (perspective growing
+     the closest line past the viewport) eats blank space on both sides
+     instead of always eating the first word (a left-aligned paragraph has
+     no slack on its left, every line starts flush) */
+  /* the same passage wraps into far fewer, wider lines on a wide column, so
+     its rendered height (what --sv-fold-travel should roughly match) is
+     much shorter there than on a narrow one: data-sv-pin above reads the
+     same variable, so the pin span and the travel distance stay matched
+     automatically across this breakpoint, never by hand. */
+  .fold { position: relative; --sv-fold-travel: 3000px; }
+  @media (min-width: 700px) { .fold { --sv-fold-travel: 2250px; } }
+  .fold-floor .fold-copy > * { text-align: center; }
+  .fold-floor .fold-quote { border-left: 0; padding: 0; }
+  /* demo-only editorial type */
+  .fold-copy { font: 17px/1.65 ui-serif, Georgia, "Times New Roman", serif; }
+  .fold-copy .fxp { margin: 0 0 1em; color: #cfd8d3; }
+  .fold-kicker { margin: 2.6em 0 .8em; font: 600 11px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #f2c14e; }
+  .fold-title { margin: .2em 0 .5em; font: 800 clamp(40px, 6vw, 76px)/.95 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.035em; color: #f4f1ea; }
+  .fold-lead { margin: 0 0 1.4em; font: 400 clamp(20px, 2.4vw, 26px)/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.01em; color: #e8ede9; }
+  .fold-quote { margin: 1.8em 0; padding: 0 0 0 .9em; border-left: 3px solid #f2c14e; font: italic 500 clamp(24px, 3vw, 34px)/1.25 ui-serif, Georgia, serif; color: #f4f1ea; }
+  .fold-figure { margin: 20px 0; height: 200px; border-radius: 16px;
+    background: linear-gradient(120deg, #1b4332, #2d6a4f 45%, #f2c14e); }
+  .fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, 11%); }
+  .fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 70vh); overflow: hidden; }
+  .fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 70vh); height: 1px; background: currentColor; opacity: .2; }
+  .fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 70vh); height: 100%; overflow: hidden;
+    transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
+  /* centered with left: 50% + a -50% translate (relative to the copy's own,
+     possibly zoomed, width) rather than margin: auto, which clamps to 0 and
+     goes flush-left the moment the zoomed floor copy is wider than the
+     floor itself (narrow viewports): a symmetric overflow reads as "close
+     to the camera", a one-sided one reads as a clipped bug. */
+  .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
+    translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+  .fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+  /* demo-only tuning panel: live knobs for the four geometry variables */
+  .fold-tune { position: absolute; right: 16px; bottom: 16px; z-index: 2; display: grid; gap: 6px;
+    padding: 10px 14px; border: 1px solid #3a5a48; border-radius: 12px; background: #0f1a15e6; font: 13px/1.3 ui-monospace, monospace; }
+  .fold-tune label { display: grid; grid-template-columns: 6.5em minmax(90px, 160px) 4.5em; align-items: center; gap: 10px; }
+  .fold-tune output { color: #f2c14e; text-align: right; }
+  .fold-tune input { accent-color: #f2c14e; min-height: 24px; margin: 0; }
+  .fold-tune[hidden], html:not(.sv-on) .fold-tune { display: none; }
+  html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+  html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
+  html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .fold-scene { perspective: none; }
+    .fold-wall { position: static; height: auto; overflow: visible; }
+    .fold-floor, .fold-line, .fold-tune { display: none; }
+    .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+  }
+  :where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+  :where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+  :where([data-sv-motion="reduce"]) .fold-floor, :where([data-sv-motion="reduce"]) .fold-line, :where([data-sv-motion="reduce"]) .fold-tune { display: none; }
+  :where([data-sv-motion="reduce"]) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+</style>
+<script>
+  // demo-only: the knobs write the same custom properties a page would set
+  ;(() => {
+    const form = document.querySelector('.fold-tune'), root = form && form.closest('.fold')
+    if (!root) return
+    const unit = { depth: 'px', eye: '%', angle: 'deg', fold: 'vh' }
+    const prop = { depth: '--sv-fold-depth', eye: '--sv-fold-eye', angle: '--sv-fold-angle', fold: '--sv-fold-line' }
+    form.hidden = false
+    form.addEventListener('input', (e) => {
+      const input = e.target, value = input.value + unit[input.name]
+      root.style.setProperty(prop[input.name], value)
+      input.nextElementSibling.value = value
+    })
+  })()
+</script>`,
+    css: `<div data-sv data-sv-pin="380vh">     <!-- the pin helper owns the height: match your copy's length -->
+  <div class="sv-stage fold-scene">                    <!-- the sticky viewport (pin.css) plus the perspective -->
+    <div class="fold-wall">
+      <article class="fold-copy">…your copy…</article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <!-- the same copy again, laid flat toward the viewer: aria-hidden AND
+         inert together keep it out of the accessibility tree and the tab
+         order, never focusable, never announced -->
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy">…your copy again…</article>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { track } from 'scrollvars'
+track(document.querySelector('[data-sv-pin]'))
+</script>
+
+/* geometry as custom properties, so a page can tune them without touching
+   the rules: depth (perspective), eye (perspective-origin y), fold (where
+   the wall ends and the floor starts), travel (total scroll distance the
+   copy moves, matched to data-sv-pin minus 100vh). */
+.fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, 11%); }
+.fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 70vh); overflow: hidden; }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 70vh); height: 1px; background: currentColor; opacity: .2; }
+/* drawn at twice the size and scaled back down: the text nearest the camera stays sharp */
+.fold-floor {
+  position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 70vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5;
+  mask-image: linear-gradient(#000 55%, transparent);   /* fades out before it reaches the camera */
+}
+/* centered with left: 50% + a -50% translate (relative to the copy's own,
+   possibly zoomed, width) rather than margin: auto, which clamps to 0 and
+   goes flush-left the moment the zoomed floor copy is wider than the floor
+   itself (narrow viewports): a symmetric overflow reads as "close to the
+   camera", a one-sided one reads as a clipped bug. */
+.fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
+  translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+
+/* no JS: the wall reads as a normal column; the floor clone never renders */
+html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+html:not(.sv-on) .fold-floor,
+html:not(.sv-on) .fold-line { display: none; }
+html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+
+/* released later (data-sv-off): the same reset, for a tracker that stops */
+[data-sv-off] .fold-wall { position: static; height: auto; overflow: visible; }
+[data-sv-off] .fold-floor,
+[data-sv-off] .fold-line { display: none; }
+[data-sv-off] .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+
+/* the same sheet's reduced-motion override, last so it wins on source order:
+   .sv-stage already returns to flow (pin.css); this drops the perspective,
+   unclips the wall and hides the floor clone. Flat, no clone, no 3D. */
+@media (prefers-reduced-motion: reduce) {
+  .fold-scene { perspective: none; }
+  .fold-wall { position: static; height: auto; overflow: visible; }
+  .fold-floor, .fold-line { display: none; }
+  .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+}
+/* the same under html[data-sv-motion="reduce"], the site's own switch */
+:where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+:where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+:where([data-sv-motion="reduce"]) .fold-floor,
+:where([data-sv-motion="reduce"]) .fold-line { display: none; }
+:where([data-sv-motion="reduce"]) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }`,
+    tailwind: `<div data-sv data-sv-pin="380vh">
+  <div class="sv-stage fold-scene relative">
+    <div class="fold-wall">
+      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy…</article>
+    </div>
+    <div class="fold-line" aria-hidden="true"></div>
+    <div class="fold-floor" aria-hidden="true" inert>
+      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article>
+    </div>
+  </div>
+</div>
+<!-- Use the CSS tab's fold-scene/fold-wall/fold-floor/fold-line/fold-copy
+     rules: the geometry (perspective, rotate, the floor's 200% width and
+     zoom) is not expressible as utility classes. Tailwind only styles the
+     copy itself. -->`,
+    react: `// npx scrollvars add wall-floor-fold
+import { WallFloorFold } from './components/fx/WallFloorFold'
+
+function Manifesto() {
+  return (
+    <WallFloorFold>
+      <h2>Every page is a place.</h2>
+      <p>We build brands the way architects build rooms…</p>
+    </WallFloorFold>
+  )
+}
+// pin defaults to '380vh': pass a longer one to match more copy, and keep
+// travel (default '280vh') at pin minus 100vh. depth/eye/angle/fold are
+// props too, written as --sv-fold-* vars.
+// The floor is the same children, rendered a second time and marked
+// aria-hidden + inert: it never reaches assistive tech or the tab order.`,
+  },
+  {
     slug: 'gsap-scrub',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
     requires: { styles: ['pin'], deps: { gsap: '^3' }, min: '1.18.0' },
@@ -2762,6 +3018,97 @@ export function CubeWindows({
       <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
       {children}
     </div>
+  )
+}
+`,
+  },
+  'wall-floor-fold': {
+    file: 'WallFloorFold.tsx',
+    content: `// ScrollVars fx · wall-floor-fold
+// Requires: npm i scrollvars · import 'scrollvars/styles/pin.css' (for .sv-stage)
+// The CSS below is one constant string, injected as raw HTML: a <style>
+// child is raw text, so React 18's server renderer escaping \`>\` to \`&gt;\`
+// never decodes and a child-combinator rule would be dropped either way
+// (there is none here). CSP is unchanged from any inline <style>: a
+// style-src nonce or hash, or lift the string into your own CSS.
+'use client'
+import * as React from 'react'
+import { Track } from 'scrollvars/react'
+
+// React 19 knows inert as a boolean attribute (a string would be dropped as falsy); React 18
+// does not know it and drops booleans, so it gets the empty string instead. Both render inert="".
+const INERT = (React.version.startsWith('18') ? { inert: '' } : { inert: true }) as unknown as Record<string, never>
+
+const css = \`
+.fold-scene { perspective: var(--sv-fold-depth, 650px); perspective-origin: 50% var(--sv-fold-eye, 11%); }
+.fold-wall { position: absolute; inset: 0 0 auto 0; height: var(--sv-fold-line, 70vh); overflow: hidden; }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 70vh); height: 1px; background: currentColor; opacity: .2; }
+.fold-floor { position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 70vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
+.fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
+  translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
+html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
+html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fold-scene { perspective: none; }
+  .fold-wall { position: static; height: auto; overflow: visible; }
+  .fold-floor, .fold-line { display: none; }
+  .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+}
+:where([data-sv-motion="reduce"]) .fold-scene { perspective: none; }
+:where([data-sv-motion="reduce"]) .fold-wall { position: static; height: auto; overflow: visible; }
+:where([data-sv-motion="reduce"]) .fold-floor, :where([data-sv-motion="reduce"]) .fold-line { display: none; }
+:where([data-sv-motion="reduce"]) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
+\`
+
+export function WallFloorFold({
+  children,
+  pin = '380vh',
+  depth = 650,
+  eye = '11%',
+  angle = '90deg',
+  fold = '70vh',
+  travel = '280vh',
+  className,
+  nonce,
+}: {
+  children: React.ReactNode
+  /** Total scroll length: match the copy's height plus one viewport. */
+  pin?: string
+  depth?: number | string
+  eye?: string
+  angle?: string
+  fold?: string
+  /** How far the copy travels, in vh: keep this at pin minus 100vh. */
+  travel?: string
+  className?: string
+  nonce?: string
+}) {
+  const vars = {
+    '--sv-fold-depth': typeof depth === 'number' ? \`\${depth}px\` : depth,
+    '--sv-fold-eye': eye,
+    '--sv-fold-angle': angle,
+    '--sv-fold-line': fold,
+    '--sv-fold-travel': travel,
+  } as React.CSSProperties
+  return (
+    <Track pin={pin} className={className} style={vars}>
+      <style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} />
+      <div className="sv-stage fold-scene">
+        <div className="fold-wall">
+          <article className="fold-copy">{children}</article>
+        </div>
+        <div className="fold-line" aria-hidden="true" />
+        {/* the same words again, laid flat toward the viewer: aria-hidden +
+            inert together keep this copy out of the accessibility tree and
+            the tab order, so the wall stays the only readable copy */}
+        <div className="fold-floor" aria-hidden="true" {...INERT}>
+          <article className="fold-copy">{children}</article>
+        </div>
+      </div>
+    </Track>
   )
 }
 `,
