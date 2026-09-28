@@ -317,7 +317,9 @@
 <script>
   // demo-only: the knobs write the same custom properties a page would set
   ;(() => {
-    const form = document.querySelector('.fold-tune'), root = form && form.closest('.fold')
+    // written on the stage itself: Safari does not repaint perspective-origin when an
+    // inherited custom property changes on an ancestor, only on the owning element
+    const form = document.querySelector('.fold-tune'), root = form && form.closest('.fold-scene')
     if (!root) return
     const unit = { depth: 'px', eye: '%', angle: 'deg', fold: 'vh' }
     const prop = { depth: '--sv-fold-depth', eye: '--sv-fold-eye', angle: '--sv-fold-angle', fold: '--sv-fold-line' }
@@ -326,6 +328,8 @@
     form.addEventListener('input', (e) => {
       const input = e.target, value = input.value + unit[input.name]
       root.style.setProperty(prop[input.name], value)
+      if (input.name === 'eye') root.style.perspectiveOrigin = '50% ' + value
+      if (input.name === 'depth') root.style.perspective = value
       input.nextElementSibling.value = value
     })
   })()
