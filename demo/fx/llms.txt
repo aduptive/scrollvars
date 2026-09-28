@@ -338,7 +338,7 @@ Styles: scrollvars/styles/pin.css
     </div>
     <div class="fold-line" aria-hidden="true"></div>
     <div class="fold-floor" aria-hidden="true" inert>
-      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article>
+      <div class="fold-shift"><article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article></div>
     </div>
   </div>
 </div>
@@ -360,7 +360,7 @@ Styles: scrollvars/styles/pin.css
          inert together keep it out of the accessibility tree and the tab
          order, never focusable, never announced -->
     <div class="fold-floor" aria-hidden="true" inert>
-      <article class="fold-copy">…your copy again…</article>
+      <div class="fold-shift"><article class="fold-copy">…your copy again…</article></div>
     </div>
   </div>
 </div>
@@ -390,7 +390,11 @@ track(document.querySelector('[data-sv-pin]'))
    camera", a one-sided one reads as a clipped bug. */
 .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
   translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
-.fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: -50% 0; }
+/* the scroll offset lives on an unzoomed wrapper: zoom scales px but not vh, so a
+   zoomed translate mixing both drifts off the wall by half the fold. The floor is
+   scale(.5), hence the 2x. */
+.fold-floor .fold-shift { translate: 0 calc(-2 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
 
 /* no JS: the wall reads as a normal column; the floor clone never renders */
 html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }

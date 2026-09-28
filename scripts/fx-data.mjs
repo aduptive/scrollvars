@@ -525,7 +525,7 @@ export const EFFECTS = [
     </div>
     <div class="fold-line" aria-hidden="true"></div>
     <div class="fold-floor" aria-hidden="true" inert>
-      <article class="fold-copy">
+      <div class="fold-shift"><article class="fold-copy">
         <p class="fold-kicker">Field notes on brand building</p>
         <h3 class="fold-title">Every page <span class="fxaccent">is a place.</span></h3>
         <p class="fold-lead">We build brands the way architects build rooms: with a wall to read, a floor to walk on, and a corner where one becomes the other.</p>
@@ -553,13 +553,15 @@ export const EFFECTS = [
         <p class="fxp">A system outlives any single campaign. Build the parts so the next person, on the next brief, does not have to start from nothing.</p>
         <h3 class="fold-title">Follow <span class="fxaccent">the floor.</span></h3>
         <p class="fold-lead">And when you reach the corner, the story does not stop. It comes toward you.</p>
-      </article>
+      </article></div>
     </div>
     <form class="fold-tune" hidden aria-label="Tune the fold">
+      <details open><summary>tune</summary>
       <label>depth <input type="range" name="depth" min="200" max="2000" step="10" value="650"> <output>650px</output></label>
       <label>eye <input type="range" name="eye" min="-60" max="60" step="1" value="11"> <output>11%</output></label>
       <label>floor angle <input type="range" name="angle" min="45" max="110" step="1" value="90"> <output>90deg</output></label>
       <label>fold <input type="range" name="fold" min="30" max="90" step="1" value="70"> <output>70vh</output></label>
+      </details>
     </form>
   </div>
 </div>
@@ -598,10 +600,17 @@ export const EFFECTS = [
      to the camera", a one-sided one reads as a clipped bug. */
   .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
     translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
-  .fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+  .fold-floor .fold-copy { zoom: 2; translate: -50% 0; }
+/* the scroll offset lives on an unzoomed wrapper: zoom scales px but not vh, so a
+   zoomed translate mixing both drifts off the wall by half the fold. The floor is
+   scale(.5), hence the 2x. */
+.fold-floor .fold-shift { translate: 0 calc(-2 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
   /* demo-only tuning panel: live knobs for the four geometry variables */
   .fold-tune { position: absolute; right: 16px; bottom: 16px; z-index: 2; display: grid; gap: 6px;
     padding: 10px 14px; border: 1px solid #3a5a48; border-radius: 12px; background: #0f1a15e6; font: 13px/1.3 ui-monospace, monospace; }
+  .fold-tune details { display: grid; gap: 6px; }
+  .fold-tune summary { cursor: pointer; color: #f2c14e; min-height: 24px; }
+  .fold-tune details[open] { display: grid; }
   .fold-tune label { display: grid; grid-template-columns: 6.5em minmax(90px, 160px) 4.5em; align-items: center; gap: 10px; }
   .fold-tune output { color: #f2c14e; text-align: right; }
   .fold-tune input { accent-color: #f2c14e; min-height: 24px; margin: 0; }
@@ -628,6 +637,7 @@ export const EFFECTS = [
     const unit = { depth: 'px', eye: '%', angle: 'deg', fold: 'vh' }
     const prop = { depth: '--sv-fold-depth', eye: '--sv-fold-eye', angle: '--sv-fold-angle', fold: '--sv-fold-line' }
     form.hidden = false
+    if (matchMedia('(max-width: 699px)').matches) form.querySelector('details').open = false
     form.addEventListener('input', (e) => {
       const input = e.target, value = input.value + unit[input.name]
       root.style.setProperty(prop[input.name], value)
@@ -645,7 +655,7 @@ export const EFFECTS = [
          inert together keep it out of the accessibility tree and the tab
          order, never focusable, never announced -->
     <div class="fold-floor" aria-hidden="true" inert>
-      <article class="fold-copy">…your copy again…</article>
+      <div class="fold-shift"><article class="fold-copy">…your copy again…</article></div>
     </div>
   </div>
 </div>
@@ -675,7 +685,11 @@ track(document.querySelector('[data-sv-pin]'))
    camera", a one-sided one reads as a clipped bug. */
 .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
   translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
-.fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: -50% 0; }
+/* the scroll offset lives on an unzoomed wrapper: zoom scales px but not vh, so a
+   zoomed translate mixing both drifts off the wall by half the fold. The floor is
+   scale(.5), hence the 2x. */
+.fold-floor .fold-shift { translate: 0 calc(-2 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
 
 /* no JS: the wall reads as a normal column; the floor clone never renders */
 html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
@@ -711,7 +725,7 @@ html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; tran
     </div>
     <div class="fold-line" aria-hidden="true"></div>
     <div class="fold-floor" aria-hidden="true" inert>
-      <article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article>
+      <div class="fold-shift"><article class="fold-copy mx-auto w-[min(720px,100%-40px)]">…your copy again…</article></div>
     </div>
   </div>
 </div>
@@ -3047,7 +3061,11 @@ const css = \`
   transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5; mask-image: linear-gradient(#000 55%, transparent); }
 .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
   translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
-.fold-floor .fold-copy { zoom: 2; translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh) - var(--sv-fold-line, 70vh)); }
+.fold-floor .fold-copy { zoom: 2; translate: -50% 0; }
+/* the scroll offset lives on an unzoomed wrapper: zoom scales px but not vh, so a
+   zoomed translate mixing both drifts off the wall by half the fold. The floor is
+   scale(.5), hence the 2x. */
+.fold-floor .fold-shift { translate: 0 calc(-2 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
 html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
 html:not(.sv-on) .fold-floor, html:not(.sv-on) .fold-line { display: none; }
 html:not(.sv-on) .fold-copy { position: static; left: auto; margin: 0 auto; translate: none; }
@@ -3105,7 +3123,7 @@ export function WallFloorFold({
             inert together keep this copy out of the accessibility tree and
             the tab order, so the wall stays the only readable copy */}
         <div className="fold-floor" aria-hidden="true" {...INERT}>
-          <article className="fold-copy">{children}</article>
+          <div className="fold-shift"><article className="fold-copy">{children}</article></div>
         </div>
       </div>
     </Track>
