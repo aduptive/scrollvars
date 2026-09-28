@@ -343,8 +343,8 @@ Styles: scrollvars/styles/pin.css
   </div>
 </div>
 <!-- Use the CSS tab's fold-scene/fold-wall/fold-floor/fold-line/fold-copy
-     rules: the geometry (perspective, rotate, the floor's 200% width and
-     zoom) is not expressible as utility classes. Tailwind only styles the
+     rules: the geometry (perspective, rotate, the floor's
+     wrapper offset) is not expressible as utility classes. Tailwind only styles the
      copy itself. -->
 ```
 
@@ -379,22 +379,21 @@ track(document.querySelector('[data-sv-pin]'))
 .fold-line { position: absolute; left: 0; right: 0; top: var(--sv-fold-line, 70vh); height: 1px; background: currentColor; opacity: .2; }
 /* drawn at twice the size and scaled back down: the text nearest the camera stays sharp */
 .fold-floor {
-  position: absolute; left: -50%; width: 200%; top: var(--sv-fold-line, 70vh); height: 100%; overflow: hidden;
-  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg); scale: .5;
+  position: absolute; left: 0; width: 100%; top: var(--sv-fold-line, 70vh); height: 100%; overflow: hidden;
+  transform-origin: 50% 0; rotate: x var(--sv-fold-angle, 90deg);
   mask-image: linear-gradient(#000 55%, transparent);   /* fades out before it reaches the camera */
 }
 /* centered with left: 50% + a -50% translate (relative to the copy's own,
-   possibly zoomed, width) rather than margin: auto, which clamps to 0 and
-   goes flush-left the moment the zoomed floor copy is wider than the floor
+   possibly overflowing, width) rather than margin: auto, which clamps to 0 and
+   goes flush-left the moment the floor copy is wider than the floor
    itself (narrow viewports): a symmetric overflow reads as "close to the
    camera", a one-sided one reads as a clipped bug. */
 .fold-copy { width: min(720px, 100% - 40px); position: relative; left: 50%;
   translate: -50% calc(var(--sv-pin, 0) * -1 * var(--sv-fold-travel, 280vh)); }
-.fold-floor .fold-copy { zoom: 2; translate: -50% 0; }
-/* the scroll offset lives on an unzoomed wrapper: zoom scales px but not vh, so a
-   zoomed translate mixing both drifts off the wall by half the fold. The floor is
-   scale(.5), hence the 2x. */
-.fold-floor .fold-shift { translate: 0 calc(-2 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
+.fold-floor .fold-copy { translate: -50% 0; }
+/* the floor copy scrolls on its own wrapper, in the same units as the wall: no
+   zoom or scale here, engines disagree on how zoom treats vh (the floor drifted). */
+.fold-floor .fold-shift { translate: 0 calc(-1 * (var(--sv-pin, 0) * var(--sv-fold-travel, 280vh) + var(--sv-fold-line, 70vh))); }
 
 /* no JS: the wall reads as a normal column; the floor clone never renders */
 html:not(.sv-on) .fold-wall { position: static; height: auto; overflow: visible; }
