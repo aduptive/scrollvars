@@ -4,19 +4,22 @@ import { build } from 'esbuild'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { chromium } from 'playwright'
-import { ScrollVarsBoot } from '../../../dist/react/index.js'
+import { ScrollVarsBoot, Slider } from '../../../dist/react/index.js'
 
 const nonce = 'sv-nonce-fixture'
-const markup = renderToString(React.createElement(ScrollVarsBoot, { nonce }))
+const markup = renderToString(React.createElement(React.Fragment, null,
+  React.createElement(ScrollVarsBoot, { nonce }),
+  React.createElement(Slider, { nonce, perView: { base: 1, md: 2 } }, React.createElement('div', null, 'Slide'))
+))
 const client = await build({
   stdin: {
     contents: `
       import React from 'react'
       import { hydrateRoot } from 'react-dom/client'
-      import { ScrollVarsBoot } from '../../../dist/react/index.js'
+      import { ScrollVarsBoot, Slider } from '../../../dist/react/index.js'
       function App() {
         React.useEffect(() => { window.hydrated = true }, [])
-        return <ScrollVarsBoot nonce=${JSON.stringify(nonce)} />
+        return <><ScrollVarsBoot nonce=${JSON.stringify(nonce)} /><Slider nonce=${JSON.stringify(nonce)} perView={{ base: 1, md: 2 }}><div>Slide</div></Slider></>
       }
       hydrateRoot(document.getElementById('app'), <App />)
     `,
@@ -32,7 +35,7 @@ const client = await build({
 
 const server = createServer((_request, response) => {
   response.setHeader('Content-Type', 'text/html')
-  response.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'`)
+  response.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`)
   response.end(`<div id="app">${markup}</div><script nonce="${nonce}">window.prepaintRan=document.documentElement.classList.contains('sv-on')</script><script nonce="${nonce}">${client.outputFiles[0].text}</script>`)
 })
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -47,10 +50,11 @@ try {
   assert.equal(await page.evaluate(() => window.prepaintRan), true, 'the nonced pre-paint script must still execute')
   assert.deepEqual(await page.evaluate(() => {
     const script = document.querySelector('#app script')
-    return [script.getAttribute('nonce'), script.nonce]
-  }), ['', nonce], 'Chromium hides the parsed nonce attribute but preserves its value')
+    const style = document.querySelector('#app style')
+    return [script.getAttribute('nonce'), script.nonce, style.getAttribute('nonce'), style.nonce]
+  }), ['', nonce, '', nonce], 'Chromium hides parsed nonce attributes but preserves their values')
   assert.equal(messages.some(message => message.includes('hydrated but some attributes')), false, messages.join('\n'))
-  console.log('ok Chromium: nonce CSP does not report a ScrollVarsBoot hydration mismatch')
+  console.log('ok Chromium: nonce CSP does not report Boot or Slider hydration mismatches')
 } finally {
   await browser.close()
   server.close()

@@ -1075,7 +1075,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
           // scope would drop every rule on the server. The raw sink also drops
           // React's `</style` escaping, so perViewCss coerces every value it
           // interpolates. Same CSP story as any inline <style>.
-          <style nonce={nonce} dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
+          <style nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
         )}
         {!!autoplay && autoplay > 0 && (
           <button
