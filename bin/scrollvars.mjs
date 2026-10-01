@@ -160,7 +160,7 @@ if (command === 'list') {
   // to cwd (join('/a', '/b') is '/a/b', resolve('/a', '/b') is '/b')
   const target = join(resolve(process.cwd(), dir), effect.file)
   if (existsSync(target) && !flags.has('--force')) {
-    console.error(`${join(dir, effect.file)} already exists. Pass --force to overwrite`)
+    console.error(`${target} already exists. Pass --force to overwrite`)
     process.exit(1)
   }
   mkdirSync(resolve(process.cwd(), dir), { recursive: true })
@@ -174,7 +174,7 @@ if (command === 'list') {
     : req.min && olderThan(installed, req.min)
       ? `scrollvars ${installed} is installed; this effect needs ${req.min}+ (npm i scrollvars@latest)`
       : `scrollvars ${installed} ok${req.min ? ` (needs ${req.min}+)` : ''}`
-  console.log(`✓ ${join(dir, effect.file)}
+  console.log(`✓ ${target}
 
 requires:
   ${versionNote}${deps.length ? `\n  npm i ${deps.join(' ')}` : ''}

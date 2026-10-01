@@ -103,7 +103,10 @@ npx scrollvars add hero-cinematic
 ```
 
 The CLI downloads source from the gallery registry. Sections ship as editable
-React components. Other effects provide Tailwind, CSS and React examples.
+React components. Other effects provide Tailwind, CSS and React examples. A
+gallery component is copied into your project; it is not a `scrollvars/react`
+export. Run `add` from your app's package root and use `--dir` for its component
+folder. The guide below shows a Next.js `src/` and monorepo example.
 
 [Gallery and CLI guide](docs/guide.md#the-fx-gallery-copy-paste-effects--shadcn-style-cli)
 

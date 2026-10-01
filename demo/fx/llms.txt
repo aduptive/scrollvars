@@ -1751,7 +1751,11 @@ mountCubeWindow(
 
 ### React
 ```tsx
-import { CubeWindows } from './components/fx/CubeWindows'
+// From the frontend package root (for example, apps/frontend):
+// npm i scrollvars
+// npx scrollvars add cube-windows --dir src/components/fx
+// Creates src/components/fx/CubeWindows.tsx. Then, in src/app/page.tsx:
+import { CubeWindows } from '../components/fx/CubeWindows'
 
 function Portrait() {
   return (
@@ -1760,5 +1764,5 @@ function Portrait() {
     </CubeWindows>
   )
 }
-// npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)
+// CSS is included in the copied component. Install once; reuse it anywhere.
 ```

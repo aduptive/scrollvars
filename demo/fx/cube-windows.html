@@ -107,7 +107,11 @@
     .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
       padding:10px 16px 14px; background:#14211a; }
   }
-</style>
+
+  .source { margin-top:18px; }
+  .source summary { cursor:pointer; color:var(--accent); }
+  .source pre { background:#14211a; border:1px solid var(--line); border-radius:12px;
+    padding:18px; overflow:auto; font:13px/1.55 var(--mono); white-space:pre; }</style>
 </head><body>
 <header class="fx">
   <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
@@ -325,6 +329,7 @@ addEventListener('load', () => {
 })
 </script>
   <p class="meta"><b>Install:</b> <code>npx scrollvars add cube-windows</code><br><b>Styles:</b> Included in the component</p>
+  <p class="meta">The React example imports a local file copied by the CLI, not an export from <code>scrollvars/react</code>. Run the command from your frontend package root; <code>--dir</code> is relative to that directory. For a Next app using <code>src/</code>, run <code>npx scrollvars add cube-windows --dir src/components/fx</code> before using the example below. Install it once, then reuse <code>CubeWindows</code> with different <code>box</code>, <code>turn</code>, <code>className</code> and children. The copied file does not update when the registry changes.</p>
   <div class="tabs">
     <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
     <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
@@ -481,7 +486,11 @@ mountCubeWindow(
 .cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; }
 .cube-window img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* no JS / old engines: no clip-path is ever set, so the whole photo stays visible */</code></pre>
-    <pre tabindex="0" data-pane="react"><code>import { CubeWindows } from './components/fx/CubeWindows'
+    <pre tabindex="0" data-pane="react"><code>// From the frontend package root (for example, apps/frontend):
+// npm i scrollvars
+// npx scrollvars add cube-windows --dir src/components/fx
+// Creates src/components/fx/CubeWindows.tsx. Then, in src/app/page.tsx:
+import { CubeWindows } from '../components/fx/CubeWindows'
 
 function Portrait() {
   return (
@@ -490,8 +499,212 @@ function Portrait() {
     &lt;/CubeWindows&gt;
   )
 }
-// npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)</code></pre>
+// CSS is included in the copied component. Install once; reuse it anywhere.</code></pre>
   </div>
+  <details class="source"><summary>Full CubeWindows.tsx source (copy without CLI)</summary><p>Save this as <code>src/components/fx/CubeWindows.tsx</code> in the frontend package.</p><pre tabindex="0"><code>// ScrollVars fx · cube-windows
+// Requires: npm i scrollvars · no preset stylesheet required
+// A box turns in 3D as the section scrolls by and tilts to the pointer; its
+// outline becomes the clip-path of whatever this renders inside it. The
+// content itself never moves, it is only seen through the window.
+//
+// The projection math below (mask3d-core) is a self-contained, dependency-free
+// block: copy it once per project even if you use it in more than one place,
+// or lift it into its own module. It is unit-tested on its own upstream
+// (test/mask3d-core.test.mjs in the scrollvars repo) before it lands here.
+'use client'
+import * as React from 'react'
+import { onMotionChange, prefersReducedMotion, track } from 'scrollvars'
+
+/**
+ * cube-windows' projection math: a box turns in 3D, its 8 corners project to
+ * 2D, and their convex hull is the outline. Correct for any CONVEX solid
+ * with no holes; a concave shape or one with a hole (glyph letters, a star)
+ * needs the projected faces themselves unioned instead, which costs more.
+ *
+ * Measured against that faces-union approach on this exact box recipe
+ * (demo/bench/harness/mask3d-cost.mjs, three runs, 300 boxes, 240 frames):
+ * the hull ran consistently cheaper, about a quarter less per-frame task
+ * time, and produces the identical silhouette for a plain box (checked by
+ * nonzero-winding point-in-path sampling, not eyeballed). The simpler,
+ * cheaper solid wins for the one recipe that exists; nothing here is kept
+ * for a shape that has not shipped.
+ *
+ * This module is the source of truth: it is unit-tested directly (compiled
+ * in test/mask3d-core.test.mjs with the repo's own esbuild, the same way the
+ * fx gallery's plain-JS pane is derived from it, scripts/fx-data.mjs) so a
+ * change here proves itself before it goes back into a live page.
+ */
+
+type Point = [number, number]
+type Box = { w: number; h: number; d: number }
+type Pose = { ry: number; rx: number }
+
+// The 8 corners of the box, turned by `pose` and projected with perspective
+// `focal`. Element-width units in, element-width units out (times the
+// perspective scale each corner earns from its own depth).
+function corners(box: Box, pose: Pose, focal: number): Point[] {
+  const { w, h, d } = box
+  const { ry, rx } = pose
+  const cosY = Math.cos(ry), sinY = Math.sin(ry)
+  const cosX = Math.cos(rx), sinX = Math.sin(rx)
+  const pts: Point[] = []
+  for (let i = 0; i &lt; 8; i++) {
+    let x = (i &amp; 1 ? .5 : -.5) * w, y = (i &amp; 2 ? .5 : -.5) * h, z = (i &amp; 4 ? .5 : -.5) * d
+    ;[x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY]
+    ;[y, z] = [y * cosX - z * sinX, y * sinX + z * cosX]
+    const s = focal / (focal + z)
+    pts.push([x * s, y * s])
+  }
+  return pts
+}
+
+// The outline of a convex solid is the convex hull of its corners (monotone
+// chain, Andrew's algorithm): 4 points face-on, up to 6 from a corner-on
+// turn. Any orientation works, no area or winding bookkeeping needed.
+function hull(points: Point[]): Point[] {
+  const sorted = [...points].sort((a, b) =&gt; a[0] - b[0] || a[1] - b[1])
+  const cross = (o: Point, a: Point, b: Point) =&gt; (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  const half = (list: Point[]): Point[] =&gt; {
+    const out: Point[] = []
+    for (const q of list) {
+      while (out.length &gt;= 2 &amp;&amp; cross(out[out.length - 2], out[out.length - 1], q) &lt;= 0) out.pop()
+      out.push(q)
+    }
+    return out.slice(0, -1)
+  }
+  return [...half(sorted), ...half([...sorted].reverse())]
+}
+
+const r1 = (n: number): number =&gt; Math.round(n * 10) / 10
+
+function toClipPath(points: Point[], ox: number, oy: number, scale: number): string {
+  return `polygon(${points.map(([x, y]) =&gt; `${r1(ox + x * scale)}px ${r1(oy + y * scale)}px`).join(',')})`
+}
+
+// The extent every corner can reach across `poses`, so a recipe can fit the
+// box inside its element without cutting a corner off at any reachable turn.
+function bounds(box: Box, poses: Pose[], focal: number) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+  for (const pose of poses) {
+    for (const [x, y] of corners(box, pose, focal)) {
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x)
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y)
+    }
+  }
+  return { x0, x1, y0, y1 }
+}
+
+
+const css = `
+.cube-window { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; }
+.cube-window img, .cube-window video { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* no JS / old engines: no clip-path is ever set, so the content stays fully visible */
+`
+
+// Same recipe as the CSS tab's mountCubeWindow, in React idiom: an effect
+// owns the whole lifecycle (fit, pointer inertia, scroll travel, reduced
+// motion, cleanup), the component only renders the box and its content.
+function useCubeWindow(ref: React.RefObject&lt;HTMLDivElement | null&gt;, boxSize: [number, number, number], turn: [number, number, number, number]) {
+  React.useEffect(() =&gt; {
+    const el = ref.current
+    if (!el) return
+    // Below Safari 13.1 without compat(): fail visible, not fail loud. An
+    // unguarded ResizeObserver here throws and unmounts the React root,
+    // the opposite of the content-stays-whole contract this recipe
+    // documents everywhere else.
+    if (typeof ResizeObserver !== 'function') return
+    const FOCAL = 2.4, HOVER = { y: .5, x: .35 }, MARGIN = 6, EASE = .12
+    const box3: Box = { w: boxSize[0], h: boxSize[1], d: boxSize[2] }
+    const [ry0, ry1, rx0, rx1] = turn
+    const poseAt = (t: number, hx: number, hy: number): Pose =&gt; ({
+      ry: ry0 + (ry1 - ry0) * t + hx * HOVER.y,
+      rx: rx0 + (rx1 - rx0) * t - hy * HOVER.x,
+    })
+
+    let t = .5, fit: { w: number; h: number; k: number; ox: number; oy: number } | null = null, last = '', raf = 0
+    const hover = { x: 0, y: 0 }, target = { x: 0, y: 0 }
+
+    const refit = () =&gt; {
+      const w = el.clientWidth, h = el.clientHeight
+      if (!w || !h || (fit &amp;&amp; fit.w === w &amp;&amp; fit.h === h)) return false
+      const poses: Pose[] = []
+      for (let s = 0; s &lt;= 20; s++)
+        for (const hx of [-1, 0, 1]) for (const hy of [-1, 0, 1]) poses.push(poseAt(s / 20, hx, hy))
+      const b = bounds(box3, poses, FOCAL)
+      const k = Math.min((w - MARGIN * 2) / (b.x1 - b.x0), (h - MARGIN * 2) / (b.y1 - b.y0))
+      fit = { w, h, k, ox: w / 2 - ((b.x0 + b.x1) / 2) * k, oy: h / 2 - ((b.y0 + b.y1) / 2) * k }
+      return true
+    }
+
+    const draw = () =&gt; {
+      if (!fit) return
+      const still = prefersReducedMotion()
+      const pose = poseAt(still ? .5 : t, still ? 0 : hover.x, still ? 0 : hover.y)
+      const clip = toClipPath(hull(corners(box3, pose, FOCAL)), fit.ox, fit.oy, fit.k)
+      if (clip !== last) { el.style.clipPath = clip; last = clip }
+    }
+
+    const settle = () =&gt; {
+      raf = 0
+      hover.x += (target.x - hover.x) * EASE
+      hover.y += (target.y - hover.y) * EASE
+      draw()
+      if (Math.abs(target.x - hover.x) + Math.abs(target.y - hover.y) &gt; .002) raf = requestAnimationFrame(settle)
+    }
+    const onMove = (e: PointerEvent) =&gt; {
+      if (prefersReducedMotion()) return
+      const r = el.getBoundingClientRect()
+      target.x = ((e.clientX - r.left) / r.width) * 2 - 1
+      target.y = ((e.clientY - r.top) / r.height) * 2 - 1
+      if (!raf) raf = requestAnimationFrame(settle)
+    }
+    const onLeave = () =&gt; { target.x = target.y = 0; if (!raf) raf = requestAnimationFrame(settle) }
+
+    const ro = new ResizeObserver(() =&gt; { if (refit()) { last = ''; draw() } })
+    ro.observe(el)
+    refit()
+    draw()
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerleave', onLeave)
+    const stopMotion = onMotionChange(() =&gt; { hover.x = hover.y = target.x = target.y = 0; draw() })
+    const stopTrack = track(el, { view: false, onTravel: (v) =&gt; { t = v; draw() } })
+
+    return () =&gt; {
+      stopTrack(); stopMotion(); ro.disconnect()
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerleave', onLeave)
+      if (raf) cancelAnimationFrame(raf)
+      el.style.clipPath = ''
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxSize[0], boxSize[1], boxSize[2], turn[0], turn[1], turn[2], turn[3]])
+}
+
+export function CubeWindows({
+  box: boxSize = [.9, .5, .5],
+  turn = [-1.4, .35, .8, -.1],
+  className,
+  children,
+  nonce,
+}: {
+  /** Width, height, depth of the box, as a share of the element's width. */
+  box?: [number, number, number]
+  /** ry from, ry to, rx from, rx to (radians), across the element's scroll travel. */
+  turn?: [number, number, number, number]
+  className?: string
+  children?: React.ReactNode
+  nonce?: string
+}) {
+  const ref = React.useRef&lt;HTMLDivElement&gt;(null)
+  useCubeWindow(ref, boxSize, turn)
+  return (
+    &lt;div ref={ref} className={className ? 'cube-window ' + className : 'cube-window'}&gt;
+      &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+      {children}
+    &lt;/div&gt;
+  )
+}
+</code></pre></details>
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.9 KB gzip as ESM (this page's fx/sv.js IIFE: 13.1 KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>

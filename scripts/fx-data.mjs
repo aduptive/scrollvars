@@ -1708,7 +1708,11 @@ mountCubeWindow(
   <img src="photo.jpg" alt="A photo of the studio" class="block h-full w-full object-cover">
 </div>
 <!-- same mount script as the CSS tab; Tailwind only styles the box and the image -->`,
-    react: `import { CubeWindows } from './components/fx/CubeWindows'
+    react: `// From the frontend package root (for example, apps/frontend):
+// npm i scrollvars
+// npx scrollvars add cube-windows --dir src/components/fx
+// Creates src/components/fx/CubeWindows.tsx. Then, in src/app/page.tsx:
+import { CubeWindows } from '../components/fx/CubeWindows'
 
 function Portrait() {
   return (
@@ -1717,7 +1721,7 @@ function Portrait() {
     </CubeWindows>
   )
 }
-// npx scrollvars add cube-windows → components/fx/CubeWindows.tsx (CSS included)`,
+// CSS is included in the copied component. Install once; reuse it anywhere.`,
   },
 ]
 
