@@ -373,7 +373,35 @@ npx scrollvars add coverflow-slider            # → components/fx/CoverflowSlid
 npx scrollvars add marquee --dir src/ui
 ```
 
-The CLI fetches a remote registry, so the library grows without package
+`add` copies source into the directory where you run it. With no `--dir`, it
+writes `components/fx/` under the current working directory; `--dir` is also
+relative to that directory unless you pass an absolute path. Run it from the
+frontend package root, the folder containing that app's `package.json`.
+For example, in a monorepo with a Next.js app under `apps/frontend`:
+
+```bash
+cd apps/frontend
+npm i scrollvars
+npx scrollvars add cube-windows --dir src/components/fx
+# creates apps/frontend/src/components/fx/CubeWindows.tsx
+```
+
+Then, from `src/app/page.tsx`, import the **local file**:
+
+```tsx
+import { CubeWindows } from '../components/fx/CubeWindows'
+```
+
+Use `@/components/fx/CubeWindows` only if your app defines `@` for `src/`.
+`CubeWindows` and other gallery components are copied recipes, not exports of
+`scrollvars/react`. Install a recipe once, then reuse its component in several
+places with different `box`, `turn`, `className` and `children`; do not run
+`add` for every block. A copied file is yours to edit and does not update
+automatically when the remote registry changes. The CLI prints its absolute
+destination; the [Cube windows page](https://scrollvars.dev/fx/cube-windows.html)
+also shows the complete component source for copying without the CLI.
+
+The CLI fetches a remote registry, so the gallery grows without package
 releases.
 
 The same CLI installs a skill for AI coding agents:

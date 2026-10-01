@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npm run demo:sync
       - run: npm ci --prefix demo/bench/harness
+      - run: if [ -f /etc/apt/apt-mirrors.txt ]; then sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt; fi
       - run: npx --prefix demo/bench/harness playwright install --with-deps ${{ matrix.browser }}
       - run: npm run test:nonce-hydration
         if: matrix.browser == 'chromium'

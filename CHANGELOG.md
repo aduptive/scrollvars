@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.19.1 (2026-10-01)
+
+### Changed
+
+- The `add` CLI now prints the absolute destination of the copied component, so running it inside a frontend package in a monorepo makes the import target clear. The Cube windows gallery recipe and guide now put installation before the local React import, explain `--dir` relative to the current package, show the full component source for manual copying, and distinguish gallery recipes from package exports.
+
 ### Added
 
 - fx gallery recipe: "Wall to floor fold" (`wall-floor-fold`), a copy-paste-only Pinned scenes effect, zero bytes in the core. Content scrolls down a wall and, at the fold line, continues onto a floor in perspective toward the viewer, driven entirely by the pin helper's `--sv-pin` (no scroll math of its own). The floor is a second, non-interactive copy of the same content, `aria-hidden` and `inert` together so it never reaches assistive tech or the tab order; the wall stays the only readable copy under no JS and under reduced motion, where the effect goes flat and the floor never renders. Geometry (depth, eye, floor angle, fold line, travel) is exposed as `--sv-fold-*` custom properties for tuning. Ships CSS, Tailwind and React panes plus an installed `WallFloorFold` component (`npx scrollvars add wall-floor-fold`).

@@ -101,3 +101,23 @@ test('an absolute --dir is used as-is, not appended under cwd', () => {
     rmSync(target, { recursive: true, force: true })
   }
 })
+
+test('add writes to the frontend cwd, with --dir relative to it, and prints the destination', () => {
+  const monorepo = mkdtempSync(join(tmpdir(), 'sv-monorepo-'))
+  const frontend = join(monorepo, 'apps', 'frontend')
+  const registry = join(monorepo, 'registry.json')
+  mkdirSync(frontend, { recursive: true })
+  writeFileSync(registry, JSON.stringify({ effects: [{ slug: 'cube-windows', file: 'CubeWindows.tsx', content: 'export {}', requires: {} }] }))
+  const cli = fileURLToPath(new URL('../bin/scrollvars.mjs', import.meta.url))
+  try {
+    for (const [args, folder] of [[[], 'components/fx'], [['--dir', 'src/components/fx'], 'src/components/fx']]) {
+      const target = join(frontend, folder, 'CubeWindows.tsx')
+      const output = execFileSync(process.execPath, [cli, 'add', 'cube-windows', ...args], {
+        cwd: frontend, env: { ...process.env, SCROLLVARS_REGISTRY: registry }, encoding: 'utf8',
+      })
+      assert.ok(existsSync(target), `${target} was written`)
+      assert.ok(output.includes(target), `output names the absolute destination: ${output}`)
+    }
+    assert.ok(!existsSync(join(monorepo, 'components', 'fx', 'CubeWindows.tsx')), 'no components folder appeared at the monorepo root')
+  } finally { rmSync(monorepo, { recursive: true, force: true }) }
+})

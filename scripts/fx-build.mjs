@@ -271,7 +271,11 @@ for (const fx of EFFECTS) {
 <meta name="description" content="${fx.tagline} Copy-paste in Tailwind, CSS or React.">
 <meta property="og:image" content="https://scrollvars.dev/media/og.png">
 <link rel="stylesheet" href="sv.css">
-<style>${SHELL_CSS}</style>
+<style>${SHELL_CSS}${fx.slug === 'cube-windows' ? `
+  .source { margin-top:18px; }
+  .source summary { cursor:pointer; color:var(--accent); }
+  .source pre { background:#14211a; border:1px solid var(--line); border-radius:12px;
+    padding:18px; overflow:auto; font:13px/1.55 var(--mono); white-space:pre; }` : ''}</style>
 </head><body>
 ${header(true)}
 <div class="fxwrap">
@@ -281,7 +285,8 @@ ${sidebar(fx.slug)}
   <p class="tag">${fx.tagline}</p>
   <p class="meta"><b>Use it for:</b> ${fx.when}<br><b>Knobs:</b> ${fx.knobs}</p>
   ${fx.runway ? `<div class="fxrunway">${fx.preview}</div>` : fx.preview}
-  <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add ${fx.slug}</code><br><b>Styles:</b> ${fx.requires.styles.length ? fx.requires.styles.map(name => `<code>import 'scrollvars/styles/${name}.css'</code>`).join(' · ') : 'Included in the component'}</p>${fx.slug === 'cube-windows' ? `
+  <p class="meta">The React example imports a local file copied by the CLI, not an export from <code>scrollvars/react</code>. Run the command from your frontend package root; <code>--dir</code> is relative to that directory. For a Next app using <code>src/</code>, run <code>npx scrollvars add cube-windows --dir src/components/fx</code> before using the example below. Install it once, then reuse <code>CubeWindows</code> with different <code>box</code>, <code>turn</code>, <code>className</code> and children. The copied file does not update when the registry changes.</p>` : ''}
   <div class="tabs">
     ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '<button type="button" class="on" aria-pressed="true" data-tab="react">Complete component · CLI source</button>' : `<button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
     <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
@@ -292,7 +297,8 @@ ${sidebar(fx.slug)}
     ${SECTION_PREVIEW_SLUGS.has(fx.slug) ? '' : `<pre class="on" tabindex="0" data-pane="tailwind"><code>${esc(fx.tailwind)}</code></pre>
     <pre tabindex="0" data-pane="css"><code>${esc(fx.css)}</code></pre>`}
     <pre${SECTION_PREVIEW_SLUGS.has(fx.slug) ? ' class="on"' : ''} tabindex="0" data-pane="react"><code>${esc(fx.react)}</code></pre>
-  </div>
+  </div>${fx.slug === 'cube-windows' ? `
+  <details class="source"><summary>Full CubeWindows.tsx source (copy without CLI)</summary><p>Save this as <code>src/components/fx/CubeWindows.tsx</code> in the frontend package.</p><pre tabindex="0"><code>${esc(COMPONENTS['cube-windows'].content)}</code></pre></details>` : ''}
   <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, ${CORE_KB} KB gzip as ESM (this page's fx/sv.js IIFE: ${ENGINE_KB} KB).
   All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
 </main>
