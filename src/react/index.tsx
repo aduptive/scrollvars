@@ -84,7 +84,7 @@ export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce, pageOutpu
       stopDebug?.()
     }
   }, [])
-  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: PREPAINT }} />
+  return <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
 /** React 19 knows `inert` as a boolean attribute (a string would be dropped as falsy); React 18
@@ -1075,7 +1075,7 @@ export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps
           // scope would drop every rule on the server. The raw sink also drops
           // React's `</style` escaping, so perViewCss coerces every value it
           // interpolates. Same CSP story as any inline <style>.
-          <style nonce={nonce} dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
+          <style nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: perViewCss(scope, perView) }} />
         )}
         {!!autoplay && autoplay > 0 && (
           <button

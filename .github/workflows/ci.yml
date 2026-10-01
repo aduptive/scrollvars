@@ -19,6 +19,8 @@ jobs:
       - run: npm run demo:sync
       - run: npm ci --prefix demo/bench/harness
       - run: npx --prefix demo/bench/harness playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run test:nonce-hydration
+        if: matrix.browser == 'chromium'
       - run: npm run test:browsers -- ${{ matrix.browser }}
       - run: npm run test:packed -- ${{ matrix.browser }}
         env:
