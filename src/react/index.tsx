@@ -84,7 +84,7 @@ export const ScrollVarsBoot: React.FC<ScrollVarsBootProps> = ({ nonce, pageOutpu
       stopDebug?.()
     }
   }, [])
-  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: PREPAINT }} />
+  return <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: PREPAINT }} />
 }
 
 /** React 19 knows `inert` as a boolean attribute (a string would be dropped as falsy); React 18
