@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.19.1 (2026-10-01)
+
 ### Changed
 
 - The `add` CLI now prints the absolute destination of the copied component, so running it inside a frontend package in a monorepo makes the import target clear. The Cube windows gallery recipe and guide now put installation before the local React import, explain `--dir` relative to the current package, show the full component source for manual copying, and distinguish gallery recipes from package exports.
