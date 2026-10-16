@@ -299,7 +299,7 @@ compat()   // once, before anything else</code></pre>
 
 <ul>
 <li>Mark the <code>Slider</code> component's <code>React.forwardRef</code> call as pure so bundlers can remove the unused component and its engine from selective React imports. The public API and behavior are unchanged. A bundle regression test reproduces the old retention, checks pointer/boot imports without the slider, and verifies that a bundled slider still renders its controls and slides.</li>
-<li>Bundle documentation now counts static shared React chunks as well as the entry, excludes lazy debug chunks, and generates per-import minified/gzip byte measurements from the final dist. These isolated fixtures are not application-route savings or new runtime benchmark results; the recorded 1.16.1 benchmark remains a historical snapshot.</li>
+<li>Generate per-import minified/gzip byte measurements from the final dist, with the bundler version, target and compression settings documented. The measurement includes static shared chunks and excludes lazy debug chunks. These isolated fixtures are not application-route savings or new runtime benchmark results; the recorded 1.16.1 benchmark remains a historical snapshot.</li>
 </ul>
 
 <h3>1.19.1 (2026-10-01)</h3>
