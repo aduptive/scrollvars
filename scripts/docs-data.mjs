@@ -4,10 +4,53 @@
  * docs-build.mjs renders them into /docs/, bench-tables.mjs stamps the
  * benchmark tables. Sizes are measured here, at build, never typed.
  */
-import { buildSync } from 'esbuild'
+import { buildSync, version as esbuildVersion } from 'esbuild'
 import { gzipSync } from 'node:zlib'
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { join, relative } from 'node:path'
+
+/** Static consumer graph, including shared chunks but excluding lazy debug code. */
+export function measureReactImports(root, contents) {
+  root = realpathSync(root)
+  const result = buildSync({
+    absWorkingDir: root,
+    stdin: { contents, resolveDir: root, sourcefile: 'docs-import.js' },
+    bundle: true, minify: true, treeShaking: true, format: 'esm', platform: 'browser',
+    target: 'es2020', splitting: true, outdir: join(root, 'dist', '.docs-data-split'),
+    write: false, metafile: true, external: ['react', 'react-dom'], logLevel: 'silent',
+  })
+  const outputs = result.metafile.outputs
+  const entry = Object.keys(outputs).find(key => outputs[key].entryPoint === 'docs-import.js')
+  if (!entry) throw new Error('docs-data: consumer entry chunk not found')
+  const reachable = new Set()
+  const visit = key => {
+    if (reachable.has(key)) return
+    reachable.add(key)
+    for (const item of outputs[key].imports) if (!item.external && item.kind !== 'dynamic-import') visit(item.path)
+  }
+  visit(entry)
+  const files = result.outputFiles.filter(file => reachable.has(relative(root, file.path)))
+  const inputs = [...new Set([...reachable].flatMap(key => Object.entries(outputs[key].inputs)
+    .filter(([, value]) => value.bytesInOutput > 0).map(([name]) => name)))]
+  return {
+    minBytes: files.reduce((sum, file) => sum + file.contents.length, 0),
+    gzipBytes: files.reduce((sum, file) => sum + gzipSync(file.contents, { level: 9 }).length, 0),
+    inputs,
+  }
+}
+
+export function reactImportSizesMarkdown(root) {
+  const version = JSON.parse(readFileSync(join(root, 'package.json'))).version
+  const rows = ['usePointer', 'ScrollVarsBoot', 'Slider, Slide'].map(names => {
+    const sizes = measureReactImports(root, `export { ${names} } from './dist/react/index.js'`)
+    return `| \`${names}\` | ${sizes.minBytes} | ${sizes.gzipBytes} |`
+  })
+  return [
+    `Isolated consumer bundles of ScrollVars ${version}, esbuild ${esbuildVersion}, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:`,
+    '', '| React imports | minified bytes | gzip bytes |', '| --- | ---: | ---: |', ...rows, '',
+    'These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.',
+  ].join('\n')
+}
 
 /**
  * gsap + ScrollTrigger's own gzipped bundle size, from its public CDN build
@@ -129,24 +172,8 @@ export function measureSizes(root) {
   const everythingBuf = entryRaw('index.js')
   const sliderBuf = entryRaw('core/slider.js')
   const driver = gzipSync(driverBuf).length / 1024
-  // react/index.js dynamically imports scrollvars/debug (the `?sv-debug`
-  // dev overlay, ScrollVarsBoot). A plain `bundle: true` build with no
-  // splitting inlines a dynamic import into the same file, so this stamp
-  // used to carry the whole debug module's weight (HUD, markers, lint):
-  // 18.2 KB before PR #88 grew debug, 20.5 after, neither honest since no
-  // consumer bundler behaves that way. `splitting: true` reproduces what a
-  // real bundler (webpack, Vite, Rollup) ships: the entry point in its own
-  // chunk, the dynamic import in a separate one that only loads for a
-  // visitor who actually requests ?sv-debug. Only the entry chunk (named
-  // after the input file; esbuild hashes every OTHER chunk's name) counts
-  // toward the number every page pays.
-  const reactSplit = buildSync({
-    entryPoints: [join(root, 'dist', 'react/index.js')],
-    bundle: true, minify: true, format: 'esm', splitting: true, outdir: join(root, 'dist', '.docs-data-split'),
-    write: false, logLevel: 'silent', external: ['react', 'react-dom'],
-  }).outputFiles
-  const reactEntry = reactSplit.find((f) => f.path.endsWith('/index.js'))
-  if (!reactEntry) throw new Error('docs-data: react split build produced no index.js entry chunk')
+  // Count static shared chunks too; the dev-only debug chunk stays lazy.
+  const react = measureReactImports(root, "export * from './dist/react/index.js'")
   return {
     driver: kb(driver),
     driverMin: kb(driverBuf.length / 1024),
@@ -157,7 +184,7 @@ export function measureSizes(root) {
     canvas: kb(entry('canvas/index.js')),
     everything: kb(gzipSync(everythingBuf).length / 1024),
     everythingMin: kb(everythingBuf.length / 1024),
-    react: kb(gzipSync(reactEntry.contents).length / 1024),
+    react: kb(react.gzipBytes / 1024),
     typical: kb(driver + cssKb('core')),
     stylesAll: kb(gzipSync(readFileSync(join(root, 'styles.css'))).length / 1024),
     css: Object.fromEntries(['core', 'pin', 'slider', 'tilt', 'state', 'ui', 'scoped'].map((n) => [n, kb(cssKb(n))])),

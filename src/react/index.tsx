@@ -827,7 +827,7 @@ export interface SliderComponentProps
  * globally for the project or per instance via className/style. A ref
  * exposes the full SliderHandle for external controls placed anywhere.
  */
-export const Slider = React.forwardRef<SliderHandle | null, SliderComponentProps>(
+export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, SliderComponentProps>(
   function Slider(
     {
       perView,
