@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import {
   varsMarkdown,
   measureSizes,
+  reactImportSizesMarkdown,
   compatPresetsFlat,
   compatPresetsGrouped,
   COMPAT_PRESET_NOTES,
@@ -124,9 +125,15 @@ const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
 
 const sizes = measureSizes(root)
+const reactImports = reactImportSizesMarkdown(root)
+
+let packageReadme = readFileSync(join(root, 'README.md'), 'utf8')
+packageReadme = stamp(packageReadme, 'react-imports', reactImports)
+writeFileSync(join(root, 'README.md'), packageReadme)
 
 // README
 let readme = readFileSync(join(root, 'docs/guide.md'), 'utf8')
+readme = stamp(readme, 'react-imports', reactImports)
 readme = stamp(readme, 'vars', 'The driver **tracks** elements and writes these outputs (anything that reads them is a preset):\n\n' + varsMarkdown())
 readme = stamp(readme, 'sizes', [
   `Named imports for \`track\` / \`track\` + \`scan\`; other rows are complete module entries, measured from dist by \`scripts/docs-stamp.mjs\` (JS min+gzip, CSS gzip as shipped):`, '',
@@ -164,6 +171,7 @@ writeFileSync(join(root, 'docs/guide.md'), readme)
 
 // AGENTS
 let agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+agents = stamp(agents, 'react-imports', reactImports)
 agents = stamp(agents, 'vars', varsMarkdown())
 agents = spliceOne(agents, /^(import 'scrollvars\/styles\/core\.css'\s+\/\/ )[^\n]*$/m, `$1${STYLE_NOTES.core} (${sizes.css.core} KB gz)`, 'AGENTS.md: core styles import line')
 agents = spliceOne(agents, /^\/\/ also styles\/pin\.css[^\n]*$/m,

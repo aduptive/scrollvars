@@ -433,6 +433,18 @@ export function ProductStory() {
 
 ## The component kit (React)
 
+<!-- react-imports:start -->
+Isolated consumer bundles of ScrollVars 1.19.2, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+
+| React imports | minified bytes | gzip bytes |
+| --- | ---: | ---: |
+| `usePointer` | 3750 | 1765 |
+| `ScrollVarsBoot` | 30993 | 10755 |
+| `Slider, Slide` | 15995 | 6398 |
+
+These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
+<!-- react-imports:end -->
+
 Batteries-included wrappers over the same engine. Less React, less JS,
 less CSS than the usual suspects:
 

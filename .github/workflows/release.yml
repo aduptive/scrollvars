@@ -66,6 +66,10 @@ jobs:
           name: packed-acceptance-release-${{ github.run_attempt }}
           path: ${{ runner.temp }}/packed-acceptance
           if-no-files-found: warn
+      - name: verify npm publishing account
+        run: npm whoami --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: publish to npm (with provenance)
         run: npm publish "$SCROLLVARS_TARBALL" --provenance --access public --tag latest --registry=https://registry.npmjs.org
         env:

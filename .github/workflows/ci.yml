@@ -47,6 +47,15 @@ jobs:
       # so packing there races the rebuild (ADU-351, run 36233354971).
       - run: npm run test:packed-unit
 
+  react-bundle-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: node --test test/react-bundle.test.mjs test/docs-data-react-size.test.mjs
+
   # Proves the React layer (and every `npx scrollvars add` fixture) on React
   # 18 too, not only the React 19 the root installs. `npm run test:react18`
   # (same script a builder runs locally) does the whole thing:

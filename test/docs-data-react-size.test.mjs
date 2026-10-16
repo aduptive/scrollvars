@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { buildSync } from 'esbuild'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
-import { measureSizes } from '../scripts/docs-data.mjs'
+import { measureSizes, measureReactImports } from '../scripts/docs-data.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -30,7 +32,27 @@ test('measureSizes().react excludes the ?sv-debug dynamic import (its own consum
   )
 })
 
-test('measureSizes().react is a plausible entry-chunk size (sanity: the split build actually found react/index.js)', () => {
+test('measureSizes().react is a plausible static consumer graph size', () => {
   const sizes = measureSizes(root)
   assert.ok(parseFloat(sizes.react) > 10, `react size reads implausibly small: ${sizes.react}`)
+})
+
+test('consumer measurement counts static shared chunks and excludes lazy code', t => {
+  const fixture = mkdtempSync(join(tmpdir(), 'sv-shared-size-'))
+  t.after(() => rmSync(fixture, { recursive: true, force: true }))
+  mkdirSync(join(fixture, 'dist/react'), { recursive: true })
+  writeFileSync(join(fixture, 'dist/react/index.js'), "export { shared } from '../shared.js'; export const load = () => import('../lazy.js')")
+  writeFileSync(join(fixture, 'dist/shared.js'), 'export const shared = value => Math.sin(value) + Math.cos(value)')
+  writeFileSync(join(fixture, 'dist/lazy.js'), "import { shared } from './shared.js'; export const debug = () => shared(42)")
+  const sizes = measureReactImports(fixture, "export * from './dist/react/index.js'")
+  const { outputFiles } = buildSync({
+    entryPoints: [join(fixture, 'dist/react/index.js')], bundle: true, minify: true,
+    splitting: true, format: 'esm', outdir: join(fixture, 'out'), write: false,
+  })
+  const staticFiles = outputFiles.filter(file => !basename(file.path).startsWith('lazy-'))
+  assert.equal(staticFiles.length, 2, 'fixture must actually produce a static shared chunk')
+  assert.equal(sizes.minBytes, staticFiles.reduce((sum, file) => sum + file.contents.length, 0))
+  assert.equal(sizes.gzipBytes, staticFiles.reduce((sum, file) => sum + gzipSync(file.contents, { level: 9 }).length, 0))
+  assert.ok(sizes.inputs.includes('dist/shared.js'))
+  assert.ok(!sizes.inputs.includes('dist/lazy.js'))
 })

@@ -76,6 +76,18 @@ import 'scrollvars/styles/core.css'               // entrances, stagger, drift, 
 // also styles/pin.css (3.4), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.5), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
+<!-- react-imports:start -->
+Isolated consumer bundles of ScrollVars 1.19.2, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+
+| React imports | minified bytes | gzip bytes |
+| --- | ---: | ---: |
+| `usePointer` | 3750 | 1765 |
+| `ScrollVarsBoot` | 30993 | 10755 |
+| `Slider, Slide` | 15995 | 6398 |
+
+These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
+<!-- react-imports:end -->
+
 ## The fx gallery (prefer for common patterns)
 
 https://scrollvars.dev/fx/ hosts ready-made effects (Tailwind + CSS +
