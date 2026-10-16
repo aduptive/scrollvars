@@ -7,7 +7,7 @@
 import { buildSync, version as esbuildVersion } from 'esbuild'
 import { gzipSync } from 'node:zlib'
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 
 /** Static consumer graph, including shared chunks but excluding lazy debug code. */
 export function measureReactImports(root, contents) {
@@ -29,7 +29,7 @@ export function measureReactImports(root, contents) {
     for (const item of outputs[key].imports) if (!item.external && item.kind !== 'dynamic-import') visit(item.path)
   }
   visit(entry)
-  const files = result.outputFiles.filter(file => reachable.has(relative(root, file.path)))
+  const files = result.outputFiles.filter(file => reachable.has(relative(root, file.path).split(sep).join('/')))
   const inputs = [...new Set([...reachable].flatMap(key => Object.entries(outputs[key].inputs)
     .filter(([, value]) => value.bytesInOutput > 0).map(([name]) => name)))]
   return {

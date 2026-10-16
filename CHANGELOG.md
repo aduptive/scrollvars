@@ -8,6 +8,7 @@
 
 - Mark the `Slider` component's `React.forwardRef` call as pure so bundlers can remove the unused component and its engine from selective React imports. The public API and behavior are unchanged. A bundle regression test reproduces the old retention, checks pointer/boot imports without the slider, and verifies that a bundled slider still renders its controls and slides.
 - Generate per-import minified/gzip byte measurements from the final dist, with the bundler version, target and compression settings documented. The measurement includes static shared chunks and excludes lazy debug chunks. These isolated fixtures are not application-route savings or new runtime benchmark results; the recorded 1.16.1 benchmark remains a historical snapshot.
+- Normalize bundle output paths on Windows so size measurements count the same static chunks there; the focused bundle regression tests now run on Windows CI as well as Linux.
 
 ## 1.19.1 (2026-10-01)
 

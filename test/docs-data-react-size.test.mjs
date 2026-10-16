@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { buildSync } from 'esbuild'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 import { measureSizes, measureReactImports } from '../scripts/docs-data.mjs'
 
@@ -49,7 +49,7 @@ test('consumer measurement counts static shared chunks and excludes lazy code', 
     entryPoints: [join(fixture, 'dist/react/index.js')], bundle: true, minify: true,
     splitting: true, format: 'esm', outdir: join(fixture, 'out'), write: false,
   })
-  const staticFiles = outputFiles.filter(file => !file.path.includes('/lazy-'))
+  const staticFiles = outputFiles.filter(file => !basename(file.path).startsWith('lazy-'))
   assert.equal(staticFiles.length, 2, 'fixture must actually produce a static shared chunk')
   assert.equal(sizes.minBytes, staticFiles.reduce((sum, file) => sum + file.contents.length, 0))
   assert.equal(sizes.gzipBytes, staticFiles.reduce((sum, file) => sum + gzipSync(file.contents, { level: 9 }).length, 0))
