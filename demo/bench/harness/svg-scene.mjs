@@ -15,6 +15,8 @@ const repo = fileURLToPath(new URL('../../../', import.meta.url))
 const recipe = join(repo, 'demo/recipes/svg-scene')
 const out = resolve(process.env.SCENE_RESULTS || join(repo, 'node_modules/.cache/svg-scene'))
 mkdirSync(out, { recursive: true })
+const selectedBrowser = process.argv.find(arg => arg.startsWith('--browser='))?.slice(10)
+if (selectedBrowser && !['chromium', 'firefox', 'webkit'].includes(selectedBrowser)) throw Error('Unknown browser: ' + selectedBrowser)
 const modes = ['css', 'direct', 'native'], bundles = {}, sizes = {}
 for (const mode of modes) {
   const result = await build({ entryPoints: [join(repo, 'demo/bench/harness/fixtures/svg-scene/controls.mjs')],
@@ -80,6 +82,7 @@ if (process.argv.includes('--serve')) {
   const save = () => writeFileSync(join(out, 'results.json'), JSON.stringify(report, null, 2) + '\n')
   try {
     for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
+      if (selectedBrowser && name !== selectedBrowser) continue
       const browser = await engine.launch({ headless: true })
       try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
