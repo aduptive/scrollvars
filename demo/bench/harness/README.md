@@ -1906,3 +1906,12 @@ transforms before timing and keeps lifecycle behavior shared across variants.
 Use `--gates` for browser checks only or `--serve` for the local preview.
 See [the recipe and methodology](../../recipes/svg-scene/README.md). Mobile CPU
 throttling is simulation; it is not a substitute for testing a physical phone.
+
+## Rail callback comparison
+
+`node demo/bench/harness/rail-cost.mjs` compares the gallery's five-card rail
+markup using its inherited pin clock and a direct numeric callback. Both use
+the shipped stylesheet and the same authored height. Use `--gates` for geometry
+and fallback checks only; `--browser=chromium|firefox|webkit` selects one engine.
+See [results and limitations](RAIL-CALLBACK.md). The direct fixture supports the
+default rail start only and does not replace the gallery preset or pin helper.

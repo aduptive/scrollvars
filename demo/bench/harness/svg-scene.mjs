@@ -144,6 +144,16 @@ if (process.argv.includes('--serve')) {
         assert.deepEqual(errors, [])
         await page.evaluate(() => { document.querySelector('[data-piece]').style.transform = 'scale(0.8)'; sceneDestroy() })
         assert.equal(await page.locator('[data-piece]').first().evaluate(el => el.style.transform), 'scale(0.8)', 'preserve a later author transform')
+        await page.goto(base + '?mode=direct')
+        await sample(page)
+        const authored = await page.evaluate(() => {
+          const el = document.querySelector('[data-piece]'), value = el.style.transform
+          el.style.setProperty('transform', value, 'important')
+          sceneDestroy()
+          return { value, restored: el.style.transform, priority: el.style.getPropertyPriority('transform') }
+        })
+        assert.equal(authored.restored, authored.value)
+        assert.equal(authored.priority, 'important', 'preserve an author priority-only change')
         await page.emulateMedia({ reducedMotion: 'reduce' })
         await page.goto(base + '?mode=direct')
         await page.waitForTimeout(150)

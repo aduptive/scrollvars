@@ -28,12 +28,12 @@ export function mountScene(section, { connect, paint, reduced, onMotion }) {
     if (disposed) return
     disposed = true
     // Attempt all releases, even if a consumer's cleanup throws.
-    let first
+    let first, failed = false
     for (const release of [() => pause(false), () => observer?.disconnect(), () => resize?.disconnect(),
       () => unMotion?.(), () => document.removeEventListener('visibilitychange', sync), () => paint.restore?.()]) {
-      try { release() } catch (error) { first ??= error }
+      try { release() } catch (error) { if (!failed) { first = error; failed = true } }
     }
-    if (first) throw first
+    if (failed) throw first
   }
   try {
     // Unsupported observers leave the complete static artwork and text intact.
@@ -64,7 +64,7 @@ export function paintScene(section) {
     }
   }
   paint.restore = () => groups.forEach((el, i) => {
-    if (el.style.getPropertyValue('transform') !== last[i]) return
+    if (el.style.getPropertyValue('transform') !== last[i] || el.style.getPropertyPriority('transform')) return
     const [value, priority] = saved[i]
     if (value) el.style.setProperty('transform', value, priority)
     else el.style.removeProperty('transform')

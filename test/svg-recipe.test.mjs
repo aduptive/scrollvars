@@ -38,7 +38,7 @@ test('SVG recipe wakes on motion changes and ignores callbacks from a released c
 })
 
 test('SVG recipe attempts every cleanup when the input release throws', () => {
-  const e = env(), error = Error('release failed')
+  const e = env(), error = 0 // A falsy thrown value must still be propagated.
   let restored = false, unsubscribed = false
   const paint = () => {}; paint.restore = () => { restored = true }
   try {
