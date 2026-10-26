@@ -2623,7 +2623,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.2&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.3&nbsp;KB minified,
 <strong>3.7&nbsp;KB gzipped, ~11× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -4395,9 +4395,19 @@ var SV = (() => {
         const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
         set(el, `style:${key}`, read, (saved, current) => {
           const v = saved.slice(1);
-          if (current[0] === "1" && saved[0] === "0")
-            el.style.removeProperty?.(key);
-          if (v)
+          if (v && current[0] === "1" && saved[0] === "0") {
+            try {
+              el.style.removeProperty?.(key);
+              el.style.setProperty(key, v, "");
+            } catch (error) {
+              try {
+                if (!el.style.getPropertyValue?.(key))
+                  el.style.setProperty(key, current.slice(1), "important");
+              } catch {
+              }
+              throw error;
+            }
+          } else if (v)
             el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
           else
             el.style.removeProperty?.(key);
@@ -6146,9 +6156,19 @@ function ownership() {
       const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
       set(el, `style:${key}`, read, (saved, current) => {
         const v = saved.slice(1);
-        if (current[0] === "1" && saved[0] === "0")
-          el.style.removeProperty?.(key);
-        if (v)
+        if (v && current[0] === "1" && saved[0] === "0") {
+          try {
+            el.style.removeProperty?.(key);
+            el.style.setProperty(key, v, "");
+          } catch (error) {
+            try {
+              if (!el.style.getPropertyValue?.(key))
+                el.style.setProperty(key, current.slice(1), "important");
+            } catch {
+            }
+            throw error;
+          }
+        } else if (v)
           el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
         else
           el.style.removeProperty?.(key);
@@ -6913,9 +6933,19 @@ function ownership() {
       const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
       set(el, `style:${key}`, read, (saved, current) => {
         const v = saved.slice(1);
-        if (current[0] === "1" && saved[0] === "0")
-          el.style.removeProperty?.(key);
-        if (v)
+        if (v && current[0] === "1" && saved[0] === "0") {
+          try {
+            el.style.removeProperty?.(key);
+            el.style.setProperty(key, v, "");
+          } catch (error) {
+            try {
+              if (!el.style.getPropertyValue?.(key))
+                el.style.setProperty(key, current.slice(1), "important");
+            } catch {
+            }
+            throw error;
+          }
+        } else if (v)
           el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
         else
           el.style.removeProperty?.(key);
@@ -7538,9 +7568,19 @@ function ownership() {
       const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
       set(el, `style:${key}`, read, (saved, current) => {
         const v = saved.slice(1);
-        if (current[0] === "1" && saved[0] === "0")
-          el.style.removeProperty?.(key);
-        if (v)
+        if (v && current[0] === "1" && saved[0] === "0") {
+          try {
+            el.style.removeProperty?.(key);
+            el.style.setProperty(key, v, "");
+          } catch (error) {
+            try {
+              if (!el.style.getPropertyValue?.(key))
+                el.style.setProperty(key, current.slice(1), "important");
+            } catch {
+            }
+            throw error;
+          }
+        } else if (v)
           el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
         else
           el.style.removeProperty?.(key);

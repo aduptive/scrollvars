@@ -83,8 +83,16 @@ export function ownership() {
       set(el, `style:${key}`, read, (saved, current) => {
         const v = saved.slice(1)
         // WebKit may ignore a normal write over an important custom property.
-        if (current[0] === '1' && saved[0] === '0') el.style.removeProperty?.(key)
-        if (v) el.style.setProperty(key, v, saved[0] === '1' ? 'important' : '')
+        if (v && current[0] === '1' && saved[0] === '0') {
+          try {
+            el.style.removeProperty?.(key)
+            el.style.setProperty(key, v, '')
+          } catch (error) {
+            // A failed replacement must not discard the declaration we removed.
+            try { if (!el.style.getPropertyValue?.(key)) el.style.setProperty(key, current.slice(1), 'important') } catch { /* retain the original error */ }
+            throw error
+          }
+        } else if (v) el.style.setProperty(key, v, saved[0] === '1' ? 'important' : '')
         else el.style.removeProperty?.(key)
       }, (priority ? '1' : '0') + value)
     },

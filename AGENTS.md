@@ -81,9 +81,9 @@ Isolated consumer bundles of ScrollVars 1.19.3, esbuild 0.25.12, browser ESM/ES2
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3818 | 1790 |
-| `ScrollVarsBoot` | 31061 | 10775 |
-| `Slider, Slide` | 16133 | 6449 |
+| `usePointer` | 3965 | 1830 |
+| `ScrollVarsBoot` | 31208 | 10807 |
+| `Slider, Slide` | 16280 | 6482 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->

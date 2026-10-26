@@ -3,6 +3,23 @@ import { test } from 'node:test'
 import { ownership } from '../dist/core/lifetime.js'
 import { lifecycleEnv } from './lifecycle-fixture.mjs'
 
+test('style ownership rolls back an important declaration when its replacement throws', () => {
+  const env = lifecycleEnv()
+  try {
+    const el = env.element(), owned = ownership(), set = el.style.setProperty
+    const error = Error('replacement failed')
+    el.style.setProperty('--x', 'author', 'important')
+    el.style.setProperty = (key, value, priority = '') => {
+      if (!priority) throw error
+      set(key, value, priority)
+    }
+    assert.throws(() => owned.style(el, '--x', '0.5'), e => e === error)
+    owned.restore()
+    assert.equal(el.style.getPropertyValue('--x'), 'author')
+    assert.equal(el.style.getPropertyPriority('--x'), 'important')
+  } finally { env.restore() }
+})
+
 test('style ownership restores priorities when CSSOM requires removal before demotion', () => {
   const env = lifecycleEnv()
   try {
