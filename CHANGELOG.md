@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Read the effective motion preference directly in `prefersReducedMotion()` and scene navigation. A subscriber registered before the scroll driver now sees the new OS preference during notification, so custom renderers can pause and resume without another scroll or resize.
+
+### Added
+
+- Tested SVG callback recipe and reproducible SVG/rail output comparisons, with explicit lifecycle, accessibility fallbacks and measurement limits.
+
 ## 1.19.3 (2026-10-26)
 
 ### Changed

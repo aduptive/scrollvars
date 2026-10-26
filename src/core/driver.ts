@@ -116,16 +116,6 @@ let culler: IntersectionObserver | null = null
 let initialized = false
 let reducedMotion = false
 
-/** Reads whether the user prefers reduced motion. Once init() has run, the
- * change listener wired below keeps `reducedMotion` in sync and this just
- * returns it. Before the first track(), nothing has installed that listener
- * yet, so a caller asking early (prefersReducedMotion(), scrollToScene())
- * would otherwise see the stale `false` default: query the media list
- * directly in that window instead. */
-function getReducedMotion(): boolean {
-  return initialized ? reducedMotion : effectiveReduce()
-}
-
 // Internal scanner handshake; not re-exported by the package entry point.
 export function init(): boolean {
   if (bootReleased()) return false
@@ -1400,7 +1390,7 @@ export function scrollToScene(
   const offset = (clamp(index, 0, count - 1) / (count - 1)) * span - pinOffset + origin
   // reduced motion outranks the caller's `smooth`, the same way the slider's
   // glide falls back to a jump: a scene jump is navigation, not decoration
-  const behavior: ScrollBehavior = smooth && !getReducedMotion() ? 'smooth' : 'instant'
+  const behavior: ScrollBehavior = smooth && !effectiveReduce() ? 'smooth' : 'instant'
   if (root) {
     // same origin update() measures against: the root's border-box top plus
     // clientTop, not the bare bounding rect
@@ -1414,5 +1404,6 @@ export function scrollToScene(
 }
 
 export function prefersReducedMotion() {
-  return getReducedMotion()
+  // A consumer may subscribe before init() and run before our cached value updates.
+  return effectiveReduce()
 }

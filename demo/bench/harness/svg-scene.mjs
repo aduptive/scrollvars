@@ -105,6 +105,17 @@ if (process.argv.includes('--serve')) {
           await page.evaluate(() => document.documentElement.removeAttribute('data-sv-motion'))
           await page.waitForTimeout(150)
           assert.equal(await page.locator('[data-running]').count(), 1, 'motion change wakes without a scroll event')
+          // Keep the section size fixed so ResizeObserver cannot mask a stale preference read.
+          await page.evaluate(() => {
+            const section = document.querySelector('.scene')
+            section.style.height = section.getBoundingClientRect().height + 'px'
+          })
+          await page.emulateMedia({ reducedMotion: 'reduce' })
+          await page.waitForFunction(() => !document.querySelector('.scene').hasAttribute('data-running'))
+          await page.emulateMedia({ reducedMotion: 'no-preference' })
+          await page.waitForFunction(() => document.querySelector('.scene').hasAttribute('data-running'))
+          await page.evaluate(() => { document.querySelector('.scene').style.height = '' })
+          compare(expected, await sample(page))
           await page.setViewportSize({ width: 390, height: 844 })
           const mobile = await sample(page)
           expectedMobile ??= mobile

@@ -10,18 +10,18 @@ Apple M2 Max / 32 GB / macOS 26.6.2, 155.0.8059.85. Six alternating pairs per pr
 
 |Width|Extra descendants/card|Mode|Task ms|Script ms|Style ms|Task range ms|
 |---:|---:|---|---:|---:|---:|---:|
-|1280|0|css|154.9|18.6|45.2|107.1–167.3|
-|1280|0|direct|120.1|19.3|12.2|97.4–134.8|
-|1280|50|css|158.6|13.1|72.7|88.3–210.5|
-|1280|50|direct|120.6|17.8|10.8|64.2–158.7|
-|390|0|css|162.4|14.9|41.6|156.4–181.7|
-|390|0|direct|121.0|14.0|10.4|75.5–163.1|
-|390|50|css|228.4|12.5|97.9|217.6–339.2|
-|390|50|direct|169.0|15.6|10.8|141.5–211.9|
+|1280|0|css|62.0|7.6|16.9|50.3–81.6|
+|1280|0|direct|46.9|7.6|4.4|44.3–52.7|
+|1280|50|css|108.4|8.4|52.5|72.9–131.6|
+|1280|50|direct|58.1|8.4|4.9|37.5–72.4|
+|390|0|css|134.1|11.3|36.7|118.1–171.7|
+|390|0|direct|92.9|9.9|6.4|78.8–109.5|
+|390|50|css|248.9|14.8|93.4|194.9–387.7|
+|390|50|direct|136.4|13.4|9.0|112.7–245.3|
 
-With the five original cards, direct reduces median style cost by 72.9% desktop / 75.0% simulated mobile, and task time by 22.4% / 25.5%. The stress profile reduces median task time by 24.0% / 26.0%. No measured interval exceeded 25 ms; all runs delivered 179 measured intervals and no FPS gain is established. Individual task samples are noisy, so use repeated real-consumer measurements before making a default choice.
+With the five original cards, direct reduces median style cost by 74.1% desktop / 82.4% simulated mobile, and task time by 24.4% / 30.7%. The stress profile reduces median task time by 46.4% / 45.2%. No measured interval exceeded 25 ms; all runs delivered 179 measured intervals and no FPS gain is established. Individual task samples are noisy, so use repeated real-consumer measurements before making a default choice.
 
-Gzip: CSS entry 5888 bytes; direct entry 6079 bytes. The direct option costs more code and requires measurement/invalidation and motion cleanup. Both entries include ScrollVars. This is a runtime-cost experiment, not an npm/bundle reduction.
+Gzip: CSS entry 5889 bytes; direct entry 6067 bytes. The direct option costs more code and requires measurement/invalidation and motion cleanup. Both entries include ScrollVars. This is a runtime-cost experiment, not an npm/bundle reduction.
 
 Chromium, Firefox and WebKit gates pass at both widths and densities: initial/intermediate/end/reverse movement, last-card reachability, viewport resize, a 64px sticky offset, reduced motion and restoration, and idempotent teardown. The source and bundle hashes and every run are in [raw results](results/rail-callback/2026-10-26.json).
 

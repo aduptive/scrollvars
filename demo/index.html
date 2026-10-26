@@ -3371,9 +3371,6 @@ var SV = (() => {
   var culler = null;
   var initialized = false;
   var reducedMotion2 = false;
-  function getReducedMotion() {
-    return initialized ? reducedMotion2 : reducedMotion();
-  }
   function init() {
     if (bootReleased())
       return false;
@@ -4259,7 +4256,7 @@ var SV = (() => {
     const origin = readStageOrigin(el, stage);
     const span = pinSpan(rect.height, vp, pinOffset, stage?.offsetHeight, origin);
     const offset = clamp(index, 0, count - 1) / (count - 1) * span - pinOffset + origin;
-    const behavior = smooth && !getReducedMotion() ? "smooth" : "instant";
+    const behavior = smooth && !reducedMotion() ? "smooth" : "instant";
     if (root) {
       root.scrollTo({
         top: root.scrollTop + rect.top - root.getBoundingClientRect().top - root.clientTop + offset,
@@ -4270,7 +4267,7 @@ var SV = (() => {
     }
   }
   function prefersReducedMotion() {
-    return getReducedMotion();
+    return reducedMotion();
   }
 
   // dist/core/lifetime.js
