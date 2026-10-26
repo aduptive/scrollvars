@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.19.3 (2026-10-26)
+
+### Changed
+
+- Keep the changelog, contributor documentation and full guides in the repository rather than the npm archive. README links point to the repository; runtime modules, types, public stylesheets, CLI and its version-matched agent guidance remain installed. This reduces package download and installation size, not browser JavaScript or animation CPU cost.
+- Document standalone slider imports and guard their bundles against retaining unrelated scroll, pointer or canvas engines.
+- Strip implementation comments from distributed JavaScript while preserving tree-shaking annotations, client directives and declaration JSDoc. Source comments remain in the repository; this reduces npm archive size rather than animation CPU cost.
+- Reuse React Slider's annotated children during internal navigation and pause updates, while refreshing annotations when children change. Child-owned state remains live.
+- Avoid JSON serialization in shared style ownership bookkeeping, preserving CSS priorities, later author edits and teardown restoration. Browser A/B checks show lower script time in the tested slider workloads; this does not change the scroll driver's inherited-variable style cost or establish a general FPS improvement.
+- Clarify custom SVG/DOM integration using callback-only scroll, motion-preference subscriptions, demand-driven rendering and explicit cleanup in the guide and distributed agent instructions.
+
+### Fixed
+
+- Restore owned styles correctly in WebKit when changing an inline custom property from important to normal priority. Remove the old declaration before demoting it, using the value already read for ownership bookkeeping.
 
 ## 1.19.2 (2026-10-16)
 

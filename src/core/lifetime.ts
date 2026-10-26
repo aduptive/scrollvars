@@ -46,9 +46,9 @@ export function lifetime() {
 
 /** Restore only our last write. A later author write becomes the new baseline. */
 export function ownership() {
-  type Write = { read: () => unknown; write: (value: any) => void; before: unknown; last: unknown }
+  type Write = { read: () => unknown; write: (value: any, current: any) => void; before: unknown; last: unknown }
   const nodes = new Map<object, Map<string, Write>>()
-  const set = <T>(node: object, key: string, read: () => T, write: (v: T) => void, value: T) => {
+  const set = <T>(node: object, key: string, read: () => T, write: (v: T, current: T) => void, value: T) => {
     let entries = nodes.get(node)
     if (!entries) nodes.set(node, entries = new Map())
     let entry = entries.get(key)
@@ -56,7 +56,7 @@ export function ownership() {
     if (!entry) entries.set(key, entry = { read, write, before: current, last: value })
     else if (current !== entry.last) entry.before = current
     entry.last = value
-    write(value)
+    write(value, current)
   }
   const restore = (node?: object, key?: string) => {
     let first: unknown, failed = false
@@ -65,7 +65,10 @@ export function ownership() {
       entries.forEach((entry, name) => {
         if (key && name !== key) return
         entries.delete(name)
-        try { if (entry.read() === entry.last) entry.write(entry.before) }
+        try {
+          const current = entry.read()
+          if (current === entry.last) entry.write(entry.before, current)
+        }
         catch (error) { if (!failed) { failed = true; first = error } }
       })
       if (!entries.size) nodes.delete(target)
@@ -75,12 +78,23 @@ export function ownership() {
   return {
     restore,
     style(el: HTMLElement, key: string, value: string, priority = '') {
-      const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? ''])
-      set(el, `style:${key}`, read, (saved) => {
-        const [v, p] = JSON.parse(saved)
-        if (v) el.style.setProperty(key, v, p)
+      // CSSOM priorities are either empty or important; keep the value verbatim.
+      const read = () => (el.style.getPropertyPriority?.(key) ? '1' : '0') + (el.style.getPropertyValue?.(key) ?? '')
+      set(el, `style:${key}`, read, (saved, current) => {
+        const v = saved.slice(1)
+        // WebKit may ignore a normal write over an important custom property.
+        if (v && current[0] === '1' && saved[0] === '0') {
+          try {
+            el.style.removeProperty?.(key)
+            el.style.setProperty(key, v, '')
+          } catch (error) {
+            // A failed replacement must not discard the declaration we removed.
+            try { if (!el.style.getPropertyValue?.(key)) el.style.setProperty(key, current.slice(1), 'important') } catch { /* retain the original error */ }
+            throw error
+          }
+        } else if (v) el.style.setProperty(key, v, saved[0] === '1' ? 'important' : '')
         else el.style.removeProperty?.(key)
-      }, JSON.stringify([value, priority]))
+      }, (priority ? '1' : '0') + value)
     },
     class(el: HTMLElement, key: string, value: boolean) {
       set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false,

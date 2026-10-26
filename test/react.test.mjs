@@ -71,6 +71,41 @@ test('react: default and custom dots expose the current slide after navigation',
   }
 })
 
+test('react: Slider reuses unchanged slides while allowing child state and replacement', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  let renders = 0, updateChild
+  function Card(props) {
+    renders++
+    const [value, setValue] = React.useState('initial')
+    updateChild = setValue
+    return React.createElement('div', props, value)
+  }
+  const container = document.createElement('div'), root = createRoot(container)
+  const children = [React.createElement(Card, { key: 'a' }), React.createElement('div', { key: 'b' }, 'two')]
+  await React.act(async () => root.render(React.createElement(Slider, { dots: true }, children)))
+  try {
+    const rail = container.firstChild.children.find(c => c.classes.has('sv-slider'))
+    rail.clientWidth = 100; rail.scrollWidth = 200; rail.offsetLeft = 0
+    rail.children.forEach((slide, i) => { slide.offsetLeft = i * 100; slide.offsetWidth = 100; slide.offsetParent = rail })
+    const mounted = renders
+    for (let i = 1; i <= 20; i++) {
+      rail.scrollLeft = (i % 2) * 100
+      await React.act(async () => { rail._listeners.scroll[0](); flushFrames() })
+    }
+    assert.equal(renders, mounted, 'navigation does not re-render an unchanged custom slide')
+    await React.act(async () => updateChild('edited'))
+    assert.equal(rail.children[0].textContent, 'edited', 'memoization does not freeze child state')
+    await React.act(async () => root.render(React.createElement(Slider, { dots: true },
+      ...children, React.createElement('div', { key: 'c' }, 'three'))))
+    assert.equal(rail.children[0].getAttribute('aria-label'), '1 of 3')
+    assert.equal(rail.children[2].getAttribute('aria-label'), '3 of 3')
+    assert.equal(container.firstChild.children.find(c => c.classes.has('sv-dots')).children.length, 3)
+  } finally { await React.act(async () => root.unmount()) }
+})
+
 test('react: Slider announces the active slide in a status region outside the rail (N1)', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default

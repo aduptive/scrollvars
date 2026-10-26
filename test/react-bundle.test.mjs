@@ -12,13 +12,19 @@ import { measureReactImports } from '../scripts/docs-data.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 let baseline
+test('distribution processing preserves client boundaries and editor documentation', () => {
+  assert.match(readFileSync(join(root, 'dist/react/index.js'), 'utf8'), /^['"]use client['"];?/)
+  assert.match(readFileSync(join(root, 'dist/canvas/index.d.ts'), 'utf8'), /\/\*\* Canvas size in CSS pixels/)
+})
+
 before(() => {
   baseline = mkdtempSync(join(tmpdir(), 'sv-unannotated-'))
   cpSync(join(root, 'dist'), join(baseline, 'dist'), { recursive: true })
   cpSync(join(root, 'package.json'), join(baseline, 'package.json'))
   const path = join(baseline, 'dist/react/index.js'), source = readFileSync(path, 'utf8')
-  assert.match(source, /Slider = \/\*#__PURE__\*\/ React\.forwardRef/)
-  writeFileSync(path, source.replace('Slider = /*#__PURE__*/ React.forwardRef', 'Slider = React.forwardRef'))
+  const annotation = /Slider = \/\*\s*[@#]__PURE__\s*\*\/ React\.forwardRef/
+  assert.match(source, annotation)
+  writeFileSync(path, source.replace(annotation, 'Slider = React.forwardRef'))
 })
 after(() => { if (baseline) rmSync(baseline, { recursive: true, force: true }) })
 const retainsSlider = report => report.inputs.some(path => path.endsWith('core/slider.js'))
@@ -41,6 +47,16 @@ test('React bundle: a consumer that uses Slider still retains it', () => {
   assert.equal(fixed.minBytes, before.minBytes)
   assert.ok(Math.abs(fixed.gzipBytes - before.gzipBytes) <= 1)
 })
+
+for (const [module, names] of [['index', 'slider'], ['react/index', 'useSlider'], ['react/index', 'Slider, Slide']]) {
+  test(`Slider-only bundle: ${names} excludes unrelated engines`, () => {
+    const report = measureReactImports(root, `export { ${names} } from './dist/${module}.js'`)
+    assert.equal(retainsSlider(report), true)
+    for (const path of ['core/driver.js', 'core/scan.js', 'core/pointer.js', 'core/toggles.js', 'core/split.js', 'canvas/index.js', 'debug/index.js']) {
+      assert.equal(report.inputs.some(input => input.endsWith(path)), false, path)
+    }
+  })
+}
 
 test('React bundle: a bundled Slider still server renders its actual slides and controls', () => {
   const { outputFiles } = buildSync({

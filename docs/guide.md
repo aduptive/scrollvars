@@ -194,9 +194,9 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | `track` + `scan` (zero-wrapper mode) | 8.0 KB |
 | `slider` | 3.7 KB |
 | `trackPointer` | 1.4 KB |
-| `mountEffect` (canvas) | 2.7 KB |
+| `mountEffect` (canvas) | 2.8 KB |
 | everything in `scrollvars` (the core entry) | 12.9 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.8 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 18.9 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -434,13 +434,13 @@ export function ProductStory() {
 ## The component kit (React)
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.19.2, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.19.3, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3750 | 1765 |
-| `ScrollVarsBoot` | 30993 | 10755 |
-| `Slider, Slide` | 15995 | 6398 |
+| `usePointer` | 3965 | 1830 |
+| `ScrollVarsBoot` | 31208 | 10807 |
+| `Slider, Slide` | 16280 | 6482 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->
@@ -983,6 +983,20 @@ same with the sheet as without, and the three-engine CI job checks both on
 every run. It is deliberately not part of `styles.css`.
 
 CI also checks isolated packed-tarball consumers on React 18 and 19 in Chromium, Firefox and WebKit; the release gate publishes that tested tarball with provenance.
+
+## Custom SVG and DOM renderers
+
+Keep scene geometry and drawing local to the component. Use
+`track(element, { view: false, onTravel })` to receive numeric progress without
+publishing continuous view/travel CSS variables; discrete live/status updates
+remain. Avoid reading computed CSS every frame just to recover a number.
+
+Read `prefersReducedMotion()` on setup and subscribe with `onMotionChange()`.
+A renderer that stops requesting frames when settled must wake on preference
+changes too, even when the user does not scroll. Release both subscriptions on
+teardown, define hidden-tab/offscreen/zero-area behavior, and keep essential text
+and navigation accessible independently of decorative graphics. The canvas
+harness is for actual canvases; SVG does not need a dummy canvas to use ScrollVars.
 
 ## Accessibility
 

@@ -77,13 +77,13 @@ import 'scrollvars/styles/core.css'               // entrances, stagger, drift, 
 ```
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.19.2, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.19.3, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3750 | 1765 |
-| `ScrollVarsBoot` | 30993 | 10755 |
-| `Slider, Slide` | 15995 | 6398 |
+| `usePointer` | 3965 | 1830 |
+| `ScrollVarsBoot` | 31208 | 10807 |
+| `Slider, Slide` | 16280 | 6482 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->
@@ -358,6 +358,7 @@ animations where supported.
    a specific moving element repainting every frame, scope it to that
    element, and remove it (`will-change: auto`) once the motion stops.
 7. Deliberate exceptions inside the kit: `sv-tilt` transitions a pointer-driven transform (small, damped), `sv-counter` rewrites generated text, Accordion animates block-size. Each is local and opt-in; do not generalize them.
+8. For a custom SVG/DOM renderer, keep input, geometry and drawing separate where needed. Feed numeric progress with `track(el, { view: false, onTravel })` instead of reading computed CSS every frame: this emits neither continuous view nor travel variables, but discrete live/status updates remain. Read `prefersReducedMotion()` initially, subscribe with `onMotionChange()` and wake a sleeping renderer when the preference changes. Unsubscribe and release tracking on teardown. A renderer that settles should stop requesting frames; define hidden-tab, offscreen and zero-area behavior explicitly. Keep essential text and links outside decorative graphics. Use `mountEffect` for a real canvas, not a dummy canvas around an SVG scene.
 
 ## Browser support (tell clients this)
 
