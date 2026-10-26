@@ -77,3 +77,28 @@ test('motion: prefersReducedMotion() from the driver reports the effective prefe
   assert.equal(prefersReducedMotion(), true)
   setMotion('auto')
 })
+
+test('motion: an early subscriber reads the new OS preference before the driver listener runs', async () => {
+  const { media } = setup()
+  const savedResize = globalThis.ResizeObserver, savedRaf = globalThis.requestAnimationFrame
+  globalThis.ResizeObserver = class { observe() {} disconnect() {} }
+  globalThis.requestAnimationFrame = () => 1
+  window.innerHeight = 800
+  window.addEventListener = () => {}
+  document.documentElement.classList = { add() {} }
+  const { onMotionChange } = await import('../dist/core/motion.js')
+  const { init, prefersReducedMotion } = await import('../dist/core/driver.js?early-motion-reader')
+  const seen = [], off = onMotionChange(value => seen.push([value, prefersReducedMotion()]))
+  try {
+    assert.equal(init(), true)
+    for (const value of [true, false]) {
+      media.matches = value
+      media.handlers.forEach(fn => fn({ matches: value }))
+    }
+    assert.deepEqual(seen, [[true, true], [false, false]])
+  } finally {
+    off()
+    globalThis.ResizeObserver = savedResize
+    globalThis.requestAnimationFrame = savedRaf
+  }
+})

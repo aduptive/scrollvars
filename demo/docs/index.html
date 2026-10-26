@@ -291,6 +291,20 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
+<h3>Unreleased</h3>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Read the effective motion preference directly in <code>prefersReducedMotion()</code> and scene navigation. A subscriber registered before the scroll driver now sees the new OS preference during notification, so custom renderers can pause and resume without another scroll or resize.</li>
+</ul>
+
+<h4>Added</h4>
+
+<ul>
+<li>Tested SVG callback recipe and reproducible SVG/rail output comparisons, with explicit lifecycle, accessibility fallbacks and measurement limits.</li>
+</ul>
+
 <h3>1.19.3 (2026-10-26)</h3>
 
 <h4>Changed</h4>

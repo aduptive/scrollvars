@@ -1896,3 +1896,22 @@ tabs all move these numbers meaningfully; record the device/OS and whatever
 else was running alongside a result before treating it as comparable to a
 past one. These are not stamped anywhere in README or the site: the lab is
 for hand-run spot checks, not a published claim.
+
+## SVG renderer comparison
+
+`node demo/bench/harness/svg-scene.mjs` compares the same SVG scene through an
+inherited ScrollVars clock, a numeric ScrollVars callback writing transforms,
+and a specialized native scroll controller. It requires matching rendered
+transforms before timing and keeps lifecycle behavior shared across variants.
+Use `--gates` for browser checks only or `--serve` for the local preview.
+See [the recipe and methodology](../../recipes/svg-scene/README.md). Mobile CPU
+throttling is simulation; it is not a substitute for testing a physical phone.
+
+## Rail callback comparison
+
+`node demo/bench/harness/rail-cost.mjs` compares the gallery's five-card rail
+markup using its inherited pin clock and a direct numeric callback. Both use
+the shipped stylesheet and the same authored height. Use `--gates` for geometry
+and fallback checks only; `--browser=chromium|firefox|webkit` selects one engine.
+See [results and limitations](RAIL-CALLBACK.md). The direct fixture supports the
+default rail start only and does not replace the gallery preset or pin helper.
