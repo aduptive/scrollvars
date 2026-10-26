@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { buildSync } from 'esbuild'
 import { gzipSync } from 'node:zlib'
@@ -38,16 +38,20 @@ test('measureSizes().react is a plausible static consumer graph size', () => {
 })
 
 test('consumer measurement counts static shared chunks and excludes lazy code', t => {
-  const fixture = mkdtempSync(join(tmpdir(), 'sv-shared-size-'))
+  const fixture = realpathSync(mkdtempSync(join(tmpdir(), 'sv-shared-size-')))
   t.after(() => rmSync(fixture, { recursive: true, force: true }))
   mkdirSync(join(fixture, 'dist/react'), { recursive: true })
   writeFileSync(join(fixture, 'dist/react/index.js'), "export { shared } from '../shared.js'; export const load = () => import('../lazy.js')")
   writeFileSync(join(fixture, 'dist/shared.js'), 'export const shared = value => Math.sin(value) + Math.cos(value)')
   writeFileSync(join(fixture, 'dist/lazy.js'), "import { shared } from './shared.js'; export const debug = () => shared(42)")
   const sizes = measureReactImports(fixture, "export * from './dist/react/index.js'")
+  // Compare identical entry/output paths: chunk hashes also affect gzip size.
   const { outputFiles } = buildSync({
-    entryPoints: [join(fixture, 'dist/react/index.js')], bundle: true, minify: true,
-    splitting: true, format: 'esm', outdir: join(fixture, 'out'), write: false,
+    absWorkingDir: fixture,
+    stdin: { contents: "export * from './dist/react/index.js'", resolveDir: fixture, sourcefile: 'docs-import.js' },
+    bundle: true, minify: true, treeShaking: true, platform: 'browser', target: 'es2020',
+    splitting: true, format: 'esm', outdir: join(fixture, 'dist/.docs-data-split'), write: false,
+    external: ['react', 'react-dom'],
   })
   const staticFiles = outputFiles.filter(file => !basename(file.path).startsWith('lazy-'))
   assert.equal(staticFiles.length, 2, 'fixture must actually produce a static shared chunk')

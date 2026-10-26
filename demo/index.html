@@ -2623,7 +2623,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.1&nbsp;KB minified,
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.2&nbsp;KB minified,
 <strong>3.7&nbsp;KB gzipped, ~11× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
@@ -3139,7 +3139,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.9 KB · v1.19.2 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.9 KB · v1.19.3 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -4361,7 +4361,7 @@ var SV = (() => {
       else if (current !== entry.last)
         entry.before = current;
       entry.last = value;
-      write(value);
+      write(value, current);
     };
     const restore = (node, key) => {
       let first, failed = false;
@@ -4373,8 +4373,9 @@ var SV = (() => {
             return;
           entries2.delete(name);
           try {
-            if (entry.read() === entry.last)
-              entry.write(entry.before);
+            const current = entry.read();
+            if (current === entry.last)
+              entry.write(entry.before, current);
           } catch (error) {
             if (!failed) {
               failed = true;
@@ -4391,14 +4392,16 @@ var SV = (() => {
     return {
       restore,
       style(el, key, value, priority = "") {
-        const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? "", el.style.getPropertyPriority?.(key) ?? ""]);
-        set(el, `style:${key}`, read, (saved) => {
-          const [v, p] = JSON.parse(saved);
+        const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
+        set(el, `style:${key}`, read, (saved, current) => {
+          const v = saved.slice(1);
+          if (current[0] === "1" && saved[0] === "0")
+            el.style.removeProperty?.(key);
           if (v)
-            el.style.setProperty(key, v, p);
+            el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
           else
             el.style.removeProperty?.(key);
-        }, JSON.stringify([value, priority]));
+        }, (priority ? "1" : "0") + value);
       },
       class(el, key, value) {
         set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, (v) => {
@@ -6021,942 +6024,476 @@ var SV = (() => {
 
   /* ═══════ scrollvars/canvas harness, inlined from the built dist, verbatim ═══════ */
   var mountEffect = (function () {
-/**
- * Canvas effect harness: the lifecycle chassis every ambient canvas effect
- * repeats: mount, resize, DPR cap, delta-time rAF loop, pause when offscreen
- * or the tab is hidden, reduced-motion flag, full cleanup.
- *
- * The simulation itself stays yours: `setup` builds state, `frame` advances
- * one step. The harness never touches what you draw. Feed it scroll/pointer
- * values from the driver (`--sv-t`, `--mx`…) via your own closure. The two
- * modules stay decoupled.
- *
- * Drawing space is CSS pixels: the context is pre-scaled by DPR, so
- * `fx.width`/`fx.height` match the element's layout size.
- *
- * Give the canvas CSS dimensions. A canvas with none lays out at its own
- * width/height attribute values, read as CSS pixels: that is the whole
- * feedback loop this harness has to stop. applySize() writes
- * `canvas.width = W` / `canvas.height = H` (the backing store) after
- * measuring the CSS size, and on an unsized canvas that write IS the new
- * layout size, so the very next resize would otherwise measure exactly
- * what this write produced and multiply the backing store by the device
- * pixel ratio again, unbounded.
- *
- * (ninth pass) Eight earlier passes (CHANGELOG.md's Canvas section has the
- * history) all tried to catch that loop by MEASURING: an
- * equality guard, a content-box-vs-border-box comparison, a padding
- * subtraction, a ratio with a tolerance, an "echo window" matching a later
- * ResizeObserver entry's `contentRect` against the exact W/H just written,
- * and (eighth pass) a causal probe: bump `canvas.width`/`height` up by one
- * EACH and pin both `style.width` and `style.height` together whenever
- * either axis' `clientWidth`/`clientHeight` responded. That probe was
- * causal, not a coincidence check, but it asked the wrong shape of
- * question, and verifier findings in real Chrome caught two consequences.
- * First, bumping width and height by a flat +1 each perturbs the RATIO
- * between them, not just their size: an ordinary `width: 100%; height:
- * auto` canvas has a height computed from that ratio (no CSS height at
- * all: the auto height derives from the CSS width through the canvas's own
- * intrinsic width/height ratio, i.e. its attribute values), and two
- * independent +1s can cross a rounding boundary and read the height back as
- * "changed" even though the CSS width never moved, so this ordinary,
- * fully-responsive canvas got wrongly pinned. Second, pinning both axes
- * together assumes both need it: a `max-width: 100%` canvas not yet at its
- * cap correctly reads as unsized on width for now, but pinning
- * `style.height` to that moment's value freezes the aspect ratio, so a
- * later container shrink that re-engages the cap on width leaves height
- * stuck at the old number, distorting the box instead of scaling it.
- *
- * The design narrows the question: PROPORTIONAL, and about ONE axis. Right
- * after `applySize()` writes the backing store (`canvas.width = W`,
- * `canvas.height = H`), it tries up to two readings, each an EXACT integer
- * multiple of `W`/`H` so the ratio between them is preserved and an axis
- * derived from that ratio does not move, and ORs the results. GROWING sets
- * `canvas.width = 2 * W`, `canvas.height = 2 * H`, forces one layout read
- * (`canvas.clientWidth`), restores `W`/`H`, and reads `clientWidth` again.
- * SHRINKING does the same with `W / 2`, `H / 2`. If EITHER pair of readings
- * differs, the WIDTH follows the attribute (this canvas is unsized on
- * width, whatever its height does). If NEITHER differs, the width is
- * CSS-sized, whatever its literal source (a percentage, a fixed px value,
- * or itself derived from a fixed CSS height through the intrinsic ratio,
- * the mirror case): nothing about height enters that conclusion, because
- * nothing about height is asked.
- *
- * (tenth pass) The ninth pass used ONLY halving
- * (`canvas.width = Math.floor(W / 2)`), reasoning that a smaller
- * perturbation was gentler. Two verifier findings, both reproduced in real
- * Chrome, caught two flaws.
- *
- * Finding 1: `Math.floor` on a halved value does not preserve the ratio
- * between W and H when they have different parity (one odd, one even), and
- * a fixed-CSS-height, auto-width canvas (the mirror case: the auto width
- * derives from the fixed height through exactly that ratio) can have its
- * floored ratio read back a fraction off the true one, flipping the
- * before/after `clientWidth` comparison across a rounding boundary even
- * though the CSS height never moved. Swept across heights 99-151 and dprs
- * 0.5-2, this false positive hit 27 of 42 combinations, wrongly pinning an
- * ordinary, fully-responsive canvas and then distorting it on the next CSS
- * height change. GROWING has no such flaw: multiplying two integers by the
- * same integer factor preserves their ratio exactly, for any parity, no
- * flooring involved, so it is now the design's first, preferred probe.
- * SHRINKING keeps the same exactness, but only when `Math.floor` has
- * nothing to floor: both `W` and `H` even, an even divisor never actually
- * floors anything dividing by 2. When parity differs, shrinking is skipped
- * and growing alone decides.
- *
- * Finding 2 (why shrinking is still needed, not just growing): a `max-width`
- * cap that is already binding on the just-written, dpr-inflated attribute
- * (a bare `max-width: 400px` with no CSS width at all, natural intrinsic
- * size 300, at a DPR that inflates the backing store past the cap to, say,
- * 600) stays capped whether GROWN further or restored: both readings clamp
- * to the same 400, so growing alone would wrongly read this canvas as
- * CSS-sized (this is the case the eighth pass's bare-cap regression came
- * from). SHRINKING catches it: halving 600 gives 300, still under the cap,
- * revealing the uncapped relationship the cap otherwise hides. Growing is
- * skipped past the browser's own canvas-size limit (past 8192, doubling
- * could itself trip it); when that leaves shrinking as the only available
- * probe, it still requires exact parity, and a giant canvas with an odd
- * dimension on either axis has no safe direction to probe in at all: it is
- * skipped too, treated as already sized (documented limitation, alongside
- * the one below for a canvas with no CSS size on either axis).
- *
- * This is still causal, not a value comparison, because each perturbation
- * IS the harness's own known cause: double or halve the attributes, exactly
- * here, exactly now, and read the one response that can only follow from
- * THAT write, not from anything else happening on the page. There is no
- * value to coincide with and no window to land inside, so a genuine resize
- * landing on any size at any time, including the exact size the harness
- * itself just wrote, produces no response to the probe's own perturbation
- * and is never mistaken for one. `clientWidth` includes padding, excludes
- * border, and is never affected by a CSS `transform` (applied after
- * layout), so the probe is unaffected by border, padding (whole or
- * fractional), a transform on the canvas itself, or which way the device
- * pixel ratio moved the backing store: above 1, below 1, or exactly 1.
- *
- * (eleventh pass) The tenth pass fixed WHICH probe to trust (growing over
- * halving) but not WHEN it ran or what a canvas's write derived its own
- * numbers from. Two more verifier findings, both reproduced in real Chrome,
- * showed both still mattered.
- *
- * Finding 1: the tenth pass's probe ran AFTER `writeBackingStore()`, and
- * every pass rounded W and H independently from whatever the LAST pass had
- * already produced. A mirror-case canvas (a fixed CSS height, auto width)
- * has its free width computed by the CSS engine from that fixed height
- * through the intrinsic ratio, but that ratio IS this harness's own
- * backing-store attributes, and rounding W and H independently nudges that
- * ratio a fraction every pass, which nudges the next pass's measured width
- * a fraction, which gets rounded again: the error compounded instead of
- * settling. Swept at dpr 0.5 this took 51 to 77 ResizeObserver passes to
- * reach a WRONG fixed point (a square box instead of the true 2:1 one), and
- * at dpr 0.8 it never reached one at all (a 103px fixed height diverged to
- * a 422 backing height instead of the true 206).
- *
- * Finding 2: the same post-write probe timing perturbed the just-written,
- * DPR-scaled attribute, so at a DPR that does not divide evenly (the
- * parity-mismatch range, roughly 1.2 to 1.9) the FIRST pass could already
- * write a backing store past a `max-width` cap before the probe ever ran
- * against the canvas's true, natural size; a SECOND pass's probe then
- * perturbed that already-inflated value and pinned at the inflated number
- * instead of the true one (`max-width: 100px` false-pinned at several DPRs
- * in this range; a bare `max-width: 400px`, natural size 300x150, landed
- * pinned at an inflated 450x225 at dpr 1.5 instead of the true 300x150).
- *
- * The design anchors every pin, and every free-axis derivation below, to
- * `w0`/`h0`, the canvas's ORIGINAL width/height attributes captured on the
- * very FIRST `applySize()` call (mount), before this harness ever writes
- * anything; `ratio0` is their ratio. The causal probe itself runs BEFORE
- * this pass's own write, on `w0`/`h0` specifically, never on this
- * harness's own evolving backing store: at mount the two are the same
- * value, but on any LATER pass probing the evolving store instead can
- * itself misread a cap relationship once the cap later changes (a cap
- * that widened past what the shrunk, already-DPR-scaled store's own
- * doubling would reveal read as a false follow in testing). The probe never
- * runs again once a canvas is pinned. When width follows, `style.width` is
- * set to `w0` (never a measurement, see the twelfth pass below) and
- * `style.aspectRatio` to `w0 / h0`, so the CSS engine derives height
- * directly from the ORIGINAL attribute ratio from then on, never through
- * this harness's own rounded backing-store attributes again. An engine
- * below the CSS `aspect-ratio` floor (inside the README's Safari 12.1
- * canvas gate) cannot take that half: it keeps the width pin, writes no
- * ratio, and stays UNPINNED (ADU-158), because "pinned" means the CSS
- * engine now owns height. Unpinned, the free-axis derivation below keeps
- * anchoring height to `ratio0` instead, which is what it is for.
- *
- * For a canvas that stays unpinned (CSS-sized, or a cap already binding), a
- * SECOND kind of probe, two single-axis perturbations (width alone, then
- * height alone, each restored before the other runs), decides which axis,
- * if either, is ratio-derived from the other. The proportional (both
- * together) probe above cannot answer this, on purpose: it never perturbs
- * a ratio-tracking axis in the first place, which is what makes it immune
- * to the eighth pass's false-positive bug, so a genuinely CSS-fixed axis
- * and a ratio-derived one read identically under it, unchanged either way.
- * Perturbing ONE attribute alone tells them apart: an axis truly
- * independent of the attributes never moves for any attribute change,
- * while one derived from the ratio moves whenever the OTHER attribute
- * perturbs that ratio. Whichever axis this reveals as free (both true, or
- * both false and so undetermined, means neither is: rounds independently,
- * same as ever) is then always computed from the OTHER, just-rounded axis
- * and `ratio0`, instead of independently rounding its own fresh
- * measurement: its error is bounded to at most one rounding unit and never
- * depends on anything this harness wrote on an earlier pass, which is what
- * stops the mirror case's error from compounding (Finding 1). A dead band
- * (skip the whole pass, probe included, before any of the above runs, when
- * the measured content size moved by less than 0.5 CSS pixels on both axes
- * since the last write, UNLESS the DPR itself changed: a DPR change always
- * needs a new bitmap even at the same content size) absorbs the one small,
- * self-induced residual the free axis's own backing-store write can still
- * cause on its very next entry, so a canvas that would otherwise need one
- * further bounded pass to settle needs none at all.
- *
- * Probing `w0`/`h0` instead of a DPR-scaled write fixes Finding 2's
- * parity-mismatch inflation outright: a `max-width` cap AT OR BELOW the
- * natural size doubles or halves the SAME, never DPR-inflated pair every
- * time, so it reads as CSS-sized at every DPR in that range; a cap ABOVE
- * the natural size still only starts to bind once doubling `w0`/`h0`
- * pushes past it. It does NOT remove the tenth pass's dpr-BELOW-1 case,
- * and should not: at dpr 1 and above, `round(cap * dpr) >= cap` always, so
- * this harness's own write never drops the attribute below the cap either,
- * genuinely never pinned; below dpr 1 the write CAN itself land below the
- * cap, unclamping it for real, exactly the risk the mount-time probe (on
- * `w0`/`h0`, never a DPR-scaled value, on purpose) cannot see coming. An
- * escape check, kept through the twelfth pass below (see there for why),
- * catches that one case specifically.
- *
- * When width follows, `applySize()` pins the WIDTH ONLY, at `w0` (the
- * twelfth pass; see below), forcing `box-sizing: content-box` so an
- * author's border-box declaration cannot reinterpret the pinned number as
- * a smaller content box. `style.height` is left untouched: `aspect-ratio`
- * above is what keeps height correct now, not an unpinned height tracking
- * this harness's own attribute ratio the way the ninth and tenth passes
- * relied on. A canvas with a genuine CSS height and no CSS width reads as
- * CSS-sized on the width-follows probe too (its width is ratio-derived
- * from that fixed height, and the ratio is exactly what the probe's
- * proportional doubling leaves alone): there is no loop on that axis, so,
- * correctly, nothing is pinned there either. Otherwise `applySize()` does
- * nothing further: the canvas already has full control of its own size.
- * The context transform (`ctx.setTransform`, the 2D context's DPR scale)
- * is applied AFTER every probe runs, so a pin never leaves a stale scale
- * behind. Every probe runs only inside `applySize()` (a ResizeObserver
- * callback or a DPR change), never once per animation frame, and never
- * again once pinned or dead-banded; setting an attribute momentarily and
- * back also clears the bitmap, same as any width/height write, but the
- * frame callback repaints on every resize regardless, so this is free.
- *
- * A pinned canvas's own pin write changes its layout box, so it fires one
- * more ResizeObserver entry; that entry takes the normal path above, probe
- * skipped (already pinned), and the dead band absorbs it once the `aspect
- * -ratio`-derived height settles, which is immediate (CSS `aspect-ratio` is
- * computed exactly, not through this harness's own rounded attributes).
- * Documented limitation, unchanged since the very first pass: a canvas with
- * no CSS size on either axis still gets its width pinned inline by the
- * harness (after which height, now CSS `aspect-ratio`-derived, behaves the
- * same as an author-authored fixed-width canvas); give it real CSS
- * dimensions to keep control of its own size.
- *
- * onDprChange() (a fixed-CSS-size canvas moving to a monitor with a
- * different DPR, no ResizeObserver callback involved) has no entry to
- * measure from. Falling back to the same getBoundingClientRect() read
- * applySize() uses internally would include the canvas's own
- * `transform: scale()`: a CSS-sized canvas under a transform got its
- * content size inflated or deflated by that transform on every real DPR
- * change, and never self-corrected. The harness instead remembers the last
- * content size a ResizeObserver entry actually reported (`lastContent`,
- * bit-exact, a transform never touches it) and reuses that on the
- * DPR-change path; only before the first entry has ever arrived does it
- * fall back to the rect read, same as before.
- *
- * (twelfth pass) Two more verifier findings, both on the eleventh pass's
- * pin, showed it pinned the wrong thing. Finding 1: the pin used
- * `anchor.width`, the CSS content size MEASURED at the moment this canvas
- * was judged unsized, which, for a canvas whose cap was already binding
- * right then, IS the capped value, not the natural one (a `max-width:120px`
- * cap on a natural-300 canvas pinned at 120). Fixed at that measured value
- * forever, the box never grew back when the cap later widened or the
- * percentage cap's container grew: a symptom the eleventh pass documented
- * as "the gap" limitation was really this bug wearing a different value.
- * Finding 2: `style.aspectRatio` was set unconditionally to `w0 / h0`,
- * silently overriding an author's own `aspect-ratio` (a square 300x300
- * canvas with `aspect-ratio: 1` snapped to 2:1 on mount).
- *
- * The fix is simpler than the mechanism it replaces: an unsized canvas
- * wants its intrinsic size, which is the attribute size in CSS px, `w0` by
- * `h0`, and nothing measured. `style.width` is pinned to `w0` (never a
- * measurement, whatever this pass's or an earlier pass's own cap
- * relationship happened to read), and `style.aspectRatio` to `w0 / h0`
- * ONLY when the computed `aspectRatio` still starts with the `auto`
- * keyword (see the thirteenth pass below for why an exact `'auto'` check
- * does not work), so an authored ratio is kept, not overridden. CSS caps
- * then clamp `w0`
- * exactly as they always clamp an intrinsic size, LIVE: a `max-width`
- * that widens or narrows, or a percentage cap in a container that resizes,
- * moves the box with it, at mount and on every later change, no different
- * from an ordinary CSS-sized element under the same cap. The backing store
- * keeps writing from the measured content box on every entry, same as
- * before (the dead band still applies), so a capped box gets the cap times
- * DPR, crisp.
- *
- * This removes the eleventh pass's "gap" limitation outright: it existed
- * only because the pin froze at a measured value a cap could later escape;
- * pinned at `w0`, there is no stale value to escape from. It does NOT
- * remove the escape check (DPR below 1 landing this pass's own candidate
- * write below a cap the mount-time `w0`/`h0` probe cannot see because the
- * cap sits below half `w0`, its own separate blind spot, unrelated to the
- * gap): a test proved that case still shrinks unboundedly without it, so
- * it stays, just retargeted to pin at `w0` like every other pin here
- * instead of the candidate value.
- *
- * Stated plainly: an unsized canvas renders at its attribute size in CSS
- * pixels, with a device-pixel backing store for a crisp bitmap. CSS caps
- * and percentages still apply on top of that size, exactly as they would
- * on any other element. Give a canvas real CSS dimensions to size it any
- * other way.
- *
- * (thirteenth pass) The twelfth pass's `aspectRatio === 'auto'` guard never
- * fired, for any canvas, authored or not. Chrome always reports a canvas's
- * computed `aspectRatio` as `auto W / H`, the intrinsic width/height
- * attributes appended to the keyword, never the bare `auto` string, so the
- * strict equality check was always false and `pinAtW0()` never wrote
- * `style.aspectRatio` at all. Height then kept deriving from whatever this
- * harness's own DPR-scaled attributes happened to hold, and, whenever
- * `w0 * dpr` was not already an integer, the rounding remainder reapplied
- * to the CURRENT height on every later pass instead of the fixed `w0`/`h0`
- * pair: an unbounded drift the twelfth pass's design intended `aspectRatio`
- * to rule out entirely. An authored `aspect-ratio` computes to a bare
- * number pair with no `auto` keyword at all (`1 / 1`), and no authored
- * ratio computes to `auto` or `auto W / H`, so `startsWith('auto')` is the
- * correct test: it fires exactly when the author left the ratio alone, and
- * never overrides one the author set.
- */
 var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
-/** Private acquisition and callback boundary for independently mounted units. */
 function reportFailure(error) {
-    if (typeof reportError === 'function')
-        reportError(error);
-    else
-        console.error(error);
+  if (typeof reportError === "function")
+    reportError(error);
+  else
+    console.error(error);
 }
 function lifetime() {
-    let stopped = false;
-    let acquiring = true;
-    const releases = [];
-    const stop = () => {
+  let stopped = false;
+  let acquiring = true;
+  const releases = [];
+  const stop = () => {
+    if (stopped)
+      return;
+    stopped = true;
+    let first;
+    let failed = false;
+    for (const release of releases.splice(0).reverse()) {
+      try {
+        release();
+      } catch (error) {
+        if (!failed) {
+          first = error;
+          failed = true;
+        }
+      }
+    }
+    if (failed)
+      throw first;
+  };
+  const fail = (error) => {
+    try {
+      stop();
+    } catch {
+    }
+    reportFailure(error);
+  };
+  return {
+    get stopped() {
+      return stopped;
+    },
+    defer(release) {
+      if (stopped)
+        release();
+      else
+        releases.push(release);
+    },
+    stop,
+    guard(fn) {
+      return (...args) => {
         if (stopped)
-            return;
-        stopped = true;
-        let first;
-        let failed = false;
-        for (const release of releases.splice(0).reverse()) {
-            try {
-                release();
-            }
-            catch (error) {
-                if (!failed) {
-                    first = error;
-                    failed = true;
-                }
-            }
-        }
-        if (failed)
-            throw first;
-    };
-    const fail = (error) => {
+          return;
         try {
-            stop();
+          fn(...args);
+        } catch (error) {
+          if (acquiring)
+            throw error;
+          fail(error);
         }
-        catch { /* retain the original failure */ }
-        reportFailure(error);
-    };
-    return {
-        get stopped() { return stopped; },
-        defer(release) { if (stopped)
-            release();
-        else
-            releases.push(release); },
-        stop,
-        guard(fn) {
-            return (...args) => {
-                if (stopped)
-                    return;
-                try {
-                    fn(...args);
-                }
-                catch (error) {
-                    if (acquiring)
-                        throw error;
-                    fail(error);
-                }
-            };
-        },
-        setup(fn) {
-            try {
-                fn();
-                acquiring = false;
-            }
-            catch (error) {
-                try {
-                    stop();
-                }
-                catch { /* retain the acquisition error */ }
-                throw error;
-            }
-        },
-    };
+      };
+    },
+    setup(fn) {
+      try {
+        fn();
+        acquiring = false;
+      } catch (error) {
+        try {
+          stop();
+        } catch {
+        }
+        throw error;
+      }
+    }
+  };
 }
-/** Restore only our last write. A later author write becomes the new baseline. */
 function ownership() {
-    const nodes = new Map();
-    const set = (node, key, read, write, value) => {
-        let entries = nodes.get(node);
-        if (!entries)
-            nodes.set(node, entries = new Map());
-        let entry = entries.get(key);
-        const current = read();
-        if (!entry)
-            entries.set(key, entry = { read, write, before: current, last: value });
-        else if (current !== entry.last)
-            entry.before = current;
-        entry.last = value;
-        write(value);
-    };
-    const restore = (node, key) => {
-        let first, failed = false;
-        nodes.forEach((entries, target) => {
-            if (node && target !== node)
-                return;
-            entries.forEach((entry, name) => {
-                if (key && name !== key)
-                    return;
-                entries.delete(name);
-                try {
-                    if (entry.read() === entry.last)
-                        entry.write(entry.before);
-                }
-                catch (error) {
-                    if (!failed) {
-                        failed = true;
-                        first = error;
-                    }
-                }
-            });
-            if (!entries.size)
-                nodes.delete(target);
-        });
-        if (failed)
-            throw first;
-    };
-    return {
-        restore,
-        style(el, key, value, priority = '') {
-            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
-            set(el, `style:${key}`, read, (saved) => {
-                const [v, p] = JSON.parse(saved);
-                if (v)
-                    el.style.setProperty(key, v, p);
-                else
-                    el.style.removeProperty?.(key);
-            }, JSON.stringify([value, priority]));
-        },
-        class(el, key, value) {
-            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
-                el.classList.toggle(key, v);
-            else if (v)
-                el.classList.add(key);
-            else
-                el.classList.remove(key); }, value);
-        },
-        attr(el, key, value) {
-            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
-                el.removeAttribute(key);
-            else
-                el.setAttribute(key, v); }, value);
-        },
-        property(el, key, value) {
-            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
-        },
-    };
+  const nodes = /* @__PURE__ */ new Map();
+  const set = (node, key, read, write, value) => {
+    let entries = nodes.get(node);
+    if (!entries)
+      nodes.set(node, entries = /* @__PURE__ */ new Map());
+    let entry = entries.get(key);
+    const current = read();
+    if (!entry)
+      entries.set(key, entry = { read, write, before: current, last: value });
+    else if (current !== entry.last)
+      entry.before = current;
+    entry.last = value;
+    write(value, current);
+  };
+  const restore = (node, key) => {
+    let first, failed = false;
+    nodes.forEach((entries, target) => {
+      if (node && target !== node)
+        return;
+      entries.forEach((entry, name) => {
+        if (key && name !== key)
+          return;
+        entries.delete(name);
+        try {
+          const current = entry.read();
+          if (current === entry.last)
+            entry.write(entry.before, current);
+        } catch (error) {
+          if (!failed) {
+            failed = true;
+            first = error;
+          }
+        }
+      });
+      if (!entries.size)
+        nodes.delete(target);
+    });
+    if (failed)
+      throw first;
+  };
+  return {
+    restore,
+    style(el, key, value, priority = "") {
+      const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
+      set(el, `style:${key}`, read, (saved, current) => {
+        const v = saved.slice(1);
+        if (current[0] === "1" && saved[0] === "0")
+          el.style.removeProperty?.(key);
+        if (v)
+          el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
+        else
+          el.style.removeProperty?.(key);
+      }, (priority ? "1" : "0") + value);
+    },
+    class(el, key, value) {
+      set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, (v) => {
+        if (typeof el.classList.toggle === "function")
+          el.classList.toggle(key, v);
+        else if (v)
+          el.classList.add(key);
+        else
+          el.classList.remove(key);
+      }, value);
+    },
+    attr(el, key, value) {
+      set(el, `attr:${key}`, () => el.getAttribute(key), (v) => {
+        if (v === null)
+          el.removeAttribute(key);
+        else
+          el.setAttribute(key, v);
+      }, value);
+    },
+    property(el, key, value) {
+      set(el, `property:${String(key)}`, () => el[key], (v) => {
+        el[key] = v;
+      }, value);
+    }
+  };
 }
 
-const noop = { pause: () => { }, resume: () => { }, destroy: () => { } };
-// Browsers cap a canvas's own width/height attribute well above this
-// (platform-dependent, but comfortably higher); guards the proportional
-// probe's own doubling from ever tripping that cap on an already-giant
-// canvas (see the module doc, tenth pass).
+const noop = { pause: () => {
+}, resume: () => {
+}, destroy: () => {
+} };
 const GIANT_CANVAS_LIMIT = 8192;
-// Safari below 14 has no addEventListener/removeEventListener on
-// MediaQueryList at all, only the deprecated addListener/removeListener
-// pair, so `mq.addEventListener?.('change', fn)` is a silent no-op there.
-// The DOM lib types both methods as always present, so a plain
-// `if (mq.addEventListener)` narrows nothing and TS flags it as always
-// true; `typeof` is the feature-detection idiom that survives that.
 function onMediaChange(mq, handler) {
-    if (typeof mq.addEventListener === 'function')
-        mq.addEventListener('change', handler);
-    else
-        mq.addListener(handler);
+  if (typeof mq.addEventListener === "function")
+    mq.addEventListener("change", handler);
+  else
+    mq.addListener(handler);
 }
 function offMediaChange(mq, handler) {
-    if (typeof mq.removeEventListener === 'function')
-        mq.removeEventListener('change', handler);
-    else
-        mq.removeListener(handler);
+  if (typeof mq.removeEventListener === "function")
+    mq.removeEventListener("change", handler);
+  else
+    mq.removeListener(handler);
 }
-function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true, context = '2d' }) {
-    if (typeof window === 'undefined')
-        return noop;
-    const ctx = context === '2d' ? canvas.getContext('2d') : null;
-    if (context === '2d' && !ctx)
-        return noop;
-    const life = lifetime();
-    const owned = ownership();
-    life.defer(() => owned.restore());
-    const dimension = (key, value) => {
-        if (typeof canvas.getAttribute === 'function')
-            owned.attr(canvas, key, String(value));
-        else
-            owned.property(canvas, key, value);
-    };
-    const style = (key, value) => {
-        if (typeof canvas.style.getPropertyValue === 'function')
-            owned.style(canvas, key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`), value);
-        else
-            owned.property(canvas.style, key, value);
-    };
-    const fx = {
-        ctx,
-        canvas,
-        width: 0,
-        height: 0,
-        dpr: 1,
-        reducedMotion: effectiveReduce(),
-    };
-    let raf = 0;
-    let last = 0;
-    let ready = false;
-    let cleanup;
-    let destroyed = false;
-    life.defer(() => { destroyed = true; });
-    // the loop runs only when every gate is open
-    let userPaused = false;
-    let onscreen = true;
-    let hasArea = false;
-    let visible = document.visibilityState !== 'hidden';
-    const running = () => raf !== 0;
-    const tick = life.guard((now) => {
-        raf = requestAnimationFrame(tick);
-        const dt = Math.min((now - last) / 1000, 0.05);
-        last = now;
-        frame(fx, dt);
-    });
-    const sync = () => {
-        const shouldRun = !destroyed && ready && !userPaused && (!autoPause || (onscreen && visible && hasArea));
-        if (shouldRun && !running()) {
-            last = performance.now();
-            raf = requestAnimationFrame(tick);
-        }
-        else if (!shouldRun && running()) {
-            cancelAnimationFrame(raf);
-            raf = 0;
-        }
-    };
-    // Layout size in CSS pixels: content box, border and padding excluded.
-    // A ResizeObserverEntry's own contentRect IS that content box, straight
-    // from the layout engine, no subtraction needed: use it when one is on
-    // hand (applySize() runs as the ResizeObserver callback below, so it
-    // usually is). The fallback, getBoundingClientRect() minus computed
-    // border and padding (never clientWidth/Height, which round to an
-    // integer), covers onDprChange() before its first ResizeObserver entry
-    // has ever arrived (afterwards it reuses that entry's remembered size,
-    // see `lastContent` below, instead of this fallback, which would
-    // otherwise include a CSS `transform: scale()` the entry never sees).
-    // That fallback is close but not bit-exact for fractional values:
-    // computed border and padding can report the AUTHORED px value, not the
-    // sub-pixel value layout actually snapped to, so subtracting it from the
-    // border-box rect can land a thousandth of a pixel off the true content
-    // box (verified in Chrome: an unsized canvas with `padding: 0.3px`
-    // measures its contentRect at exactly 300, but rect.width minus computed
-    // padding lands on 299.99375). That residual only matters here: the
-    // causal probe below reads `clientWidth`/`clientHeight` directly, which
-    // always round to a whole pixel, so it never sees this fallback at all.
-    // The subtraction can also go negative, a display:none canvas (rect all
-    // zero) with real padding:
-    // clamp to 0 so it reads as "not laid out yet", same as a canvas with no
-    // rect at all, instead of a negative size that would round through dpr
-    // into a negative backing-store write.
-    const measureLayout = (entry) => {
-        // A conforming ResizeObserver always delivers a contentRect; a stub
-        // (compat()'s window-resize-backed one, or a consumer's own) might
-        // not. Fall back to the same measurement onDprChange() uses instead of
-        // throwing on entry.contentRect.width.
-        if (entry?.contentRect)
-            return { width: entry.contentRect.width, height: entry.contentRect.height };
-        const rect = canvas.getBoundingClientRect();
-        const style = window.getComputedStyle(canvas);
-        const borderX = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
-        const borderY = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-        const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-        const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-        return {
-            width: Math.max(0, rect.width - borderX - paddingX),
-            height: Math.max(0, rect.height - borderY - paddingY),
-        };
-    };
-    // The last content size a real ResizeObserver entry reported, bit-exact
-    // and never touched by a CSS transform. onDprChange() reads this instead
-    // of re-deriving the size from getBoundingClientRect() (see the module
-    // doc and measureLayout() above): set only when applySize() runs with an
-    // actual entry, so it stays undefined until the first one arrives.
-    let lastContent;
-    // (twelfth pass; see the module doc) `w0`/`h0`, set once on the very
-    // first applySize() call and never touched again, are the ORIGINAL
-    // width/height attributes: the ratio every free-axis derivation below is
-    // anchored to (`ratio0`), and, when this canvas pins, the value pinned
-    // to. Never a later pass's own, possibly already-perturbed, measurement.
-    let mounted = false;
-    let w0 = 0;
-    let h0 = 0;
-    let ratio0 = 1;
-    // Which axis is free (ratio-derived from the other through `ratio0`):
-    // 'width', 'height', or undefined (neither: both axes are independently
-    // CSS-fixed, or a giant canvas left this undetermined, see
-    // GIANT_CANVAS_LIMIT below; either way the write below rounds both axes
-    // independently, same as ever). Cached from two single-axis probes,
-    // refreshed every pass the probe still runs (any pass before this canvas
-    // is pinned).
-    let freeAxis;
-    // Set once, the moment this canvas is judged unsized and pinned; the
-    // probe never runs again afterward.
-    let pinned = false;
-    // The measured content size (and DPR) that produced the LAST actual
-    // backing-store write, for the dead band below: undefined until the
-    // first write, so the dead band never fires on mount.
-    let lastWriteContent;
-    let lastWriteDpr;
-    const applySize = life.guard((entries) => {
-        if (destroyed)
-            return;
-        const entry = entries?.[0];
-        const size = entry ? measureLayout(entry) : (lastContent ?? measureLayout());
-        if (entry)
-            lastContent = size;
-        // IntersectionObserver can still intersect a zero-area canvas.
-        hasArea = size.width > 0 && size.height > 0;
-        if (!hasArea) {
-            sync();
-            return;
-        }
-        fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-        // Dead band (eleventh pass): a sub-pixel content change never needs a
-        // new bitmap. Skipping the whole pass here, before the probe or the
-        // write below ever run, is what stops a bounded, self-induced residual
-        // (the free axis moving a fraction of a CSS pixel as a side effect of
-        // this harness's own previous write) from ever having a next pass to
-        // ping-pong in. A DPR change always needs a new bitmap even when the
-        // CSS content size did not move at all, so it never counts as dead.
-        if (lastWriteContent &&
-            fx.dpr === lastWriteDpr &&
-            Math.abs(size.width - lastWriteContent.width) < 0.5 &&
-            Math.abs(size.height - lastWriteContent.height) < 0.5) {
-            sync(); // a collapsed canvas can return at exactly its previous size
-            return;
-        }
-        if (!mounted) {
-            mounted = true;
-            w0 = canvas.width;
-            h0 = canvas.height;
-            ratio0 = w0 / h0;
-        }
-        // Pins this canvas at `w0`, the ORIGINAL attribute width, never a
-        // measurement (see the module doc, twelfth pass): a `max-width` that
-        // later widens, or a percentage cap in a growing container, then lets
-        // the box grow back toward `w0` on its own, live, no further JS
-        // involved. `aspectRatio` is set to `w0 / h0` only when the author
-        // left it `auto`: an author's own `aspect-ratio` is kept, not
-        // overridden. Called from both the primary pin decision below and the
-        // escape check further down.
-        const pinAtW0 = () => {
-            style('boxSizing', 'content-box');
-            style('width', `${w0}px`);
-            // Chrome always reports a canvas's computed `aspectRatio` as
-            // `auto W / H` (the intrinsic ratio appended to the keyword), never
-            // the bare `auto`, so an equality check against `'auto'` never fires
-            // for ANY canvas, authored or not (thirteenth pass). An authored
-            // ratio computes to a bare number pair with no `auto` keyword at all
-            // (`1 / 1`), so `startsWith('auto')` is what actually distinguishes
-            // "still auto" from "author set it". An engine whose CSSOM has no
-            // `aspectRatio` support at all (below the README's own Safari 12.1
-            // canvas gate) reports it as `undefined`, not `''`: the DOM lib
-            // types the property as always a `string`, so `typeof` is what
-            // actually narrows it, a `??` fallback here is flagged unreachable.
-            // That engine cannot take the write either, and a canvas marked
-            // `pinned` on a property that never lands is the runaway all over
-            // again (ADU-158): `pinned` rounds both axes independently, which is
-            // only safe once the CSS engine, not this harness's own rewritten
-            // attribute ratio, owns the height. So below the floor: keep the
-            // width pin (that part does land, and it is what stops the width
-            // axis from following), write nothing that cannot take effect, and
-            // stay unpinned, so the probe keeps running and the free-axis
-            // derivation below anchors height to `ratio0` instead.
-            const aspectRatio = window.getComputedStyle(canvas).aspectRatio;
-            if (typeof aspectRatio !== 'string')
-                return;
-            if (aspectRatio.startsWith('auto'))
-                style('aspectRatio', `${w0} / ${h0}`);
-            pinned = true;
-        };
-        // The causal probe (see the module doc for the full reasoning): tries
-        // up to two perturbations of `w0`/`h0`, the canvas's ORIGINAL width/
-        // height attributes (never this harness's own later, DPR-scaled
-        // write: probing THAT instead can itself drift once a cap changes
-        // after this canvas was already found sized, see the module doc), and
-        // never runs again once this canvas is pinned. GROWING (double both
-        // together) preserves whatever ratio they have exactly, for any pair
-        // of integers: if clientWidth still follows it, this axis is unsized
-        // (or a cap not yet binding on it) and gets pinned. SHRINKING (halve
-        // both together, only when both are even, so the halving stays exact)
-        // is the fallback that also catches a cap already binding on `w0`/`h0`.
-        // The canvas's REAL current attributes are restored once, after every
-        // perturbation below is done, never left at `w0`/`h0`. Guarded on
-        // `w0`/`h0` both being positive: a `width="0"` or `height="0"`
-        // attribute makes `ratio0` 0, Infinity or NaN, and every consumer below
-        // (this probe's own doubling/halving, and the free-axis division in the
-        // backing-store write further down) divides or multiplies by it. Skip
-        // the probe and the free-axis derivation entirely instead: `freeAxis`
-        // stays `undefined`, so this canvas is treated as CSS-sized, both axes
-        // rounded independently from the measured size, same as any canvas the
-        // probe cannot safely reason about.
-        if (!pinned && w0 > 0 && h0 > 0) {
-            const current = { width: canvas.width, height: canvas.height };
-            dimension('width', w0);
-            dimension('height', h0);
-            const baseW = canvas.clientWidth;
-            const baseH = canvas.clientHeight;
-            const canGrow = 2 * w0 <= GIANT_CANVAS_LIMIT && 2 * h0 <= GIANT_CANVAS_LIMIT;
-            const canShrink = w0 % 2 === 0 && h0 % 2 === 0;
-            let widthFollows = false;
-            if (canGrow) {
-                dimension('width', 2 * w0);
-                dimension('height', 2 * h0);
-                const grownW = canvas.clientWidth;
-                if (grownW !== baseW)
-                    widthFollows = true;
-                dimension('width', w0);
-                dimension('height', h0);
-            }
-            if (!widthFollows && canShrink) {
-                dimension('width', w0 / 2);
-                dimension('height', h0 / 2);
-                const shrunkW = canvas.clientWidth;
-                if (shrunkW !== baseW)
-                    widthFollows = true;
-                dimension('width', w0);
-                dimension('height', h0);
-            }
-            // Two SEPARATE, single-axis perturbations decide which axis (if
-            // either) this canvas's write derives from the other through
-            // `ratio0` below. Doubling BOTH attributes together, above, cannot
-            // answer this: it is proportional on purpose (so it never perturbs a
-            // ratio-tracking axis, which is what makes it immune to the
-            // eighth-pass false-positive bug), so it leaves a genuinely
-            // independent axis and a ratio-derived one reading identically,
-            // unchanged either way. Changing ONE attribute alone, the other
-            // untouched, tells them apart: an axis truly independent of the
-            // attributes never moves for ANY attribute change, while one derived
-            // from the ratio moves whenever the OTHER attribute perturbs that
-            // ratio. `wFixed`/`hFixed` end up true when the corresponding axis
-            // stayed put; exactly one false, the other true, names the free
-            // axis; both true (or both false, undetermined) means neither axis
-            // derives from the other, so the write below rounds them
-            // independently, same as ever. Skipped once this canvas is unsized
-            // (`widthFollows`, pinned below): height then becomes the CSS
-            // engine's own `aspect-ratio` derivation, not this harness's
-            // attribute ratio, so nothing here still applies to it.
-            if (!widthFollows) {
-                let hFixed;
-                if (2 * h0 <= GIANT_CANVAS_LIMIT) {
-                    dimension('height', 2 * h0);
-                    const grownHAlone = canvas.clientHeight;
-                    dimension('height', h0);
-                    hFixed = grownHAlone === baseH;
-                }
-                else if (h0 > 1) {
-                    dimension('height', h0 - 1);
-                    const shrunkHAlone = canvas.clientHeight;
-                    dimension('height', h0);
-                    hFixed = shrunkHAlone === baseH;
-                }
-                let wFixed;
-                if (2 * w0 <= GIANT_CANVAS_LIMIT) {
-                    dimension('width', 2 * w0);
-                    const grownWAlone = canvas.clientWidth;
-                    dimension('width', w0);
-                    wFixed = grownWAlone === baseW;
-                }
-                else if (w0 > 1) {
-                    dimension('width', w0 - 1);
-                    const shrunkWAlone = canvas.clientWidth;
-                    dimension('width', w0);
-                    wFixed = shrunkWAlone === baseW;
-                }
-                if (wFixed === true && hFixed === false)
-                    freeAxis = 'height';
-                else if (wFixed === false && hFixed === true)
-                    freeAxis = 'width';
-                else
-                    freeAxis = undefined;
-            }
-            dimension('width', current.width);
-            dimension('height', current.height);
-            if (widthFollows)
-                pinAtW0();
-        }
-        // Backing-store write. A canvas pinned this pass or earlier has both
-        // axes rounded independently: height is now the CSS engine's own
-        // `aspect-ratio` derivation, exact, never this harness's own rounded
-        // attribute ratio, so there is nothing left to anchor. A canvas still
-        // unpinned uses `freeAxis` (from the two single-axis probes above),
-        // which names the one axis, if either, that is ratio-derived from the
-        // other: that axis is computed from the OTHER, just-rounded axis and
-        // `ratio0` instead of independently rounding its own measurement, so
-        // its error is bounded by one rounding unit, never compounding pass
-        // over pass, because it never depends on anything this harness wrote
-        // earlier. Neither axis free (both independently CSS-fixed, or
-        // undetermined past GIANT_CANVAS_LIMIT) rounds both independently.
-        let w;
-        let h;
-        if (pinned) {
-            w = Math.round(size.width * fx.dpr);
-            h = Math.round(size.height * fx.dpr);
-        }
-        else if (freeAxis === 'height') {
-            w = Math.round(size.width * fx.dpr);
-            h = Math.round(w / ratio0);
-        }
-        else if (freeAxis === 'width') {
-            h = Math.round(size.height * fx.dpr);
-            w = Math.round(h * ratio0);
-        }
-        else {
-            w = Math.round(size.width * fx.dpr);
-            h = Math.round(size.height * fx.dpr);
-        }
-        // Escape check (kept; see the module doc, twelfth pass, for why): a
-        // `max-width` cap below half `w0` sits in the probe above's own blind
-        // spot (halving `w0` never lands under it either), so a DPR below 1
-        // can still make THIS pass's own candidate write land below that cap,
-        // unclamping it for real; left uncaught, the next pass would measure
-        // that smaller, unclamped box and shrink it again, unbounded. Reuses
-        // the same causal growth check against the candidate instead of
-        // `w0`/`h0`: if doubling it still reads capped, nothing escaped; if
-        // not, this canvas pins now, at `w0`, same as the primary pin above,
-        // never at the candidate itself.
-        if (!pinned) {
-            dimension('width', w);
-            dimension('height', h);
-            const baseW = canvas.clientWidth;
-            if (2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT) {
-                dimension('width', 2 * w);
-                dimension('height', 2 * h);
-                const grownW = canvas.clientWidth;
-                dimension('width', w);
-                dimension('height', h);
-                if (grownW !== baseW)
-                    pinAtW0();
-            }
-        }
-        dimension('width', w);
-        dimension('height', h);
-        lastWriteContent = size;
-        lastWriteDpr = fx.dpr;
-        fx.width = size.width;
-        fx.height = size.height;
-        ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
-        if (!ready) {
-            ready = true;
-            const dispose = setup?.(fx);
-            if (typeof dispose === 'function') {
-                // A consumer that calls handle.destroy() from inside its own
-                // setup() (bailing out before it has returned this dispose, a
-                // WebGL context that failed to create) already ran destroy()'s
-                // body above with `cleanup` still undefined: nothing will ever
-                // read `cleanup` again once `destroyed` is true, so stashing
-                // `dispose` there orphans it for the life of the page. Run it now
-                // instead (ADU-189).
-                if (destroyed)
-                    dispose();
-                else
-                    cleanup = dispose;
-            }
-            if (destroyed)
-                return;
-            resize?.(fx); // sizing that lives in resize() must also run once
-        }
-        else {
-            resize?.(fx);
-        }
-        sync();
-        // The backing-store write above clears the bitmap. The tick loop
-        // normally repaints it on the very next frame, but pause() (or an
-        // autoPause gate still closed) leaves that loop stopped, so this
-        // resize's own write would otherwise sit blank until whatever resumes
-        // it. Paint one frame here, synchronously, without starting the loop.
-        if (!destroyed && ready && !running())
-            frame(fx, 0);
-    });
-    let ro;
-    let io;
-    const onIntersection = life.guard((entries) => {
-        if (!entries.length)
-            return;
-        onscreen = entries[entries.length - 1].isIntersecting;
-        sync();
-    });
-    const onVisibility = life.guard(() => {
-        visible = document.visibilityState !== 'hidden';
-        sync();
-    });
-    // A fixed-CSS-size canvas gets no ResizeObserver callback when it moves to
-    // a monitor with a different devicePixelRatio. Watch the resolution too.
-    let dprQuery = null;
-    const watchDpr = () => {
-        if (destroyed)
-            return;
-        if (dprQuery)
-            offMediaChange(dprQuery, onDprChange);
-        dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-        onMediaChange(dprQuery, onDprChange);
-    };
-    const onDprChange = life.guard(() => {
-        applySize();
-        watchDpr();
-    });
-    life.defer(() => { if (raf)
-        cancelAnimationFrame(raf); raf = 0; });
-    life.defer(() => ro?.disconnect());
-    life.defer(() => io?.disconnect());
-    life.defer(() => document.removeEventListener('visibilitychange', onVisibility));
-    life.defer(() => { if (dprQuery)
-        offMediaChange(dprQuery, onDprChange); });
-    life.defer(() => { const dispose = cleanup; cleanup = undefined; dispose?.(); });
-    life.setup(() => {
-        ro = new ResizeObserver(applySize);
-        ro.observe(canvas);
-        io = new IntersectionObserver(onIntersection);
-        io.observe(canvas);
-        document.addEventListener('visibilitychange', onVisibility);
-        watchDpr();
-        life.defer(onMotionChange(life.guard((reduced) => { fx.reducedMotion = reduced; })));
-    });
+function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = true, context = "2d" }) {
+  if (typeof window === "undefined")
+    return noop;
+  const ctx = context === "2d" ? canvas.getContext("2d") : null;
+  if (context === "2d" && !ctx)
+    return noop;
+  const life = lifetime();
+  const owned = ownership();
+  life.defer(() => owned.restore());
+  const dimension = (key, value) => {
+    if (typeof canvas.getAttribute === "function")
+      owned.attr(canvas, key, String(value));
+    else
+      owned.property(canvas, key, value);
+  };
+  const style = (key, value) => {
+    if (typeof canvas.style.getPropertyValue === "function")
+      owned.style(canvas, key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), value);
+    else
+      owned.property(canvas.style, key, value);
+  };
+  const fx = {
+    ctx,
+    canvas,
+    width: 0,
+    height: 0,
+    dpr: 1,
+    reducedMotion: effectiveReduce()
+  };
+  let raf = 0;
+  let last = 0;
+  let ready = false;
+  let cleanup;
+  let destroyed = false;
+  life.defer(() => {
+    destroyed = true;
+  });
+  let userPaused = false;
+  let onscreen = true;
+  let hasArea = false;
+  let visible = document.visibilityState !== "hidden";
+  const running = () => raf !== 0;
+  const tick = life.guard((now) => {
+    raf = requestAnimationFrame(tick);
+    const dt = Math.min((now - last) / 1e3, 0.05);
+    last = now;
+    frame(fx, dt);
+  });
+  const sync = () => {
+    const shouldRun = !destroyed && ready && !userPaused && (!autoPause || onscreen && visible && hasArea);
+    if (shouldRun && !running()) {
+      last = performance.now();
+      raf = requestAnimationFrame(tick);
+    } else if (!shouldRun && running()) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  };
+  const measureLayout = (entry) => {
+    if (entry?.contentRect)
+      return { width: entry.contentRect.width, height: entry.contentRect.height };
+    const rect = canvas.getBoundingClientRect();
+    const style2 = window.getComputedStyle(canvas);
+    const borderX = parseFloat(style2.borderLeftWidth) + parseFloat(style2.borderRightWidth);
+    const borderY = parseFloat(style2.borderTopWidth) + parseFloat(style2.borderBottomWidth);
+    const paddingX = parseFloat(style2.paddingLeft) + parseFloat(style2.paddingRight);
+    const paddingY = parseFloat(style2.paddingTop) + parseFloat(style2.paddingBottom);
     return {
-        pause: life.guard(() => {
-            userPaused = true;
-            sync();
-        }),
-        resume: life.guard(() => {
-            userPaused = false;
-            sync();
-        }),
-        destroy: life.stop,
+      width: Math.max(0, rect.width - borderX - paddingX),
+      height: Math.max(0, rect.height - borderY - paddingY)
     };
+  };
+  let lastContent;
+  let mounted = false;
+  let w0 = 0;
+  let h0 = 0;
+  let ratio0 = 1;
+  let freeAxis;
+  let pinned = false;
+  let lastWriteContent;
+  let lastWriteDpr;
+  const applySize = life.guard((entries) => {
+    if (destroyed)
+      return;
+    const entry = entries?.[0];
+    const size = entry ? measureLayout(entry) : lastContent ?? measureLayout();
+    if (entry)
+      lastContent = size;
+    hasArea = size.width > 0 && size.height > 0;
+    if (!hasArea) {
+      sync();
+      return;
+    }
+    fx.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+    if (lastWriteContent && fx.dpr === lastWriteDpr && Math.abs(size.width - lastWriteContent.width) < 0.5 && Math.abs(size.height - lastWriteContent.height) < 0.5) {
+      sync();
+      return;
+    }
+    if (!mounted) {
+      mounted = true;
+      w0 = canvas.width;
+      h0 = canvas.height;
+      ratio0 = w0 / h0;
+    }
+    const pinAtW0 = () => {
+      style("boxSizing", "content-box");
+      style("width", `${w0}px`);
+      const aspectRatio = window.getComputedStyle(canvas).aspectRatio;
+      if (typeof aspectRatio !== "string")
+        return;
+      if (aspectRatio.startsWith("auto"))
+        style("aspectRatio", `${w0} / ${h0}`);
+      pinned = true;
+    };
+    if (!pinned && w0 > 0 && h0 > 0) {
+      const current = { width: canvas.width, height: canvas.height };
+      dimension("width", w0);
+      dimension("height", h0);
+      const baseW = canvas.clientWidth;
+      const baseH = canvas.clientHeight;
+      const canGrow = 2 * w0 <= GIANT_CANVAS_LIMIT && 2 * h0 <= GIANT_CANVAS_LIMIT;
+      const canShrink = w0 % 2 === 0 && h0 % 2 === 0;
+      let widthFollows = false;
+      if (canGrow) {
+        dimension("width", 2 * w0);
+        dimension("height", 2 * h0);
+        const grownW = canvas.clientWidth;
+        if (grownW !== baseW)
+          widthFollows = true;
+        dimension("width", w0);
+        dimension("height", h0);
+      }
+      if (!widthFollows && canShrink) {
+        dimension("width", w0 / 2);
+        dimension("height", h0 / 2);
+        const shrunkW = canvas.clientWidth;
+        if (shrunkW !== baseW)
+          widthFollows = true;
+        dimension("width", w0);
+        dimension("height", h0);
+      }
+      if (!widthFollows) {
+        let hFixed;
+        if (2 * h0 <= GIANT_CANVAS_LIMIT) {
+          dimension("height", 2 * h0);
+          const grownHAlone = canvas.clientHeight;
+          dimension("height", h0);
+          hFixed = grownHAlone === baseH;
+        } else if (h0 > 1) {
+          dimension("height", h0 - 1);
+          const shrunkHAlone = canvas.clientHeight;
+          dimension("height", h0);
+          hFixed = shrunkHAlone === baseH;
+        }
+        let wFixed;
+        if (2 * w0 <= GIANT_CANVAS_LIMIT) {
+          dimension("width", 2 * w0);
+          const grownWAlone = canvas.clientWidth;
+          dimension("width", w0);
+          wFixed = grownWAlone === baseW;
+        } else if (w0 > 1) {
+          dimension("width", w0 - 1);
+          const shrunkWAlone = canvas.clientWidth;
+          dimension("width", w0);
+          wFixed = shrunkWAlone === baseW;
+        }
+        if (wFixed === true && hFixed === false)
+          freeAxis = "height";
+        else if (wFixed === false && hFixed === true)
+          freeAxis = "width";
+        else
+          freeAxis = void 0;
+      }
+      dimension("width", current.width);
+      dimension("height", current.height);
+      if (widthFollows)
+        pinAtW0();
+    }
+    let w;
+    let h;
+    if (pinned) {
+      w = Math.round(size.width * fx.dpr);
+      h = Math.round(size.height * fx.dpr);
+    } else if (freeAxis === "height") {
+      w = Math.round(size.width * fx.dpr);
+      h = Math.round(w / ratio0);
+    } else if (freeAxis === "width") {
+      h = Math.round(size.height * fx.dpr);
+      w = Math.round(h * ratio0);
+    } else {
+      w = Math.round(size.width * fx.dpr);
+      h = Math.round(size.height * fx.dpr);
+    }
+    if (!pinned) {
+      dimension("width", w);
+      dimension("height", h);
+      const baseW = canvas.clientWidth;
+      if (2 * w <= GIANT_CANVAS_LIMIT && 2 * h <= GIANT_CANVAS_LIMIT) {
+        dimension("width", 2 * w);
+        dimension("height", 2 * h);
+        const grownW = canvas.clientWidth;
+        dimension("width", w);
+        dimension("height", h);
+        if (grownW !== baseW)
+          pinAtW0();
+      }
+    }
+    dimension("width", w);
+    dimension("height", h);
+    lastWriteContent = size;
+    lastWriteDpr = fx.dpr;
+    fx.width = size.width;
+    fx.height = size.height;
+    ctx?.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
+    if (!ready) {
+      ready = true;
+      const dispose = setup?.(fx);
+      if (typeof dispose === "function") {
+        if (destroyed)
+          dispose();
+        else
+          cleanup = dispose;
+      }
+      if (destroyed)
+        return;
+      resize?.(fx);
+    } else {
+      resize?.(fx);
+    }
+    sync();
+    if (!destroyed && ready && !running())
+      frame(fx, 0);
+  });
+  let ro;
+  let io;
+  const onIntersection = life.guard((entries) => {
+    if (!entries.length)
+      return;
+    onscreen = entries[entries.length - 1].isIntersecting;
+    sync();
+  });
+  const onVisibility = life.guard(() => {
+    visible = document.visibilityState !== "hidden";
+    sync();
+  });
+  let dprQuery = null;
+  const watchDpr = () => {
+    if (destroyed)
+      return;
+    if (dprQuery)
+      offMediaChange(dprQuery, onDprChange);
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    onMediaChange(dprQuery, onDprChange);
+  };
+  const onDprChange = life.guard(() => {
+    applySize();
+    watchDpr();
+  });
+  life.defer(() => {
+    if (raf)
+      cancelAnimationFrame(raf);
+    raf = 0;
+  });
+  life.defer(() => ro?.disconnect());
+  life.defer(() => io?.disconnect());
+  life.defer(() => document.removeEventListener("visibilitychange", onVisibility));
+  life.defer(() => {
+    if (dprQuery)
+      offMediaChange(dprQuery, onDprChange);
+  });
+  life.defer(() => {
+    const dispose = cleanup;
+    cleanup = void 0;
+    dispose?.();
+  });
+  life.setup(() => {
+    ro = new ResizeObserver(applySize);
+    ro.observe(canvas);
+    io = new IntersectionObserver(onIntersection);
+    io.observe(canvas);
+    document.addEventListener("visibilitychange", onVisibility);
+    watchDpr();
+    life.defer(onMotionChange(life.guard((reduced) => {
+      fx.reducedMotion = reduced;
+    })));
+  });
+  return {
+    pause: life.guard(() => {
+      userPaused = true;
+      sync();
+    }),
+    resume: life.guard(() => {
+      userPaused = false;
+      sync();
+    }),
+    destroy: life.stop
+  };
 }
 
   return mountEffect;
@@ -7254,772 +6791,625 @@ function mountEffect(canvas, { setup, frame, resize, dprCap = 2, autoPause = tru
   });
   /* ═══════ scrollvars slider, inlined from the built dist, verbatim ═══════ */
   var slider = (function () {
-/**
- * A featherweight carousel on native rails: the browser does the scrolling
- * (momentum, touch, accessibility) and scroll-snap does the magnetism; this
- * module only adds what the platform lacks,
-*
- *   - mouse drag-to-scroll on desktop (touch is already native)
- *   - the active-slide observer, exposed the ScrollVars way:
- *       container:  --sv-slide (active index) · --sv-progress (0..1)
- *       each slide: --sd        (signed distance from center, in slide sizes)
- *                   .sv-active  (nearest to center)
- *   - next / prev / goTo, glide with a soft exponential settle
- *   - full state (`state()` / `onScroll`) and `seek()`. Enough to chain
- *     sliders: `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`
- *   - `axis: 'y'` for vertical sliders
- *
- * Any CSS reading `--sd` animates the slides: scale, fade, coverflow:
-* no per-frame JS, same philosophy as the scroll driver.
- */
 var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;
-/** Private acquisition and callback boundary for independently mounted units. */
 function reportFailure(error) {
-    if (typeof reportError === 'function')
-        reportError(error);
-    else
-        console.error(error);
+  if (typeof reportError === "function")
+    reportError(error);
+  else
+    console.error(error);
 }
 function lifetime() {
-    let stopped = false;
-    let acquiring = true;
-    const releases = [];
-    const stop = () => {
+  let stopped = false;
+  let acquiring = true;
+  const releases = [];
+  const stop = () => {
+    if (stopped)
+      return;
+    stopped = true;
+    let first;
+    let failed = false;
+    for (const release of releases.splice(0).reverse()) {
+      try {
+        release();
+      } catch (error) {
+        if (!failed) {
+          first = error;
+          failed = true;
+        }
+      }
+    }
+    if (failed)
+      throw first;
+  };
+  const fail = (error) => {
+    try {
+      stop();
+    } catch {
+    }
+    reportFailure(error);
+  };
+  return {
+    get stopped() {
+      return stopped;
+    },
+    defer(release) {
+      if (stopped)
+        release();
+      else
+        releases.push(release);
+    },
+    stop,
+    guard(fn) {
+      return (...args) => {
         if (stopped)
-            return;
-        stopped = true;
-        let first;
-        let failed = false;
-        for (const release of releases.splice(0).reverse()) {
-            try {
-                release();
-            }
-            catch (error) {
-                if (!failed) {
-                    first = error;
-                    failed = true;
-                }
-            }
-        }
-        if (failed)
-            throw first;
-    };
-    const fail = (error) => {
+          return;
         try {
-            stop();
+          fn(...args);
+        } catch (error) {
+          if (acquiring)
+            throw error;
+          fail(error);
         }
-        catch { /* retain the original failure */ }
-        reportFailure(error);
-    };
-    return {
-        get stopped() { return stopped; },
-        defer(release) { if (stopped)
-            release();
-        else
-            releases.push(release); },
-        stop,
-        guard(fn) {
-            return (...args) => {
-                if (stopped)
-                    return;
-                try {
-                    fn(...args);
-                }
-                catch (error) {
-                    if (acquiring)
-                        throw error;
-                    fail(error);
-                }
-            };
-        },
-        setup(fn) {
-            try {
-                fn();
-                acquiring = false;
-            }
-            catch (error) {
-                try {
-                    stop();
-                }
-                catch { /* retain the acquisition error */ }
-                throw error;
-            }
-        },
-    };
+      };
+    },
+    setup(fn) {
+      try {
+        fn();
+        acquiring = false;
+      } catch (error) {
+        try {
+          stop();
+        } catch {
+        }
+        throw error;
+      }
+    }
+  };
 }
-/** Restore only our last write. A later author write becomes the new baseline. */
 function ownership() {
-    const nodes = new Map();
-    const set = (node, key, read, write, value) => {
-        let entries = nodes.get(node);
-        if (!entries)
-            nodes.set(node, entries = new Map());
-        let entry = entries.get(key);
-        const current = read();
-        if (!entry)
-            entries.set(key, entry = { read, write, before: current, last: value });
-        else if (current !== entry.last)
-            entry.before = current;
-        entry.last = value;
-        write(value);
-    };
-    const restore = (node, key) => {
-        let first, failed = false;
-        nodes.forEach((entries, target) => {
-            if (node && target !== node)
-                return;
-            entries.forEach((entry, name) => {
-                if (key && name !== key)
-                    return;
-                entries.delete(name);
-                try {
-                    if (entry.read() === entry.last)
-                        entry.write(entry.before);
-                }
-                catch (error) {
-                    if (!failed) {
-                        failed = true;
-                        first = error;
-                    }
-                }
-            });
-            if (!entries.size)
-                nodes.delete(target);
-        });
-        if (failed)
-            throw first;
-    };
-    return {
-        restore,
-        style(el, key, value, priority = '') {
-            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
-            set(el, `style:${key}`, read, (saved) => {
-                const [v, p] = JSON.parse(saved);
-                if (v)
-                    el.style.setProperty(key, v, p);
-                else
-                    el.style.removeProperty?.(key);
-            }, JSON.stringify([value, priority]));
-        },
-        class(el, key, value) {
-            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
-                el.classList.toggle(key, v);
-            else if (v)
-                el.classList.add(key);
-            else
-                el.classList.remove(key); }, value);
-        },
-        attr(el, key, value) {
-            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
-                el.removeAttribute(key);
-            else
-                el.setAttribute(key, v); }, value);
-        },
-        property(el, key, value) {
-            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
-        },
-    };
+  const nodes = /* @__PURE__ */ new Map();
+  const set = (node, key, read, write, value) => {
+    let entries = nodes.get(node);
+    if (!entries)
+      nodes.set(node, entries = /* @__PURE__ */ new Map());
+    let entry = entries.get(key);
+    const current = read();
+    if (!entry)
+      entries.set(key, entry = { read, write, before: current, last: value });
+    else if (current !== entry.last)
+      entry.before = current;
+    entry.last = value;
+    write(value, current);
+  };
+  const restore = (node, key) => {
+    let first, failed = false;
+    nodes.forEach((entries, target) => {
+      if (node && target !== node)
+        return;
+      entries.forEach((entry, name) => {
+        if (key && name !== key)
+          return;
+        entries.delete(name);
+        try {
+          const current = entry.read();
+          if (current === entry.last)
+            entry.write(entry.before, current);
+        } catch (error) {
+          if (!failed) {
+            failed = true;
+            first = error;
+          }
+        }
+      });
+      if (!entries.size)
+        nodes.delete(target);
+    });
+    if (failed)
+      throw first;
+  };
+  return {
+    restore,
+    style(el, key, value, priority = "") {
+      const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
+      set(el, `style:${key}`, read, (saved, current) => {
+        const v = saved.slice(1);
+        if (current[0] === "1" && saved[0] === "0")
+          el.style.removeProperty?.(key);
+        if (v)
+          el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
+        else
+          el.style.removeProperty?.(key);
+      }, (priority ? "1" : "0") + value);
+    },
+    class(el, key, value) {
+      set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, (v) => {
+        if (typeof el.classList.toggle === "function")
+          el.classList.toggle(key, v);
+        else if (v)
+          el.classList.add(key);
+        else
+          el.classList.remove(key);
+      }, value);
+    },
+    attr(el, key, value) {
+      set(el, `attr:${key}`, () => el.getAttribute(key), (v) => {
+        if (v === null)
+          el.removeAttribute(key);
+        else
+          el.setAttribute(key, v);
+      }, value);
+    },
+    property(el, key, value) {
+      set(el, `property:${String(key)}`, () => el[key], (v) => {
+        el[key] = v;
+      }, value);
+    }
+  };
 }
 
 const noopState = {
-    active: 0,
-    count: 0,
-    position: 0,
-    progress: 0,
-    dragging: false,
-    gliding: false,
+  active: 0,
+  count: 0,
+  position: 0,
+  progress: 0,
+  dragging: false,
+  gliding: false
 };
 const noop = {
-    next: () => { },
-    prev: () => { },
-    goTo: () => { },
-    seek: () => { },
-    active: () => 0,
-    state: () => noopState,
-    destroy: () => { },
+  next: () => {
+  },
+  prev: () => {
+  },
+  goTo: () => {
+  },
+  seek: () => {
+  },
+  active: () => 0,
+  state: () => noopState,
+  destroy: () => {
+  }
 };
-function slider(container, { axis = 'x', snap = 'mandatory', drag = true, duration = 600, cssVars = true, onSlide, onScroll, } = {}) {
-    if (typeof window === 'undefined')
-        return noop;
-    const life = lifetime();
-    const owned = ownership();
-    life.defer(() => owned.restore());
-    const horizontal = axis === 'x';
-    // RTL: normalize to logical coordinates: pos() runs 0 → range() from the
-    // start of content regardless of direction (raw scrollLeft is 0 → -range
-    // in RTL per spec), and slideStart() mirrors offsets to match.
-    const rtl = horizontal &&
-        typeof getComputedStyle === 'function' &&
-        getComputedStyle(container).direction === 'rtl';
-    // axis accessors: the only place the orientation matters
-    const pos = () => horizontal ? (rtl ? -container.scrollLeft + 0 : container.scrollLeft) : container.scrollTop;
-    const setPos = (v) => {
-        if (horizontal)
-            container.scrollLeft = rtl ? -v : v;
-        else
-            container.scrollTop = v;
-    };
-    const viewport = () => (horizontal ? container.clientWidth : container.clientHeight);
-    const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
-    // trackpads) pushes pos() past both ends, and a follower chained through
-    // `onScroll` + `seek(progress)` would be sent outside its own range.
-    const progress = () => {
-        const length = range();
-        return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
-    };
-    // Container-local start of a slide in logical scroll units, from offset
-    // chains: layout positions, so the coverflow transforms a slide carries
-    // (scale/rotate from --sd) never feed back into its own measurement. RTL
-    // mirrors against the container's own client box (clientWidth), not its
-    // scrollWidth.
-    //
-    // Walks the offsetParent chain from `el`, summing offsetLeft (or offsetTop)
-    // as it goes. Stops the moment it reaches the container: offsetLeft is
-    // defined against the offsetParent's PADDING edge, so once the container
-    // itself becomes that offsetParent the running sum already sits at its
-    // padding edge and needs no further correction. If the walk never reaches
-    // the container (a statically positioned rail: some further ancestor is
-    // the real offsetParent instead), it runs all the way to the root and the
-    // caller falls back to subtracting the container's own absolute position.
-    const chainToContainer = (el, x) => {
-        let v = 0;
-        let node = el;
-        while (node && node !== container) {
-            v += x ? node.offsetLeft : node.offsetTop;
-            node = node.offsetParent;
-        }
-        return { v, atContainer: node === container };
-    };
-    // Full walk to the root, used for the container's own absolute position
-    // in the fallback above.
-    const chain = (el, x) => {
-        let v = 0;
-        let node = el;
-        while (node) {
-            v += x ? node.offsetLeft : node.offsetTop;
-            node = node.offsetParent;
-        }
-        return v;
-    };
-    const slideStart = (el) => {
-        const x = horizontal;
-        const walk = chainToContainer(el, x);
-        const local = walk.atContainer
-            ? walk.v
-            : walk.v - chain(container, x) - (x ? container.clientLeft : container.clientTop);
-        return rtl ? container.clientWidth - local - el.offsetWidth : local;
-    };
-    const slideSize = (el) => (horizontal ? el.offsetWidth : el.offsetHeight);
-    // Snap suspension via inline style. One source of truth. The authored
-    // inline value (e.g. 'none' on scroll-driven instances) is preserved.
-    const authoredSnap = container.style.scrollSnapType;
-    // Authored none is not always inline: a stylesheet rule or a utility class
-    // (Tailwind's snap-none) reaches the same state, and an instance that
-    // owns its own position must be left alone whichever way it got there.
-    // The computed half is read inside life.setup(), AFTER `.sv-slider` lands
-    // (round 15 item 6): that class's own rule sets scroll-snap-type, so
-    // reading it here, before setup, sees a plain unclassed element's `none`
-    // and mistakes it for an authored none forever, on every element `slider()`
-    // is ever called on that did not already carry the class.
-    let snapIsNone = authoredSnap === 'none';
-    const suspendSnap = () => {
-        if (typeof container.style.getPropertyValue === 'function')
-            owned.style(container, 'scroll-snap-type', 'none');
-        else
-            owned.property(container.style, 'scrollSnapType', 'none');
-    };
-    const resumeSnap = () => {
-        owned.restore(container, 'style:scroll-snap-type');
-        owned.restore(container.style, 'property:scrollSnapType');
-    };
-    let active = -1;
-    // The active DOM node, not just its index: a MutationObserver-driven
-    // replacement of that node (same index, different element) must still
-    // move sv-active and --sv-slide onto the new node, without firing onSlide
-    // for an index that never actually changed.
-    let activeEl = null;
-    let position = 0;
-    let raf = 0;
-    let dragging = false;
-    let anim = 0;
-    // After destroy() every command is a no-op and nothing schedules a frame:
-    // the container is no longer measured, and a glide on stale geometry would
-    // scroll a slider the page has already let go of (the React kit's autoplay
-    // interval kept calling next() on one).
-    let destroyed = false;
-    life.defer(() => { destroyed = true; dragging = false; });
-    const slides = () => Array.from(container.children);
-    // `p` lets measure() hand in the progress it already snapshotted during
-    // its read phase, so the onScroll call at the end of a measure pass never
-    // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
-    // that same pass. Called with no argument (the public `state()`, any time
-    // outside a measure pass) it reads fresh, same as before.
-    let lastState = { ...noopState };
-    const readState = (p) => ({
-        active: Math.max(active, 0),
-        count: container.children.length,
-        position,
-        progress: p ?? progress(),
-        dragging,
-        gliding: anim !== 0,
+function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, cssVars = true, onSlide, onScroll } = {}) {
+  if (typeof window === "undefined")
+    return noop;
+  const life = lifetime();
+  const owned = ownership();
+  life.defer(() => owned.restore());
+  const horizontal = axis === "x";
+  const rtl = horizontal && typeof getComputedStyle === "function" && getComputedStyle(container).direction === "rtl";
+  const pos = () => horizontal ? rtl ? -container.scrollLeft + 0 : container.scrollLeft : container.scrollTop;
+  const setPos = (v) => {
+    if (horizontal)
+      container.scrollLeft = rtl ? -v : v;
+    else
+      container.scrollTop = v;
+  };
+  const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
+  const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
+  const progress = () => {
+    const length = range();
+    return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
+  };
+  const chainToContainer = (el, x) => {
+    let v = 0;
+    let node = el;
+    while (node && node !== container) {
+      v += x ? node.offsetLeft : node.offsetTop;
+      node = node.offsetParent;
+    }
+    return { v, atContainer: node === container };
+  };
+  const chain = (el, x) => {
+    let v = 0;
+    let node = el;
+    while (node) {
+      v += x ? node.offsetLeft : node.offsetTop;
+      node = node.offsetParent;
+    }
+    return v;
+  };
+  const slideStart = (el) => {
+    const x = horizontal;
+    const walk = chainToContainer(el, x);
+    const local = walk.atContainer ? walk.v : walk.v - chain(container, x) - (x ? container.clientLeft : container.clientTop);
+    return rtl ? container.clientWidth - local - el.offsetWidth : local;
+  };
+  const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
+  const authoredSnap = container.style.scrollSnapType;
+  let snapIsNone = authoredSnap === "none";
+  const suspendSnap = () => {
+    if (typeof container.style.getPropertyValue === "function")
+      owned.style(container, "scroll-snap-type", "none");
+    else
+      owned.property(container.style, "scrollSnapType", "none");
+  };
+  const resumeSnap = () => {
+    owned.restore(container, "style:scroll-snap-type");
+    owned.restore(container.style, "property:scrollSnapType");
+  };
+  let active = -1;
+  let activeEl = null;
+  let position = 0;
+  let raf = 0;
+  let dragging = false;
+  let anim = 0;
+  let destroyed = false;
+  life.defer(() => {
+    destroyed = true;
+    dragging = false;
+  });
+  const slides = () => Array.from(container.children);
+  let lastState = { ...noopState };
+  const readState = (p) => ({
+    active: Math.max(active, 0),
+    count: container.children.length,
+    position,
+    progress: p ?? progress(),
+    dragging,
+    gliding: anim !== 0
+  });
+  const state = () => {
+    life.guard(() => {
+      lastState = readState();
+    })();
+    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
+  };
+  const measure = life.guard(() => {
+    raf = 0;
+    const center = pos() + viewport() / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    const list = slides();
+    const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
+    const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
+    const p = progress();
+    list.forEach((slide, i) => {
+      if (cssVars) {
+        const sd = (centers[i] - center) / sizes[i];
+        owned.style(slide, "--sd", sd.toFixed(4));
+      }
+      const dist = Math.abs(centers[i] - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
     });
-    const state = () => {
-        life.guard(() => { lastState = readState(); })();
-        return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
-    };
-    const measure = life.guard(() => {
-        raf = 0;
-        const center = pos() + viewport() / 2;
-        let best = 0;
-        let bestDist = Infinity;
-        const list = slides();
-        // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
-        const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
-        const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
-        // Snapshot progress() here, still inside the read phase: it reads
-        // scrollLeft and scrollWidth (through pos()/range()), and the write loop
-        // right below writes --sd on every slide. Calling progress() again after
-        // that loop (for the --sv-progress write) or after the class writes
-        // further down (through state(), for onScroll) would read that same
-        // geometry back AFTER this pass has already started writing to the DOM.
-        const p = progress();
-        list.forEach((slide, i) => {
-            // --sd stays normalized by the slide's OWN size (that is what the CSS
-            // reads), but the active slide is the nearest in PIXELS: comparing the
-            // normalized values made a wide slide look nearer than a narrow one
-            // beside it, so with a 100px and a 300px slide the active flipped at
-            // centre 101 instead of their midpoint, 150.
-            if (cssVars) {
-                const sd = (centers[i] - center) / sizes[i];
-                owned.style(slide, '--sd', sd.toFixed(4));
-            }
-            // an exact tie keeps the first slide, as before
-            const dist = Math.abs(centers[i] - center);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = i;
-            }
-        });
-        // Continuous position: interpolate between the two adjacent slide CENTRES
-        // the viewport centre sits between. The old formula (`best` minus the
-        // active slide's own `sd`) normalized by one slide's own size, so any gap
-        // made it jump BACKWARDS at every midpoint (two 100px slides 16px apart
-        // read 0.580, then 0.430 one pixel later), against the documented
-        // contract.
-        position = 0;
-        if (centers.length > 1) {
-            let seg = 0;
-            while (seg + 2 < centers.length && centers[seg + 1] <= center)
-                seg++;
-            const span = centers[seg + 1] - centers[seg];
-            const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
-            position = Math.min(Math.max(raw, 0), centers.length - 1);
-        }
-        if (cssVars)
-            owned.style(container, '--sv-progress', p.toFixed(4));
-        // Something outside the slider can rewrite the class attribute of the rail
-        // or of a slide (React committing `className`), dropping what the engine
-        // owns with no retrack and no index change to re-toggle on. Re-assert on
-        // every measure, the way the driver does for its live flag: one classList
-        // read each, an actual write only when the DOM disagrees.
-        const classes = container.classList;
-        if (classes.contains?.('sv-slider') !== true ||
-            classes.contains?.('sv-slider-y') !== !horizontal ||
-            classes.contains?.('sv-draggable') !== !!drag) {
-            owned.class(container, 'sv-slider', true);
-            owned.class(container, 'sv-slider-y', !horizontal);
-            owned.class(container, 'sv-draggable', !!drag);
-        }
-        list.forEach((slide, i) => {
-            const wanted = i === best;
-            if (slide.classList.contains?.('sv-active') !== wanted)
-                owned.class(slide, 'sv-active', wanted);
-        });
-        const bestEl = list[best] ?? null;
-        // an empty rail has no slide 0: `best` stays at its 0 default with
-        // nothing behind it, and firing onSlide(0) here claims that phantom
-        // index as active, so the real first slide never gets its own
-        // onSlide(0) once slides arrive. Keep `active` at -1 instead.
-        if (list.length > 0 && (best !== active || bestEl !== activeEl)) {
-            const indexChanged = best !== active;
-            active = best;
-            activeEl = bestEl;
-            if (cssVars)
-                owned.style(container, '--sv-slide', String(best));
-            if (indexChanged)
-                onSlide?.(best);
-        }
-        else if (list.length === 0 && (active !== -1 || activeEl !== null)) {
-            // populated to empty (every slide removed): a stale `active` from
-            // before the removal must not survive it, or repopulating at the same
-            // index fires no onSlide, and `state()` reports a phantom active
-            // index against a detached node with count 0 (ADU-354 item 5).
-            active = -1;
-            activeEl = null;
-            if (cssVars)
-                owned.style(container, '--sv-slide', '');
-        }
-        if (!life.stopped) {
-            lastState = readState(p);
-            onScroll?.(lastState);
-        }
+    position = 0;
+    if (centers.length > 1) {
+      let seg = 0;
+      while (seg + 2 < centers.length && centers[seg + 1] <= center)
+        seg++;
+      const span = centers[seg + 1] - centers[seg];
+      const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
+      position = Math.min(Math.max(raw, 0), centers.length - 1);
+    }
+    if (cssVars)
+      owned.style(container, "--sv-progress", p.toFixed(4));
+    const classes = container.classList;
+    if (classes.contains?.("sv-slider") !== true || classes.contains?.("sv-slider-y") !== !horizontal || classes.contains?.("sv-draggable") !== !!drag) {
+      owned.class(container, "sv-slider", true);
+      owned.class(container, "sv-slider-y", !horizontal);
+      owned.class(container, "sv-draggable", !!drag);
+    }
+    list.forEach((slide, i) => {
+      const wanted = i === best;
+      if (slide.classList.contains?.("sv-active") !== wanted)
+        owned.class(slide, "sv-active", wanted);
     });
-    const schedule = life.guard(() => {
-        if (!raf && !life.stopped)
-            raf = requestAnimationFrame(measure);
+    const bestEl = list[best] ?? null;
+    if (list.length > 0 && (best !== active || bestEl !== activeEl)) {
+      const indexChanged = best !== active;
+      active = best;
+      activeEl = bestEl;
+      if (cssVars)
+        owned.style(container, "--sv-slide", String(best));
+      if (indexChanged)
+        onSlide?.(best);
+    } else if (list.length === 0 && (active !== -1 || activeEl !== null)) {
+      active = -1;
+      activeEl = null;
+      if (cssVars)
+        owned.style(container, "--sv-slide", "");
+    }
+    if (!life.stopped) {
+      lastState = readState(p);
+      onScroll?.(lastState);
+    }
+  });
+  const schedule = life.guard(() => {
+    if (!raf && !life.stopped)
+      raf = requestAnimationFrame(measure);
+  });
+  const onLayout = life.guard(() => {
+    if (anim)
+      goTo(target);
+    schedule();
+  });
+  let ro;
+  let mo;
+  let watchedSlides = /* @__PURE__ */ new Set();
+  const watchSlides = () => {
+    const current = new Set(slides());
+    watchedSlides.forEach((slide) => {
+      if (!current.has(slide))
+        owned.restore(slide);
     });
-    // Geometry changes can invalidate an in-flight destination. Reuse goTo's
-    // fresh bounds only on observer delivery, not on every animation frame.
-    const onLayout = life.guard(() => {
-        if (anim)
-            goTo(target);
-        schedule();
-    });
-    let ro;
-    let mo;
-    let watchedSlides = new Set();
-    const watchSlides = () => {
-        const current = new Set(slides());
-        watchedSlides.forEach(slide => { if (!current.has(slide))
-            owned.restore(slide); });
-        watchedSlides = current;
-        ro?.disconnect();
-        ro?.observe(container);
-        current.forEach((slide) => ro?.observe(slide));
-    };
-    life.defer(() => watchedSlides.clear());
-    // pending glide destination: rapid next/prev clicks accumulate from here,
-    // not from `active` (which lags mid-glide and would swallow the clicks)
-    let target = -1;
-    const stopGlide = () => {
-        if (anim) {
-            cancelAnimationFrame(anim);
-            anim = 0;
-            // Rounded/clamped final positions may emit no scroll event. Deliver
-            // the stopped state once; schedule() coalesces a pending measurement.
-            schedule();
-        }
-        owned.class(container, 'sv-gliding', false);
-    };
-    // A preference that flips to reduce mid-glide settles the glide where it
-    // was going, now: checking only when a glide starts left one in flight.
-    // `target` is the slide INDEX the glide is heading for, so the settle goes
-    // through goTo(index, false), which recomputes the pixel destination; the
-    // first version wrote the index as scrollLeft (review, ADU-243).
-    const motionChanged = life.guard((reduced) => {
-        if (!reduced || target < 0 || destroyed)
-            return;
-        goTo(target, false);
-    });
-    const glide = (to) => {
+    watchedSlides = current;
+    ro?.disconnect();
+    ro?.observe(container);
+    current.forEach((slide) => ro?.observe(slide));
+  };
+  life.defer(() => watchedSlides.clear());
+  let target = -1;
+  const stopGlide = () => {
+    if (anim) {
+      cancelAnimationFrame(anim);
+      anim = 0;
+      schedule();
+    }
+    owned.class(container, "sv-gliding", false);
+  };
+  const motionChanged = life.guard((reduced) => {
+    if (!reduced || target < 0 || destroyed)
+      return;
+    goTo(target, false);
+  });
+  const glide = (to) => {
+    stopGlide();
+    let current = pos();
+    if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
+      resumeSnap();
+      target = -1;
+      setPos(to);
+      return;
+    }
+    suspendSnap();
+    owned.class(container, "sv-gliding", true);
+    let last = performance.now();
+    const step = life.guard((now) => {
+      const dt = Math.min(now - last, 50);
+      last = now;
+      const factor = 1 - Math.pow(2e-3, dt / duration);
+      current += (to - current) * factor;
+      if (Math.abs(to - current) < 0.5) {
+        setPos(to);
         stopGlide();
-        let current = pos();
-        if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
-            resumeSnap();
-            target = -1;
-            setPos(to);
-            return;
-        }
-        suspendSnap(); // native snap must not tug while we animate
-        owned.class(container, 'sv-gliding', true);
-        // exponential lerp, not a fixed tween: velocity is proportional to the
-        // remaining distance, so short release settles feel as soft as long
-        // button glides, and retargets (rapid clicks) stay continuous.
-        // `duration` calibrates the settle time (~99.8% covered by then).
-        let last = performance.now();
-        const step = life.guard((now) => {
-            const dt = Math.min(now - last, 50);
-            last = now;
-            const factor = 1 - Math.pow(0.002, dt / duration);
-            current += (to - current) * factor;
-            if (Math.abs(to - current) < 0.5) {
-                setPos(to);
-                stopGlide();
-                target = -1;
-                resumeSnap(); // position is centered. Safe to re-engage
-            }
-            else {
-                setPos(current);
-                anim = requestAnimationFrame(step);
-            }
-        });
+        target = -1;
+        resumeSnap();
+      } else {
+        setPos(current);
         anim = requestAnimationFrame(step);
-    };
-    // The wheel settle (below) glides to the nearest slide 200 ms after the last
-    // wheel event, with snap suspended until then. Any other writer that takes
-    // over inside that window has to drop it, or the settle wakes up mid drag
-    // and fights the input that replaced it. Returns whether one was pending:
-    // the wheel had suspended snap and only its own glide would have resumed it.
-    let wheelTimer;
-    const clearWheel = () => {
-        if (wheelTimer === undefined)
-            return false;
-        clearTimeout(wheelTimer);
-        wheelTimer = undefined;
-        return true;
-    };
-    // next, prev and the keyboard all route through goTo; seek is the other
-    // writer. Two guards cover every command.
-    const goTo = life.guard((index, smooth = true) => {
-        if (destroyed)
-            return;
-        clearWheel(); // this call owns the position now, not the pending settle
-        const all = slides();
-        const clamped = Math.max(0, Math.min(index, all.length - 1));
-        const slide = all[clamped];
-        if (!slide) {
-            stopGlide();
-            resumeSnap();
-            target = -1;
-            return;
-        }
-        // Edge slides may not center within the scroll range. Chasing an
-        // unreachable target wastes frames after native scrolling has stopped.
-        const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
-        if (smooth) {
-            target = clamped;
-            glide(to);
-        }
-        else {
-            stopGlide();
-            resumeSnap(); // a previous seek()/glide may have suspended it
-            target = -1;
-            setPos(to);
-        }
+      }
     });
-    const seek = life.guard((progress) => {
-        if (destroyed)
-            return;
-        clearWheel();
-        stopGlide();
-        target = -1;
-        suspendSnap(); // the driver owns this instance's position
-        setPos(Math.max(0, Math.min(progress, 1)) * range());
+    anim = requestAnimationFrame(step);
+  };
+  let wheelTimer;
+  const clearWheel = () => {
+    if (wheelTimer === void 0)
+      return false;
+    clearTimeout(wheelTimer);
+    wheelTimer = void 0;
+    return true;
+  };
+  const goTo = life.guard((index, smooth = true) => {
+    if (destroyed)
+      return;
+    clearWheel();
+    const all = slides();
+    const clamped = Math.max(0, Math.min(index, all.length - 1));
+    const slide = all[clamped];
+    if (!slide) {
+      stopGlide();
+      resumeSnap();
+      target = -1;
+      return;
+    }
+    const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
+    if (smooth) {
+      target = clamped;
+      glide(to);
+    } else {
+      stopGlide();
+      resumeSnap();
+      target = -1;
+      setPos(to);
+    }
+  });
+  const seek = life.guard((progress2) => {
+    if (destroyed)
+      return;
+    clearWheel();
+    stopGlide();
+    target = -1;
+    suspendSnap();
+    setPos(Math.max(0, Math.min(progress2, 1)) * range());
+  });
+  const stepBase = () => anim && target >= 0 ? target : active;
+  let lastPointer = 0;
+  let startPoint = 0;
+  let pressed = false;
+  const DRAG_THRESHOLD = 5;
+  const onMove = life.guard((event) => {
+    const point = horizontal ? event.clientX : event.clientY;
+    if (!dragging) {
+      if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
+        return;
+      dragging = true;
+      suspendSnap();
+      owned.class(container, "sv-dragging", true);
+      lastPointer = point;
+      return;
+    }
+    const step = point - lastPointer;
+    setPos(pos() - (rtl ? -step : step));
+    lastPointer = point;
+  });
+  const suppressClick = life.guard((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.removeEventListener("click", suppressClick, true);
+  });
+  let clickTimer;
+  const FOCUSABLE = "a[href],button,input,select,textarea,[tabindex],[contenteditable]";
+  let pressedTarget = null;
+  const endDrag = life.guard(() => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", endDrag);
+    window.removeEventListener("pointercancel", endDrag);
+    pressed = false;
+    if (!dragging) {
+      const focusable = pressedTarget?.closest(FOCUSABLE);
+      focusable?.focus({ preventScroll: true });
+      resumeSnap();
+      return;
+    }
+    dragging = false;
+    owned.class(container, "sv-dragging", false);
+    window.addEventListener("click", suppressClick, true);
+    clickTimer = setTimeout(life.guard(() => window.removeEventListener("click", suppressClick, true)), 0);
+    if (snap === "proximity" || snapIsNone) {
+      resumeSnap();
+      return;
+    }
+    const center = pos() + viewport() / 2;
+    const list = slides();
+    let nearest = 0;
+    let distance = Infinity;
+    list.forEach((slide, i) => {
+      const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
+      if (d < distance) {
+        distance = d;
+        nearest = i;
+      }
     });
-    /** Where the next relative step counts from: the in-flight destination if
-     * a glide is running, the measured active slide otherwise. */
-    const stepBase = () => (anim && target >= 0 ? target : active);
-    // mouse drag: snap is suspended from grab until the release glide finishes.
-    // move/up listeners live on window WHILE dragging. Pointer capture on a
-    // scrollable container is unreliable, and this way the gesture survives
-    // leaving the element (release happens on the real pointerup, anywhere).
-    // ponytail: no momentum fling of our own. The release glide covers it.
-    let lastPointer = 0;
-    let startPoint = 0;
-    let pressed = false; // mouse is down; becomes a drag only after real movement
-    const DRAG_THRESHOLD = 5;
-    const onMove = life.guard((event) => {
-        const point = horizontal ? event.clientX : event.clientY;
-        if (!dragging) {
-            // pending press: activating only after real movement keeps a plain
-            // click a plain click (see the focus restore in endDrag for the one
-            // side effect of the preventDefault below)
-            if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
-                return;
-            dragging = true;
-            suspendSnap();
-            owned.class(container, 'sv-dragging', true); // slider.css: user-select none
-            lastPointer = point;
-            return;
-        }
-        const step = point - lastPointer;
-        setPos(pos() - (rtl ? -step : step));
-        lastPointer = point;
-    });
-    // the click that follows a real drag would activate whatever link the
-    // pointer happens to be over. Swallow exactly that one
-    const suppressClick = life.guard((event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        window.removeEventListener('click', suppressClick, true);
-    });
-    let clickTimer;
-    const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]';
-    let pressedTarget = null;
-    const endDrag = life.guard(() => {
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', endDrag);
-        window.removeEventListener('pointercancel', endDrag);
-        pressed = false;
-        if (!dragging) {
-            // ordinary click: preventDefault on pointerdown (below) killed the
-            // browser's native focus-on-mousedown along with text selection,
-            // restore it now that we know this press was never a drag. The click
-            // event itself was never suppressed, so link/button activation was
-            // unaffected either way.
-            const focusable = pressedTarget?.closest(FOCUSABLE);
-            focusable?.focus({ preventScroll: true });
-            resumeSnap(); // the press interrupted a glide that had suspended snap
-            return;
-        }
-        dragging = false;
-        owned.class(container, 'sv-dragging', false);
-        window.addEventListener('click', suppressClick, true);
-        clickTimer = setTimeout(life.guard(() => window.removeEventListener('click', suppressClick, true)), 0);
-        if (snap === 'proximity' || snapIsNone) {
-            resumeSnap();
-            return;
-        }
-        // A final pointermove and pointerup can precede the scroll measurement.
-        // Resolve the destination from today's geometry, not the last frame.
-        const center = pos() + viewport() / 2;
-        const list = slides();
-        let nearest = 0;
-        let distance = Infinity;
-        list.forEach((slide, i) => {
-            const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
-            if (d < distance) {
-                distance = d;
-                nearest = i;
-            }
-        });
-        goTo(nearest);
-    });
-    // native image/link drag-and-drop would hijack the gesture mid-press
-    const onDragStart = life.guard((event) => {
-        if (pressed)
-            event.preventDefault();
-    });
-    const onDown = life.guard((event) => {
-        const owner = event.target?.closest?.('.sv-slider');
-        if (owner && owner !== container)
-            return;
-        const wasGliding = anim !== 0;
-        const wheelPending = clearWheel(); // the press owns the position now
-        stopGlide(); // the user takes over
-        target = -1;
-        const native = event.target.closest?.('input, textarea, select, [contenteditable]');
-        if (!drag || event.pointerType !== 'mouse' || (event.button ?? 0) !== 0 || native) {
-            // an interrupted glide (or a dropped wheel settle) must not leave snap
-            // suspended forever; a range input, a text field or a right click keep
-            // their native gesture
-            if (wasGliding || wheelPending)
-                resumeSnap();
-            return;
-        }
-        pressed = true;
-        pressedTarget = event.target;
-        startPoint = horizontal ? event.clientX : event.clientY;
-        // Kill native text-selection-drag AT THE SOURCE, not reactively: once a
-        // selection anchor exists, the browser auto-scrolls toward the pointer
-        // on every native mousemove, fighting our own scrollLeft writes frame
-        // by frame (the visible jitter). user-select:none alone doesn't reliably
-        // stop a selection from STARTING in every engine. PreventDefault does.
-        // The one side effect (this also suppresses native focus-on-mousedown)
-        // is repaired in endDrag for genuine clicks; the click event itself
-        // still fires natively either way, so link/button activation is fine.
-        event.preventDefault();
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', endDrag);
-        window.addEventListener('pointercancel', endDrag);
-    });
-    // trackpad/wheel pan: native mandatory snap settles fast and can't be
-    // slowed, so replace it. Suspend snap while wheeling, then glide to the
-    // nearest slide when the (momentum) wheel stream goes quiet. Skipped on
-    // instances authored with snap none (scroll-driven ones own their position).
-    const onWheel = life.guard((event) => {
-        const owner = event.target?.closest?.('.sv-slider');
-        if (owner && owner !== container)
-            return;
-        if (snapIsNone || snap === 'proximity')
-            return;
-        // only react when the gesture's dominant axis is OUR axis. Otherwise
-        // this is the page scrolling past the carousel (trackpad gestures are
-        // always slightly diagonal) and assisting would yank the slider around
-        const along = horizontal ? event.deltaX : event.deltaY;
-        const cross = horizontal ? event.deltaY : event.deltaX;
-        if (Math.abs(along) <= Math.abs(cross))
-            return;
-        stopGlide();
-        target = -1;
-        suspendSnap();
-        clearWheel();
-        wheelTimer = setTimeout(() => {
-            wheelTimer = undefined;
-            goTo(active);
-        }, 200);
-    });
-    const next = (smooth = true) => goTo(stepBase() + 1, smooth);
-    const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
-    // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
-    // hard after each. Replace it with the same soft glide as everything else.
-    // The container is made focusable (Safari never focuses scrollers on its own).
-    const onKey = life.guard((event) => {
-        if (event.target !== container)
-            return; // arrows inside inputs stay theirs
-        const nextKey = horizontal ? (rtl ? 'ArrowLeft' : 'ArrowRight') : 'ArrowDown';
-        const prevKey = horizontal ? (rtl ? 'ArrowRight' : 'ArrowLeft') : 'ArrowUp';
-        if (event.key === nextKey)
-            next();
-        else if (event.key === prevKey)
-            prev();
-        else if (event.key === 'Home')
-            goTo(0);
-        else if (event.key === 'End')
-            goTo(container.children.length - 1);
-        else
-            return;
-        event.preventDefault();
-    });
-    // Register each release before its acquisition, including APIs that throw
-    // after adding a listener or observing a node.
-    const listen = (node, type, fn, options) => {
-        life.defer(() => node.removeEventListener(type, fn, options));
-        node.addEventListener(type, fn, options);
-    };
-    life.defer(() => { if (raf)
-        cancelAnimationFrame(raf); raf = 0; });
-    life.defer(() => { if (anim)
-        cancelAnimationFrame(anim); anim = 0; });
-    life.defer(clearWheel);
-    life.defer(() => { if (clickTimer !== undefined)
-        clearTimeout(clickTimer); });
-    life.defer(() => ro?.disconnect());
-    life.defer(() => mo?.disconnect());
-    life.defer(() => window.removeEventListener('click', suppressClick, true));
-    life.defer(() => window.removeEventListener('pointermove', onMove));
-    life.defer(() => window.removeEventListener('pointerup', endDrag));
-    life.defer(() => window.removeEventListener('pointercancel', endDrag));
-    life.setup(() => {
-        owned.class(container, 'sv-slider', true);
-        owned.class(container, 'sv-slider-y', !horizontal);
-        owned.class(container, 'sv-draggable', !!drag);
-        // Now that `.sv-slider` is in place: an inline/stylesheet/utility none
-        // already latched snapIsNone above and needs no second opinion.
-        if (!snapIsNone && typeof getComputedStyle === 'function') {
-            snapIsNone = getComputedStyle(container).scrollSnapType === 'none';
-        }
-        owned.style(container, '--sv-snap', snap);
-        // .tabIndex reads -1 for an authored tabindex="-1" AND for no attribute
-        // at all: only the attribute itself tells an author's own -1 (a
-        // follower rail deliberately kept out of the tab order) from unauthored.
-        if (!container.hasAttribute?.('tabindex') && container.tabIndex === -1)
-            owned.attr(container, 'tabindex', '0');
-        listen(container, 'scroll', schedule, { passive: true });
-        if (typeof ResizeObserver === 'function')
-            ro = new ResizeObserver(onLayout);
+    goTo(nearest);
+  });
+  const onDragStart = life.guard((event) => {
+    if (pressed)
+      event.preventDefault();
+  });
+  const onDown = life.guard((event) => {
+    const owner = event.target?.closest?.(".sv-slider");
+    if (owner && owner !== container)
+      return;
+    const wasGliding = anim !== 0;
+    const wheelPending = clearWheel();
+    stopGlide();
+    target = -1;
+    const native = event.target.closest?.("input, textarea, select, [contenteditable]");
+    if (!drag || event.pointerType !== "mouse" || (event.button ?? 0) !== 0 || native) {
+      if (wasGliding || wheelPending)
+        resumeSnap();
+      return;
+    }
+    pressed = true;
+    pressedTarget = event.target;
+    startPoint = horizontal ? event.clientX : event.clientY;
+    event.preventDefault();
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+  });
+  const onWheel = life.guard((event) => {
+    const owner = event.target?.closest?.(".sv-slider");
+    if (owner && owner !== container)
+      return;
+    if (snapIsNone || snap === "proximity")
+      return;
+    const along = horizontal ? event.deltaX : event.deltaY;
+    const cross = horizontal ? event.deltaY : event.deltaX;
+    if (Math.abs(along) <= Math.abs(cross))
+      return;
+    stopGlide();
+    target = -1;
+    suspendSnap();
+    clearWheel();
+    wheelTimer = setTimeout(() => {
+      wheelTimer = void 0;
+      goTo(active);
+    }, 200);
+  });
+  const next = (smooth = true) => goTo(stepBase() + 1, smooth);
+  const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
+  const onKey = life.guard((event) => {
+    if (event.target !== container)
+      return;
+    const nextKey = horizontal ? rtl ? "ArrowLeft" : "ArrowRight" : "ArrowDown";
+    const prevKey = horizontal ? rtl ? "ArrowRight" : "ArrowLeft" : "ArrowUp";
+    if (event.key === nextKey)
+      next();
+    else if (event.key === prevKey)
+      prev();
+    else if (event.key === "Home")
+      goTo(0);
+    else if (event.key === "End")
+      goTo(container.children.length - 1);
+    else
+      return;
+    event.preventDefault();
+  });
+  const listen = (node, type, fn, options) => {
+    life.defer(() => node.removeEventListener(type, fn, options));
+    node.addEventListener(type, fn, options);
+  };
+  life.defer(() => {
+    if (raf)
+      cancelAnimationFrame(raf);
+    raf = 0;
+  });
+  life.defer(() => {
+    if (anim)
+      cancelAnimationFrame(anim);
+    anim = 0;
+  });
+  life.defer(clearWheel);
+  life.defer(() => {
+    if (clickTimer !== void 0)
+      clearTimeout(clickTimer);
+  });
+  life.defer(() => ro?.disconnect());
+  life.defer(() => mo?.disconnect());
+  life.defer(() => window.removeEventListener("click", suppressClick, true));
+  life.defer(() => window.removeEventListener("pointermove", onMove));
+  life.defer(() => window.removeEventListener("pointerup", endDrag));
+  life.defer(() => window.removeEventListener("pointercancel", endDrag));
+  life.setup(() => {
+    owned.class(container, "sv-slider", true);
+    owned.class(container, "sv-slider-y", !horizontal);
+    owned.class(container, "sv-draggable", !!drag);
+    if (!snapIsNone && typeof getComputedStyle === "function") {
+      snapIsNone = getComputedStyle(container).scrollSnapType === "none";
+    }
+    owned.style(container, "--sv-snap", snap);
+    if (!container.hasAttribute?.("tabindex") && container.tabIndex === -1)
+      owned.attr(container, "tabindex", "0");
+    listen(container, "scroll", schedule, { passive: true });
+    if (typeof ResizeObserver === "function")
+      ro = new ResizeObserver(onLayout);
+    watchSlides();
+    if (typeof MutationObserver === "function") {
+      mo = new MutationObserver(life.guard(() => {
         watchSlides();
-        if (typeof MutationObserver === 'function') {
-            mo = new MutationObserver(life.guard(() => { watchSlides(); onLayout(); }));
-            mo.observe(container, { childList: true });
-        }
-        life.defer(onMotionChange(motionChanged));
-        listen(container, 'dragstart', onDragStart);
-        listen(container, 'pointerdown', onDown);
-        listen(container, 'wheel', onWheel, { passive: true });
-        listen(container, 'keydown', onKey);
-        measure();
-    });
-    return {
-        next,
-        prev,
-        goTo,
-        seek,
-        active: () => Math.max(active, 0),
-        state,
-        destroy: life.stop,
-    };
+        onLayout();
+      }));
+      mo.observe(container, { childList: true });
+    }
+    life.defer(onMotionChange(motionChanged));
+    listen(container, "dragstart", onDragStart);
+    listen(container, "pointerdown", onDown);
+    listen(container, "wheel", onWheel, { passive: true });
+    listen(container, "keydown", onKey);
+    measure();
+  });
+  return {
+    next,
+    prev,
+    goTo,
+    seek,
+    active: () => Math.max(active, 0),
+    state,
+    destroy: life.stop
+  };
 }
 
   return slider;
@@ -8027,1044 +7417,637 @@ function slider(container, { axis = 'x', snap = 'mandatory', drag = true, durati
 
   /* ═══════ scrollvars toggles, inlined from the built dist, verbatim ═══════ */
   var toggles = (function () {
-/**
- * Click → state → CSS. The third input, after scroll and pointer: one
- * delegated listener turns clicks into classes + variables, and CSS does
- * every pixel of the animation. Same contract as the scroll driver.
- *
- *   <button data-sv-toggle="open" data-sv-target="#menu">menu</button>
- *   <nav id="menu">…</nav>        <!-- gains/loses .open on click -->
- *
- * - `data-sv-toggle="class"`. Class to toggle ('sv-open' when empty)
- * - `data-sv-target="sel"`. What receives it (the trigger itself when absent)
- * - the target also gets `--sv-state: 1|0` for continuous CSS use, written at
- *   boot from the class so markup that ships open agrees from the first frame
- * - the trigger gets `aria-expanded` kept in sync. The accessibility the
- *   old checkbox hack never gave you
- *
- * Deliberately NOT a timeline engine: one click, one state change. For
- * reversible multi-act sequences, use the sv-acts CSS preset; use GSAP
- * when branching, physics or per-act callbacks are needed.
- *
- * `<ScrollVarsBoot />` wires this automatically alongside scan().
- *
- * Marks every target it controls with `sv-ui` (the resolved
- * `data-sv-target` element, or the trigger itself when there is no target):
- * a click driver is running on that element even on a page that never calls
- * scan()/track(), so CSS no-JS guards keyed on `html:not(.sv-on)` (sv-acts)
- * must also exempt `.sv-acts.sv-ui`, or a click-only widget stays stuck at
- * the no-JS finished state forever. Scoped to the target, not <html>: an
- * unrelated scroll-revealed widget elsewhere on the same page must still
- * fall back to the finished state when the scroll driver never boots.
- *
- * Marking a target at boot holds its `--sv-acts-settle` (styles/state.css)
- * at 0s for two frames: without that, a target closed by default settles
- * from the no-JS finished value down to 0 WITH the acts transition
- * running, a visible un-animation the instant the click driver takes over.
- * Scoped to that one custom property, never the `transition` shorthand:
- * writing the shorthand would stop every OTHER transition running on the
- * element too, not just the acts one.
- * An inline `transition-duration` LONGHAND is the one thing that knob
- * cannot reach: it outranks the stylesheet's --sv-acts-settle-driven
- * duration by cascade origin no matter what the knob is set to, so it gets
- * its own hold for the same two frames, exact value and priority saved and
- * restored through the longhand getter/setter only, never the shorthand
- * (the shorthand getter reads an inline longhand back as '', so a
- * save/restore through it would erase the longhand for good). A target
- * with no inline longhand never has one written, so an unrelated in-flight
- * transition on it is never touched.
- * The whole settle, --sv-acts-settle AND the longhand hold, is scoped to
- * `.sv-acts` targets: that is the only class with the no-JS finished-value
- * guard above, so only it has a value to un-animate from. A plain toggle
- * target (this module's own `<nav id="menu">` example, most of the time)
- * gets sv-ui and nothing else. This matters beyond skipping needless work:
- * `getPropertyValue('transition-duration')` cannot tell an authored inline
- * longhand from the browser's own expansion of an unrelated inline
- * `transition` SHORTHAND (`style="transition: translate 300ms linear"`
- * reads back as `'300ms'` on that longhand too), so running the hold on a
- * non-.sv-acts target risked forcing that unrelated property's duration to
- * 0s for two frames, snapping instead of animating any change to it that
- * landed inside the hold window.
- */
-/** Private acquisition and callback boundary for independently mounted units. */
 function reportFailure(error) {
-    if (typeof reportError === 'function')
-        reportError(error);
-    else
-        console.error(error);
+  if (typeof reportError === "function")
+    reportError(error);
+  else
+    console.error(error);
 }
 function lifetime() {
-    let stopped = false;
-    let acquiring = true;
-    const releases = [];
-    const stop = () => {
+  let stopped = false;
+  let acquiring = true;
+  const releases = [];
+  const stop = () => {
+    if (stopped)
+      return;
+    stopped = true;
+    let first;
+    let failed = false;
+    for (const release of releases.splice(0).reverse()) {
+      try {
+        release();
+      } catch (error) {
+        if (!failed) {
+          first = error;
+          failed = true;
+        }
+      }
+    }
+    if (failed)
+      throw first;
+  };
+  const fail = (error) => {
+    try {
+      stop();
+    } catch {
+    }
+    reportFailure(error);
+  };
+  return {
+    get stopped() {
+      return stopped;
+    },
+    defer(release) {
+      if (stopped)
+        release();
+      else
+        releases.push(release);
+    },
+    stop,
+    guard(fn) {
+      return (...args) => {
         if (stopped)
-            return;
-        stopped = true;
-        let first;
-        let failed = false;
-        for (const release of releases.splice(0).reverse()) {
-            try {
-                release();
-            }
-            catch (error) {
-                if (!failed) {
-                    first = error;
-                    failed = true;
-                }
-            }
-        }
-        if (failed)
-            throw first;
-    };
-    const fail = (error) => {
+          return;
         try {
-            stop();
+          fn(...args);
+        } catch (error) {
+          if (acquiring)
+            throw error;
+          fail(error);
         }
-        catch { /* retain the original failure */ }
-        reportFailure(error);
-    };
-    return {
-        get stopped() { return stopped; },
-        defer(release) { if (stopped)
-            release();
-        else
-            releases.push(release); },
-        stop,
-        guard(fn) {
-            return (...args) => {
-                if (stopped)
-                    return;
-                try {
-                    fn(...args);
-                }
-                catch (error) {
-                    if (acquiring)
-                        throw error;
-                    fail(error);
-                }
-            };
-        },
-        setup(fn) {
-            try {
-                fn();
-                acquiring = false;
-            }
-            catch (error) {
-                try {
-                    stop();
-                }
-                catch { /* retain the acquisition error */ }
-                throw error;
-            }
-        },
-    };
+      };
+    },
+    setup(fn) {
+      try {
+        fn();
+        acquiring = false;
+      } catch (error) {
+        try {
+          stop();
+        } catch {
+        }
+        throw error;
+      }
+    }
+  };
 }
-/** Restore only our last write. A later author write becomes the new baseline. */
 function ownership() {
-    const nodes = new Map();
-    const set = (node, key, read, write, value) => {
-        let entries = nodes.get(node);
-        if (!entries)
-            nodes.set(node, entries = new Map());
-        let entry = entries.get(key);
-        const current = read();
-        if (!entry)
-            entries.set(key, entry = { read, write, before: current, last: value });
-        else if (current !== entry.last)
-            entry.before = current;
-        entry.last = value;
-        write(value);
-    };
-    const restore = (node, key) => {
-        let first, failed = false;
-        nodes.forEach((entries, target) => {
-            if (node && target !== node)
-                return;
-            entries.forEach((entry, name) => {
-                if (key && name !== key)
-                    return;
-                entries.delete(name);
-                try {
-                    if (entry.read() === entry.last)
-                        entry.write(entry.before);
-                }
-                catch (error) {
-                    if (!failed) {
-                        failed = true;
-                        first = error;
-                    }
-                }
-            });
-            if (!entries.size)
-                nodes.delete(target);
-        });
-        if (failed)
-            throw first;
-    };
-    return {
-        restore,
-        style(el, key, value, priority = '') {
-            const read = () => JSON.stringify([el.style.getPropertyValue?.(key) ?? '', el.style.getPropertyPriority?.(key) ?? '']);
-            set(el, `style:${key}`, read, (saved) => {
-                const [v, p] = JSON.parse(saved);
-                if (v)
-                    el.style.setProperty(key, v, p);
-                else
-                    el.style.removeProperty?.(key);
-            }, JSON.stringify([value, priority]));
-        },
-        class(el, key, value) {
-            set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, v => { if (typeof el.classList.toggle === 'function')
-                el.classList.toggle(key, v);
-            else if (v)
-                el.classList.add(key);
-            else
-                el.classList.remove(key); }, value);
-        },
-        attr(el, key, value) {
-            set(el, `attr:${key}`, () => el.getAttribute(key), v => { if (v === null)
-                el.removeAttribute(key);
-            else
-                el.setAttribute(key, v); }, value);
-        },
-        property(el, key, value) {
-            set(el, `property:${String(key)}`, () => el[key], v => { el[key] = v; }, value);
-        },
-    };
+  const nodes = /* @__PURE__ */ new Map();
+  const set = (node, key, read, write, value) => {
+    let entries = nodes.get(node);
+    if (!entries)
+      nodes.set(node, entries = /* @__PURE__ */ new Map());
+    let entry = entries.get(key);
+    const current = read();
+    if (!entry)
+      entries.set(key, entry = { read, write, before: current, last: value });
+    else if (current !== entry.last)
+      entry.before = current;
+    entry.last = value;
+    write(value, current);
+  };
+  const restore = (node, key) => {
+    let first, failed = false;
+    nodes.forEach((entries, target) => {
+      if (node && target !== node)
+        return;
+      entries.forEach((entry, name) => {
+        if (key && name !== key)
+          return;
+        entries.delete(name);
+        try {
+          const current = entry.read();
+          if (current === entry.last)
+            entry.write(entry.before, current);
+        } catch (error) {
+          if (!failed) {
+            failed = true;
+            first = error;
+          }
+        }
+      });
+      if (!entries.size)
+        nodes.delete(target);
+    });
+    if (failed)
+      throw first;
+  };
+  return {
+    restore,
+    style(el, key, value, priority = "") {
+      const read = () => (el.style.getPropertyPriority?.(key) ? "1" : "0") + (el.style.getPropertyValue?.(key) ?? "");
+      set(el, `style:${key}`, read, (saved, current) => {
+        const v = saved.slice(1);
+        if (current[0] === "1" && saved[0] === "0")
+          el.style.removeProperty?.(key);
+        if (v)
+          el.style.setProperty(key, v, saved[0] === "1" ? "important" : "");
+        else
+          el.style.removeProperty?.(key);
+      }, (priority ? "1" : "0") + value);
+    },
+    class(el, key, value) {
+      set(el, `class:${key}`, () => el.classList.contains?.(key) ?? false, (v) => {
+        if (typeof el.classList.toggle === "function")
+          el.classList.toggle(key, v);
+        else if (v)
+          el.classList.add(key);
+        else
+          el.classList.remove(key);
+      }, value);
+    },
+    attr(el, key, value) {
+      set(el, `attr:${key}`, () => el.getAttribute(key), (v) => {
+        if (v === null)
+          el.removeAttribute(key);
+        else
+          el.setAttribute(key, v);
+      }, value);
+    },
+    property(el, key, value) {
+      set(el, `property:${String(key)}`, () => el[key], (v) => {
+        el[key] = v;
+      }, value);
+    }
+  };
 }
 
-// One click, one state change, across every live instance. `toggles(root?)`
-// is public optional-root API and the documented setup runs two instances at
-// once: `<ScrollVarsBoot />` calls it unscoped and a consumer calls it on
-// their own root. A trigger nested inside both is contained by both, since
-// containment is inclusive and not nearest-exclusive, so both handlers used
-// to flip the same class on one click and the toggle netted to nothing: the
-// panel stayed closed, --sv-state stayed 0, aria-expanded stayed false, and
-// the user saw a button that does nothing (ADU-172).
-// The first instance that ACTS on an event claims it, and every later one
-// bails. Claimed on action rather than on sight, so a scope that cannot
-// resolve the trigger's target still passes the event on to a wider scope
-// that can, exactly as before.
-// That first instance is the NEAREST scope, by dispatch order rather than by
-// a lookup: any scope containing the trigger is an ancestor-or-self of it, so
-// it sits on the event's propagation path, and the bubble phase runs the path
-// inner to outer. Two instances rooted on the same node (two unscoped calls,
-// the other half of this bug) tie and the first registered wins, which is
-// still exactly one toggle.
-// Keyed by the event object, so the claim lives exactly as long as the
-// event does, and a re-dispatched Event object is a silent no-op: dispatch
-// the SAME MouseEvent twice and only the first opens the panel, measured
-// in Chrome (re-dispatch is rare enough not to need code for it). No
-// registry of live scopes to keep in step with stop(), no instance whose
-// destruction leaves a stale entry that silently disowns a trigger, and
-// nothing to leak.
-const claimed = new WeakSet();
-const weakRef = typeof WeakRef === 'function' ? (el) => new WeakRef(el) : (el) => ({ deref: () => el });
-const markers = new WeakMap();
-// Without native inert (Firefox 78-111, Safari 14.1-15.4, inside the README
-// floor), marking a controlled marquee track `sv-ui` turns on ui.css's
-// animated state, which also reveals `.sv-marquee-dup`. That duplicate's own
-// `inert` attribute is inert in name only there, so its links would stay
-// tabbable behind an animated strip (T1, ADU-355). A track never marked
-// `sv-ui` stays in ui.css's static branch instead, dup permanently hidden.
-const inertSupported = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype;
-const live = new Set();
-const has = (scope, node) => typeof scope.contains === 'function' ? scope.contains(node) : true;
-// The nearest containing scope that RESOLVES the trigger's target: a click
-// handled by an outer scope, because the inner one could not find the
-// target, is synced by that outer scope too (round 10, verify 3). A
-// selector that does not parse is skipped, not thrown on.
+const claimed = /* @__PURE__ */ new WeakSet();
+const weakRef = typeof WeakRef === "function" ? (el) => new WeakRef(el) : (el) => ({ deref: () => el });
+const markers = /* @__PURE__ */ new WeakMap();
+const inertSupported = typeof HTMLElement !== "undefined" && "inert" in HTMLElement.prototype;
+const live = /* @__PURE__ */ new Set();
+const has = (scope, node) => typeof scope.contains === "function" ? scope.contains(node) : true;
 function ownerOf(t) {
-    let best;
-    let resolved;
-    live.forEach((i) => {
-        if (!has(i.scope, t))
-            return;
-        let r;
-        try {
-            r = i.resolve(t);
-        }
-        catch {
-            return;
-        }
-        if (!r.target)
-            return;
-        if (!best || has(best.scope, i.scope)) {
-            best = i;
-            resolved = r;
-        }
-    });
-    return resolved;
+  let best;
+  let resolved;
+  live.forEach((i) => {
+    if (!has(i.scope, t))
+      return;
+    let r;
+    try {
+      r = i.resolve(t);
+    } catch {
+      return;
+    }
+    if (!r.target)
+      return;
+    if (!best || has(best.scope, i.scope)) {
+      best = i;
+      resolved = r;
+    }
+  });
+  return resolved;
 }
-// Marquee: stop work nobody sees. A `.sv-marquee-track` costs a CSS
-// animation running forever even off screen and with the tab in the
-// background; this pauses it there and resumes on return, independent of
-// the user's own pause button (`.sv-paused`, unaffected). One shared
-// IntersectionObserver and one shared visibilitychange listener for
-// however many marquees and toggles() scopes a page has, matching the
-// singleton pattern driver.ts uses for its ResizeObserver. Reduced motion
-// already stops the animation entirely (styles/ui.css); this class costs
-// nothing extra there beyond the toggle itself.
 let marqueeObserver;
-const marqueeOffscreen = new WeakMap();
-// A per-track LEASE COUNT, not membership: two scopes can register the same
-// track (Boot's document-wide scan plus a Marquee's own toggles(node)), and
-// releasing one must not strip the class or the observer from a track the
-// other scope still owns (ADU-354 blocker 2). `gen` is the generation this
-// lease belongs to: a track that gets pruned (detached) and later
-// re-registered starts a NEW generation, so a stop() from a scope that
-// registered under the OLD generation, running after the reattach, finds
-// its own generation stale and does nothing to the fresh lease (a lease is
-// keyed by node identity alone, and a detached-then-reattached node keeps
-// the same identity, so without this a late release from before the prune
-// would decrement or delete a registration it never owned).
-const marqueeLeases = new Map();
-// Never reset by a prune: only ever incremented, so a generation number is
-// never reused for the same track.
-const marqueeGeneration = new WeakMap();
+const marqueeOffscreen = /* @__PURE__ */ new WeakMap();
+const marqueeLeases = /* @__PURE__ */ new Map();
+const marqueeGeneration = /* @__PURE__ */ new WeakMap();
 function nextMarqueeGeneration(track) {
-    const gen = (marqueeGeneration.get(track) ?? 0) + 1;
-    marqueeGeneration.set(track, gen);
-    return gen;
+  const gen = (marqueeGeneration.get(track) ?? 0) + 1;
+  marqueeGeneration.set(track, gen);
+  return gen;
 }
 let onVisibility;
-// A track that left the document (an SPA router replacing DOM outside
-// React's own unmount path, or any removal that never called the owning
-// scope's stop()) is pruned on its next IO delivery or visibility pass, so
-// no lease can keep a detached node observed forever.
 function pruneDetachedMarquee(track) {
-    // Explicit `false` only: a stub or an older engine with no isConnected at
-    // all reports `undefined`, which must NOT read as detached (fail visible).
-    if (track.isConnected !== false)
-        return false;
-    marqueeLeases.delete(track);
-    marqueeObserver?.unobserve(track);
-    marqueeOffscreen.delete(track);
-    // The same release the normal (last-lease-goes) path performs: a pruned
-    // track must not keep announcing itself paused-offscreen if it is later
-    // reattached and re-observed under a fresh lease.
-    track.classList.remove('sv-marquee-offscreen');
-    releaseMarqueeSharedIfUnneeded();
-    return true;
+  if (track.isConnected !== false)
+    return false;
+  marqueeLeases.delete(track);
+  marqueeObserver?.unobserve(track);
+  marqueeOffscreen.delete(track);
+  track.classList.remove("sv-marquee-offscreen");
+  releaseMarqueeSharedIfUnneeded();
+  return true;
 }
-// An observed target that is ALREADY non-intersecting gets no new
-// IntersectionObserver delivery when it is removed from the document (no
-// intersection transition to report): the per-target prune in the IO
-// callback and applyMarqueeState never runs for such a track. The map is
-// tiny (one entry per marquee on the page), so a full sweep on every IO
-// delivery batch and every new registration (N7) catches it without a
-// MutationObserver: the next tab switch is no longer the only trigger.
-// Guarded per track (verifier, loop8-7 PR #116): pruneDetachedMarquee's own
-// classList.remove can throw on a patched or exotic element, and both
-// callers of this sweep sit above the guard their OWN batch already has.
-// From the MutationObserver callback's removal-only pre-sweep (C2) the
-// throw reached life.guard's fail() and stopped the WHOLE document scope
-// over one bad track; from the IntersectionObserver callback it ran BEFORE
-// the per-entry try below, so it skipped every entry in that delivery, not
-// only the one that threw. The lease entry is already deleted before the
-// throwing classList call, so there is nothing left to retry, only report.
 function sweepDetachedMarquees() {
-    marqueeLeases.forEach((_lease, track) => {
-        try {
-            pruneDetachedMarquee(track);
-        }
-        catch (error) {
-            reportFailure(error);
-        }
-    });
+  marqueeLeases.forEach((_lease, track) => {
+    try {
+      pruneDetachedMarquee(track);
+    } catch (error) {
+      reportFailure(error);
+    }
+  });
 }
 function applyMarqueeState(track) {
-    if (pruneDetachedMarquee(track))
-        return;
-    // classList.toggle's second argument defaults on `undefined`, not on a
-    // falsy value: the OR chain below can evaluate to `undefined` (document
-    // hidden check short-circuiting), which would silently fall back to the
-    // "flip from current state" behavior instead of forcing false.
-    const offscreen = Boolean((marqueeOffscreen.get(track) ?? false) || (typeof document !== 'undefined' && document.hidden));
-    track.classList.toggle('sv-marquee-offscreen', offscreen);
+  if (pruneDetachedMarquee(track))
+    return;
+  const offscreen = Boolean((marqueeOffscreen.get(track) ?? false) || typeof document !== "undefined" && document.hidden);
+  track.classList.toggle("sv-marquee-offscreen", offscreen);
 }
 function bindMarqueeVisibility() {
-    if (onVisibility || typeof document === 'undefined' || typeof document.addEventListener !== 'function')
-        return;
-    // Guarded per track (AGENTS:528, loop8-7 auditor guard): a throw on one
-    // track's classList (a patched or exotic element) must not stop the
-    // callback before it reaches the OTHER live marquees in the same pass.
-    onVisibility = () => marqueeLeases.forEach((_lease, track) => {
-        try {
-            applyMarqueeState(track);
-        }
-        catch (error) {
-            reportFailure(error);
-        }
-    });
-    document.addEventListener('visibilitychange', onVisibility);
-}
-// The last marquee stopping releases the shared observer and listener, the
-// same "nothing left to watch" release driver.ts's ResizeObserver singleton
-// does: a page that mounts and fully unmounts its last Marquee leaves no
-// resource behind (packed-acceptance's remount baseline check, ADU debug).
-function releaseMarqueeSharedIfUnneeded() {
-    if (marqueeLeases.size)
-        return;
-    marqueeObserver?.disconnect();
-    marqueeObserver = undefined;
-    if (onVisibility && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
-        document.removeEventListener('visibilitychange', onVisibility);
+  if (onVisibility || typeof document === "undefined" || typeof document.addEventListener !== "function")
+    return;
+  onVisibility = () => marqueeLeases.forEach((_lease, track) => {
+    try {
+      applyMarqueeState(track);
+    } catch (error) {
+      reportFailure(error);
     }
-    onVisibility = undefined;
+  });
+  document.addEventListener("visibilitychange", onVisibility);
+}
+function releaseMarqueeSharedIfUnneeded() {
+  if (marqueeLeases.size)
+    return;
+  marqueeObserver?.disconnect();
+  marqueeObserver = void 0;
+  if (onVisibility && typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+    document.removeEventListener("visibilitychange", onVisibility);
+  }
+  onVisibility = void 0;
 }
 function watchMarquee(track, life) {
-    sweepDetachedMarquees();
-    const existing = marqueeLeases.get(track);
-    const already = !!existing;
-    // A registration reuses the CURRENT generation if one is already live for
-    // this track; otherwise it starts one (a fresh track, or one that was
-    // pruned and is only now being seen again).
-    const gen = existing ? existing.gen : nextMarqueeGeneration(track);
-    marqueeLeases.set(track, { count: (existing?.count ?? 0) + 1, gen });
-    // Registered before any of the steps below run: a throw partway through
-    // (the IntersectionObserver constructor, bindMarqueeVisibility's
-    // addEventListener, an overridden classList) is caught by toggles()'s
-    // own life.setup() and unwound through every deferred release, this one
-    // included. Registering it LAST left a track added with no cleanup ever
-    // wired to remove it. Every scope that registers gets its own decrement:
-    // only the one that takes the count to zero actually releases the track.
-    // Through a weakRef, never `track` directly: this closure sits in life's
-    // own release list until the WHOLE scope stops, which the document
-    // instance under <ScrollVarsBoot> never does, so a direct capture would
-    // pin every track present at setup for the app's life (same shape as the
-    // marker fix above).
-    const ref = weakRef(track);
-    life.defer(() => {
-        const t = ref.deref();
-        if (!t)
-            return;
-        const current = marqueeLeases.get(t);
-        // No entry (pruned as detached), or the entry belongs to a LATER
-        // generation than the one this release was issued for (the track was
-        // pruned and re-registered by someone else since): not ours to touch.
-        if (!current || current.gen !== gen)
-            return;
-        if (current.count > 1) {
-            marqueeLeases.set(t, { count: current.count - 1, gen });
-            return;
-        }
-        marqueeLeases.delete(t);
-        marqueeObserver?.unobserve(t);
-        marqueeOffscreen.delete(t);
-        t.classList.remove('sv-marquee-offscreen');
-        releaseMarqueeSharedIfUnneeded();
-    });
-    if (already)
-        return;
-    marqueeOffscreen.set(track, false);
-    bindMarqueeVisibility();
-    if (typeof IntersectionObserver === 'function') {
-        if (!marqueeObserver) {
-            marqueeObserver = new IntersectionObserver((entries) => {
-                sweepDetachedMarquees();
-                // Guarded per entry (AGENTS:528, loop8-7 auditor guard): one
-                // track's classList throwing must not stop the batch before the
-                // other marquees delivered in the same IntersectionObserver
-                // callback are settled.
-                entries.forEach((entry) => {
-                    try {
-                        const el = entry.target;
-                        if (!marqueeLeases.has(el))
-                            return;
-                        if (pruneDetachedMarquee(el))
-                            return;
-                        marqueeOffscreen.set(el, !entry.isIntersecting);
-                        applyMarqueeState(el);
-                    }
-                    catch (error) {
-                        reportFailure(error);
-                    }
-                });
-            });
-        }
-        marqueeObserver.observe(track);
+  sweepDetachedMarquees();
+  const existing = marqueeLeases.get(track);
+  const already = !!existing;
+  const gen = existing ? existing.gen : nextMarqueeGeneration(track);
+  marqueeLeases.set(track, { count: (existing?.count ?? 0) + 1, gen });
+  const ref = weakRef(track);
+  life.defer(() => {
+    const t = ref.deref();
+    if (!t)
+      return;
+    const current = marqueeLeases.get(t);
+    if (!current || current.gen !== gen)
+      return;
+    if (current.count > 1) {
+      marqueeLeases.set(t, { count: current.count - 1, gen });
+      return;
     }
-    applyMarqueeState(track);
+    marqueeLeases.delete(t);
+    marqueeObserver?.unobserve(t);
+    marqueeOffscreen.delete(t);
+    t.classList.remove("sv-marquee-offscreen");
+    releaseMarqueeSharedIfUnneeded();
+  });
+  if (already)
+    return;
+  marqueeOffscreen.set(track, false);
+  bindMarqueeVisibility();
+  if (typeof IntersectionObserver === "function") {
+    if (!marqueeObserver) {
+      marqueeObserver = new IntersectionObserver((entries) => {
+        sweepDetachedMarquees();
+        entries.forEach((entry) => {
+          try {
+            const el = entry.target;
+            if (!marqueeLeases.has(el))
+              return;
+            if (pruneDetachedMarquee(el))
+              return;
+            marqueeOffscreen.set(el, !entry.isIntersecting);
+            applyMarqueeState(el);
+          } catch (error) {
+            reportFailure(error);
+          }
+        });
+      });
+    }
+    marqueeObserver.observe(track);
+  }
+  applyMarqueeState(track);
 }
 function toggles(root) {
-    if (typeof window === 'undefined')
-        return () => { };
-    const scope = root ?? document;
-    const life = lifetime();
-    let transaction = ownership();
-    let siblingWrites = [];
-    const rollback = () => {
-        for (const journal of [transaction, ...siblingWrites]) {
-            try {
-                journal.restore();
-            }
-            catch { /* retain the operation's error */ }
-        }
+  if (typeof window === "undefined")
+    return () => {
     };
-    const resolve = (trigger) => {
-        const className = trigger.getAttribute('data-sv-toggle') || 'sv-open';
-        const selector = trigger.getAttribute('data-sv-target');
-        // A trigger inside a `.sv-marquee` wrapper resolves its OWN target
-        // first: the marquee markup's target is the class `.sv-marquee-track`,
-        // so under the document scope (Boot, the css pane's own toggles())
-        // every pause button used to resolve to the FIRST track on the page,
-        // and a second controlled marquee stayed static with its button
-        // hidden (N4a, loop8-4 review). Any trigger outside a `.sv-marquee`
-        // ancestor keeps the old scope-wide lookup.
-        const nearestMarquee = selector ? trigger.closest?.('.sv-marquee') : null;
-        const target = selector
-            ? (nearestMarquee?.querySelector(selector) ?? scope.querySelector(selector))
-            : trigger;
-        return { className, selector, target };
-    };
-    // every trigger of the same state reflects it: on boot, and after any
-    // click. The state is the PAIR (resolved element, class), not the
-    // data-sv-target string: two triggers can name the same panel through
-    // different selectors ('#menu' and 'nav.menu'), and a trigger with no
-    // target at all resolves to itself, which is the old selector-less case.
-    // The class is half the key, not decoration: a hamburger toggling 'open'
-    // and a second control toggling 'pinned' on the same nav are two
-    // independent states, and grouping by the element alone made one click
-    // claim aria-expanded="true" for both.
-    const triggers = () => {
-        const list = Array.from(scope.querySelectorAll('[data-sv-toggle]'));
-        if (scope.matches?.('[data-sv-toggle]'))
-            list.unshift(scope);
-        return list;
-    };
-    // ARIA describes the TARGET's state, so every trigger of the pair in every
-    // live instance reflects it, not only the ones this scope owns: a trigger
-    // outside the owning scope kept the aria-expanded it was synced to at boot
-    // (round 10). Each trigger resolves in its nearest live scope, and a
-    // trigger whose selector does not parse is skipped, not thrown on.
-    const sync = (target, className, on) => {
-        const seen = new Set();
-        live.forEach((otherInstance) => {
-            const journal = otherInstance === instance ? transaction : ownership();
-            if (otherInstance !== instance)
-                siblingWrites.push(journal);
-            const update = () => otherInstance.triggers().forEach((t) => {
-                if (seen.has(t))
-                    return;
-                seen.add(t);
-                const other = ownerOf(t);
-                if (other && other.target === target && other.className === className)
-                    journal.attr(t, t.getAttribute('aria-pressed') !== null ? 'aria-pressed' : 'aria-expanded', String(on));
-            });
-            // The click's own sync belongs to its semantic transaction. A broken
-            // sibling's query or ARIA write belongs to that sibling's lifetime,
-            // and must not stop it: rethrowing here reaches `otherInstance.run`'s
-            // `life.guard`, whose `fail()` calls `stop()` and tears down that
-            // sibling's click listener and MutationObserver for the rest of the
-            // page's life over one write this scope does not own (D3, loop8-8).
-            if (otherInstance === instance)
-                update();
-            else
-                otherInstance.run(() => {
-                    try {
-                        update();
-                    }
-                    catch (error) {
-                        try {
-                            journal.restore();
-                        }
-                        catch { /* retain the sibling failure */ }
-                        reportFailure(error);
-                    }
-                });
-        });
-    };
-    const instance = { scope, triggers, resolve, run: life.guard(work => work()) };
-    // the target's own state, written wherever the class flips
-    const write = (target, className, on) => {
-        transaction.style(target, '--sv-state', on ? '1' : '0');
-        sync(target, className, on);
-    };
-    // targets currently inside their boot settle: cancellable by a click that
-    // lands inside the two-frame hold, so it still gets its transition
-    const settling = new WeakSet();
-    const frames = new Set();
-    const hold = ownership();
-    const frame = (fn) => {
-        const id = requestAnimationFrame(life.guard(() => { frames.delete(id); fn(); }));
-        frames.add(id);
-    };
-    // an inline transition-duration LONGHAND held for the same settle, saved
-    // per target (value and priority, exact). --sv-acts-settle above cannot
-    // reach this case: an inline longhand outranks it regardless of what the
-    // knob is set to, so a target that has one needs its duration held too.
-    const longhandHold = new WeakMap();
-    const holdDuration = (target) => {
-        const value = target.style.getPropertyValue('transition-duration');
-        if (!value)
-            return; // no inline longhand: the --sv-acts-settle knob alone covers this target
-        const priority = target.style.getPropertyPriority('transition-duration');
-        longhandHold.set(target, { value, priority });
-        hold.style(target, 'transition-duration', '0s', priority);
-    };
-    const restoreDuration = (target) => {
-        const saved = longhandHold.get(target);
-        if (!saved)
-            return;
-        longhandHold.delete(target);
-        hold.restore(target, 'style:transition-duration');
-    };
-    // WeakSet: under <ScrollVarsBoot> this document scope never stops, so a
-    // strong Set would hold every clicked target for the app's whole life,
-    // detached subtrees included, growing with every navigation (R3). Its only
-    // reads are has/add; nothing ever needs to enumerate it.
-    const targets = new WeakSet();
-    // Triggers mounted before their target resolves (B5, Astra loop8-6):
-    // retried whenever a later batch might supply the target, dropped as
-    // soon as they resolve. Per instance; cleared on stop() below so a
-    // trigger whose target never arrives (or that got disconnected) does
-    // not sit here for the document scope's whole life.
-    const pendingTriggers = new Set();
-    const mark = (target) => {
-        if (targets.has(target))
-            return false;
-        targets.add(target);
-        let marker = markers.get(target);
-        const authored = target.classList.contains('sv-ui');
-        if (!marker) {
-            const ref = weakRef(target);
-            marker = { owners: 0, ref, settle: () => {
-                    const t = ref.deref();
-                    if (t && settling.has(t)) {
-                        settling.delete(t);
-                        hold.restore(t);
-                        restoreDuration(t);
-                    }
-                }, release: () => {
-                    const t = ref.deref();
-                    if (!t)
-                        return;
-                    if (!authored)
-                        t.classList.remove('sv-ui');
-                    if (settling.has(t)) {
-                        settling.delete(t);
-                        hold.restore(t);
-                        restoreDuration(t);
-                    }
-                } };
-            markers.set(target, marker);
-        }
-        marker.owners++;
-        life.defer(() => {
-            // Finish a departing owner's hold even if another controller remains.
-            // It must not retain 0s after this owner's queued frames are cancelled.
-            // Through marker.ref, never `target` directly: this callback sits in
-            // life's own release list until the WHOLE scope stops, which the
-            // document instance never does, so a direct capture would pin every
-            // distinct clicked target for the app's life (R3).
-            try {
-                marker.settle();
-            }
-            finally {
-                if (--marker.owners === 0) {
-                    const t = marker.ref.deref();
-                    if (t)
-                        markers.delete(t);
-                    marker.release();
-                }
-            }
-        });
-        // A controlled marquee track without inert support never gets sv-ui:
-        // see the inertSupported comment above.
-        if (inertSupported || !target.classList.contains('sv-marquee-track')) {
-            target.classList.add('sv-ui');
-        }
-        return !authored;
-    };
-    // The per-trigger half of boot(): resolves it, marks its target sv-ui (and
-    // holds the acts settle if it needs one), writes the initial state. Reused
-    // by boot() itself AND by the late-acquisition MutationObserver below, so
-    // a trigger that arrives after setup (a route-mounted controlled marquee's
-    // pause button, most of the time) gets the exact same treatment a
-    // pre-existing one got at boot: without it the button stays hidden behind
-    // ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever,
-    // since mark() only ever ran lazily from a click the hidden button can
-    // never receive (B5, Astra round loop8-3).
-    const bootTrigger = (trigger) => {
-        let resolved;
-        try {
-            resolved = resolve(trigger);
-        }
-        catch (error) {
-            // a selector that does not parse skips its trigger, not the whole boot
-            // (round 10). Browsers throw a DOMException NAMED SyntaxError, never a
-            // JS SyntaxError instance, so the name is the only cross-surface check.
-            if (error?.name === 'SyntaxError')
-                return;
-            throw error;
-        }
-        const { className, target } = resolved;
-        if (!target) {
-            pendingTriggers.add(trigger);
-            return;
-        }
-        pendingTriggers.delete(trigger);
-        if (mark(target)) {
-            // only a .sv-acts target has a no-JS finished value to un-animate
-            // from (html:not(.sv-on) .sv-acts:not(.sv-ui), see the module
-            // comment): a plain toggle target gets sv-ui above and nothing else,
-            // no --sv-acts-settle, no longhand hold, no pending restore (ADU-104,
-            // round 6 finding).
-            if (target.classList.contains('sv-acts')) {
-                // marking it sv-ui alone stops that guard from matching, and
-                // --sv-act would transition from the finished value down to 0, a
-                // visible un-animation right as the page becomes interactive. Hold
-                // the acts transition at zero duration for exactly the settle,
-                // scoped to --sv-acts-settle (styles/state.css): two frames is
-                // enough for the cascade to apply the new --sv-act before the acts
-                // transition comes back.
-                settling.add(target);
-                hold.style(target, '--sv-acts-settle', '0s');
-                holdDuration(target);
-                frame(() => {
-                    frame(() => {
-                        if (settling.has(target)) {
-                            settling.delete(target);
-                            hold.restore(target);
-                            restoreDuration(target);
-                        }
-                    });
-                });
-            }
-        }
-        // markup that ships open (the class already on the target) must agree
-        // with --sv-state from the first frame: a continuous CSS rule reading
-        // var(--sv-state, 0) otherwise renders the closed value against an open
-        // class until the first click.
-        write(target, className, target.classList.contains(className));
-    };
-    const boot = () => triggers().forEach(bootTrigger);
-    // Elements matching `selector` under `el` itself, `el` included: a
-    // MutationObserver's addedNodes are the top of each inserted subtree, and
-    // both a late marquee's track and its pause button can be that top node
-    // (inserted as siblings) or a descendant of it (inserted as one wrapper).
-    const selfAndDescendants = (el, selector) => {
-        const found = el.matches?.(selector) ? [el] : [];
-        if (typeof el.querySelectorAll === 'function')
-            found.push(...Array.from(el.querySelectorAll(selector)));
-        return found;
-    };
-    // A track or trigger inserted after setup (a route-mounted controlled
-    // marquee under a live <ScrollVarsBoot>, most of the time): boot() and the
-    // initial `.sv-marquee-track` scan below only ever ran once, at setup, so
-    // anything added later needs the same acquisition run on just its new
-    // subtree. Release is already covered: pruneDetachedMarquee runs from the
-    // IO callback, every click and the observer's own delivery (N7), so no
-    // matching "removedNodes" half is needed here. Registering through the
-    // same watchMarquee()/mark() lease-counted paths as boot() means a track
-    // this scope acquires late and a Marquee component's OWN toggles(node)
-    // scope on the same track combine into one lease, exactly like two scopes
-    // discovering the same track at setup already do (module comment above).
-    //
-    // Scoped to the DOCUMENT instance only: that is the long-lived one under
-    // `<ScrollVarsBoot>` a route can add content behind, and it is the one
-    // Astra's acceptance names. A Marquee component's own `toggles(node)`
-    // scope mounts once for a track it already owns and stops with it, so it
-    // has no route-mounted gap to cover, and giving every custom-root scope
-    // its own persistent observer would be a cost with no matching benefit.
-    // A page with no marquee AND no new trigger in the batch pays nothing per
-    // mutation (a text-node or attribute-only mutation record, most of the
-    // time): without a pre-check the callback below scanned every inserted
-    // subtree on every batch, measured at about 0.07ms for a 30-node insert
-    // and 0.4ms for a 500-node one, on a Boot page that never has a
-    // `.sv-marquee-track` to find (perf review, loop8-3 follow-up). A batch
-    // that DOES add elements now always pays `hasNewTrigger()`'s cheap
-    // matches()/querySelector() pass (correctness beats that saving, see the
-    // comment on `hasNewTrigger` below). `getElementsByClassName` returns
-    // a LIVE collection the engine keeps indexed, so walking it is cheap and
-    // stays empty (zero iterations) on a marquee-free page: the pre-check
-    // scans below only when that collection holds a track NOT ALREADY in
-    // `marqueeLeases`, never on a bare count comparison. A route swap that
-    // removes one marquee and inserts another lands both mutations in the
-    // SAME batch (React commits a page swap as one task), so the track COUNT
-    // can be unchanged while the identity is entirely new: a count-based
-    // pre-check missed exactly the SPA case B5 exists for (lead review of the
-    // first version of this fix). Identity-checking the live collection
-    // costs nothing extra on a marquee-free page (still zero iterations) and
-    // catches the swap, since the new track is present in the collection and
-    // absent from the lease map the moment it lands, regardless of whether
-    // the old one already left.
-    let mutationObserver;
-    if (typeof document !== 'undefined' && scope === document && typeof MutationObserver === 'function') {
-        const liveTracks = document.getElementsByClassName('sv-marquee-track');
-        // A track and its pause button can land in SEPARATE mutation batches
-        // (a route that appends the strip, then the control): the batch
-        // carrying only the button finds every track already leased and the
-        // count-based check above returns false, so the track never gets
-        // `sv-ui` (only mark() sets it) and the button stays hidden behind
-        // ui.css's `.sv-marquee-track.sv-ui + .sv-marquee-pause` guard forever
-        // (N4b, loop8-4 review). Also live, also zero iterations on a
-        // marquee-free page: a pause button whose resolved track lacks
-        // `sv-ui` means that track's own batch has not run bootTrigger yet.
-        const livePauseButtons = document.getElementsByClassName('sv-marquee-pause');
-        const hasUnleasedTrack = () => {
-            for (let i = 0; i < liveTracks.length; i++)
-                if (!marqueeLeases.has(liveTracks[i]))
-                    return true;
-            for (let i = 0; i < livePauseButtons.length; i++) {
-                let resolved;
-                try {
-                    resolved = resolve(livePauseButtons[i]);
-                }
-                catch {
-                    continue;
-                }
-                if (resolved.target && !resolved.target.classList.contains('sv-ui'))
-                    return true;
-            }
-            return false;
-        };
-        // A plain `[data-sv-toggle]` trigger (an SPA menu button, no marquee
-        // anywhere on the page) mounted after setup never ran bootTrigger at
-        // all while `hasUnleasedTrack()` gated the WHOLE callback body: it kept
-        // no `aria-expanded` and no initial `--sv-state` until its own first
-        // click, a WCAG 4.1.2 miss the marquee-only pre-check never considered
-        // (regression from the #105 perf pass, found by the
-        // verifier in real Chrome). Correctness wins over the sub-millisecond
-        // saving: this batch's own addedNodes are checked directly for a new
-        // trigger, so a batch that adds no ELEMENT node (text or attribute-only
-        // mutations) still costs nothing, and a batch that adds elements pays
-        // one matches()/querySelector() pair per added node, short-circuiting
-        // on the first hit.
-        const hasNewTrigger = (records) => {
-            for (const record of records) {
-                for (let i = 0; i < record.addedNodes.length; i++) {
-                    const node = record.addedNodes[i];
-                    if (node.nodeType !== 1)
-                        continue;
-                    const el = node;
-                    if (el.matches?.('[data-sv-toggle]'))
-                        return true;
-                    if (typeof el.querySelector === 'function' && el.querySelector('[data-sv-toggle]'))
-                        return true;
-                }
-            }
-            return false;
-        };
-        // A late boot writes into `transaction`/`siblingWrites` exactly like a
-        // click does, so this delivery needs the same fresh-journal, rollback-
-        // on-throw, reset-in-finally shape as onClick: the document scope never
-        // stops, and only a click elsewhere used to clear these, so every
-        // MutationObserver delivery kept accumulating strong ownership() entries
-        // in siblingWrites until the next click anywhere in the document (A2,
-        // Astra loop8-5).
-        mutationObserver = new MutationObserver(life.guard((records) => {
-            // C2 (Astra loop8-7): a removal-only batch (an SPA route swap that
-            // takes an already-offscreen marquee's page away) got no IO delivery
-            // for the removed track (an already-non-intersecting target reports
-            // no further transition) and never reached this observer's own
-            // pre-check (`hasUnleasedTrack()`/`hasNewTrigger()` both false, no
-            // pending trigger), so its lease, its shared IntersectionObserver
-            // lease and its detached subtree sat until the next click, visibility
-            // change or marquee registration. Swept here, before the pre-check
-            // can bail: cheap on a page with no leased marquee at all
-            // (`marqueeLeases.size` is checked first) and only walks the lease
-            // map (one entry per marquee) when a batch actually removed something.
-            if (marqueeLeases.size > 0 && records.some((record) => (record.removedNodes?.length ?? 0) > 0)) {
-                sweepDetachedMarquees();
-            }
-            // A trigger left over from an earlier delivery with no target yet
-            // (B5) also earns this batch a pass: its target can be anywhere in
-            // it, including a node that is neither a trigger nor a marquee track
-            // and so would otherwise never open the callback body at all.
-            if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0)
-                return;
-            transaction = ownership();
-            siblingWrites = [];
-            try {
-                records.forEach((record) => {
-                    record.addedNodes.forEach((node) => {
-                        if (node.nodeType !== 1)
-                            return;
-                        const el = node;
-                        selfAndDescendants(el, '.sv-marquee-track').forEach((track) => watchMarquee(track, life));
-                    });
-                });
-            }
-            catch (error) {
-                rollback();
-                // Reported directly, not rethrown: this guarded callback runs after
-                // acquisition (`life.guard`'s `acquiring` is already false), so a
-                // rethrow here would have `fail()` call `stop()` and disconnect this
-                // MutationObserver for the rest of the page's life, contradicting
-                // the module comment above ("the document scope never stops").
-                reportFailure(error);
-            }
-            finally {
-                transaction = ownership();
-                siblingWrites = [];
-            }
-            // T1 (auditor, loop8-7): each new trigger of this delivery now boots
-            // in its OWN transaction, the same shape as the pending retry below.
-            // Sharing one transaction across every new trigger of a batch meant
-            // one trigger's write throwing rolled back a SIBLING trigger's
-            // already-written state too and skipped every trigger later in
-            // iteration order, all reading null even though only one of them
-            // ever failed.
-            records.forEach((record) => {
-                record.addedNodes.forEach((node) => {
-                    if (node.nodeType !== 1)
-                        return;
-                    selfAndDescendants(node, '[data-sv-toggle]').forEach((trigger) => {
-                        transaction = ownership();
-                        siblingWrites = [];
-                        try {
-                            bootTrigger(trigger);
-                        }
-                        catch (error) {
-                            rollback();
-                            reportFailure(error);
-                        }
-                    });
-                });
-            });
-            transaction = ownership();
-            siblingWrites = [];
-            // Retry every trigger still pending, each in its OWN transaction
-            // (verifier round 2): a shared transaction across the whole retry
-            // pass meant one trigger's write throwing rolled back a SIBLING
-            // pending trigger's resolution in the same delivery too, and stopped
-            // the loop outright, so triggers later in iteration order never even
-            // got tried (starvation). bootTrigger only reaches a throwing write()
-            // once it has already resolved the target and deleted the trigger
-            // from pendingTriggers: a write failure there will not heal itself on
-            // a later mutation (no backoff machinery), so it is dropped for good
-            // and reported once, instead of being restored and retried forever
-            // (unbounded reportFailure spam, round 1's own fix). A trigger whose
-            // TARGET is still missing throws nothing and stays pending as before.
-            if (pendingTriggers.size > 0) {
-                Array.from(pendingTriggers).forEach((trigger) => {
-                    if (!scope.contains(trigger)) {
-                        pendingTriggers.delete(trigger);
-                        return;
-                    }
-                    transaction = ownership();
-                    siblingWrites = [];
-                    try {
-                        bootTrigger(trigger);
-                    }
-                    catch (error) {
-                        rollback();
-                        pendingTriggers.delete(trigger);
-                        reportFailure(error);
-                    }
-                });
-                transaction = ownership();
-                siblingWrites = [];
-            }
-        }));
+  const scope = root ?? document;
+  const life = lifetime();
+  let transaction = ownership();
+  let siblingWrites = [];
+  const rollback = () => {
+    for (const journal of [transaction, ...siblingWrites]) {
+      try {
+        journal.restore();
+      } catch {
+      }
     }
-    const click = (event) => {
-        // a nearer scope already owned this click: not our trigger, and nothing
-        // here runs, not even the sv-ui marking or the settle cancel
-        if (claimed.has(event))
-            return;
-        const trigger = event.target.closest?.('[data-sv-toggle]');
-        // closest() walks the real DOM past this scope's own root: a click on a
-        // descendant with no data-sv-toggle of its own can bubble past scope to
-        // an ancestor trigger that lives OUTSIDE it. This scope's own sync()
-        // only ever queries within scope (scope.querySelectorAll), so resolving
-        // and toggling that outer trigger here would flip its target's class and
-        // --sv-state while its own aria-expanded, and every other trigger of the
-        // same (target, class) pair, is left stale: an instance that does not
-        // contain the trigger never owns it (ADU-169, successor of ADU-152 which
-        // widened the match without widening this containment check).
-        // Containment is the floor here, not the whole rule. It is inclusive, so
-        // nested scopes both pass it for the same trigger; the claim above picks
-        // exactly one of them, the nearest (ADU-172). One consequence, and the
-        // price of single ownership: a second trigger of the same (target, class)
-        // pair living OUTSIDE the owning scope keeps the aria-expanded it was
-        // synced to at boot, since only the owner's sync() runs.
-        if (!trigger || !scope.contains(trigger))
-            return;
+  };
+  const resolve = (trigger) => {
+    const className = trigger.getAttribute("data-sv-toggle") || "sv-open";
+    const selector = trigger.getAttribute("data-sv-target");
+    const nearestMarquee = selector ? trigger.closest?.(".sv-marquee") : null;
+    const target = selector ? nearestMarquee?.querySelector(selector) ?? scope.querySelector(selector) : trigger;
+    return { className, selector, target };
+  };
+  const triggers = () => {
+    const list = Array.from(scope.querySelectorAll("[data-sv-toggle]"));
+    if (scope.matches?.("[data-sv-toggle]"))
+      list.unshift(scope);
+    return list;
+  };
+  const sync = (target, className, on) => {
+    const seen = /* @__PURE__ */ new Set();
+    live.forEach((otherInstance) => {
+      const journal = otherInstance === instance ? transaction : ownership();
+      if (otherInstance !== instance)
+        siblingWrites.push(journal);
+      const update = () => otherInstance.triggers().forEach((t) => {
+        if (seen.has(t))
+          return;
+        seen.add(t);
+        const other = ownerOf(t);
+        if (other && other.target === target && other.className === className)
+          journal.attr(t, t.getAttribute("aria-pressed") !== null ? "aria-pressed" : "aria-expanded", String(on));
+      });
+      if (otherInstance === instance)
+        update();
+      else
+        otherInstance.run(() => {
+          try {
+            update();
+          } catch (error) {
+            try {
+              journal.restore();
+            } catch {
+            }
+            reportFailure(error);
+          }
+        });
+    });
+  };
+  const instance = { scope, triggers, resolve, run: life.guard((work) => work()) };
+  const write = (target, className, on) => {
+    transaction.style(target, "--sv-state", on ? "1" : "0");
+    sync(target, className, on);
+  };
+  const settling = /* @__PURE__ */ new WeakSet();
+  const frames = /* @__PURE__ */ new Set();
+  const hold = ownership();
+  const frame = (fn) => {
+    const id = requestAnimationFrame(life.guard(() => {
+      frames.delete(id);
+      fn();
+    }));
+    frames.add(id);
+  };
+  const longhandHold = /* @__PURE__ */ new WeakMap();
+  const holdDuration = (target) => {
+    const value = target.style.getPropertyValue("transition-duration");
+    if (!value)
+      return;
+    const priority = target.style.getPropertyPriority("transition-duration");
+    longhandHold.set(target, { value, priority });
+    hold.style(target, "transition-duration", "0s", priority);
+  };
+  const restoreDuration = (target) => {
+    const saved = longhandHold.get(target);
+    if (!saved)
+      return;
+    longhandHold.delete(target);
+    hold.restore(target, "style:transition-duration");
+  };
+  const targets = /* @__PURE__ */ new WeakSet();
+  const pendingTriggers = /* @__PURE__ */ new Set();
+  const mark = (target) => {
+    if (targets.has(target))
+      return false;
+    targets.add(target);
+    let marker = markers.get(target);
+    const authored = target.classList.contains("sv-ui");
+    if (!marker) {
+      const ref = weakRef(target);
+      marker = { owners: 0, ref, settle: () => {
+        const t = ref.deref();
+        if (t && settling.has(t)) {
+          settling.delete(t);
+          hold.restore(t);
+          restoreDuration(t);
+        }
+      }, release: () => {
+        const t = ref.deref();
+        if (!t)
+          return;
+        if (!authored)
+          t.classList.remove("sv-ui");
+        if (settling.has(t)) {
+          settling.delete(t);
+          hold.restore(t);
+          restoreDuration(t);
+        }
+      } };
+      markers.set(target, marker);
+    }
+    marker.owners++;
+    life.defer(() => {
+      try {
+        marker.settle();
+      } finally {
+        if (--marker.owners === 0) {
+          const t = marker.ref.deref();
+          if (t)
+            markers.delete(t);
+          marker.release();
+        }
+      }
+    });
+    if (inertSupported || !target.classList.contains("sv-marquee-track")) {
+      target.classList.add("sv-ui");
+    }
+    return !authored;
+  };
+  const bootTrigger = (trigger) => {
+    let resolved;
+    try {
+      resolved = resolve(trigger);
+    } catch (error) {
+      if (error?.name === "SyntaxError")
+        return;
+      throw error;
+    }
+    const { className, target } = resolved;
+    if (!target) {
+      pendingTriggers.add(trigger);
+      return;
+    }
+    pendingTriggers.delete(trigger);
+    if (mark(target)) {
+      if (target.classList.contains("sv-acts")) {
+        settling.add(target);
+        hold.style(target, "--sv-acts-settle", "0s");
+        holdDuration(target);
+        frame(() => {
+          frame(() => {
+            if (settling.has(target)) {
+              settling.delete(target);
+              hold.restore(target);
+              restoreDuration(target);
+            }
+          });
+        });
+      }
+    }
+    write(target, className, target.classList.contains(className));
+  };
+  const boot = () => triggers().forEach(bootTrigger);
+  const selfAndDescendants = (el, selector) => {
+    const found = el.matches?.(selector) ? [el] : [];
+    if (typeof el.querySelectorAll === "function")
+      found.push(...Array.from(el.querySelectorAll(selector)));
+    return found;
+  };
+  let mutationObserver;
+  if (typeof document !== "undefined" && scope === document && typeof MutationObserver === "function") {
+    const liveTracks = document.getElementsByClassName("sv-marquee-track");
+    const livePauseButtons = document.getElementsByClassName("sv-marquee-pause");
+    const hasUnleasedTrack = () => {
+      for (let i = 0; i < liveTracks.length; i++)
+        if (!marqueeLeases.has(liveTracks[i]))
+          return true;
+      for (let i = 0; i < livePauseButtons.length; i++) {
         let resolved;
         try {
-            resolved = resolve(trigger);
+          resolved = resolve(livePauseButtons[i]);
+        } catch {
+          continue;
         }
-        catch (error) {
-            // same contract as boot(): a selector that does not parse skips this
-            // trigger, not the whole instance. Before claimed.add(event), so an
-            // outer scope still gets a chance at the same click.
-            if (error?.name === 'SyntaxError')
-                return;
-            throw error;
-        }
-        const { className, target } = resolved;
-        if (!target)
-            return;
-        // this scope is the nearest one that can act on this click: it owns the
-        // trigger, and every outer instance still to come bails above
-        claimed.add(event);
-        // a target that appeared after boot (e.g. inserted later) is marked here
-        // instead: its first click shows the finished state with no transition,
-        // since it was covered by the no-JS/no-boot fallback up to this instant
-        mark(target);
-        // a click landing inside the boot settle must still animate: drop the
-        // hold before the class flips, and cancel the scheduled restore so it
-        // does not act on a target a fresh boot may have re-armed since
-        markers.get(target)?.settle();
-        const on = !target.classList.contains(className);
-        transaction.class(target, className, on);
-        write(target, className, on);
+        if (resolved.target && !resolved.target.classList.contains("sv-ui"))
+          return true;
+      }
+      return false;
     };
-    const onClick = life.guard((event) => {
-        // The document scope's click handler never stops (Boot), so it is
-        // another cheap, frequent-enough place to sweep leases a marquee IO
-        // delivery never fires for (N7).
+    const hasNewTrigger = (records) => {
+      for (const record of records) {
+        for (let i = 0; i < record.addedNodes.length; i++) {
+          const node = record.addedNodes[i];
+          if (node.nodeType !== 1)
+            continue;
+          const el = node;
+          if (el.matches?.("[data-sv-toggle]"))
+            return true;
+          if (typeof el.querySelector === "function" && el.querySelector("[data-sv-toggle]"))
+            return true;
+        }
+      }
+      return false;
+    };
+    mutationObserver = new MutationObserver(life.guard((records) => {
+      if (marqueeLeases.size > 0 && records.some((record) => (record.removedNodes?.length ?? 0) > 0)) {
         sweepDetachedMarquees();
+      }
+      if (!hasUnleasedTrack() && !hasNewTrigger(records) && pendingTriggers.size === 0)
+        return;
+      transaction = ownership();
+      siblingWrites = [];
+      try {
+        records.forEach((record) => {
+          record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1)
+              return;
+            const el = node;
+            selfAndDescendants(el, ".sv-marquee-track").forEach((track) => watchMarquee(track, life));
+          });
+        });
+      } catch (error) {
+        rollback();
+        reportFailure(error);
+      } finally {
         transaction = ownership();
         siblingWrites = [];
-        try {
-            click(event);
-        }
-        catch (error) {
-            rollback();
-            // Reported directly, not rethrown: same reasoning as the document
-            // scope's MutationObserver callback (verifier round 2). Rethrowing
-            // here would have `life.guard`'s `fail()` call `stop()` and remove
-            // this click listener (and disconnect the MutationObserver) for the
-            // rest of the page's life over one bad click.
-            reportFailure(error);
-        }
-        finally {
+      }
+      records.forEach((record) => {
+        record.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1)
+            return;
+          selfAndDescendants(node, "[data-sv-toggle]").forEach((trigger) => {
             transaction = ownership();
             siblingWrites = [];
-        }
-    });
-    life.defer(() => {
-        frames.forEach(id => { if (typeof cancelAnimationFrame === 'function')
-            cancelAnimationFrame(id); });
-        frames.clear();
-    });
-    // no targets.clear(): a WeakSet has none, and it needs none, its entries
-    // drop on their own once this closure (mark/click/onClick) is unreachable
-    life.defer(() => live.delete(instance));
-    life.defer(() => scope.removeEventListener('click', onClick));
-    life.defer(() => mutationObserver?.disconnect());
-    life.defer(() => pendingTriggers.clear());
-    try {
-        life.setup(() => {
-            live.add(instance);
-            boot();
-            scope.addEventListener('click', onClick);
-            scope.querySelectorAll('.sv-marquee-track').forEach((track) => watchMarquee(track, life));
-            mutationObserver?.observe(scope, { childList: true, subtree: true });
+            try {
+              bootTrigger(trigger);
+            } catch (error) {
+              rollback();
+              reportFailure(error);
+            }
+          });
         });
+      });
+      transaction = ownership();
+      siblingWrites = [];
+      if (pendingTriggers.size > 0) {
+        Array.from(pendingTriggers).forEach((trigger) => {
+          if (!scope.contains(trigger)) {
+            pendingTriggers.delete(trigger);
+            return;
+          }
+          transaction = ownership();
+          siblingWrites = [];
+          try {
+            bootTrigger(trigger);
+          } catch (error) {
+            rollback();
+            pendingTriggers.delete(trigger);
+            reportFailure(error);
+          }
+        });
+        transaction = ownership();
+        siblingWrites = [];
+      }
+    }));
+  }
+  const click = (event) => {
+    if (claimed.has(event))
+      return;
+    const trigger = event.target.closest?.("[data-sv-toggle]");
+    if (!trigger || !scope.contains(trigger))
+      return;
+    let resolved;
+    try {
+      resolved = resolve(trigger);
+    } catch (error) {
+      if (error?.name === "SyntaxError")
+        return;
+      throw error;
     }
-    catch (error) {
-        rollback();
-        throw error;
-    }
+    const { className, target } = resolved;
+    if (!target)
+      return;
+    claimed.add(event);
+    mark(target);
+    markers.get(target)?.settle();
+    const on = !target.classList.contains(className);
+    transaction.class(target, className, on);
+    write(target, className, on);
+  };
+  const onClick = life.guard((event) => {
+    sweepDetachedMarquees();
     transaction = ownership();
     siblingWrites = [];
-    return life.stop;
+    try {
+      click(event);
+    } catch (error) {
+      rollback();
+      reportFailure(error);
+    } finally {
+      transaction = ownership();
+      siblingWrites = [];
+    }
+  });
+  life.defer(() => {
+    frames.forEach((id) => {
+      if (typeof cancelAnimationFrame === "function")
+        cancelAnimationFrame(id);
+    });
+    frames.clear();
+  });
+  life.defer(() => live.delete(instance));
+  life.defer(() => scope.removeEventListener("click", onClick));
+  life.defer(() => mutationObserver?.disconnect());
+  life.defer(() => pendingTriggers.clear());
+  try {
+    life.setup(() => {
+      live.add(instance);
+      boot();
+      scope.addEventListener("click", onClick);
+      scope.querySelectorAll(".sv-marquee-track").forEach((track) => watchMarquee(track, life));
+      mutationObserver?.observe(scope, { childList: true, subtree: true });
+    });
+  } catch (error) {
+    rollback();
+    throw error;
+  }
+  transaction = ownership();
+  siblingWrites = [];
+  return life.stop;
 }
 
   return toggles;

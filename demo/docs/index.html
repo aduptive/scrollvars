@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.19.2</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.19.3</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -292,6 +292,22 @@ compat()   // once, before anything else</code></pre>
 
 
 <h3>Unreleased</h3>
+
+<h4>Changed</h4>
+
+<ul>
+<li>Keep the changelog, contributor documentation and full guides in the repository rather than the npm archive. README links point to the repository; runtime modules, types, public stylesheets, CLI and its version-matched agent guidance remain installed. This reduces package download and installation size, not browser JavaScript or animation CPU cost.</li>
+<li>Document standalone slider imports and guard their bundles against retaining unrelated scroll, pointer or canvas engines.</li>
+<li>Strip implementation comments from distributed JavaScript while preserving tree-shaking annotations, client directives and declaration JSDoc. Source comments remain in the repository; this reduces npm archive size rather than animation CPU cost.</li>
+<li>Reuse React Slider's annotated children during internal navigation and pause updates, while refreshing annotations when children change. Child-owned state remains live.</li>
+<li>Avoid JSON serialization in shared style ownership bookkeeping, preserving CSS priorities, later author edits and teardown restoration. Browser A/B checks show lower script time in the tested slider workloads; this does not change the scroll driver's inherited-variable style cost or establish a general FPS improvement.</li>
+</ul>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Restore owned styles correctly in WebKit when changing an inline custom property from important to normal priority. Remove the old declaration before demoting it, using the value already read for ownership bookkeeping.</li>
+</ul>
 
 <h3>1.19.2 (2026-10-16)</h3>
 

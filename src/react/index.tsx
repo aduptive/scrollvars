@@ -861,8 +861,22 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
   ) {
     const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis, cssVars })
     const uid = React.useId()
-    const items = slideList(children)
-    const count = items.filter(React.isValidElement).length
+    // Internal navigation and pause updates must not recreate unchanged slides.
+    const { slides, count } = React.useMemo(() => {
+      const items = slideList(children)
+      const count = items.filter(React.isValidElement).length
+      let position = 0
+      const slides = items.map((child) => {
+        if (!React.isValidElement<Record<string, unknown>>(child)) return child
+        position += 1
+        return React.cloneElement(child, {
+          role: (child.props.role as string) ?? 'group',
+          'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
+          'aria-label': child.props['aria-label'] ?? `${position} of ${count}`,
+        })
+      })
+      return { slides, count }
+    }, [children])
 
     React.useImperativeHandle(
       apiRef,
@@ -1033,21 +1047,6 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
     const rotating = !!autoplay && autoplay > 0 && !paused && !hovered
-    // APG slide semantics without breaking layout: annotate each child in
-    // place (no wrapper, sv-cols and --sv-span target direct children).
-    // The position is counted over elements only: whatever else is in the
-    // list renders where the caller put it and is not a slide.
-    let position = 0
-    const slides = items.map((child) => {
-      if (!React.isValidElement<Record<string, unknown>>(child)) return child
-      position += 1
-      return React.cloneElement(child, {
-        role: (child.props.role as string) ?? 'group',
-        'aria-roledescription': child.props['aria-roledescription'] ?? 'slide',
-        'aria-label': child.props['aria-label'] ?? `${position} of ${count}`,
-      })
-    })
-
     return (
       <div
         ref={shellRef}

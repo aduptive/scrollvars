@@ -86,7 +86,7 @@ for (const block of BLOCKS) {
   // the block's import becomes a lookup on the global SV, which the engine
   // block above defines before any of these run. Exactly one such import in
   // the blocks that carry it, none anywhere else.
-  const motionImport = /^import \{ reducedMotion as effectiveReduce, onMotionChange \} from '(?:\.\.\/core|\.)\/motion\.js';$/gm
+  const motionImport = /^import \{ reducedMotion as effectiveReduce, onMotionChange \} from (['"])(?:\.\.\/core|\.)\/motion\.js\1;$/gm
   const motionImports = (dist.match(motionImport) || []).length
   if (motionImports !== (block.motion ? 1 : 0)) throw new Error(`${block.dist}: expected ${block.motion ? 1 : 0} core/motion import, found ${motionImports}`)
   dist = dist.replace(motionImport, 'var effectiveReduce = SV.prefersReducedMotion, onMotionChange = SV.onMotionChange;')
@@ -94,7 +94,7 @@ for (const block of BLOCKS) {
   // exposes nothing to look it up on: its dist lands inside the block's own
   // IIFE in place of the import, exports stripped. Exactly one such import
   // in every block, none with any other shape.
-  const lifetimeImport = /^import \{ [\w, ]+ \} from '(?:\.\.\/core|\.)\/lifetime\.js';$/gm
+  const lifetimeImport = /^import \{ [\w, ]+ \} from (['"])(?:\.\.\/core|\.)\/lifetime\.js\1;$/gm
   const lifetimeImports = (dist.match(lifetimeImport) || []).length
   if (lifetimeImports !== 1) throw new Error(`${block.dist}: expected 1 core/lifetime import, found ${lifetimeImports}`)
   const lifetime = readFileSync(join(root, 'dist/core/lifetime.js'), 'utf8').replace(/^export function /gm, 'function ')

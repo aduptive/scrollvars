@@ -23,6 +23,20 @@ test('packed acceptance packs the current worktree, including its built runtime'
   assert.deepEqual(execFileSync('tar', ['-xOf', artifact.tarball, 'package/package.json']), readFileSync(join(repo, 'package.json')))
 })
 
+test('packed distribution keeps runtime and offline skill, with guides and history in Git only', () => {
+  const files = execFileSync('tar', ['-tf', artifact.tarball], { encoding: 'utf8' }).trim().split('\n')
+  for (const path of ['CHANGELOG.md', 'CONTRIBUTING.md', 'docs/', 'test/', 'src/', 'demo/']) {
+    assert.equal(files.some(file => path.endsWith('/') ? file.startsWith(`package/${path}`) : file === `package/${path}`), false, path)
+  }
+  for (const path of ['README.md', 'LICENSE', 'AGENTS.md', 'skills/scrollvars/SKILL.md', 'bin/scrollvars.mjs', 'dist/react/index.d.ts', 'styles/slider.css']) {
+    assert(files.includes(`package/${path}`), path)
+  }
+  execFileSync(process.execPath, [join(consumer.dir, 'node_modules/scrollvars/bin/scrollvars.mjs'), 'skill'], { cwd: consumer.dir })
+  for (const harness of ['.agents', '.claude']) {
+    assert.deepEqual(readFileSync(join(consumer.dir, harness, 'skills/scrollvars/SKILL.md')), readFileSync(join(repo, 'skills/scrollvars/SKILL.md')))
+  }
+})
+
 test('packed consumer resolution rejects a package linked to repository dist', () => {
   const bad = join(scratch, 'linked-consumer')
   mkdirSync(join(bad, 'node_modules'), { recursive: true })
