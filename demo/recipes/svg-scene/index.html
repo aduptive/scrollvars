@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVG scene · ScrollVars recipe</title>
+<link rel="stylesheet" href="./scene.css">
+<header><p>ScrollVars / SVG recipe</p><h1>One scene. Three ways to move.</h1><p>Scroll to separate and reunite the illustrated panels. The artwork is decorative; all meaningful content remains ordinary HTML.</p><p><a href="#details">Skip the artwork</a></p></header>
+<section class="scene" aria-label="Decorative illustration">
+<div class="scene-stage"><svg viewBox="0 0 600 400" aria-hidden="true" focusable="false">
+<g data-piece fill="#245b50"><rect x="90" y="80" width="130" height="210" rx="12"/><circle cx="155" cy="135" r="25" fill="#e7b969"/><path d="M115 200h80m-80 20h55" stroke="#f2eee5" stroke-width="6"/></g>
+<g data-piece fill="#d26c4c"><rect x="235" y="110" width="130" height="210" rx="12"/><circle cx="300" cy="165" r="25" fill="#f2eee5"/><path d="M260 230h80m-80 20h55" stroke="#172a28" stroke-width="6"/></g>
+<g data-piece fill="#e7b969"><rect x="380" y="80" width="130" height="210" rx="12"/><circle cx="445" cy="135" r="25" fill="#245b50"/><path d="M405 200h80m-80 20h55" stroke="#172a28" stroke-width="6"/></g>
+</svg></div></section>
+<footer id="details"><h2>Keep the content accessible.</h2><p>This scene uses one numeric scroll callback. It stops tracking offscreen, in hidden tabs, at zero size and with reduced motion. Motion preference changes can wake it without another scroll event.</p><a href="https://scrollvars.dev/docs/">Read the ScrollVars documentation</a></footer>
+<script type="module" src="./entry.js"></script>
+</html>
