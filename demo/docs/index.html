@@ -291,7 +291,7 @@ compat()   // once, before anything else</code></pre>
 <h2 id="changelog">Changelog</h2>
 
 
-<h3>Unreleased</h3>
+<h3>1.19.3 (2026-10-26)</h3>
 
 <h4>Changed</h4>
 
@@ -301,6 +301,7 @@ compat()   // once, before anything else</code></pre>
 <li>Strip implementation comments from distributed JavaScript while preserving tree-shaking annotations, client directives and declaration JSDoc. Source comments remain in the repository; this reduces npm archive size rather than animation CPU cost.</li>
 <li>Reuse React Slider's annotated children during internal navigation and pause updates, while refreshing annotations when children change. Child-owned state remains live.</li>
 <li>Avoid JSON serialization in shared style ownership bookkeeping, preserving CSS priorities, later author edits and teardown restoration. Browser A/B checks show lower script time in the tested slider workloads; this does not change the scroll driver's inherited-variable style cost or establish a general FPS improvement.</li>
+<li>Clarify custom SVG/DOM integration using callback-only scroll, motion-preference subscriptions, demand-driven rendering and explicit cleanup in the guide and distributed agent instructions.</li>
 </ul>
 
 <h4>Fixed</h4>
