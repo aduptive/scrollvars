@@ -8,7 +8,7 @@ node demo/bench/harness/glass-review.mjs
 
 Open the printed localhost URL in the target browser. This builds the current
 Glass source with production React, independent of any historical prototype.
-Click **Run component checks**. Results are saved under
+Click **Run component checks**, then **Run failure checks**. Results are saved under
 `node_modules/.cache/glass-review`, or `GLASS_RESULTS` when set. `GLASS_PORT`
 selects a stable port when needed. The server binds to loopback only.
 
@@ -30,7 +30,9 @@ Never infer a physical mobile frame budget from this desktop fixture.
 Chrome 156 and installed Firefox Developer Edition 160 passed all 11 component
 checks at DPR 2. Visual inspection showed continuous blur rather than the old
 sparse filter's separated text copies. Native Safari acceptance remains pending.
-Shader/source failure and context-loss cleanup are covered by unit stubs; that
-coverage is not a native-browser fallback pass. Physical mobile and the final
+Chrome also passed three real failure-path checks: source failure keeps semantic
+content visible, explicit remount recovers, and WEBGL_lose_context terminates the
+instance without restarting on update/resume. Shader allocation failures remain
+covered by unit stubs. Firefox/Safari failure-path acceptance, physical mobile and the final
 consumer scene remain unmeasured. A release must not inherit acceptance from
 an older prototype or from a different browser engine.

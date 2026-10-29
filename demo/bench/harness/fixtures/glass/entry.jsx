@@ -96,3 +96,44 @@ frames(12).then(() => {
  if(!metrics.errors.length)document.getElementById('status').textContent='Ready: current Glass module; '+metrics.draws+' initial GPU draws'
 })
 window.addEventListener('pagehide',()=>{root.unmount();second.destroy()})
+
+document.getElementById('failures').onclick = async () => {
+ const button = document.getElementById('failures')
+ button.disabled = true
+ const report = { kind: 'failure-paths', userAgent: navigator.userAgent, checks: [], passed: false }
+ const host = document.createElement('div')
+ host.className = 'scene small'
+ host.innerHTML = '<p>Accessible fallback content</p><canvas aria-hidden="true" hidden></canvas>'
+ document.getElementById('react-root').before(host)
+ const canvas = host.querySelector('canvas'), errors = []
+ let handle
+ try {
+  handle = mountGlass(canvas, { source: () => { throw Error('intentional source failure') }, onError: error => errors.push(String(error)) })
+  await frames(10)
+  assert(canvas.hidden && errors.length === 1, 'source failure did not hide decoration and report once')
+  assert(host.querySelector('p').getBoundingClientRect().height > 0, 'fallback content is hidden')
+  report.checks.push('source failure preserves visible semantic content')
+  handle.destroy(); errors.length = 0
+  handle = mountGlass(canvas, { source: makeSource('Accessible fallback content'), onError: error => errors.push(String(error)) })
+  await frames(10)
+  assert(!canvas.hidden && !errors.length, 'remount after source failure failed')
+  report.checks.push('explicit remount recovers source failure')
+  const gl = canvas.getContext('webgl'), extension = gl.getExtension('WEBGL_lose_context')
+  assert(extension, 'WEBGL_lose_context unavailable: native context-loss check remains pending')
+  extension.loseContext(); await frames(10)
+  assert(canvas.hidden && errors.length === 1 && errors[0].includes('context lost'), 'context loss did not release decoration')
+  const dead = metrics.draws
+  handle.update({ position: 70 }); handle.resume(); await frames(10)
+  assert(metrics.draws === dead && canvas.hidden, 'failed instance restarted unexpectedly')
+  report.checks.push('real context loss is terminal and preserves fallback')
+  report.passed = true
+  document.getElementById('status').textContent = 'PASS: '+report.checks.length+' failure-path checks'
+ } catch(error) {
+  report.failure = String(error)
+  document.getElementById('status').textContent = 'FAIL: '+error
+ } finally {
+  handle?.destroy(); host.remove(); button.disabled = false
+  document.getElementById('result').textContent = JSON.stringify(report,null,2)
+  await fetch('/results',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)})
+ }
+}
