@@ -35,6 +35,7 @@ for (const name of ['usePointer', 'ScrollVarsBoot']) test(`React bundle: ${name}
   const before = measureReactImports(baseline, entry)
   assert.equal(retainsSlider(before), true, 'control reproduces the released retention defect')
   assert.equal(retainsSlider(fixed), false)
+  assert.equal(fixed.inputs.some(path => path.includes('/glass/')), false)
   assert.ok(before.gzipBytes - fixed.gzipBytes > 4000)
   if (name === 'usePointer') assert.ok(fixed.minBytes < 5000)
 })
@@ -52,11 +53,20 @@ for (const [module, names] of [['index', 'slider'], ['react/index', 'useSlider']
   test(`Slider-only bundle: ${names} excludes unrelated engines`, () => {
     const report = measureReactImports(root, `export { ${names} } from './dist/${module}.js'`)
     assert.equal(retainsSlider(report), true)
-    for (const path of ['core/driver.js', 'core/scan.js', 'core/pointer.js', 'core/toggles.js', 'core/split.js', 'canvas/index.js', 'debug/index.js']) {
+    for (const path of ['core/driver.js', 'core/scan.js', 'core/pointer.js', 'core/toggles.js', 'core/split.js', 'canvas/index.js', 'debug/index.js', 'glass/index.js', 'glass/shaders.js', 'glass/blur.js']) {
       assert.equal(report.inputs.some(input => input.endsWith(path)), false, path)
     }
   })
 }
+
+test('Glass-only bundle retains its renderer without scroll or slider engines', () => {
+  const report = measureReactImports(root, "export { Glass } from './dist/react/glass.js'")
+  assert.equal(report.inputs.some(path => path.endsWith('glass/index.js')), true)
+  for (const path of ['core/driver.js', 'core/slider.js', 'core/scan.js', 'core/pointer.js']) {
+    assert.equal(report.inputs.some(input => input.endsWith(path)), false, path)
+  }
+  assert.match(readFileSync(join(root, 'dist/react/glass.js'), 'utf8'), /^['"]use client['"];?/)
+})
 
 test('React bundle: a bundled Slider still server renders its actual slides and controls', () => {
   const { outputFiles } = buildSync({

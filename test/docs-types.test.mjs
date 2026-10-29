@@ -26,10 +26,12 @@ test(`README quick start, guide hook refs and installed Section usage compile un
     mkdirSync(join(dir, 'components', 'fx'), { recursive: true })
     writeFileSync(join(dir, 'components', 'fx', 'StickySteps.tsx'), COMPONENTS['sticky-steps'].content)
     selected.forEach((code, i) => writeFileSync(join(dir, `readme-${i}.tsx`), code))
+    cpSync(join(root, 'examples/glass.tsx'), join(dir, 'glass.tsx'))
+    cpSync(join(root, 'examples/glass.css'), join(dir, 'glass.css'))
     // Consumer bundlers type stylesheet imports as side effects.
     assert.equal(JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).exports['./styles/*.css'], './styles/*.css')
     cpSync(join(root, 'styles'), join(pkg, 'styles'), { recursive: true })
-    writeFileSync(join(dir, 'styles.d.ts'), "declare module 'scrollvars/styles/core.css' {}\n")
+    writeFileSync(join(dir, 'styles.d.ts'), "declare module '*.css' {}\n")
     const types = join(process.env.SV_REACT18_DIR || root, 'node_modules', '@types', 'react')
     if (process.env.SV_REACT18_DIR) writeFileSync(join(dir, 'canary.ts'), REACT18_CANARY)
     else writeFileSync(join(dir, 'canary.ts'), "import { useRef } from 'react'\nconst ref = useRef<number>(null)\nref.current = 5\n")

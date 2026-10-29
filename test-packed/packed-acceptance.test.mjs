@@ -28,13 +28,18 @@ test('packed distribution keeps runtime and offline skill, with guides and histo
   for (const path of ['CHANGELOG.md', 'CONTRIBUTING.md', 'docs/', 'test/', 'src/', 'demo/']) {
     assert.equal(files.some(file => path.endsWith('/') ? file.startsWith(`package/${path}`) : file === `package/${path}`), false, path)
   }
-  for (const path of ['README.md', 'LICENSE', 'AGENTS.md', 'skills/scrollvars/SKILL.md', 'bin/scrollvars.mjs', 'dist/react/index.d.ts', 'styles/slider.css']) {
+  for (const path of ['README.md', 'LICENSE', 'AGENTS.md', 'skills/scrollvars/SKILL.md', 'bin/scrollvars.mjs', 'dist/react/index.d.ts', 'styles/slider.css', 'dist/glass/index.js', 'dist/glass/index.d.ts', 'dist/react/glass.js', 'dist/react/glass.d.ts', 'styles/glass.css']) {
     assert(files.includes(`package/${path}`), path)
   }
   execFileSync(process.execPath, [join(consumer.dir, 'node_modules/scrollvars/bin/scrollvars.mjs'), 'skill'], { cwd: consumer.dir })
   for (const harness of ['.agents', '.claude']) {
     assert.deepEqual(readFileSync(join(consumer.dir, harness, 'skills/scrollvars/SKILL.md')), readFileSync(join(repo, 'skills/scrollvars/SKILL.md')))
   }
+})
+
+test('packed Glass subpaths resolve and import independently', () => {
+  for (const entry of ['scrollvars/glass', 'scrollvars/react/glass']) resolveConsumerImport(consumer.dir, entry)
+  execFileSync(process.execPath, ['--input-type=module', '-e', "import { mountGlass } from 'scrollvars/glass'; import { Glass } from 'scrollvars/react/glass'; if (typeof mountGlass !== 'function' || !Glass) throw Error('missing Glass exports')"], { cwd: consumer.dir })
 })
 
 test('packed consumer resolution rejects a package linked to repository dist', () => {

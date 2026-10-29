@@ -77,7 +77,7 @@ import 'scrollvars/styles/core.css'               // entrances, stagger, drift, 
 ```
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.19.3, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.20.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
@@ -313,6 +313,18 @@ The harness owns resize, DPR cap (2), auto-pause offscreen/hidden tab,
 `fx.reducedMotion` (live), cleanup. Cross scroll into the sim via closure:
 `track(section, { onTravel: (t) => { amplitude = t } })`. Never give an
 ambient canvas its own unmanaged `requestAnimationFrame` loop.
+
+**Optional Glass overlay:** import `Glass` from `scrollvars/react/glass` or
+`mountGlass` from `scrollvars/glass`, plus `scrollvars/styles/glass.css`.
+The required `source(fx)` returns an explicit, loaded same-origin/CORS scene
+texture; arbitrary HTML children are not captured. Keep semantic content below
+the decorative canvas. Use a handle's `update()` in scroll callbacks, never
+React state per frame. Source/size/blur changes invalidate the texture cache;
+position/light changes reuse it. The outline is fixed, not an arbitrary SVG.
+WebGL failure hides the overlay; remount to retry. See
+https://github.com/aduptive/scrollvars/blob/main/docs/glass.md and the complete
+`examples/glass.tsx` consumer. Validate the real scene's GPU cost on target
+devices; this optional effect does not inherit the core's benchmark results.
 
 ## SSR / Next.js
 

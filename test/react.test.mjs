@@ -2706,3 +2706,44 @@ test('react: Scenes remounts deliberately when returning to active on a scene th
   }
 })
 
+
+test('react: Glass updates material/source without reattaching; host replacement and unmount release', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Glass } = await import('../dist/react/glass.js')
+  const saved = { ResizeObserver, IntersectionObserver }
+  const observers = new Set(), resize = [], uniforms = []
+  let draws = 0, sourceA = 0, sourceB = 0, deleted = 0
+  global.ResizeObserver = class { constructor(cb) { resize.push(cb) }; observe() { observers.add(this) }; disconnect() { observers.delete(this) } }
+  global.IntersectionObserver = class { observe() { observers.add(this) }; disconnect() { observers.delete(this) } }
+  const gpu = new Proxy({ FRAMEBUFFER_COMPLETE: 'FRAMEBUFFER_COMPLETE', checkFramebufferStatus: () => 'FRAMEBUFFER_COMPLETE', NO_ERROR: 0, getError: () => 0, getShaderParameter: () => true, getProgramParameter: () => true, getUniformLocation: (_, n) => n, getAttribLocation: () => 0 }, {
+    get(o, key) { if (key in o) return o[key]; if (/^[A-Z_0-9]+$/.test(key)) return key; return (...args) => { if (key.startsWith('create')) return {}; if (key.startsWith('delete')) deleted++; if (key === 'drawArrays') draws++; if (key === 'uniform1f' || key === 'uniform2f') uniforms.push(args) } },
+  })
+  const source = () => { sourceA++; return {} }, nextSource = () => { sourceB++; return {} }
+  const api = React.createRef(), container = document.createElement('div'), root = createRoot(container)
+  const prepare = () => {
+    const canvas = container.firstChild.children.find(c => c.tagName === 'CANVAS')
+    canvas.getContext = () => gpu
+    for (const [key, fallback] of [['width',300],['height',150]]) Object.defineProperty(canvas, key, { configurable: true, get: () => Number(canvas.getAttribute(key) ?? fallback), set: v => canvas.setAttribute(key, v) })
+    resize.at(-1)([{ contentRect: { width: 100, height: 100 } }]); flushFrames()
+  }
+  try {
+    await React.act(async () => root.render(React.createElement(Glass, { source, ref: api }, 'Real text')))
+    prepare(); assert.equal(sourceA, 1); assert.equal(draws, 1)
+    await React.act(async () => root.render(React.createElement(Glass, { source, ref: api, edgeWidth: 20, opacity: 70, blur: 4, color: '#abc', edgeGlow: 85, lightMode: 'pointer', lightX: 80, lightY: 20 }, 'Real text')))
+    flushFrames(); assert.equal(draws, 4); assert.equal(sourceA, 1); assert.equal(resize.length, 1)
+    assert.ok(uniforms.some(([key,value]) => key === 'u_edge_width' && value === .2))
+    for (const [key,value] of [['u_opacity',.7],['u_sigma',4],['u_edge_glow',.85]])
+      assert.ok(uniforms.some(([name,actual]) => name === key && actual === value))
+    assert.ok(uniforms.some(([key,x,y]) => key === 'u_light' && x === .8 && y === .2))
+    await React.act(async () => root.render(React.createElement(Glass, { source: nextSource, ref: api, edgeWidth: 20 }, 'Real text')))
+    flushFrames(); assert.equal(sourceB, 1); assert.equal(sourceA, 1)
+    api.current.update({ interior: 40 }); flushFrames()
+    assert.ok(uniforms.some(([key,value]) => key === 'u_interior' && value === .4))
+    await React.act(async () => root.render(React.createElement(Glass, { as: 'span', source: nextSource, ref: api }, 'Real text')))
+    assert.equal(container.firstChild.tagName, 'SPAN'); assert.equal(deleted, 11)
+    prepare(); assert.equal(sourceB, 2)
+  } finally { await React.act(async () => root.unmount()); Object.assign(global, saved) }
+  assert.equal(observers.size, 0); assert.equal(deleted, 16); assert.equal(api.current, null)
+})
