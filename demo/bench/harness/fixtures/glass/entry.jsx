@@ -13,6 +13,7 @@ HTMLCanvasElement.prototype.getContext = function(kind, ...args) {
   const gl = originalContext.call(this, kind, ...args)
   if (kind !== 'webgl' || !gl || gl.__instrumented) return gl
   gl.__instrumented = true
+  gl.__draws = 0
   const draw = gl.drawArrays.bind(gl), upload = gl.texImage2D.bind(gl)
   gl.drawArrays = (...values) => {
     if (measureDraws) gl.finish()
@@ -21,6 +22,7 @@ HTMLCanvasElement.prototype.getContext = function(kind, ...args) {
     metrics.drawSubmitMs.push(performance.now() - start)
     if (measureDraws) { gl.finish(); metrics.drawSyncMs.push(performance.now() - start) }
     metrics.draws++
+    gl.__draws++
   }
   gl.texImage2D = (...values) => { metrics.uploads++;return upload(...values) }
   return gl
@@ -122,9 +124,9 @@ document.getElementById('failures').onclick = async () => {
   assert(extension, 'WEBGL_lose_context unavailable: native context-loss check remains pending')
   extension.loseContext(); await frames(10)
   assert(canvas.hidden && errors.length === 1 && errors[0].includes('context lost'), 'context loss did not release decoration')
-  const dead = metrics.draws
+  const dead = gl.__draws
   handle.update({ position: 70 }); handle.resume(); await frames(10)
-  assert(metrics.draws === dead && canvas.hidden, 'failed instance restarted unexpectedly')
+  assert(gl.__draws === dead && canvas.hidden, 'failed instance restarted unexpectedly')
   report.checks.push('real context loss is terminal and preserves fallback')
   report.passed = true
   document.getElementById('status').textContent = 'PASS: '+report.checks.length+' failure-path checks'
