@@ -8,6 +8,11 @@ with an optional React layer.
 [Live demo](https://scrollvars.dev/) · [FX gallery](https://scrollvars.dev/fx/) ·
 [Documentation](https://scrollvars.dev/docs/) · [Full guide](https://github.com/aduptive/scrollvars/blob/main/docs/guide.md)
 
+Optional [Glass overlay](https://github.com/aduptive/scrollvars/blob/main/docs/glass.md):
+WebGL refraction over an explicit scene texture, with semantic HTML underneath.
+Import `scrollvars/react/glass` or `scrollvars/glass` separately; existing imports
+do not load its renderer.
+
 ## Use it with your AI agent
 
 ```bash
@@ -29,7 +34,7 @@ Use the React example below in a React project, or the HTML example with a
 bundler such as Vite. Import the stylesheet once in your application entry.
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.19.3, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.20.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |

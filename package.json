@@ -1,6 +1,6 @@
 {
   "name": "scrollvars",
-  "version": "1.19.3",
+  "version": "1.20.0",
   "description": "Tiny scroll-driven animation engine: one rAF loop in, CSS variables out. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
@@ -22,7 +22,9 @@
     "./debug": "./dist/debug/index.js",
     "./styles.css": "./styles.css",
     "./styles/*.css": "./styles/*.css",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./glass": "./dist/glass/index.js",
+    "./react/glass": "./dist/react/glass.js"
   },
   "typesVersions": {
     "*": {
@@ -37,6 +39,12 @@
       ],
       "compat": [
         "dist/compat/index.d.ts"
+      ],
+      "glass": [
+        "dist/glass/index.d.ts"
+      ],
+      "react/glass": [
+        "dist/react/glass.d.ts"
       ]
     }
   },

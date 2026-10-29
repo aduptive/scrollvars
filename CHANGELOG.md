@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.0 (2026-10-28)
+
+### Added
+
+- Optional `scrollvars/glass` (`mountGlass`) and `scrollvars/react/glass` (`Glass`) entry points with `styles/glass.css`. The decorative WebGL overlay refracts an explicit scene texture while readable HTML remains underneath; it does not capture arbitrary DOM children.
+- Adjustable refraction, dispersion, opacity, tint, localized lighting and cached two-pass Gaussian blur. Source updates, resize and blur changes rebuild the necessary textures; position/light updates reuse them. The canvas harness owns pause, visibility, reduced motion and cleanup. Failed WebGL instances hide the decoration and require a remount to retry.
+- Consumer example, API/lifecycle/SSR/packed-import coverage, and a native-browser acceptance fixture. Bundle checks keep the optional renderer out of existing pointer, boot and slider imports. No general frame-rate or GPU-performance improvement is claimed.
+
 ## 1.19.3 (2026-10-26)
 
 ### Changed

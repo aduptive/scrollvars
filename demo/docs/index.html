@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.19.3</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.20.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -290,6 +290,16 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.20.0 (2026-10-28)</h3>
+
+<h4>Added</h4>
+
+<ul>
+<li>Optional <code>scrollvars/glass</code> (<code>mountGlass</code>) and <code>scrollvars/react/glass</code> (<code>Glass</code>) entry points with <code>styles/glass.css</code>. The decorative WebGL overlay refracts an explicit scene texture while readable HTML remains underneath; it does not capture arbitrary DOM children.</li>
+<li>Adjustable refraction, dispersion, opacity, tint, localized lighting and cached two-pass Gaussian blur. Source updates, resize and blur changes rebuild the necessary textures; position/light updates reuse them. The canvas harness owns pause, visibility, reduced motion and cleanup. Failed WebGL instances hide the decoration and require a remount to retry.</li>
+<li>Consumer example, API/lifecycle/SSR/packed-import coverage, and a native-browser acceptance fixture. Bundle checks keep the optional renderer out of existing pointer, boot and slider imports. No general frame-rate or GPU-performance improvement is claimed.</li>
+</ul>
 
 <h3>1.19.3 (2026-10-26)</h3>
 

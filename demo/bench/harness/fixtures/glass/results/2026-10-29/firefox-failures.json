@@ -1,0 +1,12 @@
+{
+  "kind": "failure-paths",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:160.0) Gecko/20100101 Firefox/160.0",
+  "checks": [
+    "source failure preserves visible semantic content",
+    "explicit remount recovers source failure",
+    "real context loss is terminal and preserves fallback"
+  ],
+  "passed": true,
+  "bundleSha256": "6864e5209c8a06cb2765b3f212dd96e3f47d207e88b35f1a9b702a726d00fb5e",
+  "recordedAt": "2026-10-29T03:03:25.921Z"
+}

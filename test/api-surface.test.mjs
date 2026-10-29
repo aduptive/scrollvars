@@ -39,6 +39,8 @@ const SURFACE = {
     'usePointer', 'useScenes', 'useSlider', 'useTrack',
   ],
   canvas: ['mountEffect'],
+  glass: ['mountGlass'],
+  reactGlass: ['Glass'],
   debug: ['debug'],
 }
 
@@ -47,6 +49,8 @@ test('public API surface is intact (breaking changes trip this on purpose)', asy
     core: await import('../dist/index.js'),
     react: await import('../dist/react/index.js'),
     canvas: await import('../dist/canvas/index.js'),
+    glass: await import('../dist/glass/index.js'),
+    reactGlass: await import('../dist/react/glass.js'),
     debug: await import('../dist/debug/index.js'),
   }
   for (const [name, expected] of Object.entries(SURFACE)) {

@@ -1,0 +1,99 @@
+{
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "devicePixelRatio": 2,
+  "checks": [
+    "WebGL compiled and produced pixels",
+    "unchanged frames skip draw/upload",
+    "blur changes pixels without source recapture",
+    "position/light reuse cached blur",
+    "float redraws while active",
+    "reduced motion stops floating",
+    "motion resumes without new scroll",
+    "div/span replacement",
+    "resize",
+    "unmount stops GPU work",
+    "remount"
+  ],
+  "timings": [
+    {
+      "blur": 0,
+      "width": 1440,
+      "height": 800,
+      "invalidationDrawsMs": [
+        0
+      ],
+      "cachedDrawsMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "metric": "serialized draw submission-to-completion wall time, ms; gl.finish before/after each draw; diagnostic only, not GPU timer or FPS benchmark"
+    },
+    {
+      "blur": 6,
+      "width": 1440,
+      "height": 800,
+      "invalidationDrawsMs": [
+        0
+      ],
+      "cachedDrawsMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "metric": "serialized draw submission-to-completion wall time, ms; gl.finish before/after each draw; diagnostic only, not GPU timer or FPS benchmark"
+    },
+    {
+      "blur": 24,
+      "width": 1440,
+      "height": 800,
+      "invalidationDrawsMs": [
+        0,
+        0,
+        0
+      ],
+      "cachedDrawsMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "metric": "serialized draw submission-to-completion wall time, ms; gl.finish before/after each draw; diagnostic only, not GPU timer or FPS benchmark"
+    }
+  ],
+  "errors": [],
+  "passed": true,
+  "counts": {
+    "draws": 84,
+    "uploads": 16,
+    "captures": 6
+  },
+  "bundleSha256": "6864e5209c8a06cb2765b3f212dd96e3f47d207e88b35f1a9b702a726d00fb5e",
+  "recordedAt": "2026-10-29T03:00:05.493Z"
+}
