@@ -25,14 +25,22 @@ can produce zeroes. Compare invalidation (potential blur passes) with cached
 updates only within that limitation; a previously cached blur may need no prepass.
 Never infer a physical mobile frame budget from this desktop fixture.
 
-## Current evidence (2026-10-28)
+## Current evidence (2026-10-28 to 2026-10-29)
 
-Chrome 156 and installed Firefox Developer Edition 160 passed all 11 component
-checks at DPR 2. Visual inspection showed continuous blur rather than the old
-sparse filter's separated text copies. Native Safari acceptance remains pending.
-Chrome also passed three real failure-path checks: source failure keeps semantic
+Chrome 156, installed Firefox Developer Edition 160 and native Safari 26.6.2
+passed all 11 component checks at DPR 2. Visual inspection showed continuous
+blur rather than the old sparse filter's separated text copies. Safari also
+passed manual blur 0/6/24, material extremes and forward/reverse position checks.
+All three browsers passed three real failure-path checks: source failure keeps semantic
 content visible, explicit remount recovers, and WEBGL_lose_context terminates the
 instance without restarting on update/resume. Shader allocation failures remain
-covered by unit stubs. Firefox/Safari failure-path acceptance, physical mobile and the final
-consumer scene remain unmeasured. A release must not inherit acceptance from
-an older prototype or from a different browser engine.
+covered by unit stubs. Physical mobile and the final consumer scene remain
+unmeasured. A release must not inherit acceptance from an older prototype or
+from a different browser engine.
+
+The native Safari component result and all three browsers' failure-path results
+are preserved in `results/2026-10-29/` with timestamps and the fixture bundle
+SHA-256. These receipts use the same current fixture bundle; the earlier Chrome
+and Firefox component checks predate the failure-test instrumentation, with
+unchanged production Glass source. Diagnostic draw timings are not performance
+targets or evidence of a speedup.
