@@ -77,6 +77,11 @@ const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toF
 // what a bundler ships: the ESM core, tree-shaken from dist/index.js
 const CORE_KB = measureSizes(root).everything
 bundleGallery(root, out, true)
+execFileSync(join(root, 'node_modules/.bin/esbuild'), [
+  join(root, 'dist/glass/index.js'), '--bundle', '--minify', '--format=iife',
+  '--global-name=SVGlass', '--outfile=' + join(out, 'sv-glass.js'),
+])
+copyFileSync(join(root, 'styles/glass.css'), join(out, 'glass.css'))
 copyFileSync(join(root, 'styles.css'), join(out, 'sv.css'))
 
 // bench: the ScrollVars workload page inlines the engine. Resync it from

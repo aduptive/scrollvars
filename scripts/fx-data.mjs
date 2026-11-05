@@ -5,6 +5,7 @@
  * prove that every component compiles and renders with the presets its preview
  * uses. scripts/fx-build.mjs turns this into pages, llms.txt and registry.json.
  */
+import { glassComponent, glassEffect } from './fx-lib/glass.mjs'
 import { compileMask3dCore } from './fx-lib/compile-mask3d.mjs'
 
 // The cube-windows recipe's projection math lives in scripts/fx-lib/mask3d-
@@ -836,6 +837,7 @@ useEffect(() => {
   <div ref={stage} className="sv-stage">…</div>
 </Track>`,
   },
+  glassEffect,
   {
     slug: 'three-scene',
     // what the installed component needs: stylesheets (scrollvars/styles/<x>.css), peer deps, minimum scrollvars
@@ -1726,6 +1728,7 @@ function Portrait() {
 ]
 
 export const COMPONENTS = {
+  glass: glassComponent,
   'hero-cinematic': {
     file: 'HeroCinematic.tsx',
     content: `// ScrollVars fx · hero-cinematic
