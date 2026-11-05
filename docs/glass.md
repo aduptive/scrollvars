@@ -1,6 +1,6 @@
 # Glass overlay
 
-The spectral WebGL effect is available from two opt-in entry points:
+Try the [interactive Glass example](https://scrollvars.dev/fx/glass.html) to adjust the Gaussian blur, move the glass and switch between fixed, pointer and floating light. Install the example with `npx scrollvars add glass` (ScrollVars 1.20.0+).
 
 See `examples/glass.tsx` and `examples/glass.css` for a complete explicit scene
 with scroll-driven position and semantic text underneath.

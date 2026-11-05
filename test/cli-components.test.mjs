@@ -28,6 +28,7 @@ const COMPILE_ONLY = new Set(['gsap-scrub', 'three-scene']) // peer libraries ar
 // here: their gallery preview IS this component, rendered with fx.previewProps
 // (scripts/fx-render.mjs), so there is only one props source, not two.
 const FIXTURES = {
+  glass: { blur: 6, lightMode: 'pointer' },
   'sequenced-scrub': { children: [h('p', { key: 1 }, 'first'), h('p', { key: 2 }, 'second')] },
   'split-reveal': { children: 'Words arrive one by one' },
   'staggered-reveal': { children: [h('h2', { key: 1 }, 'Title'), h('p', { key: 2 }, 'Copy')] },
@@ -54,6 +55,7 @@ const resolveScrollvars = {
   name: 'scrollvars-dist',
   setup(build) {
     build.onResolve({ filter: /^scrollvars(\/.*)?$/ }, (args) => {
+      if (args.path === 'scrollvars/react/glass') return { path: join(root, 'dist/react/glass.js') }
       const sub = args.path.slice('scrollvars'.length)
       return { path: join(root, 'dist', sub ? sub.slice(1) : '', 'index.js') }
     })
@@ -263,7 +265,7 @@ test('tsc gate fails the suite on any tsc error, attributed or not', () => {
 // Driver outputs (--sv-t, --sv-pin, --sv-scene) and author knobs are declared
 // in no stylesheet at all, so they are never flagged; a var read WITHOUT a
 // fallback that another scrollvars stylesheet declares is a missing import.
-const STYLESHEETS = ['core', 'pin', 'slider', 'tilt', 'state', 'ui']
+const STYLESHEETS = ['core', 'pin', 'slider', 'tilt', 'state', 'ui', 'glass']
 // comments first: a doc comment naming `var(--sv-t)` is not a consumer
 const styleSource = Object.fromEntries(
   STYLESHEETS.map((name) => [
@@ -353,7 +355,7 @@ test('every effect declares the stylesheets its presets live in and read variabl
 // check). Add to this table when a NEWER export lands in a gallery recipe.
 // Marquee shipped its pause button (sv-marquee-pause) in 1.14.0: a page
 // importing it under an older min installs the WCAG 2.2.2 failure N4 fixed.
-const EXPORT_VERSIONS = { onMotionChange: '1.17.0', Marquee: '1.14.0' }
+const EXPORT_VERSIONS = { Glass: '1.20.0', onMotionChange: '1.17.0', Marquee: '1.14.0' }
 // ---- ADU (loop8-3, B3/A1): a version-gated feature is not always an
 // import: <Track onStatus={...}> is a PROP, invisible to the import scan
 // above, and onStatus shipped in 1.18.0. Any content passing it to Track
@@ -372,7 +374,7 @@ test('every registry entry declares a requires.min at least as new as its newest
   for (const fx of EFFECTS) {
     const min = fx.requires?.min ?? '0.0.0'
     const content = COMPONENTS[fx.slug].content
-    for (const m of content.matchAll(/import\s*\{([^}]+)\}\s*from\s*'scrollvars(?:\/react)?'/g)) {
+    for (const m of content.matchAll(/import\s*\{([^}]+)\}\s*from\s*'scrollvars(?:\/react(?:\/glass)?)?'/g)) {
       for (const raw of m[1].split(',')) {
         const name = raw.trim().split(/\s+as\s+/)[0].trim()
         const introduced = EXPORT_VERSIONS[name]

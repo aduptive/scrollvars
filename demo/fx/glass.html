@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem('sv-motion')==='reduce')document.documentElement.setAttribute('data-sv-motion','reduce')}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121118'/%3E%3Cpath d='M12 32h16M36 32h16' stroke='%23a78bfa' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Glass · ScrollVars fx</title>
+<meta name="description" content="Refract a graphic through a moving glass edge, with adjustable Gaussian blur and a localized highlight. Copy-paste in Tailwind, CSS or React.">
+<meta property="og:image" content="https://scrollvars.dev/media/og.png">
+<link rel="stylesheet" href="sv.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --ink:#0d1611; --surface:#14211a; --line:rgba(232, 239, 230,.09);
+    --text:#e8efe6; --muted:#8fa898; --accent:#f2c14e;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  body { background:var(--ink); color:var(--text); font:16px/1.6 var(--sans); }
+  /* the fixed header below covers whatever the browser scrolls to the top
+     edge, a focused element on the way back included (WCAG 2.4.11): the
+     scrollport starts under it instead */
+  html { scroll-padding-top: 64px; }
+  a { color: var(--accent); }
+  /* the bar is translucent, so over a light section (the manifesto's paper)
+     its muted text read 4.37:1: a brighter muted inside the bar only */
+  header.fx { --muted:#b8c6bb; position:fixed; top:0; left:0; right:0; z-index:20; height:56px;
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    padding:0 24px; font-size:14px; background:rgba(13, 22, 17,.88);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.fx .motion { font:inherit; color:var(--muted); background:transparent; border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; margin-right:10px; cursor:pointer; min-height:24px; }
+  header.fx .motion[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+  footer.fx { border-top:1px solid var(--line); padding:26px 24px; color:var(--muted);
+    font-size:13px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  footer.fx b { color: var(--text); }
+  h1 { font-size: 30px; margin: 6px 0 4px; }
+  p.tag { color: var(--muted); margin-bottom: 6px; }
+  p.meta { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  p.meta b { color: var(--text); font-weight: 600; }
+  .fxstage { background:#14211a; border:1px solid var(--line); border-radius:16px;
+    padding:40px 24px; text-align:center; margin: 18px 0; overflow:hidden; }
+  /* on-arrival effects need the stage to start BELOW the live band, or the driver
+     flags it live on the first frame and the entrance is over before it is seen */
+  .fxrunway { padding: 62vh 0 46vh; position: relative; }
+  .fxrunway::before { content:"scroll ↓"; position:absolute; top:28vh; left:0; right:0;
+    text-align:center; font:600 12px var(--mono); letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); }
+  /* pinned previews: the pin helper (data-sv-pin="240vh") and .sv-stage own the geometry; these only paint */
+  .fxouter { border-radius:16px; margin:18px 0; }
+  .fxsticky { background:#14211a; border:1px solid var(--line); border-radius:16px; }
+  .fxpanel { position:absolute; inset:0 auto 0 0; width:50%; background:#221f31;
+    display:grid; place-items:center; font:600 22px var(--mono); color:var(--accent); }
+  .fxreveal { position:absolute; inset:0; display:grid; place-items:center;
+    font:700 34px var(--sans); }
+  .fxh { font-size: 30px; font-weight: 800; }
+  .fxp { color: var(--muted); }
+  .fxaccent { color: var(--accent); }
+  .fxcard { width:150px; height:110px; flex:0 0 auto; border-radius:12px;
+    border:1px solid var(--line); background:linear-gradient(150deg,#221f31,var(--surface) 70%);
+    display:grid; place-items:center; font:600 15px var(--mono); }
+  .fxmarq span { font: 600 22px var(--mono); color: var(--muted); padding: 0 10px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin: 26px 0 0; } /* three tabs overflowed a 320px viewport by 10px (WCAG 1.4.10) */
+  .tabs button { font:600 13px var(--mono); padding:8px 16px; border-radius:8px 8px 0 0;
+    border:1px solid var(--line); border-bottom:0; background:transparent;
+    color:var(--muted); cursor:pointer; }
+  .tabs button.on { background:#14211a; color:var(--accent); }
+  .code { position: relative; }
+  .code pre { background:#14211a; border:1px solid var(--line); border-radius:0 12px 12px 12px;
+    padding:20px; overflow-x:auto; font:13px/1.6 var(--mono); color:#d6dfd6; display:none; }
+  .code pre.on { display:block; }
+  .copy { position:absolute; top:10px; right:10px; font:600 12px var(--mono);
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(0,0,0,.4); color:var(--muted); cursor:pointer; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .fxlink { display:block; padding:20px; border:1px solid var(--line); border-radius:14px;
+    text-decoration:none; color:var(--text); background:#14211a; }
+  .fxlink:hover { border-color: var(--accent); }
+  .fxthumb { display:block; height:180px; overflow:hidden; margin:-20px -20px 18px; border-radius:14px 14px 0 0; background:#14211a; }
+  .fxthumb iframe { width:1000px; height:650px; transform:scale(.28); transform-origin:top left; border:0; pointer-events:none; }
+  .fxlink b { display:block; margin-bottom:6px; }
+  .fxlink span { color:var(--muted); font-size:13px; }
+  .fxcat { font:600 12px var(--mono); text-transform:uppercase; letter-spacing:.14em;
+    color:var(--muted); margin:30px 0 12px; }
+  .fxwrap { display:grid; grid-template-columns:240px minmax(0,1fr); padding-top:56px;
+    min-height:100vh; }
+  .fxwrap > main { max-width:1000px; padding:44px clamp(24px,4vw,64px) 96px; }
+  .fxside { border-right:1px solid var(--line); }
+  .fxsidein { position:sticky; top:56px; max-height:calc(100vh - 56px); overflow-y:auto;
+    padding:24px 20px 40px; font-size:14px; }
+  .fxnav[open] > summary { display:none; }
+  .fxnav > summary { cursor:pointer; font:600 12px var(--mono); color:var(--muted); }
+  .fxnav nav details { padding:8px 0; border-top:1px solid var(--line); }
+  .fxnav nav details:first-child { border-top:0; padding-top:0; }
+  .fxnav nav summary { cursor:pointer; user-select:none; font:600 11px/2.2 var(--mono);
+    text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+  .fxnav nav summary:hover { color:var(--text); }
+  .fxnav nav a { display:block; padding:4px 0 4px 14px; margin-left:5px; color:var(--text);
+    opacity:.85; text-decoration:none; border-left:1px solid var(--line); }
+  .fxnav nav a:hover { opacity:1; color:var(--accent); }
+  .fxnav nav a[aria-current] { opacity:1; color:var(--accent); font-weight:600;
+    border-left-color:var(--accent); }
+  @media (max-width: 919px) {
+    .fxwrap { display:block; }
+    .fxside { border-right:0; }
+    .fxsidein { position:static; max-height:none; padding:20px 20px 0; }
+    .fxnav > summary, .fxnav[open] > summary { display:list-item; cursor:pointer;
+      font:600 14px var(--sans);
+      padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:#14211a; }
+    .fxnav[open] > summary { border-radius:12px 12px 0 0; }
+    .fxnav nav { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px;
+      padding:10px 16px 14px; background:#14211a; }
+  }
+</style>
+</head><body>
+<header class="fx">
+  <div><a href="." style="text-decoration:none"><b>ScrollVars</b> <span style="color:var(--muted)">/ fx</span></a></div>
+  <div><button type="button" id="sv-motion-switch" class="motion" aria-pressed="false" title="Less motion on this site, whatever the OS says">Motion: auto</button> <a href="../docs/">docs</a> · <a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div>
+</header>
+<script>
+(function () {
+  // the site's own motion switch: sets data-sv-motion through the engine when
+  // it is there (the effect pages load it at the end of the body), on the
+  // attribute alone otherwise, and remembers the choice for the head script
+  var root = document.documentElement, btn = document.getElementById('sv-motion-switch')
+  if (!btn) return
+  var paint = function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    btn.setAttribute('aria-pressed', String(on))
+    btn.textContent = on ? 'Motion: reduced' : 'Motion: auto'
+  }
+  btn.addEventListener('click', function () {
+    var on = root.getAttribute('data-sv-motion') === 'reduce'
+    if (window.SV && SV.setMotion) SV.setMotion(on ? 'auto' : 'reduce')
+    else if (on) root.removeAttribute('data-sv-motion')
+    else root.setAttribute('data-sv-motion', 'reduce')
+    try { localStorage.setItem('sv-motion', on ? 'auto' : 'reduce') } catch (e) {}
+    paint()
+  })
+  paint()
+})()
+</script>
+<div class="fxwrap">
+<aside class="fxside"><div class="fxsidein">
+  <details class="fxnav" open>
+    <summary>All effects</summary>
+    <nav aria-label="Effects">
+      <details open><summary>Reveals</summary>
+        <a href="staggered-reveal.html">Staggered reveal</a>
+        <a href="deck-spread.html">Deck spread</a>
+      </details>
+      <details open><summary>Pinned scenes</summary>
+        <a href="curtain.html">Curtain</a>
+        <a href="horizontal-rail.html">Horizontal rail</a>
+        <a href="sequenced-scrub.html">Sequenced scrub</a>
+        <a href="wall-floor-fold.html">Wall to floor fold</a>
+      </details>
+      <details open><summary>Interop</summary>
+        <a href="gsap-scrub.html">GSAP timeline under scrub</a>
+        <a href="three-scene.html">Three.js scene on the pin</a>
+      </details>
+      <details open><summary>WebGL</summary>
+        <a href="glass.html" aria-current="page">Glass</a>
+      </details>
+      <details open><summary>Text</summary>
+        <a href="split-reveal.html">Split reveal</a>
+        <a href="rotating-words.html">Rotating words</a>
+      </details>
+      <details open><summary>Pointer</summary>
+        <a href="pointer-tilt.html">Pointer tilt</a>
+        <a href="cube-windows.html">Cube windows</a>
+      </details>
+      <details open><summary>Sliders</summary>
+        <a href="coverflow-slider.html">Coverflow slider</a>
+        <a href="marquee.html">Marquee</a>
+      </details>
+      <details open><summary>Sections</summary>
+        <a href="hero-cinematic.html">Cinematic hero</a>
+        <a href="timeline-scrub.html">Pinned timeline</a>
+        <a href="sticky-steps.html">Sticky steps</a>
+        <a href="stats-countup.html">Stats count-up</a>
+        <a href="case-study-rail.html">Case-study rail</a>
+        <a href="editorial-manifesto.html">Editorial manifesto</a>
+      </details>
+    </nav>
+  </details>
+</div></aside>
+<main>
+  <h1>Glass</h1>
+  <p class="tag">Refract a graphic through a moving glass edge, with adjustable Gaussian blur and a localized highlight.</p>
+  <p class="meta"><b>Use it for:</b> A hero or product graphic with a known scene texture. The heading stays readable when WebGL is unavailable.<br><b>Knobs:</b> Blur sets the Gaussian radius in CSS pixels. Position slides the glass. Light can stay fixed, follow the mouse or float on a slow orbit.</p>
+  <link rel="stylesheet" href="glass.css">
+<style>.glass-study {
+  aspect-ratio: 2 / 1; overflow: hidden; container-type: inline-size;
+  background: linear-gradient(to right, #e9efff, #87a3ff); color: #162049;
+}
+.glass-study::before {
+  content: ''; position: absolute; width: 32%; aspect-ratio: 1;
+  top: 50%; left: 73%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: #ed502d;
+}
+.glass-study h2 {
+  position: absolute; top: 50%; left: 6%; transform: translateY(-50%);
+  margin: 0; font: bold 12cqi/1 Arial, sans-serif; color: inherit;
+}
+.glass-controls { display:flex; flex-wrap:wrap; gap:1.5rem; align-items:center; margin:1rem 0; padding:1rem; border:1px solid var(--line); }
+.glass-controls label { display:grid; gap:.4em; }
+</style>
+<div class="sv-glass glass-study">
+  <h2>Refraction</h2>
+  <canvas class="sv-glass-canvas" aria-hidden="true" hidden></canvas>
+</div>
+<fieldset class="glass-controls" disabled>
+  <legend>Glass controls</legend>
+  <label for="glass-blur">Gaussian blur <output for="glass-blur" id="glass-radius">6 px</output><input id="glass-blur" name="blur" type="range" min="0" max="24" value="6"></label>
+  <label>Glass position<input name="position" type="range" min="0" max="100" value="42"></label>
+  <label>Light<select name="lightMode"><option value="static">Fixed</option><option value="pointer">Mouse</option><option value="float">Floating</option></select></label>
+</fieldset>
+<p role="status" id="glass-status"></p>
+<script src="sv-glass.js"></script>
+<script>(() => {
+  const controls = document.querySelector('.glass-controls')
+  const radius = document.getElementById('glass-radius')
+  const source = ({ width, height, dpr }) => {
+  const texture = document.createElement('canvas')
+  texture.width = Math.max(1, Math.round(width * dpr))
+  texture.height = Math.max(1, Math.round(height * dpr))
+  const ctx = texture.getContext('2d')
+  if (!ctx) throw new Error('Glass scene requires Canvas 2D')
+  ctx.scale(dpr, dpr)
+  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  gradient.addColorStop(0, '#e9efff')
+  gradient.addColorStop(1, '#87a3ff')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, width, height)
+  ctx.fillStyle = '#ed502d'
+  ctx.beginPath()
+  ctx.arc(width * .73, height * .5, width * .16, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#162049'
+  ctx.font = 'bold ' + width * .12 + 'px Arial'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Refraction', width * .06, height * .5)
+  return texture
+}
+  if (!window.SVGlass) return
+  controls.disabled = false
+  const glass = SVGlass.mountGlass(document.querySelector('.glass-study canvas'), {
+    source, blur: 6, edgeGlow: 85,
+    onError() {
+      controls.disabled = true
+      document.getElementById('glass-status').textContent = 'Glass is unavailable. Showing the original scene.'
+    }
+  })
+  controls.addEventListener('input', () => {
+    const { blur, position, lightMode } = controls.elements
+    radius.value = blur.value + ' px'
+    glass.update({ blur: blur.valueAsNumber, position: position.valueAsNumber, lightMode: lightMode.value })
+  })
+})()</script>
+  <p class="meta"><b>Install:</b> <code>npx scrollvars add glass</code><br><b>Styles:</b> <code>import 'scrollvars/styles/glass.css'</code></p>
+  <div class="tabs">
+    <button type="button" class="on" aria-pressed="true" data-tab="tailwind">Tailwind</button>
+    <button type="button" aria-pressed="false" data-tab="css">Vanilla · HTML/CSS/JS</button>
+    <button type="button" aria-pressed="false" data-tab="react">React</button>
+  </div>
+  <div class="code">
+    <button class="copy">copy</button>
+    <pre class="on" tabindex="0" data-pane="tailwind"><code>// From your frontend package root: npx scrollvars add glass
+import 'scrollvars/styles/glass.css'
+import { GlassStudy } from './components/fx/GlassStudy'
+
+export function Hero() {
+  return &lt;div className="mx-auto max-w-4xl overflow-hidden rounded-2xl"&gt;
+    &lt;GlassStudy blur={6} lightMode="pointer" /&gt;
+  &lt;/div&gt;
+}</code></pre>
+    <pre tabindex="0" data-pane="css"><code>&lt;div class="sv-glass glass-study"&gt;
+  &lt;h2&gt;Refraction&lt;/h2&gt;
+  &lt;canvas class="sv-glass-canvas" aria-hidden="true" hidden&gt;&lt;/canvas&gt;
+&lt;/div&gt;
+&lt;style&gt;.glass-study {
+  aspect-ratio: 2 / 1; overflow: hidden; container-type: inline-size;
+  background: linear-gradient(to right, #e9efff, #87a3ff); color: #162049;
+}
+.glass-study::before {
+  content: ''; position: absolute; width: 32%; aspect-ratio: 1;
+  top: 50%; left: 73%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: #ed502d;
+}
+.glass-study h2 {
+  position: absolute; top: 50%; left: 6%; transform: translateY(-50%);
+  margin: 0; font: bold 12cqi/1 Arial, sans-serif; color: inherit;
+}&lt;/style&gt;
+&lt;script type="module"&gt;
+import 'scrollvars/styles/glass.css'
+import { mountGlass } from 'scrollvars/glass'
+const source = ({ width, height, dpr }) =&gt; {
+  const texture = document.createElement('canvas')
+  texture.width = Math.max(1, Math.round(width * dpr))
+  texture.height = Math.max(1, Math.round(height * dpr))
+  const ctx = texture.getContext('2d')
+  if (!ctx) throw new Error('Glass scene requires Canvas 2D')
+  ctx.scale(dpr, dpr)
+  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  gradient.addColorStop(0, '#e9efff')
+  gradient.addColorStop(1, '#87a3ff')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, width, height)
+  ctx.fillStyle = '#ed502d'
+  ctx.beginPath()
+  ctx.arc(width * .73, height * .5, width * .16, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#162049'
+  ctx.font = 'bold ' + width * .12 + 'px Arial'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Refraction', width * .06, height * .5)
+  return texture
+}
+const glass = mountGlass(document.querySelector('.glass-study canvas'), {
+  source, blur: 6, edgeGlow: 85, lightMode: 'static'
+})
+// On teardown: glass.destroy()
+&lt;/script&gt;</code></pre>
+    <pre tabindex="0" data-pane="react"><code>'use client'
+import * as React from 'react'
+import { Glass } from 'scrollvars/react/glass'
+import type { GlassMaterial, GlassOptions } from 'scrollvars/glass'
+// Import 'scrollvars/styles/glass.css' in your site's stylesheet entry.
+
+const source: GlassOptions['source'] = ({ width, height, dpr }) =&gt; {
+  const texture = document.createElement('canvas')
+  texture.width = Math.max(1, Math.round(width * dpr))
+  texture.height = Math.max(1, Math.round(height * dpr))
+  const ctx = texture.getContext('2d')
+  if (!ctx) throw new Error('Glass scene requires Canvas 2D')
+  ctx.scale(dpr, dpr)
+  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  gradient.addColorStop(0, '#e9efff')
+  gradient.addColorStop(1, '#87a3ff')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, width, height)
+  ctx.fillStyle = '#ed502d'
+  ctx.beginPath()
+  ctx.arc(width * .73, height * .5, width * .16, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#162049'
+  ctx.font = 'bold ' + width * .12 + 'px Arial'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Refraction', width * .06, height * .5)
+  return texture
+}
+
+const css = `.glass-study {
+  aspect-ratio: 2 / 1; overflow: hidden; container-type: inline-size;
+  background: linear-gradient(to right, #e9efff, #87a3ff); color: #162049;
+}
+.glass-study::before {
+  content: ''; position: absolute; width: 32%; aspect-ratio: 1;
+  top: 50%; left: 73%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: #ed502d;
+}
+.glass-study h2 {
+  position: absolute; top: 50%; left: 6%; transform: translateY(-50%);
+  margin: 0; font: bold 12cqi/1 Arial, sans-serif; color: inherit;
+}`
+
+export function GlassStudy({ nonce, ...material }: GlassMaterial &amp; { nonce?: string }) {
+  return &lt;Glass className="glass-study" source={source} blur={6} edgeGlow={85} {...material}&gt;
+    &lt;style nonce={nonce} dangerouslySetInnerHTML={{ __html: css }} /&gt;
+    &lt;h2&gt;Refraction&lt;/h2&gt;
+  &lt;/Glass&gt;
+}
+</code></pre>
+  </div>
+  <p class="meta" style="margin-top:20px">Engine: <code>npm i scrollvars</code>, 12.9 KB gzip as ESM (this page's fx/sv.js IIFE: 13.2 KB).
+  All effects respect <code>prefers-reduced-motion</code> and render complete without JS.</p>
+</main>
+</div>
+<footer class="fx">
+  <div><b>ScrollVars</b> v1.20.0. One scroll listener in, CSS variables out. MIT.</div>
+  <div><a href="../">demo</a> · <a href="../bench/">bench</a> · <a href="llms.txt">llms.txt</a> · <a href="registry.json">registry</a></div>
+</footer>
+<script>(()=>{const q=matchMedia('(max-width:919px)'),n=document.querySelector('.fxnav'),f=()=>n.toggleAttribute('open',!q.matches);f();q.addEventListener('change',f)})()</script>
+<script src="sv.js"></script>
+<script>
+  SV.setPageOutputs(false); // gallery effects only consume local clocks
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+    document.querySelectorAll('.code pre').forEach(p =>
+      p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+  }));
+  document.querySelector('.copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.querySelector('.code pre.on code').innerText);
+    this.textContent = 'copied!';
+    setTimeout(() => (this.textContent = 'copy'), 1200);
+  });
+</script>
+</body></html>
