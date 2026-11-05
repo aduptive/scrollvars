@@ -83,7 +83,7 @@ export const glassEffect = {
 ${scene}
 <fieldset class="glass-controls" disabled>
   <legend>Glass controls</legend>
-  <label>Gaussian blur <output id="glass-radius">6 px</output><input name="blur" type="range" min="0" max="24" value="6"></label>
+  <label for="glass-blur">Gaussian blur <output for="glass-blur" id="glass-radius">6 px</output><input id="glass-blur" name="blur" type="range" min="0" max="24" value="6"></label>
   <label>Glass position<input name="position" type="range" min="0" max="100" value="42"></label>
   <label>Light<select name="lightMode"><option value="static">Fixed</option><option value="pointer">Mouse</option><option value="float">Floating</option></select></label>
 </fieldset>
@@ -93,6 +93,7 @@ ${scene}
   const controls = document.querySelector('.glass-controls')
   const radius = document.getElementById('glass-radius')
   const source = ${source}
+  if (!window.SVGlass) return
   controls.disabled = false
   const glass = SVGlass.mountGlass(document.querySelector('.glass-study canvas'), {
     source, blur: 6, edgeGlow: 85,
