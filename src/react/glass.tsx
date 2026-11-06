@@ -11,7 +11,7 @@ export interface GlassProps extends GlassOptions {
 
 /** Import scrollvars/styles/glass.css. Children remain semantic HTML, not a texture capture. */
 export const Glass = forwardRef<GlassHandle, GlassProps>(function Glass({
-  as: Tag = 'div', className, children, source, onError, dprCap,
+  as: Tag = 'div', className, children, source, onError, dprCap, points,
   edgeWidth = 8, refraction = 55, dispersion = 60, interior = 0, position = 42,
   opacity = 100, color = '#ffffff', blur = 0, edgeGlow = 12,
   lightMode = 'static', lightX = 25, lightY = 0,
@@ -30,15 +30,15 @@ export const Glass = forwardRef<GlassHandle, GlassProps>(function Glass({
   useEffect(() => {
     if (!canvas.current) return
     const mounted = mountGlass(canvas.current, {
-      dprCap, source: fx => latest.current.source(fx),
+      dprCap, points, source: fx => latest.current.source(fx),
       onError: error => { if (latest.current.onError) latest.current.onError(error); else console.error(error) },
     })
     handle.current = mounted
     return () => { handle.current = null; mounted.destroy() }
-  }, [Tag, dprCap])
+  }, [Tag, dprCap, points])
   useEffect(() => {
     handle.current?.update({ edgeWidth, refraction, dispersion, interior, position, opacity, color, blur, edgeGlow, lightMode, lightX, lightY })
-  }, [Tag, dprCap, edgeWidth, refraction, dispersion, interior, position, opacity, color, blur, edgeGlow, lightMode, lightX, lightY])
+  }, [Tag, dprCap, points, edgeWidth, refraction, dispersion, interior, position, opacity, color, blur, edgeGlow, lightMode, lightX, lightY])
   useEffect(() => { handle.current?.invalidateSource() }, [source])
   return <Tag className={['sv-glass', className].filter(Boolean).join(' ')}>
     {children}<canvas className="sv-glass-canvas" ref={canvas} aria-hidden="true" hidden />

@@ -53,6 +53,25 @@ const pixel=()=>{
  let sum=0,alpha=0;for(let i=0;i<data.length;i+=4){sum=(sum+data[i]*3+data[i+1]*5+data[i+2]*7)>>>0;alpha+=data[i+3]}
  return {sum,alpha}
 }
+const checkPolygonPixels=points=>{
+ const canvas=document.querySelector('#react-root canvas'),gl=canvas.getContext('webgl'),data=new Uint8Array(canvas.width*canvas.height*4)
+ gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,data)
+ let insideCount=0,outsideCount=0
+ for(let row=1;row<20;row++)for(let col=1;col<20;col++){
+  const x=Math.floor(canvas.width*col/20),y=Math.floor(canvas.height*row/20)
+  let distance=Infinity
+  for(let i=0;i<points.length;i+=2){
+   const j=(i+2)%points.length,ax=points[i]*canvas.width,ay=points[i+1]*canvas.height
+   const dx=points[j]*canvas.width-ax,dy=points[j+1]*canvas.height-ay
+   distance=Math.min(distance,(dx*(y+.5-ay)-dy*(x+.5-ax))/Math.hypot(dx,dy))
+  }
+  if(Math.abs(distance)<3)continue
+  const alpha=data[((canvas.height-1-y)*canvas.width+x)*4+3]
+  assert(distance>0?alpha===255:alpha===0,'polygon silhouette differs from its supplied edges')
+  if(distance>0)insideCount++;else outsideCount++
+ }
+ assert(insideCount>0&&outsideCount>0,'polygon test needs interior and exterior samples')
+}
 for(const [id,next] of Object.entries({zero:{blur:0},six:{blur:6},max:{blur:24},fixed:{lightMode:'static'},pointer:{lightMode:'pointer'},float:{lightMode:'float'},extremes:{edgeWidth:20,refraction:100,dispersion:100,interior:100,opacity:65,color:'#f5baff',blur:24},reset:defaults}))document.getElementById(id).onclick=()=>update(next)
 document.getElementById('position').oninput=e=>update({position:Number(e.target.value)})
 document.getElementById('resize').onclick=()=>{narrow=!narrow;render()}
@@ -82,6 +101,17 @@ document.getElementById('checks').onclick=async()=>{
   setMotion('reduce');await frames(6);const reduced=metrics.draws;await frames(8);assert(metrics.draws===reduced,'reduced motion keeps floating');pass('reduced motion stops floating')
   setMotion('auto');await frames(6);assert(metrics.draws>reduced,'motion did not resume');pass('motion resumes without new scroll')
   update({lightMode:'static'});await frames(5)
+  update({...defaults,blur:0});await frames(5);const original=pixel()
+  const hexagon=[.25,0,.75,0,1,.5,.75,1,.25,1,0,.5]
+  const sixteen=Array.from({length:16},(_,i)=>[.5+.45*Math.cos(i*Math.PI/8),.5+.45*Math.sin(i*Math.PI/8)]).flat()
+  for(const points of [[.1,.1,.9,.1,.5,.9],hexagon,sixteen]){
+   update({points});await frames(8);checkPolygonPixels(points)
+   const forward=pixel(),reverse=points.slice(0,2)
+   for(let i=points.length-2;i>=2;i-=2)reverse.push(points[i],points[i+1])
+   update({points:reverse});await frames(8);assert(JSON.stringify(pixel())===JSON.stringify(forward),'winding changed the rendered polygon')
+  }
+  update({points:undefined});await frames(8);assert(JSON.stringify(pixel())===JSON.stringify(original),'removing custom points changed the default outline')
+  pass('3/6/16-point polygon silhouettes, either winding, and default restoration')
   for(const as of ['span','div']){tag=as;render();await frames(8);assert(document.querySelector('#react-root .sv-glass').tagName===as.toUpperCase(),'wrong host');assert(pixel().alpha>0,'host replacement lost glass')};pass('div/span replacement')
   narrow=true;render();await frames(8);assert(document.querySelector('#react-root canvas').width<=320*devicePixelRatio+1,'resize failed');pass('resize')
   mounted=false;render();await frames(6);const dead=counts();await frames(8);assert(metrics.draws===dead.draws,'unmounted renderer still draws');pass('unmount stops GPU work')

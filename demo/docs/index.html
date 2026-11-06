@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.20.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.21.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -290,6 +290,14 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.21.0 (2026-11-05)</h3>
+
+<h4>Added</h4>
+
+<ul>
+<li>Optional mount-time <code>points</code> for Glass: 3–16 normalized vertices defining a strictly convex polygon. The shader uses the supplied edges for clipping, refraction and light, accepts either winding and rejects invalid geometry before resource allocation. The default pentagon is preserved. React remounts when the points array identity changes.</li>
+</ul>
 
 <h3>1.20.0 (2026-10-28)</h3>
 

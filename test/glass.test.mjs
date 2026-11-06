@@ -24,6 +24,58 @@ function context(canvas) {
   return { calls, resources, gl, count: name => calls.filter(c => c[0] === name).length }
 }
 
+const hexagon = [.25,0,.75,0,1,.5,.75,1,.25,1,0,.5]
+
+test('Glass polygon: both windings, caller isolation, resize and reduced position preserve custom geometry', () => {
+  const env = lifecycleEnv()
+  try {
+    const points = [...hexagon], canvas = env.canvas(), gpu = context(canvas)
+    let captures = 0
+    const handle = mountGlass(canvas, { points, source: () => { captures++; return {} } })
+    points.fill(0)
+    const resize = env.deliveries.find(o => o.kind === 'ResizeObserver')
+    resize.cb([]); env.flush()
+    const actual = () => Array.from(gpu.calls.filter(c => c[0] === 'uniform2fv').at(-1)[2])
+    assert.deepEqual(actual(), hexagon.map(value => value * 100))
+    assert.ok(gpu.calls.some(c => c[0] === 'shaderSource' && c[2].includes('u_points[6]')))
+    handle.update({ position: 52 }); env.flush()
+    assert.equal(actual()[0], 35); assert.equal(captures, 1)
+    setMotion('reduce'); env.flush(); assert.equal(actual()[0], 25)
+    resize.cb([{ contentRect: { width: 200, height: 100 } }]); env.flush()
+    assert.deepEqual(actual(), hexagon.map((value, i) => value * (i % 2 ? 100 : 200)))
+    handle.destroy()
+    const reverse = hexagon.slice(0, 2)
+    for (let i = hexagon.length - 2; i >= 2; i -= 2) reverse.push(hexagon[i], hexagon[i + 1])
+    const other = env.canvas(), secondGpu = context(other)
+    const second = mountGlass(other, { points: reverse, source: () => ({}) })
+    env.deliveries.filter(o => o.kind === 'ResizeObserver').at(-1).cb([]); env.flush()
+    assert.deepEqual(Array.from(secondGpu.calls.filter(c => c[0] === 'uniform2fv').at(-1)[2]), hexagon.map(value => value * 100))
+    second.destroy(); assert.equal(gpu.resources.size, 0); assert.equal(secondGpu.resources.size, 0)
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('Glass polygon: invalid geometry fails before acquiring resources or changing the canvas', () => {
+  const env = lifecycleEnv()
+  try {
+    const canvas = env.canvas(), gpu = context(canvas)
+    canvas.hidden = true
+    const star = Array.from({ length: 5 }, (_, i) => {
+      const angle = i * 4 * Math.PI / 5
+      return [.5 + .4 * Math.cos(angle), .5 + .4 * Math.sin(angle)]
+    }).flat()
+    for (const points of [null, [], [0,0,1,0], [...hexagon,0], Array(34).fill(.5),
+      [NaN,0,1,0,0,1], [0,0,Infinity,0,0,1], [-.1,0,1,0,0,1], [0,0,1.1,0,0,1],
+      [0,0,'1',0,0,1], Array(6), [0,0,0,0,1,1], [0,0,.5,.5,1,1],
+      [0,0,1,0,.5,.25,1,1,0,1], [0,0,1,1,0,1,1,0], star, [...hexagon,...hexagon.slice(0,2)]]) {
+      assert.throws(() => mountGlass(canvas, { points, source: () => ({}) }), /Glass points/)
+      assert.equal(canvas.hidden, true)
+      assert.equal(gpu.calls.length, 0)
+      assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    }
+  } finally { env.restore() }
+})
+
 test('Glass SSR: div/span preserve real content; decorative canvas is hidden without JS', () => {
   for (const as of ['div', 'span']) {
     const markup = renderToStaticMarkup(React.createElement(Glass, { as, source: () => { throw Error('SSR must not paint') } }, React.createElement('strong', null, 'Accessible text')))

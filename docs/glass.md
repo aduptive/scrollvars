@@ -48,6 +48,7 @@ headers before mount. A rejected/tainted/not-ready source hides only the overlay
 | `lightMode` | `static` / `pointer` / `float` | `static` | Fixed light, mouse-following light or slow orbit |
 | `lightX`, `lightY` | 0–100 | 25, 0 | Fixed light point in percent of the scene |
 | `dprCap` | positive finite | 2 | Backing-store pixel ratio cap |
+| `points` | 3–16 ordered x/y pairs in [0, 1] | Built-in pentagon | Mount-time strictly convex polygon |
 
 For brighter glints like the reference, try `edgeGlow={80}`. The highlight
 falls off over 1.2 CSS pixels inward from the edge and also varies **along** each
@@ -80,14 +81,35 @@ hardware performance gain is claimed. Radius zero allocates no blur resources.
 
 Material values clamp to their range; nonfinite values are rejected. With a
 wide edge band, most of a narrow glass can be inside the band, even at interior
-zero. The glass has a fixed five-sided outline. Arbitrary SVG paths,
-concave shapes and CSS border-radius silhouettes are outside this first version.
+zero. By default the glass has its original five-sided outline. An optional
+`points` array (1.21.0+) defines a custom convex polygon, used by the shader for clipping,
+refraction and edge light:
+
+```ts
+const points = [.25, 0, .75, 0, 1, .5, .75, 1, .25, 1, 0, .5] as const
+const glass = mountGlass(canvas, { source, points })
+// React: <Glass source={source} points={points}>…</Glass>
+```
+
+Coordinates are normalized to the whole canvas, with (0, 0) at its top-left.
+Supply 3–16 vertices in boundary order, clockwise or counterclockwise, without
+repeating the first vertex. Values must be finite and inside [0, 1]. Duplicate,
+collinear, concave and self-intersecting polygons throw synchronously before
+resource allocation. Validation uses float32 coordinates and rejects normalized
+edge/vertex cross products of magnitude 1e-8 or less to exclude near-degeneracy.
+The input is copied at mount. Arbitrary SVG paths and rounded outlines are not supported.
+
+For custom points, the default `position={42}` leaves those coordinates unchanged;
+each position unit shifts them by 1% of the canvas width. Reduced motion restores
+their unshifted position. Geometry is mount-time configuration, not a material
+update: remount vanilla instances to replace it. In React keep `points` stable
+(a module constant or memoized array); changing its identity remounts the renderer.
 
 The forwarded `GlassHandle` ref exposes `update(material)`, `invalidateSource()`,
 `pause()`, `resume()` and `destroy()`. Declarative prop changes apply automatically.
 Call `invalidateSource()` after repainting the same source canvas or changing
 an image in place. Changing the `source` callback identity also invalidates it.
-Changing `as` or `dprCap` remounts the renderer. After manual `destroy`, remount
+Changing `as`, `dprCap` or `points` remounts the renderer. After manual `destroy`, remount
 the component to restart. No GPU resources are shared between instances.
 
 ## ScrollVars integration

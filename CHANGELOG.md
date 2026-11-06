@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.21.0 (2026-11-05)
+
+### Added
+
+- Optional mount-time `points` for Glass: 3–16 normalized vertices defining a strictly convex polygon. The shader uses the supplied edges for clipping, refraction and light, accepts either winding and rejects invalid geometry before resource allocation. The default pentagon is preserved. React remounts when the points array identity changes.
+
 ## 1.20.0 (2026-10-28)
 
 ### Added
