@@ -1,10 +1,10 @@
 // Spectral refraction with optional scene softening and adjustable material.
 export const vertex = `attribute vec2 a_position; varying vec2 v_uv; void main(){v_uv=vec2((a_position.x+1.0)*0.5,(1.0-a_position.y)*0.5);gl_Position=vec4(a_position,0.0,1.0);}`
-export const fragment = `precision highp float;
+export const fragment = (pointCount: number) => `precision highp float;
  varying vec2 v_uv;
  uniform sampler2D u_scene;
  uniform vec2 u_size;
- uniform vec2 u_points[5];
+ uniform vec2 u_points[${pointCount}];
  uniform float u_strength;
  uniform float u_dispersion;
  uniform float u_interior;
@@ -17,9 +17,9 @@ export const fragment = `precision highp float;
   vec2 p=v_uv*u_size;
   float distance=100000.0;
   vec2 normal=vec2(0.0);
-  for(int i=0;i<5;i++){
+  for(int i=0;i<${pointCount};i++){
    vec2 a=u_points[i];vec2 b;
-   if(i==4)b=u_points[0];else b=u_points[i+1];
+   if(i==${pointCount - 1})b=u_points[0];else b=u_points[i+1];
    vec2 e=normalize(b-a);vec2 n=vec2(-e.y,e.x);
    float d=dot(p-a,n);
    if(d<distance){distance=d;normal=n;}

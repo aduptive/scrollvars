@@ -2744,6 +2744,14 @@ test('react: Glass updates material/source without reattaching; host replacement
     await React.act(async () => root.render(React.createElement(Glass, { as: 'span', source: nextSource, ref: api }, 'Real text')))
     assert.equal(container.firstChild.tagName, 'SPAN'); assert.equal(deleted, 11)
     prepare(); assert.equal(sourceB, 2)
+    const points = Object.freeze([.25,0,.75,0,1,.5,.75,1,.25,1,0,.5])
+    await React.act(async () => root.render(React.createElement(Glass, { as: 'span', points, source: nextSource, ref: api, opacity: 30 }, 'Real text')))
+    assert.equal(deleted, 16)
+    prepare(); assert.equal(sourceB, 3)
+    assert.ok(uniforms.some(([key,value]) => key === 'u_opacity' && value === .3))
+    const attachments = resize.length
+    await React.act(async () => root.render(React.createElement(Glass, { as: 'span', points, source: nextSource, ref: api, opacity: 60 }, 'Real text')))
+    flushFrames(); assert.equal(resize.length, attachments); assert.equal(sourceB, 3)
   } finally { await React.act(async () => root.unmount()); Object.assign(global, saved) }
-  assert.equal(observers.size, 0); assert.equal(deleted, 16); assert.equal(api.current, null)
+  assert.equal(observers.size, 0); assert.equal(deleted, 21); assert.equal(api.current, null)
 })

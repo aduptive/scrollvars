@@ -30,6 +30,9 @@ export interface GlassMaterial {
 }
 
 export interface GlassOptions extends GlassMaterial {
+  /** Mount-time convex polygon: 3–16 ordered x/y pairs in [0, 1], top-left origin.
+   * Either winding; omit the closing duplicate. Position 42 preserves these coordinates. */
+  points?: readonly number[]
   /** Explicit scene texture. Called on first render, resize and invalidateSource.
    * Paint at fx.width/height (CSS pixels), or return a loaded same-origin/CORS image.
    * This does not capture arbitrary HTML children. */
@@ -44,6 +47,33 @@ export interface GlassHandle extends EffectHandle {
 }
 
 const defaults = { edgeWidth: 8, refraction: 55, dispersion: 60, interior: 0, position: 42, opacity: 100, blur: 0, edgeGlow: 12, lightX: 25, lightY: 0 }
+function polygon(input: readonly number[] | undefined): number[] {
+  if (input === undefined) return [.29,.08,.73,.27,1.01,1.5,.55,1.5,.21,.21]
+  if (!Array.isArray(input) || input.length < 6 || input.length > 32 || input.length % 2)
+    throw new TypeError('Glass points must contain 3–16 x/y pairs')
+  const points = Array.from(input, value => {
+    if (!Number.isFinite(value) || value < 0 || value > 1)
+      throw new TypeError('Glass points must be finite coordinates in [0, 1]')
+    return Math.fround(value)
+  })
+  let winding = 0
+  // Every other vertex must lie strictly on the same side of every edge, excluding stars and degeneracy.
+  for (let i = 0; i < points.length; i += 2) {
+    const next = (i + 2) % points.length
+    for (let j = 0; j < points.length; j += 2) {
+      if (j === i || j === next) continue
+      const cross = (points[next] - points[i]) * (points[j + 1] - points[i + 1]) - (points[next + 1] - points[i + 1]) * (points[j] - points[i])
+      if (Math.abs(cross) <= 1e-8 || (winding && Math.sign(cross) !== winding))
+        throw new TypeError('Glass points must form a strictly convex, nondegenerate polygon')
+      winding = Math.sign(cross)
+    }
+  }
+  if (winding > 0) return points
+  const reversed = points.slice(0, 2)
+  for (let i = points.length - 2; i >= 2; i -= 2) reversed.push(points[i], points[i + 1])
+  return reversed
+}
+
 function normalize(input: GlassMaterial, previous = { ...defaults, color: '#ffffff', lightMode: 'static' as 'static' | 'pointer' | 'float' }) {
   const next = { ...previous }
   for (const key of Object.keys(defaults) as (keyof typeof defaults)[]) {
@@ -69,6 +99,8 @@ function normalize(input: GlassMaterial, previous = { ...defaults, color: '#ffff
 /** Decorative WebGL overlay; the caller keeps accessible content underneath. */
 export function mountGlass(canvas: HTMLCanvasElement, options: GlassOptions): GlassHandle {
   let material = normalize(options)
+  const shape = polygon(options.points)
+  const origin = options.points === undefined ? 50 : defaults.position
   if (options.dprCap !== undefined && (!Number.isFinite(options.dprCap) || options.dprCap <= 0))
     throw new TypeError('Glass dprCap must be positive and finite')
   const life = lifetime()
@@ -123,7 +155,7 @@ export function mountGlass(canvas: HTMLCanvasElement, options: GlassOptions): Gl
           if (!program) throw new Error('Glass program allocation failed')
           life.defer(() => gl.deleteProgram(program))
           gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex))
-          gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment)); gl.linkProgram(program)
+          gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment(shape.length / 2))); gl.linkProgram(program)
           if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'Glass program link failed')
           gl.useProgram(program)
           const buffer = gl.createBuffer()
@@ -166,8 +198,8 @@ export function mountGlass(canvas: HTMLCanvasElement, options: GlassOptions): Gl
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
             gl.enableVertexAttribArray(attribute); gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0)
             gl.bindTexture(gl.TEXTURE_2D, material.blur > 0 ? blurred! : texture)
-            const shift = ((fx.reducedMotion ? defaults.position : material.position) - 50) / 100
-            const points = [[.29+shift,.08],[.73+shift,.27],[1.01+shift,1.5],[.55+shift,1.5],[.21+shift,.21]].flatMap(([x,y]) => [x*width,y*height])
+            const shift = ((fx.reducedMotion ? defaults.position : material.position) - origin) / 100
+            const points = shape.map((value, i) => i % 2 ? value * height : (value + shift) * width)
             gl.viewport(0, 0, canvas.width, canvas.height)
             gl.uniform2f(uniforms.u_size, width, height)
             gl.uniform2fv(uniforms['u_points[0]'], new Float32Array(points))

@@ -5,6 +5,12 @@ import { readFileSync } from 'node:fs'
 // Type-only additions have no runtime Object.keys entry. Keep their public
 // declaration names and the inherited hook/wrapper route alongside that list.
 const STATUS_SURFACE = ['AttachmentStatus', 'TrackOptions.onStatus']
+test('Glass polygon option is public through vanilla and React', () => {
+  const glass = readFileSync(new URL('../dist/glass/index.d.ts', import.meta.url), 'utf8')
+  const react = readFileSync(new URL('../dist/react/glass.d.ts', import.meta.url), 'utf8')
+  assert.match(glass, /points\?: readonly number\[\]/)
+  assert.match(react, /interface GlassProps extends GlassOptions/)
+})
 test('attachment status public declaration surface is intact', () => {
   const core = readFileSync(new URL('../dist/index.d.ts', import.meta.url), 'utf8')
   const driver = readFileSync(new URL('../dist/core/driver.d.ts', import.meta.url), 'utf8')
