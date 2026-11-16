@@ -46,9 +46,9 @@ async function run(mode) {
             if (i % 5 === 1) { handle.goTo(40); await frames() }
             if (i % 5 === 2) rail.dispatchEvent(new WheelEvent('wheel', { deltaX:30 }))
             if (i % 5 >= 3) {
-              rail.firstElementChild.dispatchEvent(new PointerEvent('pointerdown', { bubbles:true, pointerType:'mouse', button:0, clientX:300 }))
-              window.dispatchEvent(new PointerEvent('pointermove', { clientX:260 }))
-              window.dispatchEvent(new PointerEvent('pointermove', { clientX:200 }))
+              rail.firstElementChild.dispatchEvent(new PointerEvent('pointerdown', { bubbles:true, pointerType:'mouse', button:0, buttons:1, clientX:300 }))
+              window.dispatchEvent(new PointerEvent('pointermove', { pointerType:'mouse', buttons:1, clientX:260 }))
+              window.dispatchEvent(new PointerEvent('pointermove', { pointerType:'mouse', buttons:1, clientX:200 }))
               if (i % 5 === 4) window.dispatchEvent(new PointerEvent('pointerup'))
             }
             handle.destroy(); destroyed = true

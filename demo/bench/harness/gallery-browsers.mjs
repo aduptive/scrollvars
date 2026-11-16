@@ -466,7 +466,7 @@ try {
         const outer = document.getElementById('outer'), inner = document.getElementById('inner')
         const a = SV.slider(outer, { duration:0 }), b = SV.slider(inner, { duration:0 })
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-        const pointer = (target, type, x) => target.dispatchEvent(new PointerEvent(type, { bubbles:true, cancelable:true, pointerType:'mouse', button:0, clientX:x }))
+        const pointer = (target, type, x) => target.dispatchEvent(new PointerEvent(type, { bubbles:true, cancelable:true, pointerType:'mouse', button:0, buttons:type === 'pointerup' ? 0 : 1, clientX:x }))
         pointer(inner.firstElementChild, 'pointerdown', 250)
         pointer(window, 'pointermove', 230)
         pointer(window, 'pointermove', 10)
