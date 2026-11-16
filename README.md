@@ -34,13 +34,13 @@ Use the React example below in a React project, or the HTML example with a
 bundler such as Vite. Import the stylesheet once in your application entry.
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.21.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.22.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3965 | 1830 |
+| `usePointer` | 3965 | 1829 |
 | `ScrollVarsBoot` | 31208 | 10807 |
-| `Slider, Slide` | 16280 | 6482 |
+| `Slider, Slide` | 21030 | 8320 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->

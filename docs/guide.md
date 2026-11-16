@@ -20,7 +20,7 @@
 ![scrollvars: words arriving one by one on scroll](https://scrollvars.dev/media/readme.gif)
 
 
-Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 12.9 KB, styles 10.5 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.8 KB on the wire.
+Tiny scroll-driven animation engine for the web: **one rAF loop in, CSS variables out.** Zero dependencies, React layer optional. Measured (JS min+gzip, CSS gzip as shipped): driver 5.7 KB, full core incl. the slider 14.5 KB, styles 10.6 KB for every preset or 3.1 KB for the core part. A typical page ships ~8.8 KB on the wire.
 
 ## Why
 
@@ -92,7 +92,7 @@ that gap. What is left at fifty nodes per box is the price of animating
 through the cascade at all. The authoring rule that keeps a page on the
 cheap side of the curve: keep tracked elements thin, with big static
 content next to the animated element rather than inside it.
-The package ships ~4× less bundle than GSAP + ScrollTrigger; frame delivery
+The package ships ~3× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.
 
@@ -175,7 +175,7 @@ import 'scrollvars/styles.css'
 // …or only what the page uses (modular since 1.1):
 import 'scrollvars/styles/core.css'    // entrances, stagger, drift, spread, native view()-tier, 3.1 KB gz
 import 'scrollvars/styles/pin.css'     // sv-stage, curtain, rail, deck, reading, counter, range, 3.4 KB gz
-import 'scrollvars/styles/slider.css'  // carousel rails, 1.6 KB gz
+import 'scrollvars/styles/slider.css'  // carousel rails, 1.7 KB gz
 import 'scrollvars/styles/tilt.css'    // pointer tilt, 0.7 KB gz
 import 'scrollvars/styles/state.css'   // toggles, popover/dialog, rotating words, acts (a scroll-driven acts clock needs core.css too), 2.3 KB gz
 import 'scrollvars/styles/ui.css'      // marquee, accordion, 1.5 KB gz
@@ -192,11 +192,11 @@ Named imports for `track` / `track` + `scan`; other rows are complete module ent
 | --- | --- |
 | `track` (the driver) | 5.7 KB |
 | `track` + `scan` (zero-wrapper mode) | 8.0 KB |
-| `slider` | 3.7 KB |
+| `slider` | 5.3 KB |
 | `trackPointer` | 1.4 KB |
 | `mountEffect` (canvas) | 2.8 KB |
-| everything in `scrollvars` (the core entry) | 12.9 KB |
-| `scrollvars/react` (wrappers + kit, React external) | 18.9 KB |
+| everything in `scrollvars` (the core entry) | 14.5 KB |
+| `scrollvars/react` (wrappers + kit, React external) | 20.7 KB |
 <!-- sizes:end -->
 
 A typical page (reveals + stagger) ships `track` + `styles/core.css`:
@@ -434,13 +434,13 @@ export function ProductStory() {
 ## The component kit (React)
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.21.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.22.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3965 | 1830 |
+| `usePointer` | 3965 | 1829 |
 | `ScrollVarsBoot` | 31208 | 10807 |
-| `Slider, Slide` | 16280 | 6482 |
+| `Slider, Slide` | 21030 | 8320 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->
@@ -468,7 +468,11 @@ import { Slider, Slide, Marquee, Accordion, Modal } from 'scrollvars/react'
    visual dot), `--sv-dots-justify/-offset`). Set on `:root` for the
    whole project, or on one slider via className/style.
 2. **Stable classes** (`sv-slider-shell`, `sv-arrow[-prev/-next]`, `sv-dots`,
-   `sv-dot.on`). Restyle or reposition freely in project CSS.
+   `sv-dot.on`). Unavailable arrows add `sv-disabled` and `aria-disabled="true"`; they stay focusable and ignore activation. The state follows physical edges, including multi-slide layouts and resize. Loop/rewind keeps both directions available while the rail can scroll. Custom controls can read `state().canPrev` / `canNext`. Restyle freely, for example:
+   ```css
+   .sv-arrow.sv-disabled { opacity: .3; cursor: not-allowed; }
+   ```
+   `pointer-events: none` is also possible, but then the cursor comes from the element underneath, not the button.
 3. **Full control**: `prevIcon`/`nextIcon`, `renderDot(i, active)`, or turn the
    chrome off and drive an external UI through the ref (`SliderHandle`:
    next/prev/goTo/seek/state) placed anywhere in the page.
@@ -479,8 +483,7 @@ media queries, or Tailwind: `className="sv-cols [--sv-per-view:1.2] md:[--sv-per
 level up on the Slider shell, where React's `className` prop lands;
 `perView` adds the class for you automatically).
 Vars cascade, so every knob has a global default and a per-instance (or
-per-slide) override. No `loop` in v1: where Swiper's loop is used, a
-`<Marquee>` is usually the honest fit.
+per-slide) override. Use `<Slider loop>` for cyclic slide navigation or `<Marquee>` for a continuously moving strip.
 
 ## Slider (Swiper, featherweight)
 
@@ -510,10 +513,10 @@ export function Carousel({ slides }: { slides: ReactNode[] }) {
 .slide { scale: calc(1 - min(max(var(--sd), -1 * var(--sd)) * 0.12, 0.3)); opacity: calc(1 - max(var(--sd), -1 * var(--sd)) * 0.35); }
 ```
 
-Options: `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
+Options: `align: 'start' | 'center' | 'end'`, `snap: 'mandatory' | 'proximity'`, `drag: false`, `duration` (glide
 settle ms; default 600: raise for softer), `axis: 'y'` (vertical),
 `onScroll(state)` (full state per frame: active/count/position/progress/
-dragging/gliding. Also on the container as `--sv-progress`). Two return
+dragging/gliding/canPrev/canNext. Progress is also on the container as `--sv-progress`). Two return
 shapes: `slider(el)` returns the handle itself, `next/prev/goTo/seek/active/
 state/destroy`; `useSlider()` returns `{ ref, active, next, prev, goTo,
 handle }`, where `handle` is a ref to that same handle for `seek`, `state`
@@ -526,6 +529,53 @@ of those three outputs; existing inline values stay intact. Numeric state,
 callbacks, active classes and scroll-snap keep working. The default is `true`;
 keep it enabled for coverflow or custom CSS progress effects.
 
+To repeat arrow and keyboard navigation, use `slider(el, { rewind: true })`,
+`useSlider({ rewind: true })` or `<Slider rewind>`. At the end, next returns
+to the start with the same glide; previous at the start returns to the end.
+This also works with multiple slides visible, vertical rails and RTL. The
+default is `false`. It does not clone slides or create a seamless forward
+loop; native dragging, `goTo` and `seek` still use the finite scroll range.
+Autoplay already returns to the start regardless of `rewind`.
+
+Choose slide alignment with `slider(el, { align: 'start' })`,
+`useSlider({ align: 'start' })` or `<Slider align="start">`. Supported values
+are `start`, `center` (default) and `end`. Start/end are logical: left/right in
+LTR, right/left in RTL, top/bottom for `axis="y"`. The option drives native
+snap, navigation, drag settling, `.sv-active` and `state.position` together.
+The engine writes `--sv-align` for its stylesheet; use the option rather than
+overriding only `scroll-snap-align`. `--sd` continues measuring distance from
+the viewport center, so continuous zoom/coverflow effects keep their meaning.
+
+The alignment anchor respects the resolved `scroll-padding` snapport, including
+asymmetric insets. Geometry is refreshed on resize; no computed-style reads are
+added to ordinary scroll frames. Keep visual padding and scroll-padding in sync:
+identical percentage expressions need not resolve equally because their reference
+boxes differ. Do not supply conflicting per-slide snap alignment or scroll margins.
+
+Finite rails clamp destinations to their actual scroll range. Without extra space
+before/after the cards, the first/last card cannot always reach the selected anchor;
+several indexes may share an endpoint and the active index follows geometry, not
+the last requested index. Add layout space when exact edge centering is required,
+or use a sufficiently long loop. Choosing which card starts is separate: call
+`goTo(index, false)` after attachment. Existing scroll position is otherwise kept.
+
+For continuous cycling, use `slider(el, { loop: true })`,
+`useSlider({ loop: true })` or `<Slider loop>`. The engine changes the CSS
+`order` of fully offscreen slides and compensates the scroll position. It
+does not clone content, replace media or change the DOM/tab order. Arrows,
+keyboard, autoplay and scrolling can continue around the cycle. In loop mode,
+mouse-wheel and drag input retain overshoot when crossing the finite rail's
+boundary; touch scrolling remains native.
+The default is `false`; `loop` takes precedence over `rewind`.
+
+The flex rail needs at least three slides in source order, a consistent gap and enough overflow
+for two buffers, each the size of its largest slide plus the gap. Short or
+irregular rails fall back to rewind; resize and content changes re-evaluate
+this automatically. `active`, callbacks and `goTo` use original slide indexes.
+In loop mode `position` wraps within `[0, count)`. `progress` and `seek` remain
+physical scroll coordinates and reset on recycling, so use logical indexes
+for dots and navigation rather than a physical progress bar.
+
 Chain two sliders (Swiper's controller/thumbs, one line, unidirectional):
 
 ```ts
@@ -533,7 +583,7 @@ const thumbs = slider(thumbsEl, { axis: 'y', drag: false })  // author it with s
 slider(mainEl, { onScroll: (s) => thumbs.seek(s.progress) })
 ```
 
-Size, measured: this module 3.7 KB gzip; Swiper 11 bundle
+Size, measured: this module 5.3 KB gzip; Swiper 11 bundle
 151 KB min / 42 KB gzip (+ 18 KB CSS).
 
 ## Interaction states (click)
@@ -758,9 +808,10 @@ the tools built for that.
 | Interruptible spring physics, layout/`layoutId` "magic motion", exit animations on React unmount, `whileDrag` gestures | **Framer Motion** |
 | A one-shot intro that plays on load | plain **CSS keyframes** (before reaching for a library) |
 
-Known gaps inside ScrollVars' own territory (candidates for 1.x, tell us if
-you hit them): declared smooth-scroll (Lenis) interop and a `loop` mode for
-the slider. (Pinning got its helper in 1.13, text splitting shipped in 1.12.)
+One remaining gap inside ScrollVars' own territory is declared smooth-scroll
+(Lenis) interop. Slider loop supports regular flex rails, with rewind as the
+fallback when there is insufficient room to recycle slides.
+(Pinning got its helper in 1.13, text splitting shipped in 1.12.)
 (Nested scrollers work since 1.7. The driver listens in the capture phase.)
 
 Mixing is fine: GSAP for one intro timeline + ScrollVars for everything

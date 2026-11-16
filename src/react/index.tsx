@@ -689,7 +689,7 @@ export function useCanvasEffect(options: EffectOptions): React.RefObject<HTMLCan
 export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
   const handleRef = useRef<SliderHandle | null>(null)
   const [active, setActive] = useState(0)
-  const { snap, drag, duration, axis, cssVars } = options
+  const { snap, drag, duration, axis, align, cssVars, rewind, loop } = options
   const onScrollRef = useRef(options.onScroll)
   onScrollRef.current = options.onScroll
 
@@ -700,7 +700,10 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
         drag,
         duration,
         axis,
+        align,
         cssVars,
+        rewind,
+        loop,
         onSlide: setActive,
         onScroll: (state) => onScrollRef.current?.(state),
       })
@@ -710,7 +713,7 @@ export function useSlider(options: Omit<SliderOptions, 'onSlide'> = {}) {
         handle.destroy()
       }
     },
-    [snap, drag, duration, axis, cssVars]
+    [snap, drag, duration, axis, align, cssVars, rewind, loop]
   )
 
   const next = useCallback((smooth?: boolean) => handleRef.current?.next(smooth), [])
@@ -800,8 +803,14 @@ export interface SliderComponentProps
   drag?: boolean
   duration?: number
   axis?: 'x' | 'y'
+  /** Logical slide alignment; defaults to center. */
+  align?: 'start' | 'center' | 'end'
   /** Publish animation CSS variables (default true); disable for plain carousels. */
   cssVars?: boolean
+  /** Wrap arrow/keyboard navigation with a return glide (default false). */
+  rewind?: boolean
+  /** Continuous cycling of original slides; short rails fall back to rewind. */
+  loop?: boolean
   arrows?: boolean
   dots?: boolean
   /** Auto-advance interval in ms (wraps to the start). Pauses on hover,
@@ -836,7 +845,10 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
       drag,
       duration,
       axis,
+      align,
       cssVars,
+      rewind,
+      loop,
       arrows,
       dots,
       autoplay,
@@ -859,7 +871,17 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
     },
     apiRef
   ) {
-    const { ref, active, next, prev, goTo, handle } = useSlider({ snap, drag, duration, axis, cssVars })
+    const [navigation, setNavigation] = useState(0)
+    const navigationRef = useRef(0)
+    const { ref, active, next, prev, goTo, handle } = useSlider({
+      snap, drag, duration, axis, align, cssVars, rewind, loop,
+      onScroll: (state) => {
+        const available = (state.canPrev ? 1 : 0) | (state.canNext ? 2 : 0)
+        if (available === navigationRef.current) return
+        navigationRef.current = available
+        setNavigation(available)
+      },
+    })
     const uid = React.useId()
     // Internal navigation and pause updates must not recreate unchanged slides.
     const { slides, count } = React.useMemo(() => {
@@ -896,6 +918,8 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
             progress: 0,
             dragging: false,
             gliding: false,
+            canPrev: false,
+            canNext: false,
           },
         // dropping the ref is half the fix: the autoplay interval below keeps
         // firing on its own schedule, but its callback reads handle.current
@@ -979,6 +1003,13 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
       const onUp = life.guard((event: PointerEvent) => {
         if (pointers.delete(event.pointerId) && !pointers.size && !touching) restart()
       })
+      const clearHover = () => { hovering.current = false; setHovered(false) }
+      const cancelInput = life.guard(() => {
+        pointers.clear()
+        touching = false
+        clearHover()
+        restart()
+      })
       // Native touch scrolling cancels its pointer before the finger lifts.
       const onTouchStart = life.guard(() => { touching = true; clearInterval(timer) })
       const onTouchEnd = life.guard((event: TouchEvent) => {
@@ -999,7 +1030,7 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
         if (!h) return
         const s = h.state()
         if (s.dragging) return
-        if (s.active >= s.count - 1 || s.progress >= 0.999) h.goTo(0)
+        if (!loop && (s.active >= s.count - 1 || s.progress >= 0.999)) h.goTo(0)
         else h.next()
       })
       const listen = (node: EventTarget | null, type: string, fn: EventListener, options?: AddEventListenerOptions) => {
@@ -1018,7 +1049,8 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
           if (el) io.observe(el)
           const onVisibility = life.guard(() => {
             hidden = document.visibilityState === 'hidden'
-            if (!pointers.size && !touching) restart()
+            if (hidden) cancelInput()
+            else if (!pointers.size && !touching) restart()
           })
           listen(document, 'visibilitychange', onVisibility)
           listen(focusEl, 'focusin', onFocusIn)
@@ -1026,6 +1058,13 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
           listen(el, 'touchstart', onTouchStart, { passive: true })
           listen(window, 'pointerup', onUp as EventListener)
           listen(window, 'pointercancel', onUp as EventListener)
+          listen(window, 'blur', cancelInput)
+          listen(window, 'pointermove', life.guard((event: PointerEvent) => {
+            if (event.pointerType === 'mouse' && event.buttons === 0) onUp(event)
+          }) as EventListener)
+          listen(window, 'pointerout', life.guard((event: PointerEvent) => {
+            if (event.relatedTarget === null) clearHover()
+          }) as EventListener)
           listen(window, 'touchend', onTouchEnd as EventListener)
           listen(window, 'touchcancel', onTouchEnd as EventListener)
           restart()
@@ -1035,7 +1074,7 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
         if (stopAutoplay.current === life.stop) stopAutoplay.current = undefined
         try { life.stop() } catch (error) { reportFailure(error) }
       }
-    }, [autoplay, handle, ref])
+    }, [autoplay, handle, ref, loop])
 
     // a child combinator, not a descendant one: the rail of a slider nested
     // inside a slide is a descendant of this shell too, and a descendant scope
@@ -1044,6 +1083,7 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
     const scope = `[data-sv-uid="${uid}"] > .sv-slider`
     const styleVars: Record<string, string | number> = {}
     if (typeof perView === 'number') styleVars['--sv-per-view'] = perView
+    if (align) styleVars['--sv-align'] = align
     if (gap !== undefined) styleVars['--sv-gap'] = typeof gap === 'number' ? `${gap}px` : gap
 
     const rotating = !!autoplay && autoplay > 0 && !paused && !hovered
@@ -1115,17 +1155,19 @@ export const Slider = /*#__PURE__*/ React.forwardRef<SliderHandle | null, Slider
           <>
             <button
               type="button"
-              className="sv-arrow sv-arrow-prev"
+              className={`sv-arrow sv-arrow-prev${navigation & 1 ? '' : ' sv-disabled'}`}
               aria-label="previous slide"
-              onClick={() => prev()}
+              aria-disabled={!(navigation & 1)}
+              onClick={() => { if (handle.current?.state().canPrev) prev() }}
             >
               {prevIcon ?? '\u2039'}
             </button>
             <button
               type="button"
-              className="sv-arrow sv-arrow-next"
+              className={`sv-arrow sv-arrow-next${navigation & 2 ? '' : ' sv-disabled'}`}
               aria-label="next slide"
-              onClick={() => next()}
+              aria-disabled={!(navigation & 2)}
+              onClick={() => { if (handle.current?.state().canNext) next() }}
             >
               {nextIcon ?? '\u203a'}
             </button>

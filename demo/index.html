@@ -16,7 +16,7 @@
 <meta name="twitter:title" content="ScrollVars: one rAF in, CSS variables out">
 <meta name="twitter:image" content="https://scrollvars.dev/media/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.7 KB driver, ~4× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
+<meta name="twitter:description" content="28 live scroll-animation patterns on a 5.7 KB driver, ~3× smaller than gsap + ScrollTrigger. Run the benchmark yourself.">
 <style>
   /* ── deliberately single-theme: a dark stage is where scroll motion reads best ── */
   :root {
@@ -2611,7 +2611,7 @@ world.style.setProperty(<span class="s">'--map-ang'</span>, ang + <span class="s
   <div class="wrap">
     <div class="demo-head">
       <p class="eyebrow sv-rise">case 13 · the slider module</p>
-      <h2 class="sv-rise" style="--sv-order: 1">The 3.7&nbsp;KB carousel, 11× lighter than Swiper</h2>
+      <h2 class="sv-rise" style="--sv-order: 1">The 5.3&nbsp;KB carousel, 8× lighter than Swiper</h2>
       <p class="sv-rise" style="--sv-order: 2">
         <span class="inline-code">slider(el)</span>. The browser does the carousel
         (native scroll, momentum, touch) and scroll-snap does the magnetism; the module
@@ -2623,8 +2623,8 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         is a <strong>second slider</strong> (<span class="inline-code">axis: 'y'</span>)
         chained in one line: <span class="inline-code">onScroll: (s) =&gt; thumbs.seek(s.progress)</span>.
         The numbers, measured from jsDelivr: Swiper 11 ships 151&nbsp;KB minified
-        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 9.3&nbsp;KB minified,
-<strong>3.7&nbsp;KB gzipped, ~11× lighter</strong>. Because the browser
+        (42&nbsp;KB gzipped, +18&nbsp;KB of CSS); this module is 13.3&nbsp;KB minified,
+<strong>5.3&nbsp;KB gzipped, ~8× lighter</strong>. Because the browser
         already ships the hard parts.
       </p>
     </div>
@@ -2635,7 +2635,7 @@ scale, fade, rotateY: is <strong>pure CSS reading --sd</strong>. Drag it with
         <div>03<br>--sd drives the CSS</div>
         <div>04<br>drag me (mouse too)</div>
         <div>05<br>.sv-active for state</div>
-        <div>06<br>4 KB, not 150</div>
+        <div>06<br>5 KB, not 150</div>
       </div>
       <div class="slider-thumbs" id="slider-thumbs" style="scroll-snap-type: none;">
         <div>01</div><div>02</div><div>03</div>
@@ -2982,7 +2982,7 @@ the full API, recipes and performance rules, ready to ingest.
         <tr><td>framer-motion 11</td><td class="range">144 KB / 46.9 KB</td><td>+ React</td></tr>
         <tr><td>GSAP + ScrollTrigger</td><td class="range">114.7 KB / 45.2 KB</td><td></td></tr>
         <tr><td>Swiper 11 bundle</td><td class="range">151 KB / 42 KB</td><td>+ 18 KB CSS</td></tr>
-        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 23.4 KB</b></td><td>core + slider + all presets CSS</td></tr>
+        <tr><td><b>ScrollVars. Everything</b></td><td class="range"><b>not tracked / 25.1 KB</b></td><td>core + slider + all presets CSS</td></tr>
         <tr><td><b>ScrollVars. Typical page</b></td><td class="range"><b>~8.8 KB gz</b></td><td>track + styles/core.css (tree-shaken)</td></tr>
         <tr><td><b>ScrollVars driver alone</b></td><td class="range"><b>15.9 KB / 5.7 KB</b></td><td></td></tr>
       </tbody>
@@ -3139,7 +3139,7 @@ the full API, recipes and performance rules, ready to ingest.
   <div class="foot">
     <div class="foot-brand">
       <a class="foot-word" href="#top"><span>--</span>scrollvars</a>
-      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 12.9 KB · v1.21.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
+      <p class="foot-stamp"><code>npm i scrollvars</code> · zero dependencies · driver 5.7 KB gzip · full core 14.5 KB · v1.22.0 · MIT · <a href="https://github.com/aduptive">aduptive</a></p>
       <p class="foot-made">Made with lots of coffee and pão de queijo in BH, Brazil.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
@@ -3151,7 +3151,7 @@ the full API, recipes and performance rules, ready to ingest.
     </nav>
     <div class="foot-notes">
       <p>Compatibility: the core is vanilla JS + CSS. Any stack, no framework required; React/Next.js get the first-class layer (RSC zero-wrapper mode, components, hooks). Animated on Chrome 104 / Firefox 78 / Safari 14.1+, static-but-visible below (opt-in compat tier reaches ~Chrome 61). Newer than this page's demos: <code>sv-range</code> choreography, GSAP/Three interop and the debug overlay live in <a href="docs/" style="color: var(--accent)">docs</a> and <a href="fx/" style="color: var(--accent)">fx</a>.</p>
-      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 13 KB part. Reduced motion is respected by the driver and every preset.</p>
+      <p>honesty note: this demo page embeds ~2.5 MB of its own media (video frames, 3D model, photos). The library it demonstrates is the &lt; 15 KB part. Reduced motion is respected by the driver and every preset.</p>
     </div>
   </div>
 </footer>
@@ -5314,7 +5314,9 @@ var SV = (() => {
     position: 0,
     progress: 0,
     dragging: false,
-    gliding: false
+    gliding: false,
+    canPrev: false,
+    canNext: false
   };
   var noop = {
     next: () => {
@@ -5330,7 +5332,7 @@ var SV = (() => {
     destroy: () => {
     }
   };
-  function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, cssVars = true, onSlide, onScroll } = {}) {
+  function slider(container, { axis = "x", align = "center", snap = "mandatory", drag = true, duration = 600, rewind = false, loop = false, cssVars = true, onSlide, onScroll } = {}) {
     if (typeof window === "undefined")
       return noop;
     const life = lifetime();
@@ -5347,10 +5349,33 @@ var SV = (() => {
     };
     const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
     const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-    const progress = () => {
-      const length = range();
-      return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
+    const alignment = align === "start" || align === "end" ? align : "center";
+    const fraction = alignment === "start" ? 0 : alignment === "end" ? 1 : 0.5;
+    let insetStart = 0, insetEnd = 0;
+    const readInsets = () => {
+      if (typeof getComputedStyle !== "function")
+        return;
+      const style = getComputedStyle(container), size = viewport();
+      const resolve = (value) => {
+        if (!value || value === "auto")
+          return 0;
+        if (/^[\d.]+(?:px|%)?$/.test(value))
+          return parseFloat(value) * (value.endsWith("%") ? size / 100 : 1);
+        const host = document.createElement("div"), probe = document.createElement("div");
+        host.style.cssText = `position:fixed;visibility:hidden;pointer-events:none;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${size}px;height:0;overflow:hidden;contain:strict;`;
+        probe.style.cssText = `display:block;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${value};`;
+        host.appendChild(probe);
+        document.documentElement.appendChild(host);
+        try {
+          return parseFloat(getComputedStyle(probe).width) || 0;
+        } finally {
+          host.remove();
+        }
+      };
+      insetStart = resolve(horizontal ? rtl ? style.scrollPaddingRight : style.scrollPaddingLeft : style.scrollPaddingTop);
+      insetEnd = resolve(horizontal ? rtl ? style.scrollPaddingLeft : style.scrollPaddingRight : style.scrollPaddingBottom);
     };
+    const snapAnchor = () => insetStart + (viewport() - insetStart - insetEnd) * fraction;
     const chainToContainer = (el, x) => {
       let v = 0;
       let node = el;
@@ -5376,6 +5401,7 @@ var SV = (() => {
       return rtl ? container.clientWidth - local - el.offsetWidth : local;
     };
     const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
+    const destination = (start, size) => start + size * fraction - snapAnchor();
     const authoredSnap = container.style.scrollSnapType;
     let snapIsNone = authoredSnap === "none";
     const suspendSnap = () => {
@@ -5400,36 +5426,136 @@ var SV = (() => {
       dragging = false;
     });
     const slides = () => Array.from(container.children);
+    let looping = false;
+    let loopPeriod = 0;
+    const restoreLoopOrder = () => {
+      const list = slides(), anchor = list[active];
+      const before = anchor ? slideStart(anchor) - pos() : 0;
+      list.forEach((slide) => owned.restore(slide, "style:order"));
+      if (anchor)
+        setPos(Math.max(0, Math.min(slideStart(anchor) - before, range())));
+    };
+    life.defer(() => {
+      if (looping)
+        restoreLoopOrder();
+    });
+    const fixLoop = (index, scrollTarget) => {
+      if (!loop)
+        return;
+      const list = slides();
+      const ordered = list.map((el, index2) => ({ el, index: index2, start: slideStart(el), size: slideSize(el) })).sort((a, b) => a.start - b.start);
+      const width = viewport();
+      const gap = ordered.length > 1 ? ordered[1].start - ordered[0].start - ordered[0].size : 0;
+      const buffer = Math.max(0, ...ordered.map((slide) => slide.size + gap));
+      const wasLooping = looping;
+      looping = ordered.length >= 3 && width > 0 && buffer > 0 && range() >= buffer * 2 - 0.5 && ordered.every((slide, i) => slide.size > 0 && (!i || slide.index === (ordered[i - 1].index + 1) % list.length && Math.abs(slide.start - ordered[i - 1].start - ordered[i - 1].size - gap) <= 1));
+      if (!looping) {
+        if (wasLooping)
+          restoreLoopOrder();
+        return;
+      }
+      loopPeriod = ordered[ordered.length - 1].start + ordered[ordered.length - 1].size - ordered[0].start + gap;
+      let visibleScroll = pos();
+      const destination2 = index === void 0 ? null : ordered.find((slide) => slide.el === list[Math.max(0, Math.min(index, list.length - 1))]);
+      let scroll = destination2 ? destination2.start + destination2.size * fraction - snapAnchor() : scrollTarget ?? visibleScroll;
+      const anchor = ordered.find((slide) => slide.start + slide.size > visibleScroll) ?? ordered[0];
+      const before = anchor.start - visibleScroll;
+      let changed = false;
+      for (let i = 0; i < ordered.length; i++) {
+        const first = ordered[0], last2 = ordered[ordered.length - 1];
+        if (scroll - first.start < buffer / 2 - 0.5 && last2.start >= visibleScroll + width - 0.5) {
+          ordered.pop();
+          const delta = last2.size + gap;
+          ordered.forEach((slide) => {
+            slide.start += delta;
+          });
+          last2.start = first.start - delta;
+          ordered.unshift(last2);
+          scroll += delta;
+          visibleScroll += delta;
+        } else if (last2.start + last2.size - scroll - width < buffer / 2 - 0.5 && first.start + first.size <= visibleScroll + 0.5) {
+          ordered.shift();
+          const delta = first.size + gap;
+          ordered.forEach((slide) => {
+            slide.start -= delta;
+          });
+          first.start = last2.start + last2.size + gap;
+          ordered.push(first);
+          scroll -= delta;
+          visibleScroll -= delta;
+        } else
+          break;
+        changed = true;
+      }
+      if (!changed)
+        return;
+      const wasSuspended = container.style.scrollSnapType === "none";
+      if (!wasSuspended)
+        suspendSnap();
+      ordered.forEach((slide, i) => owned.style(slide.el, "order", String(i)));
+      setPos(slideStart(anchor.el) - before);
+      if (!wasSuspended)
+        resumeSnap();
+    };
+    const panLoop = (amount) => {
+      if (Math.abs(amount) >= loopPeriod)
+        amount %= loopPeriod;
+      for (let i = 0; i <= container.children.length && Math.abs(amount) > 0.01; i++) {
+        fixLoop(void 0, pos() + amount);
+        const before = pos();
+        const distance = Math.max(-before, Math.min(amount, range() - before));
+        if (Math.abs(distance) < 0.01)
+          break;
+        setPos(before + distance);
+        amount -= distance;
+        fixLoop();
+      }
+    };
     let lastState = { ...noopState };
-    const readState = (p) => ({
+    const scrollState = () => {
+      const length = range(), current = pos();
+      const movable = container.children.length > 1 && length > 0.5;
+      return {
+        // Native elastic overscroll must not send chained sliders outside 0..1.
+        progress: length > 0 ? Math.max(0, Math.min(current / length, 1)) : 0,
+        canPrev: movable && (!!loop || !!rewind || current > 0.5),
+        canNext: movable && (!!loop || !!rewind || current < length - 0.5)
+      };
+    };
+    const readState = (scroll = scrollState()) => ({
       active: Math.max(active, 0),
       count: container.children.length,
       position,
-      progress: p ?? progress(),
       dragging,
-      gliding: anim !== 0
+      gliding: anim !== 0,
+      ...scroll
     });
     const state = () => {
       life.guard(() => {
         lastState = readState();
       })();
-      return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
+      return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false, canPrev: false, canNext: false } : lastState;
     };
     const measure = life.guard(() => {
       raf2 = 0;
+      if (loop && !anim)
+        fixLoop();
       const center = pos() + viewport() / 2;
+      const anchor = pos() + snapAnchor();
       let best = 0;
       let bestDist = Infinity;
       const list = slides();
       const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
       const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
-      const p = progress();
+      const anchors = fraction === 0.5 ? centers : centers.map((center2, i) => center2 + sizes[i] * (fraction - 0.5));
+      const scroll = scrollState();
+      const p = scroll.progress;
       list.forEach((slide, i) => {
         if (cssVars) {
           const sd = (centers[i] - center) / sizes[i];
           owned.style(slide, "--sd", sd.toFixed(4));
         }
-        const dist = Math.abs(centers[i] - center);
+        const dist = Math.abs(anchors[i] - anchor);
         if (dist < bestDist) {
           bestDist = dist;
           best = i;
@@ -5437,12 +5563,22 @@ var SV = (() => {
       });
       position = 0;
       if (centers.length > 1) {
-        let seg = 0;
-        while (seg + 2 < centers.length && centers[seg + 1] <= center)
-          seg++;
-        const span = centers[seg + 1] - centers[seg];
-        const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
-        position = Math.min(Math.max(raw, 0), centers.length - 1);
+        if (looping) {
+          const ordered = anchors.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
+          let seg = 0;
+          while (seg + 2 < ordered.length && ordered[seg + 1].value <= anchor)
+            seg++;
+          const span = ordered[seg + 1].value - ordered[seg].value;
+          const raw = span > 0 ? ordered[seg].index + (anchor - ordered[seg].value) / span : ordered[seg].index;
+          position = (raw % list.length + list.length) % list.length;
+        } else {
+          let seg = 0;
+          while (seg + 2 < anchors.length && anchors[seg + 1] <= anchor)
+            seg++;
+          const span = anchors[seg + 1] - anchors[seg];
+          const raw = span > 0 ? seg + (anchor - anchors[seg]) / span : seg;
+          position = Math.min(Math.max(raw, 0), centers.length - 1);
+        }
       }
       if (cssVars)
         owned.style(container, "--sv-progress", p.toFixed(4));
@@ -5473,7 +5609,7 @@ var SV = (() => {
           owned.style(container, "--sv-slide", "");
       }
       if (!life.stopped) {
-        lastState = readState(p);
+        lastState = readState(scroll);
         onScroll?.(lastState);
       }
     });
@@ -5482,6 +5618,7 @@ var SV = (() => {
         raf2 = requestAnimationFrame(measure);
     });
     const onLayout = life.guard(() => {
+      readInsets();
       if (anim)
         goTo(target);
       schedule2();
@@ -5497,7 +5634,7 @@ var SV = (() => {
       });
       watchedSlides = current;
       ro?.disconnect();
-      ro?.observe(container);
+      ro?.observe(container, { box: "border-box" });
       current.forEach((slide) => ro?.observe(slide));
     };
     life.defer(() => watchedSlides.clear());
@@ -5515,19 +5652,35 @@ var SV = (() => {
         return;
       goTo(target, false);
     });
+    const setDestination = (to, index) => {
+      setPos(looping ? Math.max(0, Math.min(to, range())) : to);
+      if (!looping || index < 0)
+        return;
+      fixLoop(index);
+      const slide = slides()[index];
+      if (slide)
+        setPos(Math.max(0, Math.min(destination(slideStart(slide), slideSize(slide)), range())));
+    };
     const glide = (to) => {
       stopGlide();
       let current = pos();
       if (duration <= 0 || reducedMotion() || Math.abs(to - current) < 1) {
         resumeSnap();
+        setDestination(to, target);
         target = -1;
-        setPos(to);
         return;
       }
       suspendSnap();
       owned.class(container, "sv-gliding", true);
       let last2 = performance.now();
-      const step = life.guard((now) => {
+      const step2 = life.guard((now) => {
+        if (looping) {
+          const before = pos();
+          fixLoop(target);
+          const shift = pos() - before;
+          current += shift;
+          to += shift;
+        }
         const dt = Math.min(now - last2, 50);
         last2 = now;
         const factor = 1 - Math.pow(2e-3, dt / duration);
@@ -5539,10 +5692,10 @@ var SV = (() => {
           resumeSnap();
         } else {
           setPos(current);
-          anim = requestAnimationFrame(step);
+          anim = requestAnimationFrame(step2);
         }
       });
-      anim = requestAnimationFrame(step);
+      anim = requestAnimationFrame(step2);
     };
     let wheelTimer;
     const clearWheel = () => {
@@ -5556,6 +5709,10 @@ var SV = (() => {
       if (destroyed)
         return;
       clearWheel();
+      if (loop) {
+        stopGlide();
+        fixLoop(index);
+      }
       const all = slides();
       const clamped = Math.max(0, Math.min(index, all.length - 1));
       const slide = all[clamped];
@@ -5565,7 +5722,8 @@ var SV = (() => {
         target = -1;
         return;
       }
-      const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
+      const aligned = destination(slideStart(slide), slideSize(slide));
+      const to = looping ? aligned : Math.max(0, Math.min(aligned, range()));
       if (smooth) {
         target = clamped;
         glide(to);
@@ -5573,17 +5731,17 @@ var SV = (() => {
         stopGlide();
         resumeSnap();
         target = -1;
-        setPos(to);
+        setDestination(to, clamped);
       }
     });
-    const seek = life.guard((progress2) => {
+    const seek = life.guard((progress) => {
       if (destroyed)
         return;
       clearWheel();
       stopGlide();
       target = -1;
       suspendSnap();
-      setPos(Math.max(0, Math.min(progress2, 1)) * range());
+      setPos(Math.max(0, Math.min(progress, 1)) * range());
     });
     const stepBase = () => anim && target >= 0 ? target : active;
     let lastPointer = 0;
@@ -5591,6 +5749,10 @@ var SV = (() => {
     let pressed = false;
     const DRAG_THRESHOLD = 5;
     const onMove = life.guard((event) => {
+      if (event.buttons === 0) {
+        cancelDrag();
+        return;
+      }
       const point = horizontal ? event.clientX : event.clientY;
       if (!dragging) {
         if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
@@ -5598,11 +5760,13 @@ var SV = (() => {
         dragging = true;
         suspendSnap();
         owned.class(container, "sv-dragging", true);
-        lastPointer = point;
-        return;
+        lastPointer = startPoint;
       }
-      const step = point - lastPointer;
-      setPos(pos() - (rtl ? -step : step));
+      const step2 = point - lastPointer;
+      if (looping)
+        panLoop(rtl ? step2 : -step2);
+      else
+        setPos(pos() - (rtl ? -step2 : step2));
       lastPointer = point;
     });
     const suppressClick = life.guard((event) => {
@@ -5614,9 +5778,11 @@ var SV = (() => {
     const FOCUSABLE = "a[href],button,input,select,textarea,[tabindex],[contenteditable]";
     let pressedTarget = null;
     const endDrag = life.guard(() => {
+      if (!pressed)
+        return;
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", endDrag);
-      window.removeEventListener("pointercancel", endDrag);
+      window.removeEventListener("pointercancel", cancelDrag);
       pressed = false;
       if (!dragging) {
         const focusable = pressedTarget?.closest(FOCUSABLE);
@@ -5632,18 +5798,30 @@ var SV = (() => {
         resumeSnap();
         return;
       }
-      const center = pos() + viewport() / 2;
+      const anchor = pos() + snapAnchor();
       const list = slides();
       let nearest = 0;
       let distance = Infinity;
       list.forEach((slide, i) => {
-        const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
+        const d = Math.abs(slideStart(slide) + slideSize(slide) * fraction - anchor);
         if (d < distance) {
           distance = d;
           nearest = i;
         }
       });
       goTo(nearest);
+    });
+    const cancelDrag = life.guard(() => {
+      if (!pressed)
+        return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", cancelDrag);
+      pressed = dragging = false;
+      pressedTarget = null;
+      owned.class(container, "sv-dragging", false);
+      resumeSnap();
+      schedule2();
     });
     const onDragStart = life.guard((event) => {
       if (pressed)
@@ -5669,13 +5847,13 @@ var SV = (() => {
       event.preventDefault();
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", endDrag);
-      window.addEventListener("pointercancel", endDrag);
+      window.addEventListener("pointercancel", cancelDrag);
     });
     const onWheel = life.guard((event) => {
       const owner = event.target?.closest?.(".sv-slider");
       if (owner && owner !== container)
         return;
-      if (snapIsNone || snap === "proximity")
+      if (snapIsNone || !looping && snap === "proximity" || event.ctrlKey)
         return;
       const along = horizontal ? event.deltaX : event.deltaY;
       const cross = horizontal ? event.deltaY : event.deltaX;
@@ -5684,14 +5862,39 @@ var SV = (() => {
       stopGlide();
       target = -1;
       suspendSnap();
+      if (looping) {
+        event.preventDefault();
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport() : 1;
+        panLoop(along * unit * (rtl ? -1 : 1));
+        if (snap === "proximity") {
+          resumeSnap();
+          return;
+        }
+      }
       clearWheel();
       wheelTimer = setTimeout(() => {
         wheelTimer = void 0;
         goTo(active);
       }, 200);
     });
-    const next = (smooth = true) => goTo(stepBase() + 1, smooth);
-    const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
+    const step = life.guard((direction, smooth) => {
+      if (destroyed)
+        return;
+      const base = stepBase();
+      let index = base + direction;
+      if (looping) {
+        const count = container.children.length;
+        index = (index % count + count) % count;
+      } else if (rewind || loop) {
+        const last2 = container.children.length - 1;
+        const edge = anim && target >= 0 ? direction > 0 ? base >= last2 : base <= 0 : direction > 0 ? pos() >= range() - 0.5 : pos() <= 0.5;
+        if (edge)
+          index = direction > 0 ? 0 : last2;
+      }
+      goTo(index, smooth);
+    });
+    const next = (smooth = true) => step(1, smooth);
+    const prev = (smooth = true) => step(-1, smooth);
     const onKey = life.guard((event) => {
       if (event.target !== container)
         return;
@@ -5733,15 +5936,19 @@ var SV = (() => {
     life.defer(() => window.removeEventListener("click", suppressClick, true));
     life.defer(() => window.removeEventListener("pointermove", onMove));
     life.defer(() => window.removeEventListener("pointerup", endDrag));
-    life.defer(() => window.removeEventListener("pointercancel", endDrag));
+    life.defer(() => window.removeEventListener("pointercancel", cancelDrag));
     life.setup(() => {
       owned.class(container, "sv-slider", true);
       owned.class(container, "sv-slider-y", !horizontal);
       owned.class(container, "sv-draggable", !!drag);
+      if (loop)
+        owned.style(container, "overflow-anchor", "none");
       if (!snapIsNone && typeof getComputedStyle === "function") {
         snapIsNone = getComputedStyle(container).scrollSnapType === "none";
       }
       owned.style(container, "--sv-snap", snap);
+      owned.style(container, "--sv-align", alignment);
+      readInsets();
       if (!container.hasAttribute?.("tabindex") && container.tabIndex === -1)
         owned.attr(container, "tabindex", "0");
       listen(container, "scroll", schedule2, { passive: true });
@@ -5758,7 +5965,13 @@ var SV = (() => {
       life.defer(onMotionChange(motionChanged));
       listen(container, "dragstart", onDragStart);
       listen(container, "pointerdown", onDown);
-      listen(container, "wheel", onWheel, { passive: true });
+      listen(window, "blur", cancelDrag);
+      if (typeof document !== "undefined" && typeof document.addEventListener === "function")
+        listen(document, "visibilitychange", life.guard(() => {
+          if (document.visibilityState === "hidden")
+            cancelDrag();
+        }));
+      listen(container, "wheel", onWheel, { passive: !loop });
       listen(container, "keydown", onKey);
       measure();
     });
@@ -6983,7 +7196,9 @@ const noopState = {
   position: 0,
   progress: 0,
   dragging: false,
-  gliding: false
+  gliding: false,
+  canPrev: false,
+  canNext: false
 };
 const noop = {
   next: () => {
@@ -6999,7 +7214,7 @@ const noop = {
   destroy: () => {
   }
 };
-function slider(container, { axis = "x", snap = "mandatory", drag = true, duration = 600, cssVars = true, onSlide, onScroll } = {}) {
+function slider(container, { axis = "x", align = "center", snap = "mandatory", drag = true, duration = 600, rewind = false, loop = false, cssVars = true, onSlide, onScroll } = {}) {
   if (typeof window === "undefined")
     return noop;
   const life = lifetime();
@@ -7016,10 +7231,33 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
   };
   const viewport = () => horizontal ? container.clientWidth : container.clientHeight;
   const range = () => Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0);
-  const progress = () => {
-    const length = range();
-    return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0;
+  const alignment = align === "start" || align === "end" ? align : "center";
+  const fraction = alignment === "start" ? 0 : alignment === "end" ? 1 : 0.5;
+  let insetStart = 0, insetEnd = 0;
+  const readInsets = () => {
+    if (typeof getComputedStyle !== "function")
+      return;
+    const style = getComputedStyle(container), size = viewport();
+    const resolve = (value) => {
+      if (!value || value === "auto")
+        return 0;
+      if (/^[\d.]+(?:px|%)?$/.test(value))
+        return parseFloat(value) * (value.endsWith("%") ? size / 100 : 1);
+      const host = document.createElement("div"), probe = document.createElement("div");
+      host.style.cssText = `position:fixed;visibility:hidden;pointer-events:none;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${size}px;height:0;overflow:hidden;contain:strict;`;
+      probe.style.cssText = `display:block;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${value};`;
+      host.appendChild(probe);
+      document.documentElement.appendChild(host);
+      try {
+        return parseFloat(getComputedStyle(probe).width) || 0;
+      } finally {
+        host.remove();
+      }
+    };
+    insetStart = resolve(horizontal ? rtl ? style.scrollPaddingRight : style.scrollPaddingLeft : style.scrollPaddingTop);
+    insetEnd = resolve(horizontal ? rtl ? style.scrollPaddingLeft : style.scrollPaddingRight : style.scrollPaddingBottom);
   };
+  const snapAnchor = () => insetStart + (viewport() - insetStart - insetEnd) * fraction;
   const chainToContainer = (el, x) => {
     let v = 0;
     let node = el;
@@ -7045,6 +7283,7 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     return rtl ? container.clientWidth - local - el.offsetWidth : local;
   };
   const slideSize = (el) => horizontal ? el.offsetWidth : el.offsetHeight;
+  const destination = (start, size) => start + size * fraction - snapAnchor();
   const authoredSnap = container.style.scrollSnapType;
   let snapIsNone = authoredSnap === "none";
   const suspendSnap = () => {
@@ -7069,36 +7308,136 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     dragging = false;
   });
   const slides = () => Array.from(container.children);
+  let looping = false;
+  let loopPeriod = 0;
+  const restoreLoopOrder = () => {
+    const list = slides(), anchor = list[active];
+    const before = anchor ? slideStart(anchor) - pos() : 0;
+    list.forEach((slide) => owned.restore(slide, "style:order"));
+    if (anchor)
+      setPos(Math.max(0, Math.min(slideStart(anchor) - before, range())));
+  };
+  life.defer(() => {
+    if (looping)
+      restoreLoopOrder();
+  });
+  const fixLoop = (index, scrollTarget) => {
+    if (!loop)
+      return;
+    const list = slides();
+    const ordered = list.map((el, index2) => ({ el, index: index2, start: slideStart(el), size: slideSize(el) })).sort((a, b) => a.start - b.start);
+    const width = viewport();
+    const gap = ordered.length > 1 ? ordered[1].start - ordered[0].start - ordered[0].size : 0;
+    const buffer = Math.max(0, ...ordered.map((slide) => slide.size + gap));
+    const wasLooping = looping;
+    looping = ordered.length >= 3 && width > 0 && buffer > 0 && range() >= buffer * 2 - 0.5 && ordered.every((slide, i) => slide.size > 0 && (!i || slide.index === (ordered[i - 1].index + 1) % list.length && Math.abs(slide.start - ordered[i - 1].start - ordered[i - 1].size - gap) <= 1));
+    if (!looping) {
+      if (wasLooping)
+        restoreLoopOrder();
+      return;
+    }
+    loopPeriod = ordered[ordered.length - 1].start + ordered[ordered.length - 1].size - ordered[0].start + gap;
+    let visibleScroll = pos();
+    const destination2 = index === void 0 ? null : ordered.find((slide) => slide.el === list[Math.max(0, Math.min(index, list.length - 1))]);
+    let scroll = destination2 ? destination2.start + destination2.size * fraction - snapAnchor() : scrollTarget ?? visibleScroll;
+    const anchor = ordered.find((slide) => slide.start + slide.size > visibleScroll) ?? ordered[0];
+    const before = anchor.start - visibleScroll;
+    let changed = false;
+    for (let i = 0; i < ordered.length; i++) {
+      const first = ordered[0], last = ordered[ordered.length - 1];
+      if (scroll - first.start < buffer / 2 - 0.5 && last.start >= visibleScroll + width - 0.5) {
+        ordered.pop();
+        const delta = last.size + gap;
+        ordered.forEach((slide) => {
+          slide.start += delta;
+        });
+        last.start = first.start - delta;
+        ordered.unshift(last);
+        scroll += delta;
+        visibleScroll += delta;
+      } else if (last.start + last.size - scroll - width < buffer / 2 - 0.5 && first.start + first.size <= visibleScroll + 0.5) {
+        ordered.shift();
+        const delta = first.size + gap;
+        ordered.forEach((slide) => {
+          slide.start -= delta;
+        });
+        first.start = last.start + last.size + gap;
+        ordered.push(first);
+        scroll -= delta;
+        visibleScroll -= delta;
+      } else
+        break;
+      changed = true;
+    }
+    if (!changed)
+      return;
+    const wasSuspended = container.style.scrollSnapType === "none";
+    if (!wasSuspended)
+      suspendSnap();
+    ordered.forEach((slide, i) => owned.style(slide.el, "order", String(i)));
+    setPos(slideStart(anchor.el) - before);
+    if (!wasSuspended)
+      resumeSnap();
+  };
+  const panLoop = (amount) => {
+    if (Math.abs(amount) >= loopPeriod)
+      amount %= loopPeriod;
+    for (let i = 0; i <= container.children.length && Math.abs(amount) > 0.01; i++) {
+      fixLoop(void 0, pos() + amount);
+      const before = pos();
+      const distance = Math.max(-before, Math.min(amount, range() - before));
+      if (Math.abs(distance) < 0.01)
+        break;
+      setPos(before + distance);
+      amount -= distance;
+      fixLoop();
+    }
+  };
   let lastState = { ...noopState };
-  const readState = (p) => ({
+  const scrollState = () => {
+    const length = range(), current = pos();
+    const movable = container.children.length > 1 && length > 0.5;
+    return {
+      // Native elastic overscroll must not send chained sliders outside 0..1.
+      progress: length > 0 ? Math.max(0, Math.min(current / length, 1)) : 0,
+      canPrev: movable && (!!loop || !!rewind || current > 0.5),
+      canNext: movable && (!!loop || !!rewind || current < length - 0.5)
+    };
+  };
+  const readState = (scroll = scrollState()) => ({
     active: Math.max(active, 0),
     count: container.children.length,
     position,
-    progress: p ?? progress(),
     dragging,
-    gliding: anim !== 0
+    gliding: anim !== 0,
+    ...scroll
   });
   const state = () => {
     life.guard(() => {
       lastState = readState();
     })();
-    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState;
+    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false, canPrev: false, canNext: false } : lastState;
   };
   const measure = life.guard(() => {
     raf = 0;
+    if (loop && !anim)
+      fixLoop();
     const center = pos() + viewport() / 2;
+    const anchor = pos() + snapAnchor();
     let best = 0;
     let bestDist = Infinity;
     const list = slides();
     const sizes = list.map((slide) => Math.max(slideSize(slide), 1));
     const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2);
-    const p = progress();
+    const anchors = fraction === 0.5 ? centers : centers.map((center2, i) => center2 + sizes[i] * (fraction - 0.5));
+    const scroll = scrollState();
+    const p = scroll.progress;
     list.forEach((slide, i) => {
       if (cssVars) {
         const sd = (centers[i] - center) / sizes[i];
         owned.style(slide, "--sd", sd.toFixed(4));
       }
-      const dist = Math.abs(centers[i] - center);
+      const dist = Math.abs(anchors[i] - anchor);
       if (dist < bestDist) {
         bestDist = dist;
         best = i;
@@ -7106,12 +7445,22 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     });
     position = 0;
     if (centers.length > 1) {
-      let seg = 0;
-      while (seg + 2 < centers.length && centers[seg + 1] <= center)
-        seg++;
-      const span = centers[seg + 1] - centers[seg];
-      const raw = span > 0 ? seg + (center - centers[seg]) / span : seg;
-      position = Math.min(Math.max(raw, 0), centers.length - 1);
+      if (looping) {
+        const ordered = anchors.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
+        let seg = 0;
+        while (seg + 2 < ordered.length && ordered[seg + 1].value <= anchor)
+          seg++;
+        const span = ordered[seg + 1].value - ordered[seg].value;
+        const raw = span > 0 ? ordered[seg].index + (anchor - ordered[seg].value) / span : ordered[seg].index;
+        position = (raw % list.length + list.length) % list.length;
+      } else {
+        let seg = 0;
+        while (seg + 2 < anchors.length && anchors[seg + 1] <= anchor)
+          seg++;
+        const span = anchors[seg + 1] - anchors[seg];
+        const raw = span > 0 ? seg + (anchor - anchors[seg]) / span : seg;
+        position = Math.min(Math.max(raw, 0), centers.length - 1);
+      }
     }
     if (cssVars)
       owned.style(container, "--sv-progress", p.toFixed(4));
@@ -7142,7 +7491,7 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
         owned.style(container, "--sv-slide", "");
     }
     if (!life.stopped) {
-      lastState = readState(p);
+      lastState = readState(scroll);
       onScroll?.(lastState);
     }
   });
@@ -7151,6 +7500,7 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       raf = requestAnimationFrame(measure);
   });
   const onLayout = life.guard(() => {
+    readInsets();
     if (anim)
       goTo(target);
     schedule();
@@ -7166,7 +7516,7 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     });
     watchedSlides = current;
     ro?.disconnect();
-    ro?.observe(container);
+    ro?.observe(container, { box: "border-box" });
     current.forEach((slide) => ro?.observe(slide));
   };
   life.defer(() => watchedSlides.clear());
@@ -7184,19 +7534,35 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       return;
     goTo(target, false);
   });
+  const setDestination = (to, index) => {
+    setPos(looping ? Math.max(0, Math.min(to, range())) : to);
+    if (!looping || index < 0)
+      return;
+    fixLoop(index);
+    const slide = slides()[index];
+    if (slide)
+      setPos(Math.max(0, Math.min(destination(slideStart(slide), slideSize(slide)), range())));
+  };
   const glide = (to) => {
     stopGlide();
     let current = pos();
     if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
       resumeSnap();
+      setDestination(to, target);
       target = -1;
-      setPos(to);
       return;
     }
     suspendSnap();
     owned.class(container, "sv-gliding", true);
     let last = performance.now();
-    const step = life.guard((now) => {
+    const step2 = life.guard((now) => {
+      if (looping) {
+        const before = pos();
+        fixLoop(target);
+        const shift = pos() - before;
+        current += shift;
+        to += shift;
+      }
       const dt = Math.min(now - last, 50);
       last = now;
       const factor = 1 - Math.pow(2e-3, dt / duration);
@@ -7208,10 +7574,10 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
         resumeSnap();
       } else {
         setPos(current);
-        anim = requestAnimationFrame(step);
+        anim = requestAnimationFrame(step2);
       }
     });
-    anim = requestAnimationFrame(step);
+    anim = requestAnimationFrame(step2);
   };
   let wheelTimer;
   const clearWheel = () => {
@@ -7225,6 +7591,10 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     if (destroyed)
       return;
     clearWheel();
+    if (loop) {
+      stopGlide();
+      fixLoop(index);
+    }
     const all = slides();
     const clamped = Math.max(0, Math.min(index, all.length - 1));
     const slide = all[clamped];
@@ -7234,7 +7604,8 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       target = -1;
       return;
     }
-    const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()));
+    const aligned = destination(slideStart(slide), slideSize(slide));
+    const to = looping ? aligned : Math.max(0, Math.min(aligned, range()));
     if (smooth) {
       target = clamped;
       glide(to);
@@ -7242,17 +7613,17 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       stopGlide();
       resumeSnap();
       target = -1;
-      setPos(to);
+      setDestination(to, clamped);
     }
   });
-  const seek = life.guard((progress2) => {
+  const seek = life.guard((progress) => {
     if (destroyed)
       return;
     clearWheel();
     stopGlide();
     target = -1;
     suspendSnap();
-    setPos(Math.max(0, Math.min(progress2, 1)) * range());
+    setPos(Math.max(0, Math.min(progress, 1)) * range());
   });
   const stepBase = () => anim && target >= 0 ? target : active;
   let lastPointer = 0;
@@ -7260,6 +7631,10 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
   let pressed = false;
   const DRAG_THRESHOLD = 5;
   const onMove = life.guard((event) => {
+    if (event.buttons === 0) {
+      cancelDrag();
+      return;
+    }
     const point = horizontal ? event.clientX : event.clientY;
     if (!dragging) {
       if (Math.abs(point - startPoint) < DRAG_THRESHOLD)
@@ -7267,11 +7642,13 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       dragging = true;
       suspendSnap();
       owned.class(container, "sv-dragging", true);
-      lastPointer = point;
-      return;
+      lastPointer = startPoint;
     }
-    const step = point - lastPointer;
-    setPos(pos() - (rtl ? -step : step));
+    const step2 = point - lastPointer;
+    if (looping)
+      panLoop(rtl ? step2 : -step2);
+    else
+      setPos(pos() - (rtl ? -step2 : step2));
     lastPointer = point;
   });
   const suppressClick = life.guard((event) => {
@@ -7283,9 +7660,11 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
   const FOCUSABLE = "a[href],button,input,select,textarea,[tabindex],[contenteditable]";
   let pressedTarget = null;
   const endDrag = life.guard(() => {
+    if (!pressed)
+      return;
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", endDrag);
-    window.removeEventListener("pointercancel", endDrag);
+    window.removeEventListener("pointercancel", cancelDrag);
     pressed = false;
     if (!dragging) {
       const focusable = pressedTarget?.closest(FOCUSABLE);
@@ -7301,18 +7680,30 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
       resumeSnap();
       return;
     }
-    const center = pos() + viewport() / 2;
+    const anchor = pos() + snapAnchor();
     const list = slides();
     let nearest = 0;
     let distance = Infinity;
     list.forEach((slide, i) => {
-      const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center);
+      const d = Math.abs(slideStart(slide) + slideSize(slide) * fraction - anchor);
       if (d < distance) {
         distance = d;
         nearest = i;
       }
     });
     goTo(nearest);
+  });
+  const cancelDrag = life.guard(() => {
+    if (!pressed)
+      return;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", endDrag);
+    window.removeEventListener("pointercancel", cancelDrag);
+    pressed = dragging = false;
+    pressedTarget = null;
+    owned.class(container, "sv-dragging", false);
+    resumeSnap();
+    schedule();
   });
   const onDragStart = life.guard((event) => {
     if (pressed)
@@ -7338,13 +7729,13 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     event.preventDefault();
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", endDrag);
-    window.addEventListener("pointercancel", endDrag);
+    window.addEventListener("pointercancel", cancelDrag);
   });
   const onWheel = life.guard((event) => {
     const owner = event.target?.closest?.(".sv-slider");
     if (owner && owner !== container)
       return;
-    if (snapIsNone || snap === "proximity")
+    if (snapIsNone || !looping && snap === "proximity" || event.ctrlKey)
       return;
     const along = horizontal ? event.deltaX : event.deltaY;
     const cross = horizontal ? event.deltaY : event.deltaX;
@@ -7353,14 +7744,39 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     stopGlide();
     target = -1;
     suspendSnap();
+    if (looping) {
+      event.preventDefault();
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport() : 1;
+      panLoop(along * unit * (rtl ? -1 : 1));
+      if (snap === "proximity") {
+        resumeSnap();
+        return;
+      }
+    }
     clearWheel();
     wheelTimer = setTimeout(() => {
       wheelTimer = void 0;
       goTo(active);
     }, 200);
   });
-  const next = (smooth = true) => goTo(stepBase() + 1, smooth);
-  const prev = (smooth = true) => goTo(stepBase() - 1, smooth);
+  const step = life.guard((direction, smooth) => {
+    if (destroyed)
+      return;
+    const base = stepBase();
+    let index = base + direction;
+    if (looping) {
+      const count = container.children.length;
+      index = (index % count + count) % count;
+    } else if (rewind || loop) {
+      const last = container.children.length - 1;
+      const edge = anim && target >= 0 ? direction > 0 ? base >= last : base <= 0 : direction > 0 ? pos() >= range() - 0.5 : pos() <= 0.5;
+      if (edge)
+        index = direction > 0 ? 0 : last;
+    }
+    goTo(index, smooth);
+  });
+  const next = (smooth = true) => step(1, smooth);
+  const prev = (smooth = true) => step(-1, smooth);
   const onKey = life.guard((event) => {
     if (event.target !== container)
       return;
@@ -7402,15 +7818,19 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
   life.defer(() => window.removeEventListener("click", suppressClick, true));
   life.defer(() => window.removeEventListener("pointermove", onMove));
   life.defer(() => window.removeEventListener("pointerup", endDrag));
-  life.defer(() => window.removeEventListener("pointercancel", endDrag));
+  life.defer(() => window.removeEventListener("pointercancel", cancelDrag));
   life.setup(() => {
     owned.class(container, "sv-slider", true);
     owned.class(container, "sv-slider-y", !horizontal);
     owned.class(container, "sv-draggable", !!drag);
+    if (loop)
+      owned.style(container, "overflow-anchor", "none");
     if (!snapIsNone && typeof getComputedStyle === "function") {
       snapIsNone = getComputedStyle(container).scrollSnapType === "none";
     }
     owned.style(container, "--sv-snap", snap);
+    owned.style(container, "--sv-align", alignment);
+    readInsets();
     if (!container.hasAttribute?.("tabindex") && container.tabIndex === -1)
       owned.attr(container, "tabindex", "0");
     listen(container, "scroll", schedule, { passive: true });
@@ -7427,7 +7847,13 @@ function slider(container, { axis = "x", snap = "mandatory", drag = true, durati
     life.defer(onMotionChange(motionChanged));
     listen(container, "dragstart", onDragStart);
     listen(container, "pointerdown", onDown);
-    listen(container, "wheel", onWheel, { passive: true });
+    listen(window, "blur", cancelDrag);
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function")
+      listen(document, "visibilitychange", life.guard(() => {
+        if (document.visibilityState === "hidden")
+          cancelDrag();
+      }));
+    listen(container, "wheel", onWheel, { passive: !loop });
     listen(container, "keydown", onKey);
     measure();
   });

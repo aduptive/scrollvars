@@ -23,6 +23,9 @@ jobs:
       - run: npm run test:nonce-hydration
         if: matrix.browser == 'chromium'
       - run: npm run test:browsers -- ${{ matrix.browser }}
+      - run: node demo/bench/harness/slider-loop-gate.mjs
+        env:
+          BROWSERS: ${{ matrix.browser }}
       - run: npm run test:packed -- ${{ matrix.browser }}
         env:
           SCROLLVARS_ACCEPTANCE_DIR: ${{ runner.temp }}/packed-acceptance

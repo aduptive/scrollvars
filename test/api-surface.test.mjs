@@ -5,6 +5,16 @@ import { readFileSync } from 'node:fs'
 // Type-only additions have no runtime Object.keys entry. Keep their public
 // declaration names and the inherited hook/wrapper route alongside that list.
 const STATUS_SURFACE = ['AttachmentStatus', 'TrackOptions.onStatus']
+test('slider loop options and navigation availability are public', () => {
+  const slider = readFileSync(new URL('../dist/core/slider.d.ts', import.meta.url), 'utf8')
+  const react = readFileSync(new URL('../dist/react/index.d.ts', import.meta.url), 'utf8')
+  for (const declaration of [slider, react]) assert.match(declaration, /align\?: 'start' \| 'center' \| 'end'/)
+  for (const name of ['loop', 'rewind']) {
+    assert.match(slider, new RegExp(`${name}\\?: boolean`))
+    assert.match(react, new RegExp(`${name}\\?: boolean`))
+  }
+  for (const name of ['canPrev', 'canNext']) assert.match(slider, new RegExp(`${name}: boolean`))
+})
 test('Glass polygon option is public through vanilla and React', () => {
   const glass = readFileSync(new URL('../dist/glass/index.d.ts', import.meta.url), 'utf8')
   const react = readFileSync(new URL('../dist/react/glass.d.ts', import.meta.url), 'utf8')

@@ -43,6 +43,44 @@ test('react: Slider renders the APG carousel contract', async () => {
   assert.match(html, /<div tabindex="0" class="sv-slider">/)
 })
 
+test('react: arrows expose disabled edges and stay enabled for rewind and loop', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div'), root = createRoot(container)
+  const view = options => React.createElement(Slider, {arrows:true, duration:0, ...options},
+    ...['one','two','three'].map(text => React.createElement('div', {key:text}, text)))
+  try {
+    await React.act(async () => root.render(view({})))
+    const shell = container.firstChild, rail = shell.children.find(c => c.classes.has('sv-slider'))
+    const prev = shell.children.find(c => c.classes.has('sv-arrow-prev')), next = shell.children.find(c => c.classes.has('sv-arrow-next'))
+    Object.assign(rail, {clientWidth:200, scrollWidth:300, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null})
+    rail.children.forEach((c,i) => Object.assign(c,{offsetWidth:100, offsetLeft:i*100, offsetParent:rail}))
+    const measure = async position => { rail.scrollLeft = position; await React.act(async () => { rail._listeners.scroll[0](); flushFrames() }) }
+    const check = expected => [prev,next].forEach((button,i) => {
+      assert.equal(button.classes.has('sv-disabled'), expected[i])
+      assert.equal(button.getAttribute('aria-disabled'), String(expected[i]))
+      assert.equal(button.getAttribute('disabled'), null, 'keep the focused control reachable')
+    })
+    await measure(0); check([true,false])
+    hostProps(prev).onClick(); assert.equal(rail.scrollLeft,0)
+    await measure(50); check([false,false])
+    await measure(100); check([false,true])
+    hostProps(next).onClick(); assert.equal(rail.scrollLeft,100)
+    for (const options of [{rewind:true}, {loop:true}]) {
+      await React.act(async () => root.render(view(options)))
+      await measure(100); check([false,false])
+      await React.act(async () => { hostProps(next).onClick(); rail._listeners.scroll[0](); flushFrames() })
+      assert.equal(rail.scrollLeft,0)
+    }
+    rail.scrollWidth = 200
+    await measure(0); check([true,true])
+    await React.act(async () => root.render(React.createElement(Slider,{arrows:true},null)))
+    await measure(0); check([true,true])
+  } finally { await React.act(async () => root.unmount()) }
+})
+
 test('react: default and custom dots expose the current slide after navigation', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default
@@ -1022,6 +1060,54 @@ test('react: a destroyed Slider handle stops the autoplay interval', async () =>
   }
 })
 
+test('react: Slider autoplay recovers lost releases without overriding explicit pause', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const saved = { setInterval: global.setInterval, clearInterval: global.clearInterval,
+    add: window.addEventListener, remove: window.removeEventListener }
+  const intervals = new Map(), events = new Map()
+  let id = 0
+  global.setInterval = fn => { intervals.set(++id, fn); return id }
+  global.clearInterval = key => intervals.delete(key)
+  window.addEventListener = (type, fn) => { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn) }
+  window.removeEventListener = (type, fn) => events.get(type)?.delete(fn)
+  const container = document.createElement('div'), root = createRoot(container), api = React.createRef()
+  const fire = (type, event = {}) => { for (const fn of [...(events.get(type) ?? [])]) fn(event) }
+  try {
+    await React.act(async () => root.render(React.createElement(Slider, { ref: api, autoplay: 3000 },
+      React.createElement('div', null, 'one'), React.createElement('div', null, 'two'))))
+    const shell = container.firstChild, rail = shell.children.find(child => child.classes.has('sv-slider'))
+    Object.assign(rail, { clientWidth:100, scrollWidth:200, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null })
+    rail.children.forEach((child, i) => Object.assign(child, { offsetWidth:100, offsetLeft:i * 100, offsetParent:rail }))
+    const press = () => rail._listeners.pointerdown.forEach(fn => fn({ target:rail, pointerId:7, pointerType:'mouse', button:0, clientX:100, preventDefault() {} }))
+    press()
+    assert.equal(intervals.size, 0)
+    await React.act(async () => fire('blur'))
+    assert.equal(intervals.size, 1, 'blur clears the lost press and starts a fresh countdown')
+    press()
+    fire('pointermove', { pointerId:7, pointerType:'mouse', buttons:0, clientX:20 })
+    assert.equal(intervals.size, 1, 'returning without a pressed button recovers a missing pointerup')
+    await React.act(async () => hostProps(shell).onPointerEnter({}))
+    await React.act(async () => fire('pointerout', { relatedTarget:null }))
+    intervals.values().next().value()
+    assert.equal(api.current.state().gliding, true, 'leaving the embedded document clears stale hover')
+    api.current.goTo(0, false)
+    await React.act(async () => shell._listeners.focusin.forEach(fn => fn()))
+    press()
+    await React.act(async () => fire('blur'))
+    intervals.values().next().value()
+    assert.equal(api.current.state().gliding, false, 'keyboard focus pause still requires explicit resume')
+  } finally {
+    await React.act(async () => root.unmount())
+    assert.equal(intervals.size, 0)
+    assert.equal([...events.values()].reduce((n, handlers) => n + handlers.size, 0), 0)
+    global.setInterval = saved.setInterval; global.clearInterval = saved.clearInterval
+    window.addEventListener = saved.add; window.removeEventListener = saved.remove
+  }
+})
+
 test('react: Slider autoplay stops the interval itself off screen or with the tab hidden (perf/phase-1)', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default
@@ -1054,14 +1140,18 @@ test('react: Slider autoplay stops the interval itself off screen or with the ta
     ioCallbacks[0]([{ isIntersecting: true }])
     assert.equal(intervals.size, 1, 'back on screen restarts it')
 
-    const visibility = [...docEvents.get('visibilitychange')][0]
+    const visibility = () => { for (const fn of [...docEvents.get('visibilitychange')]) fn() }
+    const rail = container.firstChild.children.find(child => child.classes.has('sv-slider'))
+    for (const fn of rail._listeners.pointerdown)
+      fn({ target:rail, pointerId:1, pointerType:'mouse', clientX:50, preventDefault() {} })
+    assert.equal(intervals.size, 0, 'a pressed pointer suspends autoplay before the tab hides')
     document.visibilityState = 'hidden'
-    visibility()
+    await React.act(async () => visibility())
     assert.equal(intervals.size, 0, 'a hidden tab clears the interval, even while on screen')
 
     document.visibilityState = 'visible'
     visibility()
-    assert.equal(intervals.size, 1, 'a visible tab again restarts it')
+    assert.equal(intervals.size, 1, 'a visible tab restarts even when the hidden tab missed the release')
 
     await React.act(async () => { root.unmount() })
     assert.equal(intervals.size, 0, 'unmount leaves nothing running')
@@ -1743,6 +1833,103 @@ test('react: responsive Slider puts its CSP nonce on the generated stylesheet', 
   assert.ok(markup.includes('<style nonce="request-nonce">'))
 })
 
+test('react: Slider alignment reaches SSR and the engine without leaking a DOM prop', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div'), root = createRoot(container), api = React.createRef()
+  const view = align => React.createElement(Slider, {ref:api, align, duration:0}, ...['a','b','c','d','e'].map(text=>React.createElement('div',{key:text},text)))
+  for (const align of ['start','center','end']) {
+    const markup = renderToStaticMarkup(view(align))
+    assert.match(markup, new RegExp(`--sv-align:${align}`))
+    assert.doesNotMatch(markup, /\salign=/)
+  }
+  try {
+    await React.act(async () => { root.render(view('center')) })
+    const shell = container.firstChild, rail = shell.children.find(child=>child.classes.has('sv-slider'))
+    Object.assign(rail,{clientWidth:200,scrollWidth:500,scrollLeft:0,clientLeft:0,offsetLeft:0,offsetParent:null})
+    rail.children.forEach((child,i)=>Object.assign(child,{offsetWidth:100,offsetLeft:i*100,offsetParent:rail}))
+    for (const [align, expected] of [['start',200],['center',150],['end',100]]) {
+      await React.act(async () => { root.render(view(align)) })
+      await React.act(async () => { api.current.goTo(2,false); rail._listeners.scroll[0](); flushFrames() })
+      assert.equal(rail.scrollLeft,expected)
+      assert.equal(api.current.active(),2)
+      assert.equal(hostProps(shell).align,undefined)
+    }
+  } finally { await React.act(async () => { root.unmount() }) }
+})
+
+test('react: Slider rewind reaches the engine and can be switched without cloning slides', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { Slider } = await import('../dist/react/index.js')
+  const container = document.createElement('div'), root = createRoot(container), api = React.createRef()
+  const view = rewind => React.createElement(Slider, { ref: api, rewind, duration: 0 }, ...['one', 'two', 'three'].map(text => React.createElement('div', { key: text }, text)))
+  try {
+    await React.act(async () => { root.render(view(false)) })
+    const shell = container.firstChild, rail = shell.children.find(child => child.classes.has('sv-slider'))
+    Object.assign(rail, { clientWidth:100, scrollWidth:300, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null })
+    rail.children.forEach((child, i) => Object.assign(child, { offsetWidth:100, offsetLeft:i * 100, offsetParent:rail }))
+    await React.act(async () => { api.current.goTo(2, false); rail._listeners.scroll[0](); flushFrames() })
+    api.current.next(false)
+    assert.equal(rail.scrollLeft, 200)
+    await React.act(async () => { root.render(view(true)) })
+    assert.equal(hostProps(shell).rewind, undefined)
+    assert.equal(rail.children.length, 3)
+    await React.act(async () => { api.current.next(false); rail._listeners.scroll[0](); flushFrames() })
+    assert.equal(rail.scrollLeft, 0)
+    await React.act(async () => { api.current.prev(false); rail._listeners.scroll[0](); flushFrames() })
+    assert.equal(rail.scrollLeft, 200)
+    await React.act(async () => { root.render(view(false)) })
+    api.current.next(false)
+    assert.equal(rail.scrollLeft, 200)
+  } finally { await React.act(async () => { root.unmount() }) }
+})
+
+test('react: Slider loop keeps server markup semantic and cycles autoplay through next', async () => {
+  await ensureDomAndWarmDriver()
+  const React = (await import('react')).default
+  const { createRoot } = await import('react-dom/client')
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Slider } = await import('../dist/react/index.js')
+  const items = ['one', 'two', 'three', 'four'].map(text => React.createElement('div', { key: text }, text))
+  const markup = renderToStaticMarkup(React.createElement(Slider, { loop: true }, ...items))
+  assert.doesNotMatch(markup, /loop=/)
+  assert.equal((markup.match(/aria-roledescription="slide"/g) ?? []).length, 4)
+  const savedInterval = global.setInterval
+  let tick
+  global.setInterval = fn => { tick = fn; return 0 }
+  const container = document.createElement('div'), root = createRoot(container), api = React.createRef()
+  const view = loop => React.createElement(Slider, { ref: api, loop, autoplay: 4000, duration: 0 }, ...items)
+  try {
+    await React.act(async () => { root.render(view(false)) })
+    const shell = container.firstChild, rail = shell.children.find(child => child.classes.has('sv-slider'))
+    const originals = [...rail.children]
+    Object.assign(rail, { clientWidth:100, scrollWidth:400, scrollLeft:0, clientLeft:0, offsetLeft:0, offsetParent:null })
+    originals.forEach(child => {
+      Object.assign(child, { offsetWidth:100, offsetParent:rail })
+      child.style.getPropertyValue = name => child.style[name] ?? ''
+      Object.defineProperty(child, 'offsetLeft', { configurable:true, get: () => [...rail.children].sort((a, b) => Number(a.style.order ?? 0) - Number(b.style.order ?? 0)).indexOf(child) * 100 })
+    })
+    await React.act(async () => { root.render(view(true)) })
+    assert.equal(hostProps(shell).loop, undefined)
+    const measure = () => { rail._listeners.scroll[0](); flushFrames() }
+    await React.act(async () => { api.current.goTo(3, false); measure() })
+    assert.equal(api.current.active(), 3)
+    await React.act(async () => { tick(); measure() })
+    assert.equal(api.current.active(), 0)
+    assert.deepEqual(rail.children, originals)
+    await React.act(async () => { root.render(view(false)) })
+    originals.forEach(child => assert.equal(child.style.order, undefined))
+  } finally {
+    await React.act(async () => { root.unmount() })
+    global.setInterval = savedInterval
+  }
+})
+
 test('react: Slider cssVars opts out, re-enables by default, and is not forwarded to the DOM', async () => {
   await ensureDomAndWarmDriver()
   const React = (await import('react')).default
@@ -1817,7 +2004,7 @@ test('react: StrictMode Slider releases resources across output switches, active
       for (const fn of [...rail._listeners.pointerdown]) fn({ target:rail, pointerId:1, pointerType:'mouse', button:0, clientX:50, preventDefault() {} })
       assert.equal(listenerCount(), baseline + 3, 'press installs global move/up/cancel handlers')
       assert.equal(intervals.size, 0, 'press suspends autoplay')
-      listeners.get('pointermove').values().next().value({ clientX:30 })
+      for (const fn of [...listeners.get('pointermove')]) fn({ clientX:30 })
       assert.equal(facade.state().dragging, true)
       await React.act(async () => root.render(view(cssVars === false ? true : false)))
       assert.equal(listenerCount(), baseline, 'reattachment cancels the core press listeners')

@@ -37,7 +37,7 @@
 </style>
 </head><body>
 <header><div><a href="../" style="text-decoration:none"><b style="color:var(--text)">ScrollVars</b></a> <span style="color:var(--muted)">/ docs</span></div>
-<div><span class="v">v1.21.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
+<div><span class="v">v1.22.0</span> &nbsp;·&nbsp; <a href="../">demo</a> · <a href="../fx/">fx</a> · <a href="../bench/">bench</a> · <a href="../llms.txt">llms.txt</a> · <a href="https://github.com/aduptive/scrollvars">GitHub</a></div></header>
 <main>
 <h1>The human reference</h1>
 <p class="lead">One rAF in, CSS variables out. This page is for people; AIs get
@@ -161,7 +161,7 @@ property. <code>?sv-debug</code> on a page with <code>&lt;ScrollVarsBoot /&gt;</
 <h2 id="presets">Preset vocabulary</h2>
 <p>Each name is a class; live previews with copy-paste code in
 <a href="../fx/">the fx gallery</a>. Import only the parts a page uses
-(gzipped: <code>styles/core.css</code> 3.1&nbsp;KB · pin 3.4 · slider 1.6 · tilt 0.7 · state 2.3 · ui 1.5).</p>
+(gzipped: <code>styles/core.css</code> 3.1&nbsp;KB · pin 3.4 · slider 1.7 · tilt 0.7 · state 2.3 · ui 1.5).</p>
 <table>
 <tr><th>part</th><th>classes</th></tr>
 <tr><td>core (entrances)</td><td><code>sv-rise sv-fade sv-slide-l sv-slide-r sv-auto sv-stagger sv-skip sv-split sv-split-rise sv-drift sv-spread sv-spread-in sv-view-fade sv-view-rise</code></td></tr>
@@ -290,6 +290,24 @@ compat()   // once, before anything else</code></pre>
 
 <h2 id="changelog">Changelog</h2>
 
+
+<h3>1.22.0 (2026-11-16)</h3>
+
+<h4>Added</h4>
+
+<ul>
+<li>Slider <code>align: 'start' | 'center' | 'end'</code> across vanilla, hooks and React. Navigation, active state, drag settling and loop use the same logical anchor as native snap; center remains the default. <code>--sd</code> retains its center-distance meaning for effects. Resolved scroll-padding is measured on layout changes, including border-box resize.</li>
+<li>Optional <code>loop</code> for continuous slider cycling without cloned content, with <code>rewind</code> fallback on rails too short to recycle offscreen slides. <code>rewind</code> can also be enabled independently for return-to-start navigation. Vanilla, hooks and React kit support both options; defaults remain finite.</li>
+<li>Slider arrows expose <code>.sv-disabled</code> and <code>aria-disabled</code> at their physical boundaries, including multi-slide layouts. Unavailable arrows retain keyboard focus and ignore activation. <code>SliderState.canPrev</code> and <code>canNext</code> expose the same availability for custom controls. Loop/rewind arrows remain available while the rail can scroll.</li>
+</ul>
+
+<h4>Fixed</h4>
+
+<ul>
+<li>Release interrupted slider mouse gestures on window blur, hidden documents and a returning pointer with no buttons pressed. Cancellation restores snap without focusing an unfinished click target.</li>
+<li>Recover React Slider autoplay after a lost release or document exit, while preserving explicit and keyboard-focus pause.</li>
+<li>Preserve the first mouse displacement that crosses the drag threshold, so the rail follows the pointer immediately instead of discarding that movement.</li>
+</ul>
 
 <h3>1.21.0 (2026-11-05)</h3>
 

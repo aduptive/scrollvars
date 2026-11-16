@@ -22,7 +22,7 @@
 }
 .sv-slider > * {
   flex: 0 0 auto;
-  scroll-snap-align: center;
+  scroll-snap-align: var(--sv-align, center);
 }
 .sv-slider.sv-dragging {
   scroll-snap-type: none;
@@ -78,6 +78,10 @@
 }
 .sv-arrow-prev {
   left: var(--sv-arrow-inset, 12px);
+}
+.sv-arrow.sv-disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 /* Autoplay pause/resume (APG carousel: a visible rotation control, first in
    the tab order). Same knob family as the arrows. */
