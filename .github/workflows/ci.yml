@@ -26,6 +26,9 @@ jobs:
       - run: node demo/bench/harness/slider-loop-gate.mjs
         env:
           BROWSERS: ${{ matrix.browser }}
+      - run: node demo/bench/harness/glass-colors-gate.mjs
+        env:
+          BROWSERS: ${{ matrix.browser }}
       - run: npm run test:packed -- ${{ matrix.browser }}
         env:
           SCROLLVARS_ACCEPTANCE_DIR: ${{ runner.temp }}/packed-acceptance

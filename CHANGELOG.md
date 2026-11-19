@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.1 (2026-11-19)
+
+### Fixed
+
+- Detect accelerated Canvas2D texture uploads that swap red and blue (Firefox/Linux graphics regression). Glass probes once per context and uses an RGBA pixel upload only on affected Canvas2D paths; unaffected contexts retain direct uploads. Source invalidation controls recapture as before. The affected path requires a CPU pixel read per source upload; unchanged scenes and material-only updates reuse their cached texture.
+
 ## 1.22.0 (2026-11-16)
 
 ### Added
