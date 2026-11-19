@@ -2,6 +2,282 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { lifecycleEnv } from './lifecycle-fixture.mjs'
 
+for (const axis of ['x', 'rtl', 'y']) for (const align of ['start', 'center', 'end']) {
+  test(`slider alignment: ${align}, ${axis}, padding and continuous output`, async () => {
+    const env = lifecycleEnv()
+    try {
+      const { slider } = await import('../dist/core/slider.js')
+      const c = env.rail()
+      c.append(env.element()); c.append(env.element())
+      c.clientWidth = c.clientHeight = 300
+      c.scrollWidth = c.scrollHeight = 700
+      const starts = [40, 160, 320, 430, 560], sizes = [100, 140, 90, 110, 100]
+      c.children.forEach((slide, i) => {
+        slide.offsetWidth = slide.offsetHeight = sizes[i]
+        slide.offsetLeft = axis === 'rtl' ? 300 - starts[i] - sizes[i] : starts[i]
+        slide.offsetTop = starts[i]
+      })
+      global.getComputedStyle = node => ({ ...env.window.getComputedStyle(node), direction: axis === 'rtl' ? 'rtl' : 'ltr',
+        scrollPaddingLeft: axis === 'rtl' ? '40px' : '20px', scrollPaddingRight: axis === 'rtl' ? '20px' : '40px',
+        scrollPaddingTop: '20px', scrollPaddingBottom: '40px' })
+      const h = slider(c, { align, axis: axis === 'y' ? 'y' : 'x', duration: 0 })
+      const position = () => axis === 'y' ? c.scrollTop : axis === 'rtl' ? -c.scrollLeft : c.scrollLeft
+      const flush = () => { c.fire('scroll'); env.flush() }
+      const expected = { start: 300, center: 225, end: 150 }[align]
+      h.goTo(2, false); flush()
+      assert.equal(position(), expected)
+      assert.equal(h.active(), 2)
+      assert.equal(h.state().position, 2)
+      assert.equal(c.style.getPropertyValue('--sv-align'), align)
+      assert.equal(Number(c.children[2].style.getPropertyValue('--sd')), Number(((365 - expected - 150) / 90).toFixed(4)), '--sd remains center-based')
+      h.next(false); flush(); assert.equal(h.active(), 3)
+      h.prev(false); flush(); assert.equal(position(), expected)
+      c.fire('pointerdown', {pointerType:'mouse', clientX:100, clientY:100, preventDefault(){}})
+      env.window.fire('pointermove', {buttons:1, clientX:axis === 'rtl' ? 110 : 90, clientY:90})
+      env.window.fire('pointerup', {}); flush()
+      assert.equal(position(), expected, 'release chooses the same alignment target')
+      h.destroy()
+      assert.equal(c.style.getPropertyValue('--sv-align'), '')
+    } finally { env.restore() }
+  })
+}
+
+for (const mode of ['x', 'rtl', 'y']) test(`slider: navigation availability follows physical edges (${mode})`, async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail()
+    c.clientWidth = c.clientHeight = 200
+    c.scrollWidth = c.scrollHeight = 300
+    if (mode === 'rtl') global.getComputedStyle = node => ({ ...env.window.getComputedStyle(node), direction:'rtl' })
+    c.children.forEach((s, i) => { s.offsetLeft = mode === 'rtl' ? 100 - i * 100 : i * 100; s.offsetTop = i * 100 })
+    const h = slider(c, {axis:mode === 'y' ? 'y' : 'x', duration:0})
+    const available = () => [h.state().canPrev, h.state().canNext]
+    assert.deepEqual(available(), [false, true])
+    h.seek(.5)
+    assert.deepEqual(available(), [true, true])
+    h.seek(1); c.fire('scroll'); env.flush()
+    assert.notEqual(h.active(), 2, 'multi-slide views reach their end before the last slide is active')
+    assert.deepEqual(available(), [true, false])
+    c.scrollWidth = c.scrollHeight = 200
+    c.scrollLeft = c.scrollTop = 0
+    assert.deepEqual(available(), [false, false], 'all slides fit')
+    h.destroy()
+    assert.deepEqual(available(), [false, false], 'destroyed handles have no available commands')
+  } finally { env.restore() }
+})
+
+test('slider: the first drag movement follows the pointer without dropping its displacement', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(), h = slider(c)
+    c.fire('pointerdown', { pointerType: 'mouse', clientX: 150, preventDefault() {} })
+    env.window.fire('pointermove', { buttons: 1, clientX: 147 })
+    assert.equal(c.scrollLeft, 0, 'a small click wobble does not drag')
+    env.window.fire('pointermove', { buttons: 1, clientX: 110 })
+    assert.equal(c.scrollLeft, 40, 'the threshold crossing retains the full displacement')
+    env.window.fire('pointermove', { buttons: 1, clientX: 100 })
+    assert.equal(c.scrollLeft, 50)
+    h.destroy()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+for (const interruption of ['blur', 'hidden', 'released-outside', 'pointercancel']) {
+  test(`slider: ${interruption} releases an interrupted mouse gesture`, async () => {
+    const env = lifecycleEnv()
+    try {
+      const { slider } = await import('../dist/core/slider.js')
+      const c = env.rail()
+      let focused = 0
+      const link = { closest: selector => selector.startsWith('a[') ? link : null, focus() { focused++ } }
+      const h = slider(c, { duration: 0 })
+      for (const moved of [false, true]) {
+        c.fire('pointerdown', { target: link, pointerType: 'mouse', clientX: 100, preventDefault() {} })
+        if (moved) {
+          env.window.fire('pointermove', { buttons: 1, clientX: 80 })
+          env.window.fire('pointermove', { buttons: 1, clientX: 20 })
+          assert.equal(h.state().dragging, true)
+        }
+        if (interruption === 'hidden') {
+          document.visibilityState = 'hidden'
+          document.fire('visibilitychange')
+          document.visibilityState = 'visible'
+        } else if (interruption === 'released-outside') {
+          env.window.fire('pointermove', { buttons: 0, clientX: -200 })
+        } else env.window.fire(interruption, { type: interruption })
+        assert.equal(h.state().dragging, false)
+        assert.equal(c.classes.has('sv-dragging'), false)
+        assert.equal(c.style.scrollSnapType, '')
+        assert.equal(focused, 0, 'cancellation must not steal focus back from the host')
+        const position = c.scrollLeft
+        env.window.fire('pointermove', { buttons: 0, clientX: -400 })
+        assert.equal(c.scrollLeft, position, 'returning without a button cannot continue the stale drag')
+      }
+      c.fire('pointerdown', { pointerType: 'mouse', clientX: 100, preventDefault() {} })
+      env.window.fire('pointermove', { buttons: 1, clientX: 80 })
+      env.window.fire('pointermove', { buttons: 1, clientX: 20 })
+      assert.equal(h.state().dragging, true, 'a fresh drag still works')
+      env.window.fire('pointerup', { type: 'pointerup' })
+      h.destroy()
+      assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+    } finally { env.restore() }
+  })
+}
+
+for (const align of ['start', 'center', 'end']) for (const mode of ['x', 'y', 'rtl', 'multi']) test(`slider loop: cycles original nodes and restores their order (${mode}, ${align})`, async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(), originals = [...c.children]
+    c.append(env.element()); originals.push(c.children[3])
+    c.scrollWidth = 400
+    if (mode === 'multi') c.clientWidth = 200
+    if (mode === 'y') c.scrollHeight = 400
+    if (mode === 'rtl') global.getComputedStyle = node => ({ ...env.window.getComputedStyle(node), direction: 'rtl' })
+    const start = slide => [...c.children].sort((a, b) => Number(a.style.getPropertyValue('order')) - Number(b.style.getPropertyValue('order'))).indexOf(slide) * 100
+    originals.forEach(slide => {
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, get: () => mode === 'rtl' ? c.clientWidth - start(slide) - 100 : start(slide) })
+      Object.defineProperty(slide, 'offsetTop', { configurable: true, get: () => start(slide) })
+    })
+    const h = slider(c, { axis: mode === 'y' ? 'y' : 'x', align, loop: true, duration: 0 })
+    const measure = () => { c.fire('scroll'); env.flush() }
+    for (const direction of [1, -1]) {
+      for (let i = 0; i < 12; i++) {
+        const expected = (h.active() + direction + 4) % 4
+        direction > 0 ? h.next(false) : h.prev(false)
+        measure()
+        assert.equal(h.active(), expected, `direction ${direction}, step ${i}, orders ${originals.map(slide => slide.style.getPropertyValue('order'))}, scroll ${c.scrollLeft}`)
+        assert.equal(h.state().count, 4)
+        assert.deepEqual(c.children, originals, 'cycling never reparents, clones or replaces nodes')
+      }
+    }
+    h.goTo(2, false); measure()
+    assert.equal(h.active(), 2, `goTo orders ${originals.map(slide => slide.style.getPropertyValue('order'))}, scroll ${c.scrollLeft}`)
+    const viewportKey = mode === 'y' ? 'clientHeight' : 'clientWidth'
+    const width = c[viewportKey], ro = env.deliveries.find(observer => observer.kind === 'ResizeObserver' && observer.targets.has(c))
+    c[viewportKey] = 350; ro.cb([]); env.flush()
+    originals.forEach(slide => assert.equal(slide.style.getPropertyValue('order'), ''))
+    c[viewportKey] = width; ro.cb([]); env.flush()
+    const expected = (h.active() + 1) % 4
+    h.next(false); measure()
+    assert.equal(h.active(), expected, 'loop reactivates after resize supplies enough space')
+    h.seek(0); measure()
+    assert.equal(c.style.scrollSnapType, 'none', 'recycling must preserve a gesture or seek suspension')
+    h.goTo(0, false); measure()
+    const before = h.state().position
+    let prevented = false
+    c.fire('wheel', { deltaX: mode === 'y' ? 0 : mode === 'rtl' ? -500 : 500, deltaY: mode === 'y' ? 500 : 0, preventDefault() { prevented = true } })
+    measure()
+    assert.equal(prevented, true)
+    assert.ok(Math.abs(h.state().position - (before + 1) % 4) < 0.001, 'large wheel impulses retain their remainder across a full cycle')
+    h.destroy()
+    originals.forEach(slide => assert.equal(slide.style.getPropertyValue('order'), ''))
+    assert.equal(c.style.getPropertyValue('overflow-anchor'), '')
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('slider loop: insufficient content falls back to rewind', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail()
+    c.clientWidth = 200
+    const h = slider(c, { loop: true, duration: 0 })
+    h.goTo(2, false); c.fire('scroll'); env.flush()
+    h.next(false); c.fire('scroll'); env.flush()
+    assert.equal(c.scrollLeft, 0)
+    c.children.forEach(slide => assert.equal(slide.style.getPropertyValue('order'), ''))
+    h.destroy()
+  } finally { env.restore() }
+})
+
+for (const mode of ['x', 'y', 'rtl', 'multi']) test(`slider rewind: wraps command navigation without cloning slides (${mode})`, async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail()
+    if (mode === 'multi') c.clientWidth = 200
+    if (mode === 'y') {
+      c.scrollHeight = 300
+      c.children.forEach((slide, i) => { slide.offsetTop = i * 100 })
+    }
+    if (mode === 'rtl') {
+      global.getComputedStyle = node => ({ ...env.window.getComputedStyle(node), direction: 'rtl' })
+      c.children.forEach((slide, i) => { slide.offsetLeft = -i * 100 })
+    }
+    const position = () => mode === 'y' ? c.scrollTop : mode === 'rtl' ? -c.scrollLeft : c.scrollLeft
+    const end = mode === 'multi' ? 100 : 200
+    const h = slider(c, { axis: mode === 'y' ? 'y' : 'x', rewind: true, duration: 0 })
+    const measure = () => { c.fire('scroll'); env.flush() }
+    h.goTo(2, false); measure()
+    assert.equal(position(), end)
+    if (mode === 'multi') assert.notEqual(h.active(), 2, 'the last slide need not be active at the physical end')
+    h.next(false); measure()
+    assert.equal(position() + 0, 0)
+    h.prev(false); measure()
+    assert.equal(position(), end)
+    h.goTo(99, false); measure()
+    assert.equal(position(), end, 'explicit goTo keeps clamping')
+    c.fire('keydown', { key: mode === 'y' ? 'ArrowDown' : mode === 'rtl' ? 'ArrowLeft' : 'ArrowRight', preventDefault() {} }); measure()
+    assert.equal(position() + 0, 0, 'keyboard follows rewind navigation')
+    assert.equal(c.children.length, 3)
+    h.destroy()
+    h.next(); h.prev()
+    assert.equal(position() + 0, 0, 'released commands cannot move the rail')
+    const bounded = slider(c, { axis: mode === 'y' ? 'y' : 'x', duration: 0 })
+    bounded.prev(false)
+    assert.equal(position() + 0, 0, 'default navigation does not rewind')
+    bounded.goTo(2, false); measure(); bounded.next(false)
+    assert.equal(position(), end)
+    bounded.destroy()
+    assert.deepEqual(env.baseline(), [0, 0, 0, 0])
+  } finally { env.restore() }
+})
+
+test('slider rewind: rapid navigation wraps from the pending destination', async () => {
+  const env = lifecycleEnv(), savedPerformance = global.performance
+  try {
+    let now = 0
+    global.performance = { now: () => now }
+    const { slider } = await import('../dist/core/slider.js')
+    const c = env.rail(), h = slider(c, { rewind: true, duration: 100 })
+    const settle = () => {
+      for (let i = 0; i < 80 && env.frames.size; i++) {
+        now += 16
+        const batch = [...env.frames.values()]; env.frames.clear()
+        batch.forEach(fn => fn(now))
+      }
+      c.fire('scroll'); env.flush()
+      assert.equal(h.state().gliding, false)
+    }
+    h.next(); h.next(); h.next(); settle()
+    assert.equal(c.scrollLeft, 0)
+    h.prev(); h.prev(); settle()
+    assert.equal(c.scrollLeft, 100)
+    h.destroy()
+  } finally { global.performance = savedPerformance; env.restore() }
+})
+
+test('slider rewind: empty and fitting rails schedule no glide', async () => {
+  const env = lifecycleEnv()
+  try {
+    const { slider } = await import('../dist/core/slider.js')
+    for (const count of [0, 1, 3]) {
+      const c = env.rail()
+      c.children = c.children.slice(0, count)
+      c.scrollWidth = c.clientWidth = 300
+      const h = slider(c, { rewind: true })
+      h.next(); h.prev()
+      assert.equal(c.scrollLeft, 0)
+      assert.equal(env.frames.size, 0)
+      h.destroy()
+    }
+  } finally { env.restore() }
+})
+
 for (const point of ['observe', 'listener', 'callback']) test(`slider failure: partial setup restores ownership and all resources (${point})`, async () => {
   const { slider } = await import('../dist/core/slider.js')
   const env = lifecycleEnv()
@@ -1057,7 +1333,7 @@ test('slider: an unclassed element reads its OWN snap after .sv-slider lands, no
   containerHandlers.pointerdown({
     pointerType: 'mouse', clientX: 50, target: { closest: () => null }, preventDefault: () => {},
   })
-  winHandlers.pointermove({ clientX: 20 }) // 30px > 5px threshold: arms dragging, no move yet
+  winHandlers.pointermove({ clientX: 20 }) // 30px > 5px threshold: starts dragging
   winHandlers.pointermove({ clientX: -150 }) // the actual move: far enough to land nearest a different slide
   winHandlers.pointerup()
 

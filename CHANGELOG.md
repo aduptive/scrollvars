@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.22.0 (2026-11-16)
+
+### Added
+
+- Slider `align: 'start' | 'center' | 'end'` across vanilla, hooks and React. Navigation, active state, drag settling and loop use the same logical anchor as native snap; center remains the default. `--sd` retains its center-distance meaning for effects. Resolved scroll-padding is measured on layout changes, including border-box resize.
+- Optional `loop` for continuous slider cycling without cloned content, with `rewind` fallback on rails too short to recycle offscreen slides. `rewind` can also be enabled independently for return-to-start navigation. Vanilla, hooks and React kit support both options; defaults remain finite.
+- Slider arrows expose `.sv-disabled` and `aria-disabled` at their physical boundaries, including multi-slide layouts. Unavailable arrows retain keyboard focus and ignore activation. `SliderState.canPrev` and `canNext` expose the same availability for custom controls. Loop/rewind arrows remain available while the rail can scroll.
+
+### Fixed
+
+- Release interrupted slider mouse gestures on window blur, hidden documents and a returning pointer with no buttons pressed. Cancellation restores snap without focusing an unfinished click target.
+- Recover React Slider autoplay after a lost release or document exit, while preserving explicit and keyboard-focus pause.
+- Preserve the first mouse displacement that crosses the drag threshold, so the rail follows the pointer immediately instead of discarding that movement.
+
 ## 1.21.0 (2026-11-05)
 
 ### Added

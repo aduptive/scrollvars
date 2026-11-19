@@ -86,17 +86,17 @@ import { mountEffect } from 'scrollvars/canvas'    // canvas harness ({ context:
 import { debug } from 'scrollvars/debug'           // dev overlay: HUD, markers, perf lint; never ship enabled
 import 'scrollvars/styles.css'                    // all presets, or modular:
 import 'scrollvars/styles/core.css'               // entrances, stagger, drift, spread, native view()-tier (3.1 KB gz)
-// also styles/pin.css (3.4), slider.css (1.6), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.5), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
+// also styles/pin.css (3.4), slider.css (1.7), tilt.css (0.7), state.css (2.3, scroll-driven acts need core too), ui.css (1.5), per page needs; scoped.css (1.0) is opt-in, see Scoped clocks
 ```
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.21.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.22.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |
-| `usePointer` | 3965 | 1830 |
+| `usePointer` | 3965 | 1829 |
 | `ScrollVarsBoot` | 31208 | 10807 |
-| `Slider, Slide` | 16280 | 6482 |
+| `Slider, Slide` | 21030 | 8320 |
 
 These are separate import fixtures, not additive route sizes or runtime benchmarks. Actual application savings depend on its import graph and bundler.
 <!-- react-imports:end -->
@@ -223,9 +223,10 @@ min-width, e.g. `900: 4`; a string with a unit, `'900px'`, is coerced with
 `Number()` and comes out `@media (min-width:NaNpx)`, an invalid query
 that never matches, so keep the key numeric). Chrome customization:
 var knobs (--sv-arrow-*/--sv-dot-*) globally or per instance → stable
-classes (sv-arrow, sv-dot) → prevIcon/nextIcon/renderDot → external UI via
-the ref (full SliderHandle). Also `<Marquee>` (use it where Swiper loop
-would be), `<Accordion>` (native details), `<Modal>` (dialog + sv-pop).
+classes (sv-arrow, sv-dot; unavailable arrows add sv-disabled and aria-disabled="true") → prevIcon/nextIcon/renderDot → external UI via
+the ref (full SliderHandle). Use `<Slider loop>` for circular navigation or
+`<Marquee>` for a continuously moving strip. Also `<Accordion>` (native
+details), `<Modal>` (dialog + sv-pop).
 Lower level: `useSlider()` / `slider(el)`:
 native scroll + snap; slides get `--sd` (signed distance from center) and
 `.sv-active`, so slide animations are pure CSS (`scale: calc(1 - max(var(--sd), -1 * var(--sd)) * .1)`).
@@ -234,7 +235,7 @@ Two return shapes: `slider(el)` returns the handle itself,
 `{ ref, active, next, prev, goTo, handle }`, where `handle` is a ref to
 that same handle for `seek`, `state` and `destroy`. Options: `snap`,
 `drag`, `duration` (glide settle ms), `axis: 'y'`, `onScroll(state)`. State
-has active/count/position/progress/dragging/gliding; container also gets
+has active/count/position/progress/dragging/gliding/canPrev/canNext; container also gets
 `--sv-progress`. Chain sliders unidirectionally (thumbs/controller):
 `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`: author the
 follower with inline `scroll-snap-type: none` (seek suspends it anyway).
@@ -250,6 +251,36 @@ Discrete flavor: `track(rail, { scenes: n, onScene: (i) => s.goTo(i) })`.
 writes of those outputs without removing existing inline values. Numeric
 state, callbacks, active classes and snap remain available. Default `true`
 preserves existing effects; do not disable it for CSS that reads the clocks.
+
+**Slider alignment:** `slider(el, { align: 'start' })`,
+`useSlider({ align: 'start' })` or `<Slider align="start">`. Values are
+`start`, `center` (default), `end`; start/end follow RTL and the selected axis.
+The engine sets `--sv-align`; use the option, not a conflicting CSS-only snap
+override. Navigation, drag settling, active state, continuous position and loop
+share the anchor. `--sd` remains distance from the viewport center for effects.
+Resolved scroll-padding is measured on layout changes, not every scroll frame;
+match it to visual padding explicitly (percentages use different reference boxes).
+Avoid conflicting per-slide snap alignment/scroll-margin. Finite rails clamp to
+their physical limits: edge cards need extra layout space to reach an otherwise
+unreachable anchor. Several indexes can share an endpoint. Use `goTo(i, false)`
+after attachment to choose an initial card; alignment does not choose its index.
+
+**Slider rewind:** `slider(el, { rewind: true })`, `useSlider({ rewind: true })`
+or `<Slider rewind>` wraps next/previous and keyboard navigation with a return
+glide at either physical end, including multi-slide views. Default `false`;
+autoplay already returns to the start independently. No cloned slides or
+seamless forward loop: native touch/drag, `goTo` and `seek` remain bounded.
+
+**Slider loop:** `slider(el, { loop: true })`, `useSlider({ loop: true })` or
+`<Slider loop>` recycles fully offscreen slides through CSS `order`, compensating
+the scroll position so the visible content stays still. Original nodes, media,
+focus and logical indexes are preserved; nothing is cloned. Arrows, keyboard,
+autoplay and scrolling keep cycling. Loop wheel/drag input retains overshoot at
+the finite rail's boundaries. Requires a regular flex rail in source order with
+at least three slides and a scrollable range of twice the largest slide-plus-gap;
+otherwise it falls back to rewind. `loop` wins over `rewind`. `position` wraps
+in `[0, count)`; `progress` and `seek` still describe the physical scroll range,
+which resets when slides recycle. Use `active`/`goTo` for logical navigation.
 
 **Scroll-snap on the page:** scope it, `proximity` (never `mandatory` on pages
 with pinned sections) and toggle it regionally via `onLive` toggling a class on
@@ -473,7 +504,7 @@ that gap. What is left at fifty nodes per box is the price of animating
 through the cascade at all. The authoring rule that keeps a page on the
 cheap side of the curve: keep tracked elements thin, with big static
 content next to the animated element rather than inside it.
-The package ships ~4× less bundle than GSAP + ScrollTrigger; frame delivery
+The package ships ~3× less bundle than GSAP + ScrollTrigger; frame delivery
 and CPU cost depend on the workload. CPU throttling is a synthetic profile,
 not a physical phone. See the benchmark for current results and methodology.
 

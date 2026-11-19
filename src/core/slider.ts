@@ -7,7 +7,7 @@
  *   - the active-slide observer, exposed the ScrollVars way:
  *       container:  --sv-slide (active index) · --sv-progress (0..1)
  *       each slide: --sd        (signed distance from center, in slide sizes)
- *                   .sv-active  (nearest to center)
+ *                   .sv-active  (nearest to the alignment anchor)
  *   - next / prev / goTo, glide with a soft exponential settle
  *   - full state (`state()` / `onScroll`) and `seek()`. Enough to chain
  *     sliders: `slider(main, { onScroll: (s) => thumbs.seek(s.progress) })`
@@ -22,17 +22,22 @@ import { lifetime, ownership } from './lifetime.js'
 export interface SliderState {
   active: number
   count: number
-  /** Continuous position in slide units (0 .. count−1). */
+  /** Continuous position in slide units (0 .. count−1; 0 <= position < count in a loop). */
   position: number
   /** 0..1 across the scrollable range. */
   progress: number
   dragging: boolean
   gliding: boolean
+  /** Whether previous/next navigation is available at the current physical position. */
+  canPrev: boolean
+  canNext: boolean
 }
 
 export interface SliderOptions {
   /** Scroll axis (default 'x'). */
   axis?: 'x' | 'y'
+  /** Logical snap alignment (default 'center'). Start/end follow RTL and axis. */
+  align?: 'start' | 'center' | 'end'
   /** Snap strictness (default 'mandatory'). */
   snap?: 'mandatory' | 'proximity'
   /** Mouse drag-to-scroll (default true; touch is native regardless). */
@@ -40,6 +45,13 @@ export interface SliderOptions {
   /** Glide settle time in ms (default 600; 0 = instant). Exponential lerp:
    * velocity ∝ remaining distance, so any travel feels equally soft. */
   duration?: number
+  /** Wrap next/prev at either end with a return glide (default false).
+   * Native dragging and goTo/seek still use the finite scroll range. */
+  rewind?: boolean
+  /** Recycle offscreen slides for continuous navigation (default false).
+   * Falls back to rewind when the rail cannot hold a viewport plus two
+   * slide-sized buffers. Original DOM nodes, focus and media are preserved. */
+  loop?: boolean
   /** Write --sd, --sv-progress and --sv-slide (default true). Disable when
    * CSS does not consume them. Existing inline values are left intact. */
   cssVars?: boolean
@@ -71,6 +83,8 @@ const noopState: SliderState = {
   progress: 0,
   dragging: false,
   gliding: false,
+  canPrev: false,
+  canNext: false,
 }
 
 const noop: SliderHandle = {
@@ -87,9 +101,12 @@ export function slider(
   container: HTMLElement,
   {
     axis = 'x',
+    align = 'center',
     snap = 'mandatory',
     drag = true,
     duration = 600,
+    rewind = false,
+    loop = false,
     cssVars = true,
     onSlide,
     onScroll,
@@ -120,13 +137,31 @@ export function slider(
   const viewport = () => (horizontal ? container.clientWidth : container.clientHeight)
   const range = () =>
     Math.max((horizontal ? container.scrollWidth : container.scrollHeight) - viewport(), 0)
-  // 0..1 across the scrollable range, clamped: elastic overscroll (iOS,
-  // trackpads) pushes pos() past both ends, and a follower chained through
-  // `onScroll` + `seek(progress)` would be sent outside its own range.
-  const progress = () => {
-    const length = range()
-    return length > 0 ? Math.max(0, Math.min(pos() / length, 1)) : 0
+  const alignment = align === 'start' || align === 'end' ? align : 'center'
+  const fraction = alignment === 'start' ? 0 : alignment === 'end' ? 1 : 0.5
+  let insetStart = 0, insetEnd = 0
+  // Resolve snapport insets on layout changes, never in the scroll-frame loop.
+  const readInsets = () => {
+    if (typeof getComputedStyle !== 'function') return
+    const style = getComputedStyle(container), size = viewport()
+    const resolve = (value: string) => {
+      if (!value || value === 'auto') return 0
+      if (/^[\d.]+(?:px|%)?$/.test(value))
+        return parseFloat(value) * (value.endsWith('%') ? size / 100 : 1)
+      // CSS resolves calc()/min()/max() percentages against the scrollport,
+      // unlike ordinary padding percentages (the containing block).
+      const host = document.createElement('div'), probe = document.createElement('div')
+      host.style.cssText = `position:fixed;visibility:hidden;pointer-events:none;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${size}px;height:0;overflow:hidden;contain:strict;`
+      probe.style.cssText = `display:block;box-sizing:content-box;min-width:0;max-width:none;padding:0;border:0;width:${value};`
+      host.appendChild(probe)
+      document.documentElement.appendChild(host)
+      try { return parseFloat(getComputedStyle(probe).width) || 0 }
+      finally { host.remove() }
+    }
+    insetStart = resolve(horizontal ? rtl ? style.scrollPaddingRight : style.scrollPaddingLeft : style.scrollPaddingTop)
+    insetEnd = resolve(horizontal ? rtl ? style.scrollPaddingLeft : style.scrollPaddingRight : style.scrollPaddingBottom)
   }
+  const snapAnchor = () => insetStart + (viewport() - insetStart - insetEnd) * fraction
   // Container-local start of a slide in logical scroll units, from offset
   // chains: layout positions, so the coverflow transforms a slide carries
   // (scale/rotate from --sd) never feed back into its own measurement. RTL
@@ -170,6 +205,7 @@ export function slider(
     return rtl ? container.clientWidth - local - el.offsetWidth : local
   }
   const slideSize = (el: HTMLElement) => (horizontal ? el.offsetWidth : el.offsetHeight)
+  const destination = (start: number, size: number) => start + size * fraction - snapAnchor()
 
   // Snap suspension via inline style. One source of truth. The authored
   // inline value (e.g. 'none' on scroll-driven instances) is preserved.
@@ -211,41 +247,125 @@ export function slider(
 
   const slides = () => Array.from(container.children) as HTMLElement[]
 
-  // `p` lets measure() hand in the progress it already snapshotted during
+  let looping = false
+  let loopPeriod = 0
+  const restoreLoopOrder = () => {
+    const list = slides(), anchor = list[active]
+    const before = anchor ? slideStart(anchor) - pos() : 0
+    list.forEach(slide => owned.restore(slide, 'style:order'))
+    if (anchor) setPos(Math.max(0, Math.min(slideStart(anchor) - before, range())))
+  }
+  life.defer(() => { if (looping) restoreLoopOrder() })
+  const fixLoop = (index?: number, scrollTarget?: number) => {
+    if (!loop) return
+    const list = slides()
+    const ordered = list.map((el, index) => ({ el, index, start: slideStart(el), size: slideSize(el) }))
+      .sort((a, b) => a.start - b.start)
+    const width = viewport()
+    const gap = ordered.length > 1 ? ordered[1].start - ordered[0].start - ordered[0].size : 0
+    const buffer = Math.max(0, ...ordered.map(slide => slide.size + gap))
+    const wasLooping = looping
+    looping = ordered.length >= 3 && width > 0 && buffer > 0 && range() >= buffer * 2 - 0.5 &&
+      ordered.every((slide, i) => slide.size > 0 && (!i || (slide.index === (ordered[i - 1].index + 1) % list.length && Math.abs(slide.start - ordered[i - 1].start - ordered[i - 1].size - gap) <= 1)))
+    if (!looping) {
+      if (wasLooping) restoreLoopOrder()
+      return
+    }
+    loopPeriod = ordered[ordered.length - 1].start + ordered[ordered.length - 1].size - ordered[0].start + gap
+    let visibleScroll = pos()
+    const destination = index === undefined ? null : ordered.find(slide => slide.el === list[Math.max(0, Math.min(index, list.length - 1))])
+    let scroll = destination ? destination.start + destination.size * fraction - snapAnchor() : scrollTarget ?? visibleScroll
+    const anchor = ordered.find(slide => slide.start + slide.size > visibleScroll) ?? ordered[0]
+    const before = anchor.start - visibleScroll
+    let changed = false
+    // Only move fully offscreen nodes; the scroll correction keeps the visible anchor still.
+    for (let i = 0; i < ordered.length; i++) {
+      const first = ordered[0], last = ordered[ordered.length - 1]
+      if (scroll - first.start < buffer / 2 - 0.5 && last.start >= visibleScroll + width - 0.5) {
+        ordered.pop()
+        const delta = last.size + gap
+        ordered.forEach(slide => { slide.start += delta })
+        last.start = first.start - delta
+        ordered.unshift(last)
+        scroll += delta
+        visibleScroll += delta
+      } else if (last.start + last.size - scroll - width < buffer / 2 - 0.5 && first.start + first.size <= visibleScroll + 0.5) {
+        ordered.shift()
+        const delta = first.size + gap
+        ordered.forEach(slide => { slide.start -= delta })
+        first.start = last.start + last.size + gap
+        ordered.push(first)
+        scroll -= delta
+        visibleScroll -= delta
+      } else break
+      changed = true
+    }
+    if (!changed) return
+    const wasSuspended = container.style.scrollSnapType === 'none'
+    if (!wasSuspended) suspendSnap()
+    ordered.forEach((slide, i) => owned.style(slide.el, 'order', String(i)))
+    // A boundary rotation needs one layout read; ordinary frames never reorder.
+    setPos(slideStart(anchor.el) - before)
+    if (!wasSuspended) resumeSnap()
+  }
+  const panLoop = (amount: number) => {
+    if (Math.abs(amount) >= loopPeriod) amount %= loopPeriod
+    // Consume overshoot before the finite native rail can discard it.
+    for (let i = 0; i <= container.children.length && Math.abs(amount) > 0.01; i++) {
+      fixLoop(undefined, pos() + amount)
+      const before = pos()
+      const distance = Math.max(-before, Math.min(amount, range() - before))
+      if (Math.abs(distance) < 0.01) break
+      setPos(before + distance)
+      amount -= distance
+      fixLoop()
+    }
+  }
+
+  // measure() hands in the scroll metrics it already snapshotted during
   // its read phase, so the onScroll call at the end of a measure pass never
   // triggers a fresh scrollLeft/scrollWidth read after the writes earlier in
   // that same pass. Called with no argument (the public `state()`, any time
   // outside a measure pass) it reads fresh, same as before.
   let lastState = { ...noopState }
-  const readState = (p?: number): SliderState => ({
+  const scrollState = () => {
+    const length = range(), current = pos()
+    const movable = container.children.length > 1 && length > 0.5
+    return {
+      // Native elastic overscroll must not send chained sliders outside 0..1.
+      progress: length > 0 ? Math.max(0, Math.min(current / length, 1)) : 0,
+      canPrev: movable && (!!loop || !!rewind || current > 0.5),
+      canNext: movable && (!!loop || !!rewind || current < length - 0.5),
+    }
+  }
+  const readState = (scroll = scrollState()): SliderState => ({
     active: Math.max(active, 0),
     count: container.children.length,
     position,
-    progress: p ?? progress(),
     dragging,
     gliding: anim !== 0,
+    ...scroll,
   })
   const state = (): SliderState => {
     life.guard(() => { lastState = readState() })()
-    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false } : lastState
+    return destroyed || life.stopped ? { ...lastState, dragging: false, gliding: false, canPrev: false, canNext: false } : lastState
   }
 
   const measure = life.guard(() => {
     raf = 0
+    if (loop && !anim) fixLoop()
     const center = pos() + viewport() / 2
+    const anchor = pos() + snapAnchor()
     let best = 0
     let bestDist = Infinity
     const list = slides()
     // READ phase for every slide, then WRITE phase: no per-slide read/write interleaving
     const sizes = list.map((slide) => Math.max(slideSize(slide), 1))
     const centers = list.map((slide, i) => slideStart(slide) + sizes[i] / 2)
-    // Snapshot progress() here, still inside the read phase: it reads
-    // scrollLeft and scrollWidth (through pos()/range()), and the write loop
-    // right below writes --sd on every slide. Calling progress() again after
-    // that loop (for the --sv-progress write) or after the class writes
-    // further down (through state(), for onScroll) would read that same
-    // geometry back AFTER this pass has already started writing to the DOM.
-    const p = progress()
+    const anchors = fraction === 0.5 ? centers : centers.map((center, i) => center + sizes[i] * (fraction - 0.5))
+    // Snapshot scroll metrics before the style writes; callbacks reuse them.
+    const scroll = scrollState()
+    const p = scroll.progress
     list.forEach((slide, i) => {
       // --sd stays normalized by the slide's OWN size (that is what the CSS
       // reads), but the active slide is the nearest in PIXELS: comparing the
@@ -257,25 +377,29 @@ export function slider(
         owned.style(slide, '--sd', sd.toFixed(4))
       }
       // an exact tie keeps the first slide, as before
-      const dist = Math.abs(centers[i] - center)
+      const dist = Math.abs(anchors[i] - anchor)
       if (dist < bestDist) {
         bestDist = dist
         best = i
       }
     })
-    // Continuous position: interpolate between the two adjacent slide CENTRES
-    // the viewport centre sits between. The old formula (`best` minus the
-    // active slide's own `sd`) normalized by one slide's own size, so any gap
-    // made it jump BACKWARDS at every midpoint (two 100px slides 16px apart
-    // read 0.580, then 0.430 one pixel later), against the documented
-    // contract.
+    // Interpolate between alignment anchors; --sd stays center-based for effects.
     position = 0
     if (centers.length > 1) {
-      let seg = 0
-      while (seg + 2 < centers.length && centers[seg + 1] <= center) seg++
-      const span = centers[seg + 1] - centers[seg]
-      const raw = span > 0 ? seg + (center - centers[seg]) / span : seg
-      position = Math.min(Math.max(raw, 0), centers.length - 1)
+      if (looping) {
+        const ordered = anchors.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value)
+        let seg = 0
+        while (seg + 2 < ordered.length && ordered[seg + 1].value <= anchor) seg++
+        const span = ordered[seg + 1].value - ordered[seg].value
+        const raw = span > 0 ? ordered[seg].index + (anchor - ordered[seg].value) / span : ordered[seg].index
+        position = ((raw % list.length) + list.length) % list.length
+      } else {
+        let seg = 0
+        while (seg + 2 < anchors.length && anchors[seg + 1] <= anchor) seg++
+        const span = anchors[seg + 1] - anchors[seg]
+        const raw = span > 0 ? seg + (anchor - anchors[seg]) / span : seg
+        position = Math.min(Math.max(raw, 0), centers.length - 1)
+      }
     }
     if (cssVars) owned.style(container, '--sv-progress', p.toFixed(4))
     // Something outside the slider can rewrite the class attribute of the rail
@@ -318,7 +442,7 @@ export function slider(
       activeEl = null
       if (cssVars) owned.style(container, '--sv-slide', '')
     }
-    if (!life.stopped) { lastState = readState(p); onScroll?.(lastState) }
+    if (!life.stopped) { lastState = readState(scroll); onScroll?.(lastState) }
   })
 
   const schedule = life.guard(() => {
@@ -328,6 +452,7 @@ export function slider(
   // Geometry changes can invalidate an in-flight destination. Reuse goTo's
   // fresh bounds only on observer delivery, not on every animation frame.
   const onLayout = life.guard(() => {
+    readInsets()
     if (anim) goTo(target)
     schedule()
   })
@@ -339,7 +464,7 @@ export function slider(
     watchedSlides.forEach(slide => { if (!current.has(slide)) owned.restore(slide) })
     watchedSlides = current
     ro?.disconnect()
-    ro?.observe(container)
+    ro?.observe(container, { box: 'border-box' })
     current.forEach((slide) => ro?.observe(slide))
   }
   life.defer(() => watchedSlides.clear())
@@ -366,13 +491,20 @@ export function slider(
     if (!reduced || target < 0 || destroyed) return
     goTo(target, false)
   })
+  const setDestination = (to: number, index: number) => {
+    setPos(looping ? Math.max(0, Math.min(to, range())) : to)
+    if (!looping || index < 0) return
+    fixLoop(index)
+    const slide = slides()[index]
+    if (slide) setPos(Math.max(0, Math.min(destination(slideStart(slide), slideSize(slide)), range())))
+  }
   const glide = (to: number) => {
     stopGlide()
     let current = pos()
     if (duration <= 0 || effectiveReduce() || Math.abs(to - current) < 1) {
       resumeSnap()
+      setDestination(to, target)
       target = -1
-      setPos(to)
       return
     }
     suspendSnap() // native snap must not tug while we animate
@@ -383,6 +515,13 @@ export function slider(
     // `duration` calibrates the settle time (~99.8% covered by then).
     let last = performance.now()
     const step = life.guard((now: number) => {
+      if (looping) {
+        const before = pos()
+        fixLoop(target)
+        const shift = pos() - before
+        current += shift
+        to += shift
+      }
       const dt = Math.min(now - last, 50)
       last = now
       const factor = 1 - Math.pow(0.002, dt / duration)
@@ -391,7 +530,7 @@ export function slider(
         setPos(to)
         stopGlide()
         target = -1
-        resumeSnap() // position is centered. Safe to re-engage
+        resumeSnap() // the destination matches the native snap alignment
       } else {
         setPos(current)
         anim = requestAnimationFrame(step)
@@ -418,6 +557,7 @@ export function slider(
   const goTo = life.guard((index: number, smooth = true) => {
     if (destroyed) return
     clearWheel() // this call owns the position now, not the pending settle
+    if (loop) { stopGlide(); fixLoop(index) }
     const all = slides()
     const clamped = Math.max(0, Math.min(index, all.length - 1))
     const slide = all[clamped]
@@ -429,7 +569,8 @@ export function slider(
     }
     // Edge slides may not center within the scroll range. Chasing an
     // unreachable target wastes frames after native scrolling has stopped.
-    const to = Math.max(0, Math.min(slideStart(slide) - (viewport() - slideSize(slide)) / 2, range()))
+    const aligned = destination(slideStart(slide), slideSize(slide))
+    const to = looping ? aligned : Math.max(0, Math.min(aligned, range()))
     if (smooth) {
       target = clamped
       glide(to)
@@ -437,7 +578,7 @@ export function slider(
       stopGlide()
       resumeSnap() // a previous seek()/glide may have suspended it
       target = -1
-      setPos(to)
+      setDestination(to, clamped)
     }
   })
 
@@ -465,6 +606,8 @@ export function slider(
   const DRAG_THRESHOLD = 5
 
   const onMove = life.guard((event: PointerEvent) => {
+    // A release outside an embedded viewport may never deliver pointerup.
+    if (event.buttons === 0) { cancelDrag(); return }
     const point = horizontal ? event.clientX : event.clientY
     if (!dragging) {
       // pending press: activating only after real movement keeps a plain
@@ -474,11 +617,11 @@ export function slider(
       dragging = true
       suspendSnap()
       owned.class(container, 'sv-dragging', true) // slider.css: user-select none
-      lastPointer = point
-      return
+      lastPointer = startPoint
     }
     const step = point - lastPointer
-    setPos(pos() - (rtl ? -step : step))
+    if (looping) panLoop(rtl ? step : -step)
+    else setPos(pos() - (rtl ? -step : step))
     lastPointer = point
   })
   // the click that follows a real drag would activate whatever link the
@@ -492,9 +635,10 @@ export function slider(
   const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]'
   let pressedTarget: HTMLElement | null = null
   const endDrag = life.guard(() => {
+    if (!pressed) return
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', endDrag)
-    window.removeEventListener('pointercancel', endDrag)
+    window.removeEventListener('pointercancel', cancelDrag)
     pressed = false
     if (!dragging) {
       // ordinary click: preventDefault on pointerdown (below) killed the
@@ -517,15 +661,26 @@ export function slider(
     }
     // A final pointermove and pointerup can precede the scroll measurement.
     // Resolve the destination from today's geometry, not the last frame.
-    const center = pos() + viewport() / 2
+    const anchor = pos() + snapAnchor()
     const list = slides()
     let nearest = 0
     let distance = Infinity
     list.forEach((slide, i) => {
-      const d = Math.abs(slideStart(slide) + slideSize(slide) / 2 - center)
+      const d = Math.abs(slideStart(slide) + slideSize(slide) * fraction - anchor)
       if (d < distance) { distance = d; nearest = i }
     })
     goTo(nearest)
+  })
+  const cancelDrag = life.guard(() => {
+    if (!pressed) return
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', endDrag)
+    window.removeEventListener('pointercancel', cancelDrag)
+    pressed = dragging = false
+    pressedTarget = null
+    owned.class(container, 'sv-dragging', false)
+    resumeSnap()
+    schedule()
   })
   // native image/link drag-and-drop would hijack the gesture mid-press
   const onDragStart = life.guard((event: Event) => {
@@ -560,7 +715,7 @@ export function slider(
     event.preventDefault()
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', endDrag)
-    window.addEventListener('pointercancel', endDrag)
+    window.addEventListener('pointercancel', cancelDrag)
   })
 
   // trackpad/wheel pan: native mandatory snap settles fast and can't be
@@ -570,7 +725,7 @@ export function slider(
   const onWheel = life.guard((event: WheelEvent) => {
     const owner = (event.target as Element | null)?.closest?.('.sv-slider')
     if (owner && owner !== container) return
-    if (snapIsNone || snap === 'proximity') return
+    if (snapIsNone || (!looping && snap === 'proximity') || event.ctrlKey) return
     // only react when the gesture's dominant axis is OUR axis. Otherwise
     // this is the page scrolling past the carousel (trackpad gestures are
     // always slightly diagonal) and assisting would yank the slider around
@@ -580,6 +735,12 @@ export function slider(
     stopGlide()
     target = -1
     suspendSnap()
+    if (looping) {
+      event.preventDefault()
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport() : 1
+      panLoop(along * unit * (rtl ? -1 : 1))
+      if (snap === 'proximity') { resumeSnap(); return }
+    }
     clearWheel()
     wheelTimer = setTimeout(() => {
       wheelTimer = undefined
@@ -587,8 +748,25 @@ export function slider(
     }, 200)
   })
 
-  const next = (smooth = true) => goTo(stepBase() + 1, smooth)
-  const prev = (smooth = true) => goTo(stepBase() - 1, smooth)
+  const step = life.guard((direction: number, smooth: boolean) => {
+    if (destroyed) return
+    const base = stepBase()
+    let index = base + direction
+    if (looping) {
+      const count = container.children.length
+      index = ((index % count) + count) % count
+    } else if (rewind || loop) {
+      const last = container.children.length - 1
+      // With several slides visible, the rail ends before the last slide centers.
+      const edge = anim && target >= 0
+        ? direction > 0 ? base >= last : base <= 0
+        : direction > 0 ? pos() >= range() - 0.5 : pos() <= 0.5
+      if (edge) index = direction > 0 ? 0 : last
+    }
+    goTo(index, smooth)
+  })
+  const next = (smooth = true) => step(1, smooth)
+  const prev = (smooth = true) => step(-1, smooth)
 
   // keyboard: native key-scrolling steps in ~40px jumps and the snap settles
   // hard after each. Replace it with the same soft glide as everything else.
@@ -620,17 +798,20 @@ export function slider(
   life.defer(() => window.removeEventListener('click', suppressClick, true))
   life.defer(() => window.removeEventListener('pointermove', onMove))
   life.defer(() => window.removeEventListener('pointerup', endDrag))
-  life.defer(() => window.removeEventListener('pointercancel', endDrag))
+  life.defer(() => window.removeEventListener('pointercancel', cancelDrag))
   life.setup(() => {
     owned.class(container, 'sv-slider', true)
     owned.class(container, 'sv-slider-y', !horizontal)
     owned.class(container, 'sv-draggable', !!drag)
+    if (loop) owned.style(container, 'overflow-anchor', 'none')
     // Now that `.sv-slider` is in place: an inline/stylesheet/utility none
     // already latched snapIsNone above and needs no second opinion.
     if (!snapIsNone && typeof getComputedStyle === 'function') {
       snapIsNone = getComputedStyle(container).scrollSnapType === 'none'
     }
     owned.style(container, '--sv-snap', snap)
+    owned.style(container, '--sv-align', alignment)
+    readInsets()
     // .tabIndex reads -1 for an authored tabindex="-1" AND for no attribute
     // at all: only the attribute itself tells an author's own -1 (a
     // follower rail deliberately kept out of the tab order) from unauthored.
@@ -645,7 +826,10 @@ export function slider(
     life.defer(onMotionChange(motionChanged))
     listen(container, 'dragstart', onDragStart)
     listen(container, 'pointerdown', onDown as EventListener)
-    listen(container, 'wheel', onWheel as EventListener, { passive: true })
+    listen(window, 'blur', cancelDrag)
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function')
+      listen(document, 'visibilitychange', life.guard(() => { if (document.visibilityState === 'hidden') cancelDrag() }))
+    listen(container, 'wheel', onWheel as EventListener, { passive: !loop })
     listen(container, 'keydown', onKey as EventListener)
     measure()
   })
