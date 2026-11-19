@@ -85,8 +85,10 @@ ${scene}
   <legend>Glass controls</legend>
   <label for="glass-blur">Gaussian blur <output for="glass-blur" id="glass-radius">6 px</output><input id="glass-blur" name="blur" type="range" min="0" max="24" value="6"></label>
   <label>Glass position<input name="position" type="range" min="0" max="100" value="42"></label>
-  <label>Light<select name="lightMode"><option value="static">Fixed</option><option value="pointer">Mouse</option><option value="float">Floating</option></select></label>
+  <label>Light<select name="lightMode" aria-describedby="glass-light-help"><option value="static">Fixed</option><option value="pointer">Mouse</option><option value="float">Floating</option></select></label>
 </fieldset>
+<p id="glass-light-help" role="status">Fixed: the edge highlight stays at the top left. Light changes the thin edge highlight, not the scene lighting.</p>
+<p>Mouse responds over the image, near the glass edge. Floating completes one slow orbit every 120 seconds. Reduced motion keeps the light fixed.</p>
 <p role="status" id="glass-status"></p>
 <script src="sv-glass.js"></script>
 <script>(() => {
@@ -106,6 +108,11 @@ ${scene}
     const { blur, position, lightMode } = controls.elements
     radius.value = blur.value + ' px'
     glass.update({ blur: blur.valueAsNumber, position: position.valueAsNumber, lightMode: lightMode.value })
+    document.getElementById('glass-light-help').textContent = {
+      static: 'Fixed: the edge highlight stays at the top left. Light changes the thin edge highlight, not the scene lighting.',
+      pointer: 'Mouse: move over the image near a glass edge to move its highlight. Changing this option alone keeps the fixed light until the pointer enters the image.',
+      float: 'Floating: the edge highlight moves slowly, completing one orbit every 120 seconds. Watch the glass edge for a few seconds.'
+    }[lightMode.value]
   })
 })()</script>`,
   css: `${scene}
