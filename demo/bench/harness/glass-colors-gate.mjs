@@ -8,7 +8,9 @@ const script = buildSync({entryPoints:[root + 'src/glass/upload.ts'],bundle:true
 const engines = {chromium,firefox,webkit}
 for (const name of process.env.BROWSERS?.split(',') ?? Object.keys(engines)) {
   assert.ok(engines[name], `Unknown browser: ${name}`)
-  const browser = await engines[name].launch({headless:true,...(name==='chromium'&&process.env.CHROME?{executablePath:process.env.CHROME}:{})})
+  const browser = await engines[name].launch({headless:process.env.GL_HEADFUL!=='1',
+    ...(name==='firefox'?{firefoxUserPrefs:{'webgl.force-enabled':true,'gfx.webrender.software':true}}:{}),
+    ...(name==='chromium'&&process.env.CHROME?{executablePath:process.env.CHROME}:{})})
   try {
     const results=[]
     for (const swapped of [false,true]) {
