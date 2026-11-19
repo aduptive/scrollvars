@@ -257,3 +257,49 @@ test('Glass Gaussian prepass failure: incomplete framebuffer releases every reso
     assert.deepEqual(env.baseline(), [0,0,0,0]); handle.destroy()
   } finally { env.restore() }
 })
+
+for (const swapped of [false, true]) test(`Glass canvas upload: ${swapped ? 'broken accelerated path uses RGBA' : 'correct accelerated path stays direct'}`, () => {
+  const env = lifecycleEnv()
+  try {
+    const canvas = env.canvas(), gpu = context(canvas)
+    let probes = 0, reads = 0, captures = 0
+    const bytes = new Uint8ClampedArray([12,34,210,255])
+    const scene = { width: 1, height: 1, getContext: () => sceneContext }
+    const sceneContext = { canvas: scene, getImageData: () => { reads++; return {data:bytes,width:1,height:1} } }
+    let probe
+    document.createElement = () => (probe = { width:0, height:0, getContext: () => ({ fillRect() {} }) })
+    gpu.gl.getParameter = () => ({})
+    gpu.gl.readPixels = (...args) => { probes++; args.at(-1).set(swapped ? [255,0,0,255] : [0,0,255,255]) }
+    const handle = mountGlass(canvas, { source: () => { captures++; return scene } })
+    env.deliveries.find(o => o.kind === 'ResizeObserver').cb([]); env.flush()
+    assert.equal(probes,1)
+    assert.equal(reads,swapped?1:0)
+    let uploads = gpu.calls.filter(c=>c[0]==='texImage2D')
+    const actual = uploads.at(-1)
+    if (swapped) assert.deepEqual([...actual.at(-1)], [...bytes], 'upload preserves actual RGBA, no unconditional channel swizzle')
+    else assert.equal(actual.at(-1),scene)
+    assert.equal(probe.width,0); assert.equal(probe.height,0)
+    handle.update({ lightX:60 }); env.flush()
+    assert.equal(captures,1); assert.equal(reads,swapped?1:0)
+    handle.invalidateSource(); env.flush()
+    assert.equal(probes,1,'probe only once per Glass context')
+    assert.equal(reads,swapped?2:0)
+    handle.destroy(); assert.equal(gpu.resources.size,0)
+    assert.deepEqual(env.baseline(),[0,0,0,0])
+  } finally { env.restore() }
+})
+
+test('Glass canvas upload: unexpected probe colors fail visible and release resources', () => {
+  const env = lifecycleEnv()
+  try {
+    const canvas=env.canvas(), gpu=context(canvas), errors=[]
+    document.createElement=()=>({width:0,height:0,getContext:()=>({fillRect(){}})})
+    gpu.gl.readPixels=(...args)=>args.at(-1).set([0,255,0,255])
+    const handle=mountGlass(canvas,{source:()=>({getContext:()=>({})}),onError:error=>errors.push(error)})
+    env.deliveries.find(o=>o.kind==='ResizeObserver').cb([]); env.flush()
+    assert.match(errors[0]?.message,/unexpected colors/)
+    assert.equal(canvas.hidden,true)
+    assert.equal(gpu.resources.size,0)
+    handle.destroy(); assert.deepEqual(env.baseline(),[0,0,0,0])
+  } finally { env.restore() }
+})

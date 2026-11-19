@@ -77,7 +77,7 @@ import 'scrollvars/styles/core.css'               // entrances, stagger, drift, 
 ```
 
 <!-- react-imports:start -->
-Isolated consumer bundles of ScrollVars 1.22.0, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
+Isolated consumer bundles of ScrollVars 1.22.1, esbuild 0.25.12, browser ESM/ES2020; React external, CSS excluded. Counts the entry and all static shared chunks, excluding lazy debug chunks. Gzip level 9; bytes, not KB:
 
 | React imports | minified bytes | gzip bytes |
 | --- | ---: | ---: |

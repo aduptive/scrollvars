@@ -34,6 +34,16 @@ Source images must be decoded and same-origin or served with suitable CORS
 headers before mount. A rejected/tainted/not-ready source hides only the overlay;
 `onError(error)` reports the problem. Fix the source and remount to retry.
 
+Firefox/Linux graphics paths can swap red and blue when uploading an accelerated
+Canvas2D scene (Mozilla [2092687](https://bugzilla.mozilla.org/show_bug.cgi?id=2092687)).
+From 1.22.1, Glass checks a known color once per context before the first Canvas2D
+upload. Affected contexts use RGBA pixels; other contexts retain direct uploads.
+The fallback reads the source pixels on each invalidation, so avoid invalidating
+an unchanged scene every frame. Position and light updates reuse the texture.
+Unexpected probe colors release the overlay through `onError`, keeping semantic
+content available. Verify the real device: a headless Firefox test does not cover
+every Linux compositor and graphics driver.
+
 | Prop | Range | Default | Meaning |
 | --- | --- | --- | --- |
 | `edgeWidth` | 1–20 | 8 | Edge band as percent of host width |

@@ -1,6 +1,7 @@
 import { mountEffect, type EffectFrame, type EffectHandle } from '../canvas/index.js'
 import { lifetime, reportFailure } from '../core/lifetime.js'
 import { vertex, fragment } from './shaders.js'
+import { createSceneUploader } from './upload.js'
 import { createGaussianBlur } from './blur.js'
 
 export interface GlassMaterial {
@@ -180,11 +181,12 @@ export function mountGlass(canvas: HTMLCanvasElement, options: GlassOptions): Gl
           life.defer(() => canvas.removeEventListener('webglcontextlost', lost))
           let blurPass: ReturnType<typeof createGaussianBlur> | undefined
           let blurred: WebGLTexture | undefined, blurredFor = -1
+          const uploadScene = createSceneUploader(gl)
           render = fx => {
             gl.bindTexture(gl.TEXTURE_2D, texture)
             if (upload) {
               gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
-              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, options.source(fx))
+              uploadScene(options.source(fx))
               upload = false
               blurredFor = -1
             }
