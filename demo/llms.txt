@@ -369,7 +369,9 @@ strictly convex vertices as a flat normalized x/y array in [0, 1], either windin
 without a closing duplicate. Default position 42 leaves custom points unshifted.
 Keep the React points array stable; identity changes remount. Arbitrary SVG paths
 and concave polygons are unsupported. Omit points for the original pentagon.
-WebGL failure hides the overlay; remount to retry. See
+Glass 1.22.1 probes Canvas2D color uploads once per context. On affected GPUs
+it uploads RGBA pixels when the scene texture changes. Reuse the texture for
+position and light updates. WebGL failure hides the overlay; remount to retry. See
 https://github.com/aduptive/scrollvars/blob/main/docs/glass.md and the complete
 `examples/glass.tsx` consumer. Validate the real scene's GPU cost on target
 devices; this optional effect does not inherit the core's benchmark results.

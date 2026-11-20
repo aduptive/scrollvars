@@ -13,6 +13,12 @@ https://scrollvars.dev. `npm i scrollvars`. Read
 are working inside scrollvars itself) for the full API, recipes, SSR notes
 and browser support. Machine-readable index: https://scrollvars.dev/llms.txt.
 
+## Changes in 1.22.1
+
+### Fixed
+
+- Detect accelerated Canvas2D texture uploads that swap red and blue (Firefox/Linux graphics regression). Glass probes once per context and uses an RGBA pixel upload only on affected Canvas2D paths; unaffected contexts retain direct uploads. Source invalidation controls recapture as before. The affected path requires a CPU pixel read per source upload; unchanged scenes and material-only updates reuse their cached texture.
+
 ## Mental model
 
 One global driver reads the scroll position in a single rAF (batched reads,

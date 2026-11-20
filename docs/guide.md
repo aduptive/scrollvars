@@ -689,6 +689,10 @@ export function Story() {
 }
 ```
 
+For a refractive Glass overlay, use `mountGlass` from `scrollvars/glass` or
+`Glass` from `scrollvars/react/glass`. The [Glass guide](glass.md) covers
+source textures, custom convex polygons and color handling on affected GPUs.
+
 ## Canvas effects (`scrollvars/canvas`)
 
 For ambient canvas work (particle spheres, generative heroes) the simulation is

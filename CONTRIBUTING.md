@@ -7,7 +7,7 @@ and pinning on the consumer side. Both are written down here.
 ## Day-to-day changes
 
 1. Branch from `main`; open a PR (no direct pushes to `main`).
-2. CI must be green: build, 22 unit tests (including the **API-surface
+2. CI must be green: build, unit tests (including the **API-surface
    snapshot**. If it trips, you made a breaking change), and the
    progressive-enhancement invariants (no-JS renders complete, nothing
    hidden before `html.sv-on`).
@@ -28,16 +28,24 @@ and pinning on the consumer side. Both are written down here.
 
 ## Releasing (never from a laptop)
 
-```bash
-npm version minor        # bumps package.json + creates the vX.Y.Z tag
-git push --follow-tags
-```
+1. Prepare the version on a release branch with `npm version <version> --no-git-tag-version`.
+   Put the release notes first in CHANGELOG.md. Update the affected API guide, examples,
+   public reference in `scripts/docs-build.mjs`, and agent recipes in AGENTS.md.
+2. Run `npm run demo:sync` and commit the generated files with the sources.
+   This rebuilds the public site, llms.txt and the bundled skill, including the
+   current changelog entry. CI repeats generation in a clean checkout and checks
+   for changed, deleted and newly generated files.
+3. After review and merge, deploy the documentation from the exact merge commit
+   with `npm run demo:deploy` and verify it with `npm run docs:check-live`.
+   Tag that same commit as `v<version>` and push the tag.
+4. The tag workflow tests the packed consumer and compares the public docs, demo,
+   gallery and machine-readable references with its generated files before npm
+   publication. If the public check fails, deploy the matching docs, verify and
+   rerun the failed release job. Confirm the published npm version and tarball.
 
-The tag triggers `.github/workflows/release.yml`, which republishes ONLY if
-every gate passes: unit + e2e + tag-matches-version + a pack-smoke that
-installs the actual tarball into a throwaway consumer and imports it. The
-npm publish carries provenance. No green, no release: there is no manual
-path to npm.
+The npm package includes its matching SKILL.md and AGENTS.md. After upgrading
+a consumer, refresh its installed skill with `npx scrollvars skill`; inspect
+local edits before using `--force` to replace an existing customized copy.
 
 ## The other half: how consumers must depend on this
 

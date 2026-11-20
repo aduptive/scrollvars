@@ -13,4 +13,4 @@
 - [ ] `npm test` green (unit) and `npm run test:e2e` green (invariants)
 - [ ] CHANGELOG.md entry under the next version
 - [ ] New behavior has a test that fails without the change
-- [ ] Docs touched if the public surface changed (README / docs / llms.txt / AGENTS.md)
+- [ ] Public behavior reviewed in the human and agent guides. Release notes, public skill and generated pages regenerated with `npm run demo:sync`.

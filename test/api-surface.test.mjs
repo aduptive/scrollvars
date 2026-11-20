@@ -77,3 +77,20 @@ test('public API surface is intact (breaking changes trip this on purpose)', asy
     assert.deepEqual(extra, [], `${name}: new exports not snapshotted yet: ${extra}`)
   }
 })
+
+test('the public reference documents every shipped runtime module and export', async () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const html = readFileSync(new URL('../demo/docs/index.html', import.meta.url), 'utf8')
+  const reference = html.split('<h2 id="exports">')[1].split('<h2')[0]
+  const names = new Set([...reference.matchAll(/<code>(.*?)<\/code>/gs)]
+    .flatMap(match => match[1].split(/[^\w$]+/)))
+  for (const [key, target] of Object.entries(pkg.exports)) {
+    if (!target.endsWith('.js')) continue
+    const specifier = key === '.' ? pkg.name : pkg.name + key.slice(1)
+    assert.ok(reference.includes(specifier), `Document the ${specifier} entry point`)
+    const module = await import(specifier)
+    for (const name of Object.keys(module)) {
+      assert.ok(names.has(name), `Document ${name} from ${specifier}`)
+    }
+  }
+})
