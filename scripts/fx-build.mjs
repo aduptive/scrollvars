@@ -66,11 +66,10 @@ const ENGINE_KB = (gzipSync(readFileSync(join(out, 'sv.js'))).length / 1024).toF
 {
   const site = 'https://scrollvars.dev'
   const urls = ['/', '/docs/', '/bench/', '/fx/', ...EFFECTS.map((e) => `/fx/${e.slug}.html`)]
-  const today = new Date().toISOString().slice(0, 10)
   writeFileSync(
     join(root, 'demo', 'sitemap.xml'),
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      urls.map((u) => `  <url><loc>${site}${u}</loc><lastmod>${today}</lastmod></url>`).join('\n') +
+      urls.map((u) => `  <url><loc>${site}${u}</loc></url>`).join('\n') +
       `\n</urlset>\n`
   )
 }

@@ -183,9 +183,9 @@ mapping becomes pure CSS.</p>
 <h2 id="exports">Every export</h2>
 <p class="grp">scrollvars (vanilla core)</p>
 <table>
-<tr><td><code>track(el, opts?)</code></td><td>drive one element; opts: <code>view/travel/pin/scenes/snap/once/root/enter/exit</code> + <code>onLive/onScene/onTravel/onPin/onFlow</code>. Returns untrack.</td></tr>
+<tr><td><code>track(el, opts?)</code></td><td>drive one element; opts: <code>view/travel/pin/scenes/snap/once/root/enter/exit</code> + <code>onLive/onScene/onTravel/onPin/onFlow/onStatus</code>. Returns untrack.</td></tr>
 <tr><td><code>scan(root?)</code></td><td>zero-wrapper mode: tracks every <code>[data-sv]</code>, MutationObserver keeps route changes covered.</td></tr>
-<tr><td><code>slider(el, opts?)</code></td><td>featherweight carousel on native scroll+snap; returns <code>next/prev/goTo/seek/active/state/destroy</code>.</td></tr>
+<tr><td><code>slider(el, opts?)</code></td><td>Native scroll and snap. Choose <code>align</code> (start, center or end). <code>loop</code> recycles offscreen slides and falls back to <code>rewind</code> on short rails. Read <code>canPrev</code> and <code>canNext</code> from state for custom controls. Returns <code>next/prev/goTo/seek/active/state/destroy</code>.</td></tr>
 <tr><td><code>toggles(root?)</code></td><td>click states: <code>data-sv-toggle</code>/<code>data-sv-target</code> → class + <code>--sv-state</code> + aria-expanded.</td></tr>
 <tr><td><code>trackPointer(el, opts?)</code></td><td>pointer module: writes <code>--mx/--my</code> on <code>.sv-tilt</code> matches.</td></tr>
 <tr><td><code>scrollToScene(el, i, n, smooth?, root?)</code></td><td>scroll the window, or the given inner scroller, to scene i of a pinned section.</td></tr>
@@ -201,10 +201,14 @@ mapping becomes pure CSS.</p>
 <tr><td><code>&lt;Slider&gt; &lt;Slide&gt; &lt;Marquee&gt; &lt;Accordion&gt; &lt;Modal&gt;</code></td><td>the component kit (see the accessibility contract below).</td></tr>
 <tr><td><code>useTrack / useScenes / useSlider / usePointer / useCanvasEffect</code></td><td>hooks under the components.</td></tr>
 </table>
+<p class="grp">scrollvars/glass · scrollvars/react/glass</p>
+<p><code>mountGlass(canvas, options)</code> and the React <code>&lt;Glass&gt;</code> overlay refract a supplied scene texture.
+Import <code>scrollvars/styles/glass.css</code>. Supply <code>points</code> for a custom convex polygon.
+See the <a href="../fx/glass.html">interactive example</a> and <a href="https://github.com/aduptive/scrollvars/blob/v${VERSION}/docs/glass.md">Glass API guide</a>.</p>
 <p class="grp">scrollvars/canvas · scrollvars/compat · scrollvars/debug</p>
 <p><code>mountEffect(canvas, effect)</code>. Lifecycle harness for ambient canvas scenes
 (DPR cap, delta-time loop, auto-pause offscreen/hidden, reduced-motion flag).
-<code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
+<code>compat()</code> from <code>scrollvars/compat</code>: opt-in legacy floor (~Chrome 61/FF 60/Safari 11): RO/IO stubs +
 transform-fallback CSS.<br>
 <code>scrollvars/debug</code>. Dev overlay: <code>debug()</code> lists every tracked element with its live
 variables, outlines it, click scrolls to it, plus a perf HUD (FPS, dropped/late frames, worst frame,

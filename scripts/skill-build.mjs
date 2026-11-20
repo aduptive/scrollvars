@@ -37,6 +37,14 @@ if (isMain) {
 const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8')
 const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
 
+// Carry the release author's notes into the installed skill on every version bump.
+const changelog = readFileSync(join(root, 'CHANGELOG.md'), 'utf8')
+const entry = changelog.split(/^## /m)[1]
+if (!entry?.startsWith(version + ' (') || !entry.includes('\n- ')) {
+  throw new Error(`Add a CHANGELOG entry for ${version} before generating the skill`)
+}
+const releaseNotes = entry.slice(entry.indexOf('\n') + 1).trim()
+
 const mentalModel = extract(agents, '## Mental model (the one rule)\n\n', '\n\n## The variables', 'mental model section')
 const guard = extract(agents, '<!-- vars:end -->\n\n', ' (never fail hidden).', 'fail-visible guard sentence').replace(/\s+/g, ' ') + ' (never fail hidden).'
 const imports = extract(agents, '## Imports\n\n', '\n\n## The fx gallery', 'imports section')
@@ -50,6 +58,10 @@ https://scrollvars.dev. \`npm i scrollvars\`. Read
 \`node_modules/scrollvars/AGENTS.md\` now (this repo's own \`AGENTS.md\` if you
 are working inside scrollvars itself) for the full API, recipes, SSR notes
 and browser support. Machine-readable index: https://scrollvars.dev/llms.txt.
+
+## Changes in ${version}
+
+${releaseNotes}
 
 ## Mental model
 

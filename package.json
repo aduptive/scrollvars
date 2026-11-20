@@ -70,7 +70,8 @@
     "test:packed": "node demo/bench/harness/packed-acceptance.mjs",
     "prepublishOnly": "npm run build && npm test",
     "demo:sync": "npm run build && node scripts/demo-sync.mjs && node scripts/fx-build.mjs && node scripts/a11y-build.mjs && node scripts/bench-tables.mjs && node scripts/lab-tables.mjs && node scripts/docs-stamp.mjs && node scripts/skill-build.mjs && node scripts/docs-build.mjs",
-    "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs"
+    "docs:check-live": "node scripts/check-live-docs.mjs",
+    "demo:deploy": "npm run demo:sync && node scripts/demo-deploy.mjs && npm run docs:check-live"
   },
   "keywords": [
     "scroll",

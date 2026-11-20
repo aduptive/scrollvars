@@ -1,8 +1,6 @@
 # ScrollVars demo
 
-`index.html` is the self-contained showcase (16 scroll/pointer patterns, driver
-inlined, assets embedded). Published as a private artifact; open locally with
-any static server.
+`index.html` is the showcase published at https://scrollvars.dev/. Preview this directory with a local static server.
 
 `webgl-entry.js` is the source of the three.js bundle inlined at the bottom of
 the page (duck product tour). Rebuild with:
@@ -13,6 +11,5 @@ the page (duck product tour). Rebuild with:
 (needs `npm i three` and the Khronos Duck.glb next to it), then replace the
 last <script> block of index.html.
 
-Note to future self: the page's inline driver is a hand-maintained copy. If
-the demo keeps growing, split sections into sources and inline `dist/` at
-build time instead of patching strings.
+Run `npm run demo:sync` at the repository root to rebuild the inline engine,
+reference pages and gallery. Follow the release steps in ../CONTRIBUTING.md.
